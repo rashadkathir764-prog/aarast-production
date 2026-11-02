@@ -117,10 +117,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                     icon: LucideIcons.wand,
                   ),
                   if (_draft != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     AarastV3DraftStatusLine(status: _draft!.status),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastV3FormSurface(
                     children: [
                       TextFormField(
@@ -135,7 +135,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                             ? 'اكتب اسم الخدمة'
                             : null,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AarastV3Space.x2),
                       DropdownButtonFormField<String>(
                         initialValue: _safeCategoryId(marketplace),
                         decoration: const InputDecoration(
@@ -157,7 +157,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         validator: (value) =>
                             value == null ? 'اختر الفئة' : null,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AarastV3Space.x2),
                       TextFormField(
                         controller: _basePriceController,
                         keyboardType: TextInputType.number,
@@ -171,7 +171,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
                     title: 'تفاصيل تساعد العميل',
                     subtitle: 'المدينة والوصف وملاحظة السعر',
@@ -203,7 +203,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                             _draft?.changed();
                           },
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AarastV3Space.x2),
                         TextFormField(
                           controller: _descriptionController,
                           minLines: 2,
@@ -214,7 +214,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                             prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AarastV3Space.x2),
                         TextFormField(
                           controller: _priceUnitController,
                           decoration: const InputDecoration(
@@ -226,10 +226,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                     ),
                   ),
                   if (dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     _InlineError(message: dashboard.errorMessage!),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                 ],
               ),
             ),

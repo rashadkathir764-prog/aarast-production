@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'aarast_pressable.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// A contained grouping only when background separation improves comprehension.
 /// Most page sections should use [AarastSection] instead of nesting surfaces.
 class AarastSurface extends StatelessWidget {
   const AarastSurface({
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AarastV3Space.x4),
     this.margin = EdgeInsets.zero,
     this.color = AppTheme.surfaceRaised,
     this.radius = AppTheme.radiusSurface,

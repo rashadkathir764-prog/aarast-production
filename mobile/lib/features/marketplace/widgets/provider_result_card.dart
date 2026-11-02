@@ -9,6 +9,9 @@ import '../../../core/theme/aarast_motion.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _resultCoverHeight = 120.0;
+
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
 String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
@@ -152,7 +155,7 @@ class ProviderResultCard extends StatelessWidget {
       label: 'عرض تفاصيل $businessName',
       child: Material(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: detailsButtonKey,
@@ -168,7 +171,12 @@ class ProviderResultCard extends StatelessWidget {
                 favoriteButtonKey: favoriteButtonKey,
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x4,
+                  AarastV3Space.x3,
+                  AarastV3Space.x4,
+                  AarastV3Space.x3,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -212,9 +220,9 @@ class ProviderResultCard extends StatelessWidget {
                           color: AarastV3Color.textMuted,
                         ),
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     Wrap(spacing: 6, runSpacing: 6, children: badges),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     if (price != null)
                       Text(
                         [price, ?_clean(priceAgeLabel)].join(' · '),
@@ -298,7 +306,7 @@ class _Cover extends StatelessWidget {
       ),
     );
     return SizedBox(
-      height: 120,
+      height: _resultCoverHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -374,7 +382,7 @@ class _FavoriteHeart extends StatelessWidget {
       child: InkWell(
         key: buttonKey,
         onTap: enabled ? onTap : () {},
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         splashColor: enabled ? null : Colors.transparent,
         highlightColor: enabled ? null : Colors.transparent,
         hoverColor: enabled ? null : Colors.transparent,

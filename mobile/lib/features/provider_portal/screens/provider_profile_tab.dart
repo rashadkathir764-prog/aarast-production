@@ -59,7 +59,12 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x2,
+          AarastV3Space.x4,
+          AarastV3Density.pageBottom,
+        ),
         children: [
           if (profile == null)
             dashboard.isLoading
@@ -116,7 +121,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         ),
     ];
     return [
-      const SizedBox(height: 6),
+      const SizedBox(height: AarastV3Space.x1),
       ProviderIdentityRow(
         name: profile.businessName,
         kind: providerKindLine(
@@ -134,12 +139,12 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
             : null,
       ),
       if (tags.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         Wrap(spacing: 6, runSpacing: 6, children: tags),
       ],
       // His public page exists only while he is approved.
       if (operations) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-me-preview'),
           label: 'كيف يشوفك العرسان',
@@ -151,7 +156,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           onPressed: () => context.push(AppRouter.providerDetails(profile.id)),
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyList(
         children: [
           if (operations) ...[

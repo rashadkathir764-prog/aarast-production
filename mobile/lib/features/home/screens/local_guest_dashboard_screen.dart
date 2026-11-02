@@ -313,7 +313,10 @@ class _LocalSyncNotice extends StatelessWidget {
         ),
         onTap: onSync,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Space.x4,
+            vertical: AarastV3Space.x2,
+          ),
           // The plan's colour (D68), not the fixed teal.
           decoration: BoxDecoration(
             color: context.accent.primarySoft,
@@ -328,7 +331,7 @@ class _LocalSyncNotice extends StatelessWidget {
                 color: context.accent.primary,
                 size: 16,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Flexible(
                 // In the words of the screen that made the plan (a08).
                 child: Text(
@@ -341,7 +344,7 @@ class _LocalSyncNotice extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Container(
                 width: 4,
                 height: 4,
@@ -350,7 +353,7 @@ class _LocalSyncNotice extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Text(
                 context.say('احفظها برقمك', 'احفظيها برقمك'),
                 style: JourneyType.of(

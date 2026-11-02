@@ -12,6 +12,9 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _settingsLoadingHeight = 420.0;
+
 /// g07 «التنبيهات»: the reminders the server sends, each saved the moment
 /// it is switched. Kept to what the server has (C60): tasks, payments (a
 /// week before, the server's lead time) and offers with conversations.
@@ -57,12 +60,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final provider = context.watch<SettingsProvider>();
     final draft = provider.draft;
     final devicePushAvailable =
-        widget.devicePushAvailableOverride ?? _maybeDevicePushAvailable(context);
+        widget.devicePushAvailableOverride ??
+        _maybeDevicePushAvailable(context);
 
     final Widget body;
     if (_showLoginGate) {
       body = const SizedBox(
-        height: 420,
+        height: _settingsLoadingHeight,
         child: AuthGatePanel(
           title: 'سجّل الدخول لإدارة الإعدادات',
           body: 'التنبيهات مرتبطة بحسابك عشان نحفظها لك.',
@@ -119,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             icon: LucideIcons.lock,
             text: devicePushAvailable
@@ -137,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: context.accent.primary,
         onRefresh: _refreshAccountAndLoad,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: 'التنبيهات',
@@ -197,7 +201,7 @@ class _Toggle extends StatelessWidget {
     return AarastPressable(
       onTap: () => onChanged(!value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             Expanded(

@@ -47,7 +47,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
               onRefresh: onRefresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   ProviderStateHeading(
                     name: profile.businessName,
@@ -88,7 +88,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                   ],
                   if (showBookings)
                     JourneyBox(
@@ -122,7 +122,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-suspended-support'),
               label: 'التواصل مع الدعم',

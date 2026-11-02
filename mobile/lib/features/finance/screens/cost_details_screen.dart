@@ -105,7 +105,12 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: cost?.title ?? 'تفاصيل الاتفاق',
               subtitle: cost?.partyLabel,
@@ -126,14 +131,14 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
               child: ListView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: AarastV3Density.pageInsets,
                 children: [body],
               ),
             ),
           ),
           if (payAction != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: AarastV3Density.actionInsets,
               child: JourneyButton(
                 key: const ValueKey('money-cost-primary-action'),
                 label: payAction.$1,
@@ -259,12 +264,12 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
       children: [
         if (provider.loadErrorMessage != null) ...[
           JourneyListNotice(offline: false, onRetry: _load),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         _CostAgreementCard(cost: cost, currency: currency),
         // V1 checklist 4.10: a private cost can join the shared plan.
         if (cost.isPrivate) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('cost-private-banner'),
             text: 'تكلفة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
@@ -283,14 +288,14 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             ),
         ],
         if (!canManage) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
             text:
                 'هذه التفاصيل للعرض فقط. إجراءات التعديل والدفع متاحة لمدير المال.',
             icon: LucideIcons.eye,
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         KeyedSubtree(
           key: _paymentsKey,
           child: JourneySectionTitle(
@@ -321,7 +326,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         // G32: the dates are reminders, each capped by what is left; say so
         // when together they ask for more than is left to pay.
         if (_scheduledOver(pending, cost) case final over? when over > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             key: const ValueKey('cost-schedules-over-remaining'),
             text:
@@ -338,14 +343,14 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         if (!FinanceLocalDataSource.isLocalGuestPlanId(
           widget.weddingPlanId,
         )) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           CostReceiptsSection(
             key: ValueKey('cost-receipts-${cost.id}'),
             costId: cost.id,
             canManage: canManage,
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         const JourneySectionTitle('التفاصيل'),
         _CostFacts(
           cost: cost,
@@ -394,7 +399,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             large: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
             label: 'رجوع',
             expand: true,

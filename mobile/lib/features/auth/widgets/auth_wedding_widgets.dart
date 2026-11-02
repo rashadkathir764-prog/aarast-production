@@ -11,7 +11,10 @@ import '../../../core/widgets/aarast_pressable.dart';
 class AuthWeddingScaffold extends StatelessWidget {
   const AuthWeddingScaffold({
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: AarastV3Space.x4,
+      vertical: AarastV3Space.x2,
+    ),
     this.maxWidth = 560,
     this.leading,
     this.bottom,
@@ -40,7 +43,12 @@ class AuthWeddingScaffold extends StatelessWidget {
           children: [
             if (leading != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x4,
+                  AarastV3Space.x2,
+                  AarastV3Space.x4,
+                  0,
+                ),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: leading,
@@ -51,16 +59,15 @@ class AuthWeddingScaffold extends StatelessWidget {
                 alignment: contentAlignment,
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: padding.add(const EdgeInsets.only(bottom: 20)),
+                  padding: padding.add(
+                    const EdgeInsets.only(bottom: AarastV3Space.x5),
+                  ),
                   child: AarastFadeSlide(child: child),
                 ),
               ),
             ),
             if (bottom != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: bottom,
-              ),
+              Padding(padding: AarastV3Density.actionInsets, child: bottom),
           ],
         ),
       ),
@@ -111,7 +118,7 @@ class AuthHeading extends StatelessWidget {
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             subtitle!,
             style: JourneyType.of(
@@ -162,7 +169,8 @@ class AuthPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ?? const EdgeInsets.symmetric(vertical: 4),
+      padding:
+          padding ?? const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: child,
     );
   }
@@ -208,14 +216,14 @@ class AuthTextField extends StatelessWidget {
             ? TextDirection.ltr
             : Directionality.of(context));
     OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       borderSide: BorderSide(color: color, width: width),
     );
     final valueSize = JourneyType.bodyLarge;
     // The field's own icon sits on the far edge (prototype a08b); a tool
     // such as the password eye sits beside it.
     final endTools = Padding(
-      padding: const EdgeInsetsDirectional.only(end: 10),
+      padding: const EdgeInsetsDirectional.only(end: AarastV3Space.x2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -236,7 +244,7 @@ class AuthTextField extends StatelessWidget {
               child: suffixIcon!,
             ),
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
+            padding: const EdgeInsetsDirectional.only(start: AarastV3Space.x1),
             child: Icon(icon, size: 22, color: AarastV3Color.textMuted),
           ),
         ],
@@ -281,10 +289,10 @@ class AuthTextField extends StatelessWidget {
               filled: true,
               fillColor: AarastV3Color.paper,
               contentPadding: const EdgeInsetsDirectional.fromSTEB(
-                16,
-                _labelTop + 19,
-                12,
-                11,
+                AarastV3Space.x4,
+                _labelTop + AarastV3Space.x5,
+                AarastV3Space.x3,
+                AarastV3Space.x3,
               ),
               border: border(AarastV3Color.line, 1),
               enabledBorder: border(AarastV3Color.line, 1),
@@ -330,14 +338,14 @@ class AuthInlineError extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.only(top: 2),
+            padding: EdgeInsets.only(top: AarastV3Space.half),
             child: Icon(
               LucideIcons.alertCircle,
               color: AarastV3Color.danger,
               size: 18,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               message,
@@ -394,12 +402,12 @@ class AuthFooterLink extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.all(AarastV3Space.x2),
               child: _FooterLinkText(
                 prefix: prefix,
                 action: action,

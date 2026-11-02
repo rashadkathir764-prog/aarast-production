@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../theme/aarast_motion.dart';
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// الهيكل العظمي الموحّد — نفس لغة V3 لكل الشاشات:
 /// لؤلؤي، بأشكال الواجهة الحقيقية، مع shimmer يحترم تقليل الحركة.
@@ -12,7 +13,12 @@ import '../theme/app_theme.dart';
 class AarastSkeleton extends StatelessWidget {
   const AarastSkeleton({
     required this.children,
-    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    this.padding = const EdgeInsets.fromLTRB(
+      AarastV3Space.x5,
+      AarastV3Space.x4,
+      AarastV3Space.x5,
+      AarastV3Space.x6,
+    ),
     this.inline = false,
     super.key,
   });
@@ -23,7 +29,12 @@ class AarastSkeleton extends StatelessWidget {
     double rowHeight = 84,
     bool withHeader = true,
     bool inline = false,
-    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(
+      AarastV3Space.x5,
+      AarastV3Space.x4,
+      AarastV3Space.x5,
+      AarastV3Space.x6,
+    ),
     Key? key,
   }) {
     return AarastSkeleton(
@@ -33,13 +44,13 @@ class AarastSkeleton extends StatelessWidget {
       children: [
         if (withHeader) ...[
           block(width: 150, height: 22, radius: 8),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           block(width: 220, height: 13, radius: 6),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
         ],
         for (var i = 0; i < rows; i++) ...[
           block(height: rowHeight, radius: AppTheme.radiusLg),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
       ],
     );
@@ -50,7 +61,12 @@ class AarastSkeleton extends StatelessWidget {
     int fields = 4,
     bool withButton = true,
     bool inline = false,
-    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(
+      AarastV3Space.x5,
+      AarastV3Space.x4,
+      AarastV3Space.x5,
+      AarastV3Space.x6,
+    ),
     Key? key,
   }) {
     return AarastSkeleton(
@@ -60,12 +76,12 @@ class AarastSkeleton extends StatelessWidget {
       children: [
         for (var i = 0; i < fields; i++) ...[
           block(width: 110, height: 13, radius: 6),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           block(height: 54, radius: AppTheme.radiusLg),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
         ],
         if (withButton) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           block(height: 54, radius: AppTheme.radiusLg),
         ],
       ],
@@ -77,7 +93,12 @@ class AarastSkeleton extends StatelessWidget {
     double heroHeight = 168,
     int tiles = 3,
     int cards = 2,
-    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(
+      AarastV3Space.x5,
+      AarastV3Space.x4,
+      AarastV3Space.x5,
+      AarastV3Space.x6,
+    ),
     Key? key,
   }) {
     return AarastSkeleton(
@@ -91,7 +112,7 @@ class AarastSkeleton extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   block(width: 130, height: 13, radius: 6),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   block(width: 90, height: 24, radius: 8),
                 ],
               ),
@@ -99,21 +120,21 @@ class AarastSkeleton extends StatelessWidget {
             block(width: 44, height: 44, radius: 22),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
         block(height: heroHeight, radius: AppTheme.radiusXl),
         if (tiles > 0) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Row(
             children: [
               for (var i = 0; i < tiles; i++) ...[
-                if (i > 0) const SizedBox(width: 10),
+                if (i > 0) const SizedBox(width: AarastV3Space.x2),
                 Expanded(child: block(height: 96)),
               ],
             ],
           ),
         ],
         for (var i = 0; i < cards; i++) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           block(height: 140, radius: AppTheme.radiusLg),
         ],
       ],

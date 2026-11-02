@@ -47,7 +47,7 @@ class LogoutSheet extends StatelessWidget {
                 'ما وصل لحسابك. ${context.say('لو طلعت', 'لو طلعتِ')} الحين يضيع من هذا الجوال.',
           ),
           if (!offline && service != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyButton(
               key: const ValueKey('account-logout-send'),
               label: context.say('أرسلها الحين', 'أرسليها الحين'),
@@ -56,22 +56,22 @@ class LogoutSheet extends StatelessWidget {
               onPressed: sending ? null : service.syncPendingChanges,
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         AarastPressable(
           key: const ValueKey('account-logout-confirm'),
           onTap: () => Navigator.of(context).pop(LogoutChoice.signOut),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           semanticLabel: context.say(
             'اخرج من هذا الجوال',
             'اخرجي من هذا الجوال',
           ),
           child: JourneyBox(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Row(
               children: [
                 const Icon(LucideIcons.logOut, color: AarastV3Color.ink),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,22 +107,22 @@ class LogoutSheet extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         AarastPressable(
           key: const ValueKey('account-delete-account'),
           onTap: () => Navigator.of(context).pop(LogoutChoice.deleteAccount),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           semanticLabel: context.say(
             'احذف حسابي نهائيًا',
             'احذفي حسابي نهائيًا',
           ),
           child: JourneyBox(
             color: AarastV3Color.dangerSoft,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Row(
               children: [
                 const Icon(LucideIcons.trash2, color: AarastV3Color.danger),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +156,7 @@ class LogoutSheet extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           label: 'رجوع',
           background: AarastV3Color.paper,

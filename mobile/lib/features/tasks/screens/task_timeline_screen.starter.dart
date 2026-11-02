@@ -110,7 +110,7 @@ class _StarterTasksCard extends StatelessWidget {
         onTap: onOpen,
         child: JourneyBox(
           color: context.accent.primarySoft,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Row(
             children: [
               JourneyIconTile(
@@ -118,7 +118,7 @@ class _StarterTasksCard extends StatelessWidget {
                 color: AarastV3Color.onPrimary,
                 soft: context.accent.primary,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

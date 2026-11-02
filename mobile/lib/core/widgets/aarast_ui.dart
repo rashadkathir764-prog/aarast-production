@@ -214,7 +214,7 @@ class AarastPageHeader extends StatelessWidget {
                   style: AarastV3Type.title(context),
                 ),
               if (subtitle != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   subtitle!,
                   textAlign: TextAlign.right,
@@ -238,7 +238,7 @@ class AarastPageHeader extends StatelessWidget {
 class AarastCard extends StatelessWidget {
   const AarastCard({
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AarastV3Space.x4),
     this.margin = EdgeInsets.zero,
     this.color = AppTheme.surfaceRaised,
     this.radius = AppTheme.radiusSurface,
@@ -335,10 +335,10 @@ class AarastSectionHeader extends StatelessWidget {
       children: [
         if (icon != null) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 3),
+            padding: const EdgeInsets.only(top: AarastV3Space.x1),
             child: Icon(icon, color: AppTheme.brand, size: 22),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
         ],
         Expanded(
           child: Column(
@@ -353,7 +353,7 @@ class AarastSectionHeader extends StatelessWidget {
                 ),
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   subtitle!,
                   textAlign: TextAlign.right,
@@ -393,10 +393,13 @@ class AarastStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor ?? color.withAlpha(24),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         border: Border.all(color: color.withAlpha(42)),
       ),
       child: ConstrainedBox(
@@ -406,7 +409,7 @@ class AarastStatusPill extends StatelessWidget {
           children: [
             if (icon != null) ...[
               Icon(icon, size: 14, color: color),
-              const SizedBox(width: 5),
+              const SizedBox(width: AarastV3Space.x1),
             ],
             Flexible(
               child: Text(

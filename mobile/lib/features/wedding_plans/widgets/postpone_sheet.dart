@@ -174,7 +174,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                 value: formatArabicDayMonth(widget.oldDay),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: _DayCard(
                 key: const ValueKey('postpone-new-day'),
@@ -190,7 +190,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
           ],
         ),
         if (hint != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           Text(
             hint,
             style: JourneyType.of(
@@ -201,10 +201,10 @@ class _PostponeSheetState extends State<_PostponeSheet> {
           ),
         ],
         if (days != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyBox(
             radius: 26,
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
             child: Column(
               children: [
                 if (_openDatedTasks != null)
@@ -247,7 +247,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
           ),
         ],
         if (_error != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('postpone-error'),
             icon: LucideIcons.alertCircle,
@@ -256,7 +256,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
             text: _error!,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('postpone-apply'),
           label: _dateSaved
@@ -306,10 +306,15 @@ class _DayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+      ),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(
           color: selected ? context.accent.primary : AarastV3Color.line,
           width: selected ? 2 : 1,
@@ -318,7 +323,7 @@ class _DayCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 24, color: AarastV3Color.ink),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +351,7 @@ class _DayCard extends StatelessWidget {
     if (onTap == null) return card;
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       semanticLabel: '$label، $value',
       child: card,
     );
@@ -372,11 +377,14 @@ class _ImpactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x4,
+        vertical: AarastV3Space.x2,
+      ),
       child: Row(
         children: [
           Icon(icon, size: 22, color: color),
-          const SizedBox(width: 14),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

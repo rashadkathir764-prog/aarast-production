@@ -64,7 +64,7 @@ class _ParticipantProvidersScreenState
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneyTabHeader(
               title: 'المزودين',
@@ -74,7 +74,7 @@ class _ParticipantProvidersScreenState
                 context.say('تشوف بس', 'تشوفين بس'),
               ].join(' · '),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               key: const ValueKey('participant-providers-read-only'),
               text:
@@ -83,7 +83,7 @@ class _ParticipantProvidersScreenState
               color: AarastV3Color.textMuted,
               soft: AarastV3Color.paper,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             if (view == null)
               JourneyListState(
                 phase: failed

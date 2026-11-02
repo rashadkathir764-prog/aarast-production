@@ -114,7 +114,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         children: [
           if (_step != _ResetStep.done) ...[
             _ResetSteps(at: _step.index),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
           ],
           ...switch (_step) {
             _ResetStep.phone => _phoneStep(),
@@ -133,7 +133,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         title: 'اكتب رقمك',
         subtitle: 'نرسل لك رمز على واتساب، وبعده تختار كلمة مرور جديدة.',
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: AarastV3Space.x4),
       Form(
         key: _phoneFormKey,
         child: AuthTextField(
@@ -157,7 +157,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
       ),
       if (_errorMessage != null) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         AuthInlineError(message: _errorMessage!),
       ],
     ];
@@ -169,7 +169,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return [
       const AuthHeading(title: 'أرسلنا لك رمز على واتساب'),
       if (phone != null) ...[
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 10,
@@ -197,14 +197,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ],
         ),
       ],
-      const SizedBox(height: 18),
+      const SizedBox(height: AarastV3Space.x4),
       if (_otpNoticeMessage != null) ...[
         JourneyNote(
           key: const ValueKey('reset-otp-notice'),
           text: _otpNoticeMessage!,
           icon: LucideIcons.messageCircle,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
       ],
       AarastOtpField(
         controller: _codeController,
@@ -225,10 +225,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         },
         onCompleted: (_) => _acceptCode(),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AarastV3Space.x4),
       if (_errorMessage != null) ...[
         AuthInlineError(message: _errorMessage!),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
       ],
       Center(
         child: AuthFooterLink(
@@ -250,7 +250,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         title: 'اختر كلمة مرور جديدة',
         subtitle: 'خطتك وكل بياناتك كما هي.',
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: AarastV3Space.x4),
       Form(
         key: _passwordFormKey,
         child: Column(
@@ -281,7 +281,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             AuthTextField(
               controller: _confirmPasswordController,
               label: 'أعد كتابتها',
@@ -299,10 +299,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       _PasswordRule(met: longEnough),
       if (_errorMessage != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         AuthInlineError(message: _errorMessage!),
       ],
       if (_errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF')
@@ -318,7 +318,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 : () => context.go(_authLocation(AppRouter.register)),
           ),
         ),
-      const SizedBox(height: 18),
+      const SizedBox(height: AarastV3Space.x4),
       const JourneyNote(
         icon: LucideIcons.shieldCheck,
         text:
@@ -329,7 +329,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   List<Widget> _doneStep() {
     return [
-      const SizedBox(height: 20),
+      const SizedBox(height: AarastV3Space.x5),
       const Center(
         child: JourneyIconTile(
           icon: LucideIcons.checkCircle2,
@@ -339,7 +339,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           radius: 20,
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AarastV3Space.x4),
       Semantics(
         header: true,
         child: Text(
@@ -348,7 +348,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AarastV3Space.x1),
       Text(
         _signingIn
             ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الآن بكلمة المرور الجديدة.'
@@ -590,10 +590,10 @@ class _ResetSteps extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         key: const ValueKey('reset-steps'),
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AarastV3Space.x1),
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AarastV3Radius.pill),
           border: Border.all(color: AarastV3Color.line),
         ),
         child: Row(
@@ -601,7 +601,9 @@ class _ResetSteps extends StatelessWidget {
             for (var index = 0; index < _labels.length; index++)
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AarastV3Space.x2,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: index == at
@@ -609,7 +611,7 @@ class _ResetSteps extends StatelessWidget {
                         : index < at
                         ? context.accent.primarySoft
                         : null,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.pill),
                   ),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -653,7 +655,7 @@ class _PasswordRule extends StatelessWidget {
           size: 16,
           color: color,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AarastV3Space.x1),
         Text(
           '6 أحرف أو أكثر',
           style: JourneyType.of(

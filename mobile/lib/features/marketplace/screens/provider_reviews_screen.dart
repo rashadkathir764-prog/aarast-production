@@ -17,6 +17,10 @@ import '../providers/marketplace_provider.dart';
 import '../widgets/provider_board_view.dart' show providerServiceIcon;
 import '../widgets/provider_details_view.dart' show providerMoneyLabel;
 
+/// A star's touch margin, as a share of the star, so a row of five stays
+/// reachable at any star size.
+const _starTapInset = 0.125;
+
 /// «قيّم مزودينك»: g04 rates the providers whose booked day has passed, one
 /// after another; x12 thanks for each review; w35 says why a provider whose
 /// day is still ahead cannot be rated yet. One review per provider (the
@@ -215,7 +219,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 JourneySubHeader(
                   title: _sent != null
@@ -234,7 +238,12 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
           ),
           if (footer != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+              ),
               child: footer,
             ),
         ],
@@ -309,7 +318,7 @@ class _Stars extends StatelessWidget {
                 : '$star من 5 · ${_ratingWords[star - 1]}',
             borderRadius: BorderRadius.circular(size),
             child: Padding(
-              padding: EdgeInsets.all(size / 8),
+              padding: EdgeInsets.all(size * _starTapInset),
               child: SizedBox.square(
                 key: ValueKey('reviews-star-$star'),
                 dimension: size,
@@ -391,7 +400,7 @@ class _Rate extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         JourneyBox(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -403,7 +412,7 @@ class _Rate extends StatelessWidget {
                     soft: context.accent.primarySoft,
                     size: 44,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,12 +440,12 @@ class _Rate extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AarastV3Space.x3),
               Center(
                 child: _Stars(rating: rating, onRate: onRate),
               ),
               if (rating > 0) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AarastV3Space.x1),
                 Center(
                   child: Text(
                     _ratingWords[rating - 1],
@@ -448,7 +457,7 @@ class _Rate extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               JourneyTextField(
                 key: const ValueKey('reviews-comment'),
                 label: '$commentFor (اختياري)',
@@ -458,7 +467,7 @@ class _Rate extends StatelessWidget {
                 maxLength: 500,
               ),
               if (name.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Row(
                   children: [
                     const Icon(
@@ -466,7 +475,7 @@ class _Rate extends StatelessWidget {
                       size: 16,
                       color: AarastV3Color.textMuted,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AarastV3Space.x1),
                     Expanded(
                       child: Text(
                         'يطلع باسمك: $name',
@@ -483,7 +492,7 @@ class _Rate extends StatelessWidget {
           ),
         ),
         if (done.isNotEmpty) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           _RatedList(done: done.toList(), mine: mine),
         ],
       ],
@@ -505,7 +514,12 @@ class _RatedList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x1,
+            0,
+            AarastV3Space.x1,
+            AarastV3Space.x2,
+          ),
           child: Text(
             context.say('قيّمتهم', 'قيّمتيهم'),
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
@@ -540,7 +554,7 @@ class _Sent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget step(String label, {String? when}) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
           const Icon(
@@ -548,7 +562,7 @@ class _Sent extends StatelessWidget {
             size: 20,
             color: AarastV3Color.mint,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(child: Text(label, style: JourneyType.of(JourneyType.body))),
           if (when != null)
             Text(
@@ -565,7 +579,7 @@ class _Sent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         const Center(
           child: JourneyIconTile(
             icon: LucideIcons.star,
@@ -574,13 +588,13 @@ class _Sent extends StatelessWidget {
             size: 64,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'وصل تقييمك عن ${sent.name}',
           textAlign: TextAlign.center,
           style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           context.say(
             'شكرًا، العرسان الجايين بيستفيدون منه',
@@ -592,9 +606,12 @@ class _Sent extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Space.x4,
+            vertical: AarastV3Space.x2,
+          ),
           child: Column(
             children: [
               step('انرسل', when: 'الآن'),
@@ -602,7 +619,7 @@ class _Sent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           icon: LucideIcons.shieldCheck,
           color: AarastV3Color.brandAccentStrong,
@@ -612,9 +629,14 @@ class _Sent extends StatelessWidget {
               : 'ينشر باسمك: $name. لو فيه كلام جارح أو أرقام جوال نخفيه.',
         ),
         if (left.isNotEmpty) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x1,
+              0,
+              AarastV3Space.x1,
+              AarastV3Space.x2,
+            ),
             child: Text(
               context.say('باقي تقيّم', 'باقي تقيّمين'),
               style: JourneyType.of(
@@ -653,7 +675,7 @@ class _Locked extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         const Center(
           child: JourneyIconTile(
             icon: LucideIcons.star,
@@ -662,13 +684,13 @@ class _Locked extends StatelessWidget {
             size: 64,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'التقييم بعد العرس',
           textAlign: TextAlign.center,
           style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           context.say(
             'تقيّم المزود بعد يوم الحجز بس، عشان كل تقييم يكون من تجربة حقيقية.',
@@ -681,7 +703,7 @@ class _Locked extends StatelessWidget {
           ),
         ),
         if (name.isNotEmpty) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyNote(text: 'التقييم يطلع باسمك: $name.'),
         ],
       ],

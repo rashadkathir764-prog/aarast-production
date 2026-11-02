@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
+import '../experience_v3/aarast_journey.dart';
 
 /// Compact, app-wide transient feedback shown at the top of the active screen.
 ///
@@ -231,11 +233,11 @@ class _AarastToastOverlayState extends State<_AarastToastOverlay>
       right: 0,
       child: SafeArea(
         bottom: false,
-        minimum: const EdgeInsets.only(top: 8),
+        minimum: const EdgeInsets.only(top: AarastV3Space.x2),
         child: Align(
           alignment: Alignment.topCenter,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: SlideTransition(
@@ -294,7 +296,7 @@ class _ToastCard extends StatelessWidget {
       child: Material(
         color: AppTheme.surfaceRaised,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           side: const BorderSide(color: AppTheme.border),
         ),
         clipBehavior: Clip.antiAlias,
@@ -313,7 +315,9 @@ class _ToastCard extends StatelessWidget {
                       foregroundColor: foreground,
                       backgroundColor: softColor,
                       minimumSize: const Size(0, 34),
-                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AarastV3Space.x3,
+                      ),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: const StadiumBorder(),
                     ),
@@ -322,14 +326,19 @@ class _ToastCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: JourneyType.label,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   );
 
             return Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 12, 10),
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                AarastV3Space.x3,
+                AarastV3Space.x2,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -344,7 +353,7 @@ class _ToastCard extends StatelessWidget {
                     ),
                     child: Icon(icon, size: 17, color: foreground),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -362,7 +371,7 @@ class _ToastCard extends StatelessWidget {
                                   height: 1.2,
                                 ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AarastV3Space.half),
                         ],
                         Text(
                           message,
@@ -378,14 +387,14 @@ class _ToastCard extends StatelessWidget {
                               ),
                         ),
                         if (stackAction && actionButton != null) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: AarastV3Space.x1),
                           actionButton,
                         ],
                       ],
                     ),
                   ),
                   if (!stackAction && actionButton != null) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     actionButton,
                   ],
                 ],

@@ -53,7 +53,7 @@ class ParticipantLockedScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneyTabHeader(
             title: section.labelOf(context),
@@ -62,7 +62,7 @@ class ParticipantLockedScreen extends StatelessWidget {
               roleTag,
             ].join(' · '),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AarastV3Space.x6),
           Center(
             child: JourneyIconTile(
               icon: LucideIcons.lock,
@@ -72,7 +72,7 @@ class ParticipantLockedScreen extends StatelessWidget {
               radius: 26,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           Semantics(
             header: true,
             child: Text(
@@ -84,7 +84,7 @@ class ParticipantLockedScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             message,
             textAlign: TextAlign.center,

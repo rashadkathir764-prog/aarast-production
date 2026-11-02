@@ -128,10 +128,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
       planId: widget.weddingPlanId,
       cost: cost,
       currency: currency,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [body],
-      ),
+      child: ListView(padding: AarastV3Density.pageInsets, children: [body]),
     );
   }
 }
@@ -255,10 +252,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
       planId: widget.weddingPlanId,
       cost: cost,
       currency: currency,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [body],
-      ),
+      child: ListView(padding: AarastV3Density.pageInsets, children: [body]),
     );
   }
 }
@@ -297,7 +291,12 @@ Widget paymentEntryFrame(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x4,
+            AarastV3Space.x2,
+            AarastV3Space.x2,
+            0,
+          ),
           child: JourneySubHeader(
             title: cost == null ? 'تسجيل دفعة' : 'دفعة ${cost.title}',
             subtitle: cost == null

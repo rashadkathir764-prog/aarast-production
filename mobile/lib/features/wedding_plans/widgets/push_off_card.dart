@@ -68,7 +68,7 @@ class _PushOffCardState extends State<PushOffCard> {
     return JourneyBox(
       key: const ValueKey('push-off-card'),
       borderColor: AarastV3Color.saffron,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -78,7 +78,7 @@ class _PushOffCardState extends State<PushOffCard> {
             soft: AarastV3Color.brandAccentSoft,
             size: 40,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +90,7 @@ class _PushOffCardState extends State<PushOffCard> {
                     weight: JourneyType.bold,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AarastV3Space.half),
                 Text(
                   'ما راح يوصلك موعد دفعة ولا رد مزود. '
                   '${context.say('افتحها', 'افتحيها')} من إعدادات الجوال.',
@@ -99,7 +99,7 @@ class _PushOffCardState extends State<PushOffCard> {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,

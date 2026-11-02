@@ -20,6 +20,9 @@ import '../../marketplace/marketplace_api.dart'
         portfolioSocialNetworks;
 import 'provider_request_parts.dart' show providerGroupedAmount;
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _profileLabelWidth = 72.0;
+
 /// «قبل أسبوعين»: how long ago, in the words p36 and p35 use.
 String providerAgoLabel(DateTime then, {DateTime? now}) {
   final clock = now ?? DateTime.now();
@@ -216,10 +219,10 @@ class ProviderReviewsSheet extends StatelessWidget {
               child: ProviderReviewCard(review: review),
             ),
             if (review.reply case final reply?) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
               ProviderReviewReplyBox(reply: reply),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
           ],
       ],
     );
@@ -260,7 +263,7 @@ class ProviderReviewCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Semantics(
                 label: '$rating من 5',
                 child: ExcludeSemantics(
@@ -290,7 +293,7 @@ class ProviderReviewCard extends StatelessWidget {
               ),
             ),
           if (comment.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               '«$comment»',
               style: JourneyType.of(JourneyType.body, height: 1.6),
@@ -328,7 +331,7 @@ class ProviderReviewReplyBox extends StatelessWidget {
                   : AarastV3Color.textMuted,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             reply.body,
             style: JourneyType.of(
@@ -395,7 +398,7 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
                   : null,
             ),
             SizedBox(
-              width: 72,
+              width: _profileLabelWidth,
               child: Text(
                 '$_value',
                 key: const Key('provider-capacity-value'),
@@ -417,13 +420,13 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
           ],
         ),
         if (_value < widget.initial) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           const JourneyNote(
             text:
                 'الحجوزات اللي أكّدتها تبقى. بس ما تقدر تأكد زيادة في يوم مليان.',
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-capacity-save'),
           label: 'احفظ',

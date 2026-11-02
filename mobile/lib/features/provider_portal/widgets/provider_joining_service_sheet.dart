@@ -56,9 +56,7 @@ class _JoiningServiceSheet extends StatefulWidget {
 
 class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
   late final _title = TextEditingController(text: widget.title ?? '');
-  late final _price = TextEditingController(
-    text: _wholeAmount(widget.price),
-  );
+  late final _price = TextEditingController(text: _wholeAmount(widget.price));
   late final _about = TextEditingController(text: widget.about ?? '');
   bool _attempted = false;
   bool _saving = false;
@@ -121,7 +119,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
             color: AarastV3Color.danger,
             soft: AarastV3Color.dangerSoft,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         JourneyTextField(
           key: const Key('provider-service-sheet-title'),
@@ -135,7 +133,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
             if (_attempted) setState(() {});
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           key: const Key('provider-service-sheet-price'),
           label: 'السعر',
@@ -151,7 +149,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
             if (_attempted) setState(() {});
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           key: const Key('provider-service-sheet-about'),
           label: 'ايش تشمل (اختياري)',
@@ -161,7 +159,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
           maxLines: 4,
         ),
         if (_error case final error?) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             key: const Key('provider-service-sheet-error'),
             text: error,
@@ -170,7 +168,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-service-sheet-save'),
           label: 'احفظ',

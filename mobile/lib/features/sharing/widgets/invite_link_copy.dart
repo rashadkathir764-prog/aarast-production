@@ -43,7 +43,7 @@ Future<void> _showManualCopy(BuildContext context, String text) {
             style: JourneyType.of(JourneyType.body),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const Key('invite-link-fallback-done'),
           label: 'تم',

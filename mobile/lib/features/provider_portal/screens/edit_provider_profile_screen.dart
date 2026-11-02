@@ -16,9 +16,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../marketplace/marketplace_api.dart'
-    show
-        ProviderDashboardProfile,
-        ProviderMarketplaceProvider;
+    show ProviderDashboardProfile, ProviderMarketplaceProvider;
 import '../providers/provider_dashboard_provider.dart';
 
 class EditProviderProfileScreen extends StatefulWidget {
@@ -102,7 +100,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
       child: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AarastV3Space.x8,
         ),
         children: [
           if (dashboard.isLoading && profile == null)
@@ -127,7 +125,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             )
           else ...[
             _ProfileEditNotice(profile: profile),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             const AarastV3FocusPrompt(
               question: 'ما البيانات التي يجب أن يراها العميل الآن؟',
               supportingText:
@@ -135,10 +133,10 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               icon: LucideIcons.store,
             ),
             if (_draft != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               AarastV3DraftStatusLine(status: _draft!.status),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Form(
               key: _formKey,
               child: AarastV3FormSurface(
@@ -156,14 +154,14 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                         ? 'اكتب اسم النشاط'
                         : null,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   ContactPhoneField(
                     phoneController: _phoneController,
                     label: 'رقم التواصل',
                     optional: false,
                     requireYemeni: true,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   _ProfileDropdown(
                     value: _safeCityId(marketplace),
                     label: 'المدينة',
@@ -182,7 +180,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     },
                     validator: (value) => value == null ? 'اختر المدينة' : null,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
                     title: 'نبذة النشاط',
                     subtitle: _descriptionController.text.trim().isEmpty
@@ -202,17 +200,17 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                   ),
                   if (profile.primaryCategory?.nameAr.trim().isNotEmpty ==
                       true) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _LockedCategoryNote(
                       categoryName: profile.primaryCategory!.nameAr.trim(),
                     ),
                   ],
                   if (marketplace.cities.isEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     const _ReferenceDataWarning(),
                   ],
                   if (dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _InlineError(message: dashboard.errorMessage!),
                   ],
                 ],
@@ -300,7 +298,7 @@ class _ProfileEditNotice extends StatelessWidget {
       child: Row(
         children: [
           const Icon(LucideIcons.info, color: AppTheme.focus),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Text(
               'حالة الحساب: $statusLabel. تعديل البيانات لا يعني اعتماد المزود تلقائياً.',
@@ -330,7 +328,7 @@ class _LockedCategoryNote extends StatelessWidget {
       child: Row(
         children: [
           const Icon(LucideIcons.lock, color: AppTheme.brand),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               'فئة الخدمة الحالية: $categoryName. تغيير الفئة ما يصير من هنا، كلّم الدعم لو تحتاج تغييرها.',
@@ -414,8 +412,8 @@ class _ProfileDropdown extends StatelessWidget {
         floatingLabelBehavior: FloatingLabelBehavior.always,
         prefixIcon: Icon(icon),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 13,
+          horizontal: AarastV3Space.x4,
+          vertical: AarastV3Space.x3,
         ),
       ),
       items: items,

@@ -16,7 +16,12 @@ class AarastDashboardSkeleton extends StatelessWidget {
         color: AarastV3Color.canvas,
         child: ListView(
           key: const ValueKey('aarast-dashboard-skeleton'),
-          padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+          padding: EdgeInsets.fromLTRB(
+            AarastV3Space.x4,
+            AarastV3Space.x3,
+            AarastV3Space.x4,
+            bottomPadding,
+          ),
           physics: const NeverScrollableScrollPhysics(),
           children: [
             ExcludeSemantics(
@@ -30,33 +35,33 @@ class AarastDashboardSkeleton extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _SkeletonBlock(width: 150, height: 24),
-                            SizedBox(height: 6),
+                            SizedBox(height: AarastV3Space.x1),
                             _SkeletonBlock(width: 110, height: 12),
                           ],
                         ),
                       ),
                       _SkeletonBlock(width: 44, height: 44, round: true),
-                      SizedBox(width: 8),
+                      SizedBox(width: AarastV3Space.x2),
                       _SkeletonBlock(width: 44, height: 44, round: true),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   const _SkeletonBlock(height: 116, radius: 24),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   const JourneyBox(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AarastV3Space.x4),
                     child: Row(
                       children: [
                         _SkeletonBlock(width: 44, height: 44),
-                        SizedBox(width: 12),
+                        SizedBox(width: AarastV3Space.x3),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _SkeletonBlock(width: 90, height: 10),
-                              SizedBox(height: 8),
+                              SizedBox(height: AarastV3Space.x2),
                               _SkeletonBlock(height: 14),
-                              SizedBox(height: 8),
+                              SizedBox(height: AarastV3Space.x2),
                               _SkeletonBlock(width: 160, height: 10),
                             ],
                           ),
@@ -64,20 +69,20 @@ class AarastDashboardSkeleton extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   const Row(
                     children: [
                       Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
-                      SizedBox(width: 8),
+                      SizedBox(width: AarastV3Space.x2),
                       Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
-                      SizedBox(width: 8),
+                      SizedBox(width: AarastV3Space.x2),
                       Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
             Text(
               'نجهز خطتك…',
               textAlign: TextAlign.center,
@@ -124,7 +129,12 @@ class AarastDashboardState extends StatelessWidget {
     return ColoredBox(
       color: AarastV3Color.canvas,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(24, 72, 24, bottomPadding),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x6,
+          AarastV3Space.x16,
+          AarastV3Space.x6,
+          bottomPadding,
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Center(
@@ -141,7 +151,7 @@ class AarastDashboardState extends StatelessWidget {
                     ),
                     child: Icon(icon, color: accent, size: 36),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AarastV3Space.x4),
                   Semantics(
                     header: true,
                     child: Text(
@@ -153,7 +163,7 @@ class AarastDashboardState extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AarastV3Space.x1),
                   Text(
                     message,
                     textAlign: TextAlign.center,
@@ -163,7 +173,7 @@ class AarastDashboardState extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   JourneyButton(
                     label: actionLabel,
                     icon: actionIcon,

@@ -196,7 +196,12 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: title,
               subtitle: row == null ? null : _subtitle(row),
@@ -211,7 +216,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
               onRefresh: marketplace.loadScopedQuoteRequests,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   if (row == null || quotes.isEmpty)
                     if (_loading)
@@ -247,7 +252,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                       onChat: _openChat,
                     ),
                     if (accepted.isEmpty) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       JourneyNote(
                         key: const ValueKey('requests-choose-note'),
                         text: context.say(
@@ -259,7 +264,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     ],
                   ],
                   for (final quote in accepted) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _ChosenCard(
                       quote: quote,
                       busy: marketplace.isSubmitting,
@@ -278,7 +283,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     ),
                   ],
                   for (final quote in expired) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _ExpiredCard(
                       quote: quote,
                       onAskAgain: () => context.push(
@@ -287,7 +292,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     ),
                   ],
                   if (waiting.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     const JourneySectionTitle('ينتظرون ردهم'),
                     JourneyBox(
                       padding: EdgeInsets.zero,
@@ -310,7 +315,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     ),
                   ],
                   if (earlier.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     const JourneySectionTitle('السابقة'),
                     JourneyBox(
                       padding: EdgeInsets.zero,

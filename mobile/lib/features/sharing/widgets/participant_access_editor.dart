@@ -44,9 +44,9 @@ class ParticipantAccessEditor extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: AarastV3Density.chipInsets,
           child: Column(
             children: [
               _LevelRow(
@@ -85,7 +85,7 @@ class ParticipantAccessEditor extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyNote(
           key: const ValueKey('participant-access-note'),
           icon: LucideIcons.lock,
@@ -121,7 +121,7 @@ class _LevelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       // With large text on a narrow phone the switch drops under its name
       // instead of running off the row. The full width lets spaceBetween
       // put the switch on the far side, as drawn.
@@ -136,7 +136,7 @@ class _LevelRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 19, color: context.accent.primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Text(
                   label,
                   style: JourneyType.of(

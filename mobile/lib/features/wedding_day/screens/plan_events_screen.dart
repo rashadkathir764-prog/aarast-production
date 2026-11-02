@@ -71,7 +71,7 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         key: const ValueKey('plan-events'),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'مناسبات عرسك',
@@ -80,7 +80,7 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
               AppRouter.weddingPlanDashboard(widget.weddingPlanId),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (view == null)
             JourneyListState(
               phase: provider.errorMessage == null
@@ -96,10 +96,10 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
                 profile: profile,
                 onEdit: view.canEdit ? () => _open(event: event) : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             if (view.canEdit && view.suggestions.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AarastV3Space.x1),
               Text(
                 'اقتراحات',
                 style: JourneyType.of(
@@ -108,7 +108,7 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
                   color: AarastV3Color.textMuted,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -155,7 +155,12 @@ class _EventCard extends StatelessWidget {
     return JourneyBox(
       key: ValueKey('plan-event-${event.type.wire}-${event.id ?? 'main'}'),
       radius: 28,
-      padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+        AarastV3Space.x2,
+        AarastV3Space.x3,
+      ),
       child: Row(
         children: [
           JourneyIconTile(
@@ -165,7 +170,7 @@ class _EventCard extends StatelessWidget {
             size: 44,
             radius: 18,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +198,7 @@ class _EventCard extends StatelessWidget {
                     ),
                   ),
                 if (tag != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyTag(
                     label: tag,
                     color: AarastV3Color.brandAccentStrong,

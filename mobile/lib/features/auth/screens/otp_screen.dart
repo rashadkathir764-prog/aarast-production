@@ -359,10 +359,10 @@ class _OtpScreenState extends State<OtpScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   AuthHeading(title: heading),
                   if (phone.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 10,
@@ -390,14 +390,14 @@ class _OtpScreenState extends State<OtpScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   if (otpNoticeMessage != null) ...[
                     JourneyNote(
                       key: const ValueKey('otp-notice'),
                       text: otpNoticeMessage,
                       icon: LucideIcons.messageCircle,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AarastV3Space.x4),
                   ],
                   AarastOtpField(
                     controller: _codeController,
@@ -408,20 +408,20 @@ class _OtpScreenState extends State<OtpScreen> {
                     onChanged: _onCodeChanged,
                     onCompleted: (_) => _verifyOtp(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   if (auth.errorMessage != null && !existingAccount) ...[
                     AuthInlineError(message: auth.errorMessage!),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AarastV3Space.x3),
                   ],
                   if (existingAccount) ...[
                     // w02: the number already has an account, said only
                     // after the code proved the number is theirs.
                     AuthInlineError(message: 'هذا الرقم عليه حساب من قبل'),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _ExistingAccountCard(
                       onSignIn: phone.isEmpty ? null : () => _goToLogin(phone),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     Center(
                       child: JourneyTextAction(
                         key: const ValueKey('otp-go-to-password-reset'),
@@ -465,7 +465,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         ),
                       ),
                     if (isRegistration || purpose == 'LOGIN') ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AarastV3Space.x3),
                       JourneyNote(
                         text: isRegistration
                             ? 'أول ما يكتمل الرمز ينحفظ حسابك وخطتك وتدخل عليها.'
@@ -553,11 +553,11 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
 
   Widget _tip(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
           Icon(icon, size: 20, color: AarastV3Color.textMuted),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
@@ -584,7 +584,7 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton.quiet(
           label: seconds > 0
               ? 'أعد الإرسال بعد ${_clock(seconds)}'
@@ -592,14 +592,14 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
           onPressed: seconds > 0 ? null : widget.onResend,
           expand: true,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           label: 'الدخول بكلمة المرور',
           icon: LucideIcons.lock,
           onPressed: widget.onPassword,
           expand: true,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Center(
           child: JourneyTextAction(
             label: 'الرقم غلط؟ غيّره',

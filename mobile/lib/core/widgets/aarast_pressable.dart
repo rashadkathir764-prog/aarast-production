@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// Semantic pressable wrapper used across Aarast operational surfaces.
 ///
@@ -92,7 +93,8 @@ class _AarastPressableState extends State<AarastPressable> {
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null || widget.onLongPress != null;
     final radius = widget.borderRadius;
-    final effectiveRadius = radius ?? BorderRadius.circular(20);
+    final effectiveRadius =
+        radius ?? BorderRadius.circular(AarastV3Radius.card);
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final duration = reduceMotion ? Duration.zero : widget.duration;

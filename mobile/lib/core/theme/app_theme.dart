@@ -51,32 +51,25 @@ class AppTheme {
   static const double radiusMd = AarastDesignTokens.radiusMd;
   static const double radiusLg = AarastDesignTokens.radiusLg;
   static const double radiusXl = AarastDesignTokens.radiusXl;
-  static const double radius2xl = AarastDesignTokens.radius2xl;
   static const double radiusPill = AarastDesignTokens.radiusPill;
-  static const double radiusCard = 24;
+  static const double radiusCard = AarastV3Radius.card;
   static const double radiusControl = AarastDesignTokens.radiusControl;
   static const double radiusSurface = AarastDesignTokens.radiusSurface;
   static const double radiusOverlay = AarastDesignTokens.radiusOverlay;
 
-  static const double gapXs = 6;
-  static const double gapSm = 10;
-  static const double gapMd = 14;
-  static const double gapLg = 18;
-  static const double gapXl = 24;
+  static const double gapXs = AarastV3Space.x1;
+  static const double gapSm = AarastV3Space.x2;
+  static const double gapMd = AarastV3Space.x3;
+  static const double gapLg = AarastV3Space.x4;
+  static const double gapXl = AarastV3Space.x6;
 
   // Canonical spacing scale (re-exported so features import AppTheme only)
-  static const double space2 = AarastDesignTokens.space2;
   static const double space4 = AarastDesignTokens.space4;
-  static const double space6 = AarastDesignTokens.space6;
   static const double space8 = AarastDesignTokens.space8;
-  static const double space10 = AarastDesignTokens.space10;
   static const double space12 = AarastDesignTokens.space12;
-  static const double space14 = AarastDesignTokens.space14;
   static const double space16 = AarastDesignTokens.space16;
-  static const double space18 = AarastDesignTokens.space18;
   static const double space20 = AarastDesignTokens.space20;
   static const double space24 = AarastDesignTokens.space24;
-  static const double space28 = AarastDesignTokens.space28;
   static const double space32 = AarastDesignTokens.space32;
   static const double space40 = AarastDesignTokens.space40;
   static const double space48 = AarastDesignTokens.space48;
@@ -85,9 +78,7 @@ class AppTheme {
   static const double iconSm = AarastDesignTokens.iconSm;
   static const double iconMd = AarastDesignTokens.iconMd;
   static const double iconLg = AarastDesignTokens.iconLg;
-  static const double iconXl = AarastDesignTokens.iconXl;
   static const double minTapTarget = AarastDesignTokens.minTapTarget;
-  static const double bottomNavHeight = AarastDesignTokens.bottomNavHeight;
   static const double screenMaxWidth = AarastDesignTokens.screenMaxWidth;
 
   static const EdgeInsets screenPadding = AarastDesignTokens.screenPadding;
@@ -190,7 +181,10 @@ class AppTheme {
               foregroundColor: onBrand,
               elevation: 0,
               minimumSize: const Size.fromHeight(48),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AarastV3Space.x4,
+                vertical: AarastV3Space.x3,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(radiusControl),
               ),
@@ -213,7 +207,10 @@ class AppTheme {
               backgroundColor: brand,
               foregroundColor: onBrand,
               minimumSize: const Size.fromHeight(48),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AarastV3Space.x4,
+                vertical: AarastV3Space.x3,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(radiusControl),
               ),
@@ -276,45 +273,44 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         isDense: true,
-        // A quiet filled field is easier to discover than a lone underline on
-        // the white canvas, while the focused bottom line keeps forms light.
-        fillColor: surfaceMuted,
+        // D74: one field for every form. A Material field draws the kit's
+        // box (JourneyTextField): white, a hairline that turns the plan's
+        // colour at 2 on focus, the field corner.
+        fillColor: AarastV3Color.paper,
         alignLabelWithHint: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
-        ),
+        contentPadding: AarastV3Field.contentPadding,
         prefixIconConstraints: const BoxConstraints(
-          minWidth: 42,
-          minHeight: 42,
+          minWidth: AarastV3Space.x10,
+          minHeight: AarastV3Space.x10,
         ),
         suffixIconConstraints: const BoxConstraints(
-          minWidth: 42,
-          minHeight: 42,
+          minWidth: AarastV3Space.x10,
+          minHeight: AarastV3Space.x10,
         ),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: textPrimary),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: textSecondary),
+        labelStyle: textTheme.bodyMedium?.copyWith(color: textSecondary),
+        floatingLabelStyle: textTheme.bodySmall?.copyWith(color: textSecondary),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: textDisabled),
         helperStyle: textTheme.bodySmall?.copyWith(color: textSecondary),
-        prefixIconColor: brand,
+        prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
-        border: UnderlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusControl),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           borderSide: const BorderSide(color: AarastSemanticTokens.border),
         ),
-        enabledBorder: UnderlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusControl),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           borderSide: const BorderSide(color: AarastSemanticTokens.border),
         ),
-        focusedBorder: UnderlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusControl),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           borderSide: const BorderSide(color: brand, width: 2),
         ),
-        errorBorder: UnderlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusControl),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           borderSide: const BorderSide(color: danger),
         ),
-        focusedErrorBorder: UnderlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusControl),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           borderSide: const BorderSide(color: danger, width: 2),
         ),
       ),
@@ -398,7 +394,10 @@ class AppTheme {
       listTileTheme: ListTileThemeData(
         iconColor: brand,
         textColor: textPrimary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AarastV3Space.x4,
+          vertical: AarastV3Space.x1,
+        ),
         shape: const RoundedRectangleBorder(),
       ),
       checkboxTheme: CheckboxThemeData(
@@ -408,7 +407,9 @@ class AppTheme {
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
         side: const BorderSide(color: AarastSemanticTokens.border, width: 1.2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AarastV3Radius.xs),
+        ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {

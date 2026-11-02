@@ -120,7 +120,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: widget.reminder
                   ? 'تذكير اللي ${words.pending}'
@@ -140,7 +145,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 if (widget.reminder)
                   _MessagePreview(
@@ -154,7 +159,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   )
                 else
                   _InviteCardPreview(card: card),
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 if (!widget.reminder) ...[
                   JourneyTextField(
                     key: const ValueKey('invite-host'),
@@ -166,7 +171,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     controller: _host,
                     icon: LucideIcons.user,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyTextField(
                     key: const ValueKey('invite-place'),
                     label: 'المكان',
@@ -174,7 +179,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     controller: _place,
                     icon: LucideIcons.mapPin,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 if (reading)
                   const JourneyListState(
@@ -202,7 +207,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     ],
                   ),
                 if (!reading && !unread && unreachable > 0) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyNote(
                     key: const ValueKey('invite-no-phone'),
                     text:
@@ -213,7 +218,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   ),
                 ],
                 if (!reading && !unread && reachable.isEmpty) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   Text(
                     widget.reminder
                         ? plan(
@@ -235,7 +240,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('invite-send'),
               // No «لـ 0 ضيوف»: with nobody to send to the button only waits.
@@ -298,9 +303,14 @@ class _InviteCardPreview extends StatelessWidget {
     );
     return Container(
       key: const ValueKey('invite-card'),
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x5,
+        AarastV3Space.x4,
+        AarastV3Space.x4,
+      ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         color: context.accent.primaryDark,
       ),
       child: Column(
@@ -317,15 +327,15 @@ class _InviteCardPreview extends StatelessWidget {
             ),
           ] else
             Text('يسعدنا حضوركم', style: light(JourneyType.body)),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Text(
             card.title,
             textAlign: TextAlign.center,
             style: light(JourneyType.count, bold: true),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Divider(color: context.accent.onPrimaryMuted, height: 1),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -357,12 +367,15 @@ class _InviteCardPreview extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AarastV3Space.x4,
+              vertical: AarastV3Space.x2,
+            ),
             decoration: BoxDecoration(
               color: AarastV3Color.saffron,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
             child: Text(
               card.profile.plan('أكّد حضورك', 'أكّدي حضورك'),
@@ -391,10 +404,10 @@ class _MessagePreview extends StatelessWidget {
       alignment: AlignmentDirectional.centerStart,
       child: Container(
         key: const ValueKey('reminder-preview'),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         decoration: BoxDecoration(
           color: AarastV3Color.mintSoft,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         ),
         child: Text(text, style: JourneyType.of(JourneyType.body)),
       ),

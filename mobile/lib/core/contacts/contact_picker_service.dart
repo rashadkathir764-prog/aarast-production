@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../shared/models/contact_phone_draft.dart';
 import '../widgets/aarast_bottom_sheet.dart';
 import '../widgets/aarast_phone_text.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 class ContactPickerException implements Exception {
   const ContactPickerException(this.message);
@@ -100,7 +101,12 @@ class ContactPickerService {
           textDirection: TextDirection.rtl,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x5,
+                AarastV3Space.x3,
+                AarastV3Space.x5,
+                AarastV3Space.x4,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -109,7 +115,7 @@ class ContactPickerService {
                     'اختر رقم الهاتف',
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   for (final phone in phones)
                     ListTile(
                       leading: const Icon(LucideIcons.phone),

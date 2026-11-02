@@ -81,7 +81,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
           value: total == 0 ? 1 : _index / total,
           color: AarastV3Color.mint,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         if (_done)
           JourneyNote(
             text: context.planWord(
@@ -94,7 +94,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
           )
         else ...[
           JourneyBox(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Row(
               children: [
                 JourneyAvatar(
@@ -104,7 +104,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
                   color: context.accent.primary,
                   size: 40,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Text(
                     widget.guests[_index].name,
@@ -119,7 +119,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
             ),
           ),
           if (_error != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               _error!,
               style: JourneyType.of(
@@ -130,7 +130,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
             ),
           ],
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         if (_done)
           JourneyButton(
             key: const ValueKey('guest-send-close'),

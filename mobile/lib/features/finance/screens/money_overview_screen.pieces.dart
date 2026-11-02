@@ -49,7 +49,7 @@ class _MoneyHeader extends StatelessWidget {
         ),
         const MoneyPrivacyButton(),
         if (onShare != null) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           JourneyRoundButton(
             key: const Key('money-share-summary'),
             icon: LucideIcons.share2,
@@ -61,7 +61,7 @@ class _MoneyHeader extends StatelessWidget {
           ),
         ],
         if (canManage || onReceipts != null) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           _MoneySettingsMenu(
             canManage: canManage,
             onBudget: onBudget,
@@ -156,7 +156,7 @@ class _MoneySettingsItem extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 18, color: AppTheme.brand),
-        const SizedBox(width: AppTheme.space10),
+        const SizedBox(width: AarastV3Space.x2),
         Flexible(
           child: Text(
             label,
@@ -201,9 +201,9 @@ class _NextPaymentCard extends StatelessWidget {
       child: AarastPressable(
         key: const ValueKey('money-next-schedule-strip'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -218,7 +218,7 @@ class _NextPaymentCard extends StatelessWidget {
                       color: color,
                       soft: soft,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +252,7 @@ class _NextPaymentCard extends StatelessWidget {
                 ),
               ),
               if (onPay != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyButton(

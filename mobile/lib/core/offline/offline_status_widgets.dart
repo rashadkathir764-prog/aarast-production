@@ -44,7 +44,12 @@ class OfflineStatusBanner extends StatelessWidget {
     final canRetry = state == SyncState.syncError || hasBlockedIssues;
     final hasWaiting = service.unsyncedCount > 0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x5,
+        AarastV3Space.half,
+        AarastV3Space.x5,
+        AarastV3Space.x1,
+      ),
       child: Align(
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
@@ -55,7 +60,12 @@ class OfflineStatusBanner extends StatelessWidget {
             label: '$label. $lastSync',
             child: Container(
               key: const ValueKey('aarast-sync-status'),
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 8, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+              ),
               decoration: BoxDecoration(
                 color: AarastV3Color.paper,
                 borderRadius: BorderRadius.circular(AarastV3Radius.control),
@@ -163,10 +173,13 @@ class OfflinePendingBadge extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: context.accent.primarySoft,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(
@@ -177,7 +190,7 @@ class OfflinePendingBadge extends StatelessWidget {
             color: context.accent.primary,
             size: 14,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AarastV3Space.x1),
           Text(
             'ينتظر النت',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -301,7 +314,7 @@ class _PendingChangesSheet extends StatelessWidget {
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
               const Padding(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(AarastV3Space.x6),
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (snapshot.hasError)
@@ -392,10 +405,13 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
       ),
       child: Text(
         '$count',

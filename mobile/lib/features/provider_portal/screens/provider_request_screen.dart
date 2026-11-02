@@ -68,7 +68,7 @@ class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
         maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             const JourneySubHeader(title: 'الطلب'),
             JourneyListState(
@@ -126,7 +126,7 @@ class _NewRequest extends StatelessWidget {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               children: [
                 JourneySubHeader(
                   title: 'طلب جديد',
@@ -141,7 +141,7 @@ class _NewRequest extends StatelessWidget {
                       color: AarastV3Color.primary,
                       size: 40,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(
                         name,
@@ -153,19 +153,19 @@ class _NewRequest extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 // No «لم يحدد الموقع» filler: an empty fact is left out.
                 ProviderRequestFacts(quote: quote, showHijri: showHijri),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 if (message.isNotEmpty) ...[
                   JourneyBox(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AarastV3Space.x3),
                     child: Text(
                       '«$message»',
                       style: JourneyType.of(JourneyType.body, height: 1.6),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                 ],
                 // p43: his offer waits on the phone for the network.
                 if (dashboard.queuedOfferFor(quote.id) != null) ...[
@@ -173,15 +173,18 @@ class _NewRequest extends StatelessWidget {
                     key: const Key('provider-request-queued-offer'),
                     name: providerFirstName(name),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                 ],
                 // B-03: he took his offer back; the request waits for him.
                 if (quote.withdrawnOffer case final withdrawn?) ...[
                   JourneyNote(
                     key: const Key('provider-request-withdrawn'),
-                    text: _withdrawnLine(withdrawn.withdrawnAt, quote.expiresAt),
+                    text: _withdrawnLine(
+                      withdrawn.withdrawnAt,
+                      quote.expiresAt,
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                 ],
                 if (quote.eventDate case final day?) ...[
                   ProviderDayStatus(
@@ -189,12 +192,14 @@ class _NewRequest extends StatelessWidget {
                     dashboard: dashboard,
                     quoteId: quote.id,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                 ],
                 // p16, B-08: what the customer did not share stays his.
                 if (_privacyLine(quote) case final privacy?)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AarastV3Space.x1,
+                    ),
                     child: Text(
                       privacy,
                       key: const Key('provider-request-privacy'),
@@ -219,7 +224,7 @@ class _NewRequest extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: Row(
               children: [
                 Expanded(
@@ -232,7 +237,7 @@ class _NewRequest extends StatelessWidget {
                         context.push(AppRouter.providerRequestOffer(quote.id)),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 JourneyButton(
                   key: Key('provider-quote-decline-${quote.id}'),
                   label: 'اعتذر',
@@ -312,7 +317,7 @@ class _Answered extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: providerCustomerName(quote),
@@ -340,7 +345,7 @@ class _Answered extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AarastV3Space.x2),
                       ProviderCaseTag(state: state),
                     ],
                   ),
@@ -354,14 +359,14 @@ class _Answered extends StatelessWidget {
                     ),
                   ),
                   if (offer.message?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     Text(
                       offer.message!.trim(),
                       style: JourneyType.of(JourneyType.body, height: 1.5),
                     ),
                   ],
                   if (offer.validUntil case final until? when canChange) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     Row(
                       children: [
                         const Icon(
@@ -369,7 +374,7 @@ class _Answered extends StatelessWidget {
                           size: 18,
                           color: AarastV3Color.textMuted,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AarastV3Space.x2),
                         Expanded(
                           child: Text(
                             _validityLine(until.toLocal(), renew),
@@ -383,7 +388,7 @@ class _Answered extends StatelessWidget {
               ),
             ),
           if (canChange) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             Row(
               children: [
                 Expanded(
@@ -398,7 +403,7 @@ class _Answered extends StatelessWidget {
                         context.push(AppRouter.providerRequestOffer(quote.id)),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 // B-03: an offer the customer has not decided on.
                 Expanded(
                   child: JourneyButton(
@@ -416,7 +421,7 @@ class _Answered extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               text:
                   'التعديل يوصله نسخة ${offer!.versionNo + 1} فيها «ايش تغيّر». '
@@ -424,7 +429,7 @@ class _Answered extends StatelessWidget {
             ),
           ],
           if (booking != null && state == ProviderCaseState.bookingAsked) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               key: Key('provider-booking-open-${booking.id}'),
               label: 'أكّد الحجز',
@@ -438,7 +443,7 @@ class _Answered extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Center(
             child: JourneyTextAction(
               key: const Key('provider-request-chat'),

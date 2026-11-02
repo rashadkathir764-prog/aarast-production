@@ -13,6 +13,9 @@ import '../data/provider_offer_queue.dart'
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_join_parts.dart' show providerMomentLabel;
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _requestLabelWidth = 92.0;
+
 /// Where a request stands for the provider, read on the phone from the
 /// request, its offer and its booking (classification p15). A new request
 /// has seven days to be answered (B-04, `expiresAt`), then it ends.
@@ -290,10 +293,10 @@ class ProviderOfflineBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('provider-offline-bar'),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: AarastV3Density.chipInsets,
       decoration: BoxDecoration(
         color: AarastV3Color.ink,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       ),
       child: Row(
         children: [
@@ -302,7 +305,7 @@ class ProviderOfflineBar extends StatelessWidget {
             size: 17,
             color: AarastV3Color.onPrimary,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               'بدون نت. العرض اللي ترسله ينحفظ في جوالك ويوصل لما يرجع النت.',
@@ -347,7 +350,7 @@ class ProviderQueuedOfferBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -358,7 +361,7 @@ class ProviderQueuedOfferBox extends StatelessWidget {
                 size: 18,
                 color: AarastV3Color.brandAccentStrong,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: Text(
                   'عرضك ل$name ينتظر النت',
@@ -417,7 +420,7 @@ class ProviderDroppedOffersBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -428,7 +431,7 @@ class ProviderDroppedOffersBox extends StatelessWidget {
                 size: 18,
                 color: AarastV3Color.danger,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: Text(
                   lines.length == 1
@@ -450,7 +453,7 @@ class ProviderDroppedOffersBox extends StatelessWidget {
           ),
           for (final line in lines)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AarastV3Space.x1),
               child: Text(
                 line,
                 style: JourneyType.of(
@@ -529,11 +532,11 @@ class ProviderDayStatus extends StatelessWidget {
     return JourneyBox(
       key: const Key('provider-request-day-status'),
       color: soft,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
@@ -587,8 +590,7 @@ class ProviderRequestFacts extends StatelessWidget {
       if (quote.shareBudget)
         if (providerBudgetLabel(quote) case final budget?) ('ميزانيته', budget),
       if (quote.shareContact)
-        if (quote.contactPhone?.trim() case final phone?
-            when phone.isNotEmpty)
+        if (quote.contactPhone?.trim() case final phone? when phone.isNotEmpty)
           ('رقمه', phone),
     ];
     if (facts.isEmpty) return const SizedBox.shrink();
@@ -614,12 +616,12 @@ class ProviderFactLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 92,
+            width: _requestLabelWidth,
             child: Text(
               label,
               style: JourneyType.of(

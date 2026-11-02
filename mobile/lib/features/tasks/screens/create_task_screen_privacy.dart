@@ -8,7 +8,7 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
     final editing = _isEditMode ? _currentEditingTask(provider) : null;
     if (editing != null && editing.isPrivate) {
       return [
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: const ValueKey('task-private-banner'),
           // The partner is the plan's other side: the bride in the groom's.
@@ -38,9 +38,14 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
         provider.summary.canKeepPrivateTask;
     if (!canKeepPrivate) return const [];
     return [
-      const SizedBox(height: 14),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyBox(
-        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x3,
+          AarastV3Space.x1,
+          AarastV3Space.x1,
+          AarastV3Space.x1,
+        ),
         child: SwitchListTile(
           key: const ValueKey('task-private'),
           contentPadding: EdgeInsets.zero,

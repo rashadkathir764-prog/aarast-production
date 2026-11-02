@@ -33,7 +33,7 @@ class _CostAgreementCard extends StatelessWidget {
     ].join(' · ');
     return JourneyBox(
       key: const ValueKey('cost-agreement-card'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -67,7 +67,7 @@ class _CostAgreementCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -102,7 +102,7 @@ class _CostAgreementCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBar(
             value: ratio,
             color: cost.isCancelled
@@ -110,7 +110,7 @@ class _CostAgreementCard extends StatelessWidget {
                 : context.accent.primary,
           ),
           if (line.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               line,
               style: JourneyType.of(
@@ -211,11 +211,11 @@ class _TimelineRow extends StatelessWidget {
       child: AarastPressable(
         onTap: entry.onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             children: [
               mark,
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,7 +242,7 @@ class _TimelineRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -407,7 +407,7 @@ class _CostMoreMenu extends StatelessWidget {
           child: Row(
             children: [
               Icon(LucideIcons.pencil, size: 18),
-              SizedBox(width: 10),
+              SizedBox(width: AarastV3Space.x2),
               Flexible(child: Text('تعديل الاتفاق')),
             ],
           ),
@@ -422,7 +422,7 @@ class _CostMoreMenu extends StatelessWidget {
                 size: 18,
                 color: AarastV3Color.danger,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Flexible(
                 child: Text(
                   context.say('شيل الاتفاق', 'شيلي الاتفاق'),
@@ -509,9 +509,9 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
             selected: _choice == choice,
             onTap: () => setState(() => _choice = choice),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         JourneyButton(
           key: const ValueKey('cost-remove-confirm'),
           // The button names what it does, as the item's remove sheet does.

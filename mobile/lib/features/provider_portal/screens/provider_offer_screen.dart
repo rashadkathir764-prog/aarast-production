@@ -117,7 +117,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
         maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             const JourneySubHeader(title: 'عرضك'),
             JourneyListState(
@@ -142,7 +142,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 JourneySubHeader(
@@ -169,7 +169,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +191,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       flex: 2,
                       child: _CurrencyField(
@@ -200,7 +200,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 JourneyTextField(
                   key: const Key('provider-offer-message'),
                   label: 'ايش يشمل وايش ما يشمل',
@@ -214,12 +214,12 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 ProviderOfferLinesEditor(
                   lines: _lines,
                   onChanged: (lines) => setState(() => _lines = lines),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -241,7 +241,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -275,7 +275,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-offer-preview'),
               label: 'شوف العرض قبل ما يوصله',
@@ -345,7 +345,7 @@ class _CurrencyField extends StatelessWidget {
       excludeSemantics: true,
       child: JourneyBox(
         radius: 18,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: AarastV3Density.actionInsets,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -427,13 +427,13 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                   color: AarastV3Color.primary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               Text(
                 widget.message,
                 style: JourneyType.of(JourneyType.body, height: 1.5),
               ),
               if (until != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Row(
                   children: [
                     const Icon(
@@ -441,7 +441,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                       size: 18,
                       color: AarastV3Color.textMuted,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: Text(
                         'صالح لين ${formatArabicDayMonth(until.toLocal())}',
@@ -455,7 +455,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
           ),
         ),
         if (_error case final error?) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             text: error,
             icon: LucideIcons.alertCircle,
@@ -463,7 +463,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-offer-submit'),
           label: renewing

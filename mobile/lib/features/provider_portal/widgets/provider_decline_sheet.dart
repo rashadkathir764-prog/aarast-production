@@ -109,12 +109,12 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
             selected: option == reason,
             onTap: _busy ? null : () => setState(() => _reason = option),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         if (reason != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           JourneyBox(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -135,7 +135,7 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
           ),
         ],
         if (_error case final error?) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             text: error,
             icon: LucideIcons.alertCircle,
@@ -143,7 +143,7 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-quote-decline-confirm'),
           label: 'أرسل الاعتذار',

@@ -49,7 +49,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
           style: JourneyType.of(JourneyType.body, height: 1.55),
         ),
         if (_error case final error?) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             text: error,
             icon: LucideIcons.alertCircle,
@@ -57,7 +57,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-offer-withdraw-confirm'),
           label: 'اسحب العرض',
@@ -67,7 +67,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
           loading: _busy,
           onPressed: _withdraw,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const Key('provider-offer-withdraw-keep'),
           label: 'لا، خلّه',
@@ -89,7 +89,8 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
     if (!withdrawn) {
       setState(() {
         _busy = false;
-        _error = dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
+        _error =
+            dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
       });
       return;
     }

@@ -71,7 +71,7 @@ class _QuoteConversationEntryScreenState
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AarastV3Density.pageInsets,
         children: [
           const JourneySubHeader(title: ''),
           JourneyListState(

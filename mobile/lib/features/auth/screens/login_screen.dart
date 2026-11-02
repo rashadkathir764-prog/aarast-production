@@ -229,12 +229,12 @@ class LoginExperience extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         const Align(
           alignment: AlignmentDirectional.centerStart,
           child: AuthBrandMark(compact: true),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
         AuthHeading(
           title: sessionExpired
               ? context.say('ادخل مرة ثانية', 'ادخلي مرة ثانية')
@@ -247,7 +247,7 @@ class LoginExperience extends StatelessWidget {
               : 'كل شي محفوظ، مثل ما تركته.',
         ),
         if (pendingChanges > 0) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyBox(
             padding: EdgeInsets.zero,
             child: JourneyListRow(
@@ -265,7 +265,7 @@ class LoginExperience extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         AuthTextField(
           controller: phoneController,
           label: 'رقم الهاتف',
@@ -283,7 +283,7 @@ class LoginExperience extends StatelessWidget {
             return null;
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         AuthTextField(
           controller: passwordController,
           label: 'كلمة المرور',
@@ -308,11 +308,11 @@ class LoginExperience extends StatelessWidget {
           ),
         ),
         if (errorMessage != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           AuthInlineError(message: errorMessage!),
         ],
         if (showActions) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: AarastV3Space.x5),
           LoginActions(
             isSubmitting: isSubmitting,
             onSubmit: onSubmit,
@@ -355,9 +355,9 @@ class LoginActions extends StatelessWidget {
           loading: isSubmitting,
           onPressed: onSubmit,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         const _InlineDivider(label: 'أو بدون كلمة مرور'),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: const ValueKey('login-otp-action'),
           label: 'الدخول برمز واتساب',
@@ -393,7 +393,7 @@ class _InlineDivider extends StatelessWidget {
         Flexible(
           flex: 4,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x2),
             child: Text(
               label,
               maxLines: 2,

@@ -45,7 +45,7 @@ class GuestSummaryFigures extends StatelessWidget {
                 height: 1,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Text(
                 '${words.confirmed} من $total',
@@ -66,9 +66,9 @@ class GuestSummaryFigures extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         ClipRRect(
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(AarastV3Radius.xs),
           child: SizedBox(
             key: const ValueKey('guests-summary-bar'),
             height: 10,
@@ -82,13 +82,16 @@ class GuestSummaryFigures extends StatelessWidget {
                   (rest, AarastV3Color.line),
                 ])
                   if (count > 0)
-                    Expanded(flex: count, child: ColoredBox(color: color)),
+                    Expanded(
+                      flex: count,
+                      child: ColoredBox(color: color),
+                    ),
               ],
             ),
           ),
         ),
         if (seats != null && seats > confirmed) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             'مع المرافقين: ${arabicSeats(seats)}',
             style: JourneyType.of(

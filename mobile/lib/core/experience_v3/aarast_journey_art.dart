@@ -275,7 +275,7 @@ class JourneyDressPainter extends CustomPainter {
           width: w * 0.09,
           height: h * 0.10,
         ),
-        const Radius.circular(4),
+        const Radius.circular(AarastV3Radius.xs),
       ),
       Paint()..color = _form,
     );
@@ -286,7 +286,7 @@ class JourneyDressPainter extends CustomPainter {
           width: w * 0.11,
           height: h * 0.05,
         ),
-        const Radius.circular(6),
+        const Radius.circular(AarastV3Radius.xs),
       ),
       Paint()..color = _cap,
     );

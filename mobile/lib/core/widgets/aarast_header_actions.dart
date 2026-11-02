@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/aarast_design_tokens.dart';
 import '../theme/app_theme.dart';
 import 'aarast_pressable.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
+import '../experience_v3/aarast_journey.dart';
 
 /// Borderless header action with a full accessible touch target.
 class AarastHeaderIconAction extends StatelessWidget {
@@ -45,7 +47,9 @@ class AarastHeaderIconAction extends StatelessWidget {
                 child: Container(
                   constraints: const BoxConstraints(minWidth: 18),
                   height: 18,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x1,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AarastSemanticTokens.danger,
@@ -57,7 +61,7 @@ class AarastHeaderIconAction extends StatelessWidget {
                     textDirection: TextDirection.ltr,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
-                      fontSize: 9,
+                      fontSize: JourneyType.badge,
                       fontWeight: FontWeight.w900,
                       height: 1,
                     ),

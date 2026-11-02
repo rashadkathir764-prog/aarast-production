@@ -51,7 +51,12 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 30, 16, 24),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x8,
+          AarastV3Space.x4,
+          AarastV3Space.x6,
+        ),
         children: [
           const Center(
             child: JourneyIconTile(
@@ -62,7 +67,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
               radius: 26,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           Text(
             daysLeft <= 0
                 ? 'حسابك ينحذف اليوم'
@@ -74,7 +79,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
               weight: JourneyType.bold,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           if (requestedAt != null && scheduledFor != null)
             Text(
               context.say(
@@ -88,7 +93,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
                 color: AarastV3Color.textMuted,
               ),
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AarastV3Space.x5),
           // L29: the person speaks to the app, the same for both.
           JourneyButton(
             key: const Key('deletion-pending-restore'),
@@ -98,7 +103,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
             loading: auth.isSubmitting,
             onPressed: auth.isSubmitting ? null : _restore,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton(
             key: const Key('deletion-pending-sign-out'),
             label: context.say('اطلع', 'اطلعي'),
@@ -108,7 +113,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
             onPressed: auth.isSubmitting ? null : auth.logout,
           ),
           if (_error != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               key: const Key('deletion-pending-error'),
               icon: LucideIcons.alertTriangle,
@@ -117,7 +122,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
               text: _error!,
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           const JourneyNote(
             icon: LucideIcons.lock,
             text: 'ما أحد يقدر يدخل خطتك خلال هذي المدة، ولا توصلك تذكيرات.',

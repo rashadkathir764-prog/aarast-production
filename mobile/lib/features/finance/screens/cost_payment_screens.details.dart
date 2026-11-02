@@ -1,5 +1,8 @@
 part of 'cost_payment_screens.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _paymentLabelWidth = 72.0;
+
 // c11 «تفاصيل دفعة» and x14 «دفعة انعكست»: the amount, who it went to and
 // when, its receipt, and «اعكس الدفعة». A reversed payment stays struck
 // through with the reason. «من وين» and «سجّلها» are not drawn: a payment
@@ -93,7 +96,12 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: title == null ? 'تفاصيل الدفعة' : 'دفعة $title',
               subtitle: payment == null
@@ -108,7 +116,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
               onRefresh: () => _load(refreshMoney: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: AarastV3Density.pageInsets,
                 children: [body],
               ),
             ),
@@ -162,12 +170,15 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
             offline: false,
             onRetry: () => _load(refreshMoney: true),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         _PaymentAmountCard(payment: payment, currency: currency),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Space.x4,
+            vertical: AarastV3Space.x2,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -203,7 +214,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           ),
         ),
         if (payment.isReversed || payment.isReversal) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
             text:
                 'الدفعة ما تنمسح، تبقى مشطوبة عشان السجل يبقى صادق ومشاركينك يعرفون ايش صار.',
@@ -213,15 +224,15 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           ),
         ],
         if (payment.isReversed && provider.canManageMoney) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
             key: const ValueKey('payment-record-elsewhere'),
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Row(
               children: [
                 Icon(LucideIcons.receipt, color: context.accent.primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Text(
                     context.say(
@@ -235,7 +246,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 JourneyButton(
                   label: 'البنود',
                   onPressed: () =>
@@ -249,7 +260,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
         // server, so not for a guest's local plan or a payment still waiting
         // to sync.
         if (hasReceipt) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           CostReceiptsSection(
             key: ValueKey('payment-receipts-${payment.id}'),
             costId: cost.id,
@@ -257,7 +268,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
             canManage: provider.canManageMoney,
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         if (canReverse)
           Center(
             child: JourneyTextAction(
@@ -328,7 +339,7 @@ class _PaymentAmountCard extends StatelessWidget {
     if (struck) {
       return JourneyBox(
         key: const ValueKey('payment-amount-card'),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Row(
           children: [
             Expanded(
@@ -363,7 +374,7 @@ class _PaymentAmountCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             JourneyTag(
               label: payment.isReversal ? 'قيد عكس' : 'انعكست',
               color: AarastV3Color.danger,
@@ -377,7 +388,7 @@ class _PaymentAmountCard extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('payment-amount-card'),
       color: AarastV3Color.mintSoft,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         children: [
           const JourneyIconTile(
@@ -387,7 +398,7 @@ class _PaymentAmountCard extends StatelessWidget {
             size: 44,
             radius: 16,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,12 +443,12 @@ class _PaymentFact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 72,
+            width: _paymentLabelWidth,
             child: Text(
               label,
               style: JourneyType.of(
@@ -446,7 +457,7 @@ class _PaymentFact extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               value,
@@ -551,7 +562,7 @@ class _ReverseSheetState extends State<_ReverseSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('payment-reverse-confirm'),
           label: context.say('اعكس الدفعة', 'اعكسي الدفعة'),

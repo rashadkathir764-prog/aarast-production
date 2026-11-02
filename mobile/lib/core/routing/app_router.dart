@@ -115,6 +115,8 @@ import '../../features/wedding_plans/wedding_plans_api.dart'
 import '../../features/welcome_gateway/welcome_gateway_api.dart'
     show SmartWelcomeScreen;
 import '../config/app_feature_flags.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
+import '../experience_v3/aarast_journey.dart';
 
 part 'app_router.entry.dart';
 part 'app_router.marketplace.dart';
@@ -604,23 +606,26 @@ class RouterErrorScreen extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AarastV3Space.x6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(LucideIcons.navigation, size: 52),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 const Text(
                   'حدث خطأ في مسار التنقل.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: JourneyType.pageTitle,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 const Text(
                   'لم نغيّر مسار الحساب تلقائيًا. عد إلى اختيار المسار وحاول مرة أخرى.',
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AarastV3Space.x5),
                 FilledButton(
                   key: const Key('router-error-home-button'),
                   onPressed: () => context.go(AppRouter.home),
@@ -628,7 +633,7 @@ class RouterErrorScreen extends StatelessWidget {
                 ),
                 if (location.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: AarastV3Space.x3),
                     child: Text(
                       'المسار: $location',
                       textAlign: TextAlign.center,

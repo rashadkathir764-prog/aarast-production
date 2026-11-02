@@ -95,7 +95,12 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                0,
+              ),
               child: header,
             ),
             const Expanded(
@@ -113,7 +118,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [header, ..._body(provider, member)],
       ),
     );
@@ -172,7 +177,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         onChanged: (value) => setState(() => _permissions = value),
       ),
       if (provider.errorMessage != null) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyNote(
           key: const ValueKey('member-error'),
           icon: LucideIcons.alertCircle,
@@ -181,7 +186,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           text: provider.errorMessage!,
         ),
       ],
-      const SizedBox(height: 14),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyButton(
         key: const ValueKey('member-save'),
         label: context.say('احفظ', 'احفظي'),
@@ -190,7 +195,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         loading: provider.isSubmitting,
         onPressed: provider.isSubmitting ? null : () => _save(member),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AarastV3Space.x1),
       Center(
         child: JourneyTextAction(
           key: const ValueKey('member-remove'),
@@ -330,7 +335,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           JourneyTextAction(
             label: 'رجوع',
             onPressed: () => Navigator.of(sheetContext).pop(false),

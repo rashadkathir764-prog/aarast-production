@@ -63,7 +63,7 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'الحجوزات',
@@ -211,9 +211,9 @@ class _BookingCard extends StatelessWidget {
     final rate = booking.lifecycleStatus == 'COMPLETED';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: JourneyBox(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -228,11 +228,11 @@ class _BookingCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 JourneyTag(label: tag, color: color, soft: soft),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AarastV3Space.half),
             Text(
               line,
               style: JourneyType.of(
@@ -241,7 +241,7 @@ class _BookingCard extends StatelessWidget {
               ),
             ),
             if (rate) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               JourneyButton(
                 key: ValueKey('booking-rate-${booking.id}'),
                 label: context.say('قيّمهم', 'قيّميهم'),
@@ -251,7 +251,7 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
             if (findOthers || askAgain) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               JourneyButton(
                 key: ValueKey(
                   findOthers

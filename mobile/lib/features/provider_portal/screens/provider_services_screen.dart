@@ -63,7 +63,7 @@ class ProviderServicesScreen extends StatelessWidget {
         onRefresh: dashboard.loadDashboard,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: 'خدماتك',
@@ -122,9 +122,11 @@ class ProviderServicesScreen extends StatelessWidget {
                   onTap: () => _edit(context, package: package),
                 ),
             if (footer.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AarastV3Space.x1,
+                ),
                 child: Text(
                   footer,
                   key: const Key('provider-services-footer'),
@@ -186,13 +188,13 @@ class _ListingCard extends StatelessWidget {
     final what = includes?.trim() ?? '';
     final unit = note?.trim() ?? '';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: AarastPressable(
         onTap: onTap,
         semanticLabel: [title, ?amount, if (!active) 'موقوفة'].join('، '),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -211,7 +213,7 @@ class _ListingCard extends StatelessWidget {
                     ),
                   ),
                   if (amount != null) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Text(
                       amount,
                       style: JourneyType.of(
@@ -243,7 +245,7 @@ class _ListingCard extends StatelessWidget {
                   ),
                 ),
               if (!active) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AarastV3Space.x1),
                 const JourneyTag(
                   label: 'موقوفة، ما يشوفها العرسان',
                   color: AarastV3Color.textMuted,
@@ -266,7 +268,7 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           const JourneyIconTile(
@@ -275,7 +277,7 @@ class _Empty extends StatelessWidget {
             soft: AarastV3Color.primarySoft,
             size: 42,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Text(
               text,

@@ -243,7 +243,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: AarastV3Density.pageInsets,
             children: [
               if (_fixed)
                 _FixedAmount(
@@ -271,7 +271,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                         ),
                   onChanged: (_) => setState(() => _amountError = null),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -291,7 +291,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                   ],
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               JourneyPickerField(
                 key: const ValueKey('payment-paid-at'),
                 label: 'متى',
@@ -299,7 +299,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                 icon: LucideIcons.calendarDays,
                 onTap: _pickDate,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               Text(
                 context.say('كيف دفعت؟', 'كيف دفعتِ؟'),
                 style: JourneyType.of(
@@ -308,7 +308,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                   color: AarastV3Color.textMuted,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -326,7 +326,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               JourneyTextField(
                 key: const ValueKey('payment-note'),
                 label: 'ملاحظة',
@@ -334,21 +334,21 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                 controller: _noteController,
                 maxLength: 1000,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               _ReceiptPick(
                 file: _receipt,
                 onPick: _pickReceipt,
                 onClear: () => setState(() => _receipt = null),
               ),
               if (_draft != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 AarastV3DraftStatusLine(status: _draft!.status),
               ],
             ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: AarastV3Density.actionInsets,
           child: JourneyButton(
             key: const ValueKey('payment-save'),
             label: 'حفظ الدفعة',
@@ -385,7 +385,7 @@ class _FixedAmount extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('payment-fixed-amount'),
       color: context.accent.primarySoft,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -414,7 +414,7 @@ class _FixedAmount extends StatelessWidget {
               ),
             ),
           if (line != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               line!,
               style: JourneyType.of(
@@ -468,7 +468,7 @@ class _ReceiptPick extends StatelessWidget {
     return Row(
       children: [
         const Icon(LucideIcons.checkCircle2, color: AarastV3Color.mint),
-        const SizedBox(width: 8),
+        const SizedBox(width: AarastV3Space.x2),
         Expanded(
           child: Text(
             'الإيصال جاهز، ينحفظ مع الدفعة',

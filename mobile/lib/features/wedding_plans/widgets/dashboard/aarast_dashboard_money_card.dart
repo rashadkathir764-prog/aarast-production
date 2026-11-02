@@ -188,7 +188,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
             ].join('، '),
       child: AarastPressable(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: JourneyBox(
           color: context.accent.primarySoft,
           radius: 24,
@@ -203,7 +203,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                     size: 17,
                     color: context.accent.primary,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AarastV3Space.x1),
                   Expanded(
                     child: Text(
                       'المال',
@@ -226,7 +226,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                         onTap: _toggleAmounts,
                         radius: 20,
                         child: SizedBox(
-                          width: 40,
+                          width: AarastV3Space.x10,
                           height: 28,
                           child: Icon(
                             amountsHidden
@@ -241,13 +241,13 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(flex: 3, child: lead),
                   if (side.isNotEmpty) ...[
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Flexible(
                       flex: 2,
                       child: Column(
@@ -259,7 +259,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                 ],
               ),
               if (pieces.any((piece) => piece.$1 > 0)) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 _MoneySplitBar(pieces: pieces),
               ],
             ],
@@ -350,14 +350,14 @@ class _MoneySplitBar extends StatelessWidget {
     return ExcludeSemantics(
       child: ClipRRect(
         key: const ValueKey('dashboard-money-bar'),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(AarastV3Radius.xs),
         child: SizedBox(
-          height: 10,
+          height: AarastV3Space.x2,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var index = 0; index < shown.length; index++) ...[
-                if (index > 0) const SizedBox(width: 3),
+                if (index > 0) const SizedBox(width: AarastV3Space.x1),
                 Expanded(
                   flex: (shown[index].$1 / total * 1000).round().clamp(1, 1000),
                   child: ColoredBox(color: shown[index].$2),

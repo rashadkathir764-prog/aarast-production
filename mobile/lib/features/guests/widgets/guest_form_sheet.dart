@@ -268,7 +268,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
       children: [
         if (_draft != null) ...[
           AarastV3DraftStatusLine(status: _draft!.status),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         JourneyTextField(
           key: const ValueKey('guest-form-name'),
@@ -279,7 +279,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           errorText: _nameError,
           textInputAction: TextInputAction.next,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         ContactPhoneField(
           key: const ValueKey('guest-form-phone'),
           nameController: _nameController,
@@ -374,7 +374,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: JourneyTextAction(
@@ -422,7 +422,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyTextField(
             key: const ValueKey('guest-form-notes'),
             label: 'ملاحظة',
@@ -430,7 +430,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             maxLength: 500,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         Row(
           children: [
             Expanded(
@@ -444,7 +444,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               ),
             ),
             if (!_editing) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               JourneyButton(
                 key: const ValueKey('guest-form-save-next'),
                 label:
@@ -463,7 +463,10 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(top: 14, bottom: 8),
+    padding: const EdgeInsets.only(
+      top: AarastV3Space.x3,
+      bottom: AarastV3Space.x2,
+    ),
     child: Text(
       text,
       style: JourneyType.of(
@@ -533,7 +536,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
           textInputAction: TextInputAction.done,
           onSubmitted: (value) => Navigator.pop(context, value),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('guest-form-group-create'),
           label: context.say('أضفها', 'أضيفيها'),

@@ -52,7 +52,12 @@ abstract final class AarastV3Color {
   static const lilacSoft = Color(0xFFECE6F6);
 }
 
+/// The one spacing grid (D74): every padding, gap and margin is a step of 4.
+/// [hair] and [half] are for hairlines and the tight gap between a title and
+/// its line; nothing else sits off the grid.
 abstract final class AarastV3Space {
+  static const hair = 1.0;
+  static const half = 2.0;
   static const x1 = 4.0;
   static const x2 = 8.0;
   static const x3 = 12.0;
@@ -62,15 +67,53 @@ abstract final class AarastV3Space {
   static const x8 = 32.0;
   static const x10 = 40.0;
   static const x12 = 48.0;
+  static const x16 = 64.0;
 }
 
+/// The corner roles (D74). A tag or a small mark takes [xs]; a field, a
+/// button or a chip [control]/[surface]; a card [card]; a sheet or the
+/// home's feature card [sheet]/[feature]; anything round [pill].
 abstract final class AarastV3Radius {
+  static const xs = 6.0;
   static const control = 12.0;
   static const surface = 14.0;
   static const card = 18.0;
   static const sheet = 24.0;
   static const feature = 24.0;
   static const pill = 999.0;
+}
+
+/// Icon sizes: inline with text, in a row or a button, and a lead icon.
+abstract final class AarastV3Icon {
+  static const sm = 16.0;
+  static const md = 20.0;
+  static const lg = 24.0;
+}
+
+/// One field for every form (D74): the kit's [JourneyTextField] and the
+/// Material fields of the theme draw the same box, padding and corner.
+abstract final class AarastV3Field {
+  static const radius = AarastV3Radius.surface;
+
+  /// Inside the kit's labelled box: the small label over the value.
+  static const padding = EdgeInsets.fromLTRB(
+    AarastV3Space.x4,
+    AarastV3Space.x2,
+    AarastV3Space.x4,
+    AarastV3Space.x3,
+  );
+
+  /// Inside a Material field, which carries its label in the line.
+  static const contentPadding = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x4,
+    vertical: AarastV3Space.x3,
+  );
+
+  /// Between a field's icon and its text.
+  static const iconGap = AarastV3Space.x2;
+
+  /// Between two fields of a form.
+  static const gap = AarastV3Space.x3;
 }
 
 abstract final class AarastV3Motion {
@@ -95,6 +138,35 @@ abstract final class AarastV3Density {
   static const compactGap = AarastV3Space.x3;
   static const rowMinHeight = 60.0;
   static const metricMinHeight = 72.0;
+
+  /// A scrolling screen's body: the gutter on each side, a step under the
+  /// header, and room to scroll the last row clear (D74).
+  static const pageInsets = EdgeInsets.fromLTRB(
+    pageHorizontal,
+    AarastV3Space.x2,
+    pageHorizontal,
+    AarastV3Space.x8,
+  );
+
+  /// Inside a chip or a choice pill.
+  static const chipInsets = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x3,
+    vertical: AarastV3Space.x2,
+  );
+
+  /// Inside a small status tag.
+  static const tagInsets = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x3,
+    vertical: AarastV3Space.x1,
+  );
+
+  /// The main action pinned under a screen or a form (D74).
+  static const actionInsets = EdgeInsets.fromLTRB(
+    pageHorizontal,
+    AarastV3Space.x2,
+    pageHorizontal,
+    AarastV3Space.x3,
+  );
 }
 
 abstract final class AarastV3Type {

@@ -279,7 +279,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             large: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Center(
             child: JourneyTextAction(
               label: 'رجوع',
@@ -383,7 +383,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
@@ -395,14 +395,19 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                       _InviteStep.invite => 2,
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   ...children,
                 ],
               ),
             ),
             if (bottom != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x4,
+                  AarastV3Space.x2,
+                  AarastV3Space.x4,
+                  AarastV3Space.x4,
+                ),
                 child: bottom,
               ),
           ],
@@ -432,9 +437,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         },
         onSubmitted: (_) => _requestOtp(),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AarastV3Space.x2),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
         child: Text(
           'نفس الرقم اللي وصلته الدعوة عليه.',
           style: JourneyType.of(
@@ -457,7 +462,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           height: 1.5,
         ),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyTextField(
         key: const ValueKey('invite-account-name-field'),
         label: 'اسمك',
@@ -470,7 +475,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           if (_nameError != null) setState(() => _nameError = null);
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const ValueKey('invite-account-password-field'),
         label: 'كلمة المرور',
@@ -484,7 +489,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           if (_passwordError != null) setState(() => _passwordError = null);
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const ValueKey('invite-account-password-confirmation-field'),
         label: 'تأكيد كلمة المرور',
@@ -524,7 +529,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             : 'طلبنا لك رمز على واتساب',
         style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AarastV3Space.x1),
       Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 6,
@@ -551,10 +556,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           ),
         ],
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: AarastV3Space.x4),
       if (_otpNoticeMessage case final notice?) ...[
         JourneyNote(text: notice, icon: LucideIcons.messageCircle),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
       ],
       AarastOtpField(
         controller: _otpController,
@@ -566,7 +571,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         onCompleted: (_) => _verifyOtp(),
       ),
       if (auth.errorMessage case final error?) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: error,
           icon: LucideIcons.alertCircle,
@@ -574,7 +579,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           soft: AarastV3Color.dangerSoft,
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       Center(
         child: JourneyTextAction(
           key: const ValueKey('invite-otp-resend-button'),
@@ -608,7 +613,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             color: AarastV3Color.danger,
             soft: AarastV3Color.dangerSoft,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         JourneyListState(
           key: const ValueKey('invite-load-error'),
@@ -624,7 +629,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _InviterCard(invite: invite),
       if (ended)
         Padding(
-          padding: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.only(top: AarastV3Space.x3),
           child: JourneyNote(
             key: const Key('invite-membership-ended'),
             text:
@@ -637,9 +642,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       else ...[
         JourneySectionTitle('دورك: ${participantRoleLabel(invite.role)}'),
         _InviteRights(invite: invite),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
           child: Text(
             '${inviter.isEmpty ? 'صاحب الخطة' : inviter} يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما تشتي.',
             style: JourneyType.of(
@@ -649,7 +654,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           ),
         ),
         if (!invite.isPending && !invite.hasActiveMembership) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: ValueKey('invite-status-${invite.status}'),
             text: _closedInviteMessage(invite.status),
@@ -660,7 +665,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         ],
       ],
       if (sharing.errorMessage case final error?) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: error,
           icon: LucideIcons.alertCircle,
@@ -721,7 +726,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                   onPressed: () => _accept(invite),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               JourneyButton.quiet(
                 key: const Key('invite-decline-button'),
                 label: 'رفض الدعوة',

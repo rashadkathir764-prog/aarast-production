@@ -74,7 +74,12 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x2,
+          AarastV3Space.x4,
+          AarastV3Density.pageBottom,
+        ),
         children: [
           JourneyTabHeader(
             title: 'الطلبات',
@@ -89,7 +94,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           // the network.
           if (offline) ...[
             const ProviderOfflineBar(),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           if (dashboard.droppedOffers.isNotEmpty) ...[
             ProviderDroppedOffersBox(
@@ -103,25 +108,25 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
               ],
               onDismiss: dashboard.dismissDroppedOffers,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           for (final offer in dashboard.queuedOffers) ...[
             ProviderQueuedOfferBox(
               key: Key('provider-queued-offer-${offer.quoteRequestId}'),
               name: _queuedName(cases, offer.quoteRequestId),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           if (offline &&
               cases.any(
                 (item) => item.state == ProviderCaseState.bookingAsked,
               )) ...[
             const ProviderConfirmNeedsNetwork(),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           if (offline && updated != null) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
               child: Text(
                 providerUpdatedLabel(updated),
                 key: const Key('provider-requests-updated'),
@@ -131,7 +136,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           // One line as drawn; a large text size wraps it, never hides one.
           Wrap(
@@ -155,7 +160,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (shown.isEmpty)
             JourneyListState(
               phase: dashboard.isLoading && dashboard.quoteRequests.isEmpty

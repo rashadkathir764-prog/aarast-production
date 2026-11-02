@@ -79,10 +79,15 @@ class ProviderChangesScreen extends StatelessWidget {
               onRefresh: onRefresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 6, 2, 14),
+                    padding: const EdgeInsets.fromLTRB(
+                      AarastV3Space.half,
+                      AarastV3Space.x1,
+                      AarastV3Space.half,
+                      AarastV3Space.x3,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -97,7 +102,7 @@ class ProviderChangesScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AarastV3Space.x3),
                         ProviderAccountButton(onPressed: onAccount),
                       ],
                     ),
@@ -109,7 +114,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     text: leadLine(notes.length, general: note.isNotEmpty),
                   ),
                   if (note.isNotEmpty) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AarastV3Space.x3),
                     JourneyNote(
                       key: const Key('provider-changes-note'),
                       icon: LucideIcons.messageSquare,
@@ -118,7 +123,7 @@ class ProviderChangesScreen extends StatelessWidget {
                       text: note,
                     ),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AarastV3Space.x3),
                   JourneyPickerField(
                     key: const Key('provider-changes-name'),
                     label: 'اسم النشاط',
@@ -126,7 +131,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     note: notes['BUSINESS_NAME'],
                     onTap: onEdit,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyPickerField(
                     key: const Key('provider-changes-category'),
                     label: 'القسم',
@@ -134,7 +139,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     note: notes['CATEGORY'],
                     onTap: onPickCategory,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyPickerField(
                     key: const Key('provider-changes-city'),
                     label: 'المدينة',
@@ -143,7 +148,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     onTap: onEdit,
                   ),
                   if (about.isNotEmpty || notes['DESCRIPTION'] != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     JourneyPickerField(
                       key: const Key('provider-changes-about'),
                       label: 'نبذة النشاط',
@@ -153,7 +158,7 @@ class ProviderChangesScreen extends StatelessWidget {
                       onTap: onEdit,
                     ),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyPickerField(
                     key: const Key('provider-changes-service'),
                     label: service == null
@@ -161,7 +166,10 @@ class ProviderChangesScreen extends StatelessWidget {
                         : 'خدمة «${service.title.trim()}»',
                     value: service == null
                         ? null
-                        : providerMoneyLabel(service.basePrice, service.currency),
+                        : providerMoneyLabel(
+                            service.basePrice,
+                            service.currency,
+                          ),
                     placeholder: 'أضف خدمة بسعرها',
                     helper: service?.description?.trim().isNotEmpty == true
                         ? service!.description!.trim()
@@ -170,7 +178,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     onTap: onEditService,
                   ),
                   if (note.isNotEmpty || notes.isNotEmpty) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     Text(
                       notedAt == null
                           ? 'الملاحظات من فريق المراجعة'
@@ -182,7 +190,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     ),
                   ],
                   if (error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     JourneyNote(
                       key: const Key('provider-changes-error'),
                       text: error,
@@ -196,7 +204,7 @@ class ProviderChangesScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-changes-resubmit'),
               label: 'أرسلت التعديل',

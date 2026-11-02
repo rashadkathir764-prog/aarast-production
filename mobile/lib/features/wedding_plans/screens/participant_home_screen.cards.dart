@@ -1,5 +1,8 @@
 part of 'participant_home_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _participantArtHeight = 300.0;
+
 /// «أهلًا صالح», the plan with «أنت مساعد», the bell and the account.
 class _Greeting extends StatelessWidget {
   const _Greeting({
@@ -24,7 +27,12 @@ class _Greeting extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = name.trim().split(RegExp(r'\s+')).first;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+        AarastV3Space.x1,
+        0,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -43,7 +51,7 @@ class _Greeting extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AarastV3Space.half),
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 6,
@@ -68,7 +76,7 @@ class _Greeting extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -83,7 +91,7 @@ class _Greeting extends StatelessWidget {
                   top: 9,
                   end: 10,
                   child: SizedBox.square(
-                    dimension: 9,
+                    dimension: AarastV3Space.x2,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: voice.accent,
@@ -94,7 +102,7 @@ class _Greeting extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Semantics(
             button: true,
             label: 'حسابي',
@@ -103,7 +111,7 @@ class _Greeting extends StatelessWidget {
             child: AarastPressable(
               key: const ValueKey('participant-profile'),
               onTap: onProfile,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AarastV3Radius.card),
               child: JourneyAvatar(
                 letter: first.isEmpty ? 'ع' : first.characters.first,
                 color: AarastV3Color.brandAccentStrong,
@@ -161,7 +169,7 @@ class _CountHero extends StatelessWidget {
         key: const ValueKey('participant-count-hero'),
         color: voice.accent,
         radius: 24,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Row(
           children: [
             if (figure != null) ...[
@@ -174,7 +182,7 @@ class _CountHero extends StatelessWidget {
                   height: 1,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
             ],
             Expanded(
               child: Column(
@@ -234,9 +242,9 @@ class _DayHero extends StatelessWidget {
       excludeSemantics: true,
       child: ClipRRect(
         key: const ValueKey('participant-day-hero'),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: SizedBox(
-          height: 300,
+          height: _participantArtHeight,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -264,7 +272,7 @@ class _DayHero extends StatelessWidget {
                             height: 1,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AarastV3Space.x3),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +303,7 @@ class _DayHero extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AarastV3Space.x3),
                     const JourneySegments(
                       total: 5,
                       done: 3,
@@ -347,14 +355,14 @@ class _NextTaskCard extends StatelessWidget {
     final who = this.who;
     return JourneyBox(
       key: ValueKey('participant-next-${task.id}'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AarastPressable(
             onTap: onOpen,
             semanticLabel: task.title,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -364,7 +372,7 @@ class _NextTaskCard extends StatelessWidget {
                   soft: AarastV3Color.brandAccentSoft,
                   size: 44,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,7 +385,7 @@ class _NextTaskCard extends StatelessWidget {
                           color: AarastV3Color.brandAccentStrong,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AarastV3Space.half),
                       Text(
                         task.title,
                         style: JourneyType.of(
@@ -400,7 +408,7 @@ class _NextTaskCard extends StatelessWidget {
             ),
           ),
           if (done != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             Wrap(
               spacing: 10,
               runSpacing: 8,
@@ -521,7 +529,7 @@ class _ChangeCard extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('participant-rights-changed'),
       color: AarastV3Color.brandAccentSoft,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -531,7 +539,7 @@ class _ChangeCard extends StatelessWidget {
             soft: AarastV3Color.paper,
             size: 42,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

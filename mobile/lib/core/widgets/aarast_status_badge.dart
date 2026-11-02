@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 class AarastStatusBadge extends StatelessWidget {
   const AarastStatusBadge({
@@ -19,10 +20,13 @@ class AarastStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor ?? color.withAlpha(24),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         border: Border.all(color: color.withAlpha(48)),
       ),
       child: Row(
@@ -30,7 +34,7 @@ class AarastStatusBadge extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(icon, size: 14, color: color),
-            const SizedBox(width: 5),
+            const SizedBox(width: AarastV3Space.x1),
           ],
           Flexible(
             child: Text(

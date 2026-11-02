@@ -29,7 +29,7 @@ class SupportScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'المساعدة',
@@ -37,7 +37,7 @@ class SupportScreen extends StatelessWidget {
                 context.canPop() ? context.pop() : context.go(AppRouter.more),
           ),
           if (whatsApp != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             _WhatsAppCard(uri: whatsApp),
           ],
           const JourneySectionTitle('أسئلة كثير يسألونها'),
@@ -99,7 +99,7 @@ class SupportScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           Row(
             children: [
               Expanded(
@@ -110,7 +110,7 @@ class SupportScreen extends StatelessWidget {
                   path: '/privacy',
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: _PageChip(
                   key: const Key('support-terms-link'),
@@ -138,12 +138,12 @@ class _WhatsAppCard extends StatelessWidget {
     return AarastPressable(
       key: const Key('support-whatsapp'),
       onTap: () => _open(context, uri),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AarastV3Radius.feature),
       semanticLabel: 'كلّمنا على واتساب',
       child: JourneyBox(
         color: AarastV3Color.mintSoft,
         radius: 24,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Row(
           children: [
             const JourneyIconTile(
@@ -153,7 +153,7 @@ class _WhatsAppCard extends StatelessWidget {
               size: 44,
               radius: 16,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +223,7 @@ class _QuestionState extends State<_Question> {
       onTap: () => setState(() => _open = !_open),
       semanticLabel: widget.question,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -234,7 +234,7 @@ class _QuestionState extends State<_Question> {
               size: 36,
               radius: 12,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +247,7 @@ class _QuestionState extends State<_Question> {
                     ),
                   ),
                   if (_open) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     Text(
                       widget.answer,
                       style: JourneyType.of(
@@ -259,9 +259,9 @@ class _QuestionState extends State<_Question> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AarastV3Space.x2),
               child: Icon(
                 _open ? LucideIcons.chevronDown : LucideIcons.chevronLeft,
                 size: 18,
@@ -292,20 +292,20 @@ class _PageChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastPressable(
       onTap: () => _open(context, Uri.https(AppRouter.inviteAppLinkHost, path)),
-      borderRadius: BorderRadius.circular(19),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       semanticLabel: label,
       child: Container(
         height: 40,
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(19),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           border: Border.all(color: AarastV3Color.line),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 18, color: AarastV3Color.ink),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Text(
               label,
               style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
@@ -352,7 +352,7 @@ class _DiagnosticReportActionState extends State<_DiagnosticReportAction> {
       return const SizedBox.shrink();
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.only(top: AarastV3Space.x4),
       child: Center(
         child: JourneyTextAction(
           key: const Key('diagnostic-report-send'),

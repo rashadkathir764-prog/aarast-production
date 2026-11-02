@@ -59,7 +59,7 @@ class _ProviderDaySheet extends StatelessWidget {
                 _bookingRow(context, dashboard, booking),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         if (info.closed)
           JourneyButton(

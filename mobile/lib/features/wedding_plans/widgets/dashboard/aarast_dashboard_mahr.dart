@@ -1,5 +1,8 @@
 part of 'aarast_dashboard_view.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _mahrShareWidth = 56.0;
+
 // The mahr on the home (a06, C1): b01's second step and b02's agreement
 // card. Every number is the server's (the money section's `mahr`); the card
 // leaves the home once the mahr is complete (y08: «نخفي بطاقة المهر من
@@ -76,10 +79,10 @@ class _MahrAgreementCard extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
           key: const ValueKey('aarast-dashboard-mahr-card'),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             children: [
               JourneyIconTile(
@@ -87,7 +90,7 @@ class _MahrAgreementCard extends StatelessWidget {
                 color: context.accent.primary,
                 soft: context.accent.primarySoft,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,9 +112,9 @@ class _MahrAgreementCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               SizedBox(
-                width: 56,
+                width: _mahrShareWidth,
                 child: JourneyBar(
                   value: ratio,
                   color: context.accent.primary,

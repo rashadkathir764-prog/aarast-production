@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/experience_v3/aarast_v3_foundations.dart';
 
 class QuoteStatusChip extends StatelessWidget {
   const QuoteStatusChip({
@@ -27,12 +28,12 @@ class QuoteStatusChip extends StatelessWidget {
     );
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 9 : 11,
-        vertical: compact ? 5 : 7,
+        horizontal: compact ? AarastV3Space.x2 : AarastV3Space.x3,
+        vertical: compact ? AarastV3Space.x1 : AarastV3Space.x2,
       ),
       decoration: BoxDecoration(
         color: presentation.color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         border: Border.all(color: presentation.color.withValues(alpha: 0.24)),
       ),
       child: Row(
@@ -43,7 +44,7 @@ class QuoteStatusChip extends StatelessWidget {
             size: compact ? 14 : 16,
             color: presentation.color,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           Text(
             presentation.label,
             style:

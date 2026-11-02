@@ -170,7 +170,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       backgroundColor: AarastV3Color.canvas,
       child: isLoading
           ? const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+                0,
+              ),
               child: JourneyListState(
                 phase: JourneyListPhase.loading,
                 section: JourneySection.home,
@@ -261,7 +266,7 @@ class _ManagementLoadError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       children: [
         AarastErrorState(
           title: 'ما قدرنا نفتح بيانات الخطة',

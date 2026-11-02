@@ -18,6 +18,9 @@ import '../widgets/provider_calendar_parts.dart';
 import '../widgets/provider_join_parts.dart' show providerMomentLabel;
 import '../widgets/provider_request_parts.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _bookingLabelWidth = 72.0;
+
 /// p22 «حجز محمد الحمدي»: a confirmed booking (or one whose day passed).
 /// The facts the request holds, the agreement (the accepted offer's title,
 /// amount and line, without «نسخة»: offers have no versions, B-07), the
@@ -52,7 +55,7 @@ class ProviderBookingScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'حجز $name',
@@ -66,7 +69,7 @@ class ProviderBookingScreen extends StatelessWidget {
             showHijri: showHijri,
           ),
           if (offer != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBox(
               key: const Key('provider-booking-agreement'),
               child: Column(
@@ -91,7 +94,7 @@ class ProviderBookingScreen extends StatelessWidget {
                     ),
                   ),
                   if (offer.message?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AarastV3Space.x1),
                     Text(
                       offer.message!.trim(),
                       style: JourneyType.of(JourneyType.body, height: 1.5),
@@ -101,7 +104,7 @@ class ProviderBookingScreen extends StatelessWidget {
                   // his money, read only (no payment system, D41).
                   if ((booking.money ?? quote.booking?.money)
                       case final money?) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     _MoneyRow(
                       key: const Key('provider-booking-paid'),
                       label: 'وصلك',
@@ -112,7 +115,7 @@ class ProviderBookingScreen extends StatelessWidget {
                       ].join(' · '),
                       color: AarastV3Color.mint,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AarastV3Space.x1),
                     _MoneyRow(
                       key: const Key('provider-booking-left'),
                       label: 'الباقي',
@@ -126,9 +129,9 @@ class ProviderBookingScreen extends StatelessWidget {
           // G25: the new day asked, «تم» or «ما صار», and the delivery.
           ProviderBookingAftercare(booking: booking, customerFirstName: first),
           if (!done) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBox(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Row(
                 children: [
                   const Icon(
@@ -136,7 +139,7 @@ class ProviderBookingScreen extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                     size: 20,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       'نذكّرك أنت و$first قبل بأسبوع وبيوم',
@@ -147,7 +150,7 @@ class ProviderBookingScreen extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           Row(
             children: [
               Expanded(
@@ -164,7 +167,7 @@ class ProviderBookingScreen extends StatelessWidget {
               ),
               // A day that passed cannot be cancelled on the server.
               if (!done) ...[
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: JourneyButton(
                     key: Key('provider-booking-cancel-${booking.id}'),
@@ -212,7 +215,7 @@ class _MoneyRow extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       SizedBox(
-        width: 72,
+        width: _bookingLabelWidth,
         child: Text(
           label,
           style: JourneyType.of(
@@ -283,7 +286,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'حجز $name',
@@ -313,7 +316,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
                   ),
                 ),
                 if (reason.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   Text(
                     'السبب: «$reason»',
                     style: JourneyType.of(JourneyType.body),
@@ -323,11 +326,11 @@ class ProviderBookingEndedScreen extends StatelessWidget {
             ),
           ),
           if (freed) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBox(
               key: const Key('provider-booking-day-freed'),
               color: AarastV3Color.mintSoft,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Row(
                 children: [
                   const Icon(
@@ -335,7 +338,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
                     color: AarastV3Color.mint,
                     size: 20,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       'رجع اليوم فاضي في تقويمك',

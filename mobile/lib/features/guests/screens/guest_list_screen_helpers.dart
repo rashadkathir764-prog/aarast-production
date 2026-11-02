@@ -102,7 +102,7 @@ class _GuestSummaryCard extends StatelessWidget {
     final total = summary.totalGuests;
     final words = GuestWords.of(context);
     return JourneyBox(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -111,7 +111,7 @@ class _GuestSummaryCard extends StatelessWidget {
             onTap: onTap,
             semanticLabel:
                 'كم بيحضر؟ ${summary.confirmed} ${words.confirmed} من $total',
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AarastV3Radius.control),
             child: GuestSummaryFigures(
               words: words,
               total: total,
@@ -120,7 +120,10 @@ class _GuestSummaryCard extends StatelessWidget {
               expectedSeats: summary.expectedSeatsCount,
             ),
           ),
-          if (action != null) ...[const SizedBox(height: 14), action!],
+          if (action != null) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            action!,
+          ],
         ],
       ),
     );
@@ -155,7 +158,7 @@ class _GroupRow extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             children: [
               JourneyIconTile(
@@ -164,7 +167,7 @@ class _GroupRow extends StatelessWidget {
                 soft: context.accent.primarySoft,
                 size: 42,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +179,7 @@ class _GroupRow extends StatelessWidget {
                         weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AarastV3Space.x1),
                     JourneyBar(
                       value: all == 0 ? 0 : yes / all,
                       color: context.accent.primary,
@@ -184,7 +187,7 @@ class _GroupRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -233,7 +236,7 @@ class _FirstGuests extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         color: context.accent.primarySoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       ),
       child: Icon(data, color: context.accent.primary),
     );
@@ -241,12 +244,12 @@ class _FirstGuests extends StatelessWidget {
       key: const ValueKey('guests-first'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           context.say(AarastV3Copy.firstGuestTitle, 'مين بتعزمين؟'),
           style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           '${GuestWords.of(context).noneAdded}.',
           style: JourneyType.of(
@@ -254,7 +257,7 @@ class _FirstGuests extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         if (onContacts case final contacts?) ...[
           JourneyChoiceCard(
             key: const ValueKey('guests-first-contacts'),
@@ -266,7 +269,7 @@ class _FirstGuests extends StatelessWidget {
             leading: icon(LucideIcons.contact),
             onTap: contacts,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         JourneyChoiceCard(
           key: const ValueKey('guests-first-paste'),
@@ -278,7 +281,7 @@ class _FirstGuests extends StatelessWidget {
           leading: icon(LucideIcons.clipboardList),
           onTap: onPaste,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyChoiceCard(
           key: const ValueKey('guests-first-one'),
           title: context.planWord('ضيف واحد', 'ضيفة وحدة'),

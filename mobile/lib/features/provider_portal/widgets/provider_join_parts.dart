@@ -4,6 +4,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _joinArtHeight = 120.0;
+
 /// A sheet of options (the joining's category and city, p09's category):
 /// the picked id, or null when closed. Each option is keyed
 /// `$keyPrefix-<id>`.
@@ -22,7 +25,7 @@ Future<String?> providerPickOption(
       children: [
         for (final (id, name) in options)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
             child: JourneyOption(
               key: ValueKey('$keyPrefix-$id'),
               title: name,
@@ -74,7 +77,7 @@ class ProviderIdentityRow extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AarastV3Color.primary,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
             child: logoUrl?.trim().isNotEmpty == true
                 ? Image.network(
@@ -87,7 +90,7 @@ class ProviderIdentityRow extends StatelessWidget {
                 : _letter(letter),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AarastV3Space.x3),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +114,7 @@ class ProviderIdentityRow extends StatelessWidget {
           ),
         ),
         if (trailing case final trailing?) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           trailing,
         ],
       ],
@@ -146,12 +149,12 @@ class ProviderFactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
@@ -185,14 +188,14 @@ class ProviderPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: ColoredBox(
         color: AarastV3Color.paper,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(
-              height: 120,
+              height: _joinArtHeight,
               child: ColoredBox(
                 color: AarastV3Color.textFaint,
                 child: Icon(
@@ -203,13 +206,13 @@ class ProviderPreviewCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProviderIdentityRow(name: name, kind: kind),
                   if (priceTag case final price?) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     JourneyTag(
                       key: const Key('provider-preview-price'),
                       label: price,
@@ -256,9 +259,9 @@ class ProviderStateHeading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         ProviderIdentityRow(name: name, kind: kind, trailing: trailing),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         Center(
           child: JourneyIconTile(
             icon: icon,
@@ -268,7 +271,7 @@ class ProviderStateHeading extends StatelessWidget {
             radius: 24,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Semantics(
           header: true,
           child: Text(
@@ -280,7 +283,7 @@ class ProviderStateHeading extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           message,
           textAlign: TextAlign.center,
@@ -290,7 +293,7 @@ class ProviderStateHeading extends StatelessWidget {
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
       ],
     );
   }

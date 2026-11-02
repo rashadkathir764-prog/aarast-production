@@ -44,7 +44,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
               onPressed: () => context.push(AppRouter.moneyPayers(planId)),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
         ],
         if (schedules.isEmpty)
           const JourneyListState(
@@ -57,7 +57,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
           JourneyBox(
             key: const ValueKey('money-due-total'),
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Row(
               children: [
                 Expanded(
@@ -99,11 +99,16 @@ class _MoneyPaymentsTab extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           const JourneySectionTitle('قادمة'),
           if (canSwipe)
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(6, 0, 6, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AarastV3Space.x1,
+                0,
+                AarastV3Space.x1,
+                AarastV3Space.x2,
+              ),
               child: Text(
                 context.say(
                   'سجّل الدفعة لما تدفعها، أو اسحبها',
@@ -184,17 +189,17 @@ class _DueRow extends StatelessWidget {
       child: AarastPressable(
         onTap: onOpen,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             children: [
               Container(
                 width: 52,
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
                 decoration: BoxDecoration(
                   color: overdue
                       ? AarastV3Color.dangerSoft
                       : AarastV3Color.brandAccentSoft,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.surface),
                 ),
                 child: Column(
                   children: [
@@ -222,7 +227,7 @@ class _DueRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +265,7 @@ class _DueRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -292,12 +297,12 @@ class _DueRow extends StatelessWidget {
       background: Container(
         color: AarastV3Color.mint,
         alignment: AlignmentDirectional.centerStart,
-        padding: const EdgeInsetsDirectional.only(start: 20),
+        padding: const EdgeInsetsDirectional.only(start: AarastV3Space.x5),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(LucideIcons.check, color: AarastV3Color.onPrimary),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Text(
               context.say('دفعتها', 'دفعتيها'),
               style: JourneyType.of(

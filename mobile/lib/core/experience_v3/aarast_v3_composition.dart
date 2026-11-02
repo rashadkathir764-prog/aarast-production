@@ -8,7 +8,12 @@ class AarastV3PageFrame extends StatelessWidget {
   const AarastV3PageFrame({
     required this.child,
     this.maxWidth = 620,
-    this.padding = const EdgeInsets.fromLTRB(20, 14, 20, 112),
+    this.padding = const EdgeInsets.fromLTRB(
+      AarastV3Space.x5,
+      AarastV3Space.x3,
+      AarastV3Space.x5,
+      AarastV3Density.pageBottom,
+    ),
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.resizeToAvoidBottomInset,
@@ -71,7 +76,7 @@ class AarastV3ContextBar extends StatelessWidget {
             children: [
               Text(section, style: AarastV3Type.label(context)),
               if (contextLabel != null) ...[
-                const SizedBox(height: 1),
+                const SizedBox(height: AarastV3Space.hair),
                 Text(
                   contextLabel!,
                   maxLines: 1,
@@ -484,10 +489,7 @@ class AarastV3ListRow extends StatelessWidget {
         minHeight: AarastV3Density.rowMinHeight,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AarastV3Space.x3,
-          vertical: AarastV3Space.x3,
-        ),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -826,10 +828,7 @@ class AarastV3SignalLine extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AarastV3Space.x3,
-            vertical: AarastV3Space.x3,
-          ),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             children: [
               Container(
@@ -854,7 +853,7 @@ class AarastV3SignalLine extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AarastV3Space.half),
                     Text(
                       message,
                       maxLines: 2,
@@ -1004,7 +1003,7 @@ class AarastV3PlanPath extends StatelessWidget {
           duration: reduceMotion ? Duration.zero : AarastV3Motion.deliberate,
           curve: AarastV3Motion.curve,
           builder: (context, progress, child) => SizedBox(
-            height: 12,
+            height: AarastV3Space.x3,
             width: double.infinity,
             child: CustomPaint(
               painter: _AarastV3PlanPathPainter(

@@ -52,21 +52,21 @@ class _NameDateStep extends StatelessWidget {
           onChanged: (_) => onNameChanged(),
         ),
         if (name.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: AarastV3Space.half),
                   child: Icon(
                     LucideIcons.sparkles,
                     color: context.accent.primary,
                     size: 16,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AarastV3Space.x1),
                 Expanded(
                   child: Text.rich(
                     TextSpan(
@@ -92,7 +92,7 @@ class _NameDateStep extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         const _FieldLabel('شهر العرس'),
         Builder(
           builder: (context) {
@@ -105,13 +105,16 @@ class _NameDateStep extends StatelessWidget {
               children: [
                 for (var start = 0; start < months.length; start += columns)
                   Padding(
-                    padding: EdgeInsets.only(top: start == 0 ? 0 : 8),
+                    padding: EdgeInsets.only(
+                      top: start == 0 ? 0 : AarastV3Space.x2,
+                    ),
                     child: IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           for (var i = start; i < start + columns; i++) ...[
-                            if (i > start) const SizedBox(width: 8),
+                            if (i > start)
+                              const SizedBox(width: AarastV3Space.x2),
                             Expanded(
                               child: i < months.length
                                   ? _MonthTile(
@@ -135,7 +138,7 @@ class _NameDateStep extends StatelessWidget {
           },
         ),
         if (date != null && !dateUnknown) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyPickerField(
             label: 'اليوم',
             value: formatArabicWeekdayDayMonth(date!),
@@ -145,7 +148,7 @@ class _NameDateStep extends StatelessWidget {
           ),
         ],
         if (note != null && !dateUnknown) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             text: note,
             icon: LucideIcons.moon,
@@ -153,7 +156,7 @@ class _NameDateStep extends StatelessWidget {
             soft: AarastV3Color.brandAccentSoft,
           ),
         ],
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         _RadioLine(
           label: 'ما حددنا الموعد بعد',
           selected: dateUnknown,
@@ -213,12 +216,15 @@ class _MonthTile extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+          padding: const EdgeInsets.symmetric(
+            vertical: AarastV3Space.x2,
+            horizontal: AarastV3Space.x1,
+          ),
           decoration: BoxDecoration(
             color: selected ? context.accent.primary : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
           child: Column(
@@ -315,7 +321,7 @@ class _PlaceBudgetStep extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         const _FieldLabel('ميزانية عرسك تقريبًا (بالريال اليمني)'),
         JourneyTextField(
           label: 'المبلغ',
@@ -334,15 +340,15 @@ class _PlaceBudgetStep extends StatelessWidget {
           helper: amount == null || amount <= 0 ? null : amountInWords(amount),
           onChanged: (_) => onBudgetChanged(),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         _RadioLine(
           label: context.say('أكمل بدون ميزانية', 'أكملي بدون ميزانية'),
           selected: budgetSkipped,
           onTap: onSkipBudget,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
           child: Text(
             // C1: the budget is the wedding only; the mahr is its own
             // question next (a06), outside the budget.
@@ -413,7 +419,7 @@ class _ReadyStep extends StatelessWidget {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           if (signedIn)
             JourneyButton(
@@ -432,7 +438,7 @@ class _ReadyStep extends StatelessWidget {
               expand: true,
               large: true,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             JourneyTextAction(
               label: 'بعدين، خلني أشوف أول',
               onPressed: saving ? null : onLookFirst,
@@ -442,7 +448,7 @@ class _ReadyStep extends StatelessWidget {
       ),
       children: [
         JourneySubHeader(title: '', onBack: onBack),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Center(
           child: Container(
             width: 110,
@@ -458,7 +464,7 @@ class _ReadyStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         Center(
           child: Semantics(
             header: true,
@@ -472,7 +478,7 @@ class _ReadyStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Center(
           child: Text(
             subtitle,
@@ -483,7 +489,7 @@ class _ReadyStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyList(
           dividers: false,
           children: [
@@ -524,9 +530,9 @@ class _ReadyStep extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
           child: Text(
             hasDate
                 ? context.say(
@@ -592,7 +598,7 @@ class _CitySheetState extends State<_CitySheet> {
               ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyTextField(
           label: context.say(
             'مدينتك مش في القائمة؟ اكتبها',
@@ -606,7 +612,7 @@ class _CitySheetState extends State<_CitySheet> {
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _useTyped(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           label: context.say('اختر هذي المدينة', 'اختاري هذي المدينة'),
           onPressed: _typed.text.trim().isEmpty ? null : _useTyped,
@@ -625,7 +631,12 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        0,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+      ),
       child: Text(
         text,
         style: JourneyType.of(
@@ -661,12 +672,15 @@ class _RadioLine extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
           // A 48 target (DESIGN_SYSTEM: touch ≥ 48).
           constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AarastV3Space.x1,
+              vertical: AarastV3Space.x2,
+            ),
             child: Row(
               children: [
                 Container(
@@ -682,7 +696,7 @@ class _RadioLine extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Text(
                     label,

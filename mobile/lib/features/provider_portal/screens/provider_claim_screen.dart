@@ -53,7 +53,7 @@ class ProviderClaimScreen extends StatelessWidget {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               children: [
                 JourneySubHeader(title: '', onBack: onBack),
                 const Center(
@@ -65,7 +65,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     radius: 24,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 Semantics(
                   header: true,
                   child: Text(
@@ -77,7 +77,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   'فريق اعّرست أضافه من الدليل. استلمه وكمّله.',
                   textAlign: TextAlign.center,
@@ -86,7 +86,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AarastV3Space.x4),
                 if (refusal != null) ...[
                   JourneyNote(
                     key: const Key('provider-claim-refusal'),
@@ -97,14 +97,14 @@ class ProviderClaimScreen extends StatelessWidget {
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 JourneyBox(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ProviderIdentityRow(name: businessName, kind: kind),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       const ProviderFactRow(
                         icon: LucideIcons.pencil,
                         text: 'بعد ما تستلمه تعدّل كل شيء فيه',
@@ -112,7 +112,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 JourneyButton(
                   key: const Key('provider-claim-support'),
                   label: 'مو أنا؟ تواصل مع الدعم',
@@ -122,7 +122,7 @@ class ProviderClaimScreen extends StatelessWidget {
                   onPressed: submitting ? null : onSupport,
                 ),
                 if (errorMessage case final message?) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   JourneyNote(
                     key: const Key('provider-claim-error'),
                     text: message,
@@ -135,7 +135,7 @@ class ProviderClaimScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-claim-confirm'),
               label: 'إيه، هذا ملفي',
@@ -188,7 +188,7 @@ class ProviderClaimPendingScreen extends StatelessWidget {
               onRefresh: onRefresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   ProviderStateHeading(
                     name: businessName,
@@ -226,7 +226,7 @@ class ProviderClaimPendingScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-claim-pending-support'),
               label: 'التواصل مع الدعم',

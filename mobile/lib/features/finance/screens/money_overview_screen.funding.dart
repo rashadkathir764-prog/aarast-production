@@ -72,7 +72,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                   background: AarastV3Color.paper,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: _FundingTotal(
                   label: 'موعود لك',
@@ -87,7 +87,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneySectionTitle(
           'المصادر',
           action: context.say('أضف مصدر', 'أضيفي مصدر'),
@@ -157,7 +157,7 @@ class _FundingTotal extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       color: background,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -267,7 +267,7 @@ class _FundingSourceRow extends StatelessWidget {
               weight: JourneyType.bold,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           fundingStateTag(source),
         ],
       ),

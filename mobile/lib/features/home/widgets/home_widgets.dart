@@ -8,6 +8,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_header_actions.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/home_dashboard_provider.dart';
+import '../../../core/experience_v3/aarast_v3_foundations.dart';
+
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _homeRowArtHeight = 50.0;
 
 class HomeLoadingSkeleton extends StatelessWidget {
   const HomeLoadingSkeleton({super.key});
@@ -17,9 +21,9 @@ class HomeLoadingSkeleton extends StatelessWidget {
     return Column(
       children: [
         _skeletonBox(height: 220),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         _skeletonBox(height: 132),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         _skeletonBox(height: 110),
       ],
     );
@@ -55,7 +59,7 @@ class HomeErrorCard extends StatelessWidget {
       child: Column(
         children: [
           const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -64,7 +68,7 @@ class HomeErrorCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(LucideIcons.refreshCw),
@@ -112,7 +116,7 @@ class HomeTopHeader extends StatelessWidget {
                     color: AppTheme.brand,
                     size: 18,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   Flexible(
                     child: Text(
                       'أهلاً $name',
@@ -129,7 +133,7 @@ class HomeTopHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
               Text(
                 'لننظم خطة زفافك معاً بهدوء وذكاء.',
                 maxLines: 2,
@@ -142,7 +146,7 @@ class HomeTopHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AarastV3Space.x3),
         AarastHeaderIconAction(
           key: const ValueKey('home-notifications-action'),
           icon: LucideIcons.bell,
@@ -150,7 +154,7 @@ class HomeTopHeader extends StatelessWidget {
           onTap: onNotifications,
           badgeCount: notificationCount,
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: AarastV3Space.x1),
         AarastHeaderAvatarAction(
           key: const ValueKey('home-profile-action'),
           userName: userName,
@@ -191,7 +195,12 @@ class HomeNoPlanWelcome extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x5,
+        AarastV3Space.x4,
+        AarastV3Space.x4,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -232,7 +241,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                       size: 22,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Text(
                       'حلم زفافك يبدأ هنا',
@@ -249,7 +258,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Text(
             'أنشئ خطة زفافك الأولى وسنرتب لك الميزانية والمهام والضيوف ومزوّدي الخدمات في مكان واحد.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -258,10 +267,10 @@ class HomeNoPlanWelcome extends StatelessWidget {
               height: 1.55,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           ...features.map(
             (feature) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -270,12 +279,14 @@ class HomeNoPlanWelcome extends StatelessWidget {
                     height: 30,
                     decoration: BoxDecoration(
                       color: AppTheme.canvas,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
                       border: Border.all(color: AppTheme.border),
                     ),
                     child: Icon(feature.icon, color: AppTheme.brand, size: 16),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,7 +299,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AarastV3Space.half),
                         Text(
                           feature.subtitle,
                           style: Theme.of(context).textTheme.bodySmall
@@ -305,9 +316,9 @@ class HomeNoPlanWelcome extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AarastV3Space.x4),
           SizedBox(
-            height: 50,
+            height: _homeRowArtHeight,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.brand,
@@ -328,7 +339,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           TextButton(
             onPressed: () => context.push(AppRouter.weddingPlans),
             style: TextButton.styleFrom(
@@ -370,7 +381,12 @@ class HomeSharedPlansCard extends StatelessWidget {
     final firstPlan = hasSharedPlans ? provider.sharedPlans.first : null;
 
     return AarastCard(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x4,
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -380,7 +396,7 @@ class HomeSharedPlansCard extends StatelessWidget {
             actionLabel: 'عرض الكل',
             onAction: () => context.push(AppRouter.sharedWeddingPlans),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (!hasSharedPlans)
             const AarastEmptyState(
               title: 'لا توجد خطط مشتركة بعد',
@@ -416,7 +432,7 @@ class _SharedPlanRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         decoration: BoxDecoration(
           color: AppTheme.surfaceRaised,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -429,11 +445,11 @@ class _SharedPlanRow extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: AppTheme.brandMuted,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AarastV3Radius.surface),
               ),
               child: const Icon(LucideIcons.users, color: AppTheme.brand),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

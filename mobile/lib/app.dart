@@ -272,7 +272,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
         body: SafeArea(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AarastV3Space.x6),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -283,7 +283,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                     size: 64,
                     radius: 20,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   Text(
                     'ما قدرنا نطلّعك من هذا الجوال',
                     textAlign: TextAlign.center,
@@ -292,7 +292,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                       weight: JourneyType.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   Text(
                     failure.$2 ??
                         'ما نعرض حساب قديم ولا شاشة الدخول قبل ما ننظّف بيانات هذا الجوال.',
@@ -303,7 +303,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                       color: AarastV3Color.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AarastV3Space.x5),
                   JourneyButton(
                     key: const Key('session-termination-retry'),
                     label: 'حاول مرة ثانية',
@@ -362,7 +362,7 @@ class _SessionWait extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AarastV3Space.x6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -370,7 +370,7 @@ class _SessionWait extends StatelessWidget {
                   dimension: 28,
                   color: AarastV3Color.primary,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AarastV3Space.x5),
                 Text(
                   text,
                   textAlign: TextAlign.center,
@@ -432,22 +432,25 @@ class AarastBuildErrorScreen extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AarastV3Space.x6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(LucideIcons.alertTriangle, size: 52),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 const Text(
                   'تعذر بناء الصفحة',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: JourneyType.pageTitle,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 const Text(
                   'حدث خطأ غير متوقع في الواجهة. يمكنك العودة إلى اختيار المسار.',
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AarastV3Space.x5),
                 OutlinedButton(
                   key: const Key('app-build-error-home-button'),
                   onPressed: () {

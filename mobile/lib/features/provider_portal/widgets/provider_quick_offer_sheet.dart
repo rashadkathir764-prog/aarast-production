@@ -89,9 +89,9 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
             selected: package.id == _package.id,
             onTap: _busy ? null : () => _pick(package),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         JourneyTextField(
           key: const Key('provider-quick-offer-message'),
           label: 'رسالتك مع العرض',
@@ -100,7 +100,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
           maxLines: 5,
           errorText: _error,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-quick-offer-send'),
           label: 'أرسل',
@@ -110,7 +110,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
           loading: _busy,
           onPressed: _send,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           'العرض صالح $providerQuickOfferDays أيام، وتقدر تعدّله من الطلب.',
           style: JourneyType.of(

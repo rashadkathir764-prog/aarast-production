@@ -206,7 +206,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
             large: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
             label: 'لا، خلّها',
             expand: true,
@@ -234,15 +234,15 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: AarastV3Space.x8),
           const Center(child: JourneyWordmark(size: 34)),
-          const SizedBox(height: 32),
+          const SizedBox(height: AarastV3Space.x8),
           if (_phase == _Phase.checking || _phase == _Phase.saving) ...[
             const Center(child: AarastInlineSpinner(dimension: 32)),
             if (_phase == _Phase.saving) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               Text(
                 'نحفظ $saving في حسابك',
                 textAlign: TextAlign.center,
@@ -267,7 +267,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
               style: JourneyType.of(
@@ -275,14 +275,14 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                 color: AarastV3Color.textMuted,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AarastV3Space.x4),
             JourneyButton(
               label: 'جرّب مرة ثانية',
               expand: true,
               large: true,
               onPressed: _busy ? null : _retry,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Center(
               child: JourneyTextAction(
                 label: 'امسحها من الجوال',
@@ -391,13 +391,13 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
               Expanded(
                 child: _CountCard(label: 'على الجوال', value: widget.local),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: _CountCard(label: 'في حسابك', value: widget.account),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyOption(
             key: const ValueKey('local-plan-second'),
             title: 'خلّها خطة ثانية',
@@ -405,7 +405,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
             selected: _choice == _Choice.secondPlan,
             onTap: () => _pick(_Choice.secondPlan),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyOption(
             key: const ValueKey('local-plan-drop'),
             title: 'تجاهلها',
@@ -414,7 +414,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
             onTap: () => _pick(_Choice.drop),
           ),
           if (_error case final error?) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyNote(
               text: error,
               icon: LucideIcons.alertCircle,
@@ -422,7 +422,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
               soft: AarastV3Color.dangerSoft,
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const ValueKey('local-plan-continue'),
             label: 'متابعة',
@@ -446,7 +446,7 @@ class _CountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

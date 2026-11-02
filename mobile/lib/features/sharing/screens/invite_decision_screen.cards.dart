@@ -15,7 +15,7 @@ class _InviteSteps extends StatelessWidget {
       label: 'الخطوة ${current + 1} من 3: ${_labels[current]}',
       excludeSemantics: true,
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AarastV3Space.x1),
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(AarastV3Radius.pill),
@@ -27,7 +27,9 @@ class _InviteSteps extends StatelessWidget {
               Expanded(
                 child: Container(
                   key: ValueKey('invite-step-$index'),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AarastV3Space.x2,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: index == current
@@ -84,7 +86,7 @@ class _InviterCard extends StatelessWidget {
     ].join(' · ');
     return JourneyBox(
       key: const ValueKey('invite-inviter-card'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           JourneyAvatar(
@@ -92,7 +94,7 @@ class _InviterCard extends StatelessWidget {
             color: AarastV3Color.primary,
             size: 40,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +156,10 @@ class _InviteRights extends StatelessWidget {
     ];
     return JourneyBox(
       key: const ValueKey('invite-rights'),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x4,
+        vertical: AarastV3Space.x2,
+      ),
       child: Column(
         children: [
           for (final (icon, label, on) in rows)
@@ -163,7 +168,7 @@ class _InviteRights extends StatelessWidget {
               excludeSemantics: true,
               child: Padding(
                 key: ValueKey('invite-right-$label'),
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
                 child: Row(
                   children: [
                     Icon(
@@ -173,7 +178,7 @@ class _InviteRights extends StatelessWidget {
                           ? AarastV3Color.primary
                           : AarastV3Color.textFaint,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(
                         label,

@@ -83,10 +83,10 @@ void main() {
         ),
       ),
     );
-    // 4 + 9 + one 13.5 line (× 1.35) + 9 + 4.
+    // 4 + 8 + one 13 line (× 1.35) + 8 + 4, on the grid (D74).
     expect(
       tester.getSize(find.byType(JourneyTabSwitch)).height,
-      closeTo(4 + 9 + 13.5 * 1.35 + 9 + 4, 0.5),
+      closeTo(4 + 8 + 13 * 1.35 + 8 + 4, 0.5),
     );
     final name = tester.widget<Text>(find.text('الكل'));
     expect(name.style?.fontSize, 13);
@@ -119,7 +119,7 @@ void main() {
     );
     expect(
       tester.getSize(outlined.first).height,
-      closeTo(1 + 9 + 13.5 * 1.35 + 9 + 1, 0.5),
+      closeTo(1 + 8 + 13.5 * 1.35 + 8 + 1, 0.5),
     );
   });
 
@@ -193,13 +193,13 @@ void main() {
       ),
       findsNothing,
     );
-    // 10 above, 12 under the value, as drawn.
+    // The one field padding (AarastV3Field, D74).
     final box = find
         .ancestor(of: find.text('اسمك'), matching: find.byType(Container))
         .first;
     expect(
       tester.widget<Container>(box).padding,
-      const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      AarastV3Field.padding,
     );
   });
 

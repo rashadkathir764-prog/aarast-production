@@ -64,7 +64,7 @@ extension _ParticipantPlan on _ProviderMarketplaceScreenState {
     return [
       const JourneySectionTitle('في الخطة'),
       PlanReadBookingsCard(bookings: bookings),
-      const SizedBox(height: 14),
+      const SizedBox(height: AarastV3Space.x3),
     ];
   }
 }

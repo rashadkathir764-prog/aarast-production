@@ -132,10 +132,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ? 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'
                   : 'حساب واحد لخطتك ولكل خطة تشارك فيها',
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
             if (keptPlan != null) ...[
               _KeptPlanStrip(plan: keptPlan),
-              const SizedBox(height: 14),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             AuthPanel(
               child: Column(
@@ -157,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                   ],
                   AuthTextField(
                     controller: _phoneController,
@@ -179,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AuthTextField(
                     controller: _passwordController,
                     label: 'كلمة المرور',
@@ -206,9 +206,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AarastV3Space.x1,
+                    ),
                     child: Text(
                       '6 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.',
                       style: JourneyType.of(
@@ -218,7 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   if (auth.errorMessage != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     AuthInlineError(message: auth.errorMessage!),
                   ],
                 ],

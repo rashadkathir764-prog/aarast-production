@@ -60,13 +60,18 @@ class AarastPlanNavigationBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x4,
+            0,
+            AarastV3Space.x4,
+            AarastV3Space.x2,
+          ),
           child: Container(
             height: navigationHeight,
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(AarastV3Space.x1),
             decoration: BoxDecoration(
               color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AarastV3Radius.card),
               border: Border.all(color: AarastV3Color.line),
             ),
             child: Row(
@@ -131,7 +136,7 @@ class _PlanNavigationItem extends StatelessWidget {
             child: Container(
               constraints: const BoxConstraints(minWidth: 16),
               height: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
               alignment: Alignment.center,
               decoration: const BoxDecoration(
                 color: AarastV3Color.danger,
@@ -171,30 +176,34 @@ class _PlanNavigationItem extends StatelessWidget {
           ? '${item.label}، إشعارات غير مقروءة: ${item.badge}'
           : item.label,
       selected: active,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       child: AnimatedContainer(
         key: ValueKey('${item.label}-$active'),
         duration: AppTheme.motionFast,
         curve: AppTheme.motionCurve,
         // Fills the bar, which grows with the person's text size.
         height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.all(AarastV3Space.x1),
         decoration: BoxDecoration(
           color: active ? color : null,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         ),
         child: active
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   icon,
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AarastV3Space.x1),
                   Flexible(child: label),
                 ],
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [icon, const SizedBox(height: 2), label],
+                children: [
+                  icon,
+                  const SizedBox(height: AarastV3Space.half),
+                  label,
+                ],
               ),
       ),
     );

@@ -123,7 +123,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: owner ? 'وش سوّى المشاركين' : 'اللي سجّلته',
@@ -144,7 +144,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
                       selected: _section == section,
                       onTap: () => _filter(section),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                   ],
                 ],
               ),
@@ -159,7 +159,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
   List<Widget> _body(ContributionHistoryProvider history, bool owner) {
     if (_accessFailed) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyListState(
           phase: JourneyListPhase.error,
           section: JourneySection.home,
@@ -170,7 +170,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
     final rows = history.activities;
     if (_isOwner == null || (history.isLoading && rows.isEmpty)) {
       return const [
-        SizedBox(height: 12),
+        SizedBox(height: AarastV3Space.x3),
         JourneyListState(
           phase: JourneyListPhase.loading,
           section: JourneySection.home,
@@ -179,7 +179,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
     }
     if (history.errorMessage != null && rows.isEmpty) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyListState(
           phase: JourneyListPhase.error,
           section: JourneySection.home,
@@ -189,7 +189,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
     }
     if (rows.isEmpty) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyListState(
           phase: JourneyListPhase.empty,
           section: JourneySection.home,
@@ -231,7 +231,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
         ),
       ],
       if (history.loadMoreError != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           icon: LucideIcons.alertCircle,
           color: AarastV3Color.danger,
@@ -240,7 +240,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
         ),
       ],
       if (showMore) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton.quiet(
           key: const Key('contribution-history-load-more'),
           label: history.requiresReload ? 'حدّث من البداية' : 'اللي قبلها',
@@ -253,7 +253,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
         ),
       ],
       if (coverage != null) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'السجل يبدأ من ${formatArabicCompactDate(coverage.toLocal())}',
           textAlign: TextAlign.center,
@@ -323,7 +323,7 @@ class _ActivityRow extends StatelessWidget {
       label: '$who $what، ${_clock(at)}',
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -332,7 +332,7 @@ class _ActivityRow extends StatelessWidget {
               color: color,
               size: 36,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,7 +364,7 @@ class _ActivityRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Icon(_icon(event), size: 17, color: AarastV3Color.textFaint),
           ],
         ),

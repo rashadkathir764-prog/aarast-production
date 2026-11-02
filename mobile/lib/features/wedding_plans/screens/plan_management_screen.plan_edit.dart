@@ -115,7 +115,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
             expand: true,
             onPressed: () => Navigator.pop(sheetContext, true),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton(
             label: 'رجوع',
             background: AarastV3Color.paper,

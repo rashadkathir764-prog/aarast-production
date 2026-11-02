@@ -158,7 +158,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: widget.handOver
                   ? context.say('لمين تحوّلها؟', 'لمين تحوّلينها؟')
@@ -170,7 +175,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 JourneyTextField(
                   key: const ValueKey('task-title'),
@@ -186,7 +191,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   textInputAction: TextInputAction.done,
                   onChanged: (_) => setState(() => _titleError = null),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 _label('متى؟'),
                 Wrap(
                   spacing: 8,
@@ -214,7 +219,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 ),
                 if (_when == _When.week || _when == _When.month)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: AarastV3Space.x1),
                     child: Text(
                       'قبل ${formatArabicWeekdayDayMonth(_dueDate!)}',
                       style: JourneyType.of(
@@ -241,7 +246,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   onInvite: _inviteResponsibleAsParticipant,
                 ),
                 ..._privacySection(provider),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
@@ -268,7 +273,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     maxLength: 1000,
                   ),
                 if (_saveError != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyNote(
                     key: const ValueKey('task-save-error'),
                     text: _saveError!,
@@ -278,14 +283,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   ),
                 ],
                 if (_draft != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastV3DraftStatusLine(status: _draft!.status),
                 ],
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('task-save'),
               label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
@@ -302,7 +307,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
     child: Text(
       text,
       style: JourneyType.of(

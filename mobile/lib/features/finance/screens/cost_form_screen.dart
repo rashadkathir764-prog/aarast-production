@@ -315,7 +315,12 @@ class _CostFormScreenState extends State<CostFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: _editing ? 'تعديل الاتفاق' : 'اتفاق جديد',
               subtitle: _editing
@@ -330,7 +335,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 if (widget.intent?.cameFromAcceptedQuote == true) ...[
                   JourneyNote(
@@ -339,7 +344,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                       'عبّينا هذي من العرض اللي وافقتِ عليه. ما ينحفظ شي لين تضغطين حفظ الاتفاق.',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 if (_quoteCurrencyWarning != null) ...[
                   JourneyNote(
@@ -348,14 +353,14 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 _CategoryChips(
                   categories: provider.categories,
@@ -367,7 +372,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   }),
                   onCreate: provider.canManageBudget ? _createCategory : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 _PartySection(
                   kind: _partyKind,
                   onKind: _setPartyKind,
@@ -377,7 +382,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   phoneController: _partyPhoneController,
                   error: _partyError,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 if (quoteLocked)
                   _QuoteTotal(amount: _total, currency: currency)
                 else
@@ -403,7 +408,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     left: _leftInCategory(category!, widget.cost, _total),
                     currency: currency,
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 JourneyTextField(
                   key: const ValueKey('cost-title'),
                   label: context.say(
@@ -425,7 +430,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   maxLength: 200,
                 ),
                 if (!_editing) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   _PlanSection(
                     plan: _plan,
                     onPlan: (plan) => _mutateDraft(() {
@@ -451,7 +456,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     currency: currency,
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
@@ -485,14 +490,14 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     noteController: _noteController,
                   ),
                 if (_draft != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastV3DraftStatusLine(status: _draft!.status),
                 ],
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('cost-save'),
               label: 'حفظ الاتفاق',

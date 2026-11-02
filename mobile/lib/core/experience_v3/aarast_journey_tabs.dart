@@ -30,10 +30,10 @@ class JourneyTabSwitch extends StatelessWidget {
     // The prototype's topTabs: 4 around, 9 above and below a 13.5 bold
     // name, 16 outside and 12 inside; about 44 tall.
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AarastV3Space.x1),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       ),
       child: Row(
         children: [
@@ -48,18 +48,20 @@ class JourneyTabSwitch extends StatelessWidget {
                 child: AarastPressable(
                   onTap: () => onSelected(index),
                   selected: index == selected,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
                   child: AnimatedContainer(
                     key: ValueKey('journey-tab-$index'),
                     duration: const Duration(milliseconds: 180),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 9,
+                      horizontal: AarastV3Space.x1,
+                      vertical: AarastV3Space.x2,
                     ),
                     decoration: BoxDecoration(
                       color: index == selected ? color : null,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
                     ),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,

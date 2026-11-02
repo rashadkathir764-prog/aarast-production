@@ -7,6 +7,9 @@ import 'aarast_journey.dart';
 import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _momentArtHeight = 200.0;
+
 /// A full-screen moment between stages of the journey (prototype
 /// `v3/touches.dart` `_moment`): the qamariya arcs and confetti on top, a
 /// short eyebrow, a big title, a line under it, the facts in a glass box
@@ -51,12 +54,14 @@ class JourneyMoment extends StatelessWidget {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x4,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        height: 200,
+                        height: _momentArtHeight,
                         child: Stack(
                           children: [
                             if (picture case final picture?)
@@ -94,7 +99,7 @@ class JourneyMoment extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AarastV3Space.x4),
                       Semantics(
                         header: true,
                         child: Text(
@@ -107,7 +112,7 @@ class JourneyMoment extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AarastV3Space.x2),
                       Text(
                         subtitle,
                         textAlign: TextAlign.center,
@@ -116,15 +121,20 @@ class JourneyMoment extends StatelessWidget {
                           color: context.accent.onPrimaryMuted,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AarastV3Space.x6),
                       body,
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AarastV3Space.x4),
                     ],
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x4,
+                  AarastV3Space.x2,
+                  AarastV3Space.x4,
+                  AarastV3Space.x4,
+                ),
                 child: JourneyButton(
                   key: const ValueKey('journey-moment-action'),
                   label: action,
@@ -154,20 +164,23 @@ class JourneyGlassRows extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AarastV3Color.paper.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(color: AarastV3Color.paper.withValues(alpha: 0.18)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AarastV3Space.x4,
+          vertical: AarastV3Space.x2,
+        ),
         child: Column(
           children: [
             for (final (icon, name, value) in rows)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
                 child: Row(
                   children: [
                     Icon(icon, size: 19, color: AarastV3Color.onPrimary),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(
                         name,
@@ -178,7 +191,7 @@ class JourneyGlassRows extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Text(
                       value,
                       style: JourneyType.of(
@@ -291,7 +304,7 @@ class JourneyConfettiPainter extends CustomPainter {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             const Rect.fromLTWH(-5, -2, 10, 4),
-            const Radius.circular(2),
+            const Radius.circular(AarastV3Radius.xs),
           ),
           paint,
         );

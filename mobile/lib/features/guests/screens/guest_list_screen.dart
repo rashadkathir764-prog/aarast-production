@@ -159,9 +159,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
+            AarastV3Space.x4,
+            AarastV3Space.x3,
+            AarastV3Space.x4,
             AarastV3Density.pageBottomWithQuickAction,
           ),
           children: [
@@ -193,7 +193,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             if (offline) ...[
               JourneyNote(
                 key: const ValueKey('guests-offline'),
@@ -208,17 +208,17 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 color: AarastV3Color.textMuted,
                 soft: AarastV3Color.paper,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ] else if (provider.loadErrorMessage != null &&
                 guests.isNotEmpty) ...[
               JourneyListNotice(offline: false, onRetry: _load),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             if (_searching) ...[
               GuestSearchField(
                 onChanged: (value) => setState(() => _query = value),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             body,
           ],
@@ -283,7 +283,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
               : null,
         ),
         if (!_isLocalPlan) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: JourneyTextAction(
@@ -296,7 +296,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Wrap(
           spacing: 4,
           children: [
@@ -317,7 +317,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneySectionTitle(
           'حسب العائلة',
           action: _isLocalPlan ? null : 'المجموعات',
@@ -402,7 +402,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 10),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x1,
+            AarastV3Space.x1,
+            AarastV3Space.x1,
+            AarastV3Space.x2,
+          ),
           child: Text(
             '$title · ${words.count(inGroup.length)}',
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
@@ -421,12 +426,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   selectedColor: context.accent.primary,
                   onTap: () => setState(() => _reply = filter),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
               ],
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         _guestBox(provider, visible, duplicates, empty: 'ما فيه أحد هنا'),
       ],
     );
@@ -440,7 +445,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
   }) {
     if (guests.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x6),
         child: Text(
           empty,
           textAlign: TextAlign.center,

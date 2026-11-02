@@ -101,17 +101,34 @@ Numbers, dates and phone values keep their direction inside RTL text.
 
 ### Spacing And Shape
 
-- Spacing scale `AarastV3Space`: 4, 8, 12, 16, 20, 24, 32, 40, 48.
-- The screen edge is 20 (`AarastV3Density.pageHorizontal`).
-- Radius roles: control 12, surface 14, card 18, sheet 24 (the sheet shell keeps its 28 top), feature 24, pill 999 (D74).
-- Type scale `JourneyType` (D74, for 360-400 wide phones): home count 52, count 34, question 25, tab title 24, card title 16.5, main action 16, running text 14.5, secondary 12.5. Every action and tab stays a 48 target.
-- Touch targets are at least 48.
-- Main actions are at least 52 tall.
+One system, one source (`aarast_v3_foundations.dart`, D74). The legacy
+`AarastDesignTokens` names are aliases of it and add no values.
+
+- Spacing grid `AarastV3Space`: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, plus
+  `hair` 1 and `half` 2 for hairlines and a title's tight line. Nothing sits
+  off the grid.
+- Screen gutter 16 (`AarastV3Density.pageHorizontal`). A scrolling screen's
+  body is `AarastV3Density.pageInsets` (16 · 8 · 16 · 32); the action pinned
+  under a screen or form is `actionInsets` (16 · 8 · 16 · 12); a chip is
+  `chipInsets` (12 · 8), a status tag `tagInsets` (12 · 4); a card is
+  `EdgeInsets.all(AarastV3Space.x4)`.
+- Radius roles `AarastV3Radius`: xs 6, control 12, surface 14, card 18,
+  sheet 24 (the sheet shell keeps its 28 top), feature 24, pill 999.
+- Icons `AarastV3Icon`: 16 inline, 20 in a row or field, 24 lead.
+- Forms: one field (`AarastV3Field`). The kit's `JourneyTextField` /
+  `JourneyPickerField` and every Material field of the theme draw the same
+  white box, hairline that turns the plan's colour at 2 on focus, 14 corner,
+  same padding. Fields in a form are 12 apart.
+- Type scale `JourneyType` (for 360-400 wide phones): home count 52, count
+  34, question 25, tab title 24, card title 16.5, main action 16, running
+  text 14.5, secondary 12.5.
+- Touch targets are at least 48, the bottom bar's tabs included (bar 58).
 - Every sheet is `showJourneySheet` with a `JourneySheetBody`.
 
-New code takes spacing and radius from these constants. A ratchet test stops
-new hand-written numbers in `lib/features`; the existing ones are cleaned when
-their screen is touched (`test/core/widgets/aarast_design_ratchet_test.dart`).
+No file in `lib` writes a spacing, radius or type-size number by hand: it
+takes a token, or names a fixed layout dimension (a cover's height, a label
+column's width) as a constant. The count is zero and a test keeps it zero
+(`test/core/widgets/aarast_design_ratchet_test.dart`).
 
 ### Motion
 

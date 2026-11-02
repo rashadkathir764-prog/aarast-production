@@ -53,7 +53,7 @@ class JourneyListState extends StatelessWidget {
             key: const ValueKey('journey-list-loading'),
             children: [
               for (var index = 0; index < 4; index++) ...[
-                if (index > 0) const SizedBox(height: 10),
+                if (index > 0) const SizedBox(height: AarastV3Space.x2),
                 const _LoadingRow(),
               ],
             ],
@@ -93,7 +93,10 @@ class JourneyListState extends StatelessWidget {
 
     return Padding(
       key: ValueKey('journey-list-${phase.name}'),
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      padding: const EdgeInsets.symmetric(
+        vertical: AarastV3Space.x8,
+        horizontal: AarastV3Space.x4,
+      ),
       child: Column(
         children: [
           Container(
@@ -101,11 +104,11 @@ class JourneyListState extends StatelessWidget {
             height: 64,
             decoration: BoxDecoration(
               color: soft,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AarastV3Radius.card),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           Text(
             title,
             textAlign: TextAlign.center,
@@ -115,7 +118,7 @@ class JourneyListState extends StatelessWidget {
             ),
           ),
           if (phase == JourneyListPhase.empty && emptyMessage != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               emptyMessage!,
               textAlign: TextAlign.center,
@@ -126,7 +129,7 @@ class JourneyListState extends StatelessWidget {
             ),
           ],
           if (action != null && onAction != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               label: action,
               background: soft,
@@ -156,10 +159,15 @@ class JourneyListNotice extends StatelessWidget {
       liveRegion: true,
       child: Container(
         key: ValueKey('journey-list-notice-${offline ? 'offline' : 'error'}'),
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AarastV3Space.x3,
+          AarastV3Space.x2,
+          AarastV3Space.x1,
+          AarastV3Space.x2,
+        ),
         decoration: BoxDecoration(
           color: soft,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         ),
         child: Wrap(
           // The retry drops under the line when large text needs the room.
@@ -174,7 +182,7 @@ class JourneyListNotice extends StatelessWidget {
                   size: 18,
                   color: color,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Flexible(
                   child: Text(
                     offline
@@ -214,7 +222,7 @@ class _LoadingRow extends StatelessWidget {
       height: 56,
       decoration: BoxDecoration(
         color: AarastV3Color.line,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       ),
     );
   }

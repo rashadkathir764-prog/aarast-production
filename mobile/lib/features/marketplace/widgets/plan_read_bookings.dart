@@ -17,7 +17,7 @@ class PlanReadBookingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('plan-read-bookings'),
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Column(
         children: [
           for (final (index, booking) in bookings.indexed) ...[
@@ -56,20 +56,22 @@ class _BookingLine extends StatelessWidget {
       label: '$name، $line، ${booking.confirmed ? 'محجوز' : 'ينتظر'}',
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyIconTile(
               icon: providerServiceIcon(
-                [booking.categoryName, booking.serviceTitle, service]
-                    .whereType<String>()
-                    .join(' '),
+                [
+                  booking.categoryName,
+                  booking.serviceTitle,
+                  service,
+                ].whereType<String>().join(' '),
               ),
               color: context.accent.primary,
               soft: context.accent.primarySoft,
               size: 44,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +97,7 @@ class _BookingLine extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             booking.confirmed
                 ? const JourneyTag(
                     label: 'محجوز',

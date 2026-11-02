@@ -261,10 +261,7 @@ class _GatePage extends StatelessWidget {
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [child],
-      ),
+      child: ListView(padding: AarastV3Density.pageInsets, children: [child]),
     );
   }
 }

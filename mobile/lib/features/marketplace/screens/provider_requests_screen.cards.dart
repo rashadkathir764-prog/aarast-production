@@ -1,5 +1,11 @@
 part of 'provider_requests_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _offersRowHeight = 420.0;
+
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _offerCardWidth = 240.0;
+
 /// Offers side by side: two share the width, more scroll sideways.
 class _OffersRow extends StatelessWidget {
   const _OffersRow({
@@ -37,20 +43,20 @@ class _OffersRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(child: card(offers[0])),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(child: card(offers[1])),
           ],
         ),
       );
     }
     return SizedBox(
-      height: 420,
+      height: _offersRowHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: offers.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: AarastV3Space.x2),
         itemBuilder: (context, index) =>
-            SizedBox(width: 240, child: card(offers[index])),
+            SizedBox(width: _offerCardWidth, child: card(offers[index])),
       ),
     );
   }
@@ -91,7 +97,7 @@ class _OfferCard extends StatelessWidget {
     final ends = until == null ? null : offerEndsLabel(until, DateTime.now());
     final provider = quote.provider;
     return JourneyBox(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -102,7 +108,7 @@ class _OfferCard extends StatelessWidget {
               weight: JourneyType.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             amount ?? 'بدون مبلغ',
             style: JourneyType.of(JourneyType.figure, weight: JourneyType.bold),
@@ -133,10 +139,10 @@ class _OfferCard extends StatelessWidget {
                 color: AarastV3Color.amber,
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           for (final line in details)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
               child: Text(
                 line,
                 maxLines: 4,
@@ -149,7 +155,7 @@ class _OfferCard extends StatelessWidget {
             for (final line in offer.lines)
               Padding(
                 key: ValueKey('requests-offer-line-${quote.id}-${line.label}'),
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -164,7 +170,7 @@ class _OfferCard extends StatelessWidget {
                           ? AarastV3Color.danger
                           : AarastV3Color.mint,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AarastV3Space.x1),
                     Expanded(
                       child: Text(
                         [
@@ -182,7 +188,7 @@ class _OfferCard extends StatelessWidget {
                   ],
                 ),
               ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
           ],
           if (offer.deliveryDays case final days?)
             Text(
@@ -227,7 +233,7 @@ class _OfferCard extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (onChoose != null)
             JourneyButton(
               key: ValueKey('requests-choose-${quote.id}'),
@@ -237,7 +243,7 @@ class _OfferCard extends StatelessWidget {
               loading: busy,
               onPressed: busy ? null : onChoose,
             ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           Wrap(
             spacing: 4,
             children: [
@@ -352,7 +358,7 @@ class _ChosenCard extends StatelessWidget {
     final amount = offerAmountLabel(quote.acceptedOffer);
     return JourneyBox(
       key: ValueKey('requests-chosen-${quote.id}'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -395,7 +401,7 @@ class _ChosenCard extends StatelessWidget {
                 color: context.accent.primary,
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           if (completed &&
               booking!.canConfirmDelivery &&
               onConfirmDelivery != null)
@@ -509,7 +515,7 @@ class _ExpiredCard extends StatelessWidget {
                     size: 20,
                     color: AarastV3Color.textMuted,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       until == null
@@ -525,7 +531,7 @@ class _ExpiredCard extends StatelessWidget {
                 ],
               ),
               if (amount != null || offer?.title != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 Text(
                   [?amount, ?offer?.title].join(' · '),
                   style: JourneyType.of(
@@ -538,7 +544,7 @@ class _ExpiredCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: ValueKey('requests-new-${quote.id}'),
           label: context.say('اطلب عرض جديد', 'اطلبي عرض جديد'),
@@ -547,7 +553,7 @@ class _ExpiredCard extends StatelessWidget {
           expand: true,
           onPressed: onAskAgain,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           'السعر ممكن يتغير في العرض الجديد.',
           style: JourneyType.of(
@@ -570,11 +576,11 @@ class _CancelBookingSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final confirmed = quote.booking?.isConfirmed == true;
     Widget effect(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
           Icon(icon, size: 18, color: AarastV3Color.textMuted),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
@@ -589,7 +595,7 @@ class _CancelBookingSheet extends StatelessWidget {
       ),
       children: [
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: AarastV3Density.tagInsets,
           child: Column(
             children: [
               effect(LucideIcons.bellRing, 'يوصلهم إن الحجز انلغى'),
@@ -604,7 +610,7 @@ class _CancelBookingSheet extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('requests-cancel-booking-confirm'),
           label: confirmed

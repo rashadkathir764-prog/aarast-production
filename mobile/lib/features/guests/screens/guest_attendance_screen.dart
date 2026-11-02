@@ -66,7 +66,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
         builder: (context, snapshot) {
           final summary = snapshot.data;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            padding: AarastV3Density.pageInsets,
             children: [
               JourneySubHeader(
                 title: 'كم بيحضر؟',
@@ -157,13 +157,13 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                 weight: JourneyType.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBar(
               value: summary.confirmed / total,
               color: context.accent.primary,
               height: 10,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               waiting,
               style: JourneyType.of(
@@ -177,7 +177,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       // No forecast exists, and the note promises none: up to half answered
       // it says the numbers are the answers alone.
       if (answered * 2 <= total) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: const ValueKey('guest-attendance-no-guess'),
           text:
@@ -188,7 +188,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
         ),
       ],
       if (_nextAction(words) case final action?) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         action,
       ],
     ];

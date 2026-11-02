@@ -123,12 +123,12 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           // The plan's «+» floats over money for whoever manages it (D33).
           padding: EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
+            AarastV3Space.x4,
+            AarastV3Space.x3,
+            AarastV3Space.x4,
             provider.canManageMoney
                 ? AarastV3Density.pageBottomWithQuickAction
-                : 32,
+                : AarastV3Space.x8,
           ),
           children: [
             _MoneyHeader(
@@ -159,24 +159,24 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                       AppRouter.moneyReceipts(widget.weddingPlanId),
                     ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyTabSwitch(
               key: const ValueKey('money-tabs'),
               labels: tabs,
               selected: tab,
               onSelected: (index) => setState(() => _tab = index),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             if (provider.loadErrorMessage != null) ...[
               JourneyListNotice(offline: false, onRetry: _load),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             ...switch (tab) {
               0 => _summaryTab(provider),
               1 => [
                 if (_mahrToRecord(context, provider)) ...[
                   _RecordMahrEntry(onTap: _openMahr),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 _MoneyItemsTab(
                   planId: widget.weddingPlanId,
@@ -231,11 +231,11 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     return [
       _MoneySummaryCard(summary: summary),
       if (_mahrToRecord(context, provider)) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         _RecordMahrEntry(onTap: _openMahr),
       ],
       if (mahr != null) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         _MahrAndWeddingCards(
           summary: summary,
           mahr: mahr,
@@ -258,7 +258,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       ],
       // Field test Q03: an overspent category shows the moment money opens.
       for (final exceeded in summary.exceededCategories) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: ValueKey('money-category-exceeded-${exceeded.name}'),
           icon: LucideIcons.alertTriangle,
@@ -270,7 +270,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         ),
       ],
       if (_nextSchedule(provider) case final schedule?) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         _NextPaymentCard(
           schedule: schedule,
           currency: summary.currency,
@@ -282,7 +282,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               : () => _paySchedule(schedule, _payableCost(provider, schedule)!),
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       _MoneyBudgetCard(
         summary: summary,
         canManage: provider.canManageBudget,
@@ -430,7 +430,12 @@ class _MoneyRootStateList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+        AarastV3Space.x4,
+        AarastV3Space.x8,
+      ),
       children: [child],
     );
   }

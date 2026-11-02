@@ -141,7 +141,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneyTabHeader(
               title: 'المهام',
@@ -157,7 +157,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
               ],
             ),
             if (widget.canManage) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               Row(
                 children: [
                   JourneyChip(
@@ -167,7 +167,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                     selectedColor: context.accent.primary,
                     onTap: () => _select(false),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   JourneyChip(
                     key: const ValueKey('participant-tasks-plan'),
                     label: 'كل مهام الخطة',
@@ -244,7 +244,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
     }
     return [
       if (provider.loadErrorMessage != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyListNotice(
           offline: false,
           onRetry: () => provider.load(widget.weddingPlanId),
@@ -252,7 +252,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
       ],
       const JourneySectionTitle('لك'),
       JourneyBox(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
         child: Column(
           children: [
             for (final (index, task) in [...open, ...done].indexed) ...[
@@ -271,9 +271,9 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
         child: Text(
           context.say(
             'المهام اللي ما هي لك تشوفها في «كل مهام الخطة»، وما تقدر تعدّلها.',
@@ -321,7 +321,7 @@ class _TaskCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox.square(
-    dimension: 44,
+    dimension: AarastV3Space.x10,
     child: Center(
       child: Container(
         width: 26,
@@ -374,7 +374,7 @@ class _MineRow extends StatelessWidget {
       onTap: onOpen,
       semanticLabel: '${task.title}، $meta',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             Semantics(
@@ -386,11 +386,11 @@ class _MineRow extends StatelessWidget {
               child: AarastPressable(
                 key: ValueKey('participant-task-toggle-${task.id}'),
                 onTap: busy ? null : onToggle,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
                 child: _TaskCircle(done: done),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AarastV3Space.x1),
             Expanded(
               child: _TaskText(task: task, meta: meta, late: late),
             ),

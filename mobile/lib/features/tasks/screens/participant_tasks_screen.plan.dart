@@ -24,9 +24,10 @@ class _PlanTasks extends StatelessWidget {
   Widget build(BuildContext context) {
     final view = provider?.viewOf(weddingPlanId);
     if (view == null) {
-      final failed = provider?.errorMessage != null && provider?.isLoading != true;
+      final failed =
+          provider?.errorMessage != null && provider?.isLoading != true;
       return Padding(
-        padding: const EdgeInsets.only(top: 14),
+        padding: const EdgeInsets.only(top: AarastV3Space.x3),
         child: JourneyListState(
           phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
           section: JourneySection.tasks,
@@ -43,7 +44,7 @@ class _PlanTasks extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (readOnlyNote) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('participant-tasks-read-only'),
             text: context.say(
@@ -56,12 +57,12 @@ class _PlanTasks extends StatelessWidget {
           ),
         ],
         if (provider?.errorMessage != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyListNotice(offline: false, onRetry: onRetry),
         ],
         if (view.tasks.isEmpty)
           const Padding(
-            padding: EdgeInsets.only(top: 14),
+            padding: EdgeInsets.only(top: AarastV3Space.x3),
             child: JourneyListState(
               key: ValueKey('participant-plan-tasks-empty'),
               phase: JourneyListPhase.empty,
@@ -73,7 +74,7 @@ class _PlanTasks extends StatelessWidget {
         for (final entry in groups.entries) ...[
           TaskGroupTitle(group: entry.key, count: entry.value.length),
           JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
             child: Column(
               children: [
                 for (final (index, task) in entry.value.indexed) ...[
@@ -113,23 +114,19 @@ class _PlanRow extends StatelessWidget {
     final meta = taskWhenLabel(task);
     final letter = read.letter(ownerWord: ownerWord);
     return Semantics(
-      label: [
-        task.title,
-        meta,
-        ?who,
-      ].join('، '),
+      label: [task.title, meta, ?who].join('، '),
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             _TaskCircle(done: task.isDone),
-            const SizedBox(width: 4),
+            const SizedBox(width: AarastV3Space.x1),
             Expanded(
               child: _TaskText(task: task, meta: meta, late: isTaskLate(task)),
             ),
             if (letter != null) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               JourneyAvatar(
                 letter: letter,
                 color: read.assignee == PlanReadAssignee.you

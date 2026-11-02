@@ -406,14 +406,19 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
       onRefresh: context.read<ProviderDashboardProvider>().loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 32, 20, 128),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x5,
+          AarastV3Space.x8,
+          AarastV3Space.x5,
+          AarastV3Density.pageBottom,
+        ),
         children: [
           AarastEmptyState(
             icon: LucideIcons.shieldAlert,
             title: copy.$1,
             message: copy.$2,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('provider-operations-support'),
             label: 'تواصل مع الدعم',

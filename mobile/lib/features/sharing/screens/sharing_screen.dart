@@ -292,7 +292,7 @@ class _SharingScreenState extends State<SharingScreen>
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           JourneyTextAction(
             label: 'رجوع',
             onPressed: () => Navigator.of(sheetContext).pop(false),
@@ -354,7 +354,12 @@ class _SharingScreenState extends State<SharingScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                0,
+              ),
               child: header,
             ),
             Expanded(child: gate),
@@ -374,7 +379,7 @@ class _SharingScreenState extends State<SharingScreen>
         ),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [header, ..._body(provider, pending)],
         ),
       ),
@@ -461,7 +466,7 @@ class _SharingScreenState extends State<SharingScreen>
           soft: AarastV3Color.dangerSoft,
           text: provider.errorMessage!,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
       ],
       if (members.isNotEmpty)
         JourneyList(
@@ -509,7 +514,7 @@ class _SharingScreenState extends State<SharingScreen>
             'اختاري له دور من تحت، ويوصله رابط على واتساب.',
           ),
         ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyNote(
         key: const ValueKey('sharing-note'),
         text: pending.isNotEmpty
@@ -528,7 +533,7 @@ class _SharingScreenState extends State<SharingScreen>
       ),
       for (final preset in ParticipantPreset.values)
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
           child: _PresetCard(
             preset: preset,
             onTap: provider.isSubmitting ? null : () => _openAdd(preset),
@@ -605,11 +610,11 @@ class _MemberRow extends StatelessWidget {
           '${member.displayName}، ${participantRoleLabel(member.role)}، '
           '$summary',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyAvatar(letter: _letter(name), color: color, size: 42),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,7 +624,7 @@ class _MemberRow extends StatelessWidget {
                       Flexible(
                         child: _Name(name: name, phone: member.user?.phone),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AarastV3Space.x2),
                       Text(
                         participantRoleLabel(member.role),
                         style: JourneyType.of(
@@ -639,7 +644,7 @@ class _MemberRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             if (withTag)
               const JourneyTag(
                 label: 'معك',
@@ -727,7 +732,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
       semanticLabel:
           '${_inviteName(invite)}، ${_deliveryLine(invite, context.journeyProfile)}',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyAvatar(
@@ -735,7 +740,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
               color: widget.color,
               size: 42,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,7 +756,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             // Large text wraps the action instead of pushing the row off.
             // x07 draws a small pill; while the server asks to wait it
             // rests faded instead of turning into a grey button.
@@ -761,7 +766,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                 child: AarastPressable(
                   key: ValueKey('pending-invite-reissue-${invite.id}'),
                   onTap: canRetry ? widget.onReissue : null,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.surface),
                   semanticLabel: remind
                       ? context.say('ذكّره', 'ذكّريه')
                       : context.say('انسخ الرابط', 'انسخي الرابط'),
@@ -774,15 +779,14 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                     child: Align(
                       widthFactor: 1,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
+                        padding: AarastV3Density.tagInsets,
                         decoration: BoxDecoration(
                           color: remind
                               ? context.accent.primarySoft
                               : AarastV3Color.brandAccentSoft,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(
+                            AarastV3Radius.surface,
+                          ),
                         ),
                         child: Text(
                           remind
@@ -855,14 +859,14 @@ class _PresetCard extends StatelessWidget {
       onTap: onTap,
       semanticLabel:
           '${context.say('أضف', 'أضيفي')} ${preset.label}، ${preset.description}',
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: JourneyBox(
         radius: 18,
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             Icon(icon, size: 20, color: context.accent.primary),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

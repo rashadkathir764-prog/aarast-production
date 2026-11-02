@@ -90,11 +90,11 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       ?offerAmountLabel(offer),
     ].join(' · ');
     Widget fact(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         children: [
           Icon(icon, size: 18, color: context.accent.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
@@ -108,7 +108,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       ),
     );
     Widget step(String number, String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: Row(
         children: [
           Container(
@@ -128,7 +128,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
@@ -139,7 +139,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       children: [
         JourneyBox(
           color: AarastV3Color.canvas,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: AarastV3Density.chipInsets,
           child: Column(
             children: [
               fact(
@@ -169,11 +169,11 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         step('1', 'يوصلهم طلب الحجز الآن'),
         step('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
         step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         JourneyNote(
           key: const ValueKey('booking-no-payment'),
           text: context.say(
@@ -184,7 +184,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('booking-request'),
           label: context.say('اطلب الحجز', 'اطلبي الحجز'),
@@ -301,7 +301,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'ليش؟',
           style: JourneyType.of(
@@ -310,7 +310,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -328,7 +328,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
               ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'يوصلهم كذا:',
           style: JourneyType.of(
@@ -337,7 +337,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         if (_editing)
           JourneyTextField(
             key: const ValueKey('decline-message'),
@@ -351,10 +351,10 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
         else
           JourneyBox(
             key: const ValueKey('decline-preview'),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Text(_message.text, style: JourneyType.of(JourneyType.body)),
           ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Row(
           children: [
             if (!_editing)
@@ -385,7 +385,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('decline-send'),
           label: context.say('أرسل واعتذر', 'أرسلي واعتذري'),

@@ -72,7 +72,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: AarastV3Color.onPrimary,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             context.say(
               'لا تستخدم تاريخ ميلاد أو رقم يعرفه غيرك.',
@@ -85,7 +85,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: context.accent.onPrimaryMuted,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AarastV3Space.x5),
           AppLockCodePad(
             key: ValueKey(_first == null ? 'first' : 'confirm'),
             dark: true,
@@ -103,7 +103,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             size: 40,
             color: AarastV3Color.onPrimary,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           Text(
             'التطبيق مقفول برمزك',
             textAlign: TextAlign.center,
@@ -113,7 +113,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: AarastV3Color.onPrimary,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             context.say(
               'نطلبه لما تفتح التطبيق، وبعد دقيقة برّاه.',
@@ -125,7 +125,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: context.accent.onPrimaryMuted,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AarastV3Space.x5),
           JourneyButton(
             key: const Key('lock-change-code'),
             label: context.say('غيّر الرمز', 'غيّري الرمز'),
@@ -138,7 +138,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               _mismatch = false;
             }),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           Center(
             child: JourneyTextAction(
               key: const Key('lock-turn-off'),
@@ -157,7 +157,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
         maxWidth: 520,
         backgroundColor: context.accent.primary,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
@@ -168,11 +168,11 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
                 onPressed: _close,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AarastV3Space.x4),
             const Center(
               child: JourneyWordmark(color: AarastV3Color.onPrimary),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AarastV3Space.x6),
             body,
           ],
         ),

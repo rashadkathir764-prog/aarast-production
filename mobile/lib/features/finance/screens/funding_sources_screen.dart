@@ -155,7 +155,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                         weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     fundingStateTag(source),
                   ],
                 ),
@@ -173,7 +173,12 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: 'من وين',
               subtitle: context.say(
@@ -191,19 +196,19 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
               onRefresh: _load,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   if (funding.loadErrorMessage != null &&
                       sources.isNotEmpty) ...[
                     JourneyListNotice(offline: false, onRetry: _load),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                   ],
                   if (sources.isNotEmpty) ...[
                     JourneyBox(
                       key: const ValueKey('funding-totals'),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                        horizontal: AarastV3Space.x4,
+                        vertical: AarastV3Space.x2,
                       ),
                       child: Column(
                         children: [
@@ -217,7 +222,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     const JourneySectionTitle('المصادر'),
                   ],
                   list,
@@ -226,7 +231,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('funding-add'),
               label: context.say('أضف مصدر', 'أضيفي مصدر'),
@@ -500,7 +505,7 @@ class _TotalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
           Expanded(

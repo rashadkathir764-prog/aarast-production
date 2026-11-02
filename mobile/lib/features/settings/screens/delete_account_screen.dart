@@ -113,7 +113,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             onBack: () =>
                 context.canPop() ? context.pop() : context.go(AppRouter.more),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           const Center(
             child: JourneyIconTile(
               icon: LucideIcons.userX,
@@ -123,7 +123,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               radius: 24,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Center(
             child: Text(
               firstName.isEmpty
@@ -138,11 +138,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (impact == null && _loadError == null)
             const Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(AarastV3Space.x4),
                 child: AarastInlineSpinner(dimension: 24),
               ),
             )
@@ -151,7 +151,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           else ...[
             _Effects(impact: impact),
             if (impact.blockedByUpcomingBookings) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyNote(
                 key: const ValueKey('delete-account-blocked'),
                 icon: LucideIcons.calendarX,
@@ -163,9 +163,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyBox(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Row(
                 children: [
                   Icon(
@@ -173,7 +173,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     size: 20,
                     color: context.accent.primary,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       impact.ownedPlans.isEmpty
@@ -200,7 +200,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyTextField(
               key: const ValueKey('delete-account-input'),
               label: context.say('اكتب «حذف» للتأكيد', 'اكتبي «حذف» للتأكيد'),
@@ -287,11 +287,11 @@ class _Effect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
           Icon(icon, size: 22, color: color ?? AarastV3Color.danger),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
@@ -315,12 +315,12 @@ class _SoftAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: context.accent.primarySoft,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: AarastV3Density.chipInsets,
           child: busy
               ? AarastInlineSpinner(
                   dimension: 16,
@@ -356,7 +356,7 @@ class _LoadFailed extends StatelessWidget {
           soft: AarastV3Color.amberSoft,
           text: message,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: const ValueKey('delete-account-retry'),
           label: 'حاول مرة ثانية',

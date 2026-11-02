@@ -122,7 +122,12 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: _editing ? 'تعديل البند' : 'بند جديد',
               subtitle: _editing
@@ -133,14 +138,14 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 JourneyTextField(
                   key: const ValueKey('money-category-form-name'),
@@ -153,7 +158,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() => _nameError = null),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 JourneyTextField(
                   key: const ValueKey('money-category-form-amount'),
                   label: context.say(
@@ -181,7 +186,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                   onChanged: (_) => setState(() => _amountError = null),
                 ),
                 if (isGold) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   JourneyNote(
                     text: context.say(
                       'الذهب ما يظهر في خطتك إلا لأنك أضفته.',
@@ -193,14 +198,14 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                   ),
                 ],
                 if (_draft != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   AarastV3DraftStatusLine(status: _draft!.status),
                 ],
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('category-save'),
               label: _editing

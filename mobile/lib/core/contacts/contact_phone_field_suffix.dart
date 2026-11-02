@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../shared/models/contact_phone_draft.dart';
 import '../widgets/aarast_toast.dart';
 import 'contact_picker_service.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 class ContactPhoneFieldSuffix extends StatefulWidget {
   const ContactPhoneFieldSuffix({
@@ -37,7 +38,7 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
       onPressed: !widget.enabled || _isPicking ? null : _pickPhone,
       icon: _isPicking
           ? const SizedBox(
-              width: 18,
+              width: AarastV3Space.x4,
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )

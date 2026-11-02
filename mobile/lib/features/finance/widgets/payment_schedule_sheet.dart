@@ -188,7 +188,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
             large: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
             label: 'رجوع',
             expand: true,
@@ -263,7 +263,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
             if (_amountError != null) setState(() => _amountError = null);
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyPickerField(
           key: const ValueKey('payment-schedule-date'),
           label: 'متى',
@@ -273,7 +273,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
           onTap: _pickDate,
         ),
         if (_dateError case final error?) _ErrorLine(error),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyTextField(
           key: const ValueKey('payment-schedule-note'),
           label: 'كلمة عنها (اختياري)',
@@ -283,7 +283,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
           textInputAction: TextInputAction.done,
         ),
         if (_error case final error?) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             text: error,
             icon: LucideIcons.alertCircle,
@@ -304,7 +304,12 @@ class _ErrorLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x2,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+        0,
+      ),
       child: Row(
         children: [
           const Icon(
@@ -312,7 +317,7 @@ class _ErrorLine extends StatelessWidget {
             size: 16,
             color: AarastV3Color.danger,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           Expanded(
             child: Text(
               text,

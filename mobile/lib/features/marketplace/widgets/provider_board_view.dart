@@ -28,9 +28,12 @@ class ProviderBoardView extends StatelessWidget {
           children: [
             Text(
               'ما في خدمات في خطتك بعد',
-              style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               context.say(
                 'أضف بنود عرسك في المال (القاعة، الضيافة، التصوير…) وتظهر هنا، أو دوّر في «استكشف».',
@@ -49,7 +52,12 @@ class ProviderBoardView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(6, 0, 6, 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            AarastV3Space.x1,
+            0,
+            AarastV3Space.x1,
+            AarastV3Space.x2,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -190,7 +198,7 @@ class _BoardRow extends StatelessWidget {
           ? onSearch
           : null,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Row(
           children: [
             JourneyIconTile(
@@ -199,7 +207,7 @@ class _BoardRow extends StatelessWidget {
               soft: context.accent.primarySoft,
               size: 42,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,12 +226,12 @@ class _BoardRow extends StatelessWidget {
                       color: AarastV3Color.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AarastV3Space.x1),
                   _StageBar(stage: row.stage),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             // Like JourneyListRow: the action never squeezes the name out.
             ConstrainedBox(
               constraints: BoxConstraints(
@@ -260,13 +268,15 @@ class _StageBar extends StatelessWidget {
                 height: 5,
                 decoration: BoxDecoration(
                   color: i < stage
-                      ? (stage == 4 ? AarastV3Color.mint : context.accent.primary)
+                      ? (stage == 4
+                            ? AarastV3Color.mint
+                            : context.accent.primary)
                       : AarastV3Color.line,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.xs),
                 ),
               ),
             ),
-            if (i < 3) const SizedBox(width: 3),
+            if (i < 3) const SizedBox(width: AarastV3Space.x1),
           ],
         ],
       ),
@@ -284,12 +294,12 @@ class _SoftAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: context.accent.primarySoft,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AarastV3Radius.control),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: AarastV3Density.chipInsets,
           child: Text(
             label,
             maxLines: 1,

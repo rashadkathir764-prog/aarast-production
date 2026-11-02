@@ -52,7 +52,7 @@ class ProviderBookingAftercare extends StatelessWidget {
               ),
               if (change.note case final note?)
                 Text('«$note»', style: JourneyType.of(JourneyType.bodySmall)),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               Row(
                 children: [
                   Expanded(
@@ -63,7 +63,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                       onPressed: () => _decideChange(context, accept: true),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: JourneyButton(
                       key: const Key('provider-booking-change-decline'),
@@ -99,7 +99,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                   color: AarastV3Color.textMuted,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               Row(
                 children: [
                   Expanded(
@@ -111,7 +111,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                       onPressed: () => _outcome(context, happened: true),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: JourneyButton(
                       key: const Key('provider-booking-not-happened'),
@@ -158,7 +158,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                         : AarastV3Color.textMuted,
                   ),
                 ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               JourneyButton(
                 key: const Key('provider-booking-deliver'),
                 label: 'سلّمت',
@@ -185,7 +185,10 @@ class ProviderBookingAftercare extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final child in children) ...[const SizedBox(height: 10), child],
+        for (final child in children) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          child,
+        ],
       ],
     );
   }
@@ -234,7 +237,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                 title: entry.value,
                 onTap: () => Navigator.of(sheetContext).pop(entry.key),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
             ],
           ],
         ),
@@ -340,7 +343,7 @@ class _TextSheetState extends State<_TextSheet> {
           maxLength: 500,
           autofocus: true,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-aftercare-send'),
           label: 'أرسل',

@@ -138,7 +138,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
         JourneyBox(
           key: const ValueKey('loan-owed'),
           color: context.accent.primary,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -166,7 +166,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                   ),
                 ),
               if (repayments.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 JourneySegments(
                   total: repayments.length,
                   done: paidCount,
@@ -176,7 +176,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                 ),
               ],
               if (allDated && owed > 0) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Text(
                   '${context.say('تخلص', 'تخلصين')} منها في ${arabicMonthName(dueDates.last.month)} إن شاء الله',
                   style: JourneyType.of(
@@ -189,7 +189,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         const JourneySectionTitle('السداد'),
         if (repayments.isEmpty)
           Text(
@@ -201,7 +201,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
           )
         else
           JourneyBox(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const EdgeInsets.all(AarastV3Space.x1),
             child: Column(
               children: [
                 for (var index = 0; index < repayments.length; index++)
@@ -225,7 +225,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
               ],
             ),
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -245,9 +245,9 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                 },
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Padding(
-              padding: const EdgeInsets.only(top: 22),
+              padding: const EdgeInsets.only(top: AarastV3Space.x5),
               child: JourneyRoundButton(
                 icon: LucideIcons.calendarDays,
                 tooltip: _dueDate == null
@@ -256,9 +256,9 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                 onPressed: _pickDate,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AarastV3Space.x1),
             Padding(
-              padding: const EdgeInsets.only(top: 22),
+              padding: const EdgeInsets.only(top: AarastV3Space.x5),
               child: JourneyRoundButton(
                 key: const ValueKey('loan-repayment-add'),
                 icon: LucideIcons.plus,
@@ -270,7 +270,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
         ),
         if (_dueDate != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AarastV3Space.x1),
             child: Text(
               'موعدها ${formatArabicDayMonth(_dueDate!)}',
               style: JourneyType.of(
@@ -280,7 +280,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
             ),
           ),
         if (widget.errorMessage != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             widget.errorMessage!,
             style: JourneyType.of(
@@ -291,7 +291,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
           ),
         ],
         if (nextIndex >= 0) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const ValueKey('loan-pay-next'),
             label:
@@ -340,7 +340,7 @@ class _RepaymentRow extends StatelessWidget {
       child: AarastPressable(
         onTap: onToggle ?? () {},
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.all(AarastV3Space.x2),
           child: Row(
             children: [
               Container(
@@ -373,7 +373,7 @@ class _RepaymentRow extends StatelessWidget {
                         ),
                       ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Text(
                   line,
@@ -484,13 +484,13 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
             selected: _answer == answer,
             onTap: () => setState(() => _answer = answer),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         if (_answer == PledgeAnswer.arrived && cash != null) ...[
           JourneyBox(
             key: const ValueKey('pledge-cash-after'),
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Row(
               children: [
                 Expanded(
@@ -517,7 +517,9 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x1,
+                  ),
                   child: Icon(
                     LucideIcons.arrowLeft,
                     size: 16,
@@ -540,9 +542,9 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: const ValueKey('pledge-confirm'),
           label: 'تمام',

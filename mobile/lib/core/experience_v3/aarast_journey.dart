@@ -7,6 +7,9 @@ import '../widgets/aarast_pressable.dart';
 import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
+/// The wordmark's dot sits this share of the type size under the word.
+const _wordmarkDotLift = 0.12;
+
 /// The journey kit: the building blocks of every journey screen.
 ///
 /// Screens are composed from these so the app looks like the approved design
@@ -248,10 +251,10 @@ class JourneyButton extends StatelessWidget {
       children: [
         if (loading) ...[
           AarastInlineSpinner(color: fg),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
         ] else if (icon != null) ...[
           Icon(icon, size: 18, color: fg),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
         ],
         Flexible(
           child: Text(
@@ -319,18 +322,18 @@ class JourneyTextAction extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
           // A 48 target (DESIGN_SYSTEM); the words themselves do not grow.
           constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.all(AarastV3Space.x2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (icon != null) ...[
                   Icon(icon, size: 17, color: color),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                 ],
                 Flexible(
                   child: Text(
@@ -385,15 +388,15 @@ class JourneyChip extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Container(
           constraints: const BoxConstraints(minHeight: 36),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: AarastV3Density.chipInsets,
           decoration: BoxDecoration(
             color: selected
                 ? selectedColor ?? context.accent.primary
                 : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
           child: Row(
@@ -401,7 +404,7 @@ class JourneyChip extends StatelessWidget {
             children: [
               if (icon != null) ...[
                 Icon(icon, size: 16, color: fg),
-                const SizedBox(width: 6),
+                const SizedBox(width: AarastV3Space.x1),
               ],
               Flexible(
                 child: Text(
@@ -437,10 +440,13 @@ class JourneyTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: soft,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
       ),
       child: Text(
         label,
@@ -528,7 +534,9 @@ class JourneySegments extends StatelessWidget {
             Expanded(
               child: Container(
                 height: height,
-                margin: EdgeInsetsDirectional.only(end: i == total - 1 ? 0 : 5),
+                margin: EdgeInsetsDirectional.only(
+                  end: i == total - AarastV3Space.hair ? 0 : AarastV3Space.x1,
+                ),
                 decoration: BoxDecoration(
                   color: i < done
                       ? filled ?? context.accent.primary
@@ -575,10 +583,10 @@ class JourneyLevelSwitch extends StatelessWidget {
     return Opacity(
       opacity: enabled ? 1 : 0.5,
       child: Container(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(AarastV3Space.x1),
         decoration: BoxDecoration(
           color: AarastV3Color.line,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AarastV3Radius.control),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -593,19 +601,21 @@ class JourneyLevelSwitch extends StatelessWidget {
                 excludeSemantics: true,
                 child: AarastPressable(
                   onTap: enabled ? () => onChanged!(i) : null,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 32),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: AarastV3Space.x2,
+                      vertical: AarastV3Space.x1,
                     ),
                     decoration: BoxDecoration(
                       color: i == selected
                           ? AarastV3Color.paper
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
                     ),
                     child: Text(
                       options[i],
@@ -719,7 +729,7 @@ class JourneyTabHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AarastV3Space.half),
                 if (onStatusTap == null)
                   Text(
                     status,
@@ -732,7 +742,7 @@ class JourneyTabHeader extends StatelessWidget {
                   AarastPressable(
                     onTap: onStatusTap,
                     semanticLabel: statusTapLabel,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.control),
                     child: Text(
                       status,
                       style: JourneyType.of(
@@ -744,7 +754,10 @@ class JourneyTabHeader extends StatelessWidget {
               ],
             ),
           ),
-          for (final action in actions) ...[const SizedBox(width: 8), action],
+          for (final action in actions) ...[
+            const SizedBox(width: AarastV3Space.x2),
+            action,
+          ],
         ],
       ),
     );
@@ -800,7 +813,12 @@ class JourneySubHeader extends StatelessWidget {
       ],
     );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 6, 2, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.half,
+        AarastV3Space.x1,
+        AarastV3Space.half,
+        AarastV3Space.x3,
+      ),
       child: Row(
         children: [
           JourneyRoundButton(
@@ -809,14 +827,14 @@ class JourneySubHeader extends StatelessWidget {
             size: 42,
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: onTitleTap == null
                 ? heading
                 : AarastPressable(
                     onTap: onTitleTap,
                     semanticLabel: titleTapLabel,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.control),
                     child: SizedBox(width: double.infinity, child: heading),
                   ),
           ),
@@ -847,7 +865,12 @@ class JourneySectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 20, 6, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x5,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -910,9 +933,14 @@ class _SectionLink extends StatelessWidget {
     return AarastPressable(
       onTap: onTap,
       semanticLabel: label,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AarastV3Radius.control),
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(12, 2, 0, 2),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AarastV3Space.x3,
+          AarastV3Space.half,
+          0,
+          AarastV3Space.half,
+        ),
         child: text,
       ),
     );
@@ -945,11 +973,11 @@ class JourneyListRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: AarastV3Density.chipInsets,
       child: Row(
         children: [
           JourneyIconTile(icon: icon, color: color, soft: soft, size: iconSize),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -974,7 +1002,7 @@ class JourneyListRow extends StatelessWidget {
             ),
           ),
           if (trailing != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             // An amount or a tag gets at most 45% of the row, so large text
             // wraps it instead of pushing the row off the screen.
             ConstrainedBox(
@@ -1008,10 +1036,10 @@ class JourneyList extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
         child: Column(
           children: [
             for (var i = 0; i < children.length; i++) ...[
@@ -1059,12 +1087,12 @@ class JourneyChoiceCard extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           decoration: BoxDecoration(
             color: selected ? context.accent.primarySoft : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
             border: Border.all(
               color: selected ? context.accent.primary : AarastV3Color.line,
               width: selected ? 2 : 1,
@@ -1073,7 +1101,7 @@ class JourneyChoiceCard extends StatelessWidget {
           child: Row(
             children: [
               leading,
-              const SizedBox(width: 14),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1085,7 +1113,7 @@ class JourneyChoiceCard extends StatelessWidget {
                         weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AarastV3Space.half),
                     Text(
                       subtitle,
                       style: JourneyType.of(
@@ -1096,7 +1124,7 @@ class JourneyChoiceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               _SelectionMark(selected: selected),
             ],
           ),
@@ -1139,12 +1167,12 @@ class JourneyOption extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             border: Border.all(
               color: selected ? color : AarastV3Color.line,
               width: selected ? 2 : 1,
@@ -1163,7 +1191,7 @@ class JourneyOption extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1237,7 +1265,7 @@ class JourneyStartWays extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Center(
           child: JourneyIconTile(
             icon: icon,
@@ -1247,7 +1275,7 @@ class JourneyStartWays extends StatelessWidget {
             radius: 28,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         Semantics(
           header: true,
           child: Text(
@@ -1259,7 +1287,7 @@ class JourneyStartWays extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           message,
           textAlign: TextAlign.center,
@@ -1269,19 +1297,19 @@ class JourneyStartWays extends StatelessWidget {
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: AarastV3Space.x5),
         for (var i = 0; i < ways.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
+          if (i > 0) const SizedBox(height: AarastV3Space.x2),
           AarastPressable(
             key: ways[i].key,
             onTap: ways[i].onTap,
             semanticLabel: '${ways[i].title}، ${ways[i].subtitle}',
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               decoration: BoxDecoration(
                 color: AarastV3Color.paper,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
                 border: i == 0 ? Border.all(color: color, width: 2) : null,
               ),
               child: Row(
@@ -1292,7 +1320,7 @@ class JourneyStartWays extends StatelessWidget {
                     soft: soft,
                     size: 42,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1314,7 +1342,7 @@ class JourneyStartWays extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   const Icon(
                     LucideIcons.chevronLeft,
                     size: 18,
@@ -1388,7 +1416,7 @@ class JourneyWordmark extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.only(top: size * 0.12),
+            padding: EdgeInsets.only(top: size * _wordmarkDotLift),
             child: Container(
               width: size * 0.22,
               height: size * 0.22,
@@ -1460,7 +1488,7 @@ class JourneyPage extends StatelessWidget {
   const JourneyPage({
     required this.children,
     this.bottom,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.padding = const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
     this.background = AarastV3Color.canvas,
     super.key,
   });
@@ -1479,17 +1507,19 @@ class JourneyPage extends StatelessWidget {
           children: [
             Expanded(
               child: ListView(
-                padding: padding.add(const EdgeInsets.only(top: 8, bottom: 20)),
+                padding: padding.add(
+                  const EdgeInsets.only(
+                    top: AarastV3Space.x2,
+                    bottom: AarastV3Space.x5,
+                  ),
+                ),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: children,
               ),
             ),
             if (bottom != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: bottom,
-              ),
+              Padding(padding: AarastV3Density.actionInsets, child: bottom),
           ],
         ),
       ),
@@ -1542,14 +1572,19 @@ class JourneyQuestionPage extends StatelessWidget {
             loading: loading,
           ),
           if (skipLabel != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             JourneyTextAction(label: skipLabel!, onPressed: onSkip),
           ],
         ],
       ),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x1,
+            AarastV3Space.x1,
+            AarastV3Space.x1,
+            0,
+          ),
           child: Row(
             children: [
               JourneyRoundButton(
@@ -1575,7 +1610,7 @@ class JourneyQuestionPage extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x6),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
           child: Semantics(
             header: true,
             child: Text(
@@ -1590,7 +1625,12 @@ class JourneyQuestionPage extends StatelessWidget {
         ),
         if (help != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x1,
+              AarastV3Space.x2,
+              AarastV3Space.x1,
+              0,
+            ),
             child: Text(
               help!,
               style: JourneyType.of(
@@ -1697,17 +1737,21 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          padding: AarastV3Field.padding,
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AarastV3Field.radius),
             border: Border.all(color: borderColor, width: width),
           ),
           child: Row(
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, size: 20, color: AarastV3Color.textMuted),
-                const SizedBox(width: 10),
+                Icon(
+                  widget.icon,
+                  size: AarastV3Icon.md,
+                  color: AarastV3Color.textMuted,
+                ),
+                const SizedBox(width: AarastV3Field.iconGap),
               ],
               Expanded(
                 child: Column(
@@ -1757,8 +1801,8 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         focusedBorder: InputBorder.none,
                         filled: false,
                         contentPadding: const EdgeInsets.only(
-                          top: 2,
-                          bottom: 2,
+                          top: AarastV3Space.half,
+                          bottom: AarastV3Space.half,
                         ),
                       ),
                     ),
@@ -1788,7 +1832,12 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
         ),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x2,
+              AarastV3Space.x1,
+              AarastV3Space.x2,
+              0,
+            ),
             child: Row(
               children: [
                 const Icon(
@@ -1796,7 +1845,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                   size: 16,
                   color: AarastV3Color.danger,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AarastV3Space.x1),
                 Expanded(
                   child: Text(
                     error,
@@ -1851,12 +1900,12 @@ class JourneyPickerField extends StatelessWidget {
     return AarastPressable(
       onTap: onTap,
       semanticLabel: ['$label، ${has ? value : placeholder}', ?note].join('، '),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Field.radius),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: AarastV3Field.padding,
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Field.radius),
           border: Border.all(
             color: note != null ? AarastV3Color.danger : AarastV3Color.line,
             width: note != null ? 2 : 1,
@@ -1868,8 +1917,12 @@ class JourneyPickerField extends StatelessWidget {
             Row(
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 20, color: AarastV3Color.textMuted),
-                  const SizedBox(width: 10),
+                  Icon(
+                    icon,
+                    size: AarastV3Icon.md,
+                    color: AarastV3Color.textMuted,
+                  ),
+                  const SizedBox(width: AarastV3Field.iconGap),
                 ],
                 Expanded(
                   child: Column(
@@ -1906,12 +1959,12 @@ class JourneyPickerField extends StatelessWidget {
               ],
             ),
             if (note != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(AarastV3Space.x2),
                 decoration: BoxDecoration(
                   color: AarastV3Color.dangerSoft,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1921,7 +1974,7 @@ class JourneyPickerField extends StatelessWidget {
                       size: 16,
                       color: AarastV3Color.danger,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: Text(
                         note,
@@ -1967,13 +2020,13 @@ class JourneyNote extends StatelessWidget {
     final soft = this.soft ?? context.accent.primarySoft;
     return JourneyBox(
       color: soft,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       radius: 16,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
@@ -2028,14 +2081,14 @@ class JourneyToggle extends StatelessWidget {
             curve: Curves.easeOut,
             width: 44,
             height: 26,
-            padding: const EdgeInsets.all(3),
+            padding: const EdgeInsets.all(AarastV3Space.x1),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
             decoration: BoxDecoration(
               color: value ? color : AarastV3Color.line,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
             child: const SizedBox.square(
-              dimension: 20,
+              dimension: AarastV3Space.x5,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AarastV3Color.paper,

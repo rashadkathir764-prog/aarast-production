@@ -70,7 +70,7 @@ class _JourneyHomeHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AarastV3Space.x2),
         Stack(
           clipBehavior: Clip.none,
           children: [
@@ -84,7 +84,7 @@ class _JourneyHomeHeader extends StatelessWidget {
                 top: 9,
                 end: 10,
                 child: SizedBox.square(
-                  dimension: 9,
+                  dimension: AarastV3Space.x2,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: AarastV3Color.danger,
@@ -95,7 +95,7 @@ class _JourneyHomeHeader extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AarastV3Space.x2),
         Semantics(
           button: true,
           label: 'حسابي',
@@ -103,7 +103,7 @@ class _JourneyHomeHeader extends StatelessWidget {
           excludeSemantics: true,
           child: AarastPressable(
             onTap: onProfile,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AarastV3Radius.feature),
             // The 40 avatar in a 48 target, like the round buttons beside it.
             child: SizedBox.square(
               dimension: AarastV3Space.x12,
@@ -212,10 +212,10 @@ class _JourneyHomeHero extends StatelessWidget {
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final tag = Container(
       key: const ValueKey('aarast-dashboard-moment-tag'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: AarastV3Density.tagInsets,
       decoration: BoxDecoration(
         color: AarastV3Color.saffron,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
       ),
       child: Text(
         _homeMoments[moment],
@@ -246,12 +246,7 @@ class _JourneyHomeHero extends StatelessWidget {
               frieze: true,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AarastV3Space.x4,
-                AarastV3Space.x4,
-                AarastV3Space.x4,
-                AarastV3Space.x5,
-              ),
+              padding: const EdgeInsets.all(AarastV3Space.x4),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   // The tag sits on the count's row as drawn; on a narrow
@@ -275,11 +270,13 @@ class _JourneyHomeHero extends StatelessWidget {
                                 height: 0.95,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: AarastV3Space.x2),
                           ],
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.only(
+                                bottom: AarastV3Space.x1,
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -305,16 +302,18 @@ class _JourneyHomeHero extends StatelessWidget {
                             ),
                           ),
                           if (wide) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AarastV3Space.x2),
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.only(
+                                bottom: AarastV3Space.x1,
+                              ),
                               child: tag,
                             ),
                           ],
                         ],
                       ),
                       if (!wide) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AarastV3Space.x3),
                         Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: tag,
@@ -341,7 +340,7 @@ class _JourneyHomeHero extends StatelessWidget {
           color: AarastV3Color.onPrimary,
           soft: context.accent.primaryDark,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AarastV3Space.x3),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,7 +451,7 @@ class _JourneyNextStep extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               JourneyIconTile(icon: icon, color: accent, soft: soft),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,7 +464,7 @@ class _JourneyNextStep extends StatelessWidget {
                         color: accent,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AarastV3Space.half),
                     Text(
                       title,
                       style: JourneyType.of(
@@ -473,7 +472,7 @@ class _JourneyNextStep extends StatelessWidget {
                         weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AarastV3Space.half),
                     Text(
                       reason,
                       style: JourneyType.of(
@@ -550,7 +549,7 @@ class _AfterWeddingHero extends StatelessWidget {
       semanticLabel: hidden
           ? 'باقي عليك. المبالغ مخفية'
           : '${left.semanticText} باقي عليك. ${context.say('سددت', 'سدّدتِ')} ${paid.semanticText} من ${total.semanticText}',
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AarastV3Radius.feature),
       child: JourneyBox(
         color: context.accent.primary,
         radius: 24,
@@ -565,7 +564,7 @@ class _AfterWeddingHero extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AarastV3Space.x4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -580,7 +579,7 @@ class _AfterWeddingHero extends StatelessWidget {
                           height: 1,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AarastV3Space.x2),
                       Expanded(
                         child: Text(
                           hidden
@@ -600,11 +599,11 @@ class _AfterWeddingHero extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AarastV3Space.x3),
                   Row(
                     children: [
                       for (var piece = 0; piece < 5; piece++) ...[
-                        if (piece > 0) const SizedBox(width: 6),
+                        if (piece > 0) const SizedBox(width: AarastV3Space.x1),
                         Expanded(
                           child: Container(
                             height: 6,
@@ -612,14 +611,16 @@ class _AfterWeddingHero extends StatelessWidget {
                               color: piece < filled
                                   ? AarastV3Color.saffron
                                   : AarastV3Color.paper,
-                              borderRadius: BorderRadius.circular(3),
+                              borderRadius: BorderRadius.circular(
+                                AarastV3Radius.xs,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   Text(
                     hidden
                         ? 'المبالغ مخفية'
@@ -649,7 +650,7 @@ class _RateProvidersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('aarast-dashboard-rate-providers'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         children: [
           const JourneyIconTile(
@@ -658,7 +659,7 @@ class _RateProvidersCard extends StatelessWidget {
             soft: AarastV3Color.brandAccentSoft,
             size: 40,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,7 +684,7 @@ class _RateProvidersCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           JourneyButton(
             label: context.say('قيّم', 'قيّمي'),
             background: AarastV3Color.brandAccentStrong,

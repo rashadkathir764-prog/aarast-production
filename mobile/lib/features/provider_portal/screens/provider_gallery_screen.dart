@@ -19,6 +19,9 @@ import '../../marketplace/marketplace_api.dart'
         portfolioSocialNetworks;
 import '../providers/provider_dashboard_provider.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _galleryThumbWidth = 92.0;
+
 typedef ProviderGalleryImagePicker = Future<List<XFile>> Function();
 typedef ProviderGalleryImageUploader =
     Future<MediaUploadTicket> Function(XFile file);
@@ -69,7 +72,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
         onRefresh: dashboard.loadPortfolio,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: 'معرض الشغل',
@@ -104,7 +107,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               ),
               JourneyBox(
                 key: const Key('provider-gallery-coverage'),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AarastV3Space.x3),
                 child: Column(
                   children: [
                     if (city.isNotEmpty) _Fact(label: 'المدينة', value: city),
@@ -153,7 +156,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
       ],
       if (photos.isNotEmpty) ...[
         GridView.count(
@@ -171,13 +174,13 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
       ] else if (selected != null && selected == portfolio.womenAlbum) ...[
         JourneyNote(
           icon: LucideIcons.image,
           text: 'ما فيه صور في «${portfolio.womenAlbum}» لسا.',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
       ],
       if (portfolio.items.length < portfolio.maxItems)
         JourneyButton(
@@ -190,7 +193,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
           loading: _busy,
           onPressed: () => _addImages(portfolio, selected),
         ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyNote(
         key: const Key('provider-gallery-review-note'),
         icon: LucideIcons.eyeOff,
@@ -201,10 +204,10 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
                   'كل صورة جديدة نراجعها قبل ما تظهر.'
             : 'كل صورة جديدة نراجعها قبل ما تظهر.',
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyBox(
         key: const Key('provider-gallery-links'),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             const JourneyIconTile(
@@ -213,7 +216,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               soft: AarastV3Color.primarySoft,
               size: 40,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,14 +284,17 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
   }
 
   /// A photo opens large with its state and «احذف الصورة».
-  Future<void> _openPhoto(ProviderPortfolio portfolio, PortfolioPhoto photo) async {
+  Future<void> _openPhoto(
+    ProviderPortfolio portfolio,
+    PortfolioPhoto photo,
+  ) async {
     final remove = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
         title: photo.album ?? 'معرض الشغل',
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
             child: AspectRatio(
               aspectRatio: 1,
               child: photo.imageUrl == null
@@ -301,7 +307,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
                     ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const Key('provider-gallery-photo-state'),
             icon: photo.isRejected ? LucideIcons.xCircle : LucideIcons.eye,
@@ -315,7 +321,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
                 ? 'تظهر للعرائس بس.'
                 : 'تظهر في ملفك للعرسان.',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyButton(
             key: const Key('provider-gallery-photo-delete'),
             label: 'احذف الصورة',
@@ -378,7 +384,9 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     if (files.isEmpty || !mounted) return;
     final room = portfolio.maxItems - portfolio.items.length;
     final chosen = files
-        .take(room < _maximumImagesPerSelection ? room : _maximumImagesPerSelection)
+        .take(
+          room < _maximumImagesPerSelection ? room : _maximumImagesPerSelection,
+        )
         .toList();
     setState(() => _busy = true);
     final keys = <String>[];
@@ -499,7 +507,7 @@ class _AlbumSheetState extends State<_AlbumSheet> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         JourneyTextField(
           key: const Key('provider-gallery-new-album'),
@@ -510,7 +518,7 @@ class _AlbumSheetState extends State<_AlbumSheet> {
           onChanged: (_) => setState(() {}),
         ),
         if (forWomen) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyListRow(
             key: const Key('provider-gallery-no-faces'),
             icon: LucideIcons.eyeOff,
@@ -527,7 +535,7 @@ class _AlbumSheetState extends State<_AlbumSheet> {
             onTap: () => setState(() => _noFaces = !_noFaces),
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-gallery-choose'),
           label: 'اختر الصور',
@@ -587,7 +595,7 @@ class _LinksSheetState extends State<_LinksSheet> {
             keyboardType: TextInputType.url,
             textDirection: TextDirection.ltr,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         JourneyButton(
           key: const Key('provider-gallery-links-save'),
@@ -618,7 +626,7 @@ class _Photo extends StatelessWidget {
           : photo.isPending
           ? 'صورة نراجعها'
           : 'صورة',
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       child: ColoredBox(
         color: AarastV3Color.line,
         child: Stack(
@@ -634,7 +642,7 @@ class _Photo extends StatelessWidget {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(AarastV3Space.x1),
                   child: photo.isPending
                       ? const JourneyTag(
                           label: 'نراجعها',
@@ -665,12 +673,12 @@ class _Fact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 92,
+            width: _galleryThumbWidth,
             child: Text(
               label,
               style: JourneyType.of(

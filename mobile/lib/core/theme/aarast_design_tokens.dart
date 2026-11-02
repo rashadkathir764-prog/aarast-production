@@ -5,46 +5,32 @@ import '../experience_v3/aarast_v3_foundations.dart';
 class AarastDesignTokens {
   const AarastDesignTokens._();
 
-  // Spacing values
-  static const double space2 = 2;
-  static const double space4 = 4;
-  static const double space6 = 6;
-  static const double space8 = 8;
-  static const double space10 = 10;
-  static const double space12 = 12;
-  static const double space14 = 14;
-  static const double space16 = 16;
-  static const double space18 = 18;
-  static const double space20 = 20;
-  static const double space24 = 24;
-  static const double space28 = 28;
-  static const double space32 = 32;
-  static const double space40 = 40;
-  static const double space48 = 48;
+  // Legacy names, kept as aliases of the one grid (D74). New code takes
+  // AarastV3Space / AarastV3Radius / AarastV3Icon directly.
+  static const double space4 = AarastV3Space.x1;
+  static const double space8 = AarastV3Space.x2;
+  static const double space12 = AarastV3Space.x3;
+  static const double space16 = AarastV3Space.x4;
+  static const double space20 = AarastV3Space.x5;
+  static const double space24 = AarastV3Space.x6;
+  static const double space32 = AarastV3Space.x8;
+  static const double space40 = AarastV3Space.x10;
+  static const double space48 = AarastV3Space.x12;
 
-  // Modern shape roles.
   static const double radiusControl = AarastV3Radius.control;
   static const double radiusSurface = AarastV3Radius.surface;
   static const double radiusOverlay = AarastV3Radius.feature;
-
-  // Transitional legacy radii retained until feature consumers migrate.
   static const double radiusSm = AarastV3Radius.control;
   static const double radiusMd = AarastV3Radius.surface;
-  static const double radiusLg = 20;
+  static const double radiusLg = AarastV3Radius.card;
   static const double radiusXl = AarastV3Radius.feature;
-  static const double radius2xl = 32;
   static const double radiusPill = AarastV3Radius.pill;
 
-  // Icon Sizes
-  static const double iconSm = 16;
-  static const double iconMd = 20;
-  static const double iconLg = 24;
-  static const double iconXl = 30;
+  static const double iconSm = AarastV3Icon.sm;
+  static const double iconMd = AarastV3Icon.md;
+  static const double iconLg = AarastV3Icon.lg;
 
-  // Metrics
-  static const double minTapTarget = 48;
-  static const double cardMinHeight = 72;
-  static const double bottomNavHeight = 76;
+  static const double minTapTarget = AarastV3Space.x12;
   static const double screenMaxWidth = 560;
 
   // Motion
@@ -57,12 +43,12 @@ class AarastDesignTokens {
 
   // Padding
   static const EdgeInsets screenPadding = EdgeInsets.symmetric(
-    horizontal: AarastV3Space.x5,
+    horizontal: AarastV3Density.pageHorizontal,
   );
-  static const EdgeInsets cardPadding = EdgeInsets.all(16);
+  static const EdgeInsets cardPadding = EdgeInsets.all(AarastV3Space.x4);
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
-    horizontal: 16,
-    vertical: 14,
+    horizontal: AarastV3Space.x4,
+    vertical: AarastV3Space.x3,
   );
 
   // V3 separates surfaces with borders and spacing, never decorative shadows.

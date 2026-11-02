@@ -20,6 +20,12 @@ import '../providers/notifications_provider.dart';
 import '../utils/notification_route_policy.dart';
 import '../utils/notification_line.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _notificationsEmptyTop = 60.0;
+
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _notificationsSkeletonRow = 90.0;
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({this.weddingPlanId, this.clock, super.key});
 
@@ -92,7 +98,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x4,
+              0,
+            ),
             child: JourneySubHeader(
               title: 'التنبيهات',
               // The count of unread matters more than a fixed description.
@@ -142,7 +153,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         rows: 6,
         rowHeight: 84,
         withHeader: false,
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+        padding: const EdgeInsets.fromLTRB(
+          0,
+          AarastV3Space.x2,
+          0,
+          AarastV3Space.x6,
+        ),
       );
     }
 
@@ -160,7 +176,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         rows: 6,
         rowHeight: 84,
         withHeader: false,
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+        padding: const EdgeInsets.fromLTRB(
+          0,
+          AarastV3Space.x2,
+          0,
+          AarastV3Space.x6,
+        ),
       );
     }
 
@@ -169,7 +190,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         notifications.isEmpty) {
       return ListView(
         children: [
-          const SizedBox(height: 60),
+          const SizedBox(height: _notificationsEmptyTop),
           AarastErrorState(
             title: 'تعذر تحميل التنبيهات',
             message: provider.errorMessage!,
@@ -182,7 +203,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (notifications.isEmpty) {
       return ListView(
         children: const [
-          SizedBox(height: 90),
+          SizedBox(height: _notificationsSkeletonRow),
           AarastEmptyState(
             icon: LucideIcons.bellOff,
             title: AarastV3Copy.quietNotificationsTitle,
@@ -196,7 +217,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final now = (widget.clock ?? appNow)();
     if (participant) {
       return ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneyList(
             children: [
@@ -211,7 +232,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ),
           if (provider.hasMore) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyButton.quiet(
               label: 'عرض المزيد',
               icon: LucideIcons.chevronsDown,
@@ -221,7 +242,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   provider.loadMore(weddingPlanId: widget.weddingPlanId),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           // True: a notice goes to its own reader only, and the push copy is
           // chosen by type and marked private (push-delivery.service.ts).
           const JourneyNote(
@@ -237,7 +258,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final groups = groupNotificationsByTime(notifications, now);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: AarastV3Density.pageInsets,
       children: [
         for (final group in groups) ...[
           JourneySectionTitle(group.$1),
@@ -255,10 +276,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         if (provider.hasMore) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           JourneyButton.quiet(
             label: 'عرض المزيد',
             icon: LucideIcons.chevronsDown,
@@ -267,7 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             onPressed: () =>
                 provider.loadMore(weddingPlanId: widget.weddingPlanId),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         // True: the push copy is chosen by type only and marked private
         // (push-delivery.service.ts), so names and amounts never show there.
@@ -525,7 +546,12 @@ class _NotificationRow extends StatelessWidget {
         key: ValueKey('notification-${notification.id}'),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x4,
+            AarastV3Space.x3,
+            AarastV3Space.x2,
+            AarastV3Space.x3,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -534,7 +560,7 @@ class _NotificationRow extends StatelessWidget {
                 color: tone.color,
                 soft: tone.soft,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: ExcludeSemantics(
                   child: Column(
@@ -572,9 +598,12 @@ class _NotificationRow extends StatelessWidget {
               ),
               if (plain)
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(top: 6, end: 8),
+                  padding: const EdgeInsetsDirectional.only(
+                    top: AarastV3Space.x1,
+                    end: AarastV3Space.x2,
+                  ),
                   child: SizedBox.square(
-                    dimension: 9,
+                    dimension: AarastV3Space.x2,
                     child: notification.isUnread
                         ? DecoratedBox(
                             key: const ValueKey('notification-unread-dot'),
@@ -591,9 +620,12 @@ class _NotificationRow extends StatelessWidget {
                   children: [
                     if (notification.isUnread)
                       const Padding(
-                        padding: EdgeInsets.only(top: 6, bottom: 2),
+                        padding: EdgeInsets.only(
+                          top: AarastV3Space.x1,
+                          bottom: AarastV3Space.half,
+                        ),
                         child: SizedBox.square(
-                          dimension: 9,
+                          dimension: AarastV3Space.x2,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               color: AarastV3Color.danger,

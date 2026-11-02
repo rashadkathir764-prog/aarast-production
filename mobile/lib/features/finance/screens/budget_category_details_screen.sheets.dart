@@ -14,7 +14,7 @@ class _CategorySummary extends StatelessWidget {
     final paid = moneyValue(category.paid);
     final ratio = agreed <= 0 ? 0.0 : (paid / agreed).clamp(0.0, 1.0);
     Widget row(String label, String value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         children: [
           Expanded(
@@ -35,7 +35,7 @@ class _CategorySummary extends StatelessWidget {
     );
     return JourneyBox(
       key: const ValueKey('category-summary'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -49,7 +49,7 @@ class _CategorySummary extends StatelessWidget {
           row(context.say('دفعت', 'دفعتِ'), plain(paid)),
           row('باقي عليك', plain(moneyValue(category.outstanding))),
           if (agreed > 0) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBar(value: ratio, color: context.accent.primary),
           ],
         ],
@@ -74,10 +74,10 @@ class _OverCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const ValueKey('category-over'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(color: AarastV3Color.danger, width: 1.5),
       ),
       child: Column(
@@ -90,7 +90,7 @@ class _OverCard extends StatelessWidget {
                 size: 20,
                 color: AarastV3Color.danger,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: Text(
                   'زادت $over عن المحطوط',
@@ -103,7 +103,7 @@ class _OverCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: AlignmentDirectional.centerStart,
@@ -115,7 +115,7 @@ class _OverCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           const JourneyBar(value: 1, color: AarastV3Color.danger),
         ],
       ),
@@ -152,7 +152,7 @@ class _OverChoices extends StatelessWidget {
           leading: Icon(LucideIcons.trendingUp, color: context.accent.primary),
           onTap: onGrow,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyChoiceCard(
           key: const ValueKey('category-over-move'),
           title: context.say('خذها من بند ثاني', 'خذيها من بند ثاني'),
@@ -166,7 +166,7 @@ class _OverChoices extends StatelessWidget {
           ),
           onTap: onMove,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           '${context.say('لو خليتها', 'لو خليتيها')} كذا، المجموع يطلع فوق الميزانية بـ $overLabel.',
           style: JourneyType.of(
@@ -198,7 +198,7 @@ class _CategoryMenu extends StatelessWidget {
           child: Row(
             children: [
               Icon(LucideIcons.pencil, size: 18),
-              SizedBox(width: 10),
+              SizedBox(width: AarastV3Space.x2),
               Flexible(child: Text('تعديل البند')),
             ],
           ),
@@ -213,7 +213,7 @@ class _CategoryMenu extends StatelessWidget {
                 size: 18,
                 color: AarastV3Color.danger,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Flexible(
                 child: Text(
                   context.say('شيل البند', 'شيلي البند'),
@@ -268,7 +268,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
         if (!blocked) ...[
           if (widget.allocated != null) ...[
             JourneyBox(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Row(
                 children: [
                   Icon(
@@ -276,7 +276,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
                     size: 18,
                     color: context.accent.primary,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       'يرجع ${widget.allocated} للاحتياط',
@@ -289,7 +289,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           JourneyChoiceCard(
             key: const ValueKey('category-remove-delete'),
@@ -303,7 +303,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
             onTap: () => setState(() => _choice = _RemoveChoice.remove),
           ),
           if (widget.allocated != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyChoiceCard(
               key: const ValueKey('category-remove-keep'),
               title: context.say('خلّه، بس بدون مبلغ', 'خلّيه، بس بدون مبلغ'),
@@ -317,7 +317,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
                   setState(() => _choice = _RemoveChoice.keepWithoutAmount),
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         JourneyButton(
           key: const ValueKey('category-remove-confirm'),

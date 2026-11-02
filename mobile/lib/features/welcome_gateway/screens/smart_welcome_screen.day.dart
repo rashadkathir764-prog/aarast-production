@@ -1,5 +1,8 @@
 part of 'smart_welcome_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _welcomeDayCellHeight = 56.0;
+
 /// The wedding day inside a chosen month: a Saturday-first week, each day
 /// with its Hijri date under it, Ramadan days marked, past days closed.
 class _DaySheet extends StatelessWidget {
@@ -62,7 +65,7 @@ class _DaySheet extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         for (var row = 0; row * 7 < lead + days; row++)
           Row(
             children: [
@@ -77,7 +80,9 @@ class _DaySheet extends StatelessWidget {
   }
 
   Widget _dayCell(BuildContext context, int day, int days) {
-    if (day < 1 || day > days) return const SizedBox(height: 56);
+    if (day < 1 || day > days) {
+      return const SizedBox(height: _welcomeDayCellHeight);
+    }
     final date = DateTime(month.year, month.month, day);
     final past = date.isBefore(today);
     final chosen = selected != null && DateUtils.isSameDay(selected, date);
@@ -97,7 +102,7 @@ class _DaySheet extends StatelessWidget {
         : AarastV3Color.textMuted;
     void pick() => Navigator.of(context).pop(date);
     return Padding(
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(AarastV3Space.half),
       child: Semantics(
         button: !past,
         selected: chosen,
@@ -112,12 +117,12 @@ class _DaySheet extends StatelessWidget {
         child: AarastPressable(
           onTap: past ? null : pick,
           selected: chosen,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AarastV3Radius.control),
           child: Container(
             constraints: const BoxConstraints(minHeight: 52),
             decoration: BoxDecoration(
               color: chosen ? context.accent.primary : null,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AarastV3Radius.control),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

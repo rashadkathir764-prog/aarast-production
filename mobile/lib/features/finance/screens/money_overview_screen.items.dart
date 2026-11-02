@@ -241,7 +241,7 @@ class _MoneyItemsTab extends StatelessWidget {
         // The server sends the agreements a page at a time; the rest load
         // here, in the same list.
         if (provider.hasMoreCosts) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Center(
             child: JourneyTextAction(
               key: const ValueKey('money-items-more'),
@@ -254,9 +254,9 @@ class _MoneyItemsTab extends StatelessWidget {
           ),
         ],
         if (provider.canManageBudget) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -267,7 +267,7 @@ class _MoneyItemsTab extends StatelessWidget {
                     weight: JourneyType.bold,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -469,7 +469,7 @@ class _MoneyItemRow extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -478,7 +478,7 @@ class _MoneyItemRow extends StatelessWidget {
                 color: muted ? AarastV3Color.textFaint : context.accent.primary,
                 soft: muted ? AarastV3Color.line : context.accent.primarySoft,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -492,7 +492,7 @@ class _MoneyItemRow extends StatelessWidget {
                             size: 14,
                             color: AarastV3Color.textMuted,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AarastV3Space.x1),
                         ],
                         Expanded(
                           child: Text(
@@ -507,7 +507,7 @@ class _MoneyItemRow extends StatelessWidget {
                           ),
                         ),
                         if (amount.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AarastV3Space.x2),
                           // An amount shrinks before it pushes past the row.
                           Flexible(
                             child: FittedBox(
@@ -526,7 +526,7 @@ class _MoneyItemRow extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     JourneyBar(
                       value: paidRatio,
                       color: muted
@@ -534,7 +534,7 @@ class _MoneyItemRow extends StatelessWidget {
                           : context.accent.primary,
                       height: 5,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AarastV3Space.x1),
                     Row(
                       children: [
                         Expanded(

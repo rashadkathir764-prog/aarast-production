@@ -153,7 +153,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: AarastV3Density.pageInsets,
             children: [
               JourneySubHeader(title: 'بيانات الخطة', onBack: widget.onBack),
               JourneyTextField(
@@ -165,7 +165,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 textInputAction: TextInputAction.next,
                 onChanged: (_) => setState(() => _titleError = null),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyPickerField(
                 key: const ValueKey('plan-details-day'),
                 label: 'موعد العرس',
@@ -182,7 +182,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                           (widget.repickStoredDay ? _pickFirstDay : null),
               ),
               if (hasStoredDay && widget.onChangeDate != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyChip(
@@ -193,7 +193,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyTextField(
                 key: const ValueKey('plan-details-budget'),
                 label: 'ميزانية عرسك (بدون المهر)',
@@ -208,7 +208,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 onChanged: (_) => setState(() {}),
               ),
               if (hasStoredDay) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 JourneyNote(
                   icon: LucideIcons.calendarClock,
                   text:
@@ -217,7 +217,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 ),
               ],
               if (widget.onArchive != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 Center(
                   child: JourneyTextAction(
                     key: const ValueKey('plan-details-archive'),
@@ -236,7 +236,12 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x4,
+              AarastV3Space.x4,
+            ),
             child: JourneyButton(
               key: const ValueKey('plan-details-save'),
               label: 'حفظ',

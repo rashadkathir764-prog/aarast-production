@@ -34,7 +34,7 @@ class _StagePath extends StatelessWidget {
       child: Row(
         children: [
           for (var index = 0; index < _homeMoments.length; index++) ...[
-            if (index > 0) const SizedBox(width: 5),
+            if (index > 0) const SizedBox(width: AarastV3Space.x1),
             Expanded(
               child: Container(
                 key: ValueKey('aarast-dashboard-moment-$index'),
@@ -45,7 +45,7 @@ class _StagePath extends StatelessWidget {
                       : index < current
                       ? AarastV3Color.onPrimary
                       : AarastV3Color.onPrimary.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.xs),
                 ),
               ),
             ),

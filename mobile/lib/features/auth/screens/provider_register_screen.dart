@@ -92,7 +92,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 JourneySubHeader(title: 'حساب مزود', onBack: _back),
@@ -106,7 +106,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   'حسابك أنت. نشاطك وأسعارك نسألك عنها بعدين.',
                   style: JourneyType.of(
@@ -114,7 +114,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AarastV3Space.x4),
                 JourneyTextField(
                   key: const Key('provider-register-name'),
                   label: 'اسمك',
@@ -124,7 +124,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   errorText: _nameError,
                   onChanged: _edited,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 JourneyTextField(
                   key: const Key('provider-register-phone'),
                   label: 'رقم الهاتف',
@@ -139,7 +139,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   errorText: _phoneError,
                   onChanged: _edited,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 JourneyTextField(
                   key: const Key('provider-register-password'),
                   label: 'كلمة المرور',
@@ -152,14 +152,14 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   onChanged: _edited,
                   onSubmitted: (_) => _submit(),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 const JourneyNote(
                   text:
                       'بعدها رمز على واتساب. ونفس الرقم تقدر تسوي فيه خطة عرسك بعدين.',
                   icon: LucideIcons.messageCircle,
                 ),
                 if (auth.errorMessage case final message?) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyNote(
                     key: const Key('provider-register-error'),
                     text: message,
@@ -168,7 +168,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                     soft: AarastV3Color.dangerSoft,
                   ),
                 ],
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 Center(
                   child: JourneyTextAction(
                     key: const Key('provider-register-login'),
@@ -181,7 +181,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-register-submit'),
               label: 'إنشاء حساب مزود',

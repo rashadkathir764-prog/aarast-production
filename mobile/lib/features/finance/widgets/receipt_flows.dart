@@ -162,7 +162,7 @@ Future<ReceiptViewerAction?> showReceiptViewer(
         child: Image.network(
           receipt.downloadUrl,
           errorBuilder: (_, _, _) => Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Text(
               context.say(
                 'انتهى الرابط. سكّر وافتح الإيصال مرة ثانية.',
@@ -226,7 +226,7 @@ class ReceiptThumb extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AarastV3Color.canvas,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         border: Border.all(color: AarastV3Color.lineStrong),
       ),
       child: const Icon(
@@ -238,7 +238,7 @@ class ReceiptThumb extends StatelessWidget {
     final Widget child = receipt == null
         ? missing
         : ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             child: Image.network(
               receipt.downloadUrl,
               width: width,

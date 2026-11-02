@@ -121,7 +121,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'الخصوصية',
@@ -129,7 +129,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 context.canPop() ? context.pop() : context.go(AppRouter.more),
           ),
           JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
             child: Column(
               children: [
                 if (preferences != null)
@@ -163,7 +163,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyList(
             children: [
               JourneyListRow(
@@ -215,7 +215,7 @@ class _Toggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           Expanded(

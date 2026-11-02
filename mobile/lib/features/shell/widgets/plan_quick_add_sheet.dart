@@ -156,7 +156,9 @@ class PlanQuickAddButton extends StatelessWidget {
         curve: Curves.easeOutCubic,
         constraints: BoxConstraints(minWidth: expanded ? 0 : 52),
         height: 52,
-        padding: EdgeInsets.symmetric(horizontal: expanded ? 18 : 0),
+        padding: EdgeInsets.symmetric(
+          horizontal: expanded ? AarastV3Space.x4 : 0,
+        ),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(_radius),
@@ -171,7 +173,9 @@ class PlanQuickAddButton extends StatelessWidget {
               curve: Curves.easeOutCubic,
               child: expanded
                   ? Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      padding: const EdgeInsetsDirectional.only(
+                        start: AarastV3Space.x2,
+                      ),
                       child: Text(
                         label,
                         style: JourneyType.of(

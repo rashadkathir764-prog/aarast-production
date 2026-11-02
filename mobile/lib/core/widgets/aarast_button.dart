@@ -112,7 +112,7 @@ class _AarastButtonContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const SizedBox.square(
-        dimension: 22,
+        dimension: AarastV3Space.x5,
         child: CircularProgressIndicator(
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -134,7 +134,7 @@ class _AarastButtonContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 20),
-        const SizedBox(width: 8),
+        const SizedBox(width: AarastV3Space.x2),
         Flexible(child: text),
       ],
     );

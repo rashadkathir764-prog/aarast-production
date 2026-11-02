@@ -164,7 +164,12 @@ class AarastDashboardView extends StatelessWidget {
       color: AarastV3Color.canvas,
       child: ListView(
         key: ValueKey('aarast-home-${summary.planId}'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x4,
+          bottomPadding,
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Center(
@@ -187,8 +192,11 @@ class AarastDashboardView extends StatelessWidget {
                             name: userName.trim().split(RegExp(r'\s+')).first,
                           ),
                   ),
-                  if (notice != null) ...[const SizedBox(height: 12), notice!],
-                  const SizedBox(height: 16),
+                  if (notice != null) ...[
+                    const SizedBox(height: AarastV3Space.x3),
+                    notice!,
+                  ],
+                  const SizedBox(height: AarastV3Space.x4),
                   if (window != null)
                     _WeddingSkyHero(
                       days: window,
@@ -214,7 +222,7 @@ class AarastDashboardView extends StatelessWidget {
                   ?assistantEntry,
                   if (window != null) ...[
                     if (window > 0) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _JourneyNextStep(
                         focus: focus,
                         payment: payment,
@@ -232,7 +240,7 @@ class AarastDashboardView extends StatelessWidget {
                         },
                       ),
                       if (events case final events?) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AarastV3Space.x2),
                         _WeekProgram(
                           events: events.weekOf(weddingDate!),
                           today: today,
@@ -241,14 +249,14 @@ class AarastDashboardView extends StatelessWidget {
                       ],
                       if (weekBookings case final bookings?
                           when bookings.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AarastV3Space.x2),
                         _WeekProviders(
                           bookings: bookings,
                           onTap: onOpenProviders,
                         ),
                       ],
                     ] else if (events case final events?) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AarastV3Space.x2),
                       _DayProgram(
                         events: events.dayOf(weddingDate!),
                         now: now ?? appNow(),
@@ -257,7 +265,7 @@ class AarastDashboardView extends StatelessWidget {
                     ],
                   ] else if (married) ...[
                     if (payment != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _JourneyNextStep(
                         focus: focus,
                         payment: payment,
@@ -268,11 +276,11 @@ class AarastDashboardView extends StatelessWidget {
                       ),
                     ],
                     if (onOpenReviews != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _RateProvidersCard(onTap: onOpenReviews!),
                     ],
                   ] else ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _JourneyNextStep(
                       focus: focus,
                       payment: payment,
@@ -291,11 +299,11 @@ class AarastDashboardView extends StatelessWidget {
                     ),
                     if (mahr case final mahr?
                         when mahr.recorded && !mahr.complete) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _MahrAgreementCard(mahr: mahr, onTap: onOpenMoney),
                     ],
                     if (summary.canViewMoney) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _DashboardMoneyCard(
                         summary: summary,
                         funding: funding,
@@ -307,7 +315,7 @@ class AarastDashboardView extends StatelessWidget {
                     if (_homeSuggestions(summary) case final suggestions
                         when suggestions.isNotEmpty &&
                             onAnswerSuggestion != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _JourneySuggestions(
                         suggestions: suggestions,
                         onOpen: (item) =>
@@ -317,7 +325,7 @@ class AarastDashboardView extends StatelessWidget {
                         onAnswer: onAnswerSuggestion!,
                       ),
                     ],
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     _JourneyHomeTiles(
                       summary: summary,
                       onOpenTasks: onOpenTasks,
@@ -325,14 +333,14 @@ class AarastDashboardView extends StatelessWidget {
                       onOpenProviders: onOpenProviders,
                     ),
                     if (afterwards.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AarastV3Space.x2),
                       _JourneyAfterwards(
                         items: afterwards,
                         onOpen: onOpenImportantItem,
                       ),
                     ],
                     if (_showsSharing) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AarastV3Space.x3),
                       _DashboardTeamStrip(
                         summary: summary,
                         onTap: onOpenSharing,

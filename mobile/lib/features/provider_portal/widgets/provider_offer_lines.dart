@@ -76,10 +76,10 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
           'تفاصيل العرض',
           style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         for (var index = 0; index < widget.lines.length; index++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
             child: Row(
               children: [
                 JourneyTag(
@@ -91,7 +91,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
                       ? AarastV3Color.dangerSoft
                       : AarastV3Color.mintSoft,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Text(
                     [
@@ -125,7 +125,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,7 +139,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
               ),
             ),
             if (_kind == 'EXTRA') ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 flex: 2,
                 child: JourneyTextField(

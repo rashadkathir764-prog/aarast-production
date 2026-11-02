@@ -98,7 +98,7 @@ class _MoneySummaryCard extends StatelessWidget {
 
     return JourneyBox(
       key: const ValueKey('money-dashboard-hero'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -179,10 +179,10 @@ class _MoneySummaryCard extends StatelessWidget {
             ),
           ),
           if (funding != null && hasAgreements) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             _ShortfallLine(funding: funding, currency: currency),
             if (funding.sourcesCount > 0 || funding.shortfall != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AarastV3Space.x3),
               _FundingSplit(
                 paidByOwner: moneyValue(summary.costs.paidByOwner),
                 paidByOthers: moneyValue(summary.costs.paidByOthers),
@@ -282,7 +282,7 @@ class _MahrAndWeddingCards extends StatelessWidget {
                   onTap: onMahr,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: _SplitCard(
                   key: const ValueKey('money-wedding-card'),
@@ -334,9 +334,9 @@ class _SplitCard extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -344,7 +344,7 @@ class _SplitCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(icon, size: 18, color: context.accent.primary),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AarastV3Space.x1),
                   Expanded(
                     child: Text(
                       label,
@@ -357,7 +357,7 @@ class _SplitCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
@@ -377,7 +377,7 @@ class _SplitCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               JourneyBar(
                 value: ratio,
                 color: context.accent.primary,
@@ -440,14 +440,14 @@ class _FundingSplit extends StatelessWidget {
         children: [
           ClipRRect(
             key: const ValueKey('money-funding-bar'),
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(AarastV3Radius.xs),
             child: SizedBox(
-              height: 10,
+              height: AarastV3Space.x2,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (var index = 0; index < pieces.length; index++) ...[
-                    if (index > 0) const SizedBox(width: 3),
+                    if (index > 0) const SizedBox(width: AarastV3Space.x1),
                     Expanded(
                       flex: (pieces[index].$1 / total * 1000).round().clamp(
                         1,
@@ -460,7 +460,7 @@ class _FundingSplit extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           Wrap(
             spacing: 14,
             runSpacing: 4,
@@ -470,7 +470,7 @@ class _FundingSplit extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox.square(
-                      dimension: 8,
+                      dimension: AarastV3Space.x2,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: piece.$2,
@@ -478,7 +478,7 @@ class _FundingSplit extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: AarastV3Space.x1),
                     Text(
                       piece.$3,
                       style: JourneyType.of(
@@ -526,7 +526,7 @@ class _ShortfallLine extends StatelessWidget {
       return Row(
         children: [
           const Icon(LucideIcons.checkCircle2, color: AarastV3Color.mint),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               'فلوسك والموعود يغطون اتفاقاتك',
@@ -554,7 +554,7 @@ class _ShortfallLine extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
           child: Text(
             'ومع الموعود ناقصك',
             style: JourneyType.of(
@@ -587,7 +587,7 @@ class _MoneyBudgetCard extends StatelessWidget {
     final currency = summary.currency;
     if (!summary.hasBudget) {
       return JourneyBox(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -598,7 +598,7 @@ class _MoneyBudgetCard extends StatelessWidget {
                 weight: JourneyType.bold,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               'رقم تقريبي يكفي، ونقول لك كم باقي منه وأي بند فات حده.',
               style: JourneyType.of(
@@ -607,7 +607,7 @@ class _MoneyBudgetCard extends StatelessWidget {
               ),
             ),
             if (canManage) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AarastV3Space.x3),
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: JourneyButton(
@@ -630,7 +630,7 @@ class _MoneyBudgetCard extends StatelessWidget {
       (provider) => provider?.amountsHidden ?? false,
     );
     return JourneyBox(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -650,12 +650,12 @@ class _MoneyBudgetCard extends StatelessWidget {
               color: over ? AarastV3Color.danger : AarastV3Color.ink,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyBar(
             value: ratio,
             color: over ? AarastV3Color.danger : context.accent.primary,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             hidden
                 ? 'الميزانية مخفية'

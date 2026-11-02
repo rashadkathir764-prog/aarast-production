@@ -105,7 +105,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: task?.title ?? 'المهمة',
               onBack: _back,
@@ -125,14 +130,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               onRefresh: () => provider.load(widget.weddingPlanId),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: AarastV3Density.pageInsets,
                 children: [body],
               ),
             ),
           ),
           if (task != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: AarastV3Density.actionInsets,
               child: open
                   ? Row(
                       children: [
@@ -150,7 +155,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                 : () => _finish(provider, task),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AarastV3Space.x2),
                         JourneyButton(
                           key: const ValueKey('task-detail-postpone'),
                           label: context.say('أجّلها', 'أجّليها'),
@@ -197,9 +202,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             offline: false,
             onRetry: () => provider.load(widget.weddingPlanId),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
-        if (fireworks) ...[const _FireworksHero(), const SizedBox(height: 12)],
+        if (fireworks) ...[
+          const _FireworksHero(),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -236,9 +244,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Space.x4,
+            vertical: AarastV3Space.x2,
+          ),
           child: Column(
             children: [
               _Fact(
@@ -289,11 +300,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
           ),
         if (steps.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
             key: const ValueKey('task-steps-progress'),
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Row(
               children: [
                 Expanded(
@@ -317,7 +328,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         TaskChecklistSection(
           items: steps,
           saving: provider.isSavingChecklist,
@@ -330,7 +341,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           onRemove: (item) => provider.removeChecklistItem(task, item),
         ),
         if (fireworks) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
             key: ValueKey('task-fireworks-safety'),
             text:
@@ -342,7 +353,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           ),
         ],
         if (!mine && phone != null && phone.trim().isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           _ContactCard(
             name: task.responsibleLabel,
             phone: phone,
@@ -592,7 +603,7 @@ class _FireworksHero extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: context.accent.night,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
         ),
         child: CustomPaint(
           painter: JourneyFireworksPainter(

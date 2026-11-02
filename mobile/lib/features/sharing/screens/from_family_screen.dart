@@ -120,14 +120,14 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 JourneySubHeader(
                   title: '',
                   onBack: () => context.popOrGo(AppRouter.welcome),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 const Center(
                   child: JourneyIconTile(
                     icon: LucideIcons.users,
@@ -137,7 +137,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     radius: 24,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AarastV3Space.x4),
                 Semantics(
                   header: true,
                   child: Text(
@@ -149,7 +149,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   'العريس أو العروسة يضيفونك من خطتهم،\nويوصلك رابط على واتساب.',
                   textAlign: TextAlign.center,
@@ -159,7 +159,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AarastV3Space.x5),
                 JourneyTextField(
                   key: const ValueKey('from-family-link'),
                   label: 'الصق رابط الدعوة',
@@ -173,24 +173,26 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                   onSubmitted: (_) => _open(),
                 ),
                 if (_clipboardToken case final token?) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastPressable(
                     key: const ValueKey('from-family-clipboard'),
                     onTap: () => _open(token),
                     semanticLabel: 'لقينا رابط في الحافظة. نفتحه؟',
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.surface),
                     child: const JourneyNote(
                       text: 'لقينا رابط في الحافظة. نفتحه؟',
                       icon: LucideIcons.clipboardCheck,
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 Row(
                   children: [
                     const Expanded(child: Divider(color: AarastV3Color.line)),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AarastV3Space.x2,
+                      ),
                       child: Text(
                         'ما عندك رابط؟',
                         style: JourneyType.of(
@@ -202,7 +204,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     const Expanded(child: Divider(color: AarastV3Color.line)),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 JourneyBox(
                   padding: EdgeInsets.zero,
                   child: JourneyListRow(
@@ -220,7 +222,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     onTap: _askToBeAdded,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Center(
                   child: JourneyTextAction(
                     key: const ValueKey('from-family-own-plan'),
@@ -233,7 +235,12 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x4,
+              AarastV3Space.x4,
+            ),
             child: JourneyButton(
               key: const ValueKey('from-family-open'),
               label: 'افتح الرابط',

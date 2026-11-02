@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The journey sheet shell is the prototype's `sheet` (kit.dart): canvas,
-/// 28 top radius, 20 / 10 / 20 / 30 padding, a 40×5 handle, 14 to a bold
+/// 28 top radius, 20 / 8 / 20 / 32 padding on the grid, a 40×5 handle, 12 to a bold
 /// title, a muted subtitle (sizes from JourneyType, D74), 16 to the content.
 void main() {
   Future<void> open(
@@ -60,13 +60,13 @@ void main() {
     expect(decoration.color, AarastV3Color.line);
 
     final body = tester.getRect(find.byType(JourneySheetBody));
-    expect(handle.top - body.top, 10);
+    expect(handle.top - body.top, AarastV3Space.x2);
 
     final title = tester.widget<Text>(find.text('تأجيل العرس'));
     expect(title.style?.fontSize, 19);
     expect(title.style?.fontWeight, FontWeight.w700);
     final titleRect = tester.getRect(find.text('تأجيل العرس'));
-    expect(titleRect.top - handle.bottom, 14);
+    expect(titleRect.top - handle.bottom, AarastV3Space.x3);
     expect(body.right - titleRect.right, 20);
 
     final subtitle = tester.widget<Text>(
@@ -80,11 +80,11 @@ void main() {
 
     final content = tester.getRect(find.byKey(const ValueKey('content')));
     expect(content.top - subtitleRect.bottom, 16);
-    expect(body.bottom - content.bottom, 30);
+    expect(body.bottom - content.bottom, AarastV3Space.x8);
     expect(content.left - body.left, 20);
   });
 
-  testWidgets('the bottom 30 also covers the phone inset', (tester) async {
+  testWidgets('the bottom 32 also covers the phone inset', (tester) async {
     await open(
       tester,
       viewPadding: const EdgeInsets.only(bottom: 34),

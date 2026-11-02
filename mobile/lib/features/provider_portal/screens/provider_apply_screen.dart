@@ -145,7 +145,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(title: 'طلب الانضمام', onBack: _leave),
           const JourneyListState(
@@ -178,7 +178,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
@@ -187,13 +187,13 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                     onBack: _step == 0 ? _leave : _previous,
                   ),
                   _JoinSteps(labels: _steps, current: _step),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AarastV3Space.x4),
                   ...children,
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: AarastV3Density.actionInsets,
               child: _step < _steps.length - 1
                   ? JourneyButton(
                       key: const ValueKey('provider-apply-next'),
@@ -224,7 +224,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final name = _nameController.text.trim();
     return [
       const _StepTitle('نشاطك'),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyTextField(
         key: const Key('provider-apply-name'),
         label: 'اسم النشاط كما يعرفه الناس',
@@ -235,7 +235,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           if (_attempted) setState(() {});
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyPickerField(
         key: const Key('provider-apply-category'),
         label: 'القسم',
@@ -254,7 +254,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   List<Widget> _whereStep(ProviderMarketplaceProvider marketplace) {
     return [
       const _StepTitle('وين تشتغل؟'),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyPickerField(
         key: const Key('provider-apply-city'),
         label: 'المدينة',
@@ -265,7 +265,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       if (_attempted && _cityName(marketplace) == null)
         const _FieldError('اختر مدينتك'),
       ..._referenceTrouble(marketplace, marketplace.cities.isEmpty),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const Key('provider-apply-address'),
         label: 'مكان المحل (اختياري)',
@@ -287,9 +287,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     return [
       const _StepTitle(
         'خدمتك وسعرها',
-        sub: 'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
+        sub:
+            'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyTextField(
         key: const Key('provider-apply-service'),
         label: 'اسم الخدمة',
@@ -302,7 +303,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           if (_attempted) setState(() {});
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const Key('provider-apply-price'),
         label: 'السعر',
@@ -316,7 +317,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           if (_attempted) setState(() {});
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const Key('provider-apply-service-about'),
         label: 'ايش تشمل (اختياري)',
@@ -326,10 +327,13 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         minLines: 2,
         maxLines: 4,
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AarastV3Space.x2),
       Text(
         'الأسعار بالريال اليمني.',
-        style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.textMuted,
+        ),
       ),
     ];
   }
@@ -344,7 +348,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final error = _sendError;
     return [
       const _StepTitle('كذا بيشوفك العرسان'),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       ProviderPreviewCard(
         name: _nameController.text.trim(),
         kind: providerKindLine(
@@ -353,7 +357,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         ),
         priceTag: 'من ${providerMoneyLabel(_priceController.text, 'YER')}',
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       JourneyBox(
         child: Column(
           children: [
@@ -381,9 +385,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.half),
         child: Text(
           'نراجع طلبك ونبلغك هنا.',
           style: JourneyType.of(
@@ -393,7 +397,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         ),
       ),
       if (error != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: const Key('provider-apply-error'),
           text: error,
@@ -413,7 +417,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     if (!missing || marketplace.isReferenceDataLoading) return const [];
     if (marketplace.referenceDataErrorMessage == null) return const [];
     return [
-      const SizedBox(height: 10),
+      const SizedBox(height: AarastV3Space.x2),
       const JourneyNote(
         text: 'ما قدرنا نجيب المدن والأقسام. تأكد من النت.',
         icon: LucideIcons.wifiOff,
@@ -576,7 +580,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     if (!sent) {
       setState(() {
         _claimError =
-            dashboard.errorMessage ?? 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
       });
       return;
     }

@@ -66,13 +66,23 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
       children: [
         const JourneySectionTitle('خطوات صغيرة'),
         JourneyBox(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x2,
+            AarastV3Space.x1,
+            AarastV3Space.x2,
+            AarastV3Space.x2,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (items.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+                  padding: const EdgeInsets.fromLTRB(
+                    AarastV3Space.x2,
+                    AarastV3Space.x2,
+                    AarastV3Space.x2,
+                    AarastV3Space.x1,
+                  ),
                   child: Text(
                     context.say(
                       'قسّمها على خطوات صغيرة تخلصها وحدة وحدة.',
@@ -100,7 +110,9 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                       child: AarastPressable(
                         onTap: widget.saving ? () {} : () => _rename(item),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AarastV3Space.x2,
+                          ),
                           child: Text(
                             item.title,
                             style:
@@ -132,7 +144,7 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                     ),
                   ],
                 ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -149,7 +161,7 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                       onSubmitted: (_) => _add(),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   JourneyRoundButton(
                     key: const ValueKey('task-checklist-add'),
                     icon: LucideIcons.plus,
@@ -159,7 +171,7 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                 ],
               ),
               if (widget.errorMessage != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 Text(
                   widget.errorMessage!,
                   style: JourneyType.of(
@@ -210,7 +222,7 @@ class _RenameStepSheetState extends State<_RenameStepSheet> {
           textInputAction: TextInputAction.done,
           onSubmitted: (value) => Navigator.pop(context, value),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('task-checklist-rename-save'),
           label: 'حفظ',

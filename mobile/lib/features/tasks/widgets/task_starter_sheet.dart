@@ -134,7 +134,12 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
           ),
         for (final group in widget.groups) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x1,
+              AarastV3Space.x3,
+              AarastV3Space.x1,
+              AarastV3Space.x2,
+            ),
             child: Row(
               children: [
                 Flexible(
@@ -146,7 +151,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 Flexible(
                   child: Text(
                     group.subtitle,
@@ -160,7 +165,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
             ),
           ),
           JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
             child: Column(
               children: [
                 for (final template in group.templates)
@@ -217,7 +222,7 @@ class _TemplateRow extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: AarastV3Density.chipInsets,
             child: Row(
               children: [
                 Container(
@@ -229,7 +234,7 @@ class _TemplateRow extends StatelessWidget {
                               ? AarastV3Color.textFaint
                               : context.accent.primary)
                         : null,
-                    borderRadius: BorderRadius.circular(7),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.xs),
                     border: on
                         ? null
                         : Border.all(color: AarastV3Color.lineStrong, width: 2),
@@ -242,7 +247,7 @@ class _TemplateRow extends StatelessWidget {
                         )
                       : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Text(
                     template.title,

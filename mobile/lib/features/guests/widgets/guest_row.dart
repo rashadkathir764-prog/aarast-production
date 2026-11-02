@@ -41,7 +41,7 @@ class GuestRow extends StatelessWidget {
         key: ValueKey('guest-row-${guest.id}'),
         onTap: onOpen,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: AarastV3Density.chipInsets,
           child: Row(
             children: [
               JourneyAvatar(
@@ -49,7 +49,7 @@ class GuestRow extends StatelessWidget {
                 color: context.accent.primary,
                 size: 38,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +73,7 @@ class GuestRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               JourneyTag(label: reply, color: color, soft: soft),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// شريحة الفلترة الموحدة عبر كل التبويبات (المهام/الضيوف/المزودين/المال).
 ///
@@ -50,7 +51,7 @@ class AarastFilterPill extends StatelessWidget {
           duration: AppTheme.motionFast,
           curve: Curves.easeOutCubic,
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          padding: AarastV3Density.chipInsets,
           decoration: BoxDecoration(
             color: selected ? color : softColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusPill),
@@ -69,7 +70,7 @@ class AarastFilterPill extends StatelessWidget {
                       ? AppTheme.brand
                       : color,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AarastV3Space.x1),
               ],
               Text(
                 label,

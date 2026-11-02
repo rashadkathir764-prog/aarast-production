@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                           size: 56,
                           color: AarastV3Color.onPrimary,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AarastV3Space.x3),
                         Text(
                           'عرسك من أول ريال إلى آخر دفعة',
                           textAlign: TextAlign.center,

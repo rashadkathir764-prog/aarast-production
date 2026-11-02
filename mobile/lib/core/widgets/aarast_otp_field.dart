@@ -6,6 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
+
+/// The hidden input under the code boxes only carries the digits.
+const _hiddenInputSize = 1.0;
 
 /// الحالة البصرية لحقل رمز التحقق الموحّد.
 enum AarastOtpFieldState { idle, error, success }
@@ -44,7 +48,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           title,
           textAlign: TextAlign.center,
@@ -53,7 +57,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           subtitle,
           textAlign: TextAlign.center,
@@ -63,7 +67,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
             height: 1.45,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AarastV3Space.x5),
         Center(
           child: reduceMotion
               ? badge
@@ -81,7 +85,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
                   child: badge,
                 ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
       ],
     );
   }
@@ -315,7 +319,9 @@ class _AarastOtpFieldState extends State<AarastOtpField>
     return Expanded(
       child: Padding(
         padding: EdgeInsetsDirectional.only(
-          end: index == widget.length - 1 ? 0 : 6,
+          end: index == widget.length - AarastV3Space.hair
+              ? 0
+              : AarastV3Space.x1,
         ),
         child: AnimatedContainer(
           duration: _reduceMotion
@@ -380,7 +386,8 @@ class _AarastOtpFieldState extends State<AarastOtpField>
                     showCursor: false,
                     style: const TextStyle(
                       color: Colors.transparent,
-                      fontSize: 1,
+                      // The real input is invisible under the boxes.
+                      fontSize: _hiddenInputSize,
                     ),
                     cursorColor: Colors.transparent,
                     decoration: const InputDecoration(

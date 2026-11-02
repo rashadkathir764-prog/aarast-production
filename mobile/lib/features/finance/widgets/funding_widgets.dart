@@ -289,7 +289,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
               ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyTextField(
           key: const ValueKey('funding-name'),
           label: _kind == FundingKind.savings ? 'اسمها' : 'من مين؟',
@@ -303,7 +303,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           errorText: _nameError,
           onChanged: (_) => setState(() => _nameError = null),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           key: const ValueKey('funding-amount'),
           label: 'كم؟',
@@ -319,7 +319,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           onChanged: (_) => setState(() => _amountError = null),
         ),
         if (!_isLoan) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           _label('وصلت ولا موعود؟'),
           Row(
             children: [
@@ -331,7 +331,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
                   onTap: () => setState(() => _pledged = false),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: JourneyChip(
                   key: const ValueKey('funding-pledged'),
@@ -343,7 +343,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             ],
           ),
           if (_pledged) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             // D59: the day it should arrive; we remind the day before and
             // on the day, and it reads «متأخر» once the day passes.
             JourneyPickerField(
@@ -359,7 +359,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           ],
         ],
         if (_isLoan && !_editing) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           _label(context.say('كيف بترجعها؟', 'كيف بترجعينها؟')),
           Wrap(
             spacing: 8,
@@ -383,7 +383,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             ],
           ),
           if (_repaymentCount > 0) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyPickerField(
               key: const ValueKey('funding-first-repayment'),
               label: _repaymentCount == 1
@@ -396,10 +396,10 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             ),
           ],
           if (repayments.length > 1) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyBox(
               key: const ValueKey('funding-repayment-summary'),
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               child: Text(
                 '${_plain(int.parse(repayments.first.amount))} كل شهر · تبدأ ${arabicMonthName(_firstRepayment.month)}',
                 style: JourneyType.of(
@@ -410,7 +410,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             ),
           ],
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: JourneyTextAction(
@@ -428,7 +428,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             keyboardType: TextInputType.phone,
             textDirection: TextDirection.ltr,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(label: 'ملاحظة', controller: _note),
         ],
         if (_failure != null) ...[
@@ -441,7 +441,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             soft: AarastV3Color.dangerSoft,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('funding-save'),
           label: 'حفظ',
@@ -451,7 +451,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           onPressed: _saving ? null : _submit,
         ),
         if (_editing) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AarastV3Space.x1),
           Center(
             child: JourneyTextAction(
               key: const ValueKey('funding-delete'),
@@ -467,7 +467,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
     child: Text(
       text,
       style: JourneyType.of(

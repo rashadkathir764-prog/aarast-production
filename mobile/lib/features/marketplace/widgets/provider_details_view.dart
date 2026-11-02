@@ -13,6 +13,9 @@ import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
 import 'provider_trust_signals.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _providerCoverHeight = 220.0;
+
 /// f03 «صفحة المزود»: the photos, who the provider is and how they answer,
 /// their prices and how old they are, and their packages. Asking for a quote
 /// and WhatsApp sit in the screen's footer.
@@ -86,7 +89,7 @@ class ProviderDetailsView extends StatelessWidget {
 
     return ListView(
       key: const ValueKey('provider-details-page'),
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x6),
       children: [
         _ProviderHero(
           photos: photos,
@@ -95,13 +98,18 @@ class ProviderDetailsView extends StatelessWidget {
           dataSaver: dataSaver,
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AarastV3Space.x5,
+            AarastV3Space.x4,
+            AarastV3Space.x5,
+            0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (detailsErrorMessage != null) ...[
                 JourneyListNotice(offline: false, onRetry: onRetryDetails),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
               ],
               Row(
                 children: [
@@ -118,7 +126,7 @@ class ProviderDetailsView extends StatelessWidget {
                     ),
                   ),
                   if (provider.isVerified) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Tooltip(
                       message: 'موثّق',
                       child: Icon(
@@ -132,7 +140,7 @@ class ProviderDetailsView extends StatelessWidget {
                 ],
               ),
               if (provider.ratingCount > 0 || place != null) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AarastV3Space.half),
                 _RatingLine(
                   average: provider.ratingAverage,
                   count: provider.ratingCount,
@@ -140,7 +148,7 @@ class ProviderDetailsView extends StatelessWidget {
                 ),
               ],
               if (responds != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -155,7 +163,7 @@ class ProviderDetailsView extends StatelessWidget {
                 ),
               ],
               if (price != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 _PriceBox(
                   price: price,
                   withinBudget: withinBudget,
@@ -218,7 +226,7 @@ class ProviderDetailsView extends StatelessWidget {
                       review: review,
                       providerName: provider.businessName,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                   ],
               ],
             ],
@@ -262,7 +270,7 @@ class _ReviewWithReply extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               Semantics(
                 label: '$rating من 5',
                 child: ExcludeSemantics(
@@ -284,21 +292,21 @@ class _ReviewWithReply extends StatelessWidget {
             ],
           ),
           if (comment.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               '«$comment»',
               style: JourneyType.of(JourneyType.body, height: 1.6),
             ),
           ],
           if (reply != null && reply.body.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Container(
               key: ValueKey('provider-details-review-reply-${review.id}'),
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AarastV3Space.x3),
               decoration: BoxDecoration(
                 color: AarastV3Color.canvas,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AarastV3Radius.surface),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +319,7 @@ class _ReviewWithReply extends StatelessWidget {
                       color: AarastV3Color.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AarastV3Space.x1),
                   Text(
                     reply.body.trim(),
                     style: JourneyType.of(JourneyType.body, height: 1.5),
@@ -350,7 +358,7 @@ class _ProviderHero extends StatelessWidget {
       ),
     );
     return SizedBox(
-      height: 220,
+      height: _providerCoverHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -494,13 +502,13 @@ class _PriceBox extends StatelessWidget {
                 ),
               ),
               if (withinBudget) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 const Icon(
                   LucideIcons.checkCircle2,
                   size: 16,
                   color: AarastV3Color.mint,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AarastV3Space.x1),
                 Text(
                   'ضمن بندك',
                   style: JourneyType.of(
@@ -513,7 +521,7 @@ class _PriceBox extends StatelessWidget {
             ],
           ),
           if (age != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               age!,
               style: JourneyType.of(
@@ -561,7 +569,8 @@ List<_Offer> _offers(
   }
   return [
     for (final service in services)
-      if (providerMoneyLabel(service.basePrice, service.currency) case final price?)
+      if (providerMoneyLabel(service.basePrice, service.currency)
+          case final price?)
         (
           key: service.id,
           title: service.title,
@@ -658,7 +667,10 @@ Future<void> _openLink(BuildContext context, String link) async {
 /// The cover first, then his approved portfolio photos (B-16), once each.
 /// Only reviewed photos reach customers (D62): the services' own photos,
 /// never reviewed, are not shown.
-List<String> _photoUrls(MarketplaceProvider provider, PublicPortfolio? portfolio) {
+List<String> _photoUrls(
+  MarketplaceProvider provider,
+  PublicPortfolio? portfolio,
+) {
   final cover = provider.coverUrl?.trim();
   return <String>{
     if (cover != null && cover.isNotEmpty) cover,

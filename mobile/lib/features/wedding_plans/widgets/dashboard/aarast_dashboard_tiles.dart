@@ -76,7 +76,7 @@ class _JourneyHomeTiles extends StatelessWidget {
               onTap: onOpenTasks,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: _HomeTile(
               key: const ValueKey('aarast-dashboard-tile-guests'),
@@ -95,7 +95,7 @@ class _JourneyHomeTiles extends StatelessWidget {
               onTap: onOpenGuests,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: _HomeTile(
               key: const ValueKey('aarast-dashboard-tile-providers'),
@@ -150,12 +150,12 @@ class _HomeTile extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: Container(
           padding: const EdgeInsets.all(AarastV3Space.x3),
           decoration: BoxDecoration(
             color: soft,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +163,7 @@ class _HomeTile extends StatelessWidget {
               Row(
                 children: [
                   Icon(icon, size: 16, color: color),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AarastV3Space.x1),
                   Flexible(
                     child: Text(
                       label,
@@ -178,7 +178,7 @@ class _HomeTile extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               Text(
                 '$value',
                 style: JourneyType.of(
@@ -205,7 +205,7 @@ class _HomeTile extends StatelessWidget {
                 ),
               const Spacer(),
               if (progress != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 JourneyBar(
                   value: progress!.clamp(0.0, 1.0),
                   color: color,

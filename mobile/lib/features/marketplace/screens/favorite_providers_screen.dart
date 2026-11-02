@@ -69,7 +69,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: context.say('قارن الملفين', 'قارني الملفين'),
@@ -84,7 +84,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (index, provider) in providers.indexed) ...[
-                    if (index > 0) const SizedBox(width: 10),
+                    if (index > 0) const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: _CompareColumn(
                         key: ValueKey('compare-provider-${provider.id}'),
@@ -167,7 +167,7 @@ class _CompareColumn extends StatelessWidget {
     final city = provider.city?.nameAr.trim();
     final active = packages.where((item) => item.isActive).toList();
     return JourneyBox(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -179,7 +179,7 @@ class _CompareColumn extends StatelessWidget {
               style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             price ?? 'حسب الطلب',
             style: JourneyType.of(
@@ -188,22 +188,22 @@ class _CompareColumn extends StatelessWidget {
               color: context.accent.primary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           for (final item in active)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Padding(
-                    padding: EdgeInsets.only(top: 2),
+                    padding: EdgeInsets.only(top: AarastV3Space.half),
                     child: Icon(
                       LucideIcons.check,
                       size: 16,
                       color: AarastV3Color.mint,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AarastV3Space.x1),
                   Expanded(
                     child: Text(
                       [
@@ -217,7 +217,7 @@ class _CompareColumn extends StatelessWidget {
               ),
             ),
           if (provider.ratingCount > 0) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             Row(
               children: [
                 const Icon(
@@ -225,7 +225,7 @@ class _CompareColumn extends StatelessWidget {
                   size: 15,
                   color: AarastV3Color.brandAccentStrong,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AarastV3Space.x1),
                 Flexible(
                   child: Text(
                     '${provider.ratingAverage.toStringAsFixed(1)} '
@@ -248,7 +248,7 @@ class _CompareColumn extends StatelessWidget {
               ),
             ),
           const Spacer(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (onQuote != null)
             JourneyButton(
               key: ValueKey('compare-quote-${provider.id}'),

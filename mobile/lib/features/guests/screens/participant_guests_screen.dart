@@ -59,7 +59,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
           provider?.errorMessage != null && provider?.isLoading != true;
       children.add(
         Padding(
-          padding: const EdgeInsets.only(top: 14),
+          padding: const EdgeInsets.only(top: AarastV3Space.x3),
           child: JourneyListState(
             phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
             section: JourneySection.guests,
@@ -71,12 +71,12 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
       children.addAll([
         if (provider?.errorMessage != null) ...[
           JourneyListNotice(offline: false, onRetry: _load),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         if (view.guestsTotal > 0) ...[
           JourneyBox(
             key: const ValueKey('participant-guests-summary'),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: GuestSummaryFigures(
               words: words,
               total: view.guestsTotal,
@@ -84,7 +84,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
               pending: view.guestsPending,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         JourneyNote(
           key: const ValueKey('participant-guests-read-only'),
@@ -98,7 +98,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
         ),
         if (view.guests.isEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 14),
+            padding: const EdgeInsets.only(top: AarastV3Space.x3),
             child: JourneyListState(
               key: const ValueKey('participant-guests-empty'),
               phase: JourneyListPhase.empty,
@@ -110,7 +110,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
         else ...[
           JourneySectionTitle(words.allGuests, action: '${view.guestsTotal}'),
           JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
             child: Column(
               children: [
                 for (final (index, guest) in view.guests.indexed) ...[
@@ -143,7 +143,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneyTabHeader(
               title: words.guests,
@@ -156,7 +156,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
                         '${view.guestsPending} ${words.pending}',
                     ].join(' · '),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             ...children,
           ],
         ),
@@ -204,7 +204,7 @@ class _GuestLine extends StatelessWidget {
       label: '$name، $label',
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Row(
           children: [
             JourneyAvatar(
@@ -212,7 +212,7 @@ class _GuestLine extends StatelessWidget {
               color: JourneyAvatar.paletteAt(context, index),
               size: 32,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Text(
                 name,
@@ -224,7 +224,7 @@ class _GuestLine extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             JourneyTag(label: label, color: color, soft: soft),
           ],
         ),

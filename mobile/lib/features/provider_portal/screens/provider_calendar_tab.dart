@@ -50,7 +50,12 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
             onRefresh: dashboard.loadDashboard,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+              ),
               children: [
                 JourneyTabHeader(
                   title: 'التقويم',
@@ -81,7 +86,7 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                       color: AarastV3Color.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                 ],
                 ProviderMonthGrid(
                   month: _month,
@@ -90,12 +95,12 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                   selected: picking ?? const {},
                   onDay: (day) => _onDay(day, dashboard),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 ProviderCalendarLegend(
                   capacity: dashboard.profile?.dailyBookingCapacity ?? 1,
                 ),
                 if (dashboard.errorMessage case final error?) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   JourneyNote(
                     key: const Key('provider-calendar-error'),
                     text: error,
@@ -112,10 +117,10 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
           // The bottom bar floats over the tab; its height is in the
           // bottom padding the frame gives the body.
           padding: EdgeInsets.fromLTRB(
-            20,
-            8,
-            20,
-            12 + MediaQuery.paddingOf(context).bottom,
+            AarastV3Space.x5,
+            AarastV3Space.x2,
+            AarastV3Space.x5,
+            AarastV3Space.x3 + MediaQuery.paddingOf(context).bottom,
           ),
           child: picking == null
               ? JourneyButton(
@@ -142,7 +147,7 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                             : () => _closePicked(dashboard),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: JourneyButton(
                         key: const Key('provider-calendar-cancel-pick'),

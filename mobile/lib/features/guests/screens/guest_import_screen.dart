@@ -128,7 +128,12 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: _fromContacts
                   ? 'من جهات الاتصال'
@@ -150,7 +155,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
                 : _pasteBody(candidates, provider.groups),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('import-add'),
               label: toAdd.isEmpty
@@ -172,7 +177,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
 
   Widget _pasteBody(List<GuestCandidate> candidates, List<GuestGroup> groups) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: AarastV3Density.pageInsets,
       children: [
         JourneyTextField(
           key: const ValueKey('import-paste'),
@@ -193,7 +198,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
           autofocus: true,
         ),
         if (candidates.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           const JourneySectionTitle('فهمناها كذا'),
           JourneyBox(
             padding: EdgeInsets.zero,
@@ -219,7 +224,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   ) {
     if (_contactsError case final error?) {
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -230,7 +235,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               key: const ValueKey('import-retry'),
               label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
@@ -278,7 +283,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
         onChanged: (value) => setState(() => _query = value),
       ),
       _groupChoice(groups),
-      const SizedBox(height: 4),
+      const SizedBox(height: AarastV3Space.x1),
     ];
     for (final section in sections) {
       final open = section.members
@@ -323,7 +328,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       }
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: AarastV3Density.pageInsets,
       itemCount: items.length,
       itemBuilder: (context, index) => items[index],
     );
@@ -333,7 +338,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   Widget _groupChoice(List<GuestGroup> groups) {
     if (groups.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.only(top: AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -345,7 +350,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
               color: AarastV3Color.textMuted,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -443,15 +448,17 @@ class _CandidateRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Row(
           children: [
             JourneyAvatar(
               letter: name.isEmpty ? '؟' : name.characters.first,
-              color: duplicate ? AarastV3Color.textFaint : context.accent.primary,
+              color: duplicate
+                  ? AarastV3Color.textFaint
+                  : context.accent.primary,
               size: 36,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,7 +492,9 @@ class _CandidateRow extends StatelessWidget {
                     : isPicked
                     ? LucideIcons.checkCircle2
                     : LucideIcons.circle,
-                color: isPicked ? context.accent.primary : AarastV3Color.textFaint,
+                color: isPicked
+                    ? context.accent.primary
+                    : AarastV3Color.textFaint,
                 semanticLabel: isPicked ? 'مختار' : 'غير مختار',
               ),
           ],

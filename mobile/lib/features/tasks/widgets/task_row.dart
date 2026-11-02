@@ -92,7 +92,7 @@ class TaskRow extends StatelessWidget {
       child: AarastPressable(
         onTap: onOpen ?? () {},
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -102,7 +102,7 @@ class TaskRow extends StatelessWidget {
                 late: late,
                 onTap: busy ? null : onToggle,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,7 +128,7 @@ class TaskRow extends StatelessWidget {
                           ),
                         ),
                         if (task.isPrivate) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: AarastV3Space.x1),
                           const Icon(
                             LucideIcons.lock,
                             key: ValueKey('task-private-lock'),
@@ -150,7 +150,7 @@ class TaskRow extends StatelessWidget {
                     ),
                     if (onPostpone != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.only(top: AarastV3Space.x1),
                         child: JourneyChip(
                           key: ValueKey('task-postpone-${task.id}'),
                           label: context.say('أجّلها', 'أجّليها'),
@@ -162,7 +162,7 @@ class TaskRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               JourneyAvatar(
                 letter: letter,
                 color: mine ? context.accent.primary : context.accent.primary,
@@ -192,7 +192,7 @@ class _DoneCircle extends StatelessWidget {
     final circle = Container(
       width: 26,
       height: 26,
-      margin: const EdgeInsets.only(top: 2),
+      margin: const EdgeInsets.only(top: AarastV3Space.half),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: done ? AarastV3Color.mint : null,

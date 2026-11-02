@@ -209,7 +209,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              padding: AarastV3Density.pageInsets,
               children: [
                 JourneySubHeader(
                   title: context.say('اسأل اعّرست', 'اسألي اعّرست'),
@@ -222,7 +222,12 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
           ),
           if (usable)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x1,
+                AarastV3Space.x4,
+                AarastV3Space.x3,
+              ),
               child: _AskField(
                 controller: _questionController,
                 enabled: !_asking && status.remainingToday > 0,
@@ -287,13 +292,13 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
             ),
         ],
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AarastV3Space.x4),
       for (final exchange in _exchanges) ...[
         _QuestionBubble(exchange: exchange),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         if (exchange.answer case final answer?) ...[
           _AnswerCard(answer: answer),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
       ],
       if (_asking)
@@ -301,7 +306,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
           key: const ValueKey('assistant-thinking'),
           children: [
             AarastInlineSpinner(color: context.accent.primary),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Text(
                 'يفكّر… ممكن ياخذ دقيقة',
@@ -392,14 +397,19 @@ class _QuestionBubble extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.accent.primary,
             borderRadius: const BorderRadiusDirectional.only(
-              topStart: Radius.circular(22),
-              topEnd: Radius.circular(22),
-              bottomEnd: Radius.circular(22),
-              bottomStart: Radius.circular(6),
+              topStart: Radius.circular(AarastV3Radius.card),
+              topEnd: Radius.circular(AarastV3Radius.card),
+              bottomEnd: Radius.circular(AarastV3Radius.card),
+              bottomStart: Radius.circular(AarastV3Radius.xs),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -411,7 +421,7 @@ class _QuestionBubble extends StatelessWidget {
                     color: AarastV3Color.onPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AarastV3Space.half),
                 Text(
                   clock,
                   style: JourneyType.of(
@@ -438,7 +448,7 @@ class _AnswerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('assistant-answer'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -449,7 +459,7 @@ class _AnswerCard extends StatelessWidget {
                 size: 18,
                 color: context.accent.primary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AarastV3Space.x1),
               Text(
                 'من خطتك',
                 style: JourneyType.of(
@@ -460,13 +470,13 @@ class _AnswerCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           SelectableText(
             answer.answer,
             style: JourneyType.of(JourneyType.body, height: 1.7),
           ),
           if (!answer.declined && !answer.marketDataAvailable) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               'ما عندنا أسعار سوق لمدينتك بعد، فالأرقام هنا من خطتك بس.',
               key: const ValueKey('assistant-no-market'),
@@ -476,7 +486,7 @@ class _AnswerCard extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             'اقتراح، والقرار لك.',
             style: JourneyType.of(
@@ -510,14 +520,14 @@ class _StopCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: AarastV3Space.x1),
       child: JourneyBox(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             JourneyIconTile(icon: icon, color: color, soft: soft),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,7 +539,7 @@ class _StopCard extends StatelessWidget {
                       weight: JourneyType.bold,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AarastV3Space.half),
                   Text(
                     line,
                     style: JourneyType.of(
@@ -562,16 +572,21 @@ class _AskField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 6, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AarastV3Space.x4,
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(
         children: [
           Icon(LucideIcons.sparkles, size: 20, color: context.accent.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: TextField(
               key: const ValueKey('assistant-question'),
@@ -597,11 +612,13 @@ class _AskField extends StatelessWidget {
                 focusedBorder: InputBorder.none,
                 disabledBorder: InputBorder.none,
                 filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: AarastV3Space.x2,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Semantics(
             button: true,
             enabled: enabled,
@@ -610,7 +627,7 @@ class _AskField extends StatelessWidget {
             child: AarastPressable(
               key: const ValueKey('assistant-send'),
               onTap: enabled ? onSend : null,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AarastV3Radius.feature),
               child: Container(
                 width: 48,
                 height: 48,
@@ -644,12 +661,12 @@ class _ConsentSheet extends StatelessWidget {
 
   Widget _row(BuildContext context, IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 22, color: context.accent.primary),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
@@ -663,7 +680,10 @@ class _ConsentSheet extends StatelessWidget {
       subtitle: 'يفهم سؤالك ويجاوبك من خطتك',
       children: [
         JourneyBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Space.x4,
+            vertical: AarastV3Space.x2,
+          ),
           child: Column(
             children: [
               _row(
@@ -698,7 +718,7 @@ class _ConsentSheet extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('assistant-consent-agree'),
           label: context.say('شغّل المساعد', 'شغّلي المساعد'),
@@ -707,7 +727,7 @@ class _ConsentSheet extends StatelessWidget {
           large: true,
           onPressed: () => Navigator.of(context).pop(true),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Center(
           child: JourneyTextAction(
             label: 'مو الآن',

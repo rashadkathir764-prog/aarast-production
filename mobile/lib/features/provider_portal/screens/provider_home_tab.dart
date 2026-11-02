@@ -33,7 +33,12 @@ class ProviderHomeTab extends StatelessWidget {
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x2,
+          AarastV3Space.x4,
+          AarastV3Density.pageBottom,
+        ),
         children: [
           if (profile == null)
             dashboard.isLoading
@@ -51,7 +56,7 @@ class ProviderHomeTab extends StatelessWidget {
                     onEmptyAction: () => context.push(AppRouter.providerApply),
                   )
           else ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             ProviderIdentityRow(
               name: profile.businessName,
               kind: providerKindLine(
@@ -65,7 +70,7 @@ class ProviderHomeTab extends StatelessWidget {
                 onPressed: () => context.push(AppRouter.providerNotifications),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AarastV3Space.x4),
             if (!dashboard.canUseProviderOperations)
               const _ProviderLifecycleNotice()
             else if (dashboard.quoteRequests.isEmpty &&
@@ -79,7 +84,7 @@ class ProviderHomeTab extends StatelessWidget {
               ..._operations(context, dashboard),
           ],
           if (dashboard.errorMessage case final error?) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               key: const Key('provider-home-error'),
               text: error,
@@ -123,7 +128,7 @@ class ProviderHomeTab extends StatelessWidget {
       else
         const _NothingWaiting(),
       for (final booking in asked) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         _BookingAsked(booking: booking, quote: _quoteFor(dashboard, booking)),
       ],
       JourneySectionTitle(
@@ -133,7 +138,7 @@ class ProviderHomeTab extends StatelessWidget {
       ),
       if (week.isEmpty)
         JourneyBox(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           child: Text(
             'ما عندك عرس مؤكد هذا الأسبوع.',
             style: JourneyType.of(
@@ -216,10 +221,10 @@ class _WaitingHero extends StatelessWidget {
     final since = [?arrived, ?ends].join(' · ');
     return Container(
       key: const Key('provider-home-waiting'),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       decoration: BoxDecoration(
         color: AarastV3Color.primary,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +245,7 @@ class _WaitingHero extends StatelessWidget {
             ),
           ),
           if (since.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               since,
               style: JourneyType.of(
@@ -249,7 +254,7 @@ class _WaitingHero extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyButton(
             key: const Key('provider-home-answer'),
             label: 'ردّ الآن',
@@ -272,7 +277,7 @@ class _NothingWaiting extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const Key('provider-home-none-waiting'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           const JourneyIconTile(
@@ -281,7 +286,7 @@ class _NothingWaiting extends StatelessWidget {
             soft: AarastV3Color.primarySoft,
             size: 42,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +333,7 @@ class _BookingAsked extends StatelessWidget {
         context.push(AppRouter.providerRequest(booking.quoteRequestId));
     return JourneyBox(
       key: Key('provider-home-booking-${booking.id}'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           const JourneyIconTile(
@@ -337,7 +342,7 @@ class _BookingAsked extends StatelessWidget {
             soft: AarastV3Color.brandAccentSoft,
             size: 42,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,7 +364,7 @@ class _BookingAsked extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           JourneyButton(
             key: Key('provider-home-confirm-${booking.id}'),
             label: 'أكّد',
@@ -396,7 +401,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
                 soft: AarastV3Color.brandAccentSoft,
                 size: 42,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Text(
                   title,
@@ -408,7 +413,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             message,
             style: JourneyType.of(
@@ -417,7 +422,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton(
             key: const Key('provider-lifecycle-support'),
             label: 'تواصل مع الدعم',

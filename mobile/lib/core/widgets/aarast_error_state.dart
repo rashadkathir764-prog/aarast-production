@@ -32,7 +32,9 @@ class AarastErrorState extends StatelessWidget {
                 foregroundColor: AppTheme.danger,
                 backgroundColor: AppTheme.dangerSoft,
                 minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AarastV3Space.x3,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusControl),
                 ),
@@ -42,7 +44,7 @@ class AarastErrorState extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: JourneyType.label,
                   fontWeight: FontWeight.w800,
                 ),
               ),

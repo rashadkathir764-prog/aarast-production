@@ -89,7 +89,7 @@ class _BudgetCategoryDetailsScreenState
         children: [
           if (provider.loadErrorMessage != null) ...[
             JourneyListNotice(offline: false, onRetry: _load),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           if (over > 0)
             _OverCard(
@@ -103,7 +103,7 @@ class _BudgetCategoryDetailsScreenState
               plain: (value) => _plain(value, currency),
             ),
           if (over > 0 && provider.canManageBudget) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             JourneySectionTitle(context.say('ايش تسوي؟', 'ايش تسوين؟')),
             _OverChoices(
               over: over,
@@ -117,7 +117,7 @@ class _BudgetCategoryDetailsScreenState
                   context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneySectionTitle(
             'الاتفاقات',
             action: canManage ? 'اتفاق جديد' : null,
@@ -179,7 +179,12 @@ class _BudgetCategoryDetailsScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: category?.name ?? 'البند',
               subtitle: category == null
@@ -208,7 +213,7 @@ class _BudgetCategoryDetailsScreenState
               onRefresh: _load,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: AarastV3Density.pageInsets,
                 children: [body],
               ),
             ),

@@ -28,7 +28,7 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
           return SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              padding: AarastV3Density.actionInsets,
               child: _UnclaimedLine(),
             ),
           );
@@ -36,12 +36,15 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
         return SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!claimed) ...[_UnclaimedLine(), const SizedBox(height: 8)],
+                if (!claimed) ...[
+                  _UnclaimedLine(),
+                  const SizedBox(height: AarastV3Space.x2),
+                ],
                 Row(
                   children: [
                     if (claimed)
@@ -62,7 +65,7 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
                         ),
                       ),
                     if (onWhatsApp != null) ...[
-                      if (claimed) const SizedBox(width: 10),
+                      if (claimed) const SizedBox(width: AarastV3Space.x2),
                       Expanded(
                         flex: claimed ? 0 : 1,
                         child: JourneyButton(
@@ -152,7 +155,7 @@ class _DetailsFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: AarastV3Density.pageInsets,
       children: [
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -163,7 +166,7 @@ class _DetailsFrame extends StatelessWidget {
             onPressed: onBack,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AarastV3Space.x5),
         child,
       ],
     );

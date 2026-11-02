@@ -126,10 +126,10 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
             maxLines: 4,
           ),
           if (error != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             _ErrorNote(text: error),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('provider-booking-decline-send'),
             label: 'أرسل الاعتذار',
@@ -139,7 +139,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
             loading: _busy,
             onPressed: () => _decide('decline'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
             label: 'رجوع',
             expand: true,
@@ -163,13 +163,13 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
               'نتأكد إن اليوم فاضي لحظة ما تضغط. لو انحجز في نفس الثانية، نقولك.',
         ),
         if (_offline) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           const ProviderConfirmNeedsNetwork(),
         ] else if (error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           _ErrorNote(text: error),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: Key('provider-booking-confirm-${booking.id}'),
           label: 'أكّد الحجز',
@@ -179,7 +179,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
           loading: _busy,
           onPressed: () => _decide('confirm'),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Center(
           child: JourneyTextAction(
             key: Key('provider-booking-decline-${booking.id}'),
@@ -275,10 +275,10 @@ class _CancelSheetState extends State<_CancelSheet> {
           maxLines: 4,
         ),
         if (error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           _ErrorNote(text: error),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const Key('provider-booking-cancel-send'),
           label: 'ألغِ الحجز',
@@ -288,7 +288,7 @@ class _CancelSheetState extends State<_CancelSheet> {
           loading: _busy,
           onPressed: _cancel,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           label: 'رجوع',
           expand: true,

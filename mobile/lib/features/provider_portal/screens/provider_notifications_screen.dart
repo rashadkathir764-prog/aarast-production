@@ -84,7 +84,7 @@ class _ProviderNotificationsScreenState
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             const JourneySubHeader(
               title: 'التنبيهات',
@@ -111,7 +111,7 @@ class _ProviderNotificationsScreenState
                 ],
               ),
             if (notices.hasMore) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               Center(
                 child: JourneyTextAction(
                   key: const Key('provider-notifications-more'),

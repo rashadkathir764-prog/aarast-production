@@ -80,7 +80,7 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(title: reply == null ? 'تقييم جديد' : 'التقييم'),
           if (review == null)
@@ -96,7 +96,7 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
             )
           else ...[
             ProviderReviewCard(review: review),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             if (reply != null)
               ProviderReviewReplyBox(reply: reply)
             else if (!review.isPublished)
@@ -114,7 +114,7 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
                 maxLines: 6,
                 maxLength: 1000,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyButton(
                 key: const Key('provider-review-reply-publish'),
                 label: 'انشر الرد',

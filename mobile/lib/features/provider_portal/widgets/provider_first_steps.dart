@@ -75,7 +75,7 @@ class ProviderFirstSteps extends StatelessWidget {
       key: const Key('provider-home-first'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 18),
+        const SizedBox(height: AarastV3Space.x4),
         const Center(
           child: JourneyIconTile(
             icon: LucideIcons.sprout,
@@ -85,13 +85,13 @@ class ProviderFirstSteps extends StatelessWidget {
             radius: 24,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         Text(
           'ما وصلك طلب لسا',
           textAlign: TextAlign.center,
           style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           steps.isEmpty
               ? 'أول ما يطلب منك عريس عرض، يوصلك هنا.'
@@ -103,14 +103,14 @@ class ProviderFirstSteps extends StatelessWidget {
           ),
         ),
         if (steps.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyList(children: steps),
         ],
         if (views != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
             key: const Key('provider-home-views'),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Row(
               children: [
                 const Icon(
@@ -118,7 +118,7 @@ class ProviderFirstSteps extends StatelessWidget {
                   size: 20,
                   color: AarastV3Color.textMuted,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Text(
                     views == 0

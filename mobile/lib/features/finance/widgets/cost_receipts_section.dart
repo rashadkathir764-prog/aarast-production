@@ -151,7 +151,7 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
         ),
         if (_loading || _busy)
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Center(
               child: AarastInlineSpinner(color: context.accent.primary),
             ),
@@ -177,7 +177,7 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             'ما يشوفها إلا اللي يشوف هذا الاتفاق',
             style: JourneyType.of(
@@ -208,7 +208,7 @@ class _MissingReceipt extends StatelessWidget {
           onTap: onAdd,
           size: 60,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AarastV3Space.x3),
         Expanded(
           child: Text(
             onAdd == null

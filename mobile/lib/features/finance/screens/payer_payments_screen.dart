@@ -82,7 +82,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         key: const ValueKey('payer-payments'),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'الدفعات',
@@ -90,7 +90,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
             onBack: () =>
                 context.popOrGo(AppRouter.money(widget.weddingPlanId)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           if (!loaded)
             const JourneyListState(
               phase: JourneyListPhase.loading,
@@ -120,10 +120,10 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyBox(
               key: const ValueKey('payer-total'),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AarastV3Space.x4),
               child: Row(
                 children: [
                   JourneyAvatar(
@@ -133,7 +133,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                     color: context.accent.primary,
                     size: 40,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Text(
                       chosen == null
@@ -156,7 +156,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             if (payments.isEmpty)
               const JourneyListState(
                 phase: JourneyListPhase.empty,

@@ -48,7 +48,7 @@ class ProviderRejectedScreen extends StatelessWidget {
               onRefresh: onRefresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   ProviderStateHeading(
                     name: profile.businessName,
@@ -77,7 +77,7 @@ class ProviderRejectedScreen extends StatelessWidget {
                               color: AarastV3Color.textMuted,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AarastV3Space.x1),
                           Text(
                             reason,
                             style: JourneyType.of(
@@ -89,7 +89,7 @@ class ProviderRejectedScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                   ],
                   JourneyButton(
                     key: const Key('provider-rejected-support'),
@@ -101,7 +101,7 @@ class ProviderRejectedScreen extends StatelessWidget {
                     onPressed: submitting ? null : onSupport,
                   ),
                   if (error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     JourneyNote(
                       key: const Key('provider-rejected-error'),
                       text: error,
@@ -115,7 +115,7 @@ class ProviderRejectedScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-rejected-reopen'),
               label: 'تعديل الملف وإعادة التقديم',

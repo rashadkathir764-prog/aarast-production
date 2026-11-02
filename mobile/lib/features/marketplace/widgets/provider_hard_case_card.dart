@@ -159,10 +159,10 @@ class ProviderHardCaseCard extends StatelessWidget {
       ),
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x3),
       child: JourneyBox(
         key: ValueKey('provider-hard-case-${quote.id}'),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -174,7 +174,7 @@ class ProviderHardCaseCard extends StatelessWidget {
                   soft: context.accent.primarySoft,
                   size: 40,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Text(
                     quote.provider?.businessName ?? service,
@@ -184,11 +184,11 @@ class ProviderHardCaseCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 JourneyTag(label: tag, color: tagColor, soft: tagSoft),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             Text(
               _line(),
               style: JourneyType.of(
@@ -196,7 +196,7 @@ class ProviderHardCaseCard extends StatelessWidget {
                 color: AarastV3Color.textMuted,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             Wrap(spacing: 8, runSpacing: 8, children: _actions(context)),
           ],
         ),

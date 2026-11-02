@@ -47,7 +47,7 @@ class ProviderRequestCard extends StatelessWidget {
           size: 16,
           color: AarastV3Color.primary,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AarastV3Space.x1),
         Expanded(
           child: Text(
             next,
@@ -75,10 +75,10 @@ class ProviderRequestCard extends StatelessWidget {
       semanticLabel: onQuickOffer == null
           ? '$name، $line، ${state.tag.$1}'
           : null,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: JourneyBox(
         radius: 20,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -89,7 +89,7 @@ class ProviderRequestCard extends StatelessWidget {
                   color: color,
                   size: 38,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,17 +114,17 @@ class ProviderRequestCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 ProviderCaseTag(state: state),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             if (onQuickOffer case final quick?)
               AarastPressable(
                 key: Key('provider-quick-offer-${quote.id}'),
                 onTap: quick,
                 semanticLabel: next,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AarastV3Radius.control),
                 child: nextRow,
               )
             else
@@ -257,13 +257,13 @@ class ProviderEndedCard extends StatelessWidget {
       key: Key('provider-request-${quote.id}'),
       onTap: onOpen,
       semanticLabel: onRenew == null ? '$title، $message' : null,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: JourneyBox(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             JourneyIconTile(icon: icon, color: color, soft: soft),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,7 +285,7 @@ class ProviderEndedCard extends StatelessWidget {
                       ),
                     ),
                   if (onRenew case final renew?) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     JourneyButton(
                       key: Key('provider-offer-renew-${quote.id}'),
                       label: 'جدّد العرض',

@@ -1,5 +1,11 @@
 part of 'aarast_dashboard_view.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _weekStripHeight = 330.0;
+
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _weekDayLabelWidth = 84.0;
+
 // The wedding week (b04, with y12's past nights) and the wedding day (b05),
 // built from the plan's events (D65). Nothing here is guessed: the cash for
 // the nights and a decor banner have no source and are left out.
@@ -56,11 +62,11 @@ class _WeddingSkyHero extends StatelessWidget {
           day ? 'aarast-dashboard-day-hero' : 'aarast-dashboard-week-hero',
         ),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AarastV3Radius.feature),
           child: SizedBox(
-            height: 330,
+            height: _weekStripHeight,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -130,10 +136,12 @@ class _WeddingSkyHero extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: AarastV3Space.x2),
                               Expanded(
                                 child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.only(
+                                    bottom: AarastV3Space.x1,
+                                  ),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -157,17 +165,20 @@ class _WeddingSkyHero extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (wide) ...[const SizedBox(width: 8), tag],
+                              if (wide) ...[
+                                const SizedBox(width: AarastV3Space.x2),
+                                tag,
+                              ],
                             ],
                           ),
                           if (!wide) ...[
-                            const SizedBox(height: 10),
+                            const SizedBox(height: AarastV3Space.x2),
                             Align(
                               alignment: AlignmentDirectional.centerStart,
                               child: tag,
                             ),
                           ],
-                          const SizedBox(height: 14),
+                          const SizedBox(height: AarastV3Space.x3),
                           _StagePath(current: day ? 3 : 2),
                         ],
                       );
@@ -256,15 +267,15 @@ class _WeekRow extends StatelessWidget {
         ? AarastV3Color.textFaint
         : AarastV3Color.ink;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: AarastV3Density.chipInsets,
       child: Row(
         children: [
           Container(
             width: 64,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
             decoration: BoxDecoration(
               color: tileColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
             child: Column(
               children: [
@@ -289,7 +300,7 @@ class _WeekRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +320,7 @@ class _WeekRow extends StatelessWidget {
                       ),
                     ),
                     if (tonight) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AarastV3Space.x2),
                       JourneyTag(
                         label: event.isMain ? 'اليوم' : 'الليلة',
                         color: AarastV3Color.brandAccentStrong,
@@ -370,7 +381,7 @@ class _ProgramEmpty extends StatelessWidget {
             ),
           ),
           if (onAdd != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               label: context.say('سجّل مناسباتك', 'سجّلي مناسباتك'),
               onPressed: onAdd,
@@ -406,7 +417,7 @@ class _WeekProviders extends StatelessWidget {
           onTap: onTap,
           semanticLabel:
               '${context.planWord('أكّدوا', 'أكّدن')} $confirmed من ${bookings.length}، $names',
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           child: JourneyBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -420,7 +431,7 @@ class _WeekProviders extends StatelessWidget {
                         weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(
                         names,
@@ -435,7 +446,7 @@ class _WeekProviders extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 JourneySegments(
                   total: bookings.length,
                   done: confirmed,
@@ -495,7 +506,7 @@ class _DayProgram extends StatelessWidget {
           _ProgramEmpty(onAdd: onEdit)
         else
           JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
             child: Column(
               children: [
                 for (var index = 0; index < events.length; index++)
@@ -530,11 +541,14 @@ class _DayRow extends StatelessWidget {
     final accent = context.accent;
     final who = [?event.placeLabel, ?event.responsibleName, ?event.note];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x4,
+        vertical: AarastV3Space.x2,
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 84,
+            width: _weekDayLabelWidth,
             child: Text(
               event.timeLabel ?? '—',
               style: JourneyType.of(
@@ -549,7 +563,7 @@ class _DayRow extends StatelessWidget {
             ),
           ),
           SizedBox.square(
-            dimension: 12,
+            dimension: AarastV3Space.x3,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -561,7 +575,7 @@ class _DayRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

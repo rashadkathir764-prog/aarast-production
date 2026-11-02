@@ -1,5 +1,8 @@
 part of 'smart_welcome_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _welcomePictureWidth = 112.0;
+
 /// a02 «أهلًا فيك»: plan a wedding or offer a service, sign in, or open an
 /// invitation.
 class _StartStep extends StatelessWidget {
@@ -27,9 +30,9 @@ class _StartStep extends StatelessWidget {
         large: true,
       ),
       children: [
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         const Center(child: JourneyWordmark(size: 28)),
-        const SizedBox(height: 20),
+        const SizedBox(height: AarastV3Space.x5),
         Semantics(
           header: true,
           child: Text(
@@ -40,7 +43,7 @@ class _StartStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           'جديد في اعّرست؟ اختر ايش تشتي',
           style: JourneyType.of(
@@ -48,7 +51,7 @@ class _StartStep extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         _PictureChoiceCard(
           title: 'أنشئ خطتك',
           subtitle: 'لعرسك أنت، عريس\nأو عروسة',
@@ -67,7 +70,7 @@ class _StartStep extends StatelessWidget {
           selected: wantsProvider,
           onTap: () => onChoose(true),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         JourneyBox(
           padding: EdgeInsets.zero,
           child: JourneyListRow(
@@ -85,7 +88,7 @@ class _StartStep extends StatelessWidget {
             onTap: onLogin,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         Center(
           child: Wrap(
             alignment: WrapAlignment.center,
@@ -138,7 +141,7 @@ class _WhoseStep extends StatelessWidget {
       ),
       children: [
         JourneySubHeader(title: '', onBack: onBack),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Semantics(
           header: true,
           child: Text(
@@ -149,7 +152,7 @@ class _WhoseStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Text(
           'كل واحد له مساره، ويقدر يضيف الثاني مشارك',
           style: JourneyType.of(
@@ -157,7 +160,7 @@ class _WhoseStep extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         _PictureChoiceCard(
           title: 'العريس',
           subtitle: 'عرس الرجال،\nوضيوفك ومزودينك',
@@ -201,7 +204,7 @@ class _PictureChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x3),
       child: Semantics(
         button: true,
         selected: selected,
@@ -211,13 +214,13 @@ class _PictureChoiceCard extends StatelessWidget {
         child: AarastPressable(
           onTap: onTap,
           selected: selected,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AarastV3Radius.feature),
           child: Container(
             constraints: const BoxConstraints(minHeight: 104),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AarastV3Radius.feature),
               border: Border.all(
                 color: selected ? context.accent.primary : AarastV3Color.line,
                 width: selected ? 2 : 1,
@@ -227,7 +230,7 @@ class _PictureChoiceCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(width: 18),
+                  const SizedBox(width: AarastV3Space.x4),
                   Center(
                     child: Container(
                       width: 24,
@@ -243,10 +246,12 @@ class _PictureChoiceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AarastV3Space.x3),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AarastV3Space.x4,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,7 +263,7 @@ class _PictureChoiceCard extends StatelessWidget {
                               weight: JourneyType.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AarastV3Space.x1),
                           Text(
                             subtitle,
                             style: JourneyType.of(
@@ -272,7 +277,10 @@ class _PictureChoiceCard extends StatelessWidget {
                     ),
                   ),
                   // A picture keeps to its own edge, never over the words.
-                  SizedBox(width: 112, child: ClipRect(child: picture)),
+                  SizedBox(
+                    width: _welcomePictureWidth,
+                    child: ClipRect(child: picture),
+                  ),
                 ],
               ),
             ),

@@ -264,7 +264,7 @@ class _PlanRow extends StatelessWidget {
       onTap: onTap,
       semanticLabel: '$name، $line، $tag',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyAvatar(
@@ -272,7 +272,7 @@ class _PlanRow extends StatelessWidget {
               color: color,
               size: 40,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +296,7 @@ class _PlanRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             JourneyTag(
               label: tag,
               color: color,
@@ -357,7 +357,7 @@ class _LeaveSheetState extends State<_LeaveSheet> {
             color: AarastV3Color.danger,
             soft: AarastV3Color.dangerSoft,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         JourneyButton(
           key: const ValueKey('participant-leave-confirm'),
@@ -368,7 +368,7 @@ class _LeaveSheetState extends State<_LeaveSheet> {
           loading: _leaving,
           onPressed: _leave,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         Center(
           child: JourneyTextAction(
             label: 'رجوع',

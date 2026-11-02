@@ -79,7 +79,7 @@ class _MonthBlock extends StatelessWidget {
               Container(
                 width: 14,
                 height: 14,
-                margin: const EdgeInsets.only(top: 4),
+                margin: const EdgeInsets.only(top: AarastV3Space.x1),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: now ? context.accent.primary : null,
@@ -95,10 +95,10 @@ class _MonthBlock extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: AarastV3Space.x3),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -112,7 +112,7 @@ class _MonthBlock extends StatelessWidget {
                           : AarastV3Color.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AarastV3Space.x1),
                   for (final task in tasks)
                     Semantics(
                       button: true,
@@ -140,7 +140,7 @@ class _MonthBlock extends StatelessWidget {
                                     ? AarastV3Color.danger
                                     : AarastV3Color.textFaint,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AarastV3Space.x2),
                               Expanded(
                                 child: Text(
                                   task.title,

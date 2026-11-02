@@ -82,7 +82,7 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: 'أداؤك',
@@ -101,13 +101,13 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
                     )
             else ...[
               for (var i = 0; i < cards.length; i += 2) ...[
-                if (i > 0) const SizedBox(height: 10),
+                if (i > 0) const SizedBox(height: AarastV3Space.x2),
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(child: cards[i]),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AarastV3Space.x2),
                       Expanded(
                         child: i + 1 < cards.length
                             ? cards[i + 1]
@@ -117,10 +117,10 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyBox(
                 key: const Key('provider-performance-bookings'),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AarastV3Space.x3),
                 child: Text(
                   stats.upcomingBookings == 0
                       ? 'ما عندك حجز مؤكد جاي.'
@@ -131,9 +131,11 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AarastV3Space.x1,
+                ),
                 child: Text(
                   hours == null
                       ? 'الأرقام من طلباتك أنت بس. ما نقارنك بغيرك.'
@@ -170,7 +172,7 @@ class _Metric extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       radius: 18,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

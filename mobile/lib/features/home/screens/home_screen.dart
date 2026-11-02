@@ -9,6 +9,7 @@ import '../../auth/auth_api.dart' show AuthController;
 import '../../notifications/notifications_api.dart' show NotificationsProvider;
 import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
+import '../../../core/experience_v3/aarast_v3_foundations.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({this.embedded = false, super.key});
@@ -43,7 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: () => provider.loadDashboard(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 24 : 32),
+          padding: EdgeInsets.fromLTRB(
+            AarastV3Space.x4,
+            AarastV3Space.x4,
+            AarastV3Space.x4,
+            widget.embedded ? AarastV3Space.x6 : AarastV3Space.x8,
+          ),
           children: [
             HomeTopHeader(
               userName: auth.user?.name,
@@ -54,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               onProfile: () => context.push(AppRouter.more),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AarastV3Space.x4),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 320),
               switchInCurve: Curves.easeOutCubic,
@@ -63,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   FadeTransition(opacity: animation, child: child),
               child: _buildContent(provider),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
             if (!widget.embedded) const HomeSharedPlansCard(),
           ],
         ),
@@ -82,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
               message: provider.errorMessage!,
               onRetry: provider.loadDashboard,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
             const HomeNoPlanWelcome(),
           ],
         ),

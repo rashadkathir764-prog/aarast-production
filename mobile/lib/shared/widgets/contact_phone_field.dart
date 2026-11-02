@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -8,6 +8,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_toast.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../models/contact_phone_draft.dart';
+import '../../core/experience_v3/aarast_journey.dart';
+import '../../core/experience_v3/aarast_v3_foundations.dart';
 
 class ContactPhoneField extends StatefulWidget {
   const ContactPhoneField({
@@ -107,13 +109,13 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
             return null;
           },
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (statusMessage != null)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: AarastV3Space.x1),
                 child: Text(
                   statusMessage,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -186,13 +188,21 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
           child: SafeArea(
             child: ListView(
               shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x5,
+                AarastV3Space.x3,
+                AarastV3Space.x5,
+                AarastV3Space.x5,
+              ),
               children: [
                 const Text(
                   'اختيار من جهات الخطة',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: JourneyType.lead,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 for (final contact in widget.planContacts)
                   ListTile(
                     leading: const Icon(LucideIcons.user),

@@ -163,7 +163,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
             textInputAction: TextInputAction.next,
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const ValueKey('participant-phone-field'),
             label: 'رقم جواله',
@@ -187,7 +187,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                 onPressed: _sending ? null : _pickContact,
               ),
             ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         ParticipantAccessEditor(
           role: _role,
@@ -206,7 +206,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           },
         ),
         if (_error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyNote(
             key: const ValueKey('participant-error'),
             icon: LucideIcons.alertCircle,
@@ -215,7 +215,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
             text: _error!,
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const ValueKey('participant-send'),
           label: context.say(
@@ -262,7 +262,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           soft: AarastV3Color.amberSoft,
           text: note,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const ValueKey('invite-copy-link'),
           label: context.say('انسخ الرابط', 'انسخي الرابط'),
@@ -271,7 +271,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           expand: true,
           onPressed: () => _copyLink(invite),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AarastV3Space.x1),
         JourneyTextAction(
           key: const ValueKey('invite-done'),
           label: 'تم',

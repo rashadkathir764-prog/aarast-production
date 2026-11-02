@@ -25,7 +25,7 @@ class MyWeddingPlansScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'خططك',
@@ -140,7 +140,7 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
                 : entry.contextKey == selected?.contextKey,
             onTap: entry.archived || _opening ? null : () => _open(entry),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         AarastPressable(
           key: const ValueKey('plan-switcher-new'),
@@ -148,16 +148,16 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
             if (widget.inSheet) Navigator.of(context).pop();
             GoRouter.of(context).push(AppRouter.createWeddingPlan);
           },
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           semanticLabel: 'خطة جديدة',
           child: JourneyBox(
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x3),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(LucideIcons.plus, color: context.accent.primary),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 Text(
                   'خطة جديدة',
                   style: JourneyType.of(
@@ -170,7 +170,7 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyNote(
           text: context.say(
             'تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها '
@@ -274,10 +274,10 @@ class _PlanCard extends StatelessWidget {
         : (null, context.accent.primary, context.accent.primarySoft);
     final name = entry.name.trim();
     final card = Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(
           color: open ? context.accent.primary : AarastV3Color.line,
           width: open ? 2 : 1,
@@ -290,7 +290,7 @@ class _PlanCard extends StatelessWidget {
             color: color,
             size: 42,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,7 +327,7 @@ class _PlanCard extends StatelessWidget {
     }
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       semanticLabel: '$name، ${_subtitle(entry, context.journeyProfile)}',
       child: card,
     );

@@ -45,7 +45,12 @@ class _FieldError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x2,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+        0,
+      ),
       child: Row(
         children: [
           const Icon(
@@ -53,7 +58,7 @@ class _FieldError extends StatelessWidget {
             size: 16,
             color: AarastV3Color.danger,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           Expanded(
             child: Text(
               text,
@@ -84,7 +89,7 @@ class _JoinSteps extends StatelessWidget {
       label: 'الخطوة ${current + 1} من ${labels.length}: ${labels[current]}',
       excludeSemantics: true,
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AarastV3Space.x1),
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(AarastV3Radius.pill),
@@ -96,7 +101,9 @@ class _JoinSteps extends StatelessWidget {
               Expanded(
                 child: Container(
                   key: ValueKey('provider-apply-step-$index'),
-                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AarastV3Space.x2,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: index == current

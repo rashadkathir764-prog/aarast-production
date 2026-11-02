@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/whatsapp_share.dart';
 import 'aarast_bottom_sheet.dart';
 import 'aarast_toast.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// Shows the exact text before it leaves the app, with an optional switch
 /// (for example "hide amounts"), then hands it to WhatsApp (V1 checklist
@@ -64,14 +65,21 @@ class _ShareSheetState extends State<_ShareSheet> {
     final textTheme = Theme.of(context).textTheme;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x2,
+          AarastV3Space.x4,
+          AarastV3Space.x4,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               widget.title,
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
             ),
             if (widget.switchLabel != null)
               SwitchListTile(
@@ -81,14 +89,14 @@ class _ShareSheetState extends State<_ShareSheet> {
                 value: _switchOn,
                 onChanged: (value) => setState(() => _switchOn = value),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 280),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AarastV3Space.x3),
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceRaised,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
                   border: Border.all(color: AppTheme.border),
                 ),
                 child: SingleChildScrollView(
@@ -100,7 +108,7 @@ class _ShareSheetState extends State<_ShareSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             FilledButton.icon(
               onPressed: () => _send(text),
               icon: const Icon(LucideIcons.send),

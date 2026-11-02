@@ -61,7 +61,12 @@ class _ConversationListViewState extends State<ConversationListView> {
       onRefresh: chat.initialize,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x4,
+          widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
+        ),
         children: [
           if (!widget.embedded)
             JourneySubHeader(
@@ -186,7 +191,7 @@ class _ConversationRow extends StatelessWidget {
         if (unread > 0) '$unread غير مقروءة',
       ].join('، '),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyIconTile(
@@ -194,7 +199,7 @@ class _ConversationRow extends StatelessWidget {
               color: context.accent.primary,
               soft: context.accent.primarySoft,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +228,7 @@ class _ConversationRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -234,16 +239,20 @@ class _ConversationRow extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AarastV3Space.x1),
                 if (unread > 0)
                   Container(
                     constraints: const BoxConstraints(minWidth: 22),
                     height: 22,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AarastV3Space.x1,
+                    ),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: context.accent.primary,
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
                     ),
                     child: Text(
                       '$unread',

@@ -31,7 +31,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: Text(
         text,
         style: JourneyType.of(
@@ -58,6 +58,7 @@ class _CategoryChips extends StatelessWidget {
   final String? selectedId;
   final String? error;
   final ValueChanged<String> onSelect;
+
   /// A new item, for the plan's owner; null for every other member.
   final VoidCallback? onCreate;
 
@@ -89,7 +90,7 @@ class _CategoryChips extends StatelessWidget {
         ),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AarastV3Space.x1),
             child: Text(
               error!,
               style: JourneyType.of(
@@ -148,7 +149,7 @@ class _PartySection extends StatelessWidget {
           ],
         ),
         if (kind == _PartyKind.provider) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyBox(
             key: const ValueKey('cost-provider-card'),
             padding: EdgeInsets.zero,
@@ -172,7 +173,7 @@ class _PartySection extends StatelessWidget {
           ),
         ],
         if (kind == _PartyKind.external) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const ValueKey('cost-party-name'),
             label: 'اسمه',
@@ -181,7 +182,7 @@ class _PartySection extends StatelessWidget {
             icon: LucideIcons.user,
             textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const ValueKey('cost-party-phone'),
             label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
@@ -193,7 +194,7 @@ class _PartySection extends StatelessWidget {
         ],
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AarastV3Space.x1),
             child: Text(
               error!,
               style: JourneyType.of(
@@ -221,7 +222,7 @@ class _QuoteTotal extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('cost-quote-total'),
       color: context.accent.primarySoft,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -277,7 +278,7 @@ class _BudgetLine extends StatelessWidget {
       currencyCode: currency,
     ).plainText;
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: AarastV3Space.x1),
       child: Text(
         left == 0
             ? 'بقد بندك بالضبط'
@@ -433,7 +434,7 @@ class _ProviderPickerState extends State<_ProviderPicker> {
           autofocus: true,
           onChanged: _onSearchChanged,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         list,
         if (_hasMore && _providers.isNotEmpty && !_isLoading)
           Center(
@@ -478,7 +479,7 @@ class _MoreDetails extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         const _FieldLabel('مين يدفعه؟'),
         Wrap(
           key: const ValueKey('cost-payer'),
@@ -494,7 +495,7 @@ class _MoreDetails extends StatelessWidget {
           ],
         ),
         if (payer == 'FAMILY' || payer == 'OTHER') ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             label: 'مين بالضبط؟',
             hint: context.planWord('مثلًا: الوالد', 'مثلًا: الوالدة'),
@@ -505,7 +506,7 @@ class _MoreDetails extends StatelessWidget {
         // V1 checklist 4.10: the owner or partner may keep a new cost to
         // themselves.
         if (canBePrivate) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           SwitchListTile(
             key: const ValueKey('cost-private'),
             contentPadding: EdgeInsets.zero,
@@ -516,7 +517,7 @@ class _MoreDetails extends StatelessWidget {
             onChanged: onPrivate,
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyPickerField(
           key: const ValueKey('cost-agreement-date'),
           label: 'متى اتفقتوا؟',
@@ -527,7 +528,7 @@ class _MoreDetails extends StatelessWidget {
           icon: LucideIcons.calendarDays,
           onTap: onPickAgreementDate,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyTextField(
           key: const ValueKey('cost-note'),
           label: 'ملاحظة',

@@ -62,7 +62,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         onRefresh: settings.loadSettings,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             const JourneySubHeader(title: 'الإعدادات'),
             if (draft == null)
@@ -91,14 +91,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   ),
                 ],
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               icon: LucideIcons.smartphone,
               text: pushAvailable
                   ? 'تنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'
                   : 'هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyList(
               children: [
                 JourneyListRow(
@@ -136,7 +136,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
               ],
             ),
             if (_error case final error?) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AarastV3Space.x2),
               JourneyNote(
                 key: const Key('provider-settings-error'),
                 text: error,
@@ -187,7 +187,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
             label: 'لا، خلّيني',
             expand: true,
@@ -284,7 +284,7 @@ class _ToggleRow extends StatelessWidget {
     return AarastPressable(
       onTap: onChanged == null ? null : () => onChanged!(!value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             Expanded(
@@ -308,7 +308,7 @@ class _ToggleRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             JourneyToggle(
               value: value,
               onChanged: onChanged,

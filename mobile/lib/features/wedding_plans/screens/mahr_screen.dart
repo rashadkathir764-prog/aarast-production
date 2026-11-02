@@ -142,7 +142,7 @@ class _MahrScreenState extends State<MahrScreen> {
             settledError: _settledError,
           ),
           if (_error != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               text: _error!,
               color: AarastV3Color.danger,

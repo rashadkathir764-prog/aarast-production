@@ -65,14 +65,16 @@ class AuthActionGuard {
       context: context,
       backgroundColor: AppTheme.surfaceRaised,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AarastV3Radius.feature),
+        ),
       ),
       builder: (sheetContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AarastV3Space.x5),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -82,7 +84,7 @@ class AuthActionGuard {
                     size: 42,
                     color: AppTheme.brand,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AarastV3Space.x3),
                   Text(
                     'هذه الخطوة تحتاج حساباً',
                     textAlign: TextAlign.center,
@@ -91,7 +93,7 @@ class AuthActionGuard {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   Text(
                     reason,
                     textAlign: TextAlign.center,
@@ -101,7 +103,7 @@ class AuthActionGuard {
                       height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AarastV3Space.x4),
                   FilledButton.icon(
                     onPressed: () {
                       Navigator.of(sheetContext).pop();
@@ -110,7 +112,7 @@ class AuthActionGuard {
                     icon: const Icon(LucideIcons.logIn),
                     label: const Text('تسجيل الدخول'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(sheetContext).pop();

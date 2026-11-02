@@ -34,7 +34,12 @@ class ProviderChatsTab extends StatelessWidget {
       onRefresh: chat.initialize,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x2,
+          AarastV3Space.x4,
+          AarastV3Density.pageBottom,
+        ),
         children: [
           const JourneyTabHeader(title: 'الرسائل', status: 'مع العرسان'),
           if (chat.isLoading && conversations.isEmpty)
@@ -177,7 +182,7 @@ class ProviderChatRow extends StatelessWidget {
         if (unread > 0) '$unread ما قريتها',
       ].join('، '),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             JourneyAvatar(
@@ -185,7 +190,7 @@ class ProviderChatRow extends StatelessWidget {
               color: color,
               size: 40,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +209,7 @@ class ProviderChatRow extends StatelessWidget {
                         ),
                       ),
                       if (state != null) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AarastV3Space.x1),
                         ProviderCaseTag(state: state),
                       ],
                     ],
@@ -233,7 +238,7 @@ class ProviderChatRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Column(
               children: [
                 Text(
@@ -244,15 +249,17 @@ class ProviderChatRow extends StatelessWidget {
                   ),
                 ),
                 if (unread > 0) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AarastV3Space.x1),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
+                      horizontal: AarastV3Space.x2,
+                      vertical: AarastV3Space.half,
                     ),
                     decoration: BoxDecoration(
                       color: AarastV3Color.primary,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
                     ),
                     child: Text(
                       '$unread',
@@ -264,7 +271,7 @@ class ProviderChatRow extends StatelessWidget {
                     ),
                   ),
                 ] else if (conversation.muted) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AarastV3Space.x1),
                   const Icon(
                     LucideIcons.bellOff,
                     size: 16,

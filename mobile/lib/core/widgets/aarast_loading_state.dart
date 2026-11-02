@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 class AarastLoadingState extends StatelessWidget {
   const AarastLoadingState({this.rows = 4, this.height = 86, super.key});
@@ -73,7 +74,7 @@ class AarastScreenLoading extends StatelessWidget {
           child: AarastSkeletonPulse(
             child: Container(
               width: 164,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.all(AarastV3Space.x4),
               decoration: AppTheme.surfaceDecoration(
                 color: AppTheme.surfaceRaised.withValues(alpha: 0.6),
                 radius: AppTheme.radiusXl,
@@ -82,11 +83,11 @@ class AarastScreenLoading extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox.square(
-                    dimension: 28,
+                    dimension: AarastV3Space.x6,
                     child: CircularProgressIndicator(strokeWidth: 2.4),
                   ),
                   if (label != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AarastV3Space.x3),
                     Text(
                       label!,
                       textAlign: TextAlign.center,

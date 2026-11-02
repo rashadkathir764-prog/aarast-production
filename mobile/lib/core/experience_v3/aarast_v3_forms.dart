@@ -109,9 +109,9 @@ class AarastV3FocusPrompt extends StatelessWidget {
                       context,
                     ).copyWith(color: context.accent.primary),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AarastV3Space.half),
                   Text(question, style: AarastV3Type.section(context)),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AarastV3Space.half),
                   Text(
                     supportingText,
                     maxLines: 2,
@@ -187,7 +187,7 @@ class AarastV3LiveSummary extends StatelessWidget {
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: AarastV3Color.textMuted),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AarastV3Space.half),
                           Text(
                             item.value,
                             maxLines: 2,
@@ -483,7 +483,7 @@ class AarastV3PrimaryAction extends StatelessWidget {
       ),
       child: loading
           ? const SizedBox.square(
-              dimension: 20,
+              dimension: AarastV3Space.x5,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AarastV3Color.onPrimary,

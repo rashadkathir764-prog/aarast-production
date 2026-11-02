@@ -1,5 +1,8 @@
 part of 'provider_marketplace_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _categoryStripHeight = 92.0;
+
 /// The four tabs of «المزودين»: طلباتي (f01), استكشف (f02), المحادثات (f08)
 /// and المفضلة (f09).
 extension _ProviderTabs on _ProviderMarketplaceScreenState {
@@ -92,7 +95,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
       if (mounted) _ensureMoneyLoaded();
     });
     return const Padding(
-      padding: EdgeInsets.only(top: 14),
+      padding: EdgeInsets.only(top: AarastV3Space.x3),
       child: JourneyListState(
         phase: JourneyListPhase.loading,
         section: JourneySection.providers,
@@ -139,7 +142,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
 
     return ListView(
       key: const PageStorageKey('providers-first-visit'),
-      padding: EdgeInsets.fromLTRB(16, 4, 16, widget.embedded ? 124 : 28),
+      padding: EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x1,
+        AarastV3Space.x4,
+        widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
+      ),
       children: [
         JourneyStartWays(
           key: const ValueKey('providers-first-visit'),
@@ -218,14 +226,19 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
       child: ListView(
         key: const PageStorageKey('providers-board'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x4,
+          widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
+        ),
         children: [
           if (marketplace.quoteRequestsErrorMessage != null) ...[
             JourneyListNotice(
               offline: false,
               onRetry: marketplace.loadScopedQuoteRequests,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           ..._participantBookingsSection(),
           for (final hardCase in providerHardCases(board, DateTime.now()))
@@ -352,7 +365,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         .toList();
     final picked = _comparePicks(favorites);
     final bottomGap = widget.embedded ? 124.0 : 28.0;
-    final listPadding = EdgeInsets.fromLTRB(16, 14, 16, bottomGap);
+    final listPadding = EdgeInsets.fromLTRB(
+      AarastV3Space.x4,
+      AarastV3Space.x3,
+      AarastV3Space.x4,
+      bottomGap,
+    );
     if (favorites.isEmpty) {
       // Saved hearts that could not be read are not «nothing saved».
       final failed = marketplace.favoriteProvidersErrorMessage != null;
@@ -396,16 +414,22 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           // grows the cards instead of cutting them.
           child: ListView(
             key: const PageStorageKey('providers-favorites'),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+            ),
             children: [
               for (var i = 0; i < favorites.length; i += 2) ...[
-                if (i > 0) const SizedBox(height: 10),
+                if (i > 0) const SizedBox(height: AarastV3Space.x2),
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final provider in favorites.skip(i).take(2)) ...[
-                        if (provider != favorites[i]) const SizedBox(width: 10),
+                        if (provider != favorites[i])
+                          const SizedBox(width: AarastV3Space.x2),
                         Expanded(
                           child: _FavoriteCard(
                             key: ValueKey('providers-favorite-${provider.id}'),
@@ -418,7 +442,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                         ),
                       ],
                       if (i + 1 >= favorites.length) ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AarastV3Space.x2),
                         const Expanded(child: SizedBox.shrink()),
                       ],
                     ],
@@ -430,7 +454,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         ),
         if (favorites.length >= 2)
           Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, bottomGap - 16),
+            padding: EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              0,
+              AarastV3Space.x4,
+              bottomGap - AarastV3Space.x4,
+            ),
             child: JourneyButton(
               key: const ValueKey('providers-favorites-compare'),
               label: context.say('قارن الملفين', 'قارني الملفين'),
@@ -485,7 +514,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
       onRefresh: () => _refreshMarketplace(provider),
       child: ListView(
         controller: _scrollController,
-        padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x4,
+          widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
+        ),
         children: [
           if (!provider.includesAccountData) ...[
             JourneyNote(
@@ -498,7 +532,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               color: context.accent.primary,
               soft: context.accent.primarySoft,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           if (provider.includesAccountData &&
               provider.favoriteProvidersErrorMessage != null) ...[
@@ -517,7 +551,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                 onPressed: provider.loadMarketplace,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
           ],
           if (_searchShown) ...[
             _MarketplaceSearch(
@@ -525,19 +559,19 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               focusNode: _searchFocusNode,
               provider: provider,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           _FilterChips(provider: provider),
           if (_weddingLocation != null &&
               !_weddingLocation!.hasRequiredLocation) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             _LocationContextCard(
               location: _weddingLocation,
               onCompleteLocation: _openLocationCompletion,
             ),
           ],
           if (provider.budgetMatchIntent != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             _BudgetMatchContextCard(
               intent: provider.budgetMatchIntent!,
               categoryName: _activeCategoryName(provider),
@@ -545,7 +579,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ),
           ],
           if (provider.isLoading && provider.providers.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             AarastV3ProgressLine(
               key: const Key('marketplace-results-refreshing'),
               height: 3,
@@ -554,7 +588,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               semanticsLabel: 'تحديث نتائج المزودين',
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           ..._exploreResults(provider),
         ],
       ),
@@ -600,12 +634,12 @@ class _FavoriteCard extends StatelessWidget {
     return AarastPressable(
       onTap: onOpen,
       semanticLabel: provider.businessName,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           border: picked
               ? Border.all(color: context.accent.primary, width: 2)
               : null,
@@ -614,7 +648,7 @@ class _FavoriteCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 92,
+              height: _categoryStripHeight,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -650,7 +684,9 @@ class _FavoriteCard extends StatelessWidget {
                               color: picked
                                   ? context.accent.primary
                                   : AarastV3Color.paper,
-                              borderRadius: BorderRadius.circular(7),
+                              borderRadius: BorderRadius.circular(
+                                AarastV3Radius.xs,
+                              ),
                             ),
                             child: picked
                                 ? const Icon(
@@ -668,7 +704,7 @@ class _FavoriteCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AarastV3Space.x2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -18,6 +18,9 @@ import '../data/chat_api.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _chatLoadingBubbleWidth = 250.0;
+
 /// Reads the line under the provider's name, «يرد عادة خلال ساعتين»; the
 /// providers side supplies it so chat keeps no copy of provider pages.
 typedef ChatProviderLine =
@@ -182,7 +185,7 @@ class _ChatScreenState extends State<ChatScreen> {
         timeline.isEmpty &&
         !chat.hasConversationLoadError(widget.conversationId)) {
       body = const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
         child: JourneyListState(
           phase: JourneyListPhase.loading,
           section: JourneySection.providers,
@@ -205,7 +208,12 @@ class _ChatScreenState extends State<ChatScreen> {
     } else {
       body = ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x1,
+          AarastV3Space.x4,
+          AarastV3Space.x4,
+        ),
         itemCount:
             timeline.length + (hasOlder ? 1 : 0) + (replies.isEmpty ? 0 : 1),
         itemBuilder: (context, index) {
@@ -268,7 +276,12 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x4,
+              0,
+            ),
             child: JourneySubHeader(
               title: conversation?.counterpartName ?? '',
               subtitle: customerSide
@@ -283,7 +296,12 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (strip != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                0,
+                AarastV3Space.x4,
+                AarastV3Space.x3,
+              ),
               child: strip,
             ),
           Expanded(child: body),
@@ -534,20 +552,25 @@ class _Bubble extends StatelessWidget {
           : AlignmentDirectional.centerEnd,
       child: Container(
         constraints: BoxConstraints(maxWidth: providerSide ? 270 : 290),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+        margin: const EdgeInsets.only(bottom: AarastV3Space.x2),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x3,
+          AarastV3Space.x2,
+          AarastV3Space.x3,
+          AarastV3Space.x2,
+        ),
         decoration: BoxDecoration(
           color: mine
               ? (providerSide ? AarastV3Color.primary : context.accent.primary)
               : AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final attachment in attachments) ...[
               attachment,
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
             ],
             Text(text, style: JourneyType.of(JourneyType.body, color: ink)),
             Text(
@@ -632,14 +655,14 @@ class _EventView extends StatelessWidget {
       _ => 'تغيّر شي في الطلب',
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: Center(
         child: AarastPressable(
           key: key,
           onTap: onOpenQuote,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AarastV3Radius.control),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: AarastV3Density.tagInsets,
             child: Text(
               '$label · ${_clock(event.occurredAt)}',
               style: JourneyType.of(
@@ -724,12 +747,12 @@ class _OfferCard extends StatelessWidget {
           ].join(' · ');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
       child: AarastPressable(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           borderColor: open ? context.accent.primary : AarastV3Color.line,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,7 +772,7 @@ class _OfferCard extends StatelessWidget {
                 ],
               ),
               if (headline.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
                 Text(
                   headline,
                   style: JourneyType.of(
@@ -777,7 +800,7 @@ class _OfferCard extends StatelessWidget {
                   ),
                 ),
               if (open && customerSide && onOpen != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 Row(
                   children: [
                     Expanded(
@@ -789,7 +812,7 @@ class _OfferCard extends StatelessWidget {
                         onPressed: onOpen,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: JourneyButton(
                         key: const Key('chat-offer-compare'),
@@ -893,7 +916,7 @@ class _OptionsSheet extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: provider
               ? 'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.'
@@ -926,7 +949,7 @@ class _ReportSheet extends StatelessWidget {
             selected: false,
             onTap: () => Navigator.of(context).pop(reason),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
         ],
       ],
     );
@@ -943,7 +966,12 @@ class _Notice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x4,
+        AarastV3Space.x1,
+        AarastV3Space.x4,
+        AarastV3Space.x3,
+      ),
       child: JourneyNote(text: text, color: color, soft: soft),
     );
   }
@@ -960,7 +988,7 @@ class _QuickReplies extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AarastV3Space.x2),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -1008,18 +1036,28 @@ class _Composer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: providerSide
-          ? const EdgeInsets.fromLTRB(16, 6, 16, 12)
-          : const EdgeInsets.fromLTRB(14, 6, 14, 12),
+          ? const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x1,
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+            )
+          : const EdgeInsets.fromLTRB(
+              AarastV3Space.x3,
+              AarastV3Space.x1,
+              AarastV3Space.x3,
+              AarastV3Space.x3,
+            ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (attachment != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
               child: Row(
                 children: [
                   Icon(LucideIcons.image, size: 18, color: _accentOf(context)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       'الصورة جاهزة',
@@ -1049,7 +1087,7 @@ class _Composer extends StatelessWidget {
     label: 'أرسل صورة',
     child: AarastPressable(
       onTap: isBusy ? null : onPickImage,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: Icon(
         LucideIcons.image,
         size: providerSide ? 22 : 20,
@@ -1090,10 +1128,15 @@ class _Composer extends StatelessWidget {
   Widget _drawnBar(BuildContext context) {
     return Container(
       key: const Key('chat-composer-bar'),
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 8, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AarastV3Space.x3,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+        AarastV3Space.x1,
+      ),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(
@@ -1118,13 +1161,15 @@ class _Composer extends StatelessWidget {
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: AarastV3Space.x2,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AarastV3Space.x1),
           _imageButton(context),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           _sendButton(context, 38, 18),
         ],
       ),
@@ -1151,26 +1196,26 @@ class _Composer extends StatelessWidget {
               filled: true,
               fillColor: AarastV3Color.paper,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 13,
+                horizontal: AarastV3Space.x4,
+                vertical: AarastV3Space.x3,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
                 borderSide: BorderSide(color: _accentOf(context), width: 2),
               ),
               suffixIcon: _imageButton(context),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AarastV3Space.x2),
         _sendButton(context, 46, 19),
       ],
     );
@@ -1262,14 +1307,14 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
     if ((_url.isEmpty || _isExpired) && !_failed) _scheduleRefresh();
     if (_refreshing || ((_url.isEmpty || _isExpired) && !_failed)) {
       return const SizedBox(
-        width: 250,
+        width: _chatLoadingBubbleWidth,
         height: 180,
         child: Center(child: AarastInlineSpinner()),
       );
     }
     if (_failed || _url.isEmpty) return const _PrivateImageFailure();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       child: Image.network(
         _url,
         key: ValueKey(_url),
@@ -1281,7 +1326,7 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
           return _refreshAttempted
               ? const _PrivateImageFailure()
               : const SizedBox(
-                  width: 250,
+                  width: _chatLoadingBubbleWidth,
                   height: 180,
                   child: Center(child: AarastInlineSpinner()),
                 );
@@ -1297,7 +1342,7 @@ class _PrivateImageFailure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      width: 250,
+      width: _chatLoadingBubbleWidth,
       height: 80,
       child: Center(child: Icon(LucideIcons.imageOff)),
     );

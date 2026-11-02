@@ -51,7 +51,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
           child: Text(
             'لمين؟',
             style: JourneyType.of(
@@ -88,7 +88,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
         ),
         if (locked)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AarastV3Space.x1),
             child: Text(
               'المهمة الخاصة تبقى لك وحدك',
               style: JourneyType.of(
@@ -98,7 +98,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             ),
           ),
         if (selected == createTaskOtherPerson) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyTextField(
             key: const ValueKey('task-other-name'),
             label: 'اسمه',
@@ -108,7 +108,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             textDirection: nameIsPhone ? TextDirection.ltr : null,
             errorText: otherNameError,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           ContactPhoneField(
             key: const ValueKey('task-other-phone'),
             phoneController: otherPhoneController,

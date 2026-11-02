@@ -214,7 +214,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
               offline: false,
               onRetry: () => _load(refreshMoney: true),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
           ],
           if (_busy)
             const AarastV3ProgressLine(
@@ -228,7 +228,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
             ],
           ),
           if (costReceipts.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
             const JourneySectionTitle('للاتفاق كله'),
             _ReceiptGrid(
               tiles: [
@@ -243,7 +243,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
               ],
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             text: canManage
                 ? context.say(
@@ -266,7 +266,12 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: 'الإيصالات',
               subtitle: payments.isEmpty || _receiptsByCost.isEmpty
@@ -281,7 +286,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
               onRefresh: () => _load(refreshMoney: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: AarastV3Density.pageInsets,
                 children: [body],
               ),
             ),
@@ -367,10 +372,10 @@ class _ReceiptTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final missing = receipt == null;
     final content = Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AarastV3Space.x2),
       decoration: BoxDecoration(
         color: missing ? AarastV3Color.canvas : AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         border: Border.all(
           color: missing ? AarastV3Color.line : AarastV3Color.paper,
         ),
@@ -385,7 +390,7 @@ class _ReceiptTile extends StatelessWidget {
               width: constraints.maxWidth,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             title,
             maxLines: 2,

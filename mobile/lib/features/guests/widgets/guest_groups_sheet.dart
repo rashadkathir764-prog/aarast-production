@@ -139,7 +139,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -153,7 +153,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                 onSubmitted: (_) => _create(),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             JourneyRoundButton(
               key: const ValueKey('guest-group-add'),
               icon: LucideIcons.plus,
@@ -162,7 +162,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           context.say(
             'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
@@ -174,7 +174,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
           ),
         ),
         if (widget.errorMessage != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             widget.errorMessage!,
             style: JourneyType.of(

@@ -37,7 +37,7 @@ class ProviderApprovedScreen extends StatelessWidget {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: AarastV3Density.pageInsets,
               children: [
                 ProviderStateHeading(
                   name: profile.businessName,
@@ -90,7 +90,7 @@ class ProviderApprovedScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-approved-start'),
               label: 'ابدأ',

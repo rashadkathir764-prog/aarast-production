@@ -150,7 +150,7 @@ class _PlanSection extends StatelessWidget {
           ],
         ),
         if (needsDeposit) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyTextField(
             key: const ValueKey('cost-plan-deposit'),
             label: plan == _PayPlan.instalments
@@ -167,7 +167,7 @@ class _PlanSection extends StatelessWidget {
           ),
         ],
         if (plan == _PayPlan.depositRest) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyPickerField(
             key: const ValueKey('cost-plan-rest-due'),
             label: 'متى الباقي؟',
@@ -182,7 +182,7 @@ class _PlanSection extends StatelessWidget {
           ),
         ],
         if (plan == _PayPlan.instalments) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           _FieldLabel('كم دفعة؟'),
           Wrap(
             spacing: 8,
@@ -197,7 +197,7 @@ class _PlanSection extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyPickerField(
             key: const ValueKey('cost-plan-first-due'),
             label: 'أول دفعة',
@@ -208,10 +208,10 @@ class _PlanSection extends StatelessWidget {
           ),
         ],
         if (lines.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
             key: const ValueKey('cost-plan-preview'),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: AarastV3Density.chipInsets,
             child: Column(
               children: [
                 for (var index = 0; index < lines.length; index++)
@@ -243,7 +243,7 @@ class _PlanRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         children: [
           Container(
@@ -267,14 +267,14 @@ class _PlanRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               line.label,
               style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Text(
             compactMoneyParts(line.amount, currencyCode: currency).plainText,
             style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),

@@ -116,7 +116,7 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (rows.isNotEmpty) JourneyGlassRows(rows: rows),
-            const SizedBox(height: 16),
+            const SizedBox(height: AarastV3Space.x4),
             Text(
               context.say(
                 'نخفي بطاقة المهر من الرئيسية، وتلقاها في المال.',

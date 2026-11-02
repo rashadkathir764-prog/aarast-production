@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/aarast_motion.dart';
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// ترويسة الميزات الموحّدة — نفس لغة «المال» و«المهام» لكل الشاشات:
 /// عنوان display بخط IBM Plex + شارة حالة اختيارية + أزرار اختيارية،
@@ -63,7 +64,7 @@ class AarastFeatureHeader extends StatelessWidget {
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AarastV3Space.x1),
                   Text(
                     subtitle!,
                     maxLines: 2,
@@ -79,14 +80,17 @@ class AarastFeatureHeader extends StatelessWidget {
             ),
           ),
           if (statusLabel != null) ...[
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             AarastStatusPill(
               label: statusLabel!,
               color: statusColor,
               icon: statusIcon,
             ),
           ],
-          for (final action in actions) ...[const SizedBox(width: 8), action],
+          for (final action in actions) ...[
+            const SizedBox(width: AarastV3Space.x2),
+            action,
+          ],
         ],
       ),
     );

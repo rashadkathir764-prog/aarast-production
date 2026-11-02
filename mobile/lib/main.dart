@@ -75,6 +75,8 @@ import 'features/wedding_plans/wedding_plans_api.dart'
         PlanReadViewProvider,
         WeddingPlansApi,
         WeddingPlansProvider;
+import 'core/experience_v3/aarast_journey.dart';
+import 'core/experience_v3/aarast_v3_foundations.dart';
 
 Future<void> main() async {
   const observability = ObservabilityConfig.fromEnvironment();
@@ -399,25 +401,28 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
           body: SafeArea(
             child: Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: EdgeInsets.all(AarastV3Space.x8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(LucideIcons.shieldCheck, size: 52),
-                    SizedBox(height: 20),
+                    SizedBox(height: AarastV3Space.x5),
                     Text(
                       'تعذر فتح التخزين الآمن',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: JourneyType.sheetTitle,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    SizedBox(height: AarastV3Space.x3),
                     Text(
                       'لم يتم حفظ أي بيانات بشكل غير مشفّر. أغلق التطبيق وافتحه مجددًا، وتأكد من تفعيل قفل الشاشة على الجهاز.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, height: 1.6),
+                      style: TextStyle(
+                        fontSize: JourneyType.bodyLarge,
+                        height: 1.6,
+                      ),
                     ),
                   ],
                 ),

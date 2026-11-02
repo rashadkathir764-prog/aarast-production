@@ -28,6 +28,9 @@ import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _quoteStepperWidth = 64.0;
+
 /// f07 «اطلب عرض سعر»: what is needed, what the plan already says (the day,
 /// the time, the place and, for halls and catering, the guests), an optional
 /// word, and whether to share the item's amount. The phone number always
@@ -180,7 +183,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           : SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                padding: AarastV3Density.actionInsets,
                 child: JourneyButton(
                   key: const ValueKey('quote-send'),
                   label: context.say('أرسل الطلب', 'أرسلي الطلب'),
@@ -196,7 +199,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               ),
             ),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AarastV3Density.pageInsets,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           JourneySubHeader(
@@ -247,11 +250,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
             ],
             _Label('من خطتك'),
             JourneyBox(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
               child: Column(
                 children: [
                   _PlanRow(
@@ -291,7 +294,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               ),
             ),
             if (_guestError != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AarastV3Space.x1),
               Text(
                 _guestError!,
                 style: JourneyType.of(
@@ -300,7 +303,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyTextField(
               key: const Key('quote-message'),
               label: 'كلمة لهم (اختياري)',
@@ -312,9 +315,14 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
             ),
             // B-08: the budget and the phone reach the provider only when
             // shared; B-04: the request ends after seven days unanswered.
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyBox(
-              padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+              ),
               child: Column(
                 children: [
                   if (budget != null)
@@ -343,7 +351,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               text: budget != null
                   ? context.say(
@@ -359,7 +367,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               soft: context.accent.primarySoft,
             ),
             if (submitError != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               Text(
                 submitError,
                 textAlign: TextAlign.center,
@@ -648,7 +656,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               selected: value == selected,
               onTap: () => Navigator.of(sheetContext).pop(value),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AarastV3Space.x2),
           ],
         ],
       ),
@@ -817,7 +825,7 @@ class _GuestsSheetState extends State<_GuestsSheet> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           autofocus: true,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           label: 'تمام',
           background: context.accent.primary,
@@ -849,7 +857,7 @@ class _ShareRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         children: [
           Expanded(
@@ -893,7 +901,12 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+      ),
       child: Text(
         text,
         style: JourneyType.of(
@@ -930,13 +943,16 @@ class _PlanRow extends StatelessWidget {
       semanticLabel:
           '$label، ${value ?? context.say('ما حددت', 'ما حددتِ')}، ${context.say('غيّر', 'غيّري')}',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AarastV3Space.x4,
+          vertical: AarastV3Space.x3,
+        ),
         child: Row(
           children: [
             Icon(icon, size: 20, color: context.accent.primary),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             SizedBox(
-              width: 64,
+              width: _quoteStepperWidth,
               child: Text(
                 label,
                 style: JourneyType.of(
@@ -957,7 +973,7 @@ class _PlanRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             const Icon(
               LucideIcons.pencil,
               size: 18,

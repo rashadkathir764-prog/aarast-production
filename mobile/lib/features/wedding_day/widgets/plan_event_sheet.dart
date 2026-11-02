@@ -209,7 +209,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           JourneyButton(
             key: const ValueKey('plan-event-save'),
@@ -220,7 +220,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             onPressed: _saving ? null : _save,
           ),
           if (widget.event?.id != null && !_isMain) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             JourneyTextAction(
               key: const ValueKey('plan-event-remove'),
               label: 'احذف المناسبة',
@@ -240,7 +240,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             maxLength: 60,
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
         ],
         Row(
           children: [
@@ -264,7 +264,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
                       onTap: _saving ? null : _pickDay,
                     ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: JourneyPickerField(
                 label: 'الهجري',
@@ -276,7 +276,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         Text(
           'الوقت',
           style: JourneyType.of(
@@ -285,7 +285,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -305,7 +305,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyTextField(
           label: 'المكان',
           controller: _place,
@@ -313,7 +313,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
           hint: 'بيت الوالد · الحصبة',
           maxLength: 120,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           label: 'مين مسؤول؟',
           controller: _person,
@@ -321,7 +321,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
           hint: 'صالح أخوي',
           maxLength: 60,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           label: 'ملاحظة',
           controller: _note,

@@ -11,6 +11,9 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart' show providerKindLine;
 import '../widgets/provider_profile_parts.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _shareCodeHeight = 230.0;
+
 /// Opens WhatsApp with a text; tests replace it.
 typedef ProviderShareLauncher = Future<bool> Function(String text);
 
@@ -37,7 +40,12 @@ class ProviderShareScreen extends StatelessWidget {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+              ),
               children: [
                 const JourneySubHeader(title: 'شارك ملفك'),
                 if (profile == null)
@@ -47,9 +55,11 @@ class ProviderShareScreen extends StatelessWidget {
                   )
                 else ...[
                   ProviderShareCard(profile: profile),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AarastV3Space.x1,
+                    ),
                     child: Text(
                       'صوّر البطاقة وحطها في حالتك، أو أرسل كلامها في واتساب.',
                       style: JourneyType.of(
@@ -64,7 +74,12 @@ class ProviderShareScreen extends StatelessWidget {
           ),
           if (profile != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+              ),
               child: JourneyButton(
                 key: const Key('provider-share-whatsapp'),
                 label: 'أرسل في واتساب',
@@ -128,13 +143,13 @@ class ProviderShareCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AarastV3Color.primaryDark,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 230,
+            height: _shareCodeHeight,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -156,7 +171,12 @@ class ProviderShareCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x4,
+              AarastV3Space.x4,
+              AarastV3Space.x5,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -177,7 +197,7 @@ class ProviderShareCard extends StatelessWidget {
                     ),
                   ),
                 if (profile.ratingCount > 0 || profile.verifiedAt != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -199,12 +219,12 @@ class ProviderShareCard extends StatelessWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: 14),
+                const SizedBox(height: AarastV3Space.x3),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AarastV3Space.x3),
                   decoration: BoxDecoration(
                     color: AarastV3Color.paper,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.surface),
                   ),
                   child: Row(
                     children: [
@@ -214,7 +234,7 @@ class ProviderShareCard extends StatelessWidget {
                         soft: AarastV3Color.primarySoft,
                         size: 40,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AarastV3Space.x3),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

@@ -97,7 +97,7 @@ class ProviderAuthGate extends StatelessWidget {
           onPressed: () =>
               context.go(_withResume(AppRouter.login, resumeLocation)),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const Key('provider-auth-gate-register'),
           label: registerAsProvider ? 'أنشئ حساب مزود' : 'أنشئ حساب',
@@ -150,7 +150,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
           large: true,
           onPressed: () => context.go(AppRouter.providerApply),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const Key('provider-account-required-home'),
           label: 'ارجع لخطتي',
@@ -186,10 +186,15 @@ class _GateCard extends StatelessWidget {
       backgroundColor: AarastV3Color.canvas,
       safeAreaBottom: !embedded,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 24, 16, embedded ? 120 : 32),
+        padding: EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x6,
+          AarastV3Space.x4,
+          embedded ? AarastV3Density.pageBottom : AarastV3Space.x8,
+        ),
         children: [
           JourneyBox(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -202,7 +207,7 @@ class _GateCard extends StatelessWidget {
                     radius: 20,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AarastV3Space.x4),
                 Semantics(
                   header: true,
                   child: Text(
@@ -214,7 +219,7 @@ class _GateCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AarastV3Space.x1),
                 Text(
                   message,
                   textAlign: TextAlign.center,
@@ -223,7 +228,7 @@ class _GateCard extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AarastV3Space.x4),
                 ...actions,
               ],
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// نافذة حوار موحّدة لهوية اعّرست.
 ///
@@ -31,10 +32,28 @@ class AarastDialog extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         shadowColor: AppTheme.inkSurface.withValues(alpha: 0.18),
         elevation: 12,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        titlePadding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 8),
-        contentPadding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 12),
-        actionsPadding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 12),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AarastV3Space.x5,
+          vertical: AarastV3Space.x6,
+        ),
+        titlePadding: const EdgeInsetsDirectional.fromSTEB(
+          AarastV3Space.x5,
+          AarastV3Space.x5,
+          AarastV3Space.x5,
+          AarastV3Space.x2,
+        ),
+        contentPadding: const EdgeInsetsDirectional.fromSTEB(
+          AarastV3Space.x5,
+          AarastV3Space.x1,
+          AarastV3Space.x5,
+          AarastV3Space.x3,
+        ),
+        actionsPadding: const EdgeInsetsDirectional.fromSTEB(
+          AarastV3Space.x3,
+          AarastV3Space.x1,
+          AarastV3Space.x3,
+          AarastV3Space.x3,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusOverlay),
           side: const BorderSide(color: AppTheme.border),

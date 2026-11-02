@@ -565,7 +565,9 @@ class AarastV3AttentionSurface extends StatelessWidget {
                       foregroundColor: colors.foreground,
                       backgroundColor: colors.background,
                       minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AarastV3Space.x3,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
                           AarastV3Radius.control,

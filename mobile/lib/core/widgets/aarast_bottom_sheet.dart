@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'release_field_focus.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 /// Every Aarast sheet is a picker or a choice: it releases the field being
 /// edited first, so closing it does not reopen the keyboard on that field.
@@ -58,10 +59,13 @@ class AarastBottomSheetHandle extends StatelessWidget {
       child: Container(
         width: 46,
         height: 4,
-        margin: const EdgeInsets.only(top: 10, bottom: 14),
+        margin: const EdgeInsets.only(
+          top: AarastV3Space.x2,
+          bottom: AarastV3Space.x3,
+        ),
         decoration: BoxDecoration(
           color: AppTheme.brandMuted,
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: BorderRadius.circular(AarastV3Radius.pill),
         ),
       ),
     );

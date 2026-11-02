@@ -15,7 +15,12 @@ class TaskGroupTitle extends StatelessWidget {
     final late = group == TaskGroup.overdue;
     return Padding(
       key: ValueKey('task-group-${group.name}'),
-      padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x3,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+      ),
       child: Row(
         children: [
           Text(
@@ -26,7 +31,7 @@ class TaskGroupTitle extends StatelessWidget {
               color: late ? AarastV3Color.danger : AarastV3Color.ink,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Text(
             '$count',
             style: JourneyType.of(

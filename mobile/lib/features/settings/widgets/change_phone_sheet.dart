@@ -134,7 +134,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
           if (current.isNotEmpty) ...[
             _CurrentPhone(phone: current),
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
+              padding: EdgeInsets.symmetric(vertical: AarastV3Space.x2),
               child: Icon(
                 LucideIcons.arrowDown,
                 size: 22,
@@ -158,7 +158,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _busy ? null : _send(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyNote(
             icon: LucideIcons.shieldCheck,
             text: context.say(
@@ -199,10 +199,10 @@ class _CurrentPhone extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         key: const ValueKey('change-phone-current'),
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: AarastV3Density.actionInsets,
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           border: Border.all(color: AarastV3Color.line),
         ),
         child: Row(
@@ -212,7 +212,7 @@ class _CurrentPhone extends StatelessWidget {
               size: 20,
               color: AarastV3Color.textMuted,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

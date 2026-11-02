@@ -57,11 +57,12 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
       child: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
               title: 'حساباتك',
-              subtitle: '${arabicMonthName(_month.month)} ${_month.year} · من حجوزاتك المؤكدة',
+              subtitle:
+                  '${arabicMonthName(_month.month)} ${_month.year} · من حجوزاتك المؤكدة',
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -120,7 +121,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AarastV3Space.x2),
               ],
               if (ledger.totals.length > 1)
                 Text(
@@ -130,7 +131,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               const JourneySectionTitle('حجوزات الشهر'),
               JourneyList(
                 children: [
@@ -155,7 +156,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
                 ],
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             const JourneyNote(
               key: Key('provider-ledger-note'),
               text:
@@ -167,11 +168,14 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
       ),
     );
   }
-
 }
 
 class _Figure extends StatelessWidget {
-  const _Figure({required this.label, required this.value, required this.color});
+  const _Figure({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -183,9 +187,12 @@ class _Figure extends StatelessWidget {
     children: [
       Text(
         label,
-        style: JourneyType.of(JourneyType.small, color: AarastV3Color.onPrimary),
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.onPrimary,
+        ),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AarastV3Space.x1),
       FittedBox(
         fit: BoxFit.scaleDown,
         alignment: AlignmentDirectional.centerStart,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 
 class AarastMetricTile extends StatelessWidget {
   const AarastMetricTile({
@@ -22,7 +23,7 @@ class AarastMetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       color: AppTheme.surfaceRaised,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -39,7 +40,7 @@ class AarastMetricTile extends StatelessWidget {
                   ),
                   child: Icon(icon, color: tone, size: 19),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
               ],
               Expanded(
                 child: Text(
@@ -55,7 +56,7 @@ class AarastMetricTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           Text(
             value,
             textAlign: TextAlign.right,
@@ -67,7 +68,7 @@ class AarastMetricTile extends StatelessWidget {
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AarastV3Space.x1),
             Text(
               subtitle!,
               textAlign: TextAlign.right,

@@ -101,7 +101,12 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: '',
               onBack: _back,
@@ -143,7 +148,12 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                0,
+                AarastV3Space.x4,
+                AarastV3Space.x6,
+              ),
               children: [body],
             ),
           ),
@@ -171,7 +181,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             size: 64,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AarastV3Space.x2),
         Text(
           name.isEmpty ? 'بدون اسم' : name,
           textAlign: TextAlign.center,
@@ -190,7 +200,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AarastV3Space.x2),
         Center(
           child: JourneyTag(
             key: const ValueKey('guest-reply-tag'),
@@ -200,7 +210,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           ),
         ),
         if (guest.hasPhone) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           Row(
             children: [
               Expanded(
@@ -214,7 +224,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                   onPressed: () => _launch(phoneCallUri(phone)),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AarastV3Space.x2),
               Expanded(
                 child: JourneyButton(
                   key: const ValueKey('guest-whatsapp'),
@@ -253,7 +263,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           ],
         ),
         if (guest.isConfirmed && guest.companionsCount > 0) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             '${context.say('معه', 'معها')} ${guest.companionsCount} · ${arabicSeats(guest.seatsCount)}',
             style: JourneyType.of(
@@ -265,7 +275,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         if (!_isLocalPlan && !guest.id.startsWith('local-guest-')) ...[
           const JourneySectionTitle('الدعوة'),
           JourneyBox(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Row(
               children: [
                 Icon(
@@ -274,7 +284,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                       : LucideIcons.mailCheck,
                   color: context.accent.primary,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AarastV3Space.x2),
                 Expanded(
                   child: Text(
                     guest.invitationStatus == 'NOT_SENT'
@@ -307,7 +317,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           ),
           if (!guest.hasPhone)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AarastV3Space.x1),
               child: Text(
                 // The reader adds; the guest is the plan's.
                 '${context.say('أضف', 'أضيفي')} '
@@ -323,7 +333,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         if ((guest.notes ?? '').trim().isNotEmpty) ...[
           const JourneySectionTitle('ملاحظة'),
           JourneyBox(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
             child: Text(
               guest.notes!.trim(),
               style: JourneyType.of(JourneyType.body),

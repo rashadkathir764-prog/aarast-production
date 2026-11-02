@@ -168,7 +168,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             controller: _title,
             errorText: _titleError,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const Key('provider-listing-price'),
             label: _isService ? 'السعر من' : 'السعر',
@@ -177,7 +177,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             suffix: currencyLabelAr(_currency),
             errorText: _priceError,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const Key('provider-listing-includes'),
             label: 'وش تشمل',
@@ -185,7 +185,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             minLines: 2,
             maxLines: 4,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const Key('provider-listing-extra'),
             label: _isService ? 'ملاحظة السعر' : 'المميزات · كل وحدة في سطر',
@@ -193,7 +193,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             minLines: _isService ? 1 : 2,
             maxLines: _isService ? 1 : 5,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyList(
             children: [
               JourneyListRow(
@@ -218,7 +218,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             ],
           ),
           if (_error case final error?) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyNote(
               text: error,
               icon: LucideIcons.alertCircle,

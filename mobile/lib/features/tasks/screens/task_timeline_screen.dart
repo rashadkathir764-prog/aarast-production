@@ -152,7 +152,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     _taskBox(provider, entry.value, person, selfLetter),
                   ],
                 if (groups[TaskGroup.done] case final finished?) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AarastV3Space.x1),
                   Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: JourneyTextAction(
@@ -171,7 +171,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     _taskBox(provider, finished, person, selfLetter),
                 ],
                 if (groups.keys.any((group) => group != TaskGroup.done)) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   Center(
                     child: Text(
                       context.say(
@@ -199,9 +199,9 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
+            AarastV3Space.x4,
+            AarastV3Space.x3,
+            AarastV3Space.x4,
             AarastV3Density.pageBottomWithQuickAction,
           ),
           children: [
@@ -227,13 +227,13 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AarastV3Space.x3),
             if (provider.loadErrorMessage != null && tasks.isNotEmpty) ...[
               JourneyListNotice(
                 offline: false,
                 onRetry: () => provider.load(widget.weddingPlanId),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             if (tasks.isNotEmpty) ...[
               JourneyTabSwitch(
@@ -243,7 +243,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                 color: context.accent.primary,
                 onSelected: (index) => setState(() => _byMonth = index == 1),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               _PeopleFilter(
                 people: people,
                 selected: person,
@@ -251,10 +251,10 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                 total: counted.length,
                 onSelected: (value) => setState(() => _person = value),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AarastV3Space.x1),
             ],
             if (tasks.length < _starterTaskThreshold) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
               _StarterTasksCard(
                 onOpen: () => _openTaskStarterSheet(
                   context,
@@ -262,7 +262,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   widget.weddingPlanId,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AarastV3Space.x2),
             ],
             body,
           ],
@@ -336,12 +336,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       background: Container(
         color: AarastV3Color.mint,
         alignment: AlignmentDirectional.centerStart,
-        padding: const EdgeInsetsDirectional.only(start: 20),
+        padding: const EdgeInsetsDirectional.only(start: AarastV3Space.x5),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(LucideIcons.check, color: AarastV3Color.onPrimary),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Text(
               'خلصت',
               style: JourneyType.of(
@@ -482,13 +482,13 @@ class _PeopleFilter extends StatelessWidget {
                     selectedColor: context.accent.primary,
                     onTap: () => onSelected(key),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                 ],
               ],
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AarastV3Space.x2),
         Text(
           '$done من $total',
           key: const ValueKey('tasks-done-count'),

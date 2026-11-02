@@ -60,13 +60,13 @@ class _AccountContextSelectionScreenState
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           const Center(child: JourneyWordmark(size: 26)),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
             child: Semantics(
               header: true,
               child: Text(
@@ -79,7 +79,7 @@ class _AccountContextSelectionScreenState
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
             child: Text(
               'ايش تفتح الآن؟ ما نطلب منك دخول مرة ثانية.',
               style: JourneyType.of(
@@ -88,7 +88,7 @@ class _AccountContextSelectionScreenState
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           for (final path in paths) ...[
             _PathCard(
               path: path,
@@ -97,7 +97,7 @@ class _AccountContextSelectionScreenState
                   ? null
                   : () => _choose(controller, path),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
           ],
           if (controller.errorMessage case final error?) ...[
             JourneyNote(
@@ -105,14 +105,14 @@ class _AccountContextSelectionScreenState
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AarastV3Space.x2),
             JourneyListState(
               phase: JourneyListPhase.error,
               section: JourneySection.home,
               onRetry: controller.refresh,
             ),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Center(
             child: Text(
               context.say(
@@ -182,12 +182,12 @@ class _PathCard extends StatelessWidget {
       child: AarastPressable(
         key: ValueKey('account-path-option-${path.contextKey}'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
             border: Border.all(
               color: chosen ? AarastV3Color.primary : AarastV3Color.line,
               width: chosen ? 2 : 1,
@@ -196,7 +196,7 @@ class _PathCard extends StatelessWidget {
           child: Row(
             children: [
               JourneyAvatar(letter: letter, color: color, size: 40),
-              const SizedBox(width: 12),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +220,7 @@ class _PathCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AarastV3Space.x2),
               if (chosen)
                 AarastInlineSpinner(dimension: 20, color: color)
               else

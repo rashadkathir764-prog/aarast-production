@@ -1,5 +1,8 @@
 part of 'task_details_screen.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _taskSheetLabelWidth = 64.0;
+
 class _Fact extends StatelessWidget {
   const _Fact({required this.icon, required this.label, required this.value});
 
@@ -10,14 +13,14 @@ class _Fact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: context.accent.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           SizedBox(
-            width: 64,
+            width: _taskSheetLabelWidth,
             child: Text(
               label,
               style: JourneyType.of(
@@ -56,7 +59,7 @@ class _ContactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('task-contact'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           JourneyAvatar(
@@ -64,7 +67,7 @@ class _ContactCard extends StatelessWidget {
             color: context.accent.primary,
             size: 40,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +96,7 @@ class _ContactCard extends StatelessWidget {
             onPressed: onCall,
           ),
           if (onWhatsApp != null) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: AarastV3Space.x1),
             JourneyRoundButton(
               key: const ValueKey('task-contact-whatsapp'),
               icon: LucideIcons.messageCircle,
@@ -182,7 +185,7 @@ class _TaskMenu extends StatelessWidget {
             size: 18,
             color: danger ? AarastV3Color.danger : AarastV3Color.ink,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AarastV3Space.x2),
           Flexible(
             child: Text(
               title,

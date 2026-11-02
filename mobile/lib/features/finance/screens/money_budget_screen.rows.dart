@@ -78,13 +78,13 @@ class _ReserveBox extends StatelessWidget {
         else
           '${over ? 'زايد عن الميزانية' : 'احتياط'} $reserve',
       ].join('، '),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: JourneyBox(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             cell('موزّع', allocated, AarastV3Color.ink),
-            const SizedBox(width: 12),
+            const SizedBox(width: AarastV3Space.x3),
             if (reserve == null)
               cell(
                 'احتياط',
@@ -138,9 +138,9 @@ class _AllocationRow extends StatelessWidget {
       key: ValueKey('money-budget-category-${row.id}'),
       onTap: onTap,
       semanticLabel: '${row.name}، $value',
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: AarastV3Density.chipInsets,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -155,7 +155,7 @@ class _AllocationRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AarastV3Space.x2),
                 Text(
                   value,
                   style: JourneyType.of(
@@ -170,7 +170,7 @@ class _AllocationRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AarastV3Space.x1),
             JourneyBar(
               value: total <= 0
                   ? 0
@@ -180,7 +180,7 @@ class _AllocationRow extends StatelessWidget {
             ),
             if (short)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: AarastV3Space.x1),
                 child: Text(
                   '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${shownMoney(context, compactMoneyParts(agreed, currencyCode: currency).plainText)}',
                   style: JourneyType.of(

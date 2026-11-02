@@ -135,20 +135,25 @@ class _AppLockScreenState extends State<AppLockScreen> {
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x6,
+              AarastV3Space.x8,
+              AarastV3Space.x6,
+              AarastV3Space.x6,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const JourneyWordmark(),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: AarastV3Space.x5),
                   JourneyAvatar(
                     letter: name.isEmpty ? 'ا' : name.characters.first,
                     color: AarastV3Color.saffron,
                     size: 60,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                   Text(
                     title,
                     textAlign: TextAlign.center,
@@ -159,7 +164,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                     ),
                   ),
                   if (line != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AarastV3Space.x1),
                     Text(
                       line,
                       textAlign: TextAlign.center,
@@ -169,7 +174,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AarastV3Space.x5),
                   if (_confirmingForgot)
                     _ForgotConfirm(
                       onForget: _forget,
@@ -181,14 +186,16 @@ class _AppLockScreenState extends State<AppLockScreen> {
                       failed: waiting,
                       onCompleted: _submit,
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                   // w08: while the pad waits the note is the way out, so it
                   // opens the same confirmation as the link it replaces.
                   if (waiting && !_confirmingForgot)
                     AarastPressable(
                       key: const Key('app-lock-forgot'),
                       onTap: () => setState(() => _confirmingForgot = true),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.surface,
+                      ),
                       child: JourneyNote(
                         icon: LucideIcons.keyRound,
                         text: context.say(
@@ -226,7 +233,7 @@ class _ForgotConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -234,7 +241,7 @@ class _ForgotConfirm extends StatelessWidget {
             context.say('نسيت الرمز؟', 'نسيتِ الرمز؟'),
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             'نطلعك من الحساب وينشال الرمز. '
             '${context.say('ادخل', 'ادخلي')} من جديد برقم جوالك '
@@ -244,14 +251,14 @@ class _ForgotConfirm extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('app-lock-forgot-confirm'),
             label: 'اطلع وشيل الرمز',
             expand: true,
             onPressed: onForget,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(label: 'ارجع', expand: true, onPressed: onBack),
         ],
       ),
@@ -325,7 +332,9 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
                 Container(
                   width: 18,
                   height: 18,
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x2,
+                  ),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: index < _code.length || widget.failed
@@ -337,7 +346,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
             ],
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: AarastV3Space.x8),
         // Digits read left to right like a phone pad, even in Arabic. The
         // wide g08 pad shrinks to fit a 320-point phone.
         FittedBox(
@@ -369,7 +378,9 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
                           message: 'مسح',
                           child: AarastPressable(
                             onTap: widget.enabled ? _erase : null,
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(
+                              AarastV3Radius.card,
+                            ),
                             child: Center(
                               child: Icon(
                                 LucideIcons.delete,
@@ -409,8 +420,11 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
     }
     return Padding(
       padding: widget.dark
-          ? const EdgeInsets.symmetric(horizontal: 18, vertical: 8)
-          : const EdgeInsets.all(6),
+          ? const EdgeInsets.symmetric(
+              horizontal: AarastV3Space.x4,
+              vertical: AarastV3Space.x2,
+            )
+          : const EdgeInsets.all(AarastV3Space.x1),
       child: Container(
         width: widget.dark ? 78 : 74,
         height: widget.dark ? 78 : 62,
@@ -429,7 +443,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
         key: Key('app-lock-key-$digit'),
         onTap: widget.enabled ? () => _press(digit) : null,
         semanticLabel: digit,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: Center(
           child: Text(
             digit,

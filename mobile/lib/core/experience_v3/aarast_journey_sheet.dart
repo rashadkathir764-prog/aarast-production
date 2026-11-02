@@ -95,34 +95,39 @@ class JourneySheetBody extends StatelessWidget {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         top: false,
-        minimum: const EdgeInsets.only(bottom: 30),
+        minimum: const EdgeInsets.only(bottom: AarastV3Space.x8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x5,
+                  AarastV3Space.x2,
+                  AarastV3Space.x5,
+                  0,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _JourneySheetHandle(),
                     if (hasHeading) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AarastV3Space.x3),
                       if (trailing case final trailing?)
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(child: heading),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AarastV3Space.x2),
                             trailing,
                           ],
                         )
                       else
                         heading,
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AarastV3Space.x4),
                     ...children,
                   ],
                 ),
@@ -130,7 +135,12 @@ class JourneySheetBody extends StatelessWidget {
             ),
             if (bottom case final bottom?)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AarastV3Space.x5,
+                  AarastV3Space.x3,
+                  AarastV3Space.x5,
+                  0,
+                ),
                 child: bottom,
               ),
           ],
@@ -152,7 +162,7 @@ class _JourneySheetHandle extends StatelessWidget {
         height: 5,
         decoration: BoxDecoration(
           color: AarastV3Color.line,
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(AarastV3Radius.xs),
         ),
       ),
     );

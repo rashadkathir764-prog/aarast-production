@@ -59,7 +59,7 @@ class _PlanAssistantEntryState extends State<PlanAssistantEntry> {
     final status = _status;
     if (status == null || !status.available) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: AarastV3Space.x2),
       child: JourneyBox(
         padding: EdgeInsets.zero,
         child: JourneyListRow(

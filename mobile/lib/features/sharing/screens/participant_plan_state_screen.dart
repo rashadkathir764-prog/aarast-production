@@ -33,7 +33,7 @@ class ParticipantPlanStateScreen extends StatelessWidget {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: path?.displayName ?? 'الخطة',
@@ -78,7 +78,7 @@ class _StateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       radius: 22,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -88,7 +88,7 @@ class _StateCard extends StatelessWidget {
             soft: AarastV3Color.line,
             size: 40,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

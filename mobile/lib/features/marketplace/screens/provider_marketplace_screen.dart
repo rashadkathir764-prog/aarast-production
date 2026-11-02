@@ -236,9 +236,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             children: [
               Padding(
                 padding: EdgeInsets.fromLTRB(
-                  16,
-                  widget.embedded ? 12 : 16,
-                  16,
+                  AarastV3Space.x4,
+                  widget.embedded ? AarastV3Space.x3 : AarastV3Space.x4,
+                  AarastV3Space.x4,
                   0,
                 ),
                 child: JourneyTabHeader(
@@ -282,7 +282,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
               ),
               if (tabs.length > 1 && firstVisit == false)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                    AarastV3Space.x4,
+                    AarastV3Space.x3,
+                    AarastV3Space.x4,
+                    0,
+                  ),
                   child: JourneyTabSwitch(
                     key: const ValueKey('providers-tabs'),
                     labels: tabs,
@@ -442,7 +447,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       else ...[
         if (provider.errorMessage != null) ...[
           JourneyListNotice(offline: false, onRetry: provider.loadMarketplace),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         // f02: the cards alone; each says where it stands against the item.
         for (final item in provider.providers) ...[
@@ -463,11 +468,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             },
             onTap: () => _openProviderDetails(item.id),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         if (provider.isLoadingMore)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: AarastV3Space.x3),
             child: Center(child: AarastInlineSpinner(dimension: 36)),
           )
         else if (provider.loadMoreErrorMessage != null)

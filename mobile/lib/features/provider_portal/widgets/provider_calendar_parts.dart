@@ -8,6 +8,9 @@ import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _calendarDayHeight = 55.0;
+
 /// What one day holds in the provider's calendar (p28), at day level: he
 /// takes his daily number of weddings (B-20, one by default) and closes
 /// whole days (F11); no team and no period.
@@ -48,7 +51,8 @@ class ProviderDay {
 
   /// Places left for another confirmation (never below zero: a number he
   /// lowered under the day's bookings keeps them).
-  int get left => capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
+  int get left =>
+      capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
 
   /// A full day first, then a request to answer, then a day with room, then
   /// a closed day: a closed day with a request still shows the request,
@@ -157,12 +161,12 @@ String? providerHijriMonthsLabel(DateTime month) {
 /// The word under a day's number; [left] is the room a day has (B-20).
 String? providerDayWord(ProviderDayState state, {int left = 0}) =>
     switch (state) {
-  ProviderDayState.booked => 'محجوز',
-  ProviderDayState.room => 'باقي $left',
-  ProviderDayState.waiting => 'ينتظرك',
-  ProviderDayState.closed => 'مقفول',
-  ProviderDayState.free => null,
-};
+      ProviderDayState.booked => 'محجوز',
+      ProviderDayState.room => 'باقي $left',
+      ProviderDayState.waiting => 'ينتظرك',
+      ProviderDayState.closed => 'مقفول',
+      ProviderDayState.free => null,
+    };
 
 /// A month of days, Saturday first (prototype p28): 50-point rounded cells
 /// on the canvas, each with its number and, when it holds something, its
@@ -216,7 +220,7 @@ class ProviderMonthGrid extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AarastV3Space.x1),
         for (var row = 0; row < rows; row++)
           Row(
             children: [
@@ -225,7 +229,7 @@ class ProviderMonthGrid extends StatelessWidget {
                   child: () {
                     final date = row * 7 + column - offset + 1;
                     if (date < 1 || date > count) {
-                      return const SizedBox(height: 55);
+                      return const SizedBox(height: _calendarDayHeight);
                     }
                     final day = DateTime(month.year, month.month, date);
                     return _DayCell(
@@ -282,7 +286,7 @@ class _DayCell extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         border: isToday
             ? Border.all(color: AarastV3Color.primary, width: 2)
             : null,
@@ -317,14 +321,14 @@ class _DayCell extends StatelessWidget {
     );
     return Padding(
       key: Key('provider-calendar-day-$number'),
-      padding: const EdgeInsets.all(2.5),
+      padding: const EdgeInsets.all(AarastV3Space.x1),
       child: past
           ? Semantics(label: label, excludeSemantics: true, child: cell)
           : AarastPressable(
               onTap: onTap,
               semanticLabel: label,
               selected: selected,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AarastV3Radius.control),
               child: cell,
             ),
     );
@@ -362,7 +366,7 @@ class ProviderCalendarLegend extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: AarastV3Space.x1),
               Text(
                 label,
                 style: JourneyType.of(

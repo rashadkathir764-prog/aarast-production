@@ -109,7 +109,12 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              0,
+            ),
             child: JourneySubHeader(
               title: 'توزيع الميزانية',
               subtitle: total > 0
@@ -120,14 +125,19 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                0,
+                AarastV3Space.x4,
+                AarastV3Space.x6,
+              ),
               children: [
                 if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AarastV3Space.x3),
                 ],
                 _ReserveBox(
                   allocated: _plain(allocated),
@@ -139,7 +149,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   over: total > 0 && reserve < 0,
                   onTap: _editTotal,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AarastV3Space.x3),
                 if (_rows.isEmpty)
                   const JourneyListState(
                     phase: JourneyListPhase.empty,
@@ -161,7 +171,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                         ),
                     ],
                   ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AarastV3Space.x2),
                 if (_rows.isNotEmpty)
                   Text(
                     context.say(
@@ -184,7 +194,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   ),
                 ),
                 if (_formError != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyNote(
                     key: const ValueKey('money-budget-error'),
                     text: _formError!,
@@ -194,14 +204,14 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   ),
                 ],
                 if (_draft != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastV3DraftStatusLine(status: _draft!.status),
                 ],
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('money-budget-save'),
               label: 'حفظ التوزيع',
@@ -250,7 +260,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   _changed();
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AarastV3Space.x3),
               if (currencyLocked)
                 Text(
                   'العملة ${currencySpokenLabelAr(_currency)}، ثابتة بعد أول اتفاق',
@@ -277,7 +287,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                       ),
                   ],
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               JourneyButton(
                 key: const ValueKey('money-budget-total-done'),
                 label: 'تمام',
@@ -328,7 +338,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   _changed();
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AarastV3Space.x4),
               JourneyButton(
                 key: const ValueKey('money-budget-share-done'),
                 label: 'تمام',
@@ -337,7 +347,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                 onPressed: () => Navigator.of(sheetContext).pop(),
               ),
               if (row.id != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AarastV3Space.x1),
                 Center(
                   child: JourneyTextAction(
                     key: ValueKey('money-budget-open-${row.id}'),

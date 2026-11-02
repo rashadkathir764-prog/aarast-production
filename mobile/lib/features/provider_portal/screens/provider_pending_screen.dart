@@ -44,7 +44,7 @@ class ProviderPendingScreen extends StatelessWidget {
               onRefresh: onRefresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: AarastV3Density.pageInsets,
                 children: [
                   ProviderStateHeading(
                     name: profile.businessName,
@@ -76,7 +76,7 @@ class ProviderPendingScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   JourneyButton(
                     key: const Key('provider-pending-preview'),
                     label: 'شوف ملفك مثل العرسان',
@@ -91,7 +91,7 @@ class ProviderPendingScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-pending-edit'),
               label: 'عدّل طلبك',

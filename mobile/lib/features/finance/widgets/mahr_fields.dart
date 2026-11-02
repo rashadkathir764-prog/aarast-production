@@ -78,7 +78,7 @@ class MahrFields extends StatelessWidget {
           onChanged: (_) => onChanged(),
         ),
         if (remaining != null && remaining > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AarastV3Space.x2),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: JourneyTag(
@@ -89,7 +89,7 @@ class MahrFields extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyTextField(
           key: const ValueKey('mahr-settled'),
           label: pays
@@ -106,7 +106,7 @@ class MahrFields extends StatelessWidget {
           onChanged: (_) => onChanged(),
         ),
         if (remaining == null || remaining > 0) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyPickerField(
             key: const ValueKey('mahr-due-date'),
             // a06 draws «موعد تسليم الباقي» on both sides.
@@ -117,7 +117,7 @@ class MahrFields extends StatelessWidget {
             onTap: onPickDueDate,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AarastV3Space.x4),
         JourneyNote(
           // Whose wedding the plan is (the plan's side), said to its owner.
           text: pays

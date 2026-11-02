@@ -24,6 +24,9 @@ import '../widgets/participant_account_sections.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, showPlanSwitcherSheet, showPostponeSheet;
 
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _moreAvatarBox = 54.0;
+
 /// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
 /// privacy, and the account (C51 adds «الحساب»: notifications, plans,
 /// help, sign out). «الأرقام» and «الوضع الليلي» are left out (D23).
@@ -66,7 +69,7 @@ class _MoreScreenState extends State<MoreScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
             title: 'حسابي',
@@ -404,7 +407,12 @@ class _GroupTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 16, 6, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x4,
+        AarastV3Space.x1,
+        AarastV3Space.x2,
+      ),
       child: Text(
         title,
         style: JourneyType.of(
@@ -439,7 +447,7 @@ class _ProfileCard extends StatelessWidget {
     final url = avatarUrl;
     // g02: a 54 avatar, 14 from a 19 bold name over a 14 muted phone.
     final Widget avatar = SizedBox.square(
-      dimension: 54,
+      dimension: _moreAvatarBox,
       child: busy
           ? const Center(child: AarastInlineSpinner())
           : url != null && url.isNotEmpty
@@ -461,7 +469,7 @@ class _ProfileCard extends StatelessWidget {
             ),
     );
     return JourneyBox(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Row(
         children: [
           onEditAvatar == null
@@ -471,11 +479,11 @@ class _ProfileCard extends StatelessWidget {
                   child: AarastPressable(
                     key: const ValueKey('account-avatar'),
                     onTap: onEditAvatar,
-                    borderRadius: BorderRadius.circular(27),
+                    borderRadius: BorderRadius.circular(AarastV3Radius.pill),
                     child: avatar,
                   ),
                 ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,11 +541,11 @@ class _Row extends StatelessWidget {
     final toggle = switchValue;
     final color = this.color ?? context.accent.primary;
     final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
           Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
+          const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Text(
               title,
@@ -560,7 +568,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
             if (onTap != null) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: AarastV3Space.x1),
               const Icon(
                 LucideIcons.chevronLeft,
                 size: 17,

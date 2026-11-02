@@ -1,17 +1,15 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-// The ratchet behind DESIGN_SYSTEM.md's spacing and radius rule (D67).
+// The rule behind DESIGN_SYSTEM.md's spacing and radius tokens (D67, D74).
 //
-// A file in lib/features may hold at most the hand-written numbers recorded in
-// the baseline, and a new file holds none. The old numbers are cleaned when
-// their screen is touched; after a cleanup, lock the gain from mobile/ with:
-//   UPDATE_DESIGN_RATCHET=1 flutter test test/core/widgets/aarast_design_ratchet_test.dart
-// The update can only lower a count or drop a file, never raise or add one.
-
-const _baselinePath = 'test/core/widgets/aarast_design_ratchet_baseline.json';
+// No file in lib writes a spacing, radius or font-size number by hand:
+// paddings, gaps and corners come from AarastV3Space / AarastV3Radius /
+// AarastV3Field / AarastV3Density, sizes of type from JourneyType, and a
+// fixed layout dimension is a named constant. Only the token files hold
+// numbers. The old per-file baseline is gone: the count is zero and stays
+// zero.
 
 final _insetsCall = RegExp(
   r'EdgeInsets(?:Directional)?\.(?:all|symmetric|only|fromLTRB|fromSTEB)\s*\(',
@@ -49,30 +47,33 @@ int handWrittenDesignNumbers(String source) {
   return count;
 }
 
+const _tokenFiles = {
+  'lib/core/experience_v3/aarast_v3_foundations.dart',
+  'lib/core/theme/aarast_design_tokens.dart',
+};
+
+/// The type scale lives in JourneyType; the theme builds on it.
+const _typeFiles = {
+  'lib/core/experience_v3/aarast_journey.dart',
+  'lib/core/theme/app_theme.dart',
+};
+
+final _fontSizeNumber = RegExp(r'fontSize:\s*\d');
+
 Map<String, int> _liveCounts() {
   final counts = <String, int>{};
-  for (final entity in Directory('lib/features').listSync(recursive: true)) {
+  for (final entity in Directory('lib').listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
-    final count = handWrittenDesignNumbers(entity.readAsStringSync());
-    if (count > 0) counts[entity.path.replaceAll(r'\', '/')] = count;
+    final path = entity.path.replaceAll(r'\', '/');
+    if (_tokenFiles.contains(path)) continue;
+    final source = entity.readAsStringSync();
+    var count = handWrittenDesignNumbers(source);
+    if (!_typeFiles.contains(path)) {
+      count += _fontSizeNumber.allMatches(_withoutComments(source)).length;
+    }
+    if (count > 0) counts[path] = count;
   }
   return counts;
-}
-
-Map<String, int> _baseline() {
-  final file = File(_baselinePath);
-  if (!file.existsSync()) return const {};
-  final decoded = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-  return decoded.map((path, count) => MapEntry(path, count as int));
-}
-
-void _writeBaseline(Map<String, int> counts) {
-  final sorted = {
-    for (final path in counts.keys.toList()..sort()) path: counts[path]!,
-  };
-  File(_baselinePath).writeAsStringSync(
-    '${const JsonEncoder.withIndent('  ').convert(sorted)}\n',
-  );
 }
 
 void main() {
@@ -109,49 +110,14 @@ void main() {
     });
   });
 
-  test('lib/features holds no new hand-written spacing or radius', () {
+  test('no file in lib writes spacing, radius or type size by hand', () {
     final live = _liveCounts();
-    final baseline = _baseline();
-
-    if (Platform.environment['UPDATE_DESIGN_RATCHET'] == '1') {
-      _writeBaseline(
-        baseline.isEmpty
-            ? live
-            : {
-                for (final entry in baseline.entries)
-                  if ((live[entry.key] ?? 0) > 0)
-                    entry.key: (live[entry.key]! < entry.value)
-                        ? live[entry.key]!
-                        : entry.value,
-              },
-      );
-      return;
-    }
-
-    final grown = [
-      for (final entry in live.entries)
-        if (entry.value > (baseline[entry.key] ?? 0))
-          '${entry.key}: ${entry.value}, allowed ${baseline[entry.key] ?? 0}',
-    ];
     expect(
-      grown,
+      [for (final entry in live.entries) '${entry.key}: ${entry.value}'],
       isEmpty,
       reason:
-          'Use AarastV3Space and AarastV3Radius (DESIGN_SYSTEM.md):\n'
-          '${grown.join('\n')}',
-    );
-
-    final gained = [
-      for (final entry in baseline.entries)
-        if ((live[entry.key] ?? 0) < entry.value)
-          '${entry.key}: ${live[entry.key] ?? 0}, recorded ${entry.value}',
-    ];
-    expect(
-      gained,
-      isEmpty,
-      reason:
-          'Numbers went down. Lock the gain, see the top of this test:\n'
-          '${gained.join('\n')}',
+          'Use AarastV3Space, AarastV3Radius, AarastV3Field or JourneyType, '
+          'or name a fixed dimension (DESIGN_SYSTEM.md, D74).',
     );
   });
 }

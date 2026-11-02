@@ -119,7 +119,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     if (view == null) {
       final failed = plan?.errorMessage != null && plan?.isLoading != true;
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyListState(
           phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
           section: JourneySection.tasks,
@@ -133,7 +133,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     ];
     if (open.isEmpty) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: const ValueKey('participant-plan-all-done'),
           text: view.tasksTotal == 0
@@ -148,7 +148,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     final next = open.first;
     final rest = open.skip(1).take(3).toList();
     return [
-      const SizedBox(height: 12),
+      const SizedBox(height: AarastV3Space.x3),
       _NextTaskCard(
         task: next.toTask(),
         who: next.whoLine(ownerWord: voice.owner),
@@ -236,7 +236,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
             context.push(AppRouter.planNotifications(widget.weddingPlanId)),
         onProfile: () => context.push(AppRouter.more),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AarastV3Space.x3),
     ];
 
     if (summary == null) {
@@ -266,7 +266,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       final change = _change;
       if (change != null) {
         children.addAll([
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           _ChangeCard(change: change, voice: voice),
         ]);
       }
@@ -306,7 +306,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         final next = open.first;
         final rest = open.skip(1).toList();
         children.addAll([
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           _NextTaskCard(
             task: next,
             who: next.assigneeUserId != null && next.assigneeUserId == user?.id
@@ -339,7 +339,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
           !taskProvider.isLoading &&
           taskProvider.loadErrorMessage == null) {
         children.addAll([
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
             key: ValueKey('participant-no-tasks'),
             text: 'ما عليك مهام الحين. لما يعطونك مهمة تطلع هنا.',
@@ -380,7 +380,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       // the plan keeps its owner's colours, the reader has her own plan.
       if (voice.bride || context.journeyProfile.feminine) {
         children.addAll([
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('participant-owner-colours'),
             text:
@@ -393,7 +393,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ]);
       } else if (!selected.permissions.canViewMoney) {
         children.addAll([
-          const SizedBox(height: 12),
+          const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
             key: ValueKey('participant-money-hidden'),
             text: 'المال مخفي عنك.',
@@ -414,7 +414,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         child: ListView(
           key: const ValueKey('participant-home'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: AarastV3Density.pageInsets,
           children: children,
         ),
       ),

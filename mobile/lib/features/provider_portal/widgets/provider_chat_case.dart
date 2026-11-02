@@ -136,12 +136,12 @@ class ProviderChatStrip extends StatelessWidget {
     return AarastPressable(
       key: const Key('provider-chat-strip'),
       semanticLabel: '$text، افتح الطلب',
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       onTap: () => context.push(AppRouter.providerRequest(quote.id)),
       child: JourneyBox(
         color: AarastV3Color.primarySoft,
         radius: 16,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
             const Icon(
@@ -149,7 +149,7 @@ class ProviderChatStrip extends StatelessWidget {
               size: 18,
               color: AarastV3Color.primary,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Text(
                 text,
@@ -160,7 +160,7 @@ class ProviderChatStrip extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AarastV3Space.x2),
             ProviderCaseTag(state: state),
           ],
         ),

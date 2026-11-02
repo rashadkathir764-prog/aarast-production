@@ -114,10 +114,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     icon: LucideIcons.package,
                   ),
                   if (_draft != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AarastV3Space.x2),
                     AarastV3DraftStatusLine(status: _draft!.status),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastV3FormSurface(
                     children: [
                       TextFormField(
@@ -132,7 +132,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                             ? 'اكتب اسم الباقة'
                             : null,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AarastV3Space.x2),
                       TextFormField(
                         controller: _priceController,
                         keyboardType: TextInputType.number,
@@ -146,7 +146,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
                     title: 'محتوى الباقة',
                     subtitle: 'الخدمة المرتبطة والوصف والمميزات',
@@ -179,7 +179,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                             _draft?.changed();
                           },
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AarastV3Space.x2),
                         TextFormField(
                           controller: _descriptionController,
                           minLines: 2,
@@ -190,7 +190,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                             prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AarastV3Space.x2),
                         TextFormField(
                           controller: _itemsController,
                           minLines: 3,
@@ -205,10 +205,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     ),
                   ),
                   if (dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AarastV3Space.x2),
                     _InlineError(message: dashboard.errorMessage!),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AarastV3Space.x4),
                 ],
               ),
             ),

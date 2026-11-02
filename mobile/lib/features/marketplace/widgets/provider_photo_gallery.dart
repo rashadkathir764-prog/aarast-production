@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/experience_v3/aarast_v3_foundations.dart';
+
+/// A fixed dimension of this layout, not a spacing step (D74).
+const _galleryPhotoHeight = 200.0;
 
 void showProviderPhotoGallery(
   BuildContext context, {
@@ -54,7 +58,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
         .toDouble();
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(AarastV3Space.x4),
       child: SizedBox(
         width: double.infinity,
         height: galleryHeight,
@@ -68,7 +72,9 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                   setState(() => _currentIndex = index);
                 },
                 itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AarastV3Space.x12,
+                  ),
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
@@ -81,7 +87,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stack) =>
                               const SizedBox(
-                                height: 200,
+                                height: _galleryPhotoHeight,
                                 child: Center(
                                   child: Icon(
                                     LucideIcons.image,
@@ -104,10 +110,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                 color: AppTheme.textPrimary.withValues(alpha: 0.72),
                 borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: AarastV3Density.chipInsets,
                   child: Text(
                     '${_currentIndex + 1} / ${widget.images.length}',
                     textDirection: TextDirection.ltr,

@@ -14,7 +14,7 @@ class _MarketplaceSearch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
       borderSide: BorderSide(color: color, width: width),
     );
     return ValueListenableBuilder<TextEditingValue>(
@@ -86,7 +86,7 @@ class _FilterChips extends StatelessWidget {
         .where((city) => city.id == provider.cityId)
         .firstOrNull;
     return SizedBox(
-      height: 42,
+      height: AarastV3Space.x10,
       child: Row(
         children: [
           Expanded(
@@ -103,7 +103,7 @@ class _FilterChips extends StatelessWidget {
                     selectedColor: context.accent.primary,
                     onTap: () {},
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                 ],
                 JourneyChip(
                   key: const ValueKey('category-chip-all'),
@@ -113,7 +113,7 @@ class _FilterChips extends StatelessWidget {
                   onTap: () => provider.setCategory(null),
                 ),
                 for (final category in provider.categories) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AarastV3Space.x2),
                   JourneyChip(
                     key: ValueKey('category-chip-${category.id}'),
                     label: category.nameAr,
@@ -126,7 +126,7 @@ class _FilterChips extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           JourneyChip(
             key: const Key('city-filter-trigger'),
             label: city?.nameAr ?? 'فلتر',
@@ -156,7 +156,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
       listenable: provider,
       builder: (context, _) {
         Widget label(String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
           child: Text(
             text,
             style: JourneyType.of(
@@ -196,7 +196,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AarastV3Space.x3),
             label('المكان'),
             Wrap(
               spacing: 8,
@@ -219,7 +219,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AarastV3Space.x4),
             JourneyButton(
               key: const ValueKey('directory-filter-apply'),
               label: provider.isLoading
@@ -260,11 +260,16 @@ class _BudgetMatchContextCard extends StatelessWidget {
         : 'حسب بند ${intent.budgetCategoryName}';
     return JourneyBox(
       color: context.accent.primarySoft,
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AarastV3Space.x3,
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+      ),
       child: Row(
         children: [
           Icon(LucideIcons.sparkles, size: 18, color: context.accent.primary),
-          const SizedBox(width: 8),
+          const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,

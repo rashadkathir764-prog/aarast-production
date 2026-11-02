@@ -115,6 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _page(BuildContext context, GuestOnboardingDraft? keptPlan) {
     final auth = context.watch<AuthController>();
     final offline = auth.failedOffline;
+    final proven = auth.phoneProofFor(_phoneController.text) != null;
     final serverError = offline ? null : auth.errorMessage;
     return AarastScreenFrame(
       maxWidth: 520,
@@ -132,7 +133,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
           primary: JourneyButton(
             key: const ValueKey('register-submit'),
-            label: offline ? 'أرسل الرمز مرة ثانية' : 'أرسل الرمز',
+            // A number just proven by a sign-in code needs no code (D75).
+            label: proven
+                ? (keptPlan != null
+                      ? context.say('احفظ خطتي', 'احفظي خطتي')
+                      : 'إنشاء الحساب')
+                : offline
+                ? 'أرسل الرمز مرة ثانية'
+                : 'أرسل الرمز',
             expand: true,
             large: true,
             loading: auth.isSubmitting,
@@ -206,10 +214,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
-            text: context.say(
-              'نرسل لك رمز على واتساب. تأكد إن الرقم عليه واتساب.',
-              'نرسل لك رمز على واتساب. تأكدي إن الرقم عليه واتساب.',
-            ),
+            text: proven
+                ? 'تأكدنا من هذا الرقم قبل شوي، فما نحتاج رمز ثاني.'
+                : context.say(
+                    'نرسل لك رمز على واتساب. تأكد إن الرقم عليه واتساب.',
+                    'نرسل لك رمز على واتساب. تأكدي إن الرقم عليه واتساب.',
+                  ),
             icon: LucideIcons.messageCircle,
             tone: JourneyNoteTone.paper,
           ),
@@ -249,6 +259,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthController>();
     final name = _nameController.text.trim();
     final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
+    // The number was just proven by a sign-in code (D75): no second code.
+    final proof = auth.phoneProofFor(normalizedPhone);
+    if (proof != null) {
+      await auth.register(
+        name: name,
+        phone: normalizedPhone,
+        phoneProof: proof,
+        successLocation: _safeResumeLocation(context),
+        savesKeptPlan: _keptPlan != null,
+      );
+      return;
+    }
     final otp = await auth.startRegistration(
       name: name,
       phone: normalizedPhone,

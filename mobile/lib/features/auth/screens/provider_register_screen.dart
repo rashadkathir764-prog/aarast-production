@@ -86,7 +86,12 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                 ),
           primary: JourneyButton(
             key: const Key('provider-register-submit'),
-            label: offline ? 'أرسل الرمز مرة ثانية' : 'أرسل الرمز',
+            // A number just proven by a sign-in code needs no code (D75).
+            label: auth.phoneProofFor(_phoneController.text) != null
+                ? 'إنشاء الحساب'
+                : offline
+                ? 'أرسل الرمز مرة ثانية'
+                : 'أرسل الرمز',
             expand: true,
             large: true,
             loading: auth.isSubmitting,
@@ -163,6 +168,17 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     final auth = context.read<AuthController>();
     final name = _nameController.text.trim();
     final phone = normalizeYemeniPhone(_phoneController.text);
+    // The number was just proven by a sign-in code (D75): no second code.
+    final proof = auth.phoneProofFor(phone);
+    if (proof != null) {
+      await auth.register(
+        name: name,
+        phone: phone,
+        phoneProof: proof,
+        successLocation: _resumeLocation(),
+      );
+      return;
+    }
     final otp = await auth.startRegistration(name: name, phone: phone);
     if (otp == null || !mounted) return;
     context.push(

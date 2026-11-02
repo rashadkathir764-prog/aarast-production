@@ -1180,7 +1180,8 @@ class _FakeAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
   }) async {
     if (!authenticateOnRegister) {
       throw const ApiException('Unexpected registration');

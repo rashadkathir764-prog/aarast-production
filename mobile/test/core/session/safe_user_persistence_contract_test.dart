@@ -19,6 +19,7 @@ void main() {
       activeWeddingPlanId: 'plan-456',
       onboardingPath: 'GROOM',
       persona: 'OWNER',
+      hasPassword: true,
       phoneVerifiedAt: phoneVerifiedAt,
       lastLoginAt: lastLoginAt,
       onboardingCompletedAt: onboardingCompletedAt,
@@ -41,6 +42,8 @@ void main() {
       'activeWeddingPlanId': 'plan-456',
       'onboardingPath': 'GROOM',
       'persona': 'OWNER',
+      // D75: a password is optional; the session knows whether there is one.
+      'hasPassword': true,
       'phoneVerifiedAt': '2026-01-02T03:04:05.000Z',
       'lastLoginAt': '2026-02-03T04:05:06.000Z',
       'onboardingCompletedAt': '2026-03-04T05:06:07.000Z',
@@ -69,6 +72,7 @@ void main() {
     expect(restored.activeWeddingPlanId, user.activeWeddingPlanId);
     expect(restored.onboardingPath, user.onboardingPath);
     expect(restored.persona, user.persona);
+    expect(restored.hasPassword, isTrue);
     expect(restored.phoneVerifiedAt, phoneVerifiedAt);
     expect(restored.lastLoginAt, lastLoginAt);
     expect(restored.onboardingCompletedAt, onboardingCompletedAt);
@@ -86,6 +90,8 @@ void main() {
 
     expect(restored.appRole, 'WEDDING_USER');
     expect(restored.locale, 'ar');
+    // An older session knows of no password: none is assumed.
+    expect(restored.hasPassword, isFalse);
     expect(restored.phoneVerifiedAt, isNull);
     expect(restored.lastLoginAt, isNull);
     expect(restored.onboardingCompletedAt, isNull);
@@ -104,6 +110,7 @@ void main() {
       'activeWeddingPlanId': null,
       'onboardingPath': null,
       'persona': null,
+      'hasPassword': false,
       'phoneVerifiedAt': null,
       'lastLoginAt': null,
       'onboardingCompletedAt': null,

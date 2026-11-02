@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
@@ -16,7 +17,8 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
-import '../../settings/settings_api.dart' show showChangePhoneSheet;
+import '../../settings/settings_api.dart'
+    show showChangePhoneSheet, showSetPasswordSheet;
 import '../../sharing/sharing_api.dart'
     show participantPhone, participantRoleLabel;
 import '../widgets/logout_sheet.dart';
@@ -197,14 +199,21 @@ class _MoreScreenState extends State<MoreScreen> {
                   title: 'تغيير رقم الجوال',
                   onTap: () => showChangePhoneSheet(
                     context,
-                    currentPhone: switch (user.phone?.trim()) {
-                      final phone? when phone.isNotEmpty => _groupedPhone(
-                        phone,
-                      ),
-                      _ => null,
-                    },
+                    currentPhone: PhoneNumberUtils.display(user.phone),
                     requestCode: auth.requestPhoneChange,
                     confirmCode: auth.confirmPhoneChange,
+                  ),
+                ),
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-password'),
+                  icon: LucideIcons.keyRound,
+                  title: 'كلمة المرور',
+                  value: user.hasPassword ? 'موجودة' : 'ما فيه',
+                  onTap: () => showSetPasswordSheet(
+                    context,
+                    hasPassword: user.hasPassword,
+                    save: auth.setPassword,
                   ),
                 ),
             ],
@@ -497,7 +506,7 @@ class _ProfileCard extends StatelessWidget {
                 ),
                 if (phone != null && phone!.trim().isNotEmpty)
                   Text(
-                    _groupedPhone(phone!.trim()),
+                    PhoneNumberUtils.display(phone) ?? phone!.trim(),
                     textDirection: TextDirection.ltr,
                     style: JourneyType.of(
                       JourneyType.bodySmall,
@@ -587,11 +596,4 @@ class _Row extends StatelessWidget {
     if (tap == null) return row;
     return AarastPressable(onTap: tap, child: row);
   }
-}
-
-/// «+967 777 123 456», the way a Yemeni number is read out.
-String _groupedPhone(String phone) {
-  final match = RegExp(r'^\+967(\d{3})(\d{3})(\d{3})$').firstMatch(phone);
-  if (match == null) return phone;
-  return '+967 ${match[1]} ${match[2]} ${match[3]}';
 }

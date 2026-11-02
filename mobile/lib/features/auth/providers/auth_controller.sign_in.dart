@@ -62,10 +62,13 @@ mixin _AuthSignIn on _AuthControllerCore {
     return completed;
   }
 
+  /// [otpCode] is the sign-up code; or [phoneProof], what a sign-in code
+  /// for this number proved (D75), so no second code is sent.
   Future<bool> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
     String? resumeInviteToken,
     String? successLocation,
     bool savesKeptPlan = false,
@@ -81,6 +84,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         name: name.trim(),
         phone: phone.trim(),
         otpCode: otpCode,
+        phoneProof: phoneProof,
       );
       if (!_isCurrentSessionOperation(operation)) return;
       _user = response.user;
@@ -223,6 +227,8 @@ mixin _AuthSignIn on _AuthControllerCore {
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
     });
+    // The number this code proved goes with its proof (D75).
+    _phoneProofPhone = _phoneProof == null ? null : phone.trim();
     return success && _isCurrentSessionOperation(operation);
   }
 
@@ -253,6 +259,7 @@ mixin _AuthSignIn on _AuthControllerCore {
     _errorMessage = null;
     _errorCode = null;
     _failedOffline = false;
+    _phoneProof = null;
     notifyListeners();
 
     try {
@@ -271,6 +278,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       return false;
     } on ApiException catch (error) {
       _errorCode = error.serverCode;
+      _phoneProof = error.phoneProof;
       final translatedMessage = _messageForServerCode(error.serverCode);
       if (translatedMessage != null) {
         _errorMessage = translatedMessage;

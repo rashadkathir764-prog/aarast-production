@@ -12,6 +12,7 @@
     this.activeWeddingPlanId,
     this.onboardingPath,
     this.persona,
+    this.hasPassword = false,
     this.phoneVerifiedAt,
     this.lastLoginAt,
     this.onboardingCompletedAt,
@@ -40,6 +41,7 @@
       activeWeddingPlanId: json['activeWeddingPlanId']?.toString(),
       onboardingPath: json['onboardingPath']?.toString(),
       persona: json['persona']?.toString(),
+      hasPassword: json['hasPassword'] == true,
       phoneVerifiedAt: _dateTimeOrNull(json['phoneVerifiedAt']),
       lastLoginAt: _dateTimeOrNull(json['lastLoginAt']),
       onboardingCompletedAt: _dateTimeOrNull(json['onboardingCompletedAt']),
@@ -58,6 +60,10 @@
   final String? activeWeddingPlanId;
   final String? onboardingPath;
   final String? persona;
+
+  /// D75: the account signs in by number and code; a password is an extra
+  /// way in, added from «حسابي».
+  final bool hasPassword;
   final DateTime? phoneVerifiedAt;
   final DateTime? lastLoginAt;
   final DateTime? onboardingCompletedAt;
@@ -114,6 +120,7 @@
       'activeWeddingPlanId': activeWeddingPlanId,
       'onboardingPath': onboardingPath,
       'persona': persona,
+      'hasPassword': hasPassword,
       'phoneVerifiedAt': phoneVerifiedAt?.toIso8601String(),
       'lastLoginAt': lastLoginAt?.toIso8601String(),
       'onboardingCompletedAt': onboardingCompletedAt?.toIso8601String(),

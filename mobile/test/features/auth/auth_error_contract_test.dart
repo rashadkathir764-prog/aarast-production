@@ -202,7 +202,8 @@ class _FailingAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
   }) async {
     throw registerFailure ?? StateError('registerFailure was not configured');
   }

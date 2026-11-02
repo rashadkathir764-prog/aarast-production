@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -99,6 +100,24 @@ class AuthController extends _AuthControllerCore
   /// account, so it signed in to that account instead.
   bool get signUpFoundAccount => _signUpFoundAccount;
 
+  /// What the last sign-in code proved about a number with no account (D75),
+  /// for signing up with it; null otherwise.
+  String? get phoneProof => _phoneProof;
+
+  /// The proof for [phone] (as typed, normalised), or null when the last
+  /// proof was for another number or there is none.
+  String? phoneProofFor(String phone) {
+    final proven = _phoneProofPhone;
+    if (_phoneProof == null || proven == null) return null;
+    try {
+      return normalizeYemeniPhone(proven) == normalizeYemeniPhone(phone)
+          ? _phoneProof
+          : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
   /// The screen that says so has said it: it is said once, right after the
   /// sign-up, not on every later visit.
   void acknowledgeSignUpFoundAccount() => _signUpFoundAccount = false;
@@ -182,6 +201,8 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   bool _accountJustCreated = false;
   bool _failedOffline = false;
   bool _signUpFoundAccount = false;
+  String? _phoneProof;
+  String? _phoneProofPhone;
   String? _expiredSessionPhone;
   bool _loginRequestedAfterLogout = false;
   bool _authenticatedEntryPending = false;

@@ -327,6 +327,13 @@ class _OtpScreenState extends State<OtpScreen> {
       : 'تغيير الرقم';
 
   /// The kept plan's owner: the colour and voice of every line here.
+  /// «عرس سلمى» → «سلمى»: the owner's name the kept plan carries.
+  String? get _keptPlanOwnerName {
+    final title = _keptPlan?.planName?.trim() ?? '';
+    final name = title.startsWith('عرس ') ? title.substring(4).trim() : '';
+    return name.isEmpty ? null : name;
+  }
+
   bool get _forProvider =>
       widget.successLocation?.startsWith('/provider/') == true;
 
@@ -403,7 +410,21 @@ class _OtpScreenState extends State<OtpScreen> {
                             : 'ابدأ من هنا',
                         expand: true,
                         large: true,
-                        onPressed: () {
+                        onPressed: () async {
+                          // A plan on this phone is saved with this number
+                          // at once: the code just proved it (D75).
+                          final name = _keptPlanOwnerName;
+                          final proof = auth.phoneProofFor(phone);
+                          if (!_forProvider && name != null && proof != null) {
+                            await auth.register(
+                              name: name,
+                              phone: phone,
+                              phoneProof: proof,
+                              successLocation: widget.successLocation,
+                              savesKeptPlan: true,
+                            );
+                            return;
+                          }
                           auth.clearError();
                           // A plan on this phone is saved with the number,
                           // never replaced by a new one.

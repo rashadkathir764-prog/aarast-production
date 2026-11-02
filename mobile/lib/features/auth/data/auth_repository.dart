@@ -68,10 +68,22 @@ class AuthRepository implements SessionAuthTeardownPort {
     return OtpRequestResult.fromJson(json);
   }
 
+  /// D75: adds the app password, or changes it with [currentPassword].
+  Future<void> setPassword({
+    required String newPassword,
+    String? currentPassword,
+  }) async {
+    await _apiClient.postJson('/api/v1/auth/password', {
+      'newPassword': newPassword,
+      'currentPassword': ?currentPassword,
+    });
+  }
+
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
   }) async {
     final sessionEpoch = _authStorage.beginSessionEstablishment();
     try {
@@ -79,7 +91,10 @@ class AuthRepository implements SessionAuthTeardownPort {
       final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
         'name': name,
         'phone': normalizedPhone,
-        'otpCode': otpCode,
+        if (phoneProof != null)
+          'phoneProof': phoneProof
+        else
+          'otpCode': otpCode,
       });
       final response = _parseAuthResponse(json, operation: 'register');
       await _authStorage.saveSessionAtEpoch(

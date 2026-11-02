@@ -677,11 +677,20 @@ class ApiException implements Exception {
     this.statusCode,
     this.serverCode,
     this.retryAfterSeconds,
+    this.phoneProof,
   });
+
+  /// The number this sign-in code proved, for signing up without a second
+  /// code (ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF); null otherwise.
+  final String? phoneProof;
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
     final data = error.response?.data;
+    // D75: a number proven by a sign-in code but with no account comes back
+    // with a short proof, so signing up needs no second code.
+    final proof = data is Map ? data['phoneProof'] : null;
+    final phoneProof = proof is String && proof.isNotEmpty ? proof : null;
     final serverCode = _extractServerCode(data);
     final serverMessage = _extractServerMessage(data);
     final retryAfterSeconds = _extractRetryAfterSeconds(data);
@@ -696,6 +705,7 @@ class ApiException implements Exception {
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
+        phoneProof: phoneProof,
       );
     }
 
@@ -705,6 +715,7 @@ class ApiException implements Exception {
         statusCode: 401,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
+        phoneProof: phoneProof,
       );
     }
 
@@ -727,6 +738,7 @@ class ApiException implements Exception {
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
+        phoneProof: phoneProof,
       );
     }
 
@@ -739,6 +751,7 @@ class ApiException implements Exception {
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
+        phoneProof: phoneProof,
       );
     }
     if (serverMessage != null &&
@@ -749,6 +762,7 @@ class ApiException implements Exception {
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
+        phoneProof: phoneProof,
       );
     }
 
@@ -757,6 +771,7 @@ class ApiException implements Exception {
       statusCode: statusCode,
       serverCode: serverCode,
       retryAfterSeconds: retryAfterSeconds,
+      phoneProof: phoneProof,
     );
   }
 

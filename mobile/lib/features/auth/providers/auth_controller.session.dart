@@ -293,6 +293,30 @@ mixin _AuthSession on _AuthControllerCore {
 
   /// V1 checklist 4.14, step 1: sends a code to [newPhone]. Returns an
   /// Arabic error, or null when the code was sent.
+  /// D75: adds a password to an account made by number and code, or changes
+  /// it. Returns an Arabic error, or null once saved; the account is read
+  /// again so «حسابي» says it has one.
+  Future<String?> setPassword(
+    String newPassword,
+    String? currentPassword,
+  ) async {
+    try {
+      await _authRepository.setPassword(
+        newPassword: newPassword,
+        currentPassword: currentPassword,
+      );
+    } on ApiException catch (error) {
+      if (error.serverCode == 'INVALID_CREDENTIALS') {
+        return 'كلمة المرور الحالية غلط.';
+      }
+      return error.isNetworkFailure
+          ? 'ما قدرنا نوصل، النت مقطوع. جرّب مرة ثانية.'
+          : error.message;
+    }
+    await refreshCurrentUser();
+    return null;
+  }
+
   Future<String?> requestPhoneChange(String newPhone) async {
     try {
       await _authRepository.requestPhoneChange(newPhone);

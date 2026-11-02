@@ -341,7 +341,8 @@ class _ControlledAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
   }) async {
     registerCalls += 1;
     return const AuthResponse(accessToken: 'access-token', user: _user);

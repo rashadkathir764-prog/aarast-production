@@ -47,6 +47,28 @@ void main() {
   });
 
   test(
+    'D75: a number just proven signs up with its proof, no second code',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = AuthStorage(await SharedPreferences.getInstance());
+      final api = ApiClient(tokenProvider: storage.readAccessToken);
+      final adapter = _RegistrationAdapter();
+      api.dio.httpClientAdapter = adapter;
+      final repository = AuthRepository(api, storage);
+
+      await repository.register(
+        name: 'سلمى',
+        phone: '777123456',
+        phoneProof: 'proof-token',
+      );
+
+      expect(adapter.requests.single.path, '/api/v1/auth/register/complete');
+      expect(adapter.requests.single.data['phoneProof'], 'proof-token');
+      expect(adapter.requests.single.data, isNot(contains('otpCode')));
+    },
+  );
+
+  test(
     'D75: sign-up sends the name, number and code only, no password',
     () async {
       SharedPreferences.setMockInitialValues({});

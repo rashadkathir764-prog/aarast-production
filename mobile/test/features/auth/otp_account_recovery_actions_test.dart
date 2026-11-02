@@ -19,6 +19,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test(
+    'D75: a sign-in code for a number with no account keeps its proof for that number',
+    () async {
+      final controller = await _controller(
+        verifyErrorCode: 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
+        verifyPhoneProof: 'proof-token',
+      );
+      final ok = await controller.verifyOtp(
+        phone: '+967777123456',
+        purpose: 'LOGIN',
+        code: '123456',
+      );
+
+      expect(ok, isFalse);
+      expect(controller.phoneProofFor('777 123 456'), 'proof-token');
+      expect(controller.phoneProofFor('+967777123456'), 'proof-token');
+      expect(controller.phoneProofFor('771 111 111'), isNull);
+    },
+  );
+
   testWidgets(
     'D75: an admin number without an app password is offered only another number',
     (tester) async {
@@ -435,6 +455,7 @@ Future<AuthController> _controller({
   String? verifyErrorCode,
   bool registrationSucceeds = false,
   bool existingAccount = false,
+  String? verifyPhoneProof,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -448,6 +469,7 @@ Future<AuthController> _controller({
       verifyErrorCode: verifyErrorCode,
       registrationSucceeds: registrationSucceeds,
       existingAccount: existingAccount,
+      verifyPhoneProof: verifyPhoneProof,
     ),
   );
   await controller.restoreSession();
@@ -462,8 +484,10 @@ class _RecoveryRepository extends AuthRepository {
     this.verifyErrorCode,
     this.registrationSucceeds = false,
     this.existingAccount = false,
+    this.verifyPhoneProof,
   });
 
+  final String? verifyPhoneProof;
   final String? registerErrorCode;
   final String? verifyErrorCode;
   final bool registrationSucceeds;
@@ -473,7 +497,8 @@ class _RecoveryRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String otpCode,
+    String? otpCode,
+    String? phoneProof,
   }) async {
     if (registrationSucceeds) {
       return AuthResponse(
@@ -506,6 +531,7 @@ class _RecoveryRepository extends AuthRepository {
       'backend OTP error',
       statusCode: 404,
       serverCode: verifyErrorCode,
+      phoneProof: verifyPhoneProof,
     );
   }
 }

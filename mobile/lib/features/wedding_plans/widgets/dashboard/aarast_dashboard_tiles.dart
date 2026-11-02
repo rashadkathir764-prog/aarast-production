@@ -152,7 +152,7 @@ class _HomeTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Container(
-          padding: const EdgeInsets.all(13),
+          padding: const EdgeInsets.all(AarastV3Space.x3),
           decoration: BoxDecoration(
             color: soft,
             borderRadius: BorderRadius.circular(22),

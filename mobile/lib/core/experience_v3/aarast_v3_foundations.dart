@@ -66,10 +66,10 @@ abstract final class AarastV3Space {
 
 abstract final class AarastV3Radius {
   static const control = 12.0;
-  static const surface = 16.0;
-  static const card = 22.0;
-  static const sheet = 28.0;
-  static const feature = 30.0;
+  static const surface = 14.0;
+  static const card = 18.0;
+  static const sheet = 24.0;
+  static const feature = 24.0;
   static const pill = 999.0;
 }
 
@@ -85,16 +85,16 @@ abstract final class AarastV3Motion {
 /// These values keep the first real decision above the fold and prevent every
 /// feature from inventing its own vertical rhythm.
 abstract final class AarastV3Density {
-  static const pageHorizontal = AarastV3Space.x5;
+  static const pageHorizontal = AarastV3Space.x4;
   static const pageTop = AarastV3Space.x3;
   static const pageBottom = 112.0;
   // Root plan tabs carry the floating «+» above the tabs (D33). Their lists
   // need enough trailing space for the last row to scroll clear of it.
   static const pageBottomWithQuickAction = 184.0;
-  static const sectionGap = AarastV3Space.x5;
+  static const sectionGap = AarastV3Space.x4;
   static const compactGap = AarastV3Space.x3;
-  static const rowMinHeight = 68.0;
-  static const metricMinHeight = 82.0;
+  static const rowMinHeight = 60.0;
+  static const metricMinHeight = 72.0;
 }
 
 abstract final class AarastV3Type {

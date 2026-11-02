@@ -189,7 +189,7 @@ class AppTheme {
               backgroundColor: brand,
               foregroundColor: onBrand,
               elevation: 0,
-              minimumSize: const Size.fromHeight(54),
+              minimumSize: const Size.fromHeight(48),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(radiusControl),
@@ -212,7 +212,7 @@ class AppTheme {
             FilledButton.styleFrom(
               backgroundColor: brand,
               foregroundColor: onBrand,
-              minimumSize: const Size.fromHeight(54),
+              minimumSize: const Size.fromHeight(48),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(radiusControl),
@@ -234,7 +234,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
           backgroundColor: surfaceRaised,
-          minimumSize: const Size.fromHeight(54),
+          minimumSize: const Size.fromHeight(48),
           side: const BorderSide(
             color: AarastSemanticTokens.border,
             width: 1.2,

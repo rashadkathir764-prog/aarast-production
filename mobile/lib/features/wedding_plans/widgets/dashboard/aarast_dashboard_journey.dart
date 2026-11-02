@@ -104,14 +104,14 @@ class _JourneyHomeHeader extends StatelessWidget {
           child: AarastPressable(
             onTap: onProfile,
             borderRadius: BorderRadius.circular(24),
-            // The 44 avatar in a 48 target, like the round buttons beside it.
+            // The 40 avatar in a 48 target, like the round buttons beside it.
             child: SizedBox.square(
               dimension: AarastV3Space.x12,
               child: Center(
                 child: JourneyAvatar(
                   letter: name.isEmpty ? 'ع' : name.characters.first,
                   color: AarastV3Color.saffron,
-                  size: 44,
+                  size: 40,
                 ),
               ),
             ),
@@ -181,12 +181,12 @@ class _JourneyHomeHero extends StatelessWidget {
       child: AarastPressable(
         key: const ValueKey('aarast-dashboard-plan-moment'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: date == null
             ? JourneyBox(
                 color: context.accent.primary,
-                radius: 28,
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                radius: AarastV3Radius.feature,
+                padding: const EdgeInsets.all(AarastV3Space.x4),
                 child: _noDate(context),
               )
             : _countdown(
@@ -225,10 +225,10 @@ class _JourneyHomeHero extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('aarast-dashboard-countdown'),
       color: context.accent.primary,
-      radius: 28,
+      radius: AarastV3Radius.feature,
       padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         // b01: deep at the far top corner, easing into the plan's colour
         // (D45, the one gradient D3 allows).
         child: DecoratedBox(
@@ -246,7 +246,12 @@ class _JourneyHomeHero extends StatelessWidget {
               frieze: true,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+                AarastV3Space.x4,
+                AarastV3Space.x5,
+              ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   // The tag sits on the count's row as drawn; on a narrow
@@ -315,7 +320,7 @@ class _JourneyHomeHero extends StatelessWidget {
                           child: tag,
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AarastV3Space.x3),
                       _StagePath(current: moment),
                     ],
                   );
@@ -439,7 +444,7 @@ class _JourneyNextStep extends StatelessWidget {
         : context.accent.primarySoft;
     return JourneyBox(
       key: ValueKey('aarast-dashboard-next-step-${focus.target.name}'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -481,7 +486,7 @@ class _JourneyNextStep extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AarastV3Space.x3),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: JourneyButton(label: action, onPressed: onOpen),

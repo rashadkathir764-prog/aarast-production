@@ -192,7 +192,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         child: JourneyBox(
           color: context.accent.primarySoft,
           radius: 24,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

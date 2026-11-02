@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The journey sheet shell is the prototype's `sheet` (kit.dart): canvas,
-/// 28 top radius, 20 / 10 / 20 / 30 padding, a 40×5 handle, 14 to a 22 bold
-/// title, a 14 muted subtitle, 16 to the content.
+/// 28 top radius, 20 / 10 / 20 / 30 padding, a 40×5 handle, 14 to a bold
+/// title, a muted subtitle (sizes from JourneyType, D74), 16 to the content.
 void main() {
   Future<void> open(
     WidgetTester tester, {
@@ -63,7 +63,7 @@ void main() {
     expect(handle.top - body.top, 10);
 
     final title = tester.widget<Text>(find.text('تأجيل العرس'));
-    expect(title.style?.fontSize, 22);
+    expect(title.style?.fontSize, 19);
     expect(title.style?.fontWeight, FontWeight.w700);
     final titleRect = tester.getRect(find.text('تأجيل العرس'));
     expect(titleRect.top - handle.bottom, 14);
@@ -72,7 +72,7 @@ void main() {
     final subtitle = tester.widget<Text>(
       find.text('نرتب كل شيء على الموعد الجديد'),
     );
-    expect(subtitle.style?.fontSize, 14);
+    expect(subtitle.style?.fontSize, 13.5);
     expect(subtitle.style?.color, AarastV3Color.textMuted);
     final subtitleRect = tester.getRect(
       find.text('نرتب كل شيء على الموعد الجديد'),

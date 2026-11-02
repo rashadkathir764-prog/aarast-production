@@ -16,74 +16,75 @@ import 'aarast_v3_foundations.dart';
 abstract final class JourneyType {
   static const family = AarastV3Type.bodyFamily;
 
-  // The one type scale, the approved design's sizes (D30, which restores
-  // the headings D8 had shrunk). The text scale on top stops at 1.3
-  // (DevicePreferences.textScalerFor). Screens take a size from here, never
-  // a number.
+  // The one type scale (D8). D74 sets it for the phones people hold
+  // (360-400 wide): the headings a step down from D30's, running text half
+  // a point, so a screen reads calm and keeps its first decision in view.
+  // The text scale on top stops at 1.3 (DevicePreferences.textScalerFor).
+  // Screens take a size from here, never a number.
 
   /// The one big number of a screen, such as the days to the wedding.
-  static const count = 40.0;
+  static const count = 34.0;
 
-  /// The home countdown's days (b01, b02: 64).
-  static const homeCount = 64.0;
+  /// The home countdown's days.
+  static const homeCount = 52.0;
 
   /// The money summary's big gap («2.5 مليون»).
-  static const headline = 34.0;
+  static const headline = 28.0;
 
   /// An onboarding question (JourneyQuestionPage).
-  static const question = 30.0;
+  static const question = 25.0;
 
   /// A main tab's title (JourneyTabHeader).
-  static const hero = 28.0;
+  static const hero = 24.0;
 
   /// A typed amount or name in a large field.
-  static const amount = 28.0;
+  static const amount = 24.0;
 
   /// A heading inside a screen: a start card, a sheet-like card's title.
-  static const display = 24.0;
+  static const display = 21.0;
 
   /// A sheet's title (JourneySheetBody).
-  static const sheetTitle = 22.0;
+  static const sheetTitle = 19.0;
 
   /// A figure inside a card: a quote's price, a lock key.
-  static const figure = 22.0;
+  static const figure = 19.0;
 
   /// A pushed screen's title (JourneySubHeader) and a figure in a stat box
   /// (w19 «موزّع / احتياط»).
-  static const pageTitle = 20.0;
+  static const pageTitle = 18.0;
 
   /// A person's name on their profile, a card's lead figure.
-  static const prominent = 19.0;
+  static const prominent = 17.0;
 
   /// A card title.
-  static const title = 18.0;
+  static const title = 16.5;
 
   /// A section title, a field's value and a main action's label.
-  static const lead = 17.0;
+  static const lead = 16.0;
 
   /// List titles that stand out and the help under a question.
-  static const bodyLarge = 16.0;
+  static const bodyLarge = 15.5;
 
   /// Running text and list titles.
-  static const body = 15.0;
+  static const body = 14.5;
 
   /// Chips, a section's link, a sheet's subtitle and a form's labels.
-  static const bodySmall = 14.0;
+  static const bodySmall = 13.5;
 
   /// Section tabs and a pushed screen's subtitle.
-  static const detail = 13.5;
+  static const detail = 13.0;
 
   /// Secondary lines and hints.
-  static const small = 13.0;
+  static const small = 12.5;
 
   /// A field's label.
-  static const label = 12.5;
+  static const label = 12.0;
 
   /// The smallest text: tags and the Hijri date under a day.
-  static const caption = 12.0;
+  static const caption = 11.5;
 
-  /// An inactive tab's name in the bottom bar (b02: 11.5, regular, muted).
-  static const tabLabel = 11.5;
+  /// An inactive tab's name in the bottom bar (regular, muted).
+  static const tabLabel = 11.0;
 
   /// The count inside a 16-point badge dot; it does not grow with text size.
   static const badge = 9.0;
@@ -170,8 +171,8 @@ class JourneyIconTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.soft,
-    this.size = 44,
-    this.radius = 14,
+    this.size = 40,
+    this.radius = 12,
     super.key,
   });
 
@@ -273,21 +274,19 @@ class JourneyButton extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Container(
           width: expand ? double.infinity : null,
-          // The prototype's main action: 16 above and below a 17 label. A
-          // smaller one is still a 48 target (DESIGN_SYSTEM: touch ≥ 48).
-          constraints: BoxConstraints(
-            minHeight: large ? 52 : AarastV3Space.x12,
-          ),
+          // Every action is a 48 target (DESIGN_SYSTEM: touch ≥ 48); the
+          // main one only carries the larger label (D74).
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
           padding: EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: large ? 16 : 11,
+            horizontal: AarastV3Space.x4,
+            vertical: large ? AarastV3Space.x3 : AarastV3Space.x2,
           ),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
           ),
           child: content,
         ),
@@ -633,7 +632,7 @@ class JourneyRoundButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    this.size = 44,
+    this.size = 40,
     super.key,
   });
 
@@ -697,7 +696,12 @@ class JourneyTabHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+        AarastV3Space.x1,
+        AarastV3Space.x3,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1483,7 +1487,7 @@ class JourneyPage extends StatelessWidget {
             ),
             if (bottom != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: bottom,
               ),
           ],
@@ -1551,14 +1555,13 @@ class JourneyQuestionPage extends StatelessWidget {
               JourneyRoundButton(
                 icon: LucideIcons.arrowRight,
                 tooltip: 'رجوع',
-                size: 42,
                 onPressed: onBack,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: JourneySegments(total: total, done: step),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AarastV3Space.x3),
               Text(
                 '${step + 1} من $total',
                 style: JourneyType.of(
@@ -1570,7 +1573,7 @@ class JourneyQuestionPage extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 34),
+        const SizedBox(height: AarastV3Space.x6),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Semantics(
@@ -1596,7 +1599,7 @@ class JourneyQuestionPage extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(height: 26),
+        const SizedBox(height: AarastV3Space.x5),
         ...children,
       ],
     );

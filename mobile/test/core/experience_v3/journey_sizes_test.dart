@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-/// D30: the kit draws the approved design's sizes, not the shrunken D8
-/// headings.
+/// D74: the kit draws the type scale set for the phones people hold (D30's
+/// headings a step down).
 /// A phone's content column (390 wide, 16 each side), as screens use them.
 Widget _host(Widget child) {
   return MaterialApp(
@@ -42,14 +42,14 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'المال'), 28);
-    expect(_size(tester, 'ماشية'), 15);
-    expect(_size(tester, 'تفاصيل البند'), 20);
-    expect(_size(tester, 'قاعة سبأ'), 13.5);
-    expect(_size(tester, 'الدفعات القادمة'), 17);
+    expect(_size(tester, 'المال'), 24);
+    expect(_size(tester, 'ماشية'), 14.5);
+    expect(_size(tester, 'تفاصيل البند'), 18);
+    expect(_size(tester, 'قاعة سبأ'), 13);
+    expect(_size(tester, 'الدفعات القادمة'), 16);
   });
 
-  testWidgets('the question page asks at 30', (tester) async {
+  testWidgets('the question page asks at 25', (tester) async {
     await tester.pumpWidget(
       _host(
         SizedBox(
@@ -66,12 +66,12 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'وين العرس؟'), 30);
-    expect(_size(tester, '1 من 4'), 14);
-    expect(_size(tester, 'التالي'), 17);
+    expect(_size(tester, 'وين العرس؟'), 25);
+    expect(_size(tester, '1 من 4'), 13.5);
+    expect(_size(tester, 'التالي'), 16);
   });
 
-  testWidgets('the tab switch is about 44 tall with 13.5 bold names', (
+  testWidgets('the tab switch is about 44 tall with 13 bold names', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -89,11 +89,11 @@ void main() {
       closeTo(4 + 9 + 13.5 * 1.35 + 9 + 4, 0.5),
     );
     final name = tester.widget<Text>(find.text('الكل'));
-    expect(name.style?.fontSize, 13.5);
+    expect(name.style?.fontSize, 13);
     expect(name.style?.fontWeight, FontWeight.w700);
   });
 
-  testWidgets('a chip is 14 bold, 14 / 9 inside, about 37 tall', (
+  testWidgets('a chip is 13.5 bold, 14 / 9 inside, about 36 tall', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -106,12 +106,12 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'صنعاء'), 14);
+    expect(_size(tester, 'صنعاء'), 13.5);
     final chip = find.ancestor(
       of: find.text('صنعاء'),
       matching: find.byType(Container),
     );
-    expect(tester.getSize(chip.first).height, closeTo(9 + 14 * 1.35 + 9, 0.5));
+    expect(tester.getSize(chip.first).height, closeTo(9 + 13.5 * 1.35 + 9, 0.5));
     // The outlined one carries its 1-point line on each side.
     final outlined = find.ancestor(
       of: find.text('عدن'),
@@ -119,7 +119,7 @@ void main() {
     );
     expect(
       tester.getSize(outlined.first).height,
-      closeTo(1 + 9 + 14 * 1.35 + 9 + 1, 0.5),
+      closeTo(1 + 9 + 13.5 * 1.35 + 9 + 1, 0.5),
     );
   });
 
@@ -142,7 +142,7 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'كلها'), 14);
+    expect(_size(tester, 'كلها'), 13.5);
     expect(
       tester.getSize(find.byKey(const ValueKey('linked'))).height,
       tester.getSize(find.byKey(const ValueKey('plain'))).height,
@@ -155,7 +155,7 @@ void main() {
     );
   });
 
-  testWidgets('fields: 12.5 label, 17 value, 28 large, no picker chevron', (
+  testWidgets('fields: 12 label, 16 value, 24 large, no picker chevron', (
     tester,
   ) async {
     final name = TextEditingController(text: 'محمد');
@@ -181,11 +181,11 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'اسمك'), 12.5);
-    expect(_size(tester, 'موعد العرس'), 12.5);
-    expect(_size(tester, 'الخميس 21 يناير'), 17);
+    expect(_size(tester, 'اسمك'), 12);
+    expect(_size(tester, 'موعد العرس'), 12);
+    expect(_size(tester, 'الخميس 21 يناير'), 16);
     final fields = tester.widgetList<TextField>(find.byType(TextField));
-    expect(fields.map((field) => field.style?.fontSize), [17, 28]);
+    expect(fields.map((field) => field.style?.fontSize), [16, 24]);
     expect(
       find.descendant(
         of: find.byType(JourneyPickerField),
@@ -219,6 +219,6 @@ void main() {
       find.text('الدفعة الثانية · 500 ألف · قبل العرس بأسبوع'),
     );
     expect(subtitle.maxLines, 1);
-    expect(_size(tester, 'قاعة سبأ'), 15);
+    expect(_size(tester, 'قاعة سبأ'), 14.5);
   });
 }

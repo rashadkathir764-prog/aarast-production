@@ -103,7 +103,8 @@ Numbers, dates and phone values keep their direction inside RTL text.
 
 - Spacing scale `AarastV3Space`: 4, 8, 12, 16, 20, 24, 32, 40, 48.
 - The screen edge is 20 (`AarastV3Density.pageHorizontal`).
-- Radius roles: control 12, surface 16, card 22, sheet 28, feature 30, pill 999.
+- Radius roles: control 12, surface 14, card 18, sheet 24 (the sheet shell keeps its 28 top), feature 24, pill 999 (D74).
+- Type scale `JourneyType` (D74, for 360-400 wide phones): home count 52, count 34, question 25, tab title 24, card title 16.5, main action 16, running text 14.5, secondary 12.5. Every action and tab stays a 48 target.
 - Touch targets are at least 48.
 - Main actions are at least 52 tall.
 - Every sheet is `showJourneySheet` with a `JourneySheetBody`.

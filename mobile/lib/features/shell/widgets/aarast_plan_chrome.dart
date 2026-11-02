@@ -52,7 +52,8 @@ class AarastPlanNavigationBar extends StatelessWidget {
         ];
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final extraHeight = ((textScale - 1).clamp(0.0, 1.0) * 18).toDouble();
-    final navigationHeight = 64 + extraHeight;
+    // 48 inside the 5 of padding: every tab is a full touch target (D74).
+    final navigationHeight = 58 + extraHeight;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -65,7 +66,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AarastV3Color.line),
             ),
             child: Row(
@@ -110,8 +111,8 @@ class _PlanNavigationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // b02: the active tab is a pill with a 19 icon and its 14 bold name;
-    // the others a faint 21 icon over an 11.5 regular muted name.
+    // The active tab is a pill with an 18 icon and its bold name; the
+    // others a faint 20 icon over a regular muted name.
     final foreground = active
         ? AarastV3Color.onPrimary
         : AarastV3Color.textMuted;
@@ -121,7 +122,7 @@ class _PlanNavigationItem extends StatelessWidget {
         Icon(
           item.icon,
           color: active ? AarastV3Color.onPrimary : AarastV3Color.textFaint,
-          size: active ? 19 : 21,
+          size: active ? 18 : 20,
         ),
         if (item.badge > 0)
           PositionedDirectional(
@@ -170,17 +171,17 @@ class _PlanNavigationItem extends StatelessWidget {
           ? '${item.label}، إشعارات غير مقروءة: ${item.badge}'
           : item.label,
       selected: active,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         key: ValueKey('${item.label}-$active'),
         duration: AppTheme.motionFast,
         curve: AppTheme.motionCurve,
         // Fills the bar, which grows with the person's text size.
         height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
           color: active ? color : null,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: active
             ? Row(
@@ -193,7 +194,7 @@ class _PlanNavigationItem extends StatelessWidget {
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [icon, const SizedBox(height: 3), label],
+                children: [icon, const SizedBox(height: 2), label],
               ),
       ),
     );

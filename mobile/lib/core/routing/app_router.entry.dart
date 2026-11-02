@@ -42,9 +42,11 @@ List<RouteBase> _entryRoutes(AppFeatureFlags flags) => [
               !resume.startsWith('//') &&
               Uri.tryParse(resume)?.pathSegments.firstOrNull == 'provider');
       return provider
-          ? ProviderRegisterScreen(
-              initialPhone: query['phone'],
-              resumeLocation: resume,
+          ? _providerEntry(
+              ProviderRegisterScreen(
+                initialPhone: query['phone'],
+                resumeLocation: resume,
+              ),
             )
           : RegisterScreen(initialPhone: query['phone']);
     },
@@ -60,13 +62,16 @@ List<RouteBase> _entryRoutes(AppFeatureFlags flags) => [
       final args = state.extra is OtpScreenArgs
           ? state.extra! as OtpScreenArgs
           : null;
-      return OtpScreen(
+      final screen = OtpScreen(
         phone: args?.phone,
         purpose: args?.purpose,
         otpNoticeMessage: args?.otpNoticeMessage,
         registration: args?.registration,
         successLocation: args?.successLocation,
       );
+      return args?.successLocation?.startsWith('/provider/') == true
+          ? _providerEntry(screen)
+          : screen;
     },
   ),
   GoRoute(
@@ -74,3 +79,9 @@ List<RouteBase> _entryRoutes(AppFeatureFlags flags) => [
     builder: (context, state) => const DashboardEntryScreen(),
   ),
 ];
+
+/// D75: a provider's sign-up and its code are the app's own colour and
+/// neutral words, whatever plan is kept on this phone (the app root gives
+/// every other entry screen that plan owner's colour and voice).
+Widget _providerEntry(Widget screen) =>
+    JourneyProfileScope(profile: JourneyProfile.groom, child: screen);

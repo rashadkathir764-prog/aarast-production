@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import 'plan_shell_router.dart';
+import '../experience_v3/aarast_journey_profile.dart'
+    show JourneyProfile, JourneyProfileScope;
 import '../diagnostics/app_logger.dart';
 import '../../features/account_contexts/account_contexts_api.dart'
     show

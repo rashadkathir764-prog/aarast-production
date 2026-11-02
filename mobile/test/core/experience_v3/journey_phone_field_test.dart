@@ -43,6 +43,31 @@ void main() {
     expect(controller.selection.baseOffset, 6);
   });
 
+  testWidgets('backspace just after a group space takes the digit before it', (
+    tester,
+  ) async {
+    final controller = await pump(tester);
+    await tester.enterText(find.byType(TextField), '777123');
+    expect(controller.text, '777 123');
+    // The caret after the space («777 |123»), backspace removes the space.
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '777 123',
+        selection: TextSelection.collapsed(offset: 4),
+      ),
+    );
+    await tester.pump();
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '777123',
+        selection: TextSelection.collapsed(offset: 3),
+      ),
+    );
+    await tester.pump();
+    expect(controller.text, '771 23');
+    expect(controller.selection.baseOffset, 2);
+  });
+
   testWidgets('a number with its code is left as typed', (tester) async {
     final controller = await pump(tester);
     await tester.enterText(find.byType(TextField), '+967777123456');

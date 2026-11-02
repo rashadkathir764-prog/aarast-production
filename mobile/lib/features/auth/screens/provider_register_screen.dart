@@ -63,15 +63,9 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     return yemeniPhoneInputError(_phoneController.text);
   }
 
-  /// A provider's sign-up is the app's own colour and neutral words, even
-  /// on a phone that keeps a bride's plan.
+  /// The app's own colour and neutral words come from its route (D75).
   @override
-  Widget build(BuildContext context) => JourneyProfileScope(
-    profile: JourneyProfile.groom,
-    child: Builder(builder: _page),
-  );
-
-  Widget _page(BuildContext context) {
+  Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final offline = auth.failedOffline;
     final error = auth.errorMessage;

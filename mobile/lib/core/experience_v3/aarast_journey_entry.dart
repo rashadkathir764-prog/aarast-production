@@ -1107,7 +1107,23 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final digits = newValue.text.replaceAll(' ', '');
+    var digits = newValue.text.replaceAll(' ', '');
+    final caret = newValue.selection.baseOffset.clamp(0, newValue.text.length);
+    var before = newValue.text.substring(0, caret).replaceAll(' ', '').length;
+    // A backspace that took only a group's space takes the digit before it,
+    // or the space would come back and the backspace would do nothing.
+    final oldDigits = oldValue.text.replaceAll(' ', '');
+    if (newValue.text.length < oldValue.text.length &&
+        digits == oldDigits &&
+        before > 0) {
+      digits = digits.substring(0, before - 1) + digits.substring(before);
+      before -= 1;
+    }
+    if (digits.isEmpty) {
+      return const TextEditingValue(
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
     if (!RegExp(r'^[0-9٠-٩]{1,9}$').hasMatch(digits)) return newValue;
     final buffer = StringBuffer();
     for (var i = 0; i < digits.length; i++) {
@@ -1117,8 +1133,6 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
     final text = buffer.toString();
     // The caret stays after the same digit it was after (a fix in the
     // middle of the number does not jump to its end).
-    final caret = newValue.selection.baseOffset.clamp(0, newValue.text.length);
-    final before = newValue.text.substring(0, caret).replaceAll(' ', '').length;
     var offset = 0;
     for (var seen = 0; offset < text.length && seen < before; offset++) {
       if (text[offset] != ' ') seen++;

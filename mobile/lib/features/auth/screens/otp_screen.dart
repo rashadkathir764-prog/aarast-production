@@ -290,7 +290,6 @@ class _OtpScreenState extends State<OtpScreen> {
     final kept = _keptPlan != null && registration;
     return showJourneySheet<void>(
       context: context,
-      profile: _forProvider ? JourneyProfile.groom : null,
       builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
         changeLabel: _changeLabel(registration: registration),
@@ -333,12 +332,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The plan kept on this phone gives the colour and voice (the app root,
-    // D75); a provider's code stays on the app's own, before any plan.
-    return JourneyProfileScope(
-      profile: _forProvider ? JourneyProfile.groom : context.journeyProfile,
-      child: Builder(builder: _page),
-    );
+    // The colour and voice come from above: the kept plan's owner (the
+    // app root), or the app's own on a provider's route (D75).
+    return _page(context);
   }
 
   Widget _page(BuildContext context) {

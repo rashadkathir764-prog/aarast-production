@@ -116,7 +116,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     }
     final result = await auth.requestInviteOtp(token: _token, phone: phone);
     if (!mounted || result == null) return;
-    _codePhone = phone;
+    _codePhone = normalizeOptionalYemeniPhone(phone);
     _otpController.clear();
     final needsName =
         result.accountSetupRequired && _nameController.text.trim().isEmpty;
@@ -131,6 +131,16 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
     });
     _startResendCooldown();
+  }
+
+  /// The same number however it is typed (spaces, +967).
+  static bool _sameNumber(String typed, String? sent) {
+    if (sent == null) return false;
+    try {
+      return normalizeOptionalYemeniPhone(typed) == sent;
+    } on FormatException {
+      return false;
+    }
   }
 
   /// The name was missing on a first visit; the code is already on its way.
@@ -662,7 +672,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         final codeSent =
             _accountSetupRequired &&
             _resendSeconds > 0 &&
-            _phoneController.text.trim() == _codePhone;
+            _sameNumber(_phoneController.text, _codePhone);
         return JourneyEntryActions(
           primary: JourneyButton(
             key: const Key('invite-request-otp-button'),

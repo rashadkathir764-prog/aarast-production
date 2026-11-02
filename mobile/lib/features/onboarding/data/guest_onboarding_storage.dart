@@ -1,4 +1,5 @@
-﻿import 'dart:convert';
+﻿import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -19,10 +20,12 @@ class GuestOnboardingStorage {
   /// and words without carrying them by hand.
   final ValueNotifier<GuestPersona?> keptPlanPersona = ValueNotifier(null);
 
+  /// Told only after the phone holds (or no longer holds) the plan, and
+  /// never inside a frame being built: a read can run from a screen's build.
   void _announce(GuestOnboardingDraft? draft) {
-    keptPlanPersona.value = draft?.isCompleteGuestPlan == true
-        ? draft!.persona
-        : null;
+    final persona = draft?.isCompleteGuestPlan == true ? draft!.persona : null;
+    // In order, so the last word wins; a same value notifies no one.
+    scheduleMicrotask(() => keptPlanPersona.value = persona);
   }
 
   static const draftKey = 'aarast.guest_onboarding_draft.v1';
@@ -32,7 +35,6 @@ class GuestOnboardingStorage {
 
   Future<void> saveDraft(GuestOnboardingDraft draft) async {
     final encoded = jsonEncode(draft.toJson());
-    _announce(draft);
     final vault = _sensitiveValueVault;
     if (vault == null) {
       await _preferences.setString(draftKey, encoded);
@@ -40,6 +42,7 @@ class GuestOnboardingStorage {
       await vault.write(draftKey, encoded);
       await _preferences.remove(draftKey);
     }
+    _announce(draft);
   }
 
   Future<GuestOnboardingDraft?> loadDraft() async {
@@ -68,9 +71,9 @@ class GuestOnboardingStorage {
   }
 
   Future<void> clearDraft() async {
-    _announce(null);
     await _sensitiveValueVault?.delete(draftKey);
     await _preferences.remove(draftKey);
+    _announce(null);
   }
 
   Future<bool> hasDraft() async {

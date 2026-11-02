@@ -33,7 +33,7 @@ class _CostAgreementCard extends StatelessWidget {
     ].join(' · ');
     return JourneyBox(
       key: const ValueKey('cost-agreement-card'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

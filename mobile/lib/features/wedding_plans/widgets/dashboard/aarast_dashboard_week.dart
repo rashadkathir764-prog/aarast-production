@@ -56,9 +56,9 @@ class _WeddingSkyHero extends StatelessWidget {
           day ? 'aarast-dashboard-day-hero' : 'aarast-dashboard-week-hero',
         ),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(24),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(24),
           child: SizedBox(
             height: 330,
             child: Stack(
@@ -406,7 +406,7 @@ class _WeekProviders extends StatelessWidget {
           onTap: onTap,
           semanticLabel:
               '${context.planWord('أكّدوا', 'أكّدن')} $confirmed من ${bookings.length}، $names',
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           child: JourneyBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

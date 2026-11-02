@@ -64,7 +64,7 @@ class _AccountContextSelectionScreenState
         children: [
           const SizedBox(height: 14),
           const Center(child: JourneyWordmark(size: 26)),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Semantics(
@@ -88,7 +88,7 @@ class _AccountContextSelectionScreenState
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           for (final path in paths) ...[
             _PathCard(
               path: path,
@@ -195,7 +195,7 @@ class _PathCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              JourneyAvatar(letter: letter, color: color, size: 46),
+              JourneyAvatar(letter: letter, color: color, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -44,7 +44,7 @@ class AarastDashboardSkeleton extends StatelessWidget {
                   const _SkeletonBlock(height: 116, radius: 24),
                   const SizedBox(height: 12),
                   const JourneyBox(
-                    padding: EdgeInsets.all(18),
+                    padding: EdgeInsets.all(16),
                     child: Row(
                       children: [
                         _SkeletonBlock(width: 44, height: 44),
@@ -163,7 +163,7 @@ class AarastDashboardState extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   JourneyButton(
                     label: actionLabel,
                     icon: actionIcon,

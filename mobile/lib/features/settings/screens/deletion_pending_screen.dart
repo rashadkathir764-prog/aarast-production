@@ -58,7 +58,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
               icon: LucideIcons.hourglass,
               color: AarastV3Color.amber,
               soft: AarastV3Color.amberSoft,
-              size: 80,
+              size: 64,
               radius: 26,
             ),
           ),
@@ -88,7 +88,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
                 color: AarastV3Color.textMuted,
               ),
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           // L29: the person speaks to the app, the same for both.
           JourneyButton(
             key: const Key('deletion-pending-restore'),

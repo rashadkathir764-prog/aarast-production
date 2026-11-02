@@ -236,9 +236,9 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           const Center(child: JourneyWordmark(size: 34)),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           if (_phase == _Phase.checking || _phase == _Phase.saving) ...[
             const Center(child: AarastInlineSpinner(dimension: 32)),
             if (_phase == _Phase.saving) ...[

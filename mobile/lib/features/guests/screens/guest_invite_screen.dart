@@ -298,9 +298,9 @@ class _InviteCardPreview extends StatelessWidget {
     );
     return Container(
       key: const ValueKey('invite-card'),
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         color: context.accent.primaryDark,
       ),
       child: Column(
@@ -359,7 +359,7 @@ class _InviteCardPreview extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: AarastV3Color.saffron,
               borderRadius: BorderRadius.circular(16),

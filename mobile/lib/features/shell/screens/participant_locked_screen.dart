@@ -62,13 +62,13 @@ class ParticipantLockedScreen extends StatelessWidget {
               roleTag,
             ].join(' · '),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
           Center(
             child: JourneyIconTile(
               icon: LucideIcons.lock,
               color: section.colorOf(context),
               soft: section.softOf(context),
-              size: 80,
+              size: 64,
               radius: 26,
             ),
           ),

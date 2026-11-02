@@ -275,7 +275,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const Key('provider-offer-preview'),
               label: 'شوف العرض قبل ما يوصله',

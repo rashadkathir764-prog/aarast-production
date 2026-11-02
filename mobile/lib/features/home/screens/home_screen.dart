@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               onProfile: () => context.push(AppRouter.more),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 320),
               switchInCurve: Curves.easeOutCubic,

@@ -85,7 +85,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: context.accent.onPrimaryMuted,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           AppLockCodePad(
             key: ValueKey(_first == null ? 'first' : 'confirm'),
             dark: true,
@@ -100,7 +100,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
         children: [
           const Icon(
             LucideIcons.lock,
-            size: 44,
+            size: 40,
             color: AarastV3Color.onPrimary,
           ),
           const SizedBox(height: 12),
@@ -125,7 +125,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               color: context.accent.onPrimaryMuted,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           JourneyButton(
             key: const Key('lock-change-code'),
             label: context.say('غيّر الرمز', 'غيّري الرمز'),
@@ -172,7 +172,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             const Center(
               child: JourneyWordmark(color: AarastV3Color.onPrimary),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             body,
           ],
         ),

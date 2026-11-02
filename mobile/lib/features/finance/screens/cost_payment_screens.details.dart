@@ -328,7 +328,7 @@ class _PaymentAmountCard extends StatelessWidget {
     if (struck) {
       return JourneyBox(
         key: const ValueKey('payment-amount-card'),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Expanded(
@@ -377,14 +377,14 @@ class _PaymentAmountCard extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('payment-amount-card'),
       color: AarastV3Color.mintSoft,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           const JourneyIconTile(
             icon: LucideIcons.checkCircle2,
             color: AarastV3Color.onPrimary,
             soft: AarastV3Color.mint,
-            size: 50,
+            size: 44,
             radius: 16,
           ),
           const SizedBox(width: 14),

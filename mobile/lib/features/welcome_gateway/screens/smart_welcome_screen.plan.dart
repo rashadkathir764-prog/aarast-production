@@ -92,7 +92,7 @@ class _NameDateStep extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         const _FieldLabel('شهر العرس'),
         Builder(
           builder: (context) {
@@ -315,7 +315,7 @@ class _PlaceBudgetStep extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         const _FieldLabel('ميزانية عرسك تقريبًا (بالريال اليمني)'),
         JourneyTextField(
           label: 'المبلغ',
@@ -453,12 +453,12 @@ class _ReadyStep extends StatelessWidget {
             ),
             child: Icon(
               LucideIcons.partyPopper,
-              size: 50,
+              size: 44,
               color: context.accent.primary,
             ),
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         Center(
           child: Semantics(
             header: true,
@@ -483,7 +483,7 @@ class _ReadyStep extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         JourneyList(
           dividers: false,
           children: [

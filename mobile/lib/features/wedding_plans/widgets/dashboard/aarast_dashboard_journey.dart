@@ -565,7 +565,7 @@ class _AfterWeddingHero extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -656,7 +656,7 @@ class _RateProvidersCard extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 44,
+            size: 40,
           ),
           const SizedBox(width: 12),
           Expanded(

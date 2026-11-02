@@ -385,7 +385,7 @@ class _FixedAmount extends StatelessWidget {
     return JourneyBox(
       key: const ValueKey('payment-fixed-amount'),
       color: context.accent.primarySoft,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

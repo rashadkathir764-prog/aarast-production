@@ -67,7 +67,7 @@ class _BookingLine extends StatelessWidget {
               ),
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              size: 48,
+              size: 44,
             ),
             const SizedBox(width: 12),
             Expanded(

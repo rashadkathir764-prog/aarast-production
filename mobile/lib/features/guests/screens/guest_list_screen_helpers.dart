@@ -102,7 +102,7 @@ class _GuestSummaryCard extends StatelessWidget {
     final total = summary.totalGuests;
     final words = GuestWords.of(context);
     return JourneyBox(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

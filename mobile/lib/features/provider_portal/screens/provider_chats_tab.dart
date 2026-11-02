@@ -183,7 +183,7 @@ class ProviderChatRow extends StatelessWidget {
             JourneyAvatar(
               letter: name.characters.first,
               color: color,
-              size: 44,
+              size: 40,
             ),
             const SizedBox(width: 12),
             Expanded(

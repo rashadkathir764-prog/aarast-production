@@ -76,7 +76,7 @@ class _MahrAgreementCard extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: JourneyBox(
           key: const ValueKey('aarast-dashboard-mahr-card'),
           padding: const EdgeInsets.all(14),

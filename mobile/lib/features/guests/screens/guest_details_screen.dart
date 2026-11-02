@@ -168,7 +168,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           child: JourneyAvatar(
             letter: name.isEmpty ? '؟' : name.characters.first,
             color: context.accent.primary,
-            size: 76,
+            size: 64,
           ),
         ),
         const SizedBox(height: 10),

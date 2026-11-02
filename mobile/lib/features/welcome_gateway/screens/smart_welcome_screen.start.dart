@@ -29,7 +29,7 @@ class _StartStep extends StatelessWidget {
       children: [
         const SizedBox(height: 14),
         const Center(child: JourneyWordmark(size: 28)),
-        const SizedBox(height: 26),
+        const SizedBox(height: 20),
         Semantics(
           header: true,
           child: Text(
@@ -48,7 +48,7 @@ class _StartStep extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         _PictureChoiceCard(
           title: 'أنشئ خطتك',
           subtitle: 'لعرسك أنت، عريس\nأو عروسة',
@@ -157,7 +157,7 @@ class _WhoseStep extends StatelessWidget {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         _PictureChoiceCard(
           title: 'العريس',
           subtitle: 'عرس الرجال،\nوضيوفك ومزودينك',

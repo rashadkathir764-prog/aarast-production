@@ -57,7 +57,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
           JourneyBox(
             key: const ValueKey('money-due-total'),
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Expanded(

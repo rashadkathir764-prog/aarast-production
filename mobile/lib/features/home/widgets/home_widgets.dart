@@ -191,7 +191,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),

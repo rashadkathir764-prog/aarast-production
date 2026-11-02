@@ -163,7 +163,7 @@ class _DetailsFrame extends StatelessWidget {
             onPressed: onBack,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         child,
       ],
     );

@@ -229,7 +229,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                     const SizedBox(height: 10),
                     _InlineError(message: dashboard.errorMessage!),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),

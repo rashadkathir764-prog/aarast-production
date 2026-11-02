@@ -98,7 +98,7 @@ class _MoneySummaryCard extends StatelessWidget {
 
     return JourneyBox(
       key: const ValueKey('money-dashboard-hero'),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -334,7 +334,7 @@ class _SplitCard extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: JourneyBox(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -587,7 +587,7 @@ class _MoneyBudgetCard extends StatelessWidget {
     final currency = summary.currency;
     if (!summary.hasBudget) {
       return JourneyBox(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -630,7 +630,7 @@ class _MoneyBudgetCard extends StatelessWidget {
       (provider) => provider?.amountsHidden ?? false,
     );
     return JourneyBox(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

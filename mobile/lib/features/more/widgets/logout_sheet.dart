@@ -61,7 +61,7 @@ class LogoutSheet extends StatelessWidget {
         AarastPressable(
           key: const ValueKey('account-logout-confirm'),
           onTap: () => Navigator.of(context).pop(LogoutChoice.signOut),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           semanticLabel: context.say(
             'اخرج من هذا الجوال',
             'اخرجي من هذا الجوال',
@@ -111,7 +111,7 @@ class LogoutSheet extends StatelessWidget {
         AarastPressable(
           key: const ValueKey('account-delete-account'),
           onTap: () => Navigator.of(context).pop(LogoutChoice.deleteAccount),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           semanticLabel: context.say(
             'احذف حسابي نهائيًا',
             'احذفي حسابي نهائيًا',

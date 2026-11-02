@@ -119,7 +119,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               icon: LucideIcons.userX,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
-              size: 76,
+              size: 64,
               radius: 24,
             ),
           ),
@@ -142,7 +142,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           if (impact == null && _loadError == null)
             const Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(16),
                 child: AarastInlineSpinner(dimension: 24),
               ),
             )

@@ -592,7 +592,7 @@ class _FireworksHero extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: context.accent.night,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: CustomPaint(
           painter: JourneyFireworksPainter(

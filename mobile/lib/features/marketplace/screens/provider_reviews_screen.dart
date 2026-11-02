@@ -391,7 +391,7 @@ class _Rate extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         JourneyBox(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -401,7 +401,7 @@ class _Rate extends StatelessWidget {
                     icon: providerServiceIcon(provider.service),
                     color: context.accent.primary,
                     soft: context.accent.primarySoft,
-                    size: 52,
+                    size: 44,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -571,7 +571,7 @@ class _Sent extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 76,
+            size: 64,
           ),
         ),
         const SizedBox(height: 14),
@@ -659,7 +659,7 @@ class _Locked extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 76,
+            size: 64,
           ),
         ),
         const SizedBox(height: 14),

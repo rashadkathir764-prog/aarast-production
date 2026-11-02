@@ -206,7 +206,7 @@ class _MissingReceipt extends StatelessWidget {
           key: const ValueKey('cost-receipt-add'),
           receipt: null,
           onTap: onAdd,
-          size: 72,
+          size: 60,
         ),
         const SizedBox(width: 12),
         Expanded(

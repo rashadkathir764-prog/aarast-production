@@ -90,7 +90,7 @@ class _InviterCard extends StatelessWidget {
           JourneyAvatar(
             letter: inviter.isEmpty ? 'ع' : inviter.characters.first,
             color: AarastV3Color.primary,
-            size: 46,
+            size: 40,
           ),
           const SizedBox(width: 12),
           Expanded(

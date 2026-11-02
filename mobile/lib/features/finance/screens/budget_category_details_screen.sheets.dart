@@ -77,7 +77,7 @@ class _OverCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AarastV3Color.danger, width: 1.5),
       ),
       child: Column(

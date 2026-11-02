@@ -265,7 +265,7 @@ class LoginExperience extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         AuthTextField(
           controller: phoneController,
           label: 'رقم الهاتف',
@@ -312,7 +312,7 @@ class LoginExperience extends StatelessWidget {
           AuthInlineError(message: errorMessage!),
         ],
         if (showActions) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           LoginActions(
             isSubmitting: isSubmitting,
             onSubmit: onSubmit,

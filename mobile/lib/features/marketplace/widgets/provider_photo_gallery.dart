@@ -86,7 +86,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                                   child: Icon(
                                     LucideIcons.image,
                                     color: AppTheme.focus,
-                                    size: 44,
+                                    size: 40,
                                   ),
                                 ),
                               ),

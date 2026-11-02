@@ -103,11 +103,11 @@ class _Greeting extends StatelessWidget {
             child: AarastPressable(
               key: const ValueKey('participant-profile'),
               onTap: onProfile,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(18),
               child: JourneyAvatar(
                 letter: first.isEmpty ? 'ع' : first.characters.first,
                 color: AarastV3Color.brandAccentStrong,
-                size: 44,
+                size: 40,
               ),
             ),
           ),
@@ -161,7 +161,7 @@ class _CountHero extends StatelessWidget {
         key: const ValueKey('participant-count-hero'),
         color: voice.accent,
         radius: 24,
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             if (figure != null) ...[
@@ -347,7 +347,7 @@ class _NextTaskCard extends StatelessWidget {
     final who = this.who;
     return JourneyBox(
       key: ValueKey('participant-next-${task.id}'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -362,7 +362,7 @@ class _NextTaskCard extends StatelessWidget {
                   icon: taskCategoryIcon(task.taskCategory),
                   color: AarastV3Color.brandAccentStrong,
                   soft: AarastV3Color.brandAccentSoft,
-                  size: 48,
+                  size: 44,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

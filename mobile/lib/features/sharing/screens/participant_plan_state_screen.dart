@@ -86,7 +86,7 @@ class _StateCard extends StatelessWidget {
             icon: icon,
             color: AarastV3Color.textMuted,
             soft: AarastV3Color.line,
-            size: 46,
+            size: 40,
           ),
           const SizedBox(width: 12),
           Expanded(

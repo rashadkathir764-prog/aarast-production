@@ -172,7 +172,7 @@ class ProviderHardCaseCard extends StatelessWidget {
                   icon: providerServiceIcon(service),
                   color: context.accent.primary,
                   soft: context.accent.primarySoft,
-                  size: 44,
+                  size: 40,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

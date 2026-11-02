@@ -155,14 +155,14 @@ class _EventCard extends StatelessWidget {
     return JourneyBox(
       key: ValueKey('plan-event-${event.type.wire}-${event.id ?? 'main'}'),
       radius: 28,
-      padding: const EdgeInsets.fromLTRB(16, 18, 8, 18),
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
       child: Row(
         children: [
           JourneyIconTile(
             icon: event.type.icon,
             color: color,
             soft: soft,
-            size: 50,
+            size: 44,
             radius: 18,
           ),
           const SizedBox(width: 14),

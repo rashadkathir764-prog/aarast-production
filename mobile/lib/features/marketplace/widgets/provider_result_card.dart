@@ -152,7 +152,7 @@ class ProviderResultCard extends StatelessWidget {
       label: 'عرض تفاصيل $businessName',
       child: Material(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: detailsButtonKey,

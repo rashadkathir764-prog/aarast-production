@@ -201,7 +201,7 @@ class _NextPaymentCard extends StatelessWidget {
       child: AarastPressable(
         key: const ValueKey('money-next-schedule-strip'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: JourneyBox(
           padding: const EdgeInsets.all(16),
           child: Column(

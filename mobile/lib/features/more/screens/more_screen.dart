@@ -450,14 +450,14 @@ class _ProfileCard extends StatelessWidget {
                 errorBuilder: (_, _, _) => JourneyAvatar(
                   letter: letter,
                   color: AarastV3Color.saffron,
-                  size: 54,
+                  size: 48,
                 ),
               ),
             )
           : JourneyAvatar(
               letter: letter,
               color: AarastV3Color.saffron,
-              size: 54,
+              size: 48,
             ),
     );
     return JourneyBox(

@@ -329,13 +329,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   List<Widget> _doneStep() {
     return [
-      const SizedBox(height: 24),
+      const SizedBox(height: 20),
       const Center(
         child: JourneyIconTile(
           icon: LucideIcons.checkCircle2,
           color: AarastV3Color.mint,
           soft: AarastV3Color.mintSoft,
-          size: 64,
+          size: 56,
           radius: 20,
         ),
       ),

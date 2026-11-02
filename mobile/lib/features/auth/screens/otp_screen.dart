@@ -390,7 +390,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
                   if (otpNoticeMessage != null) ...[
                     JourneyNote(
                       key: const ValueKey('otp-notice'),

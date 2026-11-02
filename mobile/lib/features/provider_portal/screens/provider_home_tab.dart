@@ -216,7 +216,7 @@ class _WaitingHero extends StatelessWidget {
     final since = [?arrived, ?ends].join(' · ');
     return Container(
       key: const Key('provider-home-waiting'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AarastV3Color.primary,
         borderRadius: BorderRadius.circular(24),

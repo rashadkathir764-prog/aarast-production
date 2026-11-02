@@ -190,7 +190,7 @@ class _ListingCard extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         semanticLabel: [title, ?amount, if (!active) 'موقوفة'].join('، '),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: JourneyBox(
           padding: const EdgeInsets.all(14),
           child: Column(

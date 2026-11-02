@@ -68,7 +68,7 @@ class _PushOffCardState extends State<PushOffCard> {
     return JourneyBox(
       key: const ValueKey('push-off-card'),
       borderColor: AarastV3Color.saffron,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -76,7 +76,7 @@ class _PushOffCardState extends State<PushOffCard> {
             icon: LucideIcons.bellOff,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 44,
+            size: 40,
           ),
           const SizedBox(width: 12),
           Expanded(

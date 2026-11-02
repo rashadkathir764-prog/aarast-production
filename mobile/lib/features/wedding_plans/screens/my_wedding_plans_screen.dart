@@ -148,11 +148,11 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
             if (widget.inSheet) Navigator.of(context).pop();
             GoRouter.of(context).push(AppRouter.createWeddingPlan);
           },
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           semanticLabel: 'خطة جديدة',
           child: JourneyBox(
             color: context.accent.primarySoft,
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -277,7 +277,7 @@ class _PlanCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: open ? context.accent.primary : AarastV3Color.line,
           width: open ? 2 : 1,
@@ -327,7 +327,7 @@ class _PlanCard extends StatelessWidget {
     }
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       semanticLabel: '$name، ${_subtitle(entry, context.journeyProfile)}',
       child: card,
     );

@@ -138,7 +138,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
         JourneyBox(
           key: const ValueKey('loan-owed'),
           color: context.accent.primary,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

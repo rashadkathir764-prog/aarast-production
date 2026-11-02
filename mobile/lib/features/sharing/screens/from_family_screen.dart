@@ -133,7 +133,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     icon: LucideIcons.users,
                     color: AarastV3Color.primary,
                     soft: AarastV3Color.primarySoft,
-                    size: 76,
+                    size: 64,
                     radius: 24,
                   ),
                 ),
@@ -159,7 +159,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 JourneyTextField(
                   key: const ValueKey('from-family-link'),
                   label: 'الصق رابط الدعوة',
@@ -185,7 +185,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     const Expanded(child: Divider(color: AarastV3Color.line)),

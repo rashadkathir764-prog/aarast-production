@@ -185,7 +185,7 @@ class ProviderPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: ColoredBox(
         color: AarastV3Color.paper,
         child: Column(
@@ -258,13 +258,13 @@ class ProviderStateHeading extends StatelessWidget {
       children: [
         const SizedBox(height: 10),
         ProviderIdentityRow(name: name, kind: kind, trailing: trailing),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         Center(
           child: JourneyIconTile(
             icon: icon,
             color: color,
             soft: soft,
-            size: 78,
+            size: 64,
             radius: 24,
           ),
         ),

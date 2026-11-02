@@ -309,7 +309,7 @@ class _DayCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: selected ? context.accent.primary : AarastV3Color.line,
           width: selected ? 2 : 1,
@@ -346,7 +346,7 @@ class _DayCard extends StatelessWidget {
     if (onTap == null) return card;
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       semanticLabel: '$label، $value',
       child: card,
     );

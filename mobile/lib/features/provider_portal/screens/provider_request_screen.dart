@@ -139,7 +139,7 @@ class _NewRequest extends StatelessWidget {
                     JourneyAvatar(
                       letter: name.characters.first,
                       color: AarastV3Color.primary,
-                      size: 44,
+                      size: 40,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -219,7 +219,7 @@ class _NewRequest extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
                 Expanded(

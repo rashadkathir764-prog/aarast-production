@@ -78,7 +78,7 @@ class _ReserveBox extends StatelessWidget {
         else
           '${over ? 'زايد عن الميزانية' : 'احتياط'} $reserve',
       ].join('، '),
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: JourneyBox(
         padding: const EdgeInsets.all(14),
         child: Row(

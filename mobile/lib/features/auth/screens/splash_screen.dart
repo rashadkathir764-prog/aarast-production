@@ -99,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const JourneyWordmark(
-                          size: 64,
+                          size: 56,
                           color: AarastV3Color.onPrimary,
                         ),
                         const SizedBox(height: 14),

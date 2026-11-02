@@ -64,7 +64,7 @@ class ProviderShareScreen extends StatelessWidget {
           ),
           if (profile != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: JourneyButton(
                 key: const Key('provider-share-whatsapp'),
                 label: 'أرسل في واتساب',
@@ -128,7 +128,7 @@ class ProviderShareCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AarastV3Color.primaryDark,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -156,7 +156,7 @@ class ProviderShareCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -212,7 +212,7 @@ class ProviderShareCard extends StatelessWidget {
                         icon: LucideIcons.search,
                         color: AarastV3Color.primary,
                         soft: AarastV3Color.primarySoft,
-                        size: 46,
+                        size: 40,
                       ),
                       const SizedBox(width: 12),
                       Expanded(

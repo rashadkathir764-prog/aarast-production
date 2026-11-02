@@ -162,7 +162,7 @@ Future<ReceiptViewerAction?> showReceiptViewer(
         child: Image.network(
           receipt.downloadUrl,
           errorBuilder: (_, _, _) => Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Text(
               context.say(
                 'انتهى الرابط. سكّر وافتح الإيصال مرة ثانية.',

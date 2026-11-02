@@ -150,12 +150,12 @@ class _HomeTile extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.all(AarastV3Space.x3),
           decoration: BoxDecoration(
             color: soft,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

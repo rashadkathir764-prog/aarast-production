@@ -81,7 +81,7 @@ class ProviderFirstSteps extends StatelessWidget {
             icon: LucideIcons.sprout,
             color: AarastV3Color.primary,
             soft: AarastV3Color.primarySoft,
-            size: 76,
+            size: 64,
             radius: 24,
           ),
         ),

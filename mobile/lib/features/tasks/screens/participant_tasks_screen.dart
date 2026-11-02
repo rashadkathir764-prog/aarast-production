@@ -386,7 +386,7 @@ class _MineRow extends StatelessWidget {
               child: AarastPressable(
                 key: ValueKey('participant-task-toggle-${task.id}'),
                 onTap: busy ? null : onToggle,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(18),
                 child: _TaskCircle(done: done),
               ),
             ),

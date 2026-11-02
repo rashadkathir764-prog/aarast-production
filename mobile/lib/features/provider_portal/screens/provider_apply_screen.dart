@@ -193,7 +193,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: _step < _steps.length - 1
                   ? JourneyButton(
                       key: const ValueKey('provider-apply-next'),

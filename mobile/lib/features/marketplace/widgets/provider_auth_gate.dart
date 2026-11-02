@@ -189,7 +189,7 @@ class _GateCard extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(16, 24, 16, embedded ? 120 : 32),
         children: [
           JourneyBox(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -198,7 +198,7 @@ class _GateCard extends StatelessWidget {
                     icon: icon,
                     color: context.accent.primary,
                     soft: context.accent.primarySoft,
-                    size: 64,
+                    size: 56,
                     radius: 20,
                   ),
                 ),

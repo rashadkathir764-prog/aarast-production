@@ -346,7 +346,7 @@ class _ProviderHero extends StatelessWidget {
       key: const Key('provider-media-fallback'),
       color: context.accent.primary,
       child: Center(
-        child: Icon(icon, size: 70, color: context.accent.primarySoft),
+        child: Icon(icon, size: 60, color: context.accent.primarySoft),
       ),
     );
     return SizedBox(

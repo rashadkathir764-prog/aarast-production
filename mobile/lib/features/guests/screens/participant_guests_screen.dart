@@ -76,7 +76,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
         if (view.guestsTotal > 0) ...[
           JourneyBox(
             key: const ValueKey('participant-guests-summary'),
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             child: GuestSummaryFigures(
               words: words,
               total: view.guestsTotal,

@@ -438,7 +438,7 @@ class _AnswerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('assistant-answer'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -565,7 +565,7 @@ class _AskField extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 6, 6),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(

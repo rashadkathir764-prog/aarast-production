@@ -257,7 +257,7 @@ class ProviderEndedCard extends StatelessWidget {
       key: Key('provider-request-${quote.id}'),
       onTap: onOpen,
       semanticLabel: onRenew == null ? '$title، $message' : null,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: JourneyBox(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

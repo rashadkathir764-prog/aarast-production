@@ -217,7 +217,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 ),
               ],
               if (widget.onArchive != null) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Center(
                   child: JourneyTextAction(
                     key: const ValueKey('plan-details-archive'),

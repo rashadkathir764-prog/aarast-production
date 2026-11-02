@@ -17,12 +17,18 @@ export const AuthErrorCode = {
 
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
 
+/**
+ * A stable auth error body `{ statusCode, code, message }`. `details` adds
+ * top-level fields the client acts on (for example `phoneProof`); it can
+ * never replace the three fixed fields.
+ */
 export function authError(
   statusCode: HttpStatus,
   code: AuthErrorCode,
   message: string,
+  details: Record<string, unknown> = {},
 ): HttpException {
-  return new HttpException({ statusCode, code, message }, statusCode);
+  return new HttpException({ ...details, statusCode, code, message }, statusCode);
 }
 
 // The WhatsApp channel cannot tell a number without WhatsApp from a channel

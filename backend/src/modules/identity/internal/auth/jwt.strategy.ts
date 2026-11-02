@@ -50,6 +50,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ...toAuthenticatedUser(user, isAdminSession),
       adminMfa: isAdminSession,
       sessionScope,
+      sessionId: payload.sid,
     };
   }
 }

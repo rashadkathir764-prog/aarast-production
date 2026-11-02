@@ -22,6 +22,13 @@ export interface SafeUser {
   persona: string | null;
   onboardingCompletedAt: Date | null;
   /**
+   * Whether this session's account has a password of its realm: the app
+   * password for an application session (an administrator's
+   * `appPasswordHash`), the admin password for an admin session. D75 lets
+   * an app account have none, so the app offers to add one or change it.
+   */
+  hasPassword: boolean;
+  /**
    * D63: the application account's pending deletion (w06), or null. An
    * administrator's own session never carries it: only the application
    * identity is ever erased.
@@ -48,7 +55,7 @@ export function accountDeletionSchedule(
 }
 
 export function toSafeUser(
-  user: AuthenticatedUser,
+  user: AuthenticatedUserSource,
   permissionsForAdminRole: (role: AdminRole | null | undefined) => AdminPermission[],
   includeAdminMetadata = user.adminMfa === true,
 ): SafeUser {
@@ -58,14 +65,34 @@ export function toSafeUser(
     authenticated;
   return {
     ...rest,
+    hasPassword: authenticated.hasPassword === true,
     adminRole,
     adminPermissions: permissionsForAdminRole(adminRole),
     deletion: includeAdminMetadata ? null : accountDeletionSchedule(authenticated),
   };
 }
 
+/**
+ * A user row (which carries its password hashes) or an identity already
+ * mapped from one (which carries `hasPassword`). The hashes never leave
+ * this mapping.
+ */
+type AuthenticatedUserSource = AuthenticatedUser & {
+  passwordHash?: string | null;
+  appPasswordHash?: string | null;
+};
+
+function hasRealmPassword(
+  user: AuthenticatedUserSource,
+  applicationAdmin: boolean,
+): boolean {
+  const credentialHash = applicationAdmin ? user.appPasswordHash : user.passwordHash;
+  if (credentialHash === undefined) return user.hasPassword === true;
+  return credentialHash !== null;
+}
+
 export function toAuthenticatedUser(
-  user: AuthenticatedUser,
+  user: AuthenticatedUserSource,
   includeAdminMetadata = user.adminMfa === true,
 ): AuthenticatedUser {
   const applicationAdmin =
@@ -87,6 +114,7 @@ export function toAuthenticatedUser(
     onboardingPath: user.onboardingPath,
     persona: user.persona,
     onboardingCompletedAt: user.onboardingCompletedAt,
+    hasPassword: hasRealmPassword(user, applicationAdmin),
     deletionRequestedAt: user.deletionRequestedAt ?? null,
     deletionScheduledFor: user.deletionScheduledFor ?? null,
     createdAt: user.createdAt,

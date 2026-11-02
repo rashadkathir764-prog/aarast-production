@@ -146,6 +146,28 @@ export class AuthUserRepository {
     });
   }
 
+  /**
+   * `POST /auth/password`: the signed-in account's app password (an
+   * administrator's `appPasswordHash`), pinned to the hash the caller just
+   * checked (null when the account had none) so a concurrent change wins once.
+   */
+  setApplicationPassword(tx: Prisma.TransactionClient, user: User, expectedHash: string | null, passwordHash: string) {
+    const live = {
+      id: user.id, role: user.role, status: 'ACTIVE' as const,
+      appAccountActivatedAt: { not: null },
+    };
+    if (user.role === UserRole.ADMIN) {
+      return tx.user.updateMany({
+        where: { ...live, appPasswordHash: expectedHash },
+        data: { appPasswordHash: passwordHash },
+      });
+    }
+    return tx.user.updateMany({
+      where: { ...live, passwordHash: expectedHash },
+      data: { passwordHash },
+    });
+  }
+
   resetAdministratorPassword(tx: Prisma.TransactionClient, userId: string, passwordHash: string) {
     return tx.user.updateMany({
       where: { id: userId, role: UserRole.ADMIN, status: 'ACTIVE' },

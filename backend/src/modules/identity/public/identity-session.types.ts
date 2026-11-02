@@ -30,6 +30,8 @@ export interface AuthenticatedUser {
   onboardingPath: OnboardingPath | null;
   persona: WeddingPersona | null;
   onboardingCompletedAt: Date | null;
+  /** Whether the account has a password of this session's realm (see SafeUser). */
+  hasPassword?: boolean;
   /** D63: set while the account waits out its 30 days before erasure. */
   deletionRequestedAt?: Date | null;
   deletionScheduledFor?: Date | null;
@@ -39,4 +41,6 @@ export interface AuthenticatedUser {
   adminMfa?: boolean;
   /** Present on HTTP and realtime identities authenticated from an access JWT. */
   sessionScope?: JwtSessionScope;
+  /** The refresh session (`sid`) behind the access JWT that authenticated this request. */
+  sessionId?: string;
 }

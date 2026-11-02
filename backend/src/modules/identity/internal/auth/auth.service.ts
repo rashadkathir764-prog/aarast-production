@@ -47,6 +47,7 @@ import { RequestOtpDto } from "../../api/auth-dto/request-otp.dto";
 import { VerifyOtpDto } from "../../api/auth-dto/verify-otp.dto";
 import { LogoutDto } from "../../api/auth-dto/logout.dto";
 import { RefreshDto } from "../../api/auth-dto/refresh.dto";
+import { SetPasswordDto } from "../../api/auth-dto/set-password.dto";
 import { PasswordResetRequestDto } from "../../api/auth-dto/password-reset-request.dto";
 import { PasswordResetConfirmDto } from "../../api/auth-dto/password-reset-confirm.dto";
 import { AdminPasswordResetRequestDto } from "../../api/auth-dto/admin-password-reset-request.dto";
@@ -57,6 +58,7 @@ import {
   issueAdminTrustedDevice,
 } from "./admin-trusted-device";
 import { JwtPayload } from "../../public/jwt-payload.interface";
+import { isPhoneProofFor, signPhoneProof } from "./phone-proof";
 import {
   DevEchoOtpChannel,
   generateProductionOtpCode,
@@ -237,8 +239,24 @@ export class AuthService implements IdentityAuthPort {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const phoneVariants = PhoneNormalizer.lookupVariants(phone);
     const now = new Date();
-    // Sign-up is phone + code; the password is optional and can be set later
-    // through the reset-by-code flow.
+    // The phone is proven by a REGISTER code, or by the phone proof a LOGIN
+    // code for a number without an account answered with; never both.
+    const otpCode = dto.otpCode ?? null;
+    const phoneProof = dto.phoneProof ?? null;
+    if ((otpCode === null) === (phoneProof === null)) {
+      throw new BadRequestException(
+        "Provide exactly one of otpCode or phoneProof",
+      );
+    }
+    if (phoneProof !== null && !isPhoneProofFor(this.jwtService, phoneProof, phone)) {
+      throw this.otpInvalid();
+    }
+    // A phone proof's code was already counted by `POST /auth/otp/verify`.
+    const countOtp = (outcome: "success" | "failure" | "verified_then_rejected") => {
+      if (otpCode !== null) otpVerificationsTotal.inc({ outcome });
+    };
+    // Sign-up is phone + code; the password is optional and can be added
+    // later through POST /auth/password.
     const passwordHash =
       dto.password == null ? null : await bcryptjs.hash(dto.password, 10);
 
@@ -247,14 +265,16 @@ export class AuthService implements IdentityAuthPort {
       result = await runSerializableTransaction(
         this.prisma,
         async (tx) => {
-          const otpClaim = await this.claimOtpCodeInTransaction(tx, {
-            phone,
-            purpose: OtpPurpose.REGISTER,
-            code: dto.otpCode,
-            now,
-          });
-          if (otpClaim.outcome === "invalid") {
-            return { otpInvalid: true as const };
+          if (otpCode !== null) {
+            const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+              phone,
+              purpose: OtpPurpose.REGISTER,
+              code: otpCode,
+              now,
+            });
+            if (otpClaim.outcome === "invalid") {
+              return { otpInvalid: true as const };
+            }
           }
           let existing = await this.findUserByCanonicalPhone(
             tx,
@@ -379,7 +399,7 @@ export class AuthService implements IdentityAuthPort {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2034"
       ) {
-        otpVerificationsTotal.inc({ outcome: "failure" });
+        countOtp("failure");
         throw authError(
           HttpStatus.BAD_REQUEST,
           AuthErrorCode.OTP_INVALID_OR_EXPIRED,
@@ -400,17 +420,17 @@ export class AuthService implements IdentityAuthPort {
     }
 
     if ("otpInvalid" in result) {
-      otpVerificationsTotal.inc({ outcome: "failure" });
+      countOtp("failure");
       throw this.otpInvalid();
     }
     if ("error" in result) {
       // The code was proven and consumed, but the account outcome was
       // rejected (already exists / disabled / no app account). This is a
       // distinct signal from a genuine end-to-end success.
-      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      countOtp("verified_then_rejected");
       throw result.error;
     }
-    otpVerificationsTotal.inc({ outcome: "success" });
+    countOtp("success");
     return result.auth;
   }
 
@@ -1024,6 +1044,70 @@ export class AuthService implements IdentityAuthPort {
   }
 
   /**
+   * `POST /auth/password` (D75): the signed-in application account adds its
+   * app password, or changes it. Changing needs the current password, checked
+   * like a sign-in (same error, same throttle, timing-safe compare) and then
+   * revokes every other application session; the caller's own stays.
+   */
+  async setApplicationPassword(
+    identity: AuthenticatedUser,
+    dto: SetPasswordDto,
+  ): Promise<{ passwordSet: true }> {
+    const sessionId = identity.sessionId;
+    if (identity.sessionScope !== "application" || !sessionId) {
+      throw new UnauthorizedException("Application session is required");
+    }
+    const user = await this.users.findById(this.prisma, identity.id);
+    if (!user || user.status === "DISABLED" || !user.appAccountActivatedAt) {
+      throw new UnauthorizedException("Session is invalid or expired");
+    }
+    const currentHash =
+      user.role === UserRole.ADMIN ? user.appPasswordHash : user.passwordHash;
+    const throttleSubject = user.phone ?? user.id;
+    if (currentHash !== null) {
+      await this.loginThrottle.reserveAttempt(throttleSubject, "application");
+      const matches = await bcryptjs.compare(dto.currentPassword ?? "", currentHash);
+      if (!matches) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+    }
+    const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
+
+    const revokedSessionIds = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+        const updated = await this.users.setApplicationPassword(
+          tx, user, currentHash, passwordHash,
+        );
+        if (updated.count !== 1) {
+          // The password, status or account changed since it was checked.
+          throw authError(
+            HttpStatus.UNAUTHORIZED,
+            AuthErrorCode.INVALID_CREDENTIALS,
+            "Invalid credentials",
+          );
+        }
+        if (currentHash === null) return [] as string[];
+        return this.sessions.revokeOtherActiveSessions(
+          tx, user.id, AuthSessionScope.APPLICATION, sessionId, new Date(),
+        );
+      },
+    );
+    for (const revoked of revokedSessionIds) {
+      this.realtime.disconnectSession(revoked);
+    }
+    if (currentHash !== null) {
+      await this.loginThrottle.clear(throttleSubject, "application");
+    }
+    return { passwordSet: true };
+  }
+
+  /**
    * Changing the account's phone, step 1 (V1 checklist 4.14): a code goes to
    * the new number, which no account may already use. Phones get lost or
    * replaced often in Yemen; without this the account was tied to one SIM.
@@ -1344,6 +1428,7 @@ export class AuthService implements IdentityAuthPort {
               HttpStatus.NOT_FOUND,
               AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
               "No application account exists for this verified phone",
+              { phoneProof: signPhoneProof(this.jwtService, phone) },
             ),
           };
         }
@@ -1353,11 +1438,17 @@ export class AuthService implements IdentityAuthPort {
         }
 
         if (!user) {
+          // A new person who tried to sign in: the consumed code becomes a
+          // short-lived proof `POST /auth/register/complete` accepts, so
+          // signing up needs no second code.
           return {
             error: authError(
               HttpStatus.NOT_FOUND,
               AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
               "No account exists for this verified phone",
+              purpose === OtpPurpose.LOGIN
+                ? { phoneProof: signPhoneProof(this.jwtService, phone) }
+                : {},
             ),
           };
         }

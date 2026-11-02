@@ -166,6 +166,25 @@ export class AuthSessionRepository {
     return revokedSessionIds;
   }
 
+  /**
+   * Revokes every live session of the scope except `keepSessionId` (the
+   * caller's own), publishing each application revocation. Returns the ids.
+   */
+  async revokeOtherActiveSessions(tx: Prisma.TransactionClient, userId: string,
+    scope: AuthSessionScope, keepSessionId: string, now: Date,
+  ): Promise<string[]> {
+    await this.lockActiveScope(tx, userId, scope);
+    const others = await tx.refreshToken.findMany({
+      where: { userId, scope, revokedAt: null, id: { not: keepSessionId } },
+      select: {
+        id: true, userId: true, scope: true, expiresAt: true,
+        revokedAt: true, replacedById: true,
+      },
+      orderBy: { id: 'asc' },
+    });
+    return this.revokeFamily(tx, others, now, scope === AuthSessionScope.APPLICATION);
+  }
+
   revokeActiveScope(tx: Prisma.TransactionClient, userId: string,
     scope: AuthSessionScope, now: Date,
   ) {

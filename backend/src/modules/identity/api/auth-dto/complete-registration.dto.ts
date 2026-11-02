@@ -22,15 +22,24 @@ export class CompleteRegistrationDto {
   @MaxLength(40)
   phone!: string;
 
-  // Sign-up is phone + code; a password can be chosen later by reset code.
+  // Sign-up is phone + code; a password can be added later (POST /auth/password).
   @IsOptional()
   @IsString()
   @MinLength(6)
   @MaxUtf8Bytes(72)
   password?: string;
 
+  // The phone is proven by exactly one of these: a REGISTER code, or the
+  // `phoneProof` a LOGIN code for a number without an account answered with.
+  @IsOptional()
   @IsString()
   @Length(6, 6)
   @Matches(/^\d{6}$/)
-  otpCode!: string;
+  otpCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2048)
+  phoneProof?: string;
 }

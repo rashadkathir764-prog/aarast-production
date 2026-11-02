@@ -27,6 +27,7 @@ import { AuthenticatedUser } from "../public/identity-session.types";
 import { toSafeUser } from "../internal/safe-user.presenter";
 import { LogoutDto } from "./auth-dto/logout.dto";
 import { RefreshDto } from "./auth-dto/refresh.dto";
+import { SetPasswordDto } from "./auth-dto/set-password.dto";
 import { PasswordResetRequestDto } from "./auth-dto/password-reset-request.dto";
 import { PasswordResetConfirmDto } from "./auth-dto/password-reset-confirm.dto";
 import { CompleteAdminLoginDto } from "./auth-dto/complete-admin-login.dto";
@@ -208,6 +209,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   logoutAll(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.logoutAll(user.id);
+  }
+
+  // D75: add the app password, or change it with the current one.
+  @Post("password")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  setPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SetPasswordDto,
+  ) {
+    return this.authService.setApplicationPassword(user, dto);
   }
 
   // V1 checklist 4.14: move the account to a new phone it proves by OTP.

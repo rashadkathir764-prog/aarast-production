@@ -9,6 +9,7 @@ import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -832,7 +833,7 @@ String _deliveryLine(PlanInvite invite, JourneyProfile profile) {
 String _dayWord(DateTime? at) {
   if (at == null) return 'على واتساب';
   final local = at.toLocal();
-  final now = DateTime.now();
+  final now = appNow();
   final day = DateTime(local.year, local.month, local.day);
   final today = DateTime(now.year, now.month, now.day);
   final days = today.difference(day).inDays;

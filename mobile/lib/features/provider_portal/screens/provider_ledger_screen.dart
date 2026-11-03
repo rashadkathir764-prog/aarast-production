@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/provider_dashboard_provider.dart';
@@ -31,7 +32,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
   @override
   void initState() {
     super.initState();
-    final now = widget.now ?? DateTime.now();
+    final now = widget.now ?? appNow();
     _month = DateTime(now.year, now.month);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/widgets/aarast_pressable.dart';
@@ -73,7 +74,7 @@ bool providerSameDay(DateTime a, DateTime b) =>
 
 /// Today on the phone, as a day.
 DateTime providerToday([DateTime? now]) {
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   return DateTime(clock.year, clock.month, clock.day);
 }
 

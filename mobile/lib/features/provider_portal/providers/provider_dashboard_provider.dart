@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../marketplace/marketplace_api.dart'
     show
         MarketplaceBooking,
@@ -381,7 +382,7 @@ class ProviderDashboardProvider extends ChangeNotifier
 
   /// The confirmed bookings still ahead, from the bookings list (p12).
   int get upcomingConfirmedBookings {
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     return _bookings
         .where(

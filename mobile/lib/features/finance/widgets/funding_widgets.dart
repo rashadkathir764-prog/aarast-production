@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -140,10 +141,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
 
   /// How many payments a new loan is paid back in; 0 is «بعدين».
   int _repaymentCount = 0;
-  DateTime _firstRepayment = addMonthsClamped(
-    DateUtils.dateOnly(DateTime.now()),
-    1,
-  );
+  DateTime _firstRepayment = addMonthsClamped(DateUtils.dateOnly(appNow()), 1);
   String? _nameError;
   String? _amountError;
 
@@ -183,7 +181,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
 
   Future<void> _pickFirstRepayment() async {
     releaseFieldFocus();
-    final now = DateUtils.dateOnly(DateTime.now());
+    final now = DateUtils.dateOnly(appNow());
     final picked = await showDatePicker(
       context: context,
       initialDate: _firstRepayment,
@@ -196,7 +194,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
 
   Future<void> _pickExpectedAt() async {
     releaseFieldFocus();
-    final now = DateUtils.dateOnly(DateTime.now());
+    final now = DateUtils.dateOnly(appNow());
     final current = _expectedAt;
     final picked = await showDatePicker(
       context: context,

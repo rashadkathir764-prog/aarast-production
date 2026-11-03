@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -108,7 +109,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateUtils.dateOnly(now);
     final picked = await showDatePicker(
       context: context,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -61,7 +62,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
-    final now = DateTime.now();
+    final now = appNow();
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate ?? now,
@@ -111,7 +112,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
   @override
   Widget build(BuildContext context) {
     final loan = widget.loan;
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final repayments = [
       for (final repayment in loan.repayments)
         if (!repayment.isCancelled) repayment,

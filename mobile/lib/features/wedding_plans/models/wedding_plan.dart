@@ -1,4 +1,5 @@
-﻿import '../../../core/utils/plan_day.dart';
+﻿import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class WeddingPlan {
@@ -60,7 +61,7 @@ class WeddingPlan {
     if (weddingDate == null) {
       return null;
     }
-    final today = DateTime.now();
+    final today = appNow();
     final currentDate = DateTime(today.year, today.month, today.day);
     final weddingDay = DateTime(
       weddingDate!.year,

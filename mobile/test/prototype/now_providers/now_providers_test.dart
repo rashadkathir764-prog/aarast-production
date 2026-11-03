@@ -9,6 +9,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -209,7 +210,7 @@ const _loc = WeddingLocationDraft(
 );
 
 /// Today on the phone, as a day: offers end relative to it.
-final _today = DateUtils.dateOnly(DateTime.now());
+final _today = DateUtils.dateOnly(appNow());
 
 QuoteRequest _received() => QuoteRequest(
   id: 'q-light',

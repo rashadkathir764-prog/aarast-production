@@ -241,10 +241,10 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             const SizedBox(height: AarastV3Space.x3),
           ],
           ..._participantBookingsSection(),
-          for (final hardCase in providerHardCases(board, DateTime.now()))
+          for (final hardCase in providerHardCases(board, appNow()))
             ProviderHardCaseCard(
               hardCase: hardCase,
-              now: DateTime.now(),
+              now: appNow(),
               onFindOthers: () =>
                   _searchService(hardCase.row, marketplace, tabs),
               onAnotherDay: () => _pushOnce<void>(

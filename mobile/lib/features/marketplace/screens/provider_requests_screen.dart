@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/offer_changes.dart';
@@ -481,7 +482,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     if (!_ownQuote(quote)) return;
     final booking = quote.booking;
     if (booking == null) return;
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final day = await showDatePicker(
       context: context,
       initialDate: booking.eventDate.isBefore(today)

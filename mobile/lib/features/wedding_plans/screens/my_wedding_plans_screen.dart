@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -350,7 +351,7 @@ class _PlanCard extends StatelessWidget {
       return 'في الذكريات · ${(day ?? plan.updatedAt).year}';
     }
     if (day == null) return 'خطتك';
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     final left = DateTime(
       day.year,

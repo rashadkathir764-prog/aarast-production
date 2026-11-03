@@ -94,7 +94,7 @@ class _OfferCard extends StatelessWidget {
         .where((line) => line.isNotEmpty)
         .toList();
     final until = offer.validUntil;
-    final ends = until == null ? null : offerEndsLabel(until, DateTime.now());
+    final ends = until == null ? null : offerEndsLabel(until, appNow());
     final provider = quote.provider;
     return JourneyBox(
       padding: const EdgeInsets.all(AarastV3Space.x3),
@@ -460,7 +460,7 @@ class _ChosenCard extends StatelessWidget {
                   onChangeDay != null &&
                   !completed &&
                   !notHappened &&
-                  booking.canAskChange(DateTime.now()))
+                  booking.canAskChange(appNow()))
                 JourneyTextAction(
                   key: ValueKey('requests-change-day-${quote.id}'),
                   label: context.say('غيّر الموعد', 'غيّري الموعد'),

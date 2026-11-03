@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -261,7 +262,7 @@ String providerEventDayLabel(DateTime day, {required bool showHijri}) {
 
 /// «باقي 8 أيام» to an offer's end day; «آخر يوم اليوم» on it.
 String providerDaysLeftLabel(DateTime until, {DateTime? now}) {
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   final days = DateTime(
     until.year,
     until.month,
@@ -323,7 +324,7 @@ class ProviderOfflineBar extends StatelessWidget {
 
 /// «آخر تحديث قبل 12 دقيقة»: when his data was last read.
 String providerUpdatedLabel(DateTime at, {DateTime? now}) {
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   final minutes = clock.difference(at).inMinutes;
   if (minutes < 1) return 'آخر تحديث قبل لحظات';
   if (minutes < 60) {

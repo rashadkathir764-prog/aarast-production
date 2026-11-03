@@ -10,6 +10,7 @@ import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -75,7 +76,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   final _amountController = TextEditingController();
   final _methodController = TextEditingController();
   final _noteController = TextEditingController();
-  DateTime _paidAt = DateUtils.dateOnly(DateTime.now());
+  DateTime _paidAt = DateUtils.dateOnly(appNow());
   String? _amountError;
   XFile? _receipt;
   AarastFormDraftBinding? _draft;
@@ -146,7 +147,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
-    final now = DateTime.now();
+    final now = appNow();
     final picked = await showDatePicker(
       context: context,
       initialDate: _paidAt,
@@ -161,7 +162,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   }
 
   String _dateLabel() {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final days = today.difference(DateUtils.dateOnly(_paidAt)).inDays;
     if (days == 0) return 'اليوم';
     if (days == 1) return 'أمس';

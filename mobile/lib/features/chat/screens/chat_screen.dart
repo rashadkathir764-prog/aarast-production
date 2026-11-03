@@ -9,6 +9,7 @@ import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../../core/utils/currency_label.dart';
@@ -165,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final timeline = chat.timelineFor(widget.conversationId);
     final requests = chat.quoteRequestsFor(widget.conversationId);
     final customerSide = !(conversation?.viewerIsProvider ?? false);
-    final now = widget.now ?? DateTime.now();
+    final now = widget.now ?? appNow();
     final hasOlder = chat.canLoadOlder(widget.conversationId);
     // The provider's side is drawn in his teal (p34); the customer's keeps
     // the providers section's cobalt (f06).

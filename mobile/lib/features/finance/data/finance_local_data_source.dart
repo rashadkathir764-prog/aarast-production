@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/app_clock.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
@@ -683,6 +684,6 @@ String? _nullableMoney(Object? value) {
 }
 
 DateTime _today() {
-  final now = DateTime.now();
+  final now = appNow();
   return DateTime(now.year, now.month, now.day);
 }

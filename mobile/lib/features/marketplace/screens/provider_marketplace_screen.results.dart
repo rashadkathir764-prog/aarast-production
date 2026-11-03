@@ -72,7 +72,7 @@ class _ProviderCard extends StatelessWidget {
     return ProviderResultCard(
       key: Key('provider-marketplace-card-${provider.id}'),
       businessName: provider.businessName,
-      isFeatured: provider.isFeaturedAt(DateTime.now()),
+      isFeatured: provider.isFeaturedAt(appNow()),
       isVerified: provider.isVerified,
       isClaimed: provider.isClaimed,
       ratingAverage: provider.ratingAverage,

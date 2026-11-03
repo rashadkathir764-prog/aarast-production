@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -44,7 +45,7 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
-    final now = widget.now ?? DateTime.now();
+    final now = widget.now ?? appNow();
     final summary = context.watch<DashboardSummaryProvider?>()?.summary;
     final booked =
         marketplace

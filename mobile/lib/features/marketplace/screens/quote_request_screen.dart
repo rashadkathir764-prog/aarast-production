@@ -10,6 +10,7 @@ import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -584,7 +585,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
-    final now = DateTime.now();
+    final now = appNow();
     final picked = await showDatePicker(
       context: context,
       initialDate: _eventDate ?? now,

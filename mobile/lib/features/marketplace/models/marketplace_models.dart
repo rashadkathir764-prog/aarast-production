@@ -1,3 +1,4 @@
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 import '../../../core/utils/offer_changes.dart';
@@ -650,7 +651,7 @@ class QuoteRequest {
     final deadline = expiresAt;
     return (_status == 'SENT' || _status == 'VIEWED') &&
         deadline != null &&
-        !deadline.isAfter(DateTime.now());
+        !deadline.isAfter(appNow());
   }
 
   /// The request's state as the server holds it, except that a request past
@@ -864,7 +865,7 @@ class QuoteOffer {
   bool get isExpired {
     if (status != 'PENDING') return false;
     final expiry = validUntil;
-    if (expiry != null && expiry.isBefore(DateTime.now())) return true;
+    if (expiry != null && expiry.isBefore(appNow())) return true;
     return serverIsExpired ?? false;
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_task.dart';
@@ -9,7 +10,7 @@ import '../models/wedding_task.dart';
 /// Asks for a day from today on; null when the person backs out.
 Future<DateTime?> pickTaskDate(BuildContext context, {DateTime? initial}) {
   releaseFieldFocus();
-  final today = DateUtils.dateOnly(DateTime.now());
+  final today = DateUtils.dateOnly(appNow());
   final start = initial != null && !initial.isBefore(today) ? initial : today;
   return showDatePicker(
     context: context,
@@ -39,7 +40,7 @@ class TaskPostponeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final from = task.dueDate != null && !task.dueDate!.isBefore(today)
         ? DateUtils.dateOnly(task.dueDate!)
         : today;

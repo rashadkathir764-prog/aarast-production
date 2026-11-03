@@ -1,3 +1,5 @@
+import '../utils/app_clock.dart';
+
 enum AarastTemporalSection { now, today, week, later, completed }
 
 extension AarastTemporalSectionLabel on AarastTemporalSection {
@@ -17,7 +19,7 @@ AarastTemporalSection aarastDeadlineSection({
 }) {
   if (completed) return AarastTemporalSection.completed;
   if (dueDate == null) return AarastTemporalSection.later;
-  final today = aarastDateOnly(now ?? DateTime.now());
+  final today = aarastDateOnly(now ?? appNow());
   final due = aarastDateOnly(dueDate);
   if (due.isBefore(today)) return AarastTemporalSection.now;
   if (due == today) return AarastTemporalSection.today;
@@ -34,7 +36,7 @@ AarastTemporalSection aarastActivitySection({
   DateTime? now,
 }) {
   if (completed) return AarastTemporalSection.completed;
-  final current = now ?? DateTime.now();
+  final current = now ?? appNow();
   if (urgent ||
       (!occurredAt.isAfter(current) &&
           current.difference(occurredAt) <= const Duration(hours: 2))) {

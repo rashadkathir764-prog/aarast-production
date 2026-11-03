@@ -1,4 +1,5 @@
 import 'wedding_plan.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 
 class DashboardPermissionSummary {
@@ -412,7 +413,7 @@ class DashboardSummary {
       moneySummary.remainingBudget ?? remainingBudget;
 
   WeddingPlan toWeddingPlan({String ownerUserId = ''}) {
-    final now = DateTime.now();
+    final now = appNow();
     return WeddingPlan(
       id: planId,
       ownerUserId: ownerUserId,

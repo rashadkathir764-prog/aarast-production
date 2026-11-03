@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
+import '../../../core/utils/app_clock.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_checklist_item.dart';
 import '../models/task_starter_catalog.dart';
@@ -213,7 +214,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     _noticeMessage = null;
     notifyListeners();
 
-    final now = today ?? DateTime.now();
+    final now = today ?? appNow();
     final longestDaysBefore = pending
         .map((item) => item.daysBefore ?? 0)
         .fold(0, (longest, value) => value > longest ? value : longest);

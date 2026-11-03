@@ -1,5 +1,6 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../onboarding/onboarding_api.dart'
     show
         GeneratedDashboardSeed,
@@ -92,7 +93,7 @@ class LocalGuestDashboardSummary {
     DateTime? now,
     LocalDashboardMetrics metrics = LocalDashboardMetrics.empty,
   }) {
-    final today = now ?? DateTime.now();
+    final today = now ?? appNow();
     final weddingDate = plan.weddingDate;
     final daysRemaining = weddingDate == null
         ? null
@@ -329,7 +330,7 @@ class LocalDashboardMetrics {
       parentId: planId,
     );
 
-    final today = _dateOnly(DateTime.now());
+    final today = _dateOnly(appNow());
     final activeTasks = tasks.where((task) {
       return _statusOf(task) != 'DELETED';
     }).toList();
@@ -518,7 +519,7 @@ List<DashboardImportantItem> _localPriorityItems({
   required List<Map<String, dynamic>> paymentSchedules,
   required List<Map<String, dynamic>> costs,
 }) {
-  final today = _dateOnly(DateTime.now());
+  final today = _dateOnly(appNow());
   final priorities = <DashboardImportantItem>[];
   final overdueTask = _firstOrNull(
     tasks.where((task) {

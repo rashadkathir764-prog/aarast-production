@@ -35,7 +35,7 @@ class _PlanTasks extends StatelessWidget {
         ),
       );
     }
-    final today = DateTime.now();
+    final today = appNow();
     final byTask = {for (final task in view.tasks) task.id: task};
     final groups = groupTasks([
       for (final task in view.tasks) task.toTask(),

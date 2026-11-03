@@ -53,7 +53,7 @@ String _statusLine(GuestSummary summary, GuestWords words) {
 
 /// «آخر تحديث قبل 20 دقيقة».
 String _lastUpdate(DateTime at) {
-  final minutes = DateTime.now().difference(at).inMinutes;
+  final minutes = appNow().difference(at).inMinutes;
   if (minutes < 1) return 'آخر تحديث الآن';
   if (minutes < 60) {
     return 'آخر تحديث قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';

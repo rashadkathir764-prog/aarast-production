@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -293,7 +294,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
   DateTime? _validUntil(QuoteRequest quote) {
     final days = _validityDays;
     if (days == null) return quote.pendingOffer?.validUntil;
-    return DateTime.now().add(Duration(days: days));
+    return appNow().add(Duration(days: days));
   }
 
   Future<void> _preview(QuoteRequest quote) async {

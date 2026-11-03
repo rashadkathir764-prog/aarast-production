@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../experience_v3/aarast_v3.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_clock.dart';
 import '../utils/arabic_count.dart';
 import 'offline_sync_service.dart';
 import 'sync_status.dart';
@@ -281,7 +282,7 @@ class _PendingChangesSheet extends StatelessWidget {
       future: service.loadPendingChanges(),
       builder: (context, snapshot) {
         final changes = snapshot.data ?? const <PendingChangeSummary>[];
-        final now = DateTime.now();
+        final now = appNow();
         return JourneySheetBody(
           title: changes.isEmpty
               ? 'كل تغييراتك وصلت'

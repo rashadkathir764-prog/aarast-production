@@ -15,6 +15,7 @@ import 'package:aarast_mobile/core/offline/sync_status.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/home/providers/home_dashboard_provider.dart';
@@ -366,20 +367,20 @@ class _FakeSync extends OfflineSyncService {
     PendingChangeSummary(
       entityType: 'guest',
       title: 'ضيف: عبدالله الحمدي',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 1)),
+      createdAt: appNow().subtract(const Duration(hours: 2, minutes: 1)),
       blocked: true,
       reason: 'رفض الخادم هذا التغيير',
     ),
     PendingChangeSummary(
       entityType: 'task',
       title: 'مهمة: حجز المصور',
-      createdAt: DateTime.now().subtract(const Duration(hours: 5, minutes: 1)),
+      createdAt: appNow().subtract(const Duration(hours: 5, minutes: 1)),
       blocked: false,
     ),
     PendingChangeSummary(
       entityType: 'cost',
       title: 'دفعة: قاعة ليالي صنعاء',
-      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+      createdAt: appNow().subtract(const Duration(days: 1, hours: 1)),
       blocked: false,
     ),
   ];

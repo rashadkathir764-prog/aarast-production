@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
@@ -320,7 +321,7 @@ class ProviderAccountButton extends StatelessWidget {
 /// «أرسلته اليوم 10 الصبح»: a day, then the hour and its part of the day.
 String providerMomentLabel(DateTime at, {DateTime? now}) {
   final local = at.toLocal();
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   final today = DateTime(clock.year, clock.month, clock.day);
   final day = DateTime(local.year, local.month, local.day);
   final days = today.difference(day).inDays;
@@ -347,7 +348,7 @@ String providerMomentLabel(DateTime at, {DateTime? now}) {
 /// «من أمس»: the day a state began, without the hour.
 String providerDayLabel(DateTime at, {DateTime? now}) {
   final local = at.toLocal();
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   final today = DateTime(clock.year, clock.month, clock.day);
   final days = today
       .difference(DateTime(local.year, local.month, local.day))

@@ -70,7 +70,7 @@ class _MoneyItemsTab extends StatelessWidget {
     ].take(3).toList(growable: false);
 
     final services = _servicesInMotion(context);
-    final now = DateTime.now();
+    final now = appNow();
     // D59: the owner reads what they did; anyone else reads it unowned.
     final nothingPaid = context.ownerDid(
       'ما دفعت شي',

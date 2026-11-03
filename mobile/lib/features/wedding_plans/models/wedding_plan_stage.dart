@@ -1,3 +1,5 @@
+import '../../../core/utils/app_clock.dart';
+
 enum WeddingPlanStage {
   foundation,
   planning,
@@ -49,7 +51,7 @@ WeddingPlanStageState resolveWeddingPlanStage(
     );
   }
 
-  final today = _dateOnly(now ?? DateTime.now());
+  final today = _dateOnly(now ?? appNow());
   final eventDay = _dateOnly(weddingDate);
   final days = eventDay.difference(today).inDays;
 

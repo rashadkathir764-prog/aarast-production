@@ -11,6 +11,7 @@ import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -80,10 +81,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
   _PayPlan _plan = _PayPlan.later;
   int _count = 3;
   DateTime? _restDue;
-  late DateTime _firstDue = addMonthsClamped(
-    DateUtils.dateOnly(DateTime.now()),
-    1,
-  );
+  late DateTime _firstDue = addMonthsClamped(DateUtils.dateOnly(appNow()), 1);
 
   String? _categoryError;
   String? _partyError;
@@ -568,7 +566,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     DateTime? first,
   }) async {
     releaseFieldFocus();
-    final now = DateUtils.dateOnly(DateTime.now());
+    final now = DateUtils.dateOnly(appNow());
     final picked = await showDatePicker(
       context: context,
       initialDate: initial ?? now,

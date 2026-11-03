@@ -185,7 +185,7 @@ class _NextPaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOverdue = schedule.isOverdueAt(DateTime.now());
+    final isOverdue = schedule.isOverdueAt(appNow());
     final color = isOverdue
         ? AarastV3Color.danger
         : AarastV3Color.brandAccentStrong;

@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart'
     show ProviderPackage, QuoteRequest;
@@ -139,9 +140,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
       message: message,
       amount: (_package.price ?? '').trim().replaceAll(',', ''),
       currency: providerOfferCurrency(widget.quote),
-      validUntil: DateTime.now().add(
-        const Duration(days: providerQuickOfferDays),
-      ),
+      validUntil: appNow().add(const Duration(days: providerQuickOfferDays)),
     );
     if (!mounted) return;
     if (result == ProviderOfferSend.failed) {

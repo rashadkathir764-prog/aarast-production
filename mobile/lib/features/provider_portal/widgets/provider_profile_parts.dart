@@ -6,6 +6,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -25,7 +26,7 @@ const _profileLabelWidth = 72.0;
 
 /// «قبل أسبوعين»: how long ago, in the words p36 and p35 use.
 String providerAgoLabel(DateTime then, {DateTime? now}) {
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   final local = then.toLocal();
   final days = DateTime(
     clock.year,
@@ -57,7 +58,7 @@ String providerFeaturedLine({
   DateTime? endsAt,
   DateTime? now,
 }) {
-  final clock = now ?? DateTime.now();
+  final clock = now ?? appNow();
   if (startsAt == null || endsAt == null || !endsAt.isAfter(clock)) {
     return 'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست';
   }

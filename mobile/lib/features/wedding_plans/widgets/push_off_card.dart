@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/push/push_notifications_controller.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/widgets/aarast_toast.dart';
 
 /// w39 «التنبيهات مقفلة»: the phone has this app's notifications off, so
@@ -60,7 +61,7 @@ class _PushOffCardState extends State<PushOffCard> {
   @override
   Widget build(BuildContext context) {
     final preferences = context.watch<DevicePreferences?>();
-    final now = widget.now ?? DateTime.now();
+    final now = widget.now ?? appNow();
     final hiddenUntil = preferences?.pushCardHiddenUntil;
     if (!_off || (hiddenUntil != null && now.isBefore(hiddenUntil))) {
       return const SizedBox.shrink();

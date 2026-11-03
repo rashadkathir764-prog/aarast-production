@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -108,7 +109,7 @@ class ProviderHomeTab extends StatelessWidget {
     final asked = dashboard.bookings
         .where((booking) => booking.isRequested)
         .toList();
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     final week =
         dashboard.bookings
@@ -212,7 +213,7 @@ class _WaitingHero extends StatelessWidget {
     final deadlines = [for (final quote in waiting) ?quote.expiresAt]..sort();
     final ends = deadlines.isEmpty
         ? null
-        : offerEndsLabel(deadlines.first.toLocal(), DateTime.now());
+        : offerEndsLabel(deadlines.first.toLocal(), appNow());
     final arrived = dates.isEmpty
         ? null
         : count == 1

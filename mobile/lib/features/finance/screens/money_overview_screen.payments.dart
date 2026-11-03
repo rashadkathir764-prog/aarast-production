@@ -21,7 +21,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = provider.summary.currency;
-    final now = DateTime.now();
+    final now = appNow();
     final schedules = [...provider.dueSchedules]
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     final total = schedules.fold<double>(

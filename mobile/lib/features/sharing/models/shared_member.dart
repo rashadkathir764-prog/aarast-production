@@ -1,4 +1,5 @@
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import 'plan_role_permissions.dart';
 
@@ -207,7 +208,7 @@ class PlanInvite {
       canManageMoney: json['canManageMoney'] == true,
       expiresAt:
           _dateTimeOrNull(json['expiresAt']) ??
-          DateTime.now().add(const Duration(days: 14)),
+          appNow().add(const Duration(days: 14)),
       name: json['name']?.toString(),
       phone: json['normalizedPhone']?.toString() ?? json['phone']?.toString(),
       email: json['email']?.toString(),

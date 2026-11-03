@@ -1,3 +1,5 @@
+import '../../../core/utils/app_clock.dart';
+
 class WeddingCost {
   const WeddingCost({
     required this.id,
@@ -196,7 +198,7 @@ class PaymentSchedule {
 
   factory PaymentSchedule.fromJson(Map<String, dynamic> json) {
     final status = json['status']?.toString() ?? 'PENDING';
-    final dueDate = dateTimeOrNull(json['dueDate']) ?? DateTime.now();
+    final dueDate = dateTimeOrNull(json['dueDate']) ?? appNow();
     return PaymentSchedule(
       id: json['id']?.toString() ?? '',
       costId:
@@ -206,7 +208,7 @@ class PaymentSchedule {
       status: status,
       isOverdue:
           json['isOverdue'] == true ||
-          _isPaymentScheduleOverdueAt(status, dueDate, DateTime.now()),
+          _isPaymentScheduleOverdueAt(status, dueDate, appNow()),
       paidAt: dateTimeOrNull(json['paidAt']),
       note: stringOrNull(json['note']),
       weddingPlanId: stringOrNull(json['weddingPlanId']),

@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -102,7 +103,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
 
   Future<void> _pickFirstDay() async {
     releaseFieldFocus();
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     final current = _firstDay ?? widget.plan.weddingDate;
     final picked = await showDatePicker(

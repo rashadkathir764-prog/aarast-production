@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -277,7 +278,7 @@ DateTime _when(ContributionHistoryEvent event) =>
     (event.occurredAt ?? event.capturedAt).toLocal();
 
 String _dayLabel(DateTime day) {
-  final now = DateTime.now();
+  final now = appNow();
   final today = DateTime(now.year, now.month, now.day);
   final days = today.difference(day).inDays;
   if (days == 0) return 'اليوم';

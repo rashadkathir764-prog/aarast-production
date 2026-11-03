@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
@@ -321,7 +322,7 @@ FinancePage<T> _localPage<T>(
 }
 
 List<PaymentSchedule> _dueSchedules(List<Map<String, dynamic>> items) {
-  final today = DateTime.now();
+  final today = appNow();
   final end = DateTime(
     today.year,
     today.month,

@@ -14,6 +14,7 @@ import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -422,7 +423,7 @@ void main() {
 
   testWidgets('a11 my plans', (tester) async {
     // «خطتك · 88 يوم» counts from today, so the day follows today.
-    final now = DateTime.now();
+    final now = appNow();
     await _shot(
       tester,
       'a11_my_plans',

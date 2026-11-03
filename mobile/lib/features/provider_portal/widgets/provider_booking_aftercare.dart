@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart' show MarketplaceBooking;
@@ -28,7 +29,7 @@ class ProviderBookingAftercare extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = now ?? DateTime.now();
+    final today = now ?? appNow();
     final change = booking.change;
     final children = <Widget>[
       if (change != null && change.isPending)

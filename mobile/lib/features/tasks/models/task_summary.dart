@@ -1,4 +1,5 @@
-﻿import 'wedding_task.dart';
+﻿import '../../../core/utils/app_clock.dart';
+import 'wedding_task.dart';
 
 class TaskSummary {
   const TaskSummary({
@@ -54,7 +55,7 @@ class TaskSummary {
     required List<WeddingTask> tasks,
     DateTime? now,
   }) {
-    final today = _dateOnly(now ?? DateTime.now());
+    final today = _dateOnly(now ?? appNow());
     var completed = 0;
     var pendingInProgress = 0;
     var overdue = 0;

@@ -65,7 +65,7 @@ void main() {
   testWidgets('journey start — خطة مين؟ (390)', (tester) async {
     await _pumpGateway(tester);
 
-    await tester.tap(find.text('ابدأ'));
+    await tester.tap(find.byKey(const ValueKey('door-plan')));
     await tester.pumpAndSettle();
     // The groom's photo decodes off the test clock; wait for it.
     await tester.runAsync(
@@ -85,9 +85,9 @@ void main() {
   testWidgets('journey start — name and date (390)', (tester) async {
     await _pumpGateway(tester);
 
-    await tester.tap(find.text('ابدأ'));
+    await tester.tap(find.byKey(const ValueKey('door-plan')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('التالي'));
+    await tester.tap(find.byKey(const ValueKey('persona-groom')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();

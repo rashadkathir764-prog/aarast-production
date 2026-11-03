@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../auth/utils/application_password_policy.dart';
+import '../../auth/auth_api.dart' show isApplicationPasswordWithinByteLimit;
 
 /// D75 «كلمة المرور», a journey sheet from «حسابي»: an account made by
 /// number and WhatsApp code adds a password here, a second way in when a

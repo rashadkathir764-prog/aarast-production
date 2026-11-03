@@ -171,6 +171,10 @@ test("contributor dashboard keeps owner budget private while reporting only scop
   assert.equal(result.confirmedCostTotal, "100.00");
   assert.equal(result.paidTotal, "40.00");
   assert.equal(result.outstandingTotal, "60.00");
+  // A contributor reads their own costs, not the plan's items: nothing here
+  // may say the plan has no items or that every essential is missing.
+  assert.equal(result.budgetItemsCount, null);
+  assert.equal(result.essentials, null);
   assert.equal(
     result.financialWarnings.some((warning) => warning.type === "BUDGET_EXCEEDED"),
     false,

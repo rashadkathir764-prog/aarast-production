@@ -138,6 +138,71 @@ test("the owner's answer is stored on the item, and only the answer", async () =
   assert.deepEqual(writes[writes.length - 1], { suggestion: null, suggestionUntil: null });
 });
 
+test("a partner's answer enters the plan's history, as an edit of the item does", async () => {
+  const category = {
+    id: "venue",
+    weddingPlanId: "plan-1",
+    name: "قاعة",
+    normalizedName: "قاعة",
+    kind: "WEDDING",
+    allocatedAmount: null,
+    suggestion: null,
+    suggestionUntil: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const tx = {
+    budgetCategory: {
+      findUnique: async () => category,
+      update: async ({ data }: { data: Record<string, unknown> }) => ({
+        ...category,
+        ...data,
+        _count: { weddingCosts: 0 },
+      }),
+    },
+    weddingCost: { findMany: async () => [] },
+  };
+  const prisma = {
+    ...tx,
+    $transaction: async (operation: (client: unknown) => unknown) =>
+      operation(tx),
+  };
+  const partner = {
+    isOwner: false,
+    sharedMember: { role: "BRIDE" },
+    plan: { id: "plan-1" },
+  };
+  const recorded: Array<{ entityId: string; action: string }> = [];
+  const service = new BudgetCategoriesService(
+    prisma as never,
+    {
+      assertMoneyReadable: async () => partner,
+      assertMoneyManageableForUpdateInTransaction: async () => partner,
+    } as never,
+    undefined,
+    {
+      recordForContextInTransaction: async (
+        _tx: unknown,
+        _context: unknown,
+        event: { entityId: string; action: string },
+      ) => {
+        recorded.push(event);
+      },
+    } as never,
+  );
+
+  await service.setSuggestion(
+    { id: "partner-1" } as never,
+    "venue",
+    { choice: "NOT_NEEDED" },
+    now,
+  );
+  assert.deepEqual(
+    recorded.map(({ entityId, action }) => ({ entityId, action })),
+    [{ entityId: "venue", action: "UPDATED" }],
+  );
+});
+
 test("whoever may not manage the money cannot answer", async () => {
   const category = { id: "venue", weddingPlanId: "plan-1" };
   const tx = { budgetCategory: { findUnique: async () => category } };

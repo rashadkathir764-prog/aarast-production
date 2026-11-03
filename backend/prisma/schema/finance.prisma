@@ -56,8 +56,8 @@ enum BudgetCategoryKind {
   MAHR
 }
 
-/// The owner's answer to the home suggesting an item (the venue, the
-/// photographer...): not needed in this plan, or later (until a date).
+// The owner's answer to the home suggesting an item (the venue, the
+// photographer...): not needed in this plan, or later (until a date).
 enum BudgetItemSuggestion {
   NOT_NEEDED
   LATER

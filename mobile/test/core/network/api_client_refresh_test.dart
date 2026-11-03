@@ -65,6 +65,59 @@ void main() {
     },
   );
 
+  test(
+    'an expired session refreshes for the signed-in auth writes too',
+    () async {
+      for (final path in const [
+        '/api/v1/auth/password',
+        '/api/v1/auth/phone-change/request',
+        '/api/v1/auth/phone-change/confirm',
+      ]) {
+        var token = 'old-access';
+        var refreshCalls = 0;
+        final adapter = _RefreshAdapter();
+        final client = ApiClient(tokenProvider: () async => token);
+        client.dio.httpClientAdapter = adapter;
+        client.refreshSession = () async {
+          refreshCalls += 1;
+          token = 'new-access';
+          return true;
+        };
+
+        final result = await client.postJson(path, const {});
+
+        expect(result['ok'], true, reason: path);
+        expect(refreshCalls, 1, reason: path);
+        expect(adapter.calls, 2, reason: path);
+      }
+    },
+  );
+
+  test(
+    'a wrong current password is an answer, not an expired session',
+    () async {
+      var refreshCalls = 0;
+      var expired = 0;
+      final adapter = _WrongPasswordAdapter();
+      final client = ApiClient(tokenProvider: () async => 'access');
+      client.dio.httpClientAdapter = adapter;
+      client.onSessionExpired = () => expired += 1;
+      client.refreshSession = () async {
+        refreshCalls += 1;
+        return true;
+      };
+
+      await expectLater(
+        client.postJson('/api/v1/auth/password', const {}),
+        throwsA(isA<ApiException>()),
+      );
+
+      expect(refreshCalls, 0);
+      expect(expired, 0);
+      expect(adapter.calls, 1);
+    },
+  );
+
   test('POST /api/v1/auth/refresh never triggers session refresh', () async {
     var refreshCalls = 0;
     final adapter = _RefreshAdapter();
@@ -285,6 +338,29 @@ void main() {
     expect(adapter.contentLengthHeader, 3);
     expect(adapter.ifNoneMatchHeader, '*');
   });
+}
+
+class _WrongPasswordAdapter implements HttpClientAdapter {
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls += 1;
+    return ResponseBody.fromString(
+      '{"code":"INVALID_CREDENTIALS","message":"Invalid credentials"}',
+      401,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class _RefreshAdapter implements HttpClientAdapter {

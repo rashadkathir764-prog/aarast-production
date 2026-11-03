@@ -12,7 +12,7 @@ import {
 } from '@prisma/client';
 import {
   budgetItemForProviderCategory,
-  findLogicalBudgetCategory,
+  budgetItemForService,
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
@@ -628,9 +628,19 @@ export class FinancePortService implements FinancePort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
     serviceName: string,
+    planPersona: string | null,
   ): Promise<string | null> {
-    const items = await listPlanItemsForProviderSearch(client, weddingPlanId);
-    return findLogicalBudgetCategory(items, serviceName)?.id ?? null;
+    const [items, providerCategories, catalogItems] = await Promise.all([
+      listPlanItemsForProviderSearch(client, weddingPlanId),
+      this.catalog.listActiveCategories(client),
+      this.catalog.listMoneyCatalogItems(client),
+    ]);
+    return (
+      budgetItemForService(items, serviceName, providerCategories, {
+        planPersona,
+        items: catalogItems,
+      })?.id ?? null
+    );
   }
 
   async isPlanItem(

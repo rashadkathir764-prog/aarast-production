@@ -74,18 +74,16 @@ class _MoneySummaryCard extends StatelessWidget {
     final currency = summary.currency;
     final funding = summary.funding;
     final profile = context.journeyProfile;
-    final agreed = _amount(context, summary.costs.total, currency);
-    final ownPaid = _amount(context, summary.costs.paidByOwner, currency);
-    final left = _amount(context, summary.costs.outstanding, currency);
+    String inSentence(Object? value) =>
+        keepCurrencyOnLine(_amount(context, value, currency));
+    final agreed = inSentence(summary.costs.total);
+    final ownPaid = inSentence(summary.costs.paidByOwner);
+    final left = inSentence(summary.costs.outstanding);
     final hasAgreements = summary.costs.count > 0;
     // D59: what others paid for the owner, by payer, from the server.
     final paidForOwner = [
       for (final group in payersForOwner(summary))
-        paidForOwnerPhrase(
-          group,
-          _amount(context, group.paid, currency),
-          profile,
-        ),
+        paidForOwnerPhrase(group, inSentence(group.paid), profile),
     ];
 
     // c01: a 17 sentence (1.7 apart) in a box padded 20, then the 34 gap.
@@ -149,17 +147,13 @@ class _MoneySummaryCard extends StatelessWidget {
                               funding.shortfall != null)) ...[
                         const TextSpan(text: ' معك '),
                         TextSpan(
-                          text: _amount(
-                            context,
-                            funding.availableCash,
-                            currency,
-                          ),
+                          text: inSentence(funding.availableCash),
                           style: strong.copyWith(color: context.accent.primary),
                         ),
                         if (moneyValue(funding.pledged) > 0) ...[
                           const TextSpan(text: '، وموعود لك '),
                           TextSpan(
-                            text: _amount(context, funding.pledged, currency),
+                            text: inSentence(funding.pledged),
                             style: strong.copyWith(color: AarastV3Color.lilac),
                           ),
                         ],

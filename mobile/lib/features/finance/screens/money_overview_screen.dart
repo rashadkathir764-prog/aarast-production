@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -266,7 +267,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           soft: AarastV3Color.dangerSoft,
           text: provider.amountsHidden || exceeded.overrun == null
               ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
-              : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency)}.',
+              : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${keepCurrencyOnLine(formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency))}.',
         ),
       ],
       if (_nextSchedule(provider) case final schedule?) ...[

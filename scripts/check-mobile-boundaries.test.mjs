@@ -1727,7 +1727,7 @@ const r19ProviderPortalApi = Object.freeze({
 // through the auth owner API.
 // +1 (R16): the money items read how far their service got from the
 // marketplace owner API.
-const r19LegalRecordCount = 256;
+const r19LegalRecordCount = 263;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1777,6 +1777,10 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/register_screen.dart', show: ['RegisterScreen'] },
       { uri: 'screens/reset_password_screen.dart', show: ['ResetPasswordScreen'] },
       { uri: 'screens/splash_screen.dart', show: ['SplashScreen'] },
+      {
+        uri: 'utils/application_password_policy.dart',
+        show: ['isApplicationPasswordWithinByteLimit'],
+      },
       { uri: 'utils/auth_action_guard.dart', show: ['AuthActionGuard', 'AuthGatePanel'] },
       {
         uri: 'widgets/auth_wedding_widgets.dart',
@@ -1878,7 +1882,7 @@ const trackedOwnerApiContracts = [
       // B5 (D55): a06's mahr fields, for the welcome steps and MahrScreen.
       {
         uri: 'widgets/mahr_fields.dart',
-        show: ['MahrFields', 'pickMahrDueDate'],
+        show: ['MahrFields', 'mahrWords', 'pickMahrDueDate'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -2178,6 +2182,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/change_phone_sheet.dart',
         show: ['showChangePhoneSheet'],
+      },
+      {
+        uri: 'widgets/set_password_sheet.dart',
+        show: ['showSetPasswordSheet'],
       },
     ],
   },
@@ -2574,6 +2582,11 @@ const trackedCollaborationBatchContracts = [
     show: ['SettingsProvider'],
   },
   {
+    source: 'mobile/lib/features/settings/widgets/set_password_sheet.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['isApplicationPasswordWithinByteLimit'],
+  },
+  {
     source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
@@ -2626,7 +2639,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/settings/settings_api.dart',
-    show: ['showChangePhoneSheet'],
+    show: ['showChangePhoneSheet', 'showSetPasswordSheet'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
@@ -2880,6 +2893,11 @@ const trackedPlanningBatchContracts = [
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
     show: ['FinanceProvider'],
   },
@@ -2975,7 +2993,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['FinanceProvider'],
+    show: ['FinanceApi', 'FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
@@ -3213,6 +3231,7 @@ const trackedShellEntryBatchContracts = [
       'MahrFields',
       'MoneyInputFormatter',
       'formatMoneyInputValue',
+      'mahrWords',
       'moneyStarterPlanItemNames',
       'pickMahrDueDate',
     ],
@@ -3262,6 +3281,10 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/auth/auth_api.dart',
         show: ['AuthController', 'AuthStatus'],
+      },
+      {
+        target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+        show: ['GuestOnboardingStorage', 'GuestPersona'],
       },
       {
         // D63 (w06): an account waiting out its deletion sees only w06.

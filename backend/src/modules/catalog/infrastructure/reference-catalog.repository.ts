@@ -69,6 +69,14 @@ export class ReferenceCatalogRepository {
     });
   }
 
+  /** D73: the slugs a money item may link to. */
+  async listProviderCategorySlugs(tx: Client): Promise<Set<string>> {
+    const categories = await tx.providerCategory.findMany({
+      select: { slug: true },
+    });
+    return new Set(categories.map((category) => category.slug));
+  }
+
   createItem(tx: Client, catalogId: string, key: string, revision: Prisma.ReferenceCatalogItemRevisionCreateWithoutItemInput) {
     return tx.referenceCatalogItem.create({
       data: {

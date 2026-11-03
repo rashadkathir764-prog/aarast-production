@@ -356,7 +356,7 @@ test("a LOGIN code for a number without an account answers with a phone proof", 
   assert.equal(h.users.length, 0);
 });
 
-test("register/complete with a valid phone proof creates the account, then signs it in", async () => {
+test("a phone proof creates an account once and never signs in to it", async () => {
   const h = createHarness();
   const { phoneProof } = await loginNotFoundProof(h);
 
@@ -370,10 +370,11 @@ test("register/complete with a valid phone proof creates the account, then signs
   assert.ok(h.users[0].appAccountActivatedAt);
   assert.equal(resolveJwtSessionScope(h.jwt.verify(created.accessToken)), "application");
 
-  const again = await h.service.completeRegistration({
-    name: "Other Name", phone: PHONE, phoneProof,
-  });
-  assert.equal(again.existingAccount, true);
+  // Replayed within its 10 minutes it opens nothing: signing in takes a code.
+  await assert.rejects(
+    () => h.service.completeRegistration({ name: "Other Name", phone: PHONE, phoneProof }),
+    (error: any) => error.getResponse().code === AuthErrorCode.OTP_INVALID_OR_EXPIRED,
+  );
   assert.equal(h.users[0].name, "New Person");
 });
 

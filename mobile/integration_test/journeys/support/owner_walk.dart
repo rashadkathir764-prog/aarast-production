@@ -573,8 +573,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('موعد العرس');
     walk.expectSee('تأجيل العرس');
     walk.expectSee('قفل التطبيق');
+    await walk.scroll(pixels: 900);
     walk.expectSee('خططك');
     walk.expectSee('الخروج');
+    await walk.scroll(pixels: -900);
   });
 
   Future<void> accountRow(

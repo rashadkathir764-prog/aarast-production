@@ -11,6 +11,7 @@ import { CatalogAdminService } from "../src/modules/catalog/infrastructure/catal
 import { CatalogReadService } from "../src/modules/catalog/infrastructure/catalog-read.service";
 import {
   budgetItemForProviderCategory,
+  budgetItemForService,
   findLogicalBudgetCategory,
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
@@ -304,6 +305,38 @@ test("the catalog serves each published money item with its slugs and audience",
   assert.deepEqual(
     (await new CatalogAdminService().listStarterBudgetItems(client as never)).map((entry) => entry.nameAr),
     ["القاعة", "التصوير"],
+  );
+});
+
+test("a starter task waits on the item its service's offers file under (R4, D73)", () => {
+  const henna = { nameAr: "النقش والحناء", slug: "henna" };
+  const items = [item("naqsh", "النقش"), item("night", "ليلة الحناء"), other];
+
+  assert.equal(budgetItemForService(items, "النقش", [henna], groomCatalog())?.id, "naqsh");
+  // The owner links the category elsewhere: the task follows its offers.
+  assert.equal(
+    budgetItemForService(items, "النقش", [henna], groomCatalog(link("ليلة الحناء", ["henna"])))?.id,
+    "night",
+  );
+  // No directory category names it: the plan's items by their words.
+  assert.equal(budgetItemForService(items, "النقش", [], groomCatalog())?.id, "naqsh");
+  // A task never waits on «أخرى».
+  assert.equal(budgetItemForService([other], "النقش", [henna], groomCatalog()), null);
+});
+
+test("the catalog refuses a slug no provider category has", async () => {
+  const service = new ReferenceCatalogService({} as any, {} as any) as any;
+  const tx = {
+    providerCategory: {
+      findMany: async () => [{ slug: "photography" }],
+    },
+  };
+  await service.assertKnownProviderCategorySlugs(tx, { providerCategorySlugs: ["photography"] });
+  await service.assertKnownProviderCategorySlugs(tx, { persona: "GROOM" });
+  await service.assertKnownProviderCategorySlugs(tx, undefined);
+  await assert.rejects(
+    service.assertKnownProviderCategorySlugs(tx, { providerCategorySlugs: ["photography", "typo"] }),
+    /Unknown provider category: typo/,
   );
 });
 

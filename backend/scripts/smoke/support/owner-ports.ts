@@ -35,12 +35,14 @@ import { TasksPortService } from '../../../src/modules/tasks/infrastructure/task
 import { AccountDeletionService } from '../../../src/modules/identity/internal/profile/account-deletion.service';
 import type { UsersService } from '../../../src/modules/identity/internal/profile/users.service';
 
+const catalog = new CatalogReadService();
+
 export const ownerPorts = {
   plans: new PlanReadService(),
-  catalog: new CatalogReadService(),
+  catalog,
   planErasure: new PlanErasureService(),
   users: new IdentityUserPortService(),
-  finance: new FinancePortService(),
+  finance: new FinancePortService(catalog),
   tasks: new TasksPortService(),
   guests: new GuestsPortService(),
   providers: new ProviderReadService(),

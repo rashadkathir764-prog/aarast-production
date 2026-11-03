@@ -22,14 +22,15 @@ export interface DashboardSetupFacts {
   paidByOwner: string | null;
   /**
    * G23: the six essentials the owner named and where each stands; null for
-   * a reader without money rights (the items are money).
+   * a reader who does not see the plan's items (no money rights, or a
+   * contributor).
    */
   essentials: PlanEssential[] | null;
   paidByOthers: string | null;
   /**
    * The plan's wedding items (the mahr not counted), so the home asks for the
-   * first one only while there is none; null for a reader without money
-   * rights.
+   * first one only while there is none; null for a reader who does not see
+   * the plan's items.
    */
   budgetItemsCount: number | null;
 }

@@ -57,7 +57,7 @@ test("account task creation persists optional manual responsibility", async () =
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
   const permissions = {
-    assertTaskManageableInTransaction: async () => undefined,
+    assertTaskManageableInTransaction: async () => ({ plan: { persona: null } }),
   };
   const service = tasksService(
     prisma as any,

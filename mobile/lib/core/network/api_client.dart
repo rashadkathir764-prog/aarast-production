@@ -114,9 +114,10 @@ class ApiClient {
               statusCode == 401 ? 'api_unauthorized' : 'api_forbidden',
             );
           }
-          // A 401 outside the auth endpoints, or from the read-only session
-          // restore endpoint, means the access token may need one refresh.
-          // Auth mutations remain excluded to prevent refresh loops.
+          // A 401 outside the auth endpoints, from the read-only session
+          // restore endpoint, or from a signed-in auth write means the access
+          // token may need one refresh. Other auth mutations remain excluded
+          // to prevent refresh loops.
           if (_canRefresh(error)) {
             try {
               final refreshed = await _refreshOnce();
@@ -427,11 +428,26 @@ class ApiClient {
         request.path == '/api/v1/auth/me';
   }
 
+  /// Auth writes made from a live session: their 401 can be an expired access
+  /// token, unless the server says the password itself was wrong.
+  bool _isSignedInAuthWrite(DioException error) {
+    final request = error.requestOptions;
+    return request.method.toUpperCase() == 'POST' &&
+        const {
+          '/api/v1/auth/password',
+          '/api/v1/auth/phone-change/request',
+          '/api/v1/auth/phone-change/confirm',
+        }.contains(request.path) &&
+        ApiException._extractServerCode(error.response?.data) !=
+            'INVALID_CREDENTIALS';
+  }
+
   bool _canRefresh(DioException error) {
     final request = error.requestOptions;
     return error.response?.statusCode == 401 &&
         (!request.path.startsWith('/api/v1/auth') ||
-            _isAccountSessionRestoreRequest(request)) &&
+            _isAccountSessionRestoreRequest(request) ||
+            _isSignedInAuthWrite(error)) &&
         request.extra[_refreshRetryKey] != true &&
         refreshSession != null;
   }

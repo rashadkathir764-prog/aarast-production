@@ -187,7 +187,12 @@ export class TasksService {
         weddingPlanId,
         currentUser,
       );
-      const link = await this.linkForNewTask(tx, weddingPlanId, dto);
+      const link = await this.linkForNewTask(
+        tx,
+        weddingPlanId,
+        dto,
+        context.plan.persona,
+      );
       const created = await createTask(tx, {
           weddingPlanId,
           responsibleName: this.optionalText(dto.responsibleName),
@@ -1147,6 +1152,7 @@ export class TasksService {
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
     dto: CreatePlanTaskDto,
+    planPersona: string | null = null,
   ): Promise<TaskLinkValues | null> {
     if (dto.linkedBudgetCategoryId || dto.linkedScheduleId) {
       return this.resolveLink(tx, weddingPlanId, dto);
@@ -1157,6 +1163,7 @@ export class TasksService {
       tx,
       weddingPlanId,
       service,
+      planPersona,
     );
     return linkedBudgetCategoryId
       ? this.resolveLink(tx, weddingPlanId, { linkedBudgetCategoryId })

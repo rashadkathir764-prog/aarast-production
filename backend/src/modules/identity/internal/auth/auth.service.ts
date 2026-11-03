@@ -341,6 +341,9 @@ export class AuthService implements IdentityAuthPort {
           }
 
           if (existing?.phoneVerifiedAt && existing.appAccountActivatedAt) {
+            // A proof lives 10 minutes and creates an account: it never
+            // signs in to one, or it would outlive a logout or a reset.
+            if (phoneProof !== null) return { otpInvalid: true as const };
             // The number is already registered: the valid code signs it in,
             // like a LOGIN code. Name and password stay untouched.
             const user = await this.users.touchLastLogin(tx, existing.id, now);
@@ -1077,27 +1080,38 @@ export class AuthService implements IdentityAuthPort {
     }
     const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
 
-    const revokedSessionIds = await runSerializableTransaction(
-      this.prisma,
-      async (tx) => {
-        await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
-        const updated = await this.users.setApplicationPassword(
-          tx, user, currentHash, passwordHash,
-        );
-        if (updated.count !== 1) {
-          // The password, status or account changed since it was checked.
-          throw authError(
-            HttpStatus.UNAUTHORIZED,
-            AuthErrorCode.INVALID_CREDENTIALS,
-            "Invalid credentials",
+    let revokedSessionIds: string[];
+    try {
+      revokedSessionIds = await runSerializableTransaction(
+        this.prisma,
+        async (tx) => {
+          await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+          const updated = await this.users.setApplicationPassword(
+            tx, user, currentHash, passwordHash,
           );
-        }
-        if (currentHash === null) return [] as string[];
-        return this.sessions.revokeOtherActiveSessions(
-          tx, user.id, AuthSessionScope.APPLICATION, sessionId, new Date(),
-        );
-      },
-    );
+          if (updated.count !== 1) {
+            // The password, status or account changed since it was checked.
+            throw authError(
+              HttpStatus.UNAUTHORIZED,
+              AuthErrorCode.INVALID_CREDENTIALS,
+              "Invalid credentials",
+            );
+          }
+          if (currentHash === null) return [] as string[];
+          return this.sessions.revokeOtherActiveSessions(
+            tx, user.id, AuthSessionScope.APPLICATION, sessionId, new Date(),
+          );
+        },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        throw new ConflictException("The account changed; try again");
+      }
+      throw error;
+    }
     for (const revoked of revokedSessionIds) {
       this.realtime.disconnectSession(revoked);
     }

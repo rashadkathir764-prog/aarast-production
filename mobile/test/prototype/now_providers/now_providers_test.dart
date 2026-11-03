@@ -864,7 +864,14 @@ void main() {
   // x22: a plan that asked no one starts with the hall.
   testWidgets('first visit', (tester) async {
     final m = _Market(list: _allProviders);
-    await _shot(tester, 'first_visit', _market, await _session(m), h: 900);
+    await _shot(
+      tester,
+      'first_visit',
+      _market,
+      await _session(m),
+      h: 900,
+      act: () => _openTab(tester, 'طلباتي'),
+    );
   });
 
   final inboxQuotes = [
@@ -894,14 +901,7 @@ void main() {
 
   testWidgets('explore empty directory', (tester) async {
     final m = _Market(city: null);
-    await _shot(
-      tester,
-      'explore_empty',
-      _market,
-      await _session(m),
-      h: 900,
-      act: () => _openTab(tester, 'استكشف كل الخدمات'),
-    );
+    await _shot(tester, 'explore_empty', _market, await _session(m), h: 900);
   });
 
   // w30 «فلتر».

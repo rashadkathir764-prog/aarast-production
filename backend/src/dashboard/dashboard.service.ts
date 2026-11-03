@@ -360,6 +360,8 @@ export class DashboardService {
     const nextPaymentSchedule = paymentSchedules[0]
       ? toPaymentScheduleDueMoneyItem(paymentSchedules[0])
       : null;
+    // A contributor's picture holds their own costs, never the plan's items.
+    const planItems = money && seesWholePlan(context) ? money.categories : null;
     const effectiveDuePaymentSchedulesCount = canViewMoney
       ? actionableSchedules.length
       : null;
@@ -504,16 +506,16 @@ export class DashboardService {
         : null,
       venueSecured: venueCost || venueBooked,
       bookedServices,
-      essentials: money
+      essentials: planItems
         ? planEssentials({
             persona: context.plan.persona,
-            categories: money.categories,
+            categories: planItems,
             bookedCategoryIds: bookedServices.budgetCategoryIds,
             venueSecured: venueCost || venueBooked,
           })
         : null,
-      budgetItemsCount: money
-        ? money.categories.filter((category) => category.kind !== 'MAHR').length
+      budgetItemsCount: planItems
+        ? planItems.filter((category) => category.kind !== 'MAHR').length
         : null,
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),

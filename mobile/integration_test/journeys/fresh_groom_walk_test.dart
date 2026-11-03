@@ -30,14 +30,12 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
       }
 
-      await walk.step('a01_start', 'أول شاشة: أنشئ خطتك', () async {
-        await walk.tapText('أنشئ خطتك');
-        await walk.tapText('ابدأ', required: false);
+      await walk.step('a01_start', 'أول شاشة: أسوّي خطة عرسي', () async {
+        await walk.tapKey('door-plan');
       });
 
       await walk.step('a02_whose', 'العريس', () async {
-        await walk.tapText('العريس');
-        await walk.tapText('التالي', required: false);
+        await walk.tapKey('persona-groom');
       });
 
       await walk.step('a03_name_date', 'الاسم والشهر', () async {
@@ -68,22 +66,21 @@ void main() {
       });
 
       await walk.step('a08b_register', 'إنشاء الحساب', () async {
+        // D75: the name comes from the plan; only the number is asked.
         final fields = find.byType(EditableText).evaluate().length;
         walk.note('حقول التسجيل: $fields');
-        await fillNth(fields - 2, phone);
-        await fillNth(fields - 1, demoPassword);
+        await fillNth(fields - 1, phone);
         await walk.tapKey('register-submit', wait: 5);
       });
 
       await walk.step('a09_otp', 'رمز التحقق', () async {
-        if (find.byKey(const ValueKey('otp-confirm')).evaluate().isNotEmpty) {
-          await tester.enterText(find.byType(EditableText).first, devOtpCode);
-          await walk.settle(seconds: 2);
-          await walk.tapKey('otp-confirm', wait: 6, required: false);
-        } else {
-          walk.note('ما طلب رمز');
+        if (!walk.sees('ما وصلني الرمز')) {
+          walk.fail('ما طلب رمز واتساب');
+          return;
         }
-        await walk.settle(seconds: 5);
+        // Six digits sign in and save the plan on their own (D75).
+        await tester.enterText(find.byType(EditableText).first, devOtpCode);
+        await walk.settle(seconds: 8);
       });
 
       await walk.step('b01_home', 'الرئيسية بعد الحفظ', () async {

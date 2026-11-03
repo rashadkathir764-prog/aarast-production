@@ -145,10 +145,10 @@ void main() {
       const SmartWelcomeScreen(),
       providers: await gateway(),
       act: () async {
-        // a02 «أهلًا فيك» → «ابدأ» → a02b «خطة مين؟».
-        await tester.tap(find.text('ابدأ'));
+        // D75: «أسوّي خطة عرسي» → «خطة مين؟» → العريس.
+        await tester.tap(find.byKey(const ValueKey('door-plan')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('العريس'));
+        await tester.tap(find.byKey(const ValueKey('persona-groom')));
         await tester.pumpAndSettle();
       },
     );
@@ -162,9 +162,9 @@ void main() {
       h: 1000,
       providers: await gateway(),
       act: () async {
-        await tester.tap(find.text('ابدأ'));
+        await tester.tap(find.byKey(const ValueKey('door-plan')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('العريس'));
+        await tester.tap(find.byKey(const ValueKey('persona-groom')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('التالي'));
         await tester.pumpAndSettle();
@@ -195,7 +195,7 @@ void main() {
       h: 1100,
       providers: authProviders(await _auth()),
       act: () async {
-        await tester.tap(find.text('إنشاء حساب').last);
+        await tester.tap(find.byKey(const ValueKey('register-submit')));
         await tester.pumpAndSettle();
       },
     );

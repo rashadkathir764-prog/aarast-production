@@ -193,7 +193,8 @@ final _active = DashboardSummary.fromJson(
       {
         'id': 'a1',
         'type': 'PAYMENT_SCHEDULE_DUE_SOON',
-        'title': 'دفعة القاعة: 500,000 ر.ي',
+        // The server's title is the cost's; the card adds the amount.
+        'title': 'دفعة القاعة',
         'subtitle': 'قاعة سبأ · تستحق بعد 5 أيام',
         'icon': 'wallet',
         'tone': 'warning',

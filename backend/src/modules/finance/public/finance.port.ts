@@ -312,11 +312,12 @@ export interface FinancePort {
     scheduleId: string,
     costIds: readonly string[],
   ): Promise<boolean>;
-  /** R4: the plan's item this service is filed under, by the rule that files an offer; null when no item names it. */
+  /** R4: the plan's item this service is filed under, by the rule that files an offer (D73 links included); null when no item names it. */
   findItemForService(
     client: Prisma.TransactionClient,
     weddingPlanId: string,
     serviceName: string,
+    planPersona: string | null,
   ): Promise<string | null>;
   /** R4: whether the item is this plan's. */
   isPlanItem(

@@ -513,6 +513,9 @@ class JourneyWalk {
       fail('ما وصلنا لشاشة الدخول من الترحيب');
       return;
     }
+    // D75: the screen opens on the WhatsApp code; the seeded accounts use
+    // their password, which needs no code sent.
+    await tapKey('login-mode', wait: 1);
     final fields = find.byType(EditableText);
     await tester.enterText(fields.at(0), phone);
     await tester.pump(const Duration(milliseconds: 150));

@@ -227,6 +227,35 @@ export function budgetItemForProviderCategory<T extends BudgetCategoryCandidate>
 }
 
 /**
+ * R4: the plan's item a task of this service waits on. The service names a
+ * directory category and the task takes the item that category's offers file
+ * under, D73 links included, so the booking closes it. Without such a
+ * category the plan's items are read by the words. Never «أخرى».
+ */
+export function budgetItemForService<T extends BudgetCategoryCandidate>(
+  categories: readonly T[],
+  serviceName: string,
+  providerCategories: ReadonlyArray<{ nameAr: string; slug?: string | null }>,
+  catalog: MoneyCatalogLinks,
+): T | null {
+  const providerCategory = findLogicalBudgetCategory(
+    providerCategories.map((category) => ({
+      ...category,
+      id: category.nameAr,
+      name: category.nameAr,
+      normalizedName: normalizeBudgetCategoryName(category.nameAr),
+    })),
+    serviceName,
+  );
+  return providerCategory
+    ? findLogicalBudgetCategory(categories, providerCategory.nameAr, {
+        providerCategorySlug: providerCategory.slug,
+        catalog,
+      })
+    : findLogicalBudgetCategory(categories, serviceName);
+}
+
+/**
  * G40: the provider categories each item is searched by, read from the very
  * rule that files an accepted offer (`budgetItemForProviderCategory`), so
  * «ابحث» on an item lists exactly the providers whose offers land in it.

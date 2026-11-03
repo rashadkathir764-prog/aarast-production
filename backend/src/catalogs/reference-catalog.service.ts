@@ -180,6 +180,7 @@ export class ReferenceCatalogService {
           itemKey,
         );
         if (existing) throw new ConflictException('Catalog item key exists');
+        await this.assertKnownProviderCategorySlugs(tx, dto.metadata);
         return this.repository.createItem(
           tx,
           catalog.id,
@@ -212,6 +213,7 @@ export class ReferenceCatalogService {
           locked.currentRevision,
         );
         if (!current) throw new NotFoundException('Catalog draft not found');
+        await this.assertKnownProviderCategorySlugs(tx, dto.metadata);
         const nextRevision = locked.currentRevision + 1;
         await this.repository.createRevision(
           tx,
@@ -543,6 +545,20 @@ export class ReferenceCatalogService {
       .update(JSON.stringify(value))
       .digest('hex')
       .slice(0, 24);
+  }
+
+  /** D73: a link to a category that does not exist leaves the item with no «ابحث». */
+  private async assertKnownProviderCategorySlugs(
+    tx: Prisma.TransactionClient,
+    metadata: ReferenceCatalogMetadata | null | undefined,
+  ): Promise<void> {
+    const slugs = metadata?.providerCategorySlugs;
+    if (!Array.isArray(slugs) || slugs.length === 0) return;
+    const known = await this.repository.listProviderCategorySlugs(tx);
+    const unknown = slugs.find((slug) => !known.has(slug));
+    if (unknown !== undefined) {
+      throw new BadRequestException(`Unknown provider category: ${unknown}`);
+    }
   }
 
   /**

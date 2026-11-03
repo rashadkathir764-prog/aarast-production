@@ -326,6 +326,27 @@ export class BudgetCategoriesService {
             tx, locked.weddingPlanId, currentUser.id, scopedCostIds,
           ),
         );
+        const history = this.historyForContext(context);
+        if (history) await history.recordForContextInTransaction(
+          tx,
+          context,
+          {
+            section: ContributionSection.MONEY,
+            entityType: ContributionEntityType.BUDGET_CATEGORY,
+            entityId: category.id,
+            action: ContributionAction.UPDATED,
+            snapshot: buildContributionSnapshot(
+              ContributionEntityType.BUDGET_CATEGORY,
+              {
+                title: category.name,
+                amount: category.allocatedAmount,
+              },
+            ),
+            dedupeKey: `money:budget-category:${category.id}:suggestion:${category.updatedAt.toISOString()}`,
+            requiredPermission: ContributionPermission.MANAGE_MONEY,
+            occurredAt: category.updatedAt,
+          },
+        );
         return this.toResponse(category);
       });
     } catch (error) {

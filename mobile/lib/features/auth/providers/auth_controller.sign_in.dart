@@ -41,6 +41,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       _status = AuthStatus.authenticated;
       _accountJustCreated = false;
       _signUpFoundAccount = false;
+      _signUpFoundAccountNoticePending = false;
       _loginRequestedAfterLogout = false;
       _queueAuthenticatedEntry(successLocation);
       unawaited(_offlineSyncService?.syncPendingChanges());
@@ -99,6 +100,13 @@ mixin _AuthSignIn on _AuthControllerCore {
       // on this phone; a provider's sign-up never takes it in (D75).
       _accountJustCreated = savesKeptPlan && !response.existingAccount;
       _signUpFoundAccount = response.existingAccount;
+      // The server answers with the account it signed in to, so its name
+      // is the one on that account, not the one typed here.
+      final foundName = response.user.name.trim();
+      _signUpFoundAccountName = response.existingAccount && foundName.isNotEmpty
+          ? foundName
+          : null;
+      _signUpFoundAccountNoticePending = response.existingAccount;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
         _pendingInviteResumeToken = cleanResumeToken;
@@ -108,9 +116,14 @@ mixin _AuthSignIn on _AuthControllerCore {
         _queueAuthenticatedEntry(successLocation);
       }
       unawaited(_offlineSyncService?.syncPendingChanges());
-    });
+    }, networkFailureMessage: _signUpOfflineMessage);
     return success && _isCurrentSessionOperation(operation);
   }
+
+  /// A lost connection while the account is being made is not a failed
+  /// sign-in. The screens say it in the reader's own words.
+  static const _signUpOfflineMessage =
+      'ما قدرنا ننشئ حسابك الحين، تأكد من النت وجرّب.';
 
   Future<OtpRequestResult?> startRegistration({
     required String name,
@@ -191,6 +204,8 @@ mixin _AuthSignIn on _AuthControllerCore {
       AppLogger.global?.startSessionCorrelation();
     }
     final operation = ++_sessionOperationGeneration;
+    // An invite's first code with a name makes the account (D75).
+    final offline = accountName != null ? _signUpOfflineMessage : null;
     final success = await _submit(() async {
       final response = cleanResumeToken == null
           ? await _authRepository.verifyOtp(
@@ -226,7 +241,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         }
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
-    });
+    }, networkFailureMessage: offline);
     // The number this code proved goes with its proof (D75).
     _phoneProofPhone = _phoneProof == null ? null : phone.trim();
     return success && _isCurrentSessionOperation(operation);
@@ -255,11 +270,15 @@ mixin _AuthSignIn on _AuthControllerCore {
     String? unauthorizedMessage,
     String? networkFailureMessage,
   }) async {
+    // One request at a time, whichever button or key asked for it: a second
+    // tap, the keyboard's done, or the proof button never sends twice.
+    if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
     _errorCode = null;
     _failedOffline = false;
     _phoneProof = null;
+    _phoneProofAt = null;
     notifyListeners();
 
     try {
@@ -279,6 +298,8 @@ mixin _AuthSignIn on _AuthControllerCore {
     } on ApiException catch (error) {
       _errorCode = error.serverCode;
       _phoneProof = error.phoneProof;
+      // Its age is counted from when the phone got it (J1-06).
+      _phoneProofAt = error.phoneProof == null ? null : _now();
       final translatedMessage = _messageForServerCode(error.serverCode);
       if (translatedMessage != null) {
         _errorMessage = translatedMessage;

@@ -1,5 +1,22 @@
 part of 'smart_welcome_screen.dart';
 
+/// J1-09: the name becomes the account's name on saving, so it stops where
+/// the server's sign-up stops (RegisterDto.name, @MaxLength(120)).
+const _nameMaxLength = 120;
+
+/// J1-18: what a waiting «التالي» waits for, one muted line at the end of
+/// the step, right over the actions; gone once «التالي» is ready.
+List<Widget> _missingLine(String? text) => [
+  if (text != null) ...[
+    const SizedBox(height: AarastV3Space.x3),
+    JourneyNote(
+      text: text,
+      tone: JourneyNoteTone.bare,
+      color: AarastV3Color.textMuted,
+    ),
+  ],
+];
+
 /// «ايش اسمك، ومتى العرس؟»: the name, and the day inside one of the next
 /// six months (later ones in a sheet). «ما حددنا الموعد بعد» is a full
 /// answer under the main action.
@@ -11,6 +28,7 @@ class _NameDateStep extends StatelessWidget {
     required this.onNameChanged,
     required this.onPickMonth,
     required this.onLaterMonths,
+    required this.missing,
     required this.onNext,
     required this.onSkipDate,
     required this.onBack,
@@ -19,6 +37,9 @@ class _NameDateStep extends StatelessWidget {
   final TextEditingController controller;
   final DateTime? date;
   final String? nameError;
+
+  /// What «التالي» waits for; null once it is ready.
+  final String? missing;
   final VoidCallback onNameChanged;
   final ValueChanged<DateTime> onPickMonth;
   final VoidCallback onLaterMonths;
@@ -57,6 +78,7 @@ class _NameDateStep extends StatelessWidget {
           controller: controller,
           hint: context.say('محمد', 'سلمى'),
           errorText: nameError,
+          maxLength: _nameMaxLength,
           textInputAction: TextInputAction.done,
           onChanged: (_) => onNameChanged(),
         ),
@@ -188,6 +210,7 @@ class _NameDateStep extends StatelessWidget {
             tone: JourneyNoteTone.paper,
           ),
         ],
+        ..._missingLine(missing),
       ],
     );
   }
@@ -432,6 +455,7 @@ class _PlaceBudgetStep extends StatelessWidget {
     required this.onCity,
     required this.onMoreCities,
     required this.onBudgetChanged,
+    required this.missing,
     required this.onNext,
     required this.onSkipBudget,
     required this.onBack,
@@ -441,6 +465,9 @@ class _PlaceBudgetStep extends StatelessWidget {
   final String? city;
   final TextEditingController budgetController;
   final String? cityError;
+
+  /// What «التالي» waits for; null once it is ready.
+  final String? missing;
   final ValueChanged<String> onCity;
   final VoidCallback onMoreCities;
   final VoidCallback onBudgetChanged;
@@ -538,6 +565,7 @@ class _PlaceBudgetStep extends StatelessWidget {
           icon: LucideIcons.info,
           tone: JourneyNoteTone.paper,
         ),
+        ..._missingLine(missing),
       ],
     );
   }

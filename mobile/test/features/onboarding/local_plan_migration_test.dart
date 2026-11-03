@@ -260,6 +260,55 @@ void main() {
     expect(guest['side'], 'GROOM');
   });
 
+  // J1-13: the server takes at most so many starting items; a phone plan
+  // with more is never refused for it. Items that carry an agreement go
+  // with the agreement (the server keeps each agreement's item), so they
+  // are the ones left out of the list when it is full.
+  test('the import never sends more items than the server takes', () async {
+    final service = await buildService();
+    final names = [for (var i = 0; i < 70; i++) 'بند $i'];
+    final snapshot = LocalPlanSnapshot(
+      draft: buildDraft(),
+      costs: [
+        for (var i = 0; i < 15; i++)
+          {
+            'id': 'cost-$i',
+            'title': 'اتفاق $i',
+            'totalAmount': '1000',
+            'budgetCategoryId': 'c$i',
+          },
+      ],
+      costPayments: const [],
+      paymentSchedules: const [],
+      tasks: const [],
+      guests: const [],
+      categoryNameById: {for (var i = 0; i < 70; i++) 'c$i': names[i]},
+    );
+
+    final payload = service.buildImportPayload(snapshot);
+
+    final sent = payload['selectedCategories'] as List;
+    expect(LocalPlanMigrationService.maxStartingItems, 60);
+    expect(sent, hasLength(LocalPlanMigrationService.maxStartingItems));
+    // Every item still reaches the account: in the list or with its cost.
+    final withCosts = [
+      for (final cost in payload['costs'] as List) (cost as Map)['categoryName'],
+    ];
+    expect({...sent, ...withCosts}, names.toSet());
+    // The list keeps the plan's own order.
+    expect(sent, [
+      for (final name in names)
+        if (sent.contains(name)) name,
+    ]);
+  });
+
+  test('a plan within the cap sends every item as it is', () async {
+    final service = await buildService();
+    final snapshot = await service.loadSnapshot();
+    final payload = service.buildImportPayload(snapshot!);
+    expect(payload['selectedCategories'], ['التصوير']);
+  });
+
   test('no pending plan yields null snapshot', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();

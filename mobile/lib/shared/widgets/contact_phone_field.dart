@@ -137,7 +137,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                     icon: _isPicking
                         ? const AarastInlineSpinner(dimension: 16)
                         : const Icon(LucideIcons.contact, size: 18),
-                    label: const Text('اختيار من جهات الاتصال'),
+                    label: const Text('من جهات الاتصال'),
                   ),
                   if (widget.planContacts.isNotEmpty)
                     TextButton.icon(

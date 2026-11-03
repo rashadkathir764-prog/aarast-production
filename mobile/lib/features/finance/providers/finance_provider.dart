@@ -33,7 +33,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   final SharingApi? _permissionsApi;
 
   bool _isLoading = false;
-  bool _isSubmitting = false;
+
+  /// Saves still running. Counted on their own, never by the reads'
+  /// generation, so a read cannot strand or cut short a save (J1-08).
+  int _activeSubmits = 0;
   bool _hasLoadedMoney = false;
 
   /// The last save that failed. Read right after the save.
@@ -66,7 +69,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   int _paymentRequestGeneration = 0;
 
   bool get isLoading => _isLoading;
-  bool get isSubmitting => _isSubmitting;
+  bool get isSubmitting => _activeSubmits > 0;
   bool get hasLoadedMoney => _hasLoadedMoney;
   String? get errorMessage => _errorMessage;
   String? get loadErrorMessage => _loadErrorMessage;
@@ -748,6 +751,11 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   /// Runs [write], then [refresh]. Only a failed [write] is a failed save: once
   /// the write is confirmed, a failed [refresh] keeps the save and asks the
   /// user to reload, so a retry re-reads instead of writing again.
+  ///
+  /// J1-08: the answer depends on the write alone. A read of the money that
+  /// ran meanwhile (pull to refresh, the screen's own load) changes what is
+  /// shown, never whether the server saved; and the busy state is released on
+  /// every path, independent of those reads.
   Future<bool> _submit(
     String planId,
     Future<void> Function() write, {
@@ -758,11 +766,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       notifyListeners();
       return false;
     }
-    _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
-    notifyListeners();
-    final generation = _loadGeneration;
+    _beginSubmit();
     try {
       try {
         await write();
@@ -785,11 +791,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           refreshed = false;
         }
       }
-      if (isSessionDisposed ||
-          generation != _loadGeneration ||
-          _loadedPlanId != planId) {
-        return false;
-      }
+      // Another plan (or no session) is on screen now: the save stands, but
+      // its notices belong to a view that is gone.
+      if (isSessionDisposed || _loadedPlanId != planId) return true;
       if (!refreshed) {
         // The save went through: the notice says the view is old, so the
         // read failure is not shown a second time.
@@ -800,13 +804,34 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return true;
     } finally {
-      if (!isSessionDisposed &&
-          generation == _loadGeneration &&
-          _loadedPlanId == planId) {
-        _isSubmitting = false;
-        notifyListeners();
-      }
+      _endSubmit();
     }
+  }
+
+  /// One save, from its first write to the screen's last step (J1-08):
+  /// [isSubmitting] stays on for all of [body], so the button cannot be
+  /// pressed again between the agreement and its payment dates. A save asked
+  /// for while another one runs is refused (null) and writes nothing.
+  Future<T?> saveOnce<T>(Future<T> Function() body) async {
+    if (isSubmitting) return null;
+    _beginSubmit();
+    try {
+      return await body();
+    } finally {
+      _endSubmit();
+    }
+  }
+
+  void _beginSubmit() {
+    _activeSubmits += 1;
+    notifyListeners();
+  }
+
+  /// Always runs once per [_beginSubmit], whatever was read meanwhile, so the
+  /// button never stays spinning.
+  void _endSubmit() {
+    _activeSubmits -= 1;
+    notifyListeners();
   }
 
   Future<void> _reloadData(String planId) async {
@@ -930,7 +955,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     _paymentsTotalPages = 1;
     _isLoadingMoreCosts = false;
     _isLoadingMorePayments = false;
-    _isSubmitting = false;
+    // A save still running ends on its own (see _endSubmit).
     _hasLoadedMoney = false;
     _summary = MoneySummary.empty(planId);
   }

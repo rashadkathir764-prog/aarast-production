@@ -105,6 +105,54 @@ void main() {
     expect(push.registrationRefreshes, 1);
   });
 
+  testWidgets(
+    'a foreground notification shows its toast although the bridge sits '
+    'above the navigator, as in the app',
+    (tester) async {
+      final foreground =
+          StreamController<PushForegroundNotification>.broadcast();
+      final push = await _createPushController(foreground: foreground);
+      addTearDown(push.close);
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<PushNotificationsController>.value(
+          value: push,
+          child: MaterialApp.router(
+            routerConfig: router,
+            builder: (context, child) => AarastPushLifecycleBridge(
+              router: router,
+              authenticatedUserId: 'user-A',
+              child: child!,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(router.routerDelegate.navigatorKey.currentContext, isNotNull);
+
+      foreground.add(
+        const PushForegroundNotification(
+          title: 'وصلك عرض سعر',
+          message: 'قاعة سبأ أرسلت عرضها',
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('وصلك عرض سعر'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 10));
+    },
+  );
+
   testWidgets('dispose cancels the foreground subscription once', (
     tester,
   ) async {

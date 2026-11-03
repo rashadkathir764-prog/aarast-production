@@ -73,6 +73,13 @@ class LocalPlanMigrationService {
   final FinanceApi financeApi;
   final LocalDatabase? database;
 
+  /// J1-13: the most starting items the server takes in one plan:
+  /// `PLAN_STARTER_ITEMS_MAX`, the `@ArrayMaxSize` of
+  /// `CompleteOnboardingDto.selectedCategories` (backend
+  /// `src/onboarding/dto/complete-onboarding.dto.ts`), which
+  /// `ImportLocalPlanDto` inherits. Keep the two equal.
+  static const maxStartingItems = 60;
+
   static const _taskStatuses = {'TODO', 'IN_PROGRESS', 'DONE', 'CANCELLED'};
   static const _taskPriorities = {'LOW', 'MEDIUM', 'HIGH', 'URGENT'};
   static const _guestSides = {'GROOM', 'BRIDE', 'FAMILY', 'FRIEND', 'OTHER'};
@@ -175,8 +182,8 @@ class LocalPlanMigrationService {
       'currency': draft.currency ?? 'YER',
       // The items as they are in the plan's money now (added, renamed or
       // removed there), not the list the plan started with.
-      if (_itemNames(snapshot).isNotEmpty)
-        'selectedCategories': _itemNames(snapshot),
+      if (_itemNames(snapshot, costs).isNotEmpty)
+        'selectedCategories': _itemNames(snapshot, costs),
       // a06: the server records the mahr with the plan (C1).
       if (draft.mahr case final mahr?) 'mahr': mahr.toRequestJson(),
       if (costs.isNotEmpty) 'costs': costs,
@@ -189,7 +196,26 @@ class LocalPlanMigrationService {
     return payload;
   }
 
-  List<String> _itemNames(LocalPlanSnapshot snapshot) => snapshot.itemNames;
+  /// The plan's items, never more than [maxStartingItems] (J1-13). When the
+  /// plan holds more, the items that carry an agreement are left out of the
+  /// list first: each still reaches the account with its agreement's
+  /// `categoryName`, so nothing is lost while there is room for the rest.
+  static List<String> _itemNames(
+    LocalPlanSnapshot snapshot,
+    List<Map<String, dynamic>> costs,
+  ) {
+    final names = snapshot.itemNames;
+    if (names.length <= maxStartingItems) return names;
+    final withCosts = {for (final cost in costs) cost['categoryName']};
+    final kept = {
+      ...names.where((name) => !withCosts.contains(name)),
+      ...names.where(withCosts.contains),
+    }.take(maxStartingItems).toSet();
+    return [
+      for (final name in names)
+        if (kept.contains(name)) name,
+    ];
+  }
 
   Map<String, dynamic>? _costPayload(
     Map<String, dynamic> row,

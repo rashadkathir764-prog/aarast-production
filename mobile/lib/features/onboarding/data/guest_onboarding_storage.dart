@@ -70,9 +70,55 @@ class GuestOnboardingStorage {
     }
   }
 
+  /// The answers of the start's steps before the plan is made (J1-02), kept
+  /// apart from [draftKey] so nothing that looks for a plan on this phone
+  /// (sign-up, the move into the account) takes half the answers for one.
+  static const progressKey = 'aarast.guest_onboarding_progress.v1';
+
+  /// Keeps what was answered so far and the step reached ([step] is the
+  /// start's own name for it), so a closed app resumes there.
+  Future<void> saveProgress(
+    GuestOnboardingDraft draft, {
+    required String step,
+  }) async {
+    final encoded = jsonEncode({'step': step, 'draft': draft.toJson()});
+    final vault = _sensitiveValueVault;
+    if (vault == null) {
+      await _preferences.setString(progressKey, encoded);
+    } else {
+      await vault.write(progressKey, encoded);
+      await _preferences.remove(progressKey);
+    }
+  }
+
+  Future<({GuestOnboardingDraft draft, String step})?> loadProgress() async {
+    final vault = _sensitiveValueVault;
+    final raw = vault == null
+        ? _preferences.getString(progressKey)
+        : await vault.read(progressKey);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      final step = decoded['step'];
+      final draft = decoded['draft'];
+      if (step is! String || draft is! Map<String, dynamic>) return null;
+      return (draft: GuestOnboardingDraft.fromJson(draft), step: step);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<void> clearProgress() async {
+    await _sensitiveValueVault?.delete(progressKey);
+    await _preferences.remove(progressKey);
+  }
+
+  /// Clears the plan kept on this phone and any answers toward one.
   Future<void> clearDraft() async {
     await _sensitiveValueVault?.delete(draftKey);
     await _preferences.remove(draftKey);
+    await clearProgress();
     _announce(null);
   }
 

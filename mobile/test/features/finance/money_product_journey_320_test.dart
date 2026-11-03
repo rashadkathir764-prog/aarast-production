@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -567,6 +569,61 @@ void main() {
       expect(harness.api.createdPartyPhone, isNull);
       expect(harness.api.createdInitialPayment, isNull);
       expect(harness.api.createdSchedules, isEmpty);
+    });
+
+    // J1-08: two quick taps on «حفظ الاتفاق» record one agreement.
+    testWidgets('two quick taps on save record the agreement once', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+      harness.router.push(
+        AppRouter.moneyCostCreate(_planId, categoryId: 'category-1'),
+      );
+      await tester.pumpAndSettle();
+
+      await _enterVisible(
+        tester,
+        find.byKey(const Key('cost-total-amount')),
+        '30000',
+      );
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      // A slow network: the second tap lands while the first is in flight.
+      final gate = Completer<void>();
+      harness.api.createCostGate = gate;
+      final save = find.byKey(const ValueKey('cost-save'));
+      await tester.tap(save);
+      await tester.tap(save);
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      expect(harness.api.createCostCalls, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    // J1-09: the server takes a title of 160 at most; the field stops there.
+    testWidgets('the agreement name stops at the server limit', (tester) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+      harness.router.push(
+        AppRouter.moneyCostCreate(_planId, categoryId: 'category-1'),
+      );
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const ValueKey('cost-title')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.maxLength, 160);
     });
 
     testWidgets('a deposit today and monthly payments after it (c10)', (
@@ -1178,6 +1235,10 @@ class _MoneyProductApi extends FinanceApi {
   int failSummaryLoads;
   final String currency;
   final now = DateTime.utc(2026, 7, 14, 12);
+  int createCostCalls = 0;
+
+  /// When set, the agreement's write waits for it (a slow network).
+  Completer<void>? createCostGate;
   String? createdTotalAmount;
   String? createdProviderId;
   String? createdQuoteOfferId;
@@ -1227,6 +1288,8 @@ class _MoneyProductApi extends FinanceApi {
     String? note,
     bool isPrivate = false,
   }) async {
+    createCostCalls += 1;
+    await createCostGate?.future;
     createdTotalAmount = totalAmount;
     createdProviderId = providerId;
     createdQuoteOfferId = quoteOfferId;

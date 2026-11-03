@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -184,6 +186,72 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _step = step;
       _error = null;
     });
+    _keepProgress(step);
+  }
+
+  /// The step a closed app resumes at from the door («كمّل خطتي»), and the
+  /// name it shows there; null when nothing was answered yet.
+  _WelcomeStep? _resumeStep;
+
+  /// The steps a closed app resumes at: each comes after the side (groom
+  /// or bride) was chosen. The door, «خطة مين؟» and «جاهزة» hold no
+  /// answer of their own (and «جاهزة» keeps the plan itself).
+  static const _resumable = {
+    _WelcomeStep.nameDate,
+    _WelcomeStep.placeBudget,
+    _WelcomeStep.mahr,
+  };
+
+  /// Phone writes in the order they were asked, so an older one never
+  /// lands over a newer one.
+  Future<void> _storageQueue = Future.value();
+
+  void _queueStorage(Future<void> Function(GuestOnboardingStorage) write) {
+    final storage = _maybeRead<GuestOnboardingStorage>();
+    if (storage == null) return;
+    _storageQueue = _storageQueue.then((_) async {
+      try {
+        await write(storage);
+      } on Object {
+        // The answers stay on the screen; only a resume after a closed app
+        // is lost, which is no reason to stop the person here.
+      }
+    });
+  }
+
+  /// J1-02: every answered step is kept on the phone as it is left, so a
+  /// closed app resumes there. A new plan (w11) is made on the server at
+  /// once, and a plan already kept is saved again on «جاهزة» instead.
+  void _keepProgress(_WelcomeStep step) {
+    if (widget.newPlan || _keptPlanId != null) return;
+    if (!_resumable.contains(step)) return;
+    final answers = _progressDraft();
+    _resumeStep = step;
+    _queueStorage((storage) => storage.saveProgress(answers, step: step.name));
+  }
+
+  /// What was answered so far, unanswered questions left empty (not the
+  /// «ما حددنا بعد» a finished plan reads them as).
+  GuestOnboardingDraft _progressDraft() {
+    return GuestOnboardingDraft(
+      planName: _name.isEmpty ? null : _planTitle,
+      selectedPath: GuestOnboardingPath.weddingUser,
+      persona: _persona,
+      governorate: _city,
+      city: _city,
+      district: null,
+      neighborhood: null,
+      street: null,
+      addressNote: null,
+      weddingDate: _dateUnknown ? null : _date,
+      weddingDateUnknown: _dateUnknown,
+      priorities: const [],
+      currency: 'YER',
+      estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
+      budgetSkipped: _budgetSkipped,
+      selectedCategoryKeys: const [],
+      mahr: _mahr,
+    );
   }
 
   void _back() {
@@ -244,6 +312,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   void _toReady() {
     _goTo(_WelcomeStep.ready);
     _countProviders();
+    // J1-02: «جاهزة» says the plan is on this phone, so it is, before any
+    // button. Signed in, «افتح خطتي» makes it on the server instead.
+    _planKept = false;
+    _readyVisits += 1;
+    if (!_isAuthenticated()) unawaited(_keepPlan());
   }
 
   /// The real number of providers in the chosen city, for «جاهزة». Nothing
@@ -349,21 +422,41 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       await offline?.refreshStatus();
     }
     if (!mounted) return;
-    setState(() => _phonePlanTitle = null);
+    setState(() {
+      _phonePlanTitle = null;
+      _resumeStep = null;
+    });
     _goTo(_WelcomeStep.whose);
   }
 
   Future<void> _loadSavedDraft() async {
-    final draft = await context.read<GuestOnboardingStorage>().loadDraft();
-    if (!mounted || draft == null) return;
-    if (draft.isCompleteGuestPlan) {
+    final storage = context.read<GuestOnboardingStorage>();
+    final draft = await storage.loadDraft();
+    if (!mounted) return;
+    if (draft != null && draft.isCompleteGuestPlan) {
       setState(() => _phonePlanTitle = draft.planName?.trim() ?? 'خطتك');
       return;
     }
-    if (draft.selectedPath == GuestOnboardingPath.provider) {
+    if (draft?.selectedPath == GuestOnboardingPath.provider) {
       context.go(AppRouter.providerApply);
       return;
     }
+    // J1-02: the steps answered before the app closed; the door offers
+    // them back («كمّل خطتي») at the step reached.
+    final progress = await storage.loadProgress();
+    if (!mounted) return;
+    final answers = progress?.draft ?? draft;
+    if (answers == null || !answers.hasPersona) return;
+    _restore(answers);
+    final step = _WelcomeStep.values.asNameMap()[progress?.step];
+    setState(
+      () => _resumeStep = _resumable.contains(step)
+          ? step
+          : _WelcomeStep.nameDate,
+    );
+  }
+
+  void _restore(GuestOnboardingDraft draft) {
     final name = draft.planName?.trim() ?? '';
     _nameController.text = name.startsWith('عرس ') ? name.substring(4) : name;
     _budgetController.text = formatMoneyInputValue(draft.estimatedBudget);
@@ -381,7 +474,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         _mahrSettledController.text = formatMoneyInputValue(mahr.settled);
         _mahrDueDate = mahr.remainingDueDate;
       }
-      if (draft.hasPersona) _step = _WelcomeStep.nameDate;
     });
   }
 
@@ -424,11 +516,33 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   String? _keptPlanId;
   DateTime? _keptAt;
 
-  /// Keeps the plan on the phone, then opens [route]. The items «جاهزة»
-  /// promised («12 بند لعرسك») go into its money at once, as an account
-  /// plan gets them from the server. Saving with the number opens over this
+  /// The answers on «جاهزة» now are the ones kept on the phone.
+  bool _planKept = false;
+
+  /// Each arrival on «جاهزة», so a save that began on an earlier one does
+  /// not count for answers changed since.
+  int _readyVisits = 0;
+
+  /// Keeps the plan on the phone, then opens [route]; a plan «جاهزة»
+  /// already kept opens at once. Saving with the number opens over this
   /// screen, so its back arrow returns to «جاهزة» with every answer.
   Future<void> _keepOnPhone(String route, {bool over = false}) async {
+    if (!_planKept && !await _keepPlan()) return;
+    if (!mounted) return;
+    if (over) {
+      context.push(route);
+    } else {
+      context.go(route);
+    }
+  }
+
+  /// Keeps the plan on the phone under one id. The items «جاهزة» promised
+  /// («12 بند لعرسك») go into its money at once, as an account plan gets
+  /// them from the server. False when the phone could not keep it (said on
+  /// the screen).
+  Future<bool> _keepPlan() async {
+    if (_saving) return false;
+    final visit = _readyVisits;
     setState(() {
       _saving = true;
       _error = null;
@@ -451,10 +565,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             (id: null, name: name, allocatedAmount: null),
         ],
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       await context.read<GuestOnboardingStorage>().saveDraft(draft);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _saving = false;
         _error = _profile.say(
@@ -462,19 +576,19 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           'ما قدرنا نحفظ الخطة على جوالك. حاولي مرة ثانية.',
         );
       });
-      return;
+      return false;
     }
-    if (!mounted) return;
+    // The plan holds every answer now; the steps' copy gives way to it.
+    _queueStorage((storage) => storage.clearProgress());
+    if (!mounted) return false;
     setState(() {
       _saving = false;
       _keptPlanId = planId;
       _keptAt = now;
+      // Answers changed while it was saving are kept by the next tap.
+      _planKept = visit == _readyVisits;
     });
-    if (over) {
-      context.push(route);
-    } else {
-      context.go(route);
-    }
+    return true;
   }
 
   /// A signed-in person creating another plan gets it on the server at once.
@@ -573,9 +687,17 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     return switch (_step) {
       _WelcomeStep.start => _StartStep(
         phonePlanTitle: _phonePlanTitle,
+        resumeLine: _resumeStep == null
+            ? null
+            : _name.isEmpty
+            ? _profile.say('من حيث وقفت', 'من حيث وقفتي')
+            : _profile.say(
+                '$_planTitle، من حيث وقفت',
+                '$_planTitle، من حيث وقفتي',
+              ),
         onPlan: () => _phonePlanTitle != null
             ? context.go(AppRouter.home)
-            : _goTo(_WelcomeStep.whose),
+            : _goTo(_resumeStep ?? _WelcomeStep.whose),
         onReplacePlan: _replacePhonePlan,
         onInvite: () => context.go(AppRouter.inviteAccess),
         // A provider without an account goes straight to their own
@@ -597,6 +719,16 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         onNameChanged: () => setState(() => _nameMissing = false),
         onPickMonth: _pickDayInMonth,
         onLaterMonths: _pickLaterMonth,
+        // J1-18: a waiting «التالي» says what it waits for.
+        missing: switch ((_name.isEmpty, _date == null)) {
+          (true, true) => context.say(
+            'اكتب اسمك واختر الشهر',
+            'اكتبي اسمك واختاري الشهر',
+          ),
+          (true, false) => context.say('اكتب اسمك', 'اكتبي اسمك'),
+          (false, true) => context.say('اختر الشهر', 'اختاري الشهر'),
+          (false, false) => null,
+        },
         onNext: _name.isEmpty || _date == null
             ? null
             : () => _goTo(_WelcomeStep.placeBudget),
@@ -616,6 +748,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         }),
         onMoreCities: _pickOtherCity,
         onBudgetChanged: () => setState(() => _budgetSkipped = false),
+        missing: switch ((_city == null, _budget == null)) {
+          (true, true) => context.say(
+            'اختر المدينة واكتب الميزانية',
+            'اختاري المدينة واكتبي الميزانية',
+          ),
+          (true, false) => context.say('اختر المدينة', 'اختاري المدينة'),
+          (false, true) => context.say('اكتب الميزانية', 'اكتبي الميزانية'),
+          (false, false) => null,
+        },
         onNext: _city == null || _budget == null
             ? null
             : () => _goTo(_WelcomeStep.mahr),
@@ -660,7 +801,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           ),
           // A reminder needs a day to remind of, and an account to send
           // it to: before the account it is a promise kept on saving.
-          if (_mahrDueDate != null && _mahrRemaining > 0) ...[
+          // J1-16: only the groom's rest becomes a payment the server
+          // reminds of; the bride is promised none.
+          if (_persona != GuestPersona.bride &&
+              _mahrDueDate != null &&
+              _mahrRemaining > 0) ...[
             const SizedBox(height: AarastV3Space.x2),
             JourneyNote(
               text: _isAuthenticated()
@@ -767,7 +912,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       builder: (sheetContext) => _CitySheet(cities: _cities, selected: _city),
     );
     if (picked == null || !mounted) return;
-    setState(() => _city = picked);
+    // J1-14: a city from the sheet answers «اختر المدينة أول» like a chip.
+    setState(() {
+      _city = picked;
+      _cityMissing = false;
+    });
   }
 }
 

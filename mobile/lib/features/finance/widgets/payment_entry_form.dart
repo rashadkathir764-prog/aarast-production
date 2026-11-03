@@ -140,7 +140,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       return context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ');
     }
     if (amount > _remaining) {
-      return 'أكثر من الباقي عليك (${_plain(_remaining)})';
+      return '${context.ownerDid('أكثر من الباقي عليك', 'أكثر من الباقي عليك', groom: 'أكثر من الباقي عليه', bride: 'أكثر من الباقي عليها')} (${_plain(_remaining)})';
     }
     return null;
   }

@@ -28,6 +28,11 @@ class DashboardEntryScreen extends StatefulWidget {
   State<DashboardEntryScreen> createState() => _DashboardEntryScreenState();
 }
 
+/// D77 (J1-01): the phone plans opened on the phone this session after the
+/// account could not take them, by their phone id. Only for the session:
+/// the next start offers the move into the account again.
+final _openedOnPhoneThisSession = <String>{};
+
 class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
   Future<LocalGuestDashboardSummary?>? _guestSummary;
   LocalGuestDashboardSummarySource? _guestSummarySource;
@@ -73,11 +78,18 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
           final pending = toProvider ? null : snapshot.data;
           final service = _migrationService;
           if (pending != null && service != null) {
+            final phoneId = pending.draft.guestPlanId ?? '';
             return LocalPlanMigrationScreen(
               snapshot: pending,
               migrationService: service,
               autoSave: auth.accountJustCreated,
+              // D77: a failure never locks the app; the plan opens on the
+              // phone, and this session keeps opening it there.
+              localPlan: _phonePlanHome,
+              startLocally: _openedOnPhoneThisSession.contains(phoneId),
+              onOpenedLocally: () => _openedOnPhoneThisSession.add(phoneId),
               onFinished: (planId) {
+                _openedOnPhoneThisSession.remove(phoneId);
                 if (!mounted) return;
                 setState(() {
                   _migrationSnapshot = Future.value(null);
@@ -115,6 +127,25 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
           if (context.mounted) context.go(AppRouter.onboarding);
         });
         return const AarastScaffold(child: AarastScreenLoading());
+      },
+    );
+  }
+
+  /// The phone plan's own home while signed in, its strip saving it into
+  /// the account ([saveNow]).
+  Widget _phonePlanHome(BuildContext context, VoidCallback saveNow) {
+    return FutureBuilder<LocalGuestDashboardSummary?>(
+      future: _guestSummary,
+      builder: (context, snapshot) {
+        final summary = snapshot.data;
+        if (summary == null) {
+          return const AarastScaffold(child: AarastScreenLoading());
+        }
+        return LocalGuestDashboardScreen(
+          summary: summary,
+          summarySource: _guestSummarySource,
+          onSaveToAccount: saveNow,
+        );
       },
     );
   }

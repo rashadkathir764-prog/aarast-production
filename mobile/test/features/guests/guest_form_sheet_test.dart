@@ -182,6 +182,30 @@ void main() {
     expect(result!.addAnother, isTrue);
   });
 
+  testWidgets('V-02: the draft line waits until something is typed', (
+    tester,
+  ) async {
+    const scope = 'guest:plan-1:new';
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final store = AarastFormDraftStore(vault: _Vault(), authStorage: storage);
+    await _openForm(
+      tester,
+      draftStore: store,
+      draftScope: scope,
+      onResult: (_) {},
+    );
+
+    // An empty form has nothing saved, so it claims nothing.
+    expect(find.textContaining('المسودة'), findsNothing);
+    expect(find.textContaining('ستُحفظ'), findsNothing);
+
+    await tester.enterText(_name, 'سالم');
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('حُفظت المسودة تلقائيًا'), findsOneWidget);
+  });
+
   // A name saved within the autosave's half second came back in the next
   // form: the sheet wrote its draft after the list had cleared it.
   testWidgets('a saved guest leaves no draft for the next one', (tester) async {

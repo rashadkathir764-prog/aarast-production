@@ -49,10 +49,19 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
           .foregroundNotifications
           .listen((notification) {
             if (!mounted) return;
+            // The bridge sits above the navigator (app.dart's builder), so
+            // its own context has no overlay: the toast needs the
+            // navigator's own overlay.
             AarastToast.showNotification(
               context,
               title: notification.title,
               message: notification.message,
+              overlay: widget
+                  .router
+                  .routerDelegate
+                  .navigatorKey
+                  .currentState
+                  ?.overlay,
             );
           });
     } on ProviderNotFoundException {

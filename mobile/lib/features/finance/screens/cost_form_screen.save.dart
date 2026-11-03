@@ -13,9 +13,18 @@ extension _CostFormSave on _CostFormScreenState {
         : null;
   }
 
+  /// J1-08: one save window covers the agreement, the draft's removal and
+  /// every payment date, so a second tap anywhere in it writes nothing.
   Future<void> _save(List<_PlannedLine> lines, DateTime? restDue) async {
-    if (!_validate(lines)) return;
     final provider = context.read<FinanceProvider>();
+    if (provider.isSubmitting || !_validate(lines)) return;
+    await provider.saveOnce(() => _write(provider, lines));
+  }
+
+  Future<void> _write(
+    FinanceProvider provider,
+    List<_PlannedLine> lines,
+  ) async {
     final category = (_categoryId == null
         ? null
         : provider.categoryById(_categoryId!));

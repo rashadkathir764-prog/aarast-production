@@ -26,11 +26,18 @@ class LocalGuestDashboardScreen extends StatefulWidget {
   const LocalGuestDashboardScreen({
     required this.summary,
     this.summarySource,
+    this.onSaveToAccount,
     super.key,
   });
 
   final LocalGuestDashboardSummary summary;
   final LocalGuestDashboardSummarySource? summarySource;
+
+  /// D77: signed in, but the plan's move into the account failed and the
+  /// person opened it on the phone. The strip says it is not in the account
+  /// yet and saves it there (the move again); null for a guest, whose strip
+  /// asks for an account.
+  final VoidCallback? onSaveToAccount;
 
   @override
   State<LocalGuestDashboardScreen> createState() =>
@@ -89,7 +96,8 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         bottomPadding: 132,
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,
-          onSync: () => _requireAccountForSync(context),
+          signedIn: widget.onSaveToAccount != null,
+          onSync: widget.onSaveToAccount ?? () => _requireAccountForSync(context),
         ),
         onNotifications: () => _openLocalNotifications(context, planId),
         onProfile: () => context.push(AppRouter.more),
@@ -108,7 +116,9 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
           await context.push(AppRouter.guestImport(planId, contacts: true));
           await _refreshSummary();
         },
-        onOpenSharing: () => _requireAccountForSync(context),
+        // Sharing needs the plan in the account: signed in, that is saving it.
+        onOpenSharing:
+            widget.onSaveToAccount ?? () => _requireAccountForSync(context),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
@@ -297,20 +307,33 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
 }
 
 class _LocalSyncNotice extends StatelessWidget {
-  const _LocalSyncNotice({required this.needsSync, required this.onSync});
+  const _LocalSyncNotice({
+    required this.needsSync,
+    required this.signedIn,
+    required this.onSync,
+  });
 
   final bool needsSync;
+
+  /// Signed in with the plan not in the account yet (D77): the strip saves
+  /// it there instead of asking for an account.
+  final bool signedIn;
   final VoidCallback onSync;
 
   @override
   Widget build(BuildContext context) {
+    final action = signedIn
+        ? context.say('احفظها الحين', 'احفظيها الحين')
+        : context.say('احفظها برقمك', 'احفظيها برقمك');
     return Center(
       child: AarastPressable(
         key: const Key('aarast-local-sync-action'),
-        semanticLabel: context.say(
-          'احفظ خطتك برقم جوالك',
-          'احفظي خطتك برقم جوالك',
-        ),
+        semanticLabel: signedIn
+            ? context.say(
+                'احفظ خطتك في حسابك الحين',
+                'احفظي خطتك في حسابك الحين',
+              )
+            : context.say('احفظ خطتك برقم جوالك', 'احفظي خطتك برقم جوالك'),
         onTap: onSync,
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -335,7 +358,7 @@ class _LocalSyncNotice extends StatelessWidget {
               Flexible(
                 // In the words of the screen that made the plan (a08).
                 child: Text(
-                  'خطتك على جوالك بس',
+                  signedIn ? 'ما انحفظت في حسابك بعد' : 'خطتك على جوالك بس',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
@@ -355,7 +378,7 @@ class _LocalSyncNotice extends StatelessWidget {
               ),
               const SizedBox(width: AarastV3Space.x2),
               Text(
-                context.say('احفظها برقمك', 'احفظيها برقمك'),
+                action,
                 style: JourneyType.of(
                   JourneyType.small,
                   weight: JourneyType.bold,

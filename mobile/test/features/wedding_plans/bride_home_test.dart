@@ -351,8 +351,9 @@ void main() {
 
     expect(find.text('ومع الموعود ناقصك'), findsOneWidget);
     expect(find.text('300,000 ر.ي'), findsOneWidget);
-    expect(find.text('معك 1.9'), findsOneWidget);
-    expect(find.text('موعود 2.2'), findsOneWidget);
+    // V-01: every far-side figure with its unit.
+    expect(find.text('معك 1.9 مليون'), findsOneWidget);
+    expect(find.text('موعود 2.2 مليون'), findsOneWidget);
     expect(find.textContaining('باقي تدفعين'), findsOneWidget);
     expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
     // The design's «حطي 100 ألف كل شهر» is not built (b02 row).
@@ -411,7 +412,7 @@ void main() {
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // Nothing promised: no «موعود» line on the far side.
     expect(find.textContaining(RegExp('^موعود ')), findsNothing);
-    expect(find.text('معك 5'), findsOneWidget);
+    expect(find.text('معك 5 مليون'), findsOneWidget);
   });
 
   testWidgets('a failed load asks her «حاولي مرة ثانية»', (tester) async {

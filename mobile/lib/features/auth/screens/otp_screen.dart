@@ -59,6 +59,9 @@ class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController _codeController = TextEditingController();
 
   bool _isVerifying = false;
+
+  /// The account could not be made because the connection dropped (J1-17).
+  bool _signUpFailedOffline = false;
   AarastOtpFieldState _fieldState = AarastOtpFieldState.idle;
   String? _otpNoticeMessage;
   Timer? _resendTimer;
@@ -120,6 +123,7 @@ class _OtpScreenState extends State<OtpScreen> {
     if (_resendSeconds > 0) return;
     final authController = context.read<AuthController>();
     if (authController.isSubmitting) return;
+    _signUpFailedOffline = false;
     final phone = widget.phone ?? authController.otpRequest?.phone;
     final purpose =
         widget.purpose ?? authController.otpRequest?.purpose ?? 'VERIFY_PHONE';
@@ -191,6 +195,7 @@ class _OtpScreenState extends State<OtpScreen> {
       setState(() {
         _isVerifying = false;
         _fieldState = AarastOtpFieldState.error;
+        _signUpFailedOffline = registration != null && auth.failedOffline;
       });
       return;
     }
@@ -370,7 +375,11 @@ class _OtpScreenState extends State<OtpScreen> {
         auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     final disabledAccountAfterProof =
         auth.errorCode == 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF';
+    // The server says the same for a wrong code, an expired one (five
+    // minutes) and one used up (five tries): the words say all three, and
+    // a new code becomes the next move as soon as one can be sent (J1-03).
     final wrongCode = auth.errorCode == 'OTP_INVALID_OR_EXPIRED';
+    final newCodeReady = wrongCode && _resendSeconds == 0;
     final stopped =
         existingAccount ||
         missingAccountAfterProof ||
@@ -397,7 +406,18 @@ class _OtpScreenState extends State<OtpScreen> {
       resizeToAvoidBottomInset: true,
       child: JourneyPage(
         bottom: !stopped
-            ? null
+            ? newCodeReady
+                  ? JourneyEntryActions(
+                      primary: JourneyButton(
+                        key: const ValueKey('otp-request-new-code'),
+                        label: context.say('اطلب رمز جديد', 'اطلبي رمز جديد'),
+                        expand: true,
+                        large: true,
+                        loading: auth.isSubmitting,
+                        onPressed: _resendOtp,
+                      ),
+                    )
+                  : null
             : JourneyEntryActions(
                 primary: missingAccountAfterProof
                     ? JourneyButton(
@@ -517,8 +537,8 @@ class _OtpScreenState extends State<OtpScreen> {
             const SizedBox(height: AarastV3Space.x3),
             Text(
               context.say(
-                'الرمز غلط، جرّب مرة ثانية.',
-                'الرمز غلط، جرّبي مرة ثانية.',
+                'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
+                'الرمز غلط أو انتهى وقته. اكتبيه مرة ثانية أو اطلبي رمز جديد.',
               ),
               key: const ValueKey('otp-wrong'),
               textAlign: TextAlign.center,
@@ -551,7 +571,12 @@ class _OtpScreenState extends State<OtpScreen> {
           ] else if (auth.errorMessage != null) ...[
             const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
-              text: auth.errorMessage!,
+              text: _signUpFailedOffline && auth.failedOffline
+                  ? context.say(
+                      'ما قدرنا ننشئ حسابك الحين، تأكد من النت وجرّب.',
+                      'ما قدرنا ننشئ حسابك الحين، تأكدي من النت وجرّبي.',
+                    )
+                  : auth.errorMessage!,
               icon: LucideIcons.alertCircle,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,

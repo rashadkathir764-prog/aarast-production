@@ -32,7 +32,9 @@ class ParticipantLockedScreen extends StatelessWidget {
     final (title, message) = switch (section) {
       JourneySection.money => (
         'المال خاص ب$owner',
-        'ما عندك صلاحية تشوف المال في هذي الخطة.',
+        // A lock says who opens it: the owner, from the sharing screen.
+        'ما عندك صلاحية تشوف المال في هذي الخطة. '
+            'يفتحها لك $owner من «المشاركة».',
       ),
       JourneySection.providers => (
         'المزودين عند $owner',

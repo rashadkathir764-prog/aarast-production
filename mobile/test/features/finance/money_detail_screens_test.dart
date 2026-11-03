@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/finance/data/cost_receipts_api.dart';
@@ -466,6 +467,79 @@ void main() {
       expect(find.textContaining('باقي عليك ••••'), findsOneWidget);
     });
 
+    // J1-17: the payment screen says whose the rest is, as «الملخص» does.
+    testWidgets('someone helping reads the rest as the groom\'s or the '
+        'bride\'s on the payment screen', (tester) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: true,
+          readerIsOwner: false,
+        ),
+      );
+      expect(find.textContaining('باقي عليه '), findsOneWidget);
+      expect(find.textContaining('باقي عليك'), findsNothing);
+    });
+
+    testWidgets('a helper who pays too much is told it is more than the '
+        'groom\'s rest', (tester) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: false,
+          readerIsOwner: false,
+        ),
+      );
+      await tester.enterText(find.byType(TextField).first, '999999999');
+      await tester.ensureVisible(find.byKey(const ValueKey('payment-save')));
+      await tester.tap(find.byKey(const ValueKey('payment-save')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('أكثر من الباقي عليه'), findsOneWidget);
+      expect(find.textContaining('الباقي عليك'), findsNothing);
+    });
+
+    testWidgets('a helper in the bride\'s plan reads «باقي عليها»', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        profile: JourneyProfile.of(
+          planPersona: 'BRIDE',
+          readerFeminine: false,
+          readerIsOwner: false,
+        ),
+      );
+      expect(find.textContaining('باقي عليها '), findsOneWidget);
+    });
+
+    testWidgets('the owner reads «باقي عليك» on the payment screen', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        profile: JourneyProfile.bride,
+      );
+      expect(find.textContaining('باقي عليك '), findsOneWidget);
+    });
+
     testWidgets('«أخفِ المبالغ» hides what the payment form offers', (
       tester,
     ) async {
@@ -806,6 +880,7 @@ Future<void> _pumpMoneyScreen(
   Widget screen, {
   FinanceApi? api,
   FinanceProvider? provider,
+  JourneyProfile? profile,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1100);
@@ -821,7 +896,9 @@ Future<void> _pumpMoneyScreen(
           ).copyWith(textScaler: const TextScaler.linear(1.3)),
           child: child!,
         ),
-        home: screen,
+        home: profile == null
+            ? screen
+            : JourneyProfileScope(profile: profile, child: screen),
       ),
     ),
   );

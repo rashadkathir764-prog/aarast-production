@@ -1,5 +1,33 @@
 import type { PlanBookedServices } from '../modules/marketplace/public/plan-booked-services';
+import type {
+  DashboardImportantItemResponse,
+  DashboardImportantItemType,
+  WeddingPlanDashboardSummaryResponse,
+} from './dashboard.contracts';
 import type { PlanEssential } from './plan-essentials';
+
+/**
+ * J1-04: the home's next steps beside the closed item types (R12B byte
+ * parity): the mahr («اتفقتوا على المهر؟») and the first agreement, which
+ * come after the budget and before the guests.
+ */
+export type DashboardNextStepType =
+  | DashboardImportantItemType
+  | 'RECORD_MAHR'
+  | 'ADD_FIRST_COST';
+
+/** A next step on the home: the closed item, with the wider type. */
+export type DashboardNextStepResponse = Omit<
+  DashboardImportantItemResponse,
+  'type'
+> & { type: DashboardNextStepType };
+
+/** The summary the home reads: the closed contract, its next steps widened. */
+export type DashboardSummaryWithSetupResponse = Omit<
+  WeddingPlanDashboardSummaryResponse,
+  'importantItems' | 'nextBestActions'
+> &
+  DashboardSetupFacts;
 
 // The home's setup facts (prototype b01). They sit beside the summary
 // contract, which is closed (R12B byte parity), and extend its response.
@@ -33,4 +61,7 @@ export interface DashboardSetupFacts {
    * the plan's items.
    */
   budgetItemsCount: number | null;
+  /** The next steps, first one first (J1-04: one ordered source). */
+  importantItems: DashboardNextStepResponse[];
+  nextBestActions: DashboardNextStepResponse[];
 }

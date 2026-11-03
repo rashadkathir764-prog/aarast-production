@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
@@ -94,6 +96,68 @@ void main() {
       expect(provider.noticeMessage, FinanceProvider.savedButStaleMessage);
     },
   );
+
+  // J1-08: a read of the money while an agreement is being saved must not
+  // turn the server's «saved» into «ما انحفظ», nor leave the button busy.
+  test(
+    'a money read during the agreement save keeps the save and frees the button',
+    () async {
+      final gate = Completer<void>();
+      api.createCostGate = gate;
+
+      final pending = provider.createCost(
+        planId: 'plan-1',
+        budgetCategoryId: 'category-1',
+        title: 'حجز الصالة',
+        totalAmount: '1000',
+      );
+      expect(provider.isSubmitting, isTrue);
+
+      await provider.loadMoney('plan-1');
+      gate.complete();
+      final created = await pending;
+
+      expect(created, isNotNull);
+      expect(created!.id, 'created-cost-1');
+      expect(api.createCostCalls, 1);
+      expect(provider.errorMessage, isNull);
+      expect(provider.isSubmitting, isFalse);
+    },
+  );
+
+  test('one save holds the button from the agreement to the last date, and a '
+      'second save while it runs writes nothing', () async {
+    final gate = Completer<void>();
+    var busyBetweenWrites = false;
+
+    final first = provider.saveOnce(() async {
+      final created = await provider.createCost(
+        planId: 'plan-1',
+        budgetCategoryId: 'category-1',
+        title: 'حجز الصالة',
+        totalAmount: '1000',
+      );
+      // The screen's own step between the agreement and its dates.
+      await gate.future;
+      busyBetweenWrites = provider.isSubmitting;
+      return created;
+    });
+    final second = provider.saveOnce(
+      () => provider.createCost(
+        planId: 'plan-1',
+        budgetCategoryId: 'category-1',
+        title: 'حجز الصالة',
+        totalAmount: '1000',
+      ),
+    );
+
+    expect(await second, isNull);
+    gate.complete();
+    expect(await first, isNotNull);
+    expect(busyBetweenWrites, isTrue);
+    expect(api.createCostCalls, 1);
+    expect(provider.isSubmitting, isFalse);
+  });
 }
 
 class _WriteThenReadFinanceApi extends FinanceApi {
@@ -104,6 +168,44 @@ class _WriteThenReadFinanceApi extends FinanceApi {
   bool rejectWrites = false;
   int createPaymentCalls = 0;
   int cancelCostCalls = 0;
+  int createCostCalls = 0;
+
+  /// When set, the agreement's write waits for it (a slow network).
+  Completer<void>? createCostGate;
+
+  @override
+  Future<WeddingCost> createCost({
+    required String planId,
+    required String budgetCategoryId,
+    required String title,
+    required String totalAmount,
+    String? initialPaymentAmount,
+    String? providerId,
+    String? quoteOfferId,
+    String? partyName,
+    String? partyPhone,
+    String? payer,
+    String? payerName,
+    DateTime? agreementDate,
+    String? note,
+    bool isPrivate = false,
+  }) async {
+    createCostCalls += 1;
+    final call = createCostCalls;
+    await createCostGate?.future;
+    return WeddingCost(
+      id: 'created-cost-$call',
+      weddingPlanId: planId,
+      budgetCategoryId: budgetCategoryId,
+      title: title,
+      totalAmount: totalAmount,
+      paidAmount: '0',
+      remainingAmount: totalAmount,
+      status: 'OPEN',
+      createdAt: DateTime.utc(2026, 7, 11),
+      updatedAt: DateTime.utc(2026, 7, 11),
+    );
+  }
 
   final WeddingCost cost = WeddingCost(
     id: 'cost-1',

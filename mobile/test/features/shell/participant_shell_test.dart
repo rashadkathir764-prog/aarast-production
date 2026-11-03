@@ -131,8 +131,12 @@ void main() {
       await _openTab(tester, 'المال');
       expect(find.byType(ParticipantLockedScreen), findsOneWidget);
       expect(find.text('المال خاص بالعريس'), findsOneWidget);
+      // V-03: a lock says why, and who opens it.
       expect(
-        find.text('ما عندك صلاحية تشوف المال في هذي الخطة.'),
+        find.text(
+          'ما عندك صلاحية تشوف المال في هذي الخطة. '
+          'يفتحها لك العريس من «المشاركة».',
+        ),
         findsOneWidget,
       );
       expect(find.text('عرس محمد · أنت مساعد'), findsOneWidget);

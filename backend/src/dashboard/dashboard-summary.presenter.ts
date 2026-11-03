@@ -7,7 +7,6 @@ import {
 import {
   DashboardDueMoneyItem,
   DashboardImportantItemResponse,
-  DashboardImportantItemType,
   DashboardNotificationPreviewResponse,
   DashboardNotificationRecord,
   DashboardPaymentScheduleRecord,
@@ -16,6 +15,10 @@ import {
   DashboardTaskRecord,
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
+import type {
+  DashboardNextStepResponse,
+  DashboardNextStepType,
+} from "./dashboard-setup.contracts";
 import { selectTopDashboardActions } from "./dashboard-priority";
 import {
   type AddressForm,
@@ -62,6 +65,8 @@ export function buildImportantItems({
   canManageMoney,
   form,
   planPersona,
+  mahrRecorded = null,
+  weddingCostsCount = null,
 }: {
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
@@ -81,8 +86,18 @@ export function buildImportantItems({
   form: AddressForm;
   /** Whose wedding the plan is: the bride's guests are «الضيفات». */
   planPersona: string | null;
-}): DashboardImportantItemResponse[] {
-  const items: DashboardImportantItemResponse[] = [];
+  /**
+   * Whether the plan's mahr is recorded; null when the reader may not record
+   * or see it (only the owner records it), so no step is invented.
+   */
+  mahrRecorded?: boolean | null;
+  /**
+   * The plan's wedding agreements, the mahr's not counted; null for a reader
+   * who does not see the plan's money.
+   */
+  weddingCostsCount?: number | null;
+}): DashboardNextStepResponse[] {
+  const items: DashboardNextStepResponse[] = [];
   const say = (masculine: string, feminine: string) =>
     textFor(form, gendered(masculine, feminine));
 
@@ -230,16 +245,50 @@ export function buildImportantItems({
       ),
     );
   }
+  // J1-04: the home's next step is the first item, so the money basics come
+  // here in the one order the app follows: the mahr (a groom's or a bride's
+  // plan, outside the wedding budget), then the first agreement. Each only
+  // while it is missing, and only for a reader who may record it.
+  const planHasMahrSide = planPersona === "GROOM" || planPersona === "BRIDE";
+  if (canManageMoney && planHasMahrSide && mahrRecorded === false) {
+    items.push(
+      setupAction(
+        weddingPlanId,
+        "RECORD_MAHR",
+        "اتفقتوا على المهر؟",
+        "نحسبه لحاله، برا ميزانية العرس.",
+        say("سجّل المهر", "سجّلي المهر"),
+        `/wedding-plans/${weddingPlanId}/money/mahr`,
+      ),
+    );
+  }
+  if (canManageMoney && weddingCostsCount === 0) {
+    items.push(
+      setupAction(
+        weddingPlanId,
+        "ADD_FIRST_COST",
+        say("سجّل أول اتفاق", "سجّلي أول اتفاق"),
+        "القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان",
+        say("أضف اتفاق", "أضيفي اتفاق"),
+        `/wedding-plans/${weddingPlanId}/money/costs/create`,
+      ),
+    );
+  }
   if (guestCount === 0) {
+    // D55: the verb follows the reader, the guests follow the plan: the
+    // bride's are «الضيفات», so her first one is «ضيفة».
+    const brideGuests = planPersona === "BRIDE";
     items.push(
       setupAction(
         weddingPlanId,
         "ADD_GUESTS",
-        `${say("ابدأ", "ابدئي")} قائمة ${planPersona === "BRIDE" ? "الضيفات" : "الضيوف"}`,
-        planPersona === "BRIDE"
+        `${say("ابدأ", "ابدئي")} قائمة ${brideGuests ? "الضيفات" : "الضيوف"}`,
+        brideGuests
           ? "العدد يحدد حجم الصالة وتكلفة الضيافة"
           : "العدد يحدد حجم القاعة وتكلفة الضيافة",
-        say("أضف أول ضيف", "أضيفي أول ضيف"),
+        brideGuests
+          ? say("أضف أول ضيفة", "أضيفي أول ضيفة")
+          : say("أضف أول ضيف", "أضيفي أول ضيف"),
         `/wedding-plans/${weddingPlanId}/guests`,
       ),
     );
@@ -450,21 +499,28 @@ export function progressPercentage(
 function setupAction(
   weddingPlanId: string,
   type: Extract<
-    DashboardImportantItemType,
-    "SET_LOCATION" | "SET_BUDGET" | "ADD_GUESTS" | "REQUEST_QUOTE"
+    DashboardNextStepType,
+    | "SET_LOCATION"
+    | "SET_BUDGET"
+    | "RECORD_MAHR"
+    | "ADD_FIRST_COST"
+    | "ADD_GUESTS"
+    | "REQUEST_QUOTE"
   >,
   title: string,
   reason: string,
   actionLabel: string,
   routeTarget: string,
-): DashboardImportantItemResponse {
+): DashboardNextStepResponse {
+  const moneyStep =
+    type === "SET_BUDGET" || type === "RECORD_MAHR" || type === "ADD_FIRST_COST";
   return {
     id: `${type.toLowerCase()}:${weddingPlanId}`,
     type,
     title,
     subtitle: reason,
     body: null,
-    icon: type === "SET_BUDGET" ? "wallet" : "calendar",
+    icon: moneyStep ? "wallet" : "calendar",
     tone: "info",
     priority: "LOW",
     actionLabel,

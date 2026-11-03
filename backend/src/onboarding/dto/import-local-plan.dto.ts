@@ -48,9 +48,11 @@ export class ImportLocalPaymentScheduleDto {
 
 /** A local-planning cost imported once into the unified money ledger. */
 export class ImportLocalCostDto {
+  // The same limit as an agreement made in the account
+  // (create-wedding-cost.dto.ts), so an imported title can be edited later.
   @IsString()
   @IsNotEmpty()
-  @MaxLength(200)
+  @MaxLength(160)
   title!: string;
 
   @IsNotEmpty()

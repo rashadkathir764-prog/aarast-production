@@ -135,7 +135,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
       _amountError = amount == null || amount <= 0
           ? context.say('اكتب كم المبلغ', 'اكتبي كم المبلغ')
           : amount > _available
-          ? 'أكثر من الباقي عليك (${_plain(_available)})'
+          ? '${context.ownerDid('أكثر من الباقي عليك', 'أكثر من الباقي عليك', groom: 'أكثر من الباقي عليه', bride: 'أكثر من الباقي عليها')} (${_plain(_available)})'
           : null;
       _dateError = _dueDate == null
           ? context.say('اختر يوم الدفعة', 'اختاري يوم الدفعة')
@@ -225,7 +225,10 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
       title: _editing ? 'موعد الدفعة' : 'موعد دفع جديد',
       subtitle: [
         widget.cost.title,
-        if (_available > 0) 'باقي عليك ${_plain(_available)}',
+        // D59: the owner reads what is left to them; a helper reads it as
+        // the owner's.
+        if (_available > 0)
+          '${context.ownerDid('باقي عليك', 'باقي عليك', groom: 'باقي عليه', bride: 'باقي عليها')} ${_plain(_available)}',
       ].join(' · '),
       bottom: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

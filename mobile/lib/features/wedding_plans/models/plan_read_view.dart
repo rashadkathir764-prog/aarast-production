@@ -127,13 +127,14 @@ class PlanReadTask {
   );
 
   /// «هذي المهمة عليك», «على صالح», «على العريس»: who does it, said to the
-  /// reader; null when nobody was named.
+  /// reader. A task nobody was named for is the owner's (D52), so it reads
+  /// «على محمد»; only a named kind without a name says nothing.
   String? whoLine({required String ownerWord}) => switch (assignee) {
     PlanReadAssignee.you => 'هذي المهمة عليك',
     PlanReadAssignee.owner => 'على ${assigneeFirstName ?? ownerWord}',
     PlanReadAssignee.member || PlanReadAssignee.person =>
       assigneeFirstName == null ? null : 'على $assigneeFirstName',
-    null => null,
+    null => 'على $ownerWord',
   };
 
   /// The letter of whoever does it (d01's small avatar), or null.

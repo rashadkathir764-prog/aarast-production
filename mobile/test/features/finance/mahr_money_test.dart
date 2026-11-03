@@ -222,6 +222,93 @@ void main() {
       expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
     });
 
+    // D79: the groom's mahr stays inside «اتفقت على», and the sentence says so.
+    testWidgets('D79: the groom\'s total says it has the mahr in it', (
+      tester,
+    ) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.groom,
+        persona: 'GROOM',
+        mahr: _groomMahr,
+      );
+
+      final hero = find.byKey(const ValueKey('money-dashboard-hero'));
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.textContaining(
+            'اتفقت على 5.4 مليون ر.ي مع المهر، دفعت منها 2 مليون ر.ي',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.textContaining('. باقي عليك 2.2 مليون ر.ي.'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('D79: someone helping reads the groom\'s total with the mahr', (
+      tester,
+    ) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: true,
+          readerIsOwner: false,
+        ),
+        persona: 'GROOM',
+        mahr: _groomMahr,
+      );
+
+      expect(
+        find.textContaining('اتفق العريس على 5.4 مليون ر.ي مع المهر، دفع منها'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('D79: the groom before his mahr: no «مع المهر»', (
+      tester,
+    ) async {
+      await _pumpMoney(tester, profile: JourneyProfile.groom, persona: 'GROOM');
+      expect(find.textContaining('اتفقت على 2.4 مليون'), findsOneWidget);
+      expect(find.textContaining('مع المهر'), findsNothing);
+    });
+
+    testWidgets('D79: the bride\'s mahr comes in, so it is not in her total', (
+      tester,
+    ) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.bride,
+        persona: 'BRIDE',
+        mahr: _brideMahr,
+      );
+      expect(find.textContaining('اتفقتِ على 2.4 مليون'), findsOneWidget);
+      expect(find.textContaining('مع المهر'), findsNothing);
+    });
+
+    testWidgets('D79: a mahr of nothing adds no words', (tester) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.groom,
+        persona: 'GROOM',
+        mahr: const MoneyMahrSummary(
+          side: MahrSide.pays,
+          total: '0',
+          settled: '0',
+          remaining: '0',
+        ),
+      );
+
+      expect(find.textContaining('مع المهر'), findsNothing);
+    });
+
     testWidgets('no mahr from the server, no mahr cards', (tester) async {
       await _pumpMoney(tester, profile: JourneyProfile.groom, persona: 'GROOM');
 

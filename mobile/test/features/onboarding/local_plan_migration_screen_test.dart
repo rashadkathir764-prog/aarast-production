@@ -9,6 +9,8 @@ import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
+import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
@@ -250,6 +252,167 @@ void main() {
     await _settle(tester);
     expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
   });
+
+  // J1-01 (D77): a plan the account could not take never locks the app.
+  // A third way out opens it on the phone, with a strip that saves it later.
+  testWidgets('J1-01: a failed save offers to open the plan on the phone', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      onImport: () => Future.error(_offline),
+    );
+
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsOneWidget);
+    // The real cause, not «check the internet» in general.
+    expect(find.textContaining('ما فيه نت الحين'), findsOneWidget);
+    expect(find.text('جرّب مرة ثانية'), findsOneWidget);
+    expect(find.text('امسحها من الجوال'), findsOneWidget);
+    expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
+    expect(harness.finished, isEmpty);
+  });
+
+  testWidgets('J1-01: offline, the account lookup says so too', (
+    tester,
+  ) async {
+    await _Harness.create(tester, listFails: true, listError: _offline);
+
+    expect(find.textContaining('ما فيه نت الحين'), findsOneWidget);
+    expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
+  });
+
+  testWidgets('J1-01: the plan opens on the phone with «ما انحفظت في حسابك بعد»', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      onImport: () => Future.error(_offline),
+    );
+
+    await tester.tap(find.text('افتح خطتك على الجوال الحين'));
+    await _settle(tester);
+
+    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+    expect(find.text('ما انحفظت في حسابك بعد'), findsOneWidget);
+    expect(find.text('احفظها الحين'), findsOneWidget);
+    // Remembered for this session, so the next home does not lock again.
+    expect(harness.openedLocally, 1);
+    expect(harness.finished, isEmpty);
+    expect(await harness.storage.loadGuestPlan(), isNotNull);
+  });
+
+  testWidgets('J1-01: «احفظها الحين» tries the account again', (tester) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      onImport: () => Future.error(_offline),
+    );
+    await tester.tap(find.text('افتح خطتك على الجوال الحين'));
+    await _settle(tester);
+    expect(harness.plans.importCalls, 1);
+
+    await _tapStrip(tester);
+
+    expect(harness.plans.importCalls, 2);
+    // Still offline: the same three ways out, nothing lost.
+    expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
+    expect(await harness.storage.loadGuestPlan(), isNotNull);
+  });
+
+  testWidgets('J1-01: saved from the strip, it finishes like the first save', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      onImport: () => Future.error(_offline),
+    );
+    await tester.tap(find.text('افتح خطتك على الجوال الحين'));
+    await _settle(tester);
+    harness.plans.onImport = () async => _response('plan-new');
+
+    await _tapStrip(tester);
+
+    expect(harness.finished, ['plan-new']);
+    expect(await harness.storage.loadGuestPlan(), isNull);
+  });
+
+  testWidgets('J1-01: opened on the phone before, it saves itself once online', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      startLocally: true,
+    );
+
+    expect(harness.plans.importCalls, 1);
+    expect(harness.finished, ['plan-new']);
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+  });
+
+  testWidgets('J1-01: opened on the phone before and still offline, it stays', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      startLocally: true,
+      listFails: true,
+      listError: _offline,
+    );
+
+    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+    expect(find.text('ما انحفظت في حسابك بعد'), findsOneWidget);
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+    expect(harness.finished, isEmpty);
+  });
+
+  testWidgets('J1-01: a quiet try never chooses for an account with a plan', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(tester, startLocally: true);
+
+    expect(harness.plans.importCalls, 0);
+    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+    expect(find.text('عندك خطة على هذا الجوال'), findsNothing);
+  });
+
+  testWidgets('J1-13: a plan the account refuses says why', (tester) async {
+    await _Harness.create(
+      tester,
+      plans: const [],
+      onImport: () => Future.error(
+        const ApiException(
+          'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.',
+          statusCode: 400,
+        ),
+      ),
+    );
+
+    expect(
+      find.textContaining('فيه شي في خطتك ما قبله الحساب'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('راجع البيانات المدخلة'), findsNothing);
+    expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
+  });
+}
+
+const _offline = ApiException(
+  'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+  isNetworkFailure: true,
+);
+
+/// «احفظها الحين» on the phone plan's home.
+Future<void> _tapStrip(WidgetTester tester) async {
+  final strip = find.byKey(const Key('aarast-local-sync-action'));
+  await tester.ensureVisible(strip);
+  await tester.pump();
+  await tester.tap(strip);
+  await _settle(tester);
 }
 
 /// The page under the sheet keeps its spinner turning while the person
@@ -267,13 +430,19 @@ class _Harness {
   final _FakeWeddingPlansApi plans;
   final List<String?> finished = [];
 
+  /// How many times the plan was opened on the phone instead (D77).
+  int openedLocally = 0;
+
   static Future<_Harness> create(
     WidgetTester tester, {
     List<WeddingPlan>? plans,
     bool listFails = false,
+    Object? listError,
     bool settle = true,
     GuestOnboardingDraft? draft,
     String? accountPersona,
+    Future<OnboardingCompleteResponse> Function()? onImport,
+    bool startLocally = false,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -289,6 +458,8 @@ class _Harness {
       activeId: 'plan-open',
       tasksByPlan: const {'plan-open': 23, 'plan-recent': 4},
     )..listFails = listFails;
+    if (listError != null) api.listError = listError;
+    if (onImport != null) api.onImport = onImport;
     final harness = _Harness(storage, api);
     final service = LocalPlanMigrationService(
       guestStorage: storage,
@@ -300,9 +471,13 @@ class _Harness {
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
     final auth = _PersonaAuth(preferences, accountPersona);
+    final phonePlan = draft ?? _draft;
     await tester.pumpWidget(
-      ChangeNotifierProvider<AuthController>.value(
-        value: auth,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+          Provider<AuthStorage>.value(value: AuthStorage(preferences)),
+        ],
         child: MaterialApp(
           theme: AppTheme.light(),
           builder: (context, child) =>
@@ -321,6 +496,13 @@ class _Harness {
                   ),
             migrationService: service,
             onFinished: harness.finished.add,
+            startLocally: startLocally,
+            onOpenedLocally: () => harness.openedLocally += 1,
+            // The entry screen's own phone home (D77).
+            localPlan: (context, saveNow) => LocalGuestDashboardScreen(
+              summary: LocalGuestDashboardSummary.fromPlan(phonePlan),
+              onSaveToAccount: saveNow,
+            ),
           ),
         ),
       ),
@@ -445,6 +627,7 @@ class _FakeWeddingPlansApi extends WeddingPlansApi {
   final String? activeId;
   final Map<String, int> tasksByPlan;
   bool listFails = false;
+  Object listError = const ApiException('offline');
   int importCalls = 0;
   Map<String, dynamic>? lastPayload;
   final List<String> summaryPlanIds = [];
@@ -453,7 +636,7 @@ class _FakeWeddingPlansApi extends WeddingPlansApi {
 
   @override
   Future<List<WeddingPlan>> getMyWeddingPlans() async {
-    if (listFails) throw const ApiException('offline');
+    if (listFails) throw listError;
     return plans;
   }
 

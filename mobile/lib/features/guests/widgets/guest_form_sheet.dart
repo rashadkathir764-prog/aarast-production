@@ -155,6 +155,11 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     _restoringDraft = false;
   }
 
+  bool get _typedSomething =>
+      _nameController.text.trim().isNotEmpty ||
+      _phoneController.text.trim().isNotEmpty ||
+      _notesController.text.trim().isNotEmpty;
+
   int _draftInt(Object? value, int fallback) =>
       value is int ? value : int.tryParse(value?.toString() ?? '') ?? fallback;
 
@@ -266,7 +271,10 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           ? context.planWord('تعديل ضيف', 'تعديل ضيفة')
           : GuestWords.of(context).newGuest,
       children: [
-        if (_draft != null) ...[
+        // The draft line speaks only once something was typed: an empty
+        // form has nothing saved, and a «حُفظت» over empty fields claims a
+        // save that never happened.
+        if (_draft != null && _typedSomething) ...[
           AarastV3DraftStatusLine(status: _draft!.status),
           const SizedBox(height: AarastV3Space.x2),
         ],

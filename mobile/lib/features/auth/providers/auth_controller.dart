@@ -8,6 +8,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/session/session_teardown_coordinator.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../data/auth_repository.dart';
 import '../models/auth_otp.dart';
@@ -41,9 +42,11 @@ class AuthController extends _AuthControllerCore
     OfflineSyncService? offlineSyncService,
     GuestOnboardingStorage? guestOnboardingStorage,
     SessionTeardownCoordinator? sessionTeardownCoordinator,
+    DateTime Function()? clock,
   }) : super(
          authRepository,
          offlineSyncService,
+         clock ?? appNow,
          sessionTeardownCoordinator ??
              SessionTeardownCoordinator(
                auth: authRepository,
@@ -100,31 +103,74 @@ class AuthController extends _AuthControllerCore
   /// account, so it signed in to that account instead.
   bool get signUpFoundAccount => _signUpFoundAccount;
 
+  /// The name on the account [signUpFoundAccount] entered, when the server
+  /// said it; null otherwise.
+  String? get signUpFoundAccountName =>
+      _signUpFoundAccount ? _signUpFoundAccountName : null;
+
   /// What the last sign-in code proved about a number with no account (D75),
-  /// for signing up with it; null otherwise.
-  String? get phoneProof => _phoneProof;
+  /// for signing up with it; null otherwise, and null once the server no
+  /// longer accepts it ([phoneProofLifetime]).
+  String? get phoneProof => _freshPhoneProof;
+
+  /// The server keeps a phone proof ten minutes
+  /// (`backend/src/modules/identity/internal/auth/phone-proof.ts`); the
+  /// phone stops offering it half a minute before, so a sign-up never
+  /// sends one the server has already dropped and asks for a code instead.
+  static const phoneProofLifetime = Duration(minutes: 9, seconds: 30);
 
   /// The proof for [phone] (as typed, normalised), or null when the last
-  /// proof was for another number or there is none.
+  /// proof was for another number, is too old, or there is none.
   String? phoneProofFor(String phone) {
+    final proof = _freshPhoneProof;
     final proven = _phoneProofPhone;
-    if (_phoneProof == null || proven == null) return null;
+    if (proof == null || proven == null) return null;
     try {
       return normalizeYemeniPhone(proven) == normalizeYemeniPhone(phone)
-          ? _phoneProof
+          ? proof
           : null;
     } on FormatException {
       return null;
     }
   }
 
+  String? get _freshPhoneProof {
+    final provenAt = _phoneProofAt;
+    if (_phoneProof == null || provenAt == null) return null;
+    final age = _now().difference(provenAt);
+    return age < phoneProofLifetime ? _phoneProof : null;
+  }
+
   /// The screen that says so has said it: it is said once, right after the
   /// sign-up, not on every later visit.
   void acknowledgeSignUpFoundAccount() => _signUpFoundAccount = false;
 
+  /// True once after a sign-up entered an existing account: the page the
+  /// person lands on says so (J1-10), and never again for that sign-in.
+  bool claimSignUpFoundAccountNotice() {
+    final pending = _signUpFoundAccountNoticePending && _signUpFoundAccount;
+    _signUpFoundAccountNoticePending = false;
+    return pending;
+  }
+
   /// The number of the account whose session expired, so x18 can offer to
   /// sign that same account in again. Null after any other sign-out.
   String? get expiredSessionPhone => _expiredSessionPhone;
+
+  /// Keeps the page an expiring session was on, said by the router at the
+  /// moment the session expired (before the account's screens are torn
+  /// down), so x18 «بعد الدخول ترجع مكانك» can keep its word.
+  void noteExpiredSessionLocation(String location) {
+    if (!_sessionExpired || _expiredSessionLocation != null) return;
+    _expiredSessionLocation = location;
+  }
+
+  /// The page noted by [noteExpiredSessionLocation], once.
+  String? claimExpiredSessionLocation() {
+    final location = _expiredSessionLocation;
+    _expiredSessionLocation = null;
+    return location;
+  }
 
   bool get loginRequestedAfterLogout => _loginRequestedAfterLogout;
 
@@ -184,11 +230,15 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   _AuthControllerCore(
     this._authRepository,
     this._offlineSyncService,
+    this._now,
     this._sessionTeardownCoordinator,
   );
 
   final AuthRepository _authRepository;
   final OfflineSyncService? _offlineSyncService;
+
+  /// The app's «now» ([appNow]); a test passes its own.
+  final DateTime Function() _now;
   final SessionTeardownCoordinator _sessionTeardownCoordinator;
 
   AuthStatus _status = AuthStatus.checking;
@@ -201,9 +251,13 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   bool _accountJustCreated = false;
   bool _failedOffline = false;
   bool _signUpFoundAccount = false;
+  String? _signUpFoundAccountName;
+  bool _signUpFoundAccountNoticePending = false;
   String? _phoneProof;
   String? _phoneProofPhone;
+  DateTime? _phoneProofAt;
   String? _expiredSessionPhone;
+  String? _expiredSessionLocation;
   bool _loginRequestedAfterLogout = false;
   bool _authenticatedEntryPending = false;
   String? _pendingAuthenticatedEntryLocation;

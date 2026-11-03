@@ -9,6 +9,7 @@ const _doorSkyHeight = 200.0;
 class _StartStep extends StatelessWidget {
   const _StartStep({
     required this.phonePlanTitle,
+    required this.resumeLine,
     required this.onPlan,
     required this.onReplacePlan,
     required this.onInvite,
@@ -18,6 +19,10 @@ class _StartStep extends StatelessWidget {
 
   /// A plan already on this phone, opened by the first door.
   final String? phonePlanTitle;
+
+  /// Steps answered before the app closed, with no plan made yet (J1-02):
+  /// the first door goes on from there, and says so.
+  final String? resumeLine;
   final VoidCallback onPlan;
 
   /// A finished plan on this phone that is not this person's (made on a
@@ -74,12 +79,14 @@ class _StartStep extends StatelessWidget {
                       JourneyDoor(
                         key: const ValueKey('door-plan'),
                         icon: LucideIcons.checkSquare,
-                        title: phonePlanTitle == null
-                            ? 'أسوّي خطة عرسي'
-                            : 'افتح خطتي',
-                        subtitle: phonePlanTitle == null
-                            ? 'للعريس أو للعروسة'
-                            : '$phonePlanTitle، على هذا الجوال',
+                        title: phonePlanTitle != null
+                            ? 'افتح خطتي'
+                            : resumeLine != null
+                            ? 'كمّل خطتي'
+                            : 'أسوّي خطة عرسي',
+                        subtitle: phonePlanTitle != null
+                            ? '$phonePlanTitle، على هذا الجوال'
+                            : resumeLine ?? 'للعريس أو للعروسة',
                         onTap: onPlan,
                       ),
                       if (phonePlanTitle != null)

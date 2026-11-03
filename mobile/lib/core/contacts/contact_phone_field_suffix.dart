@@ -34,7 +34,7 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: 'اختيار من جهات الاتصال',
+      tooltip: 'من جهات الاتصال',
       onPressed: !widget.enabled || _isPicking ? null : _pickPhone,
       icon: _isPicking
           ? const SizedBox(

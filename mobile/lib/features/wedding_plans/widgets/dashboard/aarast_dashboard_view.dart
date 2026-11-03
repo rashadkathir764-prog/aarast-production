@@ -5,6 +5,7 @@ import '../../../../core/experience_v3/aarast_v3.dart';
 import '../../../../core/utils/app_clock.dart';
 import '../../../../core/utils/arabic_count.dart';
 import '../../../../core/utils/arabic_date_formatter.dart';
+import '../../../../core/utils/compact_money_figure.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
@@ -307,6 +308,7 @@ class AarastDashboardView extends StatelessWidget {
                       _DashboardMoneyCard(
                         summary: summary,
                         funding: funding,
+                        mahr: mahr,
                         amountsHidden: amountsHidden,
                         onToggleAmounts: onToggleAmounts,
                         onTap: onOpenMoney,

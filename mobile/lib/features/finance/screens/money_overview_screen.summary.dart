@@ -114,6 +114,9 @@ class _MoneySummaryCard extends StatelessWidget {
                         ),
                       ),
                       TextSpan(text: agreed, style: strong),
+                      // D79: the groom's mahr is inside that total; say so.
+                      if (summary.agreedIncludesMahr)
+                        const TextSpan(text: ' مع المهر'),
                       // D59: «دفعت منها» is the owner's own money; what
                       // others paid for the owner is named after it.
                       TextSpan(

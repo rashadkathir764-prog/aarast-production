@@ -17,6 +17,7 @@ import 'core/push/push_lifecycle_bridge.dart';
 import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/aarast_loading_state.dart' show AarastInlineSpinner;
+import 'core/widgets/aarast_toast.dart';
 import 'features/account_contexts/account_contexts_api.dart'
     show
         AccountContext,
@@ -509,11 +510,46 @@ class AarastBuildErrorScreen extends StatelessWidget {
   }
 }
 
+/// x18 «ادخل مرة ثانية»: the sign-in after an expired session, with the
+/// same number filled in and the page it was on to return to («بعد الدخول
+/// ترجع مكانك»). Only a page inside the app is carried: never the doors
+/// (welcome, sign-in, sign-up, the code) nor anything outside the app.
+@visibleForTesting
+String sessionExpiredLoginLocation({String? phone, String? from}) {
+  return Uri(
+    path: AppRouter.login,
+    queryParameters: {
+      'expired': '1',
+      'phone': ?phone,
+      'resume': ?_resumableLocation(from),
+    },
+  ).toString();
+}
+
+const _doorPaths = {
+  AppRouter.splash,
+  AppRouter.welcome,
+  AppRouter.onboarding,
+  AppRouter.login,
+  AppRouter.register,
+  AppRouter.resetPassword,
+  AppRouter.otp,
+};
+
+String? _resumableLocation(String? location) {
+  final value = location?.trim() ?? '';
+  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  final uri = Uri.tryParse(value);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (_doorPaths.contains(uri.path)) return null;
+  return value;
+}
+
 /// Handles navigation that must survive the account-scoped subtree being
 /// recreated. In particular, a phone-verified private invite resumes only
 /// after the new account boundary is mounted.
 @visibleForTesting
-class AarastAuthFlowRedirector extends StatelessWidget {
+class AarastAuthFlowRedirector extends StatefulWidget {
   const AarastAuthFlowRedirector({
     required this.router,
     required this.child,
@@ -522,6 +558,73 @@ class AarastAuthFlowRedirector extends StatelessWidget {
 
   final GoRouter router;
   final Widget child;
+
+  @override
+  State<AarastAuthFlowRedirector> createState() =>
+      _AarastAuthFlowRedirectorState();
+}
+
+class _AarastAuthFlowRedirectorState extends State<AarastAuthFlowRedirector> {
+  AuthController? _auth;
+
+  GoRouter get router => widget.router;
+  Widget get child => widget.child;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AuthController? auth;
+    try {
+      auth = context.read<AuthController>();
+    } on ProviderNotFoundException {
+      auth = null;
+    }
+    if (identical(auth, _auth)) return;
+    _auth?.removeListener(_noteExpiredSessionLocation);
+    _auth = auth?..addListener(_noteExpiredSessionLocation);
+  }
+
+  @override
+  void dispose() {
+    _auth?.removeListener(_noteExpiredSessionLocation);
+    super.dispose();
+  }
+
+  /// The moment a session expires, this router still shows the page it was
+  /// on; the account's screens (and this router) are torn down right after,
+  /// so the page is kept with the session's controller for x18.
+  void _noteExpiredSessionLocation() {
+    final auth = _auth;
+    if (auth == null || !auth.sessionExpired) return;
+    auth.noteExpiredSessionLocation(
+      router.routeInformationProvider.value.uri.toString(),
+    );
+  }
+
+  /// D75: a sign-up code for a number that already had an account signed
+  /// in to it. Said once, where the person lands; a provider's joining says
+  /// it on its own first step.
+  void _announceFoundAccount(AuthController auth, String? location) {
+    if (!auth.claimSignUpFoundAccountNotice()) return;
+    if (location?.startsWith('/provider/') == true) return;
+    final name = auth.signUpFoundAccountName;
+    final message = name == null
+        ? context.say(
+            'هذا الرقم عليه حساب، دخلناك عليه.',
+            'هذا الرقم عليه حساب، دخلناكِ عليه.',
+          )
+        : context.say(
+            'هذا الرقم عليه حساب باسم $name، دخلناك عليه.',
+            'هذا الرقم عليه حساب باسم $name، دخلناكِ عليه.',
+          );
+    // This widget sits above the router's navigator, so the toast takes
+    // that navigator's overlay, as the push bridge does.
+    AarastToast.showInfo(
+      context,
+      message,
+      overlay: router.routerDelegate.navigatorKey.currentState?.overlay,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -567,13 +670,14 @@ class AarastAuthFlowRedirector extends StatelessWidget {
           reason: 'session_expired',
           source: 'AarastAuthFlowRedirector',
         );
-        final phone = context.read<AuthController>().expiredSessionPhone;
-        // x18 «ادخل مرة ثانية», with the same number filled in.
+        final auth = context.read<AuthController>();
+        // x18 «ادخل مرة ثانية», with the same number filled in and the
+        // page it left to return to.
         router.go(
-          Uri(
-            path: AppRouter.login,
-            queryParameters: {'expired': '1', 'phone': ?phone},
-          ).toString(),
+          sessionExpiredLoginLocation(
+            phone: auth.expiredSessionPhone,
+            from: auth.claimExpiredSessionLocation(),
+          ),
         );
       });
     } else if (flow.loginRequestedAfterLogout) {
@@ -594,9 +698,8 @@ class AarastAuthFlowRedirector extends StatelessWidget {
     } else if (flow.hasPendingInvite) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        final token = context
-            .read<AuthController>()
-            .claimPendingInviteResumeRoute();
+        final auth = context.read<AuthController>();
+        final token = auth.claimPendingInviteResumeRoute();
         if (token != null) {
           final target = AppRouter.inviteDecision(token);
           appLogEvent(
@@ -608,6 +711,7 @@ class AarastAuthFlowRedirector extends StatelessWidget {
             source: 'AarastAuthFlowRedirector',
           );
           router.go(target);
+          _announceFoundAccount(auth, target);
         }
       });
     } else if (flow.hasPendingAuthenticatedEntry) {
@@ -626,6 +730,7 @@ class AarastAuthFlowRedirector extends StatelessWidget {
           source: 'AarastAuthFlowRedirector',
         );
         router.go(target);
+        _announceFoundAccount(auth, location);
       });
     }
 

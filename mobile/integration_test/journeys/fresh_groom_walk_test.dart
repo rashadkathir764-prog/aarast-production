@@ -3,6 +3,7 @@
 // the screens that should know about it. These are the tasks real people get
 // in stage 4 (D67), so a step that stops here would stop them too.
 // Run: see docs/qa/JOURNEY_WALKS.md («إعادة التشغيل»).
+import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -38,26 +39,50 @@ void main() {
         await walk.tapKey('persona-groom');
       });
 
+      // The screen shows this month and the five after it, so the walk
+      // picks the month after next and the 15th in it, whatever today is.
+      final now = DateTime.now();
+      final weddingMonth = DateTime(now.year, now.month + 2);
+      final weddingDay = DateTime(weddingMonth.year, weddingMonth.month, 15);
+
       await walk.step('a03_name_date', 'الاسم والشهر', () async {
         await fillNth(0, 'سامي');
-        await walk.tapText('يناير');
-        // The month opens its calendar; a person picks the day.
-        await tester.tap(find.text('21').first, warnIfMissed: false);
+        walk.expectSee('خطتك بتكون', why: 'الاسم يرسم عنوان الخطة');
+        await walk.tapText(arabicMonthName(weddingMonth.month));
+        // The month opens its calendar; a person picks the day. Each day
+        // names itself for the screen reader, so the Hijri captions are
+        // never mistaken for it.
+        final day = find.bySemanticsLabel(
+          RegExp(RegExp.escape(formatArabicWeekdayDayMonth(weddingDay))),
+        );
+        if (day.evaluate().isEmpty) {
+          walk.fail('ما فيه يوم ${formatArabicDayMonth(weddingDay)} في التقويم');
+          return;
+        }
+        await tester.tap(day.first, warnIfMissed: false);
         await walk.settle(seconds: 1.5);
+        walk.expectSee(
+          formatArabicDayMonth(weddingDay),
+          why: 'اليوم المختار يظهر قبل «التالي»',
+        );
         await walk.tapText('التالي');
+        walk.expectSee('وين العرس', why: 'الاسم والموعد وصّلا للسؤال الثاني');
       });
 
       await walk.step('a05_place_budget', 'المدينة والميزانية', () async {
         await walk.tapText('صنعاء');
         await fillNth(0, '5000000');
         await walk.tapText('التالي');
+        walk.expectSee('اتفقتوا على المهر', why: 'المدينة والميزانية وصّلتا للمهر');
       });
 
       await walk.step('a06_mahr', 'المهر', () async {
         walk.note(walk.visibleTexts().take(12).join(' · '));
-        final amount = find.byType(EditableText);
-        if (amount.evaluate().isNotEmpty) await fillNth(0, '2000000');
-        await walk.tapText('التالي', required: false);
+        await fillNth(0, '2000000');
+        await walk.tapText('التالي');
+        walk.expectSee('خطتك جاهزة', why: 'المهر وصّل لشاشة «جاهزة»');
+        walk.expectSee('5 مليون', why: 'الميزانية التي كُتبت تظهر');
+        walk.expectSee('المهر مليونين', why: 'المهر الذي كُتب يظهر');
       });
 
       await walk.step('a08_ready', 'خطتك جاهزة', () async {
@@ -73,13 +98,45 @@ void main() {
         await walk.tapKey('register-submit', wait: 5);
       });
 
+      await walk.step('a09_code_burned', 'رمز غلط خمس مرات ثم الصحيح', () async {
+        if (!walk.sees('ما وصلني الرمز')) {
+          walk.fail('ما طلب رمز واتساب');
+          return;
+        }
+        // Five wrong codes use the code up on the server; the right one
+        // then fails too, and the screen must say so, not «غلط» (J1-03).
+        for (var attempt = 0; attempt < 5; attempt++) {
+          await tester.enterText(find.byType(EditableText).first, '00000$attempt');
+          await walk.settle(seconds: 2.5);
+        }
+        await tester.enterText(find.byType(EditableText).first, devOtpCode);
+        await walk.settle(seconds: 3);
+        walk.note(walk.visibleTexts().take(12).join(' · '));
+        walk.expectSee('انتهى', why: 'الرمز المستنفد يُقال إنه انتهى، لا إنه غلط فقط');
+      });
+
+      await walk.step('a09_resend', 'أرسله مرة ثانية بعد العدّاد', () async {
+        final resend = find.text('أرسله مرة ثانية');
+        if (!await walk.waitFor(resend, seconds: 75)) {
+          walk.fail('زر «أرسله مرة ثانية» ما ظهر بعد انتهاء العدّاد');
+          return;
+        }
+        await tester.tap(resend.first, warnIfMissed: false);
+        await walk.settle(seconds: 4);
+        walk.expectNotSee('انتهى', why: 'رمز جديد يمسح رسالة الرمز القديم');
+      });
+
       await walk.step('a09_otp', 'رمز التحقق', () async {
         if (!walk.sees('ما وصلني الرمز')) {
           walk.fail('ما طلب رمز واتساب');
           return;
         }
-        // Six digits sign in and save the plan on their own (D75).
-        await tester.enterText(find.byType(EditableText).first, devOtpCode);
+        // Six digits sign in and save the plan on their own (D75). The
+        // field was cleared by the resend, so it is focused first.
+        final field = find.byKey(const Key('otp-code-field'));
+        await tester.tap(field, warnIfMissed: false);
+        await walk.settle(seconds: 1);
+        await tester.enterText(field, devOtpCode);
         await walk.settle(seconds: 8);
       });
 
@@ -90,6 +147,8 @@ void main() {
 
       await walk.step('c01_money', 'المال قبل أي شيء', () async {
         await walk.tab('المال');
+        walk.expectSee('5 مليون', why: 'الميزانية وصلت الخادم (C2)');
+        walk.expectSee('2 مليون', why: 'المهر وصل الخادم');
       });
 
       await walk.step('c10_add_cost', 'سجّل اتفاقًا: القاعة', () async {
@@ -122,6 +181,7 @@ void main() {
         await walk.tapText('البنود', required: false);
         // The row carries the item's name, and opens the agreement's own.
         walk.expectSee('قاعة أو مخدرة الرجال');
+        walk.expectSee('1 مليون', why: 'الاتفاق الجديد ظهر بمبلغه، لا اسم البند فقط');
       });
 
       await walk.step('c07_item', 'افتح الاتفاق', () async {
@@ -148,7 +208,7 @@ void main() {
         await walk.tab('المال');
         await walk.tapText('الملخص', required: false);
         walk.note(walk.visibleTexts().take(24).join(' · '));
-        walk.expectSee('250');
+        walk.expectSee('250,000', why: 'الدفعة بمبلغها الكامل في الملخص');
       });
 
       await walk.step('e06_add_guest', 'أضف ضيفًا', () async {
@@ -195,7 +255,11 @@ void main() {
       await walk.step('b02_home_after', 'الرئيسية تعرف كل هذا', () async {
         await walk.tab('الرئيسية');
         walk.note(walk.visibleTexts().take(30).join(' · '));
-        walk.expectSee('250,000', why: 'الرئيسية تعرف الدفعة (R1)');
+        // V-01: the home's side column is compact with its unit; the space
+        // before the unit is a non-breaking one, so the two are matched apart.
+        walk.expectSee('دفعت 250', why: 'الرئيسية تعرف الدفعة (R1)');
+        walk.expectSee('ألف', why: 'الرقم المختصر معه وحدته (V-01)');
+        walk.expectSee('مع المهر', why: 'المجموع يقول إنه مع المهر (D79)');
         walk.expectNotSee('ابدأ قائمة الضيوف', why: 'أضفنا ضيفًا (R1)');
       });
 

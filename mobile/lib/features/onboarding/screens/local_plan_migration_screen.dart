@@ -31,6 +31,9 @@ class LocalPlanMigrationScreen extends StatefulWidget {
     required this.migrationService,
     required this.onFinished,
     this.autoSave = false,
+    this.localPlan,
+    this.startLocally = false,
+    this.onOpenedLocally,
   });
 
   final LocalPlanSnapshot snapshot;
@@ -44,12 +47,28 @@ class LocalPlanMigrationScreen extends StatefulWidget {
   /// at once without looking for another plan.
   final bool autoSave;
 
+  /// D77 (J1-01): the plan's home on this phone, for when the account could
+  /// not take it: a failure never locks the app. Built with `saveNow`, the
+  /// move into the account again, for its «ما انحفظت في حسابك بعد» strip.
+  /// Without it the failure offers only trying again or dropping the plan.
+  final Widget Function(BuildContext context, VoidCallback saveNow)? localPlan;
+
+  /// The person opened the plan on the phone earlier in this session: it
+  /// opens there again, and the move is tried quietly (now, and each time
+  /// the app comes back) instead of locking the app again.
+  final bool startLocally;
+
+  /// Told when the person opens the plan on the phone, so the session can
+  /// remember it ([startLocally]).
+  final VoidCallback? onOpenedLocally;
+
   @override
   State<LocalPlanMigrationScreen> createState() =>
       _LocalPlanMigrationScreenState();
 }
 
-enum _Phase { checking, saving, choosing, failed }
+/// [_Phase.local]: the plan is open on the phone, not in the account yet.
+enum _Phase { checking, saving, choosing, failed, local }
 
 /// Fixed dimensions of this layout, not spacing steps (D74): where the
 /// saving or failure sits on the page, and its mark.
@@ -92,14 +111,77 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     }
   }
 
+  /// Tries the move again whenever the app comes back while the plan is
+  /// open on the phone (D77).
+  AppLifecycleListener? _lifecycle;
+  bool _tryingQuietly = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.autoSave) _phase = _Phase.saving;
+    if (widget.startLocally && widget.localPlan != null) {
+      _phase = _Phase.local;
+      _lifecycle = AppLifecycleListener(onResume: _tryQuietly);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _start();
+      if (!mounted) return;
+      _phase == _Phase.local ? _tryQuietly() : _start();
     });
   }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  /// The plan opens on the phone (D77): the app goes on, and the session
+  /// remembers it so the next home does not lock again.
+  void _openLocally() {
+    if (_busy) return;
+    _lifecycle ??= AppLifecycleListener(onResume: _tryQuietly);
+    setState(() => _phase = _Phase.local);
+    widget.onOpenedLocally?.call();
+  }
+
+  /// «احفظها الحين» on the phone plan's strip: the move again, in view (the
+  /// choice when the account has a plan, the failure if it fails again).
+  void _saveFromPhone() {
+    if (_tryingQuietly) return;
+    _retry();
+  }
+
+  /// The move again without a word on the screen while the plan is open on
+  /// the phone. Only a plan with nothing to choose is saved on its own; a
+  /// choice (an account with a plan, the other side's plan) stays the
+  /// person's, from the strip.
+  Future<void> _tryQuietly() async {
+    if (_phase != _Phase.local || _tryingQuietly) return;
+    _tryingQuietly = true;
+    try {
+      if (!widget.autoSave) {
+        final account = await widget.migrationService.accountPlanCounts();
+        if (account != null || _otherSide) return;
+      }
+      final planId = await _save();
+      if (!mounted) return;
+      _lifecycle?.dispose();
+      _lifecycle = null;
+      widget.onFinished(planId);
+    } on Object {
+      // Still offline, or refused: the plan stays open on the phone and its
+      // strip still offers saving it.
+    } finally {
+      _tryingQuietly = false;
+    }
+  }
+
+  /// «ما فيه نت الحين»: the failure said as it is when the phone is offline.
+  static bool _isOffline(Object error) =>
+      error is ApiException && error.isNetworkFailure;
+
+  String get _offlineMessage => 'ما فيه نت الحين، فما قدرنا نوصل لحسابك.';
 
   Future<void> _start() async {
     if (widget.autoSave) return _saveDirectly();
@@ -110,14 +192,16 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     final AccountPlanCounts? account;
     try {
       account = await widget.migrationService.accountPlanCounts();
-    } on Object {
+    } on Object catch (error) {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.failed;
-        _error = _owner.say(
-          'ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.',
-          'ما قدرنا نشوف حسابك. تأكدي من النت وجرّبي مرة ثانية.',
-        );
+        _error = _isOffline(error)
+            ? _offlineMessage
+            : _owner.say(
+                'ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.',
+                'ما قدرنا نشوف حسابك. تأكدي من النت وجرّبي مرة ثانية.',
+              );
         _retry = _start;
       });
       return;
@@ -218,6 +302,15 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       await _clearPhonePlan(offlineSync);
       return response.activePlanId;
     } on ApiException catch (error) {
+      if (error.isNetworkFailure) throw _SaveFailure(_offlineMessage);
+      // J1-13: the server's checks (an English detail, so a generic line by
+      // the time it is here) said no; trying again will not change that.
+      final refused = error.statusCode == 400 || error.statusCode == 422;
+      if (refused && error.serverCode == null) {
+        throw const _SaveFailure(
+          'فيه شي في خطتك ما قبله الحساب، فما انحفظت فيه.',
+        );
+      }
       throw _SaveFailure(error.message);
     } on Object {
       throw _SaveFailure(
@@ -304,9 +397,12 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     final persona = widget.snapshot.draft.persona == GuestPersona.bride
         ? 'BRIDE'
         : 'GROOM';
+    final localPlan = widget.localPlan;
     return JourneyProfileScope(
       profile: JourneyProfile.fromPersona(persona),
-      child: Builder(builder: _page),
+      child: _phase == _Phase.local && localPlan != null
+          ? Builder(builder: (context) => localPlan(context, _saveFromPhone))
+          : Builder(builder: _page),
     );
   }
 
@@ -314,18 +410,38 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     final planName = widget.snapshot.draft.planName?.trim();
     final saving = planName == null || planName.isEmpty ? 'خطتك' : planName;
     final failed = _phase == _Phase.failed;
+    final retry = JourneyButton(
+      label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+      expand: true,
+      large: true,
+      onPressed: _busy ? null : _retry,
+    );
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: JourneyPage(
         bottom: failed
             ? JourneyEntryActions(
-                primary: JourneyButton(
-                  label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
-                  expand: true,
-                  large: true,
-                  onPressed: _busy ? null : _retry,
-                ),
+                // D77: the third way out, so a failure never locks the app.
+                primary: widget.localPlan == null
+                    ? retry
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          retry,
+                          const SizedBox(height: AarastV3Space.x2),
+                          JourneyButton.outline(
+                            key: const ValueKey('local-plan-open-on-phone'),
+                            label: context.say(
+                              'افتح خطتك على الجوال الحين',
+                              'افتحي خطتك على الجوال الحين',
+                            ),
+                            expand: true,
+                            large: true,
+                            onPressed: _busy ? null : _openLocally,
+                          ),
+                        ],
+                      ),
                 secondary: JourneyTextAction(
                   label: context.say('امسحها من الجوال', 'امسحيها من الجوال'),
                   onPressed: _busy ? null : _dropFromFailure,

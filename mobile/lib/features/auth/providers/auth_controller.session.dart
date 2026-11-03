@@ -192,7 +192,10 @@ mixin _AuthSession on _AuthControllerCore {
     _sessionExpired = markSessionExpired;
     _accountJustCreated = false;
     _signUpFoundAccount = false;
+    _signUpFoundAccountNoticePending = false;
     _expiredSessionPhone = markSessionExpired ? _user?.phone : null;
+    // Noted by the router when the expiry is announced, below.
+    _expiredSessionLocation = null;
     _user = null;
     _status = AuthStatus.terminating;
     _errorMessage = markSessionExpired

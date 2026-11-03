@@ -303,7 +303,9 @@ Widget paymentEntryFrame(
                 ? null
                 : [
                     ?cost.partyLabel,
-                    if (moneyValue(cost.remainingAmount) > 0) 'باقي عليك $left',
+                    // J1-17: whose the rest is, as «الملخص» says it.
+                    if (moneyValue(cost.remainingAmount) > 0)
+                      '${context.ownerDid('باقي عليك', 'باقي عليك', groom: 'باقي عليه', bride: 'باقي عليها')} $left',
                   ].join(' · '),
             onBack: () => context.popOrGo(AppRouter.money(planId)),
           ),

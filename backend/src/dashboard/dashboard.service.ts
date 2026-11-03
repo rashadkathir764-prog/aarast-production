@@ -18,7 +18,7 @@ import {
 } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { InsightsReadPorts } from "./insights-read-ports";
-import type { DashboardSetupFacts } from "./dashboard-setup.contracts";
+import type { DashboardSummaryWithSetupResponse } from "./dashboard-setup.contracts";
 import { planEssentials } from "./plan-essentials";
 import { VENUE_PROVIDER_CATEGORY_SLUG } from "../modules/catalog/public/catalog-read.port";
 import {
@@ -29,10 +29,7 @@ import {
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
-import {
-  DashboardPermissionSummary,
-  WeddingPlanDashboardSummaryResponse,
-} from "./dashboard.contracts";
+import { DashboardPermissionSummary } from "./dashboard.contracts";
 import {
   dashboardQuoteIds,
   dashboardTaskReadScope,
@@ -128,7 +125,7 @@ export class DashboardService {
   async getWeddingPlanDashboardSummary(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-  ): Promise<WeddingPlanDashboardSummaryResponse & DashboardSetupFacts> {
+  ): Promise<DashboardSummaryWithSetupResponse> {
     return runRetryableTransaction(
       this.prisma,
       (tx) =>
@@ -145,7 +142,7 @@ export class DashboardService {
     tx: Prisma.TransactionClient,
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-  ): Promise<WeddingPlanDashboardSummaryResponse & DashboardSetupFacts> {
+  ): Promise<DashboardSummaryWithSetupResponse> {
     const context = await this.permissions.assertPlanReadableInTransaction(
       tx,
       weddingPlanId,
@@ -204,7 +201,9 @@ export class DashboardService {
               ? { costIds: contributorIds.costIds, categoryIds: [] }
               : null,
             readerUserId: currentUser.id,
-            fundingVisible: false,
+            // The bride's mahr is her funding (C1): read for the owner, who
+            // alone records the mahr, so the home knows whether to ask for it.
+            fundingVisible: context.isOwner,
           })
         : Promise.resolve(null),
       canViewMoney
@@ -417,6 +416,11 @@ export class DashboardService {
       canManageMoney: this.permissions.canManageMoney(context),
       form: readerAddressForm(currentUser, context),
       planPersona: context.plan.persona,
+      // J1-04: the mahr step is the owner's (only he records it); the first
+      // agreement is asked of a reader who sees the plan's whole money.
+      mahrRecorded: money && context.isOwner ? money.mahr !== null : null,
+      weddingCostsCount:
+        money && seesWholePlan(context) ? money.budget.count : null,
     });
     const currentUserRole = this.currentUserRole(context);
     const notificationPreviews = latestNotifications.map((notification) =>

@@ -73,6 +73,16 @@ class MoneySummary {
   MoneyCategorySummary? get mahrCategory =>
       categories.where((category) => category.isMahr).firstOrNull;
 
+  /// D79: the groom's mahr is one of his agreements, so the server counts it
+  /// inside [costs] («اتفقت على X»), and the money says «مع المهر» beside
+  /// that total. The bride's mahr is money coming in, never in [costs].
+  bool get agreedIncludesMahr {
+    final mahr = this.mahr;
+    return mahr != null &&
+        mahr.side == MahrSide.pays &&
+        moneyValue(mahr.total) > 0;
+  }
+
   /// The wedding's own items: every item but the mahr's (C1).
   List<MoneyCategorySummary> get weddingCategories => [
     for (final category in categories)

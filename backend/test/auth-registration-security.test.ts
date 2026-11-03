@@ -992,6 +992,23 @@ test("a registered number with a valid REGISTER code signs in without changing n
   });
 });
 
+test("J1-10: a registered number's answer names the account it signed in to, not the typed name", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser } = createHarness();
+    await addUser("+967777123456", true);
+    await service.startRegistration({ name: "Other Name", phone: "777123456" });
+    const response = await service.completeRegistration({
+      name: "Other Name",
+      phone: "777123456",
+      otpCode: "123456",
+    });
+
+    // «هذا الرقم عليه حساب باسم X»: X is the existing account's own name.
+    assert.equal(response.existingAccount, true);
+    assert.equal(response.user.name, "Existing User");
+  });
+});
+
 test("a registered but disabled number keeps its disabled answer on registration", async () => {
   await withDevOtp(async () => {
     const { service, addUser } = createHarness();

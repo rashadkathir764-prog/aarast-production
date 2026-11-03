@@ -516,8 +516,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ),
       if (wrongCode) ...[
         const SizedBox(height: AarastV3Space.x3),
+        // One server answer covers a wrong, an expired and a used-up code,
+        // so the line names both and points at «أرسله مرة ثانية» below.
+        // The invite speaks to whoever was invited, so no gendered verb.
         Text(
-          'الرمز غلط، جرّب مرة ثانية.',
+          'الرمز غلط أو انتهى وقته. الرمز الجديد من «أرسله مرة ثانية».',
           textAlign: TextAlign.center,
           style: JourneyType.of(
             JourneyType.body,

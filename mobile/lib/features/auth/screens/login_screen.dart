@@ -49,6 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _phoneController.text = widget.initialPhone?.trim() ?? '';
+    // Someone already signed in has no sign-in to do here (J1-15): the app
+    // takes them where they were heading, as after any sign-in.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthController>();
+      if (auth.status != AuthStatus.authenticated) return;
+      auth.requestAuthenticatedEntry(_safeResumeLocation(context));
+    });
   }
 
   @override
@@ -94,7 +102,10 @@ class _LoginScreenState extends State<LoginScreen> {
               : JourneyNote(
                   key: const ValueKey('login-error'),
                   text: auth.failedOffline
-                      ? 'ما قدرنا نوصل، النت مقطوع. جرّب مرة ثانية.'
+                      ? context.say(
+                          'ما قدرنا نوصل، النت مقطوع. جرّب مرة ثانية.',
+                          'ما قدرنا نوصل، النت مقطوع. جرّبي مرة ثانية.',
+                        )
                       : error,
                   icon: auth.failedOffline
                       ? LucideIcons.wifiOff
@@ -249,10 +260,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    final auth = context.read<AuthController>();
+    // The keyboard's «done» keeps the button's guard: one request at a time.
+    if (auth.isSubmitting) return;
     if (!_submitAttempted) setState(() => _submitAttempted = true);
     if (_phoneError != null || _passwordError != null) return;
 
-    final auth = context.read<AuthController>();
     final success = await auth.login(
       phone: _phoneController.text.trim(),
       password: _passwordController.text,
@@ -270,11 +283,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _requestLoginOtp({bool validated = false}) async {
+    final auth = context.read<AuthController>();
+    if (auth.isSubmitting) return;
     if (!validated) {
       if (!_submitAttempted) setState(() => _submitAttempted = true);
       if (_phoneError != null) return;
     }
-    final auth = context.read<AuthController>();
     final phone = normalizeYemeniPhone(_phoneController.text.trim());
     final otp = await auth.requestOtp(phone: phone, purpose: 'LOGIN');
     if (otp == null || !mounted) return;

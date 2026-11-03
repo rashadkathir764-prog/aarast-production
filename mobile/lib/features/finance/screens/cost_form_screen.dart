@@ -36,6 +36,11 @@ part 'cost_form_screen.save.dart';
 
 enum _PartyKind { none, provider, external }
 
+/// The longest agreement name the server accepts: `@MaxLength(160)` on
+/// `title` in backend/src/wedding-costs/dto/create-wedding-cost.dto.ts
+/// (J1-09). Change both together.
+const _costTitleMaxLength = 160;
+
 /// c10 «اتفاق جديد» and editing one: the item, who it is with, how much,
 /// and, for a new agreement, how it will be paid.
 class CostFormScreen extends StatefulWidget {
@@ -425,7 +430,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                         'مثلًا: حجز الصالة',
                       ),
                   controller: _titleController,
-                  maxLength: 200,
+                  maxLength: _costTitleMaxLength,
                 ),
                 if (!_editing) ...[
                   const SizedBox(height: AarastV3Space.x2),

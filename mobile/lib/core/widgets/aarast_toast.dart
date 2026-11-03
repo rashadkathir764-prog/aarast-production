@@ -50,10 +50,12 @@ class AarastToast {
     );
   }
 
+  /// A caller above the navigator passes the navigator's [overlay].
   static void showInfo(
     BuildContext context,
     String message, {
     SnackBarAction? action,
+    OverlayState? overlay,
   }) {
     _show(
       context,
@@ -63,6 +65,7 @@ class AarastToast {
       icon: LucideIcons.info,
       action: action,
       duration: const Duration(milliseconds: 3200),
+      overlay: overlay,
     );
   }
 
@@ -82,10 +85,13 @@ class AarastToast {
     );
   }
 
+  /// A push notice while the app is open. A caller that lives above the
+  /// navigator (no overlay above it) passes the navigator's [overlay].
   static void showNotification(
     BuildContext context, {
     required String title,
     required String message,
+    OverlayState? overlay,
   }) {
     _show(
       context,
@@ -95,6 +101,7 @@ class AarastToast {
       softColor: AppTheme.brandMuted,
       icon: LucideIcons.bell,
       duration: const Duration(milliseconds: 4200),
+      overlay: overlay,
     );
   }
 
@@ -107,8 +114,9 @@ class AarastToast {
     required IconData icon,
     SnackBarAction? action,
     required Duration duration,
+    OverlayState? overlay,
   }) {
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    overlay ??= Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
     _removeActive();

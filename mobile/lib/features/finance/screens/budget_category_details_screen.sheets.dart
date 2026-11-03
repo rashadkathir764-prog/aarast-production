@@ -39,15 +39,51 @@ class _CategorySummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // D59: the owner reads their own doing; a helper reads it as the
+          // owner's, like the money summary.
           row(
-            context.say('حطيت له', 'حطيتِ له'),
+            context.ownerDid(
+              'حطيت له',
+              'حطيتِ له',
+              groom: 'حط له العريس',
+              bride: 'حطت له العروسة',
+            ),
             category.allocatedAmount == null
-                ? context.say('ما حددت', 'ما حددتِ')
+                ? context.ownerDid(
+                    'ما حددت',
+                    'ما حددتِ',
+                    groom: 'ما حدد',
+                    bride: 'ما حددت',
+                  )
                 : plain(allocated),
           ),
-          row(context.say('اتفقت على', 'اتفقتِ على'), plain(agreed)),
-          row(context.say('دفعت', 'دفعتِ'), plain(paid)),
-          row('باقي عليك', plain(moneyValue(category.outstanding))),
+          row(
+            context.ownerDid(
+              'اتفقت على',
+              'اتفقتِ على',
+              groom: 'اتفق العريس على',
+              bride: 'اتفقت العروسة على',
+            ),
+            plain(agreed),
+          ),
+          row(
+            context.ownerDid(
+              'دفعت',
+              'دفعتِ',
+              groom: 'دفع العريس',
+              bride: 'دفعت العروسة',
+            ),
+            plain(paid),
+          ),
+          row(
+            context.ownerDid(
+              'باقي عليك',
+              'باقي عليك',
+              groom: 'باقي عليه',
+              bride: 'باقي عليها',
+            ),
+            plain(moneyValue(category.outstanding)),
+          ),
           if (agreed > 0) ...[
             const SizedBox(height: AarastV3Space.x2),
             JourneyBar(value: ratio, color: context.accent.primary),

@@ -15,6 +15,7 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
@@ -67,6 +68,75 @@ void main() {
     expect(find.textContaining(_planTitle), findsWidgets);
     _expectRtl(tester, find.byType(LocalGuestDashboardScreen));
     expect(tester.takeException(), isNull);
+  });
+
+  // J1-01 (D77): signed in, a phone plan the account could not take opens on
+  // the phone, and the next home this session opens it there again instead
+  // of locking the app on the failure.
+  testWidgets('DashboardEntryScreen opens a plan the account could not take '
+      'on the phone, for the session', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final guestStorage = GuestOnboardingStorage(preferences);
+    await guestStorage.saveDraft(
+      _guestPlan().copyWith(guestPlanId: 'local-guest-session-test'),
+    );
+    final apiClient = ApiClient(tokenProvider: () async => null);
+    final plansApi = _OfflinePlansApi(apiClient);
+    final auth = _SignedInAuth(AuthRepository(apiClient, authStorage));
+    addTearDown(auth.dispose);
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const DashboardEntryScreen(),
+        ),
+        GoRoute(
+          path: '/elsewhere',
+          builder: (context, state) =>
+              const AarastScreenFrame(child: Center(child: Text('elsewhere'))),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await _pumpPhone(
+      tester,
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          Provider<GuestOnboardingStorage>.value(value: guestStorage),
+          Provider<WeddingPlansApi>.value(value: plansApi),
+          Provider<FinanceApi>.value(value: FinanceApi(apiClient)),
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+        ],
+        child: _routerApp(router),
+      ),
+    );
+    await _pumpState(tester, frames: 12);
+
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsOneWidget);
+    expect(find.textContaining('ما فيه نت الحين'), findsOneWidget);
+    final openOnPhone = find.byKey(const ValueKey('local-plan-open-on-phone'));
+    await tester.ensureVisible(openOnPhone);
+    await tester.tap(openOnPhone);
+    await _pumpState(tester, frames: 12);
+    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+    expect(find.text('ما انحفظت في حسابك بعد'), findsOneWidget);
+
+    // Away and back home: the same session opens it on the phone again.
+    router.go('/elsewhere');
+    await _pumpState(tester);
+    expect(find.text('elsewhere'), findsOneWidget);
+    router.go('/');
+    await _pumpState(tester, frames: 12);
+    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+    // It was tried again quietly on the way in.
+    expect(plansApi.listCalls, 2);
+    expect(await guestStorage.loadGuestPlan(), isNotNull);
   });
 
   testWidgets('DashboardEntryScreen sends an empty device to onboarding', (
@@ -358,6 +428,29 @@ class _Harness {
     weddingPlans.dispose();
     dashboard.dispose();
     finance.dispose();
+  }
+}
+
+class _SignedInAuth extends AuthController {
+  _SignedInAuth(super.authRepository);
+
+  @override
+  AuthStatus get status => AuthStatus.authenticated;
+}
+
+/// The account's plans while the phone is offline.
+class _OfflinePlansApi extends WeddingPlansApi {
+  _OfflinePlansApi(super.apiClient);
+
+  int listCalls = 0;
+
+  @override
+  Future<List<WeddingPlan>> getMyWeddingPlans() async {
+    listCalls += 1;
+    throw const ApiException(
+      aarastBackendConnectionErrorMessage,
+      isNetworkFailure: true,
+    );
   }
 }
 

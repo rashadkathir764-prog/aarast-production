@@ -40,12 +40,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// The name came with the kept plan («عرس محمد»), so it is not asked again.
   bool _nameFromPlan = false;
 
+  /// The last send made the account with a just-proven number (no code),
+  /// so a lost connection is about the account, not a code (J1-17).
+  bool _creatingWithProof = false;
+
   @override
   void initState() {
     super.initState();
     _phoneController.text = widget.initialPhone?.trim() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _readKeptPlan();
+      if (!mounted) return;
+      // Someone already signed in has no account to make here (J1-15).
+      final auth = context.read<AuthController>();
+      if (auth.status == AuthStatus.authenticated) {
+        auth.requestAuthenticatedEntry(_safeResumeLocation(context));
+        return;
+      }
+      _readKeptPlan();
     });
   }
 
@@ -173,7 +184,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: AarastV3Space.x2),
             JourneyNote(
               key: const ValueKey('register-offline'),
-              text: keptPlan == null
+              text: _creatingWithProof
+                  ? context.say(
+                      'ما قدرنا ننشئ حسابك الحين، تأكد من النت وجرّب.',
+                      'ما قدرنا ننشئ حسابك الحين، تأكدي من النت وجرّبي.',
+                    )
+                  : keptPlan == null
                   ? 'ما قدرنا نرسل الرمز، النت مقطوع.'
                   : 'ما قدرنا نرسل الرمز، النت مقطوع. خطتك محفوظة على هذا الجوال.',
               icon: LucideIcons.wifiOff,
@@ -253,14 +269,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    final auth = context.read<AuthController>();
+    // The keyboard's «done» keeps the button's guard: one request at a time.
+    if (auth.isSubmitting) return;
     if (!_submitAttempted) setState(() => _submitAttempted = true);
     if (_nameError != null || _phoneError != null) return;
 
-    final auth = context.read<AuthController>();
     final name = _nameController.text.trim();
     final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
     // The number was just proven by a sign-in code (D75): no second code.
     final proof = auth.phoneProofFor(normalizedPhone);
+    setState(() => _creatingWithProof = proof != null);
     if (proof != null) {
       await auth.register(
         name: name,

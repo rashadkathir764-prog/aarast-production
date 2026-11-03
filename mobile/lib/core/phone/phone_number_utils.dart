@@ -33,7 +33,8 @@ class PhoneNumberUtils {
   static const invalidMessage = 'أدخل رقم جوال صحيح.';
   static const internationalWarningMessage =
       'تعذر التأكد من بلد الرقم؛ احتفظنا به كما أدخلته.';
-  static const optionalPhoneMessage = 'يمكنك إضافة الرقم لاحقًا من شاشة الضيف.';
+  // Said to a man or a woman alike, in the app's own words.
+  static const optionalPhoneMessage = 'الرقم ينضاف بعدين من شاشة الضيف.';
 
   static PhoneNumberAnalysis analyze(
     String? input, {

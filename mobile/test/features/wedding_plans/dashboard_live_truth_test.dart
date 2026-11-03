@@ -145,8 +145,9 @@ void main() {
     expect(find.text('المال'), findsOneWidget);
     expect(find.text('باقي تدفع'), findsOneWidget);
     expect(find.text('500,000 ر.س'), findsOneWidget);
-    expect(find.text('اتفقت على 900,000 ر.س'), findsOneWidget);
-    expect(find.text('دفعت 400,000 ر.س'), findsOneWidget);
+    // V-01: the far side writes every figure short, with its unit.
+    expect(find.text('اتفقت على 900 ألف'), findsOneWidget);
+    expect(find.text('دفعت 400 ألف'), findsOneWidget);
     expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
     // The budget is not on b02's card.
     expect(find.text('المتاح من الميزانية'), findsNothing);

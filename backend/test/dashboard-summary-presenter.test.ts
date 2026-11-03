@@ -442,3 +442,140 @@ test('dashboard money totals are exact decimal sums, never float accumulations',
   assert.equal(warning.type, 'BUDGET_EXCEEDED');
   assert.equal(warning.amount, '0.01');
 });
+
+// J1-04: the home's next step is the first server item, so the setup steps
+// come in one order, each only while it is missing: the budget, the mahr,
+// the first agreement, the guests, then the first quote.
+function setupItems(
+  overrides: Partial<Parameters<typeof dashboardPresenter.buildImportantItems>[0]>,
+) {
+  return dashboardPresenter.buildImportantItems({
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    paymentSchedules: [],
+    providers: [],
+    today: new Date(2026, 6, 11),
+    receivedQuotes: 0,
+    pendingInvites: 0,
+    hasLocation: true,
+    hasBudget: true,
+    guestCount: 0,
+    quoteRequestsCount: 0,
+    acceptedProviders: 0,
+    canManageMoney: true,
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
+    mahrRecorded: false,
+    weddingCostsCount: 0,
+    ...overrides,
+  });
+}
+
+test('dashboard next step: a new plan without its mahr asks for the mahr first', () => {
+  const groom = setupItems({});
+  assert.deepEqual(
+    groom.map((item) => item.type),
+    ['RECORD_MAHR', 'ADD_FIRST_COST', 'ADD_GUESTS'],
+  );
+  assert.equal(groom[0].title, 'اتفقتوا على المهر؟');
+  assert.equal(groom[0].subtitle, 'نحسبه لحاله، برا ميزانية العرس.');
+  assert.equal(groom[0].actionLabel, 'سجّل المهر');
+  assert.equal(groom[0].routeTarget, '/wedding-plans/plan-1/money/mahr');
+  assert.equal(groom[0].route, '/wedding-plans/plan-1/money/mahr');
+  assert.equal(groom[0].icon, 'wallet');
+  assert.equal(groom[0].priority, 'LOW');
+  assert.equal(groom[0].id, 'record_mahr:plan-1');
+
+  const [bride] = setupItems({ form: 'FEMININE', planPersona: 'BRIDE' });
+  assert.equal(bride.type, 'RECORD_MAHR');
+  assert.equal(bride.title, 'اتفقتوا على المهر؟');
+  assert.equal(bride.actionLabel, 'سجّلي المهر');
+
+  // The budget, while it is missing, still comes before the mahr.
+  assert.deepEqual(
+    setupItems({ hasBudget: false }).map((item) => item.type),
+    ['SET_BUDGET', 'RECORD_MAHR', 'ADD_FIRST_COST'],
+  );
+});
+
+test('dashboard next step: with the mahr recorded and no agreement, the first agreement comes first', () => {
+  const groom = setupItems({ mahrRecorded: true });
+  assert.deepEqual(
+    groom.map((item) => item.type),
+    ['ADD_FIRST_COST', 'ADD_GUESTS', 'REQUEST_QUOTE'],
+  );
+  assert.equal(groom[0].title, 'سجّل أول اتفاق');
+  assert.equal(
+    groom[0].subtitle,
+    'القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان',
+  );
+  assert.equal(groom[0].actionLabel, 'أضف اتفاق');
+  assert.equal(
+    groom[0].routeTarget,
+    '/wedding-plans/plan-1/money/costs/create',
+  );
+  assert.equal(groom[0].icon, 'wallet');
+  assert.equal(groom[0].priority, 'LOW');
+
+  const [bride] = setupItems({
+    mahrRecorded: true,
+    form: 'FEMININE',
+    planPersona: 'BRIDE',
+  });
+  assert.equal(bride.type, 'ADD_FIRST_COST');
+  assert.equal(bride.title, 'سجّلي أول اتفاق');
+  assert.equal(bride.actionLabel, 'أضيفي اتفاق');
+});
+
+test('dashboard next step: with agreements and no guests, the guests come first', () => {
+  const groom = setupItems({ mahrRecorded: true, weddingCostsCount: 2 });
+  assert.deepEqual(
+    groom.map((item) => item.type),
+    ['ADD_GUESTS', 'REQUEST_QUOTE'],
+  );
+  assert.equal(groom[0].actionLabel, 'أضف أول ضيف');
+
+  // The bride's guests are «الضيفات»: her first one is «ضيفة».
+  const [bride] = setupItems({
+    mahrRecorded: true,
+    weddingCostsCount: 2,
+    form: 'FEMININE',
+    planPersona: 'BRIDE',
+  });
+  assert.equal(bride.type, 'ADD_GUESTS');
+  assert.equal(bride.title, 'ابدئي قائمة الضيفات');
+  assert.equal(bride.actionLabel, 'أضيفي أول ضيفة');
+  // D55: the groom reading the bride's plan is addressed as himself.
+  const [groomInBridePlan] = setupItems({
+    mahrRecorded: true,
+    weddingCostsCount: 2,
+    form: 'MASCULINE',
+    planPersona: 'BRIDE',
+  });
+  assert.equal(groomInBridePlan.actionLabel, 'أضف أول ضيفة');
+});
+
+test('dashboard next step: a reader who cannot manage money gets neither money step', () => {
+  const items = setupItems({ canManageMoney: false, form: 'FEMININE' });
+  assert.deepEqual(
+    items.map((item) => item.type),
+    ['ADD_GUESTS', 'REQUEST_QUOTE'],
+  );
+});
+
+test('dashboard next step: an unknown or inapplicable money fact asks for nothing', () => {
+  // null: the reader may not see it (a contributor), or the plan has no
+  // mahr side (a helper's plan); neither invents a step.
+  assert.deepEqual(
+    setupItems({ mahrRecorded: null, weddingCostsCount: null }).map(
+      (item) => item.type,
+    ),
+    ['ADD_GUESTS', 'REQUEST_QUOTE'],
+  );
+  assert.deepEqual(
+    setupItems({ planPersona: null, weddingCostsCount: 1 }).map(
+      (item) => item.type,
+    ),
+    ['ADD_GUESTS', 'REQUEST_QUOTE'],
+  );
+});

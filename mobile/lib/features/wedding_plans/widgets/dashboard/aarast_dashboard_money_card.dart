@@ -7,6 +7,11 @@ part of 'aarast_dashboard_view.dart';
 // which already counts what was promised, so it reads «ومع الموعود ناقصك»,
 // and the design's «ناقصك» without the promises and «وإذا وصل الموعود»
 // wait for the server formula. «حط 450 ألف كل شهر» is dropped (b02 row).
+// Every far-side line writes its figure one way, with its unit («3 مليون»,
+// «250 ألف», «0 ر.ي»), never the design's bare «5.4» beside a full figure
+// (V-01). Before the money in is known, the agreed line of a groom's plan
+// says the mahr is inside it, on its own short line: «اتفقت على 3 مليون»
+// then «مع المهر» (D79).
 
 /// The owner's funding from the money section (`GET P/money-summary`):
 /// what is in hand, what is promised and the server's shortfall.
@@ -35,6 +40,7 @@ class _DashboardMoneyCard extends StatefulWidget {
     required this.summary,
     required this.funding,
     required this.onTap,
+    this.mahr,
     this.amountsHidden = false,
     this.onToggleAmounts,
   });
@@ -42,6 +48,10 @@ class _DashboardMoneyCard extends StatefulWidget {
   final DashboardSummary summary;
   final DashboardHomeFunding? funding;
   final VoidCallback onTap;
+
+  /// D79: the groom's recorded mahr is inside the agreed total, so its line
+  /// reads «اتفقت على X مع المهر». Null (or the bride's) adds nothing.
+  final DashboardHomeMahr? mahr;
 
   /// G17: the phone's switch; with [onToggleAmounts] the eye flips it.
   final bool amountsHidden;
@@ -100,6 +110,12 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final paidByOwner =
         dashboardAmount(summary.moneySummary.paidByOwner) ??
         (paid - paidByOthers);
+    final mahr = widget.mahr;
+    final withMahr =
+        mahr != null &&
+        mahr.recorded &&
+        mahr.side == MahrHomeSide.pays &&
+        mahr.total > 0;
 
     final Widget lead;
     if (known && !covered) {
@@ -148,6 +164,9 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           '${context.ownerDid('اتفقت على', 'اتفقتِ على', groom: 'اتفق العريس على', bride: 'اتفقت العروسة على')} ${figure(agreed)}',
           AarastV3Color.ink,
         ),
+        // D79, on its own short line: the side column is narrow, and the
+        // figure's line never wraps around the words.
+        if (withMahr) const _SideFigure('مع المهر', AarastV3Color.textMuted),
         if (paidByOwner > 0 || paidByOthers <= 0)
           _SideFigure(
             '${context.ownerDid('دفعت', 'دفعتِ', groom: 'العريس دفع', bride: 'العروسة دفعت')} ${figure(paidByOwner)}',
@@ -313,7 +332,8 @@ class _MoneyLead extends StatelessWidget {
   }
 }
 
-/// One line of the far column: «باقي تدفع 5.4», «معك 2.9», «موعود 1.2».
+/// One line of the far column: «باقي تدفع 5.4 مليون», «معك 2.9 مليون»,
+/// «موعود 250 ألف» (V-01: every line with its unit, see [_figure]).
 class _SideFigure extends StatelessWidget {
   const _SideFigure(this.text, this.color);
 
@@ -375,8 +395,10 @@ String _money(double value, String currency) {
   return compactMoneyParts(value, currencyCode: currency).plainText;
 }
 
-/// b02's far column: «5.4» for millions, the full figure below a million.
+/// b02's far column (V-01): every line the same way, the short figure with
+/// its unit («3 مليون», «250 ألف», «0 ر.ي»), its unit kept on its line. The
+/// design's bare «5.4» is dropped: beside a full figure it read as another
+/// unit («اتفقت على 3» over «دفعت 250,000 ر.ي»).
 String _figure(double value, String currency) {
-  final parts = compactMoneyParts(value, currencyCode: currency);
-  return parts.millionUnit == null ? parts.plainText : parts.number;
+  return compactMoneyFigure(value, currencyCode: currency);
 }

@@ -45,6 +45,7 @@ class AuthResponse {
   final SafeUser user;
 
   /// D75: a sign-up code for a number that already has an account signs in
-  /// to that account; this says it was not created now.
+  /// to that account; this says it was not created now. [user] is then that
+  /// account, so its name is the one the person is told.
   final bool existingAccount;
 }

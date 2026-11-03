@@ -242,6 +242,25 @@ void main() {
     expect(harness.controller.errorMessage, isNull);
   });
 
+  testWidgets('J1-03: a refused code says it may have expired', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository
+      ..failVerify = true
+      ..verifyErrorCode = 'OTP_INVALID_OR_EXPIRED';
+    await _pumpGuestInvite(tester, harness);
+    await _openOtpStep(tester);
+
+    await tester.enterText(find.byKey(const Key('invite-otp-field')), '999999');
+    await tester.pumpAndSettle();
+
+    // The server refuses a wrong, an expired and a used-up code with one
+    // answer, so the screen never says «غلط» alone.
+    expect(find.textContaining('الرمز غلط أو انتهى وقته'), findsOneWidget);
+    expect(find.text('الرمز غلط، جرّب مرة ثانية.'), findsNothing);
+  });
+
   testWidgets('the code is sent once while it is being checked', (
     tester,
   ) async {

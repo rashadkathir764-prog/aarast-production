@@ -899,6 +899,205 @@ void main() {
     expect(find.text('خطتك جاهزة يا عبدالرحمن'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  // J1-02: every answered step is kept on the phone, so a closed app
+  // resumes where it stopped, from the door.
+  testWidgets('J1-02: a closed app resumes the steps with the name and day', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-bride');
+    await tester.enterText(find.byType(TextField).first, 'سلمى');
+    await tester.pumpAndSettle();
+    final now = DateTime.now();
+    final month = DateTime(now.year, now.month + 2);
+    await _tap(tester, arabicMonthName(month.month));
+    final day = DateTime(month.year, month.month, 15);
+    await _pickDay(tester, day);
+    await _tap(tester, 'التالي');
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+
+    // The app closes and opens again on the same phone.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _pump(tester);
+
+    expect(find.text('كمّل خطتي'), findsOneWidget);
+    expect(find.text('عرس سلمى، من حيث وقفتي'), findsOneWidget);
+    await _tapKey(tester, 'door-plan');
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    // Still her plan, in her words.
+    expect(find.text('أكملي بدون ميزانية'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'سلمى',
+    );
+    _expectDayField(tester, day);
+  });
+
+  testWidgets('J1-02: «جاهزة» keeps the plan on the phone as it opens', (
+    tester,
+  ) async {
+    final finance = _RecordingFinance();
+    final storage = await _pump(tester, finance: finance);
+    await _answerUpToReady(tester);
+
+    // No button tapped: the note «خطتك الحين على هذا الجوال» is already true.
+    expect(find.textContaining('خطتك الحين على هذا الجوال بس'), findsOneWidget);
+    final draft = await storage.loadDraft();
+    expect(draft?.isCompleteGuestPlan, isTrue);
+    expect(draft!.planName, 'عرس محمد');
+    expect(finance.planIds, [draft.guestPlanId]);
+    // The answers on the way there gave way to the plan.
+    expect(await storage.loadProgress(), isNull);
+  });
+
+  testWidgets('J1-02: saving with the number after that keeps the one plan', (
+    tester,
+  ) async {
+    final finance = _RecordingFinance();
+    final storage = await _pump(tester, finance: finance);
+    await _answerUpToReady(tester);
+    final kept = (await storage.loadDraft())!.guestPlanId;
+
+    await _tapKey(tester, 'ready-save');
+    expect(find.text('opened:/register'), findsOneWidget);
+    expect(finance.planIds, [kept]);
+    expect((await storage.loadDraft())!.guestPlanId, kept);
+
+    // Back on «جاهزة», a changed answer is kept on the same plan.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    await _tap(tester, 'ما اتفقنا بعد');
+    expect(finance.planIds, [kept, kept]);
+    expect((await storage.loadDraft())!.guestPlanId, kept);
+  });
+
+  testWidgets('J1-14: a city picked from «مدينة ثانية» clears the warning', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _answerUpToPlace(tester);
+    await _tap(tester, 'أكمل بدون ميزانية');
+    expect(find.text('اختر المدينة أول'), findsOneWidget);
+
+    await _tap(tester, 'مدينة ثانية');
+    await tester.enterText(find.byType(TextField).last, 'ذمار');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'اختر هذي المدينة');
+
+    expect(find.text('ذمار'), findsOneWidget);
+    expect(find.text('اختر المدينة أول'), findsNothing);
+  });
+
+  testWidgets('J1-18: a waiting «التالي» says what it waits for', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-groom');
+
+    expect(_button(tester, 'التالي').onPressed, isNull);
+    expect(find.text('اكتب اسمك واختر الشهر'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب اسمك واختر الشهر'), findsNothing);
+    expect(find.text('اختر الشهر'), findsOneWidget);
+
+    final now = DateTime.now();
+    final month = DateTime(now.year, now.month + 2);
+    await _tap(tester, arabicMonthName(month.month));
+    await _pickDay(tester, DateTime(month.year, month.month, 15));
+    expect(_button(tester, 'التالي').onPressed, isNotNull);
+    expect(find.text('اختر الشهر'), findsNothing);
+
+    await _tap(tester, 'التالي');
+    expect(find.text('اختر المدينة واكتب الميزانية'), findsOneWidget);
+    await _tap(tester, 'صنعاء');
+    expect(find.text('اكتب الميزانية'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    expect(_button(tester, 'التالي').onPressed, isNotNull);
+    expect(find.text('اكتب الميزانية'), findsNothing);
+  });
+
+  testWidgets('J1-18: the bride reads what is missing in her words', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-bride');
+    expect(find.text('اكتبي اسمك واختاري الشهر'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'سلمى');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    expect(find.text('اختاري المدينة واكتبي الميزانية'), findsOneWidget);
+  });
+
+  // J1-16: only the groom's rest of the mahr becomes a payment the server
+  // reminds of; the bride is promised no reminder.
+  testWidgets('J1-16: the mahr\'s reminder is promised to the groom only', (
+    tester,
+  ) async {
+    Future<void> openMahr(GuestPersona persona) async {
+      final preferences = await SharedPreferences.getInstance();
+      await GuestOnboardingStorage(preferences).saveProgress(
+        GuestOnboardingDraft.quickLocalPlanSetup(
+          planName: 'عرس سلمى',
+          persona: persona,
+          location: WeddingLocationDraft.fromLegacyFields(
+            governorate: 'صنعاء',
+            city: 'صنعاء',
+          ),
+          weddingDate: null,
+          currency: 'YER',
+          mahr: DraftMahr(
+            total: '3000000',
+            remainingDueDate: DateTime(DateTime.now().year + 1, 3, 1),
+          ),
+        ),
+        step: 'mahr',
+      );
+      await _pump(tester);
+      await _tapKey(tester, 'door-plan');
+      expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    }
+
+    await openMahr(GuestPersona.bride);
+    expect(find.textContaining('نذكّر'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await openMahr(GuestPersona.groom);
+    expect(find.textContaining('نذكّرك قبل الموعد'), findsOneWidget);
+  });
+
+  testWidgets('J1-09: the name stops at the account\'s 120 letters', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-groom');
+    await tester.enterText(find.byType(TextField).first, 'م' * 130);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(find.byType(TextField).first)
+          .controller!
+          .text
+          .length,
+      120,
+    );
+    // No counter under the field.
+    expect(find.text('120/120'), findsNothing);
+  });
 }
 
 /// Picks [day] in the open day sheet by its spoken label.

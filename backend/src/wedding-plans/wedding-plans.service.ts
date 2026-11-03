@@ -47,7 +47,10 @@ import {
   type CollaborationHistoryPort as ContributionHistoryService,
 } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
-import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
+import {
+  CompleteOnboardingDto,
+  PLAN_STARTER_ITEMS_MAX,
+} from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
@@ -611,9 +614,16 @@ export class WeddingPlansService {
       };
     });
 
+    // J1-13: every picked item and every agreement's item, none dropped: an
+    // agreement whose item was cut off could not be imported at all. The
+    // request's own caps bound how many there are.
+    const importedItemNames = [
+      ...selectedCategories,
+      ...costs.map((cost) => cost.categoryName),
+    ];
     const categoryNames = this.normalizeStringList(
-      [...selectedCategories, ...costs.map((cost) => cost.categoryName)],
-      50,
+      importedItemNames,
+      importedItemNames.length,
     );
 
     try {
@@ -860,7 +870,8 @@ export class WeddingPlansService {
   }
 
   private normalizeSelectedCategories(values: string[] | undefined): string[] {
-    return this.normalizeStringList(values, 25);
+    // The request's cap (J1-13), so no picked item is silently dropped.
+    return this.normalizeStringList(values, PLAN_STARTER_ITEMS_MAX);
   }
 
   private normalizeStringList(

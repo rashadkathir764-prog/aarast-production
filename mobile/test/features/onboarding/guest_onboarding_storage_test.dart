@@ -99,6 +99,46 @@ void main() {
       expect(await storage.hasGuestPlan(), isTrue);
       expect((await storage.loadGuestPlan())?.guestPlanId, 'guest-plan-1');
     });
+
+    // J1-02: the answers of the steps not finished yet are kept apart from
+    // the plan, so a half-answered start is never taken for a plan (sign-up,
+    // the move into the account) and is never lost to a closed app.
+    test('keeps the steps in progress apart from the plan', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final vault = _MemorySensitiveVault();
+      final storage = GuestOnboardingStorage(
+        preferences,
+        sensitiveValueVault: vault,
+      );
+      final answers = const GuestOnboardingDraft.empty().copyWith(
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.bride,
+        planName: 'عرس سلمى',
+        estimatedBudget: '2500000',
+      );
+
+      await storage.saveProgress(answers, step: 'placeBudget');
+
+      expect(await storage.loadDraft(), isNull);
+      expect(await storage.hasGuestPlan(), isFalse);
+      final progress = await storage.loadProgress();
+      expect(progress?.step, 'placeBudget');
+      expect(progress?.draft, answers);
+      // Names and amounts stay out of plain preferences.
+      expect(
+        preferences.getString(GuestOnboardingStorage.progressKey),
+        isNull,
+      );
+
+      await storage.clearProgress();
+      expect(await storage.loadProgress(), isNull);
+
+      // Wiping the phone's plan wipes what was typed toward one too.
+      await storage.saveProgress(answers, step: 'mahr');
+      await storage.clearDraft();
+      expect(await storage.loadProgress(), isNull);
+      expect(vault.values, isEmpty);
+    });
   });
 }
 

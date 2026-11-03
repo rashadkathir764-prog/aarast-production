@@ -234,13 +234,21 @@ void main() {
       '/wedding-plans/plan-1/timeline': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/notifications': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/contributions': WeddingPlanRouteAccess.viewPlan,
-      '/wedding-plans/plan-1/tasks': WeddingPlanRouteAccess.manageTasks,
+      // D52: every member reads the tasks, the guests and the bookings, so a
+      // tab's root and a task's page need the plan only; writing needs the
+      // section's right. One mapping, the same for the gate and for a resume.
+      '/wedding-plans/plan-1/tasks': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/tasks/task-1': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/tasks/create': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/tasks/task-1/edit':
           WeddingPlanRouteAccess.manageTasks,
-      '/wedding-plans/plan-1/guests': WeddingPlanRouteAccess.manageGuests,
+      '/wedding-plans/plan-1/guests': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/guests/add': WeddingPlanRouteAccess.manageGuests,
-      '/wedding-plans/plan-1/providers': WeddingPlanRouteAccess.manageProviders,
+      '/wedding-plans/plan-1/guests/view/guest-1':
+          WeddingPlanRouteAccess.manageGuests,
+      '/wedding-plans/plan-1/providers': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/providers/requests':
+          WeddingPlanRouteAccess.manageProviders,
       '/wedding-plans/plan-1/sharing': WeddingPlanRouteAccess.inviteMembers,
       '/wedding-plans/plan-1/sharing/add': WeddingPlanRouteAccess.inviteMembers,
       '/wedding-plans/plan-1/money': WeddingPlanRouteAccess.viewMoney,

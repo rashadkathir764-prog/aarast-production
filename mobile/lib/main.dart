@@ -46,7 +46,6 @@ import 'features/finance/finance_api.dart'
         FundingProvider,
         LocalFinancePlanContext;
 import 'features/guests/guests_api.dart' show GuestsApi, GuestsProvider;
-import 'features/home/home_api.dart' show HomeDashboardProvider;
 import 'features/marketplace/marketplace_api.dart'
     show MarketplaceApi, ProviderDashboardApi, ProviderMarketplaceProvider;
 import 'features/notifications/notifications_api.dart'
@@ -610,26 +609,6 @@ class _AarastSessionProviders extends StatelessWidget {
               _planScope(accountContexts),
               () => PlanEventsProvider(
                 api: PlanEventsApi(context.read<ApiClient>()),
-              ),
-            ),
-          ),
-          ChangeNotifierProxyProvider<
-            AccountContextController,
-            HomeDashboardProvider
-          >(
-            create: (_) => _bindPlanScope(
-              HomeDashboardProvider(
-                weddingPlansApi: weddingPlansApi,
-                sharingApi: sharingApi,
-              ),
-              _unselectedPlanScope,
-            ),
-            update: (_, accountContexts, current) => _forPlanScope(
-              current,
-              _planScope(accountContexts),
-              () => HomeDashboardProvider(
-                weddingPlansApi: weddingPlansApi,
-                sharingApi: sharingApi,
               ),
             ),
           ),

@@ -7,7 +7,6 @@ void main() {
     const files = [
       'lib/features/wedding_plans/providers/wedding_plans_provider.dart',
       'lib/features/wedding_plans/providers/dashboard_summary_provider.dart',
-      'lib/features/home/providers/home_dashboard_provider.dart',
       'lib/features/finance/providers/finance_provider.dart',
       'lib/features/tasks/providers/task_timeline_provider.dart',
       'lib/features/sharing/providers/sharing_provider.dart',
@@ -44,7 +43,6 @@ void main() {
       'AccountContextController(',
       'WeddingPlansProvider(',
       'DashboardSummaryProvider(',
-      'HomeDashboardProvider(',
       'FinanceProvider(',
       'TaskTimelineProvider(',
       'SharingProvider(',
@@ -83,7 +81,6 @@ void main() {
     );
     for (final provider in [
       'DashboardSummaryProvider',
-      'HomeDashboardProvider',
       'FinanceProvider',
       'TaskTimelineProvider',
       'SharingProvider',

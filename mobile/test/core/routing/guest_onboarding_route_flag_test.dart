@@ -28,6 +28,23 @@ void main() {
       },
     );
 
+    test('a release build never serves the dev preview route (R-02)', () {
+      expect(
+        AppRouter.guestOnboardingRedirect(
+          AppFeatureFlags.defaults,
+          release: true,
+        ),
+        AppRouter.welcome,
+      );
+      expect(
+        AppRouter.guestOnboardingRedirect(
+          AppFeatureFlags.defaults,
+          release: false,
+        ),
+        isNull,
+      );
+    });
+
     test('redirects to current onboarding when feature flag is disabled', () {
       const flags = AppFeatureFlags(
         enableGuestFirstOnboarding: false,

@@ -57,7 +57,6 @@ const _baseline = <String, int>{
   'lib/features/finance/screens/funding_sources_screen.dart': 2,
   'lib/features/finance/widgets/receipt_flows.dart': 5,
   'lib/features/guests/widgets/guest_groups_sheet.dart': 5,
-  'lib/features/home/widgets/home_widgets.dart': 3,
   'lib/features/marketplace/screens/provider_marketplace_screen.sections.dart': 1,
   'lib/features/notifications/screens/notifications_screen.dart': 1,
   'lib/features/provider_portal/screens/add_provider_package_screen.dart': 6,

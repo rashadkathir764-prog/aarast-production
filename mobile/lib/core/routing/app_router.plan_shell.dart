@@ -5,20 +5,11 @@ List<RouteBase> _planShellRoutes() => [
   ShellRoute(
     builder: (context, state, child) {
       final id = state.pathParameters['id'] ?? '';
-      // A participant's tab opens to its lock when the right is missing
-      // (q07, q08), so the tab itself only needs the plan.
-      final selected = context
-          .read<AccountContextController?>()
-          ?.selectedContext;
-      final participantTab =
-          selected?.role == AccountContextRole.contributor &&
-          selected?.weddingPlanId == id &&
-          isPlanTabRoot(state.uri.path);
+      // A tab's root needs the plan only (D52): a participant without the
+      // section's right gets its lock from participantPlanTab (q07, q08).
       return WeddingPlanContextGate(
         weddingPlanId: id,
-        requiredAccess: participantTab
-            ? WeddingPlanRouteAccess.viewPlan
-            : weddingPlanRouteAccessForPath(state.uri.path),
+        requiredAccess: weddingPlanRouteAccessForPath(state.uri.path),
         child: WeddingPlanShell(weddingPlanId: id, child: child),
       );
     },
@@ -255,10 +246,11 @@ List<RouteBase> _planShellRoutes() => [
           final budgetIntent = state.extra is ProviderBudgetMatchIntent
               ? state.extra! as ProviderBudgetMatchIntent
               : null;
-          if (state.uri.queryParameters['quoteId'] == null) {
-            final participant = participantPlanTab(context, id, 4);
-            if (participant != null) return participant;
-          }
+          // R-07: a participant without the providers right reads their own
+          // page whatever the link carries; the owner's screen is for those
+          // who may manage providers.
+          final participant = participantPlanTab(context, id, 4);
+          if (participant != null) return participant;
           return ProviderMarketplaceScreen(
             embedded: true,
             weddingPlanId: id,

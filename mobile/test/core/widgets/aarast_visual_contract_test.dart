@@ -315,7 +315,6 @@ void main() {
         'lib/features/chat/screens/chat_screen.dart',
         'lib/features/chat/screens/quote_conversation_entry_screen.dart',
         'lib/features/home/screens/dashboard_entry_screen.dart',
-        'lib/features/home/screens/home_screen.dart',
         'lib/features/home/screens/local_guest_dashboard_screen.dart',
         'lib/features/onboarding/screens/local_plan_migration_screen.dart',
         'lib/features/welcome_gateway/screens/smart_welcome_screen.dart',

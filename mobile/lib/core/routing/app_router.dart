@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -9,8 +10,6 @@ import '../experience_v3/aarast_journey_profile.dart'
 import '../diagnostics/app_logger.dart';
 import '../../features/account_contexts/account_contexts_api.dart'
     show
-        AccountContextController,
-        AccountContextRole,
         SelectedWeddingPlanContextGate,
         WeddingPlanContextGate,
         WeddingPlanRouteAccess;
@@ -502,7 +501,12 @@ class AppRouter {
   static String sharedPlanState(String weddingPlanId) =>
       '$sharedWeddingPlans/${Uri.encodeComponent(weddingPlanId)}';
 
-  static String? guestOnboardingRedirect(AppFeatureFlags flags) {
+  /// The dev preview of the door: never served by a release build (R-02).
+  static String? guestOnboardingRedirect(
+    AppFeatureFlags flags, {
+    bool release = kReleaseMode,
+  }) {
+    if (release) return welcome;
     if (flags.enableGuestFirstOnboarding) return null;
     return onboarding;
   }
@@ -541,6 +545,10 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   }
 
   final section = segments[2];
+  // D52: every member reads the tasks, the guests and the bookings. A tab's
+  // root (and a task's own page) needs the plan only; the pages that write
+  // need the section's right. The shell and a resume both read this one map.
+  final tabRoot = segments.length == 3;
   return switch (section) {
     'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
     'plan-center' ||
@@ -548,9 +556,19 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
     'moments' ||
     'notifications' ||
     'contributions' => WeddingPlanRouteAccess.viewPlan,
-    'timeline' || 'tasks' => WeddingPlanRouteAccess.manageTasks,
-    'guests' => WeddingPlanRouteAccess.manageGuests,
-    'providers' => WeddingPlanRouteAccess.manageProviders,
+    'timeline' => WeddingPlanRouteAccess.manageTasks,
+    'tasks' =>
+      tabRoot || _isTaskPage(segments)
+          ? WeddingPlanRouteAccess.viewPlan
+          : WeddingPlanRouteAccess.manageTasks,
+    'guests' =>
+      tabRoot
+          ? WeddingPlanRouteAccess.viewPlan
+          : WeddingPlanRouteAccess.manageGuests,
+    'providers' =>
+      tabRoot
+          ? WeddingPlanRouteAccess.viewPlan
+          : WeddingPlanRouteAccess.manageProviders,
     'sharing' => WeddingPlanRouteAccess.inviteMembers,
     'money' =>
       _isReadOnlyMoneyPath(segments)
@@ -560,19 +578,9 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   };
 }
 
-/// One of the plan's five tab pages itself, not a page inside a tab.
-bool isPlanTabRoot(String path) {
-  final segments = Uri.tryParse(path)?.pathSegments ?? const <String>[];
-  return segments.length == 3 &&
-      segments.first == 'wedding-plans' &&
-      const {
-        'dashboard',
-        'money',
-        'tasks',
-        'guests',
-        'providers',
-      }.contains(segments[2]);
-}
+/// `/wedding-plans/:id/tasks/:taskId`: a task read, not `create` or `edit`.
+bool _isTaskPage(List<String> segments) =>
+    segments.length == 4 && segments[3] != 'create';
 
 bool _isReadOnlyMoneyPath(List<String> segments) {
   if (segments.length == 3) return true;

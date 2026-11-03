@@ -18,24 +18,19 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
-import 'package:aarast_mobile/features/home/providers/home_dashboard_provider.dart';
 import 'package:aarast_mobile/features/home/screens/dashboard_entry_screen.dart';
-import 'package:aarast_mobile/features/home/screens/home_screen.dart';
 import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
 import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
 import 'package:aarast_mobile/features/notifications/providers/notifications_provider.dart';
 import 'package:aarast_mobile/features/notifications/screens/notifications_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
-import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
-import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/plan_assistant.dart';
-import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_assistant_screen.dart';
@@ -386,18 +381,6 @@ class _FakeSync extends OfflineSyncService {
   ];
 }
 
-class _FakePlansApi extends WeddingPlansApi {
-  _FakePlansApi(super.apiClient, this.plans);
-  final List<WeddingPlan> plans;
-  @override
-  Future<List<WeddingPlan>> getMyWeddingPlans() async => plans;
-}
-
-class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi(super.apiClient);
-  @override
-  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async => const [];
-}
 
 void main() {
   setUpAll(loadPreviewAppFonts);
@@ -856,27 +839,4 @@ void main() {
     );
   });
 
-  testWidgets('account without plan', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final storage = AuthStorage(prefs);
-    final client = ApiClient(tokenProvider: storage.readAccessToken);
-    await _shot(
-      tester,
-      'home_no_plan',
-      const HomeScreen(),
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthController(AuthRepository(client, storage)),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => HomeDashboardProvider(
-            weddingPlansApi: _FakePlansApi(client, const []),
-            sharingApi: _FakeSharingApi(client),
-          ),
-        ),
-      ],
-      h: 1100,
-    );
-  });
 }

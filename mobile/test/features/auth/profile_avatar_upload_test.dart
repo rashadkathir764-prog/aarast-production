@@ -82,12 +82,9 @@ void main() {
     );
   });
 
-  test('avatar is wired from one account source across More and Home', () {
+  test('avatar is wired from one account source across More and the home', () {
     final moreSource = File(
       'lib/features/more/screens/more_screen.dart',
-    ).readAsStringSync();
-    final homeSource = File(
-      'lib/features/home/screens/home_screen.dart',
     ).readAsStringSync();
     final dashboardSource = File(
       'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
@@ -95,7 +92,6 @@ void main() {
     final iosInfo = File('ios/Runner/Info.plist').readAsStringSync();
 
     expect(moreSource, contains('avatarUrl: user?.avatarUrl'));
-    expect(homeSource, contains('avatarUrl: auth.user?.avatarUrl'));
     expect(dashboardSource, contains('avatarUrl: auth.user?.avatarUrl'));
     expect(moreSource, contains('ImagePicker().pickImage'));
     expect(moreSource, contains('ImageSource.camera'));

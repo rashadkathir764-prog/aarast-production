@@ -418,7 +418,12 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         guest: guest,
         draftScope: scope,
         existingGuests: provider.guests,
-        groups: provider.groups,
+        // D80: the reader's own groups, and the one the guest is in now
+        // even when the owner put it there.
+        groups: [
+          for (final group in provider.groups)
+            if (group.editable || group.id == guest.groupId) group,
+        ],
         blockDuplicatePhone: !_isLocalPlan,
         onCreateGroup: _isLocalPlan
             ? null
@@ -436,7 +441,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       guest: guest,
       name: result.name,
       phone: result.phone ?? '',
-      groupId: result.groupId ?? '',
+      // Sent only when it changed: keeping a group the owner chose is not
+      // linking the guest to it again (D80).
+      groupId: result.groupId == guest.groupId ? null : result.groupId ?? '',
       side: result.side,
       status: result.status,
       attendanceStatus: guestAttendanceForStatus(result.status),

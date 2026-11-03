@@ -18,6 +18,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _errorCode;
   String? _accessErrorMessage;
   SharingAuthGateKind? _authGateKind;
   List<SharedMember> _members = const [];
@@ -43,6 +44,10 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+
+  /// The server's stable code behind [errorMessage] («PLAN_ARCHIVED_READ_ONLY»),
+  /// so a screen can offer the right way on; null when there is none.
+  String? get errorCode => _errorCode;
   String? get accessErrorMessage => _accessErrorMessage;
   SharingAuthGateKind? get authGateKind => _authGateKind;
   List<SharedMember> get members => _members;
@@ -69,6 +74,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     final generation = ++_memberLoadGeneration;
     _memberLoadWeddingPlanId = weddingPlanId;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     if (preserveCurrentState) {
       _isLoading = false;
@@ -93,7 +99,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _handleApiError(error);
     } catch (_) {
       if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
-      _errorMessage = 'تعذر تحميل أعضاء المشاركة.';
+      _errorMessage = 'ما قدرنا نجيب المشاركين.';
     } finally {
       if (_isCurrentMemberLoad(generation, weddingPlanId)) {
         if (!preserveCurrentState) {
@@ -132,14 +138,14 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         _handleApiError(error);
       } else {
         _accessErrorMessage = _sharingErrorMessage(
-          error.message,
-          fallback: 'تعذر التحقق من صلاحية إدارة المشاركين.',
+          error,
+          fallback: _accessCheckFailed,
         );
       }
       return false;
     } catch (_) {
       if (!_isCurrentAccessLoad(generation, weddingPlanId)) return false;
-      _accessErrorMessage = 'تعذر التحقق من صلاحية إدارة المشاركين.';
+      _accessErrorMessage = _accessCheckFailed;
       return false;
     } finally {
       if (_isCurrentAccessLoad(generation, weddingPlanId)) {
@@ -156,6 +162,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<void> loadSharedPlans() async {
     _isLoading = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
 
@@ -164,7 +171,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     } on ApiException catch (error) {
       _handleApiError(error);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل الخطط المشتركة معك.';
+      _errorMessage = 'ما قدرنا نجيب الخطط المشتركة.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -191,6 +198,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
 
@@ -213,12 +221,13 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         return false;
       }
       _errorMessage = _sharingErrorMessage(
-        error.message,
-        fallback: 'تعذر إضافة عضو المشاركة. تحقق من رقم الهاتف والصلاحيات.',
+        error,
+        fallback: 'ما قدرنا نضيف المشارك.',
       );
+      _errorCode = error.serverCode;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إضافة عضو المشاركة.';
+      _errorMessage = 'ما قدرنا نضيف المشارك.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -242,6 +251,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
     try {
@@ -268,7 +278,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _handleApiError(error);
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر إرسال دعوة المشاركة.';
+      _errorMessage = 'ما قدرنا نرسل الدعوة.';
       return null;
     } finally {
       _isSubmitting = false;
@@ -279,6 +289,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<bool> cancelInvite(PlanInvite invite) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
     try {
@@ -292,11 +303,12 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       if (error.isUnauthorized) {
         _handleApiError(error);
       } else {
-        _errorMessage = 'تعذر إلغاء الدعوة.';
+        _errorMessage = 'ما قدرنا نلغي الدعوة.';
+        _errorCode = error.serverCode;
       }
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إلغاء الدعوة.';
+      _errorMessage = 'ما قدرنا نلغي الدعوة.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -333,6 +345,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
     try {
@@ -371,7 +384,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _handleApiError(error);
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر إصدار رابط دعوة جديد.';
+      _errorMessage = 'ما قدرنا نطلّع رابط جديد.';
       return null;
     } finally {
       _isSubmitting = false;
@@ -382,14 +395,16 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<void> loadInvite(String token) async {
     _isLoading = true;
     _errorMessage = null;
+    _errorCode = null;
     _selectedInvite = null;
     notifyListeners();
     try {
       _selectedInvite = await _api.getInvite(token);
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _errorMessage = _sharingErrorMessage(error);
+      _errorCode = error.serverCode;
     } catch (_) {
-      _errorMessage = 'تعذر تحميل الدعوة المرتبطة بهذا الرابط.';
+      _errorMessage = 'ما قدرنا نجيب الدعوة.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -400,6 +415,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     final generation = ++_myInvitesLoadGeneration;
     _isLoading = true;
     _errorMessage = null;
+    _errorCode = null;
     _selectedInvite = null;
     _acceptedInviteMember = null;
     _acceptedInviteContextKey = null;
@@ -420,10 +436,11 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       }
     } on ApiException catch (error) {
       if (!_isCurrentMyInvitesLoad(generation)) return;
-      _errorMessage = _sharingErrorMessage(error.message);
+      _errorMessage = _sharingErrorMessage(error);
+      _errorCode = error.serverCode;
     } catch (_) {
       if (!_isCurrentMyInvitesLoad(generation)) return;
-      _errorMessage = 'تعذر تحميل الدعوات المرتبطة بهذا الرقم.';
+      _errorMessage = 'ما قدرنا نجيب الدعوة.';
     } finally {
       if (_isCurrentMyInvitesLoad(generation)) {
         _isLoading = false;
@@ -444,6 +461,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     _acceptedInviteMember = null;
     _acceptedInviteContextKey = null;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
   }
 
@@ -474,6 +492,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
     try {
       if (accept) {
@@ -491,15 +510,16 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
           await _reconcileInviteResponse(token, accept: accept)) {
         return true;
       }
-      _errorMessage = _sharingErrorMessage(error.message);
+      _errorMessage = _sharingErrorMessage(error);
+      _errorCode = error.serverCode;
       return false;
     } catch (_) {
       if (await _reconcileInviteResponse(token, accept: accept)) {
         return true;
       }
       _errorMessage = accept
-          ? 'تعذر تأكيد قبول الدعوة. تحقق من حالة الدعوة وحاول مرة أخرى.'
-          : 'تعذر رفض الدعوة. حاول مرة أخرى.';
+          ? 'ما تأكدنا إن الدعوة انقبلت.'
+          : 'ما قدرنا نرفض الدعوة.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -590,6 +610,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
 
@@ -616,7 +637,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _handleApiError(error);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث صلاحيات العضو.';
+      _errorMessage = 'ما قدرنا نحفظ اللي يشوفه.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -627,6 +648,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<bool> removeMember(String weddingPlanId, String id) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     _authGateKind = null;
     notifyListeners();
 
@@ -641,7 +663,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _handleApiError(error);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إزالة عضو المشاركة.';
+      _errorMessage = 'ما قدرنا نشيله من الخطة.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -651,6 +673,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _errorCode = null;
     _accessErrorMessage = null;
     _authGateKind = null;
     notifyListeners();
@@ -669,57 +692,32 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     if (error.isUnauthorized) {
       _authGateKind = SharingAuthGateKind.sessionExpired;
       _errorMessage = null;
+      _errorCode = null;
       return;
     }
     _authGateKind = null;
+    _errorCode = error.serverCode;
     if (error.serverCode == 'INVITE_REISSUE_COOLDOWN') {
       final retryAfterSeconds = error.retryAfterSeconds;
       _errorMessage = retryAfterSeconds == null
-          ? 'تمت محاولة إرسال الدعوة مؤخرًا. انتظر قليلًا ثم أعد المحاولة.'
-          : 'تمت محاولة إرسال الدعوة مؤخرًا. أعد المحاولة بعد '
+          ? 'أرسلنا الدعوة قبل شوي. الرابط الجديد يطلع بعد دقيقة.'
+          : 'أرسلنا الدعوة قبل شوي. الرابط الجديد يطلع بعد '
                 '$retryAfterSeconds ثانية.';
       return;
     }
-    _errorMessage = _sharingErrorMessage(error.message);
+    _errorMessage = _sharingErrorMessage(error);
   }
+
+  static const _accessCheckFailed = 'ما قدرنا نتأكد مين يدير المشاركين.';
 }
 
+/// J2-11: the network boundary already turns every server answer into
+/// Arabic (a stable code into its own sentence, anything else into what
+/// happened), so the message is said as it is.
 String _sharingErrorMessage(
-  String message, {
-  String fallback = 'تعذر تنفيذ طلب المشاركة. تحقق من البيانات والصلاحيات.',
+  ApiException error, {
+  String fallback = 'ما قدرنا نكمّل طلب المشاركة.',
 }) {
-  final normalized = message.trim();
-  if (normalized.contains('User is already shared on this wedding plan')) {
-    return 'هذا العضو مضاف مسبقاً إلى هذه الخطة';
-  }
-  if (normalized.contains('No registered user found for this phone')) {
-    return 'الرقم غير مسجل';
-  }
-  if (normalized.contains('User not found for phone')) {
-    return 'الرقم غير مسجل';
-  }
-  if (normalized.contains('A pending invitation already exists')) {
-    return 'توجد دعوة معلقة لهذا الرقم.';
-  }
-
-  return switch (normalized) {
-    'User is already shared on this wedding plan' =>
-      'هذا العضو مضاف مسبقاً إلى هذه الخطة',
-    'No registered user found for this phone' => 'الرقم غير مسجل',
-    'User not found for phone' => 'الرقم غير مسجل',
-    'A pending invitation already exists for this participant' =>
-      'توجد دعوة معلقة لهذا الرقم.',
-    'Provide either userId or phone, not both' =>
-      'أدخل رقم الهاتف فقط ولا ترسل معرف المستخدم معه.',
-    'Provide either userId or phone' => 'رقم هاتف العضو مطلوب.',
-    'Owner cannot be added as a shared member' =>
-      'لا يمكن إضافة صاحب الخطة كعضو مشاركة.',
-    'userId must reference an existing user' =>
-      'لا يوجد مستخدم مسجل بهذا المعرف.',
-    'Shared member not found' => 'لم يتم العثور على عضو المشاركة.',
-    _ when normalized.contains('not found') => fallback,
-    _ when normalized.contains('must') => fallback,
-    _ when normalized.contains('Bad Request') => fallback,
-    _ => normalized.isEmpty ? fallback : normalized,
-  };
+  final message = error.message.trim();
+  return message.isEmpty ? fallback : message;
 }

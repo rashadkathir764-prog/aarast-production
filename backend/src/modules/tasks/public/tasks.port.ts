@@ -161,9 +161,16 @@ export interface TasksPort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void>;
-  /** Retained administrator identity: clears the user from the tasks assigned to them. */
+  /**
+   * Clears the user from the tasks assigned to them. Without a scope (the
+   * retained administrator identity) every task lets go of them. With a plan
+   * (J2-08: they left the plan, were removed from it, or lost task
+   * management in it) only that plan's open tasks do; a finished or
+   * cancelled task keeps who did it.
+   */
   unassignUserTasksInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
+    scope?: { weddingPlanId: string },
   ): Promise<void>;
 }

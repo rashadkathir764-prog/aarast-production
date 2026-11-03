@@ -87,6 +87,30 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   });
 
+  testWidgets('J2-17: a cold open uses the route\'s plan, not the cache', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'HELPER'));
+    await _pump(tester, api, withCache: false, routePlanId: 'plan-1');
+
+    expect(api.accessPlanIds, ['plan-1']);
+    expect(find.text('صالح'), findsOneWidget);
+    expect(find.text('ما لقينا هذا المشارك'), findsNothing);
+    expect(find.byKey(const ValueKey('member-save')), findsOneWidget);
+  });
+
+  testWidgets('J2-20: the permission gate names the plan\'s owner', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'HELPER'), owner: false);
+    await _pump(tester, api, withCache: false, routePlanId: 'plan-1');
+
+    expect(
+      find.text('العريس هو اللي يغيّر ايش يشوف كل واحد أو يشيله.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('taking someone off the plan asks first', (tester) async {
     final api = _Api(_member(role: 'HELPER'));
     await _pump(tester, api);
@@ -105,18 +129,26 @@ void main() {
   });
 }
 
-Future<void> _pump(WidgetTester tester, _Api api) async {
+Future<void> _pump(
+  WidgetTester tester,
+  _Api api, {
+  bool withCache = true,
+  String? routePlanId,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(400, 1200);
   addTearDown(tester.view.reset);
-  final provider = SharingProvider(api)..selectMember(api.member);
+  final provider = SharingProvider(api);
+  if (withCache) provider.selectMember(api.member);
   final router = GoRouter(
     initialLocation: '/edit',
     routes: [
       GoRoute(
         path: '/edit',
-        builder: (_, _) =>
-            const EditSharedMemberScreen(sharedMemberId: 'member-1'),
+        builder: (_, _) => EditSharedMemberScreen(
+          weddingPlanId: routePlanId,
+          sharedMemberId: 'member-1',
+        ),
       ),
       GoRoute(
         path: '/wedding-plans/:id/sharing',
@@ -135,16 +167,24 @@ Future<void> _pump(WidgetTester tester, _Api api) async {
 }
 
 class _Api extends SharingApi {
-  _Api(this.member) : super(ApiClient(tokenProvider: () async => null));
+  _Api(this.member, {this.owner = true})
+    : super(ApiClient(tokenProvider: () async => null));
 
   final SharedMember member;
+  final bool owner;
   Map<String, dynamic>? lastUpdate;
   int deleted = 0;
+  final List<String> accessPlanIds = [];
 
   @override
   Future<PlanAccessPermissions> getMyPlanPermissions(
     String weddingPlanId,
-  ) async => PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+  ) async {
+    accessPlanIds.add(weddingPlanId);
+    return owner
+        ? PlanAccessPermissions.owner(weddingPlanId: weddingPlanId)
+        : PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
+  }
 
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async => [

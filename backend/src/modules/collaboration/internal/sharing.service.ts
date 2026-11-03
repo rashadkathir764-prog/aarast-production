@@ -65,6 +65,7 @@ import {
   PLAN_READ_PORT,
   type PlanReadPort,
 } from "../../planning/public/plan-read.port";
+import { TASKS_PORT, type TasksPort } from "../../tasks/public/tasks.port";
 import {
   ApplicationNameSource,
   applicationDisplayName,
@@ -92,6 +93,11 @@ import {
   rolePermissionDefaults,
 } from "./plan-permissions";
 import { SharingRepository } from "../infrastructure/sharing.repository";
+import {
+  memberRemovedNotice,
+  memberRightsChangedNotice,
+  type SharingActorVoice,
+} from "./sharing-notices";
 
 export interface SharedMemberResponse {
   id: string;
@@ -174,6 +180,11 @@ export interface PlanInviteResponse {
   };
   /** D75: whether the one inviting owns the plan (not a relative who may invite). */
   inviterIsOwner?: boolean;
+  /**
+   * J2-02, on the signed-in invitee's read of one invite: whether it was
+   * opened by its id (the in-app notice) or by the raw token (the link).
+   */
+  accessedBy?: "id" | "token";
   inviter?: SafeSharedMemberUser;
   invitee?: SafeSharedMemberUser | null;
   delivery: {
@@ -240,6 +251,10 @@ interface InviteDeliveryAttempt {
   attemptedAt: Date;
 }
 
+const dayMs = 24 * 60 * 60 * 1000;
+const defaultInviteLifetimeDays = 14;
+// The longest an invite may be given (CreatePlanInviteDto.expiresInDays).
+const maxInviteLifetimeDays = 30;
 const inviteReissueCooldownMs = 60_000;
 const inviteReissueCooldownCode = "INVITE_REISSUE_COOLDOWN";
 const inviteDeliverySupersededCode = "INVITE_DELIVERY_ATTEMPT_SUPERSEDED";
@@ -254,6 +269,25 @@ const memberReentryRequiresInviteMessage =
   "إعادة المشاركة بعد المغادرة تتطلب دعوة جديدة";
 const ownerCannotLeaveCode = "PLAN_OWNER_CANNOT_LEAVE";
 const ownerCannotLeaveMessage = "لا يمكن لمالك الخطة مغادرة خطته";
+// J2-11: the refusals the owner's app tells apart by their stable code.
+const cannotInviteSelfCode = "CANNOT_INVITE_SELF";
+const cannotInviteSelfMessage = "الدعوة لنفسك ما تنفع.";
+const alreadyAMemberCode = "ALREADY_A_MEMBER";
+const alreadyAMemberMessage = "هذا الشخص معك في الخطة من قبل.";
+const inviteAlreadyPendingCode = "INVITE_ALREADY_PENDING";
+const inviteAlreadyPendingMessage =
+  "فيه دعوة لهذا الرقم من قبل، لسّا ما انردّ عليها.";
+// J2-05, D52: «يشوف بس» reads the plan and edits nothing in it.
+const viewerCannotEditCode = "VIEWER_CANNOT_EDIT";
+const viewerCannotEditMessage =
+  "«يشوف بس» ما يعدّل شي في الخطة، والتعديل يحتاج دور ثاني.";
+const viewerEditingRights = [
+  "canEditPlan",
+  "canManageTasks",
+  "canManageGuests",
+  "canManageProviders",
+  "canManageMoney",
+] as const satisfies ReadonlyArray<keyof PlanPermissionFlags>;
 
 const revocationDescriptors: readonly RevocationDescriptor[] = [
   {
@@ -313,6 +347,8 @@ export class SharingService {
     private readonly activePlan: ActivePlanPort,
     @Inject(MESSAGING_PARTICIPATION_PORT)
     private readonly participation: MessagingParticipationPort,
+    @Inject(TASKS_PORT)
+    private readonly tasks: TasksPort,
     @Optional()
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime?: MessagingRealtimePort,
@@ -330,19 +366,20 @@ export class SharingService {
     const plan = access.plan;
     const user = await this.findTargetUser(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
-    const permissionData = this.permissionDataForDirectMemberCreate(dto);
-    this.assertPermissionCeiling(access, role, permissionData);
+    const requestedPermissions = this.permissionDataForDirectMemberCreate(dto);
+    this.assertPermissionCeiling(access, role, requestedPermissions);
+    const permissionData = this.viewerBoundPermissions(
+      role,
+      requestedPermissions,
+      dto,
+    );
     const userId = user.id;
 
-    if (userId === plan.ownerUserId) {
-      throw new BadRequestException("Owner cannot be added as a shared member");
-    }
+    this.assertNotSelfOrOwner(userId, currentUser.id, plan.ownerUserId);
 
     const existing = await this.repository.findMember(this.prisma, weddingPlanId, userId);
     if (existing) {
-      throw new ConflictException(
-        "User is already shared on this wedding plan",
-      );
+      throw this.alreadyAMember();
     }
 
     const member = await runSerializableTransaction(this.prisma, async (tx) => {
@@ -358,16 +395,14 @@ export class SharingService {
       if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
         throw new BadRequestException("userId must reference an active user");
       }
-      if (userId === transactionalAccess.plan.ownerUserId) {
-        throw new BadRequestException(
-          "Owner cannot be added as a shared member",
-        );
-      }
+      this.assertNotSelfOrOwner(
+        userId,
+        currentUser.id,
+        transactionalAccess.plan.ownerUserId,
+      );
       const duplicate = await this.repository.findMember(tx, weddingPlanId, userId);
       if (duplicate) {
-        throw new ConflictException(
-          "User is already shared on this wedding plan",
-        );
+        throw this.alreadyAMember();
       }
       if (
         await this.wasPreviouslyLeftInTransaction(tx, weddingPlanId, userId)
@@ -559,13 +594,16 @@ export class SharingService {
     const plan = access.plan;
     const target = await this.findInviteTarget(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
-    const permissionData = this.permissionDataForCreate(role, dto);
-    this.assertPermissionCeiling(access, role, permissionData);
+    const requestedPermissions = this.permissionDataForCreate(role, dto);
+    this.assertPermissionCeiling(access, role, requestedPermissions);
+    const permissionData = this.viewerBoundPermissions(
+      role,
+      requestedPermissions,
+      dto,
+    );
 
-    if (target.user?.id === plan.ownerUserId) {
-      throw new BadRequestException(
-        "Owner cannot be invited to own wedding plan",
-      );
+    if (target.user) {
+      this.assertNotSelfOrOwner(target.user.id, currentUser.id, plan.ownerUserId);
     }
 
     const created = await this.withUniqueInviteToken(async (token) =>
@@ -589,20 +627,17 @@ export class SharingService {
             );
           }
         }
-        if (target.user?.id === transactionalAccess.plan.ownerUserId) {
-          throw new BadRequestException(
-            "Owner cannot be invited to own wedding plan",
-          );
-        }
-
         if (target.user) {
+          this.assertNotSelfOrOwner(
+            target.user.id,
+            currentUser.id,
+            transactionalAccess.plan.ownerUserId,
+          );
           const existingMember = await this.repository.findMember(
             tx, weddingPlanId, target.user.id,
           );
           if (existingMember) {
-            throw new ConflictException(
-              "User is already shared on this wedding plan",
-            );
+            throw this.alreadyAMember();
           }
         }
 
@@ -616,8 +651,13 @@ export class SharingService {
           },
         );
         if (duplicateInvite) {
-          throw new ConflictException(
-            "A pending invitation already exists for this participant",
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.CONFLICT,
+              code: inviteAlreadyPendingCode,
+              message: inviteAlreadyPendingMessage,
+            },
+            HttpStatus.CONFLICT,
           );
         }
 
@@ -751,11 +791,16 @@ export class SharingService {
             this.prisma, invite.weddingPlanId, currentUser.id,
           )
         : null;
-    return this.toCurrentUserInviteResponse(
-      await this.withInviteRelations(this.prisma, invite),
-      currentUser.id,
-      Boolean(liveMembership),
-    );
+    return {
+      ...this.toCurrentUserInviteResponse(
+        await this.withInviteRelations(this.prisma, invite),
+        currentUser.id,
+        Boolean(liveMembership),
+      ),
+      // J2-02: the in-app notice opens the invite by its id for the signed-in
+      // invitee (no phone step); the WhatsApp link carries the raw token.
+      accessedBy: token === invite.id ? "id" : "token",
+    };
   }
 
   async findInvitesForPlan(
@@ -885,16 +930,31 @@ export class SharingService {
           throw new ConflictException("Invite is no longer pending");
         }
         const role = this.assignableRole(dto.role ?? invite.role);
-        const permissionData = this.permissionDataForUpdate(invite, dto, role);
-        this.assertPermissionCeiling(transactionalAccess, role, permissionData);
+        const requestedPermissions = this.permissionDataForUpdate(
+          invite,
+          dto,
+          role,
+        );
+        this.assertPermissionCeiling(
+          transactionalAccess,
+          role,
+          requestedPermissions,
+        );
+        const permissionData = this.viewerBoundPermissions(
+          role,
+          requestedPermissions,
+          dto,
+        );
         this.assertInviteReissueCooldownElapsed(
           invite.deliveryAttemptedAt,
           now,
         );
 
+        // J2-13: a reminder gives the invitee the invite's full time again.
         const updated = await this.repository.rotatePendingInvite(
           tx, invite, weddingPlanId, now, this.hashInviteToken(token),
           dto.role !== undefined ? role : undefined, permissionData,
+          this.expiresAt(this.inviteLifetimeDays(invite)),
         );
         if (updated.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
@@ -1250,8 +1310,17 @@ export class SharingService {
         this.permissionFlagsForRecord(existing),
       );
       const role = this.assignableRole(dto.role ?? existing.role);
-      const permissionData = this.permissionDataForUpdate(existing, dto, role);
-      this.assertPermissionCeiling(access, role, permissionData);
+      const requestedPermissions = this.permissionDataForUpdate(
+        existing,
+        dto,
+        role,
+      );
+      this.assertPermissionCeiling(access, role, requestedPermissions);
+      const permissionData = this.viewerBoundPermissions(
+        role,
+        requestedPermissions,
+        dto,
+      );
       const revokedPermissions = this.revokedPermissions(
         existing,
         permissionData,
@@ -1332,6 +1401,27 @@ export class SharingService {
         existing.userId,
         revokedConversationIds,
       );
+      // J2-08: a task waits on someone who may act on it; a member who can no
+      // longer manage tasks lets go of their open ones in this plan.
+      if (existing.canManageTasks && !permissionData.canManageTasks) {
+        await this.tasks.unassignUserTasksInTransaction(tx, existing.userId, {
+          weddingPlanId,
+        });
+      }
+      // J2-07: the member is told their rights changed, in this transaction.
+      if (authorityChanged) {
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          memberRightsChangedNotice({
+            memberUserId: existing.userId,
+            sharedMemberId: existing.id,
+            weddingPlanId,
+            planTitle: access.plan.title,
+            actor: this.actorVoice(currentUser),
+            authorityVersion: authorityVersion + 1,
+          }),
+        );
+      }
       return {
         member: updated,
         affectedUserId: existing.userId,
@@ -1445,6 +1535,11 @@ export class SharingService {
         weddingPlanId,
       );
       await this.repository.deleteMember(tx, existing.id);
+      // J2-08: their open tasks in this plan wait on no one who left; the
+      // finished ones keep who did them.
+      await this.tasks.unassignUserTasksInTransaction(tx, existing.userId, {
+        weddingPlanId,
+      });
       const revokedConversationIds =
         await this.participation.setPlanConversationParticipationInTransaction(
           tx,
@@ -1461,6 +1556,17 @@ export class SharingService {
         tx,
         existing.userId,
         weddingPlanId,
+      );
+      // J2-07: the removed member is told, in this transaction.
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        memberRemovedNotice({
+          memberUserId: existing.userId,
+          sharedMemberId: existing.id,
+          weddingPlanId,
+          planTitle: access.plan.title,
+          actor: this.actorVoice(currentUser),
+        }),
       );
       return {
         id: existing.id,
@@ -1600,6 +1706,10 @@ export class SharingService {
         weddingPlanId,
       );
       await this.repository.deleteMember(tx, existing.id);
+      // J2-08: the open tasks they leave behind wait on no one.
+      await this.tasks.unassignUserTasksInTransaction(tx, currentUser.id, {
+        weddingPlanId,
+      });
       const revokedConversationIds =
         await this.participation.setPlanConversationParticipationInTransaction(
           tx,
@@ -2358,6 +2468,81 @@ export class SharingService {
     }
   }
 
+  /**
+   * J2-05, D52: «يشوف بس» edits nothing. A client that asks a VIEWER to edit
+   * is refused with a code the owner's app can say; otherwise the VIEWER is
+   * stored without any editing right it would carry over (from a former role
+   * or an older row). Reading the money stays as given; delegated inviting is
+   * not editing the plan and stays as given too.
+   */
+  private viewerBoundPermissions(
+    role: SharedMemberRole,
+    permissions: PermissionFlags,
+    requested: Partial<Record<keyof PermissionFlags, boolean>>,
+  ): PermissionFlags {
+    if (role !== SharedMemberRole.VIEWER) return permissions;
+    if (viewerEditingRights.some((key) => requested[key] === true)) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          code: viewerCannotEditCode,
+          message: viewerCannotEditMessage,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return {
+      ...permissions,
+      canEditPlan: false,
+      canManageTasks: false,
+      canManageGuests: false,
+      canManageProviders: false,
+      canManageMoney: false,
+    };
+  }
+
+  /** J2-11: nobody invites themselves, and the owner is already in the plan. */
+  private assertNotSelfOrOwner(
+    targetUserId: string,
+    currentUserId: string,
+    ownerUserId: string,
+  ): void {
+    if (targetUserId === currentUserId) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          code: cannotInviteSelfCode,
+          message: cannotInviteSelfMessage,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (targetUserId === ownerUserId) throw this.alreadyAMember();
+  }
+
+  private alreadyAMember(): HttpException {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        code: alreadyAMemberCode,
+        message: alreadyAMemberMessage,
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+
+  /** The one acting on a membership, as the member's notice names them (J2-07). */
+  private actorVoice(currentUser: AuthenticatedUser): SharingActorVoice {
+    return {
+      name: applicationDisplayName({
+        name: currentUser.name,
+        appName: currentUser.appName ?? null,
+        role: currentUser.role,
+      }),
+      persona: currentUser.persona,
+    };
+  }
+
   private assignableRole(role: SharedMemberRole): SharedMemberRole {
     if (role === SharedMemberRole.OWNER) {
       throw new BadRequestException(
@@ -2499,8 +2684,19 @@ export class SharingService {
   }
 
   private expiresAt(expiresInDays?: number): Date {
-    const days = expiresInDays ?? 14;
-    return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const days = expiresInDays ?? defaultInviteLifetimeDays;
+    return new Date(Date.now() + days * dayMs);
+  }
+
+  /** J2-13: how many days the invite was given when it was made (1 to 30). */
+  private inviteLifetimeDays(
+    invite: Pick<PlanInvite, "createdAt" | "expiresAt">,
+  ): number {
+    const days = Math.round(
+      (invite.expiresAt.getTime() - invite.createdAt.getTime()) / dayMs,
+    );
+    if (!Number.isFinite(days)) return defaultInviteLifetimeDays;
+    return Math.min(maxInviteLifetimeDays, Math.max(1, days));
   }
 
   private optionalText(value: string | null | undefined): string | null {

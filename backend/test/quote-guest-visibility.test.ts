@@ -60,7 +60,7 @@ const guestRow = () => ({
   updatedAt: new Date(),
 });
 
-test("a read-only member receives no live guests, while a manager receives only their scoped guest", async () => {
+test("a read-only member receives no live guests, while a manager reads the private details of their own guest", async () => {
   const prisma = transactionalPrisma({
     guest: { findMany: async () => [guestRow()] },
   });
@@ -101,7 +101,7 @@ test("a read-only member receives no live guests, while a manager receives only 
   assert.equal(full.notes, "private guest note");
 });
 
-test("a read-only member receives no live guest groups, while a manager receives only their scoped group", async () => {
+test("a read-only member receives no live guest groups, while a manager reads the notes of their own group", async () => {
   const group = {
     id: "group-1",
     weddingPlanId: "p1",

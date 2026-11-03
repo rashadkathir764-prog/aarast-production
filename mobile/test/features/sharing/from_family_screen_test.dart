@@ -71,10 +71,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('from-family-open')));
     await tester.pumpAndSettle();
 
+    // J2-20: said to a man or a woman alike, no imperative.
     expect(
-      find.text('هذا مو رابط دعوة. انسخ الرابط كامل من رسالة واتساب.'),
+      find.text(
+        'هذا مو رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
+      ),
       findsOneWidget,
     );
+    expect(find.textContaining('انسخ'), findsNothing);
     expect(find.byKey(const ValueKey('invite-route')), findsNothing);
   });
 
@@ -133,7 +137,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('from-family-paste')));
     await tester.pumpAndSettle();
     expect(
-      find.text('ما في شي منسوخ. انسخ الرابط من رسالة واتساب.'),
+      find.text('ما في شي منسوخ. الرابط موجود في رسالة الدعوة على واتساب.'),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('invite-route')), findsNothing);

@@ -352,15 +352,24 @@ void main() {
       // C27: a participant adds tasks and finishes their own.
       expect(find.text('المهام: إضافة مهام وإنهاء اللي عليك'), findsOneWidget);
       expect(find.text('الضيوف: إضافة وترتيب'), findsOneWidget);
-      for (final closed in ['المال', 'المزودين']) {
-        expect(
-          find.descendant(
-            of: find.byKey(ValueKey('invite-right-$closed')),
-            matching: find.byIcon(LucideIcons.x),
+      // Money stays closed without its right.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invite-right-المال')),
+          matching: find.byIcon(LucideIcons.x),
+        ),
+        findsOneWidget,
+      );
+      // D80: every participant reads the bookings; the right adds editing.
+      expect(
+        find.descendant(
+          of: find.byKey(
+            const ValueKey('invite-right-المزودين: مشاهدة الحجوزات'),
           ),
-          findsOneWidget,
-        );
-      }
+          matching: find.byIcon(LucideIcons.check),
+        ),
+        findsOneWidget,
+      );
       expect(find.textContaining('الرفد'), findsNothing);
       expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
       expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
@@ -408,6 +417,44 @@ void main() {
       expect(find.text('دورك: مساعدة في الترتيب'), findsOneWidget);
     });
   }
+
+  testWidgets('D80: a viewer\'s invite reads as what it lets them see', (
+    tester,
+  ) async {
+    final token = _testInviteToken();
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
+    );
+    await _openVerifiedInvite(tester);
+
+    for (final reading in [
+      'المهام: مشاهدة بس',
+      'الضيوف: مشاهدة الأسماء',
+      'المزودين: مشاهدة الحجوزات',
+    ]) {
+      expect(
+        find.descendant(
+          of: find.byKey(ValueKey('invite-right-$reading')),
+          matching: find.byIcon(LucideIcons.check),
+        ),
+        findsOneWidget,
+        reason: reading,
+      );
+    }
+    // Only money is closed: one ✗ in the whole box.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('invite-rights')),
+        matching: find.byIcon(LucideIcons.x),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('q03: money shows its real level, never more', (tester) async {
     final token = _testInviteToken();
@@ -510,7 +557,7 @@ void main() {
   );
 
   testWidgets(
-    'an invite accepted on another session opens with «ادخل الخطة» and is not accepted twice',
+    'an invite accepted on another session opens with «فتح الخطة» and is not accepted twice',
     (tester) async {
       final token = _testInviteToken();
       final harness = await _authHarness();
@@ -543,7 +590,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.controller.user?.id, 'invitee-1');
-      expect(find.text('ادخل الخطة'), findsOneWidget);
+      expect(find.text('فتح الخطة'), findsOneWidget);
+      expect(find.text('ادخل الخطة'), findsNothing);
       expect(find.byKey(const Key('invite-accept-button')), findsNothing);
       expect(find.byKey(const Key('participant-home')), findsNothing);
       await _tapVisible(
@@ -656,33 +704,170 @@ void main() {
     },
   );
 
-  testWidgets('a phone the invite was not sent to stops before the code', (
+  testWidgets(
+    'J2-01: a link that does not open with the number closes before the code',
+    (tester) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.failInviteRequest = true;
+      await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('invite-phone-field')),
+        '777999999',
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const Key('invite-request-otp-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(harness.repository.inviteRequestCalls, 1);
+      expect(harness.repository.verifyCalls, 0);
+      // Ended, cancelled, refused, replaced by a newer link or sent to
+      // another number: the server tells them apart to no one, so the
+      // closed step says all of it once, with the two ways on.
+      expect(find.byKey(const Key('invite-phone-field')), findsNothing);
+      expect(find.text('الدعوة ما تفتح بهذا الرقم'), findsOneWidget);
+      expect(
+        find.text('يمكن انتهت، أو وصلت لرقم ثاني، أو صاحبها أرسل رابط جديد.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('invite-closed')), findsOneWidget);
+      expect(find.byKey(const Key('invite-ask-new')), findsOneWidget);
+      expect(find.textContaining('لا توجد دعوة فعّالة'), findsNothing);
+
+      await _tapVisible(tester, find.text('تغيير الرقم'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
+      expect(find.textContaining('لا توجد دعوة فعّالة'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'J2-02: a signed-in invitee opens an in-app invite notice by its id',
+    (tester) async {
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777123456',
+          purpose: 'LOGIN',
+          code: '123456',
+        ),
+        isTrue,
+      );
+      // The server reads an invite by id for its own invitee and keeps the
+      // private token to itself.
+      final sharingApi = _FakeSharingApi(
+        invites: [_invite(id: 'invite-42', token: '')],
+        currentUserId: () => harness.controller.user?.id,
+      );
+      await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: 'invite-42',
+        sharingApi: sharingApi,
+      );
+
+      expect(find.byKey(const Key('invite-phone-field')), findsNothing);
+      expect(harness.repository.inviteRequestCalls, 0);
+      expect(sharingApi.inviteLookups, ['invite-42']);
+      expect(find.byKey(const ValueKey('invite-inviter-card')), findsOneWidget);
+      expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
+      expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
+
+      await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
+      await tester.pumpAndSettle();
+      expect(sharingApi.acceptKeys, ['invite-42']);
+      expect(find.byKey(const Key('participant-home')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'J2-02: an invite notice opened signed out asks to sign in, then returns',
+    (tester) async {
+      final harness = await _authHarness();
+      final sharingApi = _FakeSharingApi(
+        invites: [_invite(id: 'invite-42', token: '')],
+      );
+      await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: 'invite-42',
+        sharingApi: sharingApi,
+      );
+
+      expect(find.byKey(const Key('invite-phone-field')), findsNothing);
+      expect(find.byKey(const Key('invite-closed')), findsOneWidget);
+      expect(find.byKey(const Key('invite-ask-new')), findsNothing);
+      expect(sharingApi.inviteLookups, isEmpty);
+      expect(harness.repository.inviteRequestCalls, 0);
+
+      await _tapVisible(tester, find.byKey(const Key('invite-sign-in-first')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('invite-login-route')), findsOneWidget);
+      expect(find.text('/invites/invite-42'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'J2-11: an invite to a plan in the memories hides joining and says why',
+    (tester) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      final sharingApi = _FakeSharingApi(invites: [_invite(token: token)])
+        ..acceptFailure = const ApiException(
+          'الخطة في الذكريات، ما تنعدل',
+          statusCode: 409,
+          serverCode: 'PLAN_ARCHIVED_READ_ONLY',
+        );
+      await _pumpGuestInvite(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+      );
+      await _openVerifiedInvite(tester);
+      await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
+      await tester.pumpAndSettle();
+
+      expect(sharingApi.acceptCalls, 1);
+      expect(find.byKey(const Key('invite-plan-archived')), findsOneWidget);
+      expect(find.text('الخطة في الذكريات، ما تنعدل'), findsOneWidget);
+      expect(find.byKey(const Key('invite-accept-button')), findsNothing);
+      expect(find.byKey(const Key('participant-home')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('J2-20: the phone step speaks to a man or a woman alike', (
     tester,
   ) async {
-    final token = _testInviteToken();
     final harness = await _authHarness();
-    harness.repository.failInviteRequest = true;
-    await _pumpLinkedInviteScreen(
-      tester,
-      harness,
-      token: token,
-      sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
-    );
+    harness.repository.inviteAccountSetupRequired = true;
+    await _pumpGuestInvite(tester, harness);
 
-    await tester.enterText(
-      find.byKey(const Key('invite-phone-field')),
-      '777999999',
-    );
+    expect(find.text('لو هذا أول دخول في اعّرست'), findsOneWidget);
     await _tapVisible(
       tester,
       find.byKey(const Key('invite-request-otp-button')),
     );
     await tester.pumpAndSettle();
+    expect(find.text('الرقم اللي وصلت عليه الدعوة مطلوب'), findsOneWidget);
 
-    expect(harness.repository.inviteRequestCalls, 1);
-    expect(harness.repository.verifyCalls, 0);
-    expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
-    expect(find.textContaining('لا توجد دعوة فعّالة'), findsOneWidget);
+    await _openOtpStep(tester);
+    expect(find.text('الاسم مطلوب لأول دخول في اعّرست'), findsOneWidget);
+    for (final gendered in ['اكتب', 'تدخل']) {
+      expect(find.textContaining(gendered), findsNothing, reason: gendered);
+    }
   });
 
   testWidgets('q02: a first invite makes the account with the same code', (
@@ -709,7 +894,7 @@ void main() {
     // same page as the number, and nothing asks for a password.
     expect(harness.repository.inviteRequestCalls, 1);
     expect(find.byKey(const Key('invite-otp-field')), findsNothing);
-    expect(find.text('اكتب اسمك، أول مرة تدخل اعّرست'), findsOneWidget);
+    expect(find.text('الاسم مطلوب لأول دخول في اعّرست'), findsOneWidget);
     expect(find.text('التالي'), findsOneWidget);
     expect(find.textContaining('كلمة المرور'), findsNothing);
 
@@ -905,6 +1090,13 @@ Future<GoRouter> _pumpLinkedInviteScreen(
         path: '/register',
         builder: (context, state) => const Scaffold(
           body: SizedBox(key: Key('invite-registration-route')),
+        ),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => Scaffold(
+          key: const Key('invite-login-route'),
+          body: Text(state.uri.queryParameters['resume'] ?? ''),
         ),
       ),
     ],
@@ -1328,8 +1520,18 @@ class _FakeSharingApi extends SharingApi {
   final String? Function()? currentUserId;
   int acceptCalls = 0;
   int declineCalls = 0;
+  ApiException? acceptFailure;
   final List<String?> inviteLookupUserIds = [];
+  final List<String> inviteLookups = [];
   final List<String?> acceptUserIds = [];
+  final List<String> acceptKeys = [];
+
+  /// The private token of a link, or the invite's id for its own invitee
+  /// (the in-app notice).
+  PlanInvite _find(String key) => invites.singleWhere(
+    (invite) =>
+        (invite.token.isNotEmpty && invite.token == key) || invite.id == key,
+  );
 
   @override
   Future<List<PlanInvite>> getMyInvites() async => invites;
@@ -1337,17 +1539,17 @@ class _FakeSharingApi extends SharingApi {
   @override
   Future<PlanInvite> getInvite(String token) async {
     inviteLookupUserIds.add(currentUserId?.call());
-    return invites.singleWhere((invite) => invite.token == token);
+    inviteLookups.add(token);
+    return _find(token);
   }
 
   @override
   Future<AcceptedPlanInvite> acceptInvite(String token) async {
     acceptCalls += 1;
     acceptUserIds.add(currentUserId?.call());
-    final invite = _withStatus(
-      invites.singleWhere((item) => item.token == token),
-      'ACCEPTED',
-    );
+    acceptKeys.add(token);
+    if (acceptFailure case final failure?) throw failure;
+    final invite = _withStatus(_find(token), 'ACCEPTED');
     final now = DateTime(2026);
     return AcceptedPlanInvite(
       invite: invite,
@@ -1369,10 +1571,7 @@ class _FakeSharingApi extends SharingApi {
   @override
   Future<PlanInvite> declineInvite(String token) async {
     declineCalls += 1;
-    return _withStatus(
-      invites.singleWhere((item) => item.token == token),
-      'DECLINED',
-    );
+    return _withStatus(_find(token), 'DECLINED');
   }
 }
 

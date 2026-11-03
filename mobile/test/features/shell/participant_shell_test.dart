@@ -131,11 +131,12 @@ void main() {
       await _openTab(tester, 'المال');
       expect(find.byType(ParticipantLockedScreen), findsOneWidget);
       expect(find.text('المال خاص بالعريس'), findsOneWidget);
-      // V-03: a lock says why, and who opens it.
+      // V-03: a lock says why, and who opens it, from the screen's real
+      // name (J2-18).
       expect(
         find.text(
           'ما عندك صلاحية تشوف المال في هذي الخطة. '
-          'يفتحها لك العريس من «المشاركة».',
+          'يفتحها لك العريس من «المشاركين».',
         ),
         findsOneWidget,
       );
@@ -479,6 +480,59 @@ void main() {
       expect(find.textContaining('شالك'), findsNothing);
     },
   );
+
+  for (final (persona, opener) in [
+    (JourneyProfile.groom, 'يفتحها لك العريس من «المشاركين».'),
+    (JourneyProfile.bride, 'تفتحها لك العروسة من «المشاركين».'),
+  ]) {
+    testWidgets('J2-18: every lock says who opens it ($opener)', (
+      tester,
+    ) async {
+      for (final section in [
+        JourneySection.money,
+        JourneySection.tasks,
+        JourneySection.guests,
+        JourneySection.providers,
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: JourneyProfileScope(
+              profile: persona,
+              child: ParticipantLockedScreen(
+                section: section,
+                planTitle: 'عرس محمد',
+                roleTag: 'أنت مساعد',
+                owner: persona.isBride ? 'العروسة' : 'العريس',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining(opener),
+          findsOneWidget,
+          reason: section.name,
+        );
+        expect(find.textContaining('«المشاركة»'), findsNothing);
+      }
+    });
+  }
+
+  testWidgets('J2-20: q12 speaks to a woman in her words', (tester) async {
+    final harness = await _Harness.create(
+      keptCanViewMoney: false,
+      userPersona: 'BRIDE',
+    );
+    harness.contexts.replaceGateway(canViewMoney: true);
+    await harness.controller.refresh();
+    await harness.pump(tester);
+
+    expect(
+      find.text('تقدرين الآن تشوفين المال. المصادر والسلف تبقى خاصة فيه.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('تقدر الآن'), findsNothing);
+  });
 
   testWidgets('q12: the same rights tell nothing', (tester) async {
     final harness = await _Harness.create();

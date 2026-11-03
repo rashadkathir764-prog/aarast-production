@@ -735,15 +735,17 @@ test("concurrent creates for the same target leave exactly one pending invite", 
     results.filter((result) => result.status === "rejected").length,
     1,
   );
-  assert.match(
-    String(
-      (
-        results.find(
-          (result) => result.status === "rejected",
-        ) as PromiseRejectedResult
-      ).reason?.message,
-    ),
-    /pending invitation already exists/,
+  // J2-11: the loser is told with the stable code the owner's app maps.
+  const loser = (
+    results.find(
+      (result) => result.status === "rejected",
+    ) as PromiseRejectedResult
+  ).reason;
+  assert.ok(loser instanceof HttpException);
+  assert.equal(loser.getStatus(), 409);
+  assert.equal(
+    (loser.getResponse() as Record<string, unknown>).code,
+    "INVITE_ALREADY_PENDING",
   );
   assert.equal(harness.db.invites.length, 1);
   assert.equal(
@@ -1589,6 +1591,8 @@ test("member removal locks pending invitations before the target member and revo
   };
   const notifications = {
     purgeMoneyForMember: async () => undefined,
+    // J2-07: the removed member is told in the removal's transaction.
+    createNotificationInTransaction: async () => null,
   };
   const service = sharingService(
     prisma as any,
@@ -1786,4 +1790,206 @@ test("invite delivery migration preserves unknown historical outcomes", () => {
 
   assert.match(migration, /'UNKNOWN'/);
   assert.match(migration, /deliveryStatus"[^;]+NOT NULL DEFAULT 'UNKNOWN'/s);
+});
+
+/** A refusal the owner's app maps by its code (J2-11), said in Arabic. */
+function refusal(expectedStatus: number, expectedCode: string) {
+  return (error: unknown): true => {
+    assert.ok(error instanceof HttpException, String(error));
+    assert.equal(error.getStatus(), expectedStatus);
+    const response = error.getResponse() as Record<string, unknown>;
+    assert.equal(response.code, expectedCode);
+    assert.match(String(response.message), /[؀-ۿ]/u);
+    assert.doesNotMatch(String(response.message), /[A-Za-z]/u);
+    return true;
+  };
+}
+
+test("J2-05: a VIEWER invite that asks to manage tasks is refused with VIEWER_CANNOT_EDIT and stores nothing", async () => {
+  const harness = inviteHarness();
+
+  await assert.rejects(
+    () =>
+      harness.service.createInvite(harness.owner, "plan-1", {
+        phone: harness.target.phone!,
+        role: SharedMemberRole.VIEWER,
+        canManageTasks: true,
+      }),
+    refusal(400, "VIEWER_CANNOT_EDIT"),
+  );
+  assert.equal(harness.db.invites.length, 0);
+  assert.equal(harness.notificationInputs.length, 0);
+});
+
+test("J2-05: a VIEWER invite reminded with a manage right is refused, and a HELPER invite keeps its rights", async () => {
+  const harness = inviteHarness();
+  const viewer = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+    role: SharedMemberRole.VIEWER,
+  });
+  harness.db.invites[0].deliveryAttemptedAt = new Date(Date.now() - 61_000);
+  const viewerTokenHash = harness.db.invites[0].tokenHash;
+
+  await assert.rejects(
+    () =>
+      harness.service.reissueInvite(harness.owner, "plan-1", viewer.id, {
+        canManageGuests: true,
+      }),
+    refusal(400, "VIEWER_CANNOT_EDIT"),
+  );
+  assert.equal(harness.db.invites[0].canManageGuests, false);
+  assert.equal(harness.db.invites[0].tokenHash, viewerTokenHash);
+
+  const helper = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.HELPER,
+    canManageTasks: true,
+    canManageGuests: true,
+    canManageProviders: true,
+    canManageMoney: true,
+  });
+  assert.equal(helper.role, SharedMemberRole.HELPER);
+  assert.equal(helper.canManageTasks, true);
+  assert.equal(helper.canManageGuests, true);
+  assert.equal(helper.canManageProviders, true);
+  assert.equal(helper.canManageMoney, true);
+  assert.equal(helper.canViewMoney, true);
+});
+
+test("J2-11: inviting yourself, a member, the owner or a pending invitee is refused with a stable code", async () => {
+  const self = inviteHarness();
+  await assert.rejects(
+    () =>
+      self.service.createInvite(self.owner, "plan-1", {
+        phone: self.owner.phone!,
+      }),
+    refusal(400, "CANNOT_INVITE_SELF"),
+  );
+  await assert.rejects(
+    () => self.service.createInvite(self.owner, "plan-1", { userId: self.owner.id }),
+    refusal(400, "CANNOT_INVITE_SELF"),
+  );
+  await assert.rejects(
+    () => self.service.create(self.owner, "plan-1", { userId: self.owner.id }),
+    refusal(400, "CANNOT_INVITE_SELF"),
+  );
+
+  const member = inviteHarness();
+  member.db.sharedMember.findUnique = async () =>
+    ({
+      id: "member-target",
+      weddingPlanId: "plan-1",
+      userId: member.target.id,
+      role: SharedMemberRole.HELPER,
+      ...rolePermissionDefaults(SharedMemberRole.HELPER),
+    }) as any;
+  await assert.rejects(
+    () =>
+      member.service.createInvite(member.owner, "plan-1", {
+        phone: member.target.phone!,
+      }),
+    refusal(409, "ALREADY_A_MEMBER"),
+  );
+
+  const delegated = inviteHarness();
+  const relative = sharingUser("relative-1", "+967777000005", "قريب");
+  delegated.setAccess({
+    plan: delegated.db.plan as any,
+    isOwner: false,
+    sharedMember: {
+      id: "member-relative",
+      weddingPlanId: "plan-1",
+      userId: relative.id,
+      role: SharedMemberRole.VIEWER,
+      ...rolePermissionDefaults(SharedMemberRole.VIEWER),
+      canInviteMembers: true,
+    } as any,
+  });
+  await assert.rejects(
+    () =>
+      delegated.service.createInvite(relative, "plan-1", {
+        phone: delegated.owner.phone!,
+      }),
+    refusal(409, "ALREADY_A_MEMBER"),
+  );
+
+  const pending = inviteHarness();
+  await pending.service.createInvite(pending.owner, "plan-1", {
+    phone: "+967777000099",
+  });
+  await assert.rejects(
+    () =>
+      pending.service.createInvite(pending.owner, "plan-1", {
+        phone: "+967777000099",
+      }),
+    refusal(409, "INVITE_ALREADY_PENDING"),
+  );
+  assert.equal(pending.db.invites.length, 1);
+});
+
+test("J2-13: a reminder near the end gives the invite its full time again", async () => {
+  const day = 24 * 60 * 60 * 1000;
+  for (const [expiresInDays, expectedDays] of [
+    [7, 7],
+    [undefined, 14],
+  ] as const) {
+    const harness = inviteHarness();
+    const created = await harness.service.createInvite(harness.owner, "plan-1", {
+      phone: "+967777000099",
+      ...(expiresInDays ? { expiresInDays } : {}),
+    });
+    const invite = harness.db.invites[0];
+    // Day six of seven (or thirteen of fourteen): one day is left.
+    invite.createdAt = new Date(Date.now() - (expectedDays - 1) * day);
+    invite.expiresAt = new Date(invite.createdAt.getTime() + expectedDays * day);
+    invite.deliveryAttemptedAt = new Date(Date.now() - 61_000);
+
+    const before = Date.now();
+    const reissued = await harness.service.reissueInvite(
+      harness.owner,
+      "plan-1",
+      created.id,
+    );
+    const after = Date.now();
+
+    const expiresAt = new Date(reissued.expiresAt).getTime();
+    assert.ok(expiresAt >= before + expectedDays * day, String(expectedDays));
+    assert.ok(expiresAt <= after + expectedDays * day, String(expectedDays));
+    assert.equal(invite.expiresAt.getTime(), expiresAt);
+    assert.equal(reissued.status, "PENDING");
+  }
+});
+
+test("J2-02: the in-app notice opens the invite by id for the signed-in invitee, and the read says how it was opened", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+  });
+  const notice = harness.notificationInputs.find(
+    (input) => input.type === "SHARING_INVITATION",
+  );
+  assert.equal(notice?.routeTarget, `/invites/${created.id}`);
+
+  const byId = await harness.service.getInviteForCurrentUser(
+    harness.target,
+    created.id,
+  );
+  assert.equal(byId.id, created.id);
+  assert.equal(byId.status, "PENDING");
+  assert.equal(byId.accessedBy, "id");
+  // The id is a handle for the signed-in invitee only, never a bearer.
+  assert.equal(byId.token, created.id);
+
+  const byToken = await harness.service.getInviteForCurrentUser(
+    harness.target,
+    created.token,
+  );
+  assert.equal(byToken.id, created.id);
+  assert.equal(byToken.accessedBy, "token");
+
+  const stranger = sharingUser("stranger-1", "+967777000077", "غريب");
+  await assert.rejects(
+    () => harness.service.getInviteForCurrentUser(stranger, created.id),
+    /Invite not found/,
+  );
 });

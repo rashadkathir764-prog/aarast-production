@@ -970,6 +970,17 @@ class ApiException implements Exception {
       'INVITE_ACCOUNT_SETUP_REQUIRED' =>
         'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
       'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
+      // J2-11: sharing refusals, each said as what happened.
+      'CANNOT_INVITE_SELF' => 'هذا رقمك أنت، الدعوة لغيرك',
+      'ALREADY_A_MEMBER' => 'هذا الرقم مشارك في الخطة من قبل',
+      'INVITE_ALREADY_PENDING' =>
+        'الدعوة مرسلة لهذا الرقم من قبل. التذكير يكفي بدل دعوة ثانية',
+      'PLAN_ARCHIVED_READ_ONLY' => 'الخطة في الذكريات، ما تنعدل',
+      'VIEWER_CANNOT_EDIT' =>
+        '«يشوف بس» ما يعدّل شي. الدور الثاني هو اللي يعدّل',
+      // J2-10: the rights changed between opening the sheet and leaving.
+      'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST' =>
+        'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
       _ => null,
     };
   }

@@ -360,5 +360,38 @@ void main() {
       final exception = failure(400, const {'message': 'عنوان المهمة مطلوب'});
       expect(exception.message, 'عنوان المهمة مطلوب');
     });
+
+    // J2-11: each sharing refusal says what happened, in Yemeni words,
+    // instead of a status-based line that blames the data or the page.
+    test('J2-11: sharing codes reach the user as one plain sentence', () {
+      const cases = <String, (int, String)>{
+        'CANNOT_INVITE_SELF': (400, 'هذا رقمك أنت، الدعوة لغيرك'),
+        'ALREADY_A_MEMBER': (409, 'هذا الرقم مشارك في الخطة من قبل'),
+        'INVITE_ALREADY_PENDING': (
+          409,
+          'الدعوة مرسلة لهذا الرقم من قبل. التذكير يكفي بدل دعوة ثانية',
+        ),
+        'PLAN_ARCHIVED_READ_ONLY': (409, 'الخطة في الذكريات، ما تنعدل'),
+        'VIEWER_CANNOT_EDIT': (
+          400,
+          '«يشوف بس» ما يعدّل شي. الدور الثاني هو اللي يعدّل',
+        ),
+        'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST': (
+          409,
+          'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
+        ),
+      };
+      for (final MapEntry(key: code, value: (status, message))
+          in cases.entries) {
+        final exception = failure(status, {
+          'statusCode': status,
+          'code': code,
+          'message': 'English detail for $code',
+        });
+        expect(exception.message, message, reason: code);
+        expect(exception.serverCode, code, reason: code);
+        expect(exception.statusCode, status, reason: code);
+      }
+    });
   });
 }

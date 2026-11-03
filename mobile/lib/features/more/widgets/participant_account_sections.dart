@@ -6,8 +6,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/network/api_client.dart' show ApiException;
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show
@@ -66,44 +68,71 @@ class _ParticipantAccountSectionsState
   Future<void> _leave() async {
     final current = widget.current;
     final planId = current.weddingPlanId!;
-    final requestId = _leaveRequestId ??= _newUuidV4();
+    final planTitle = current.displayName;
     final router = GoRouter.of(context);
     final userId = context.read<AuthController>().user?.id;
     final coordinator = context.read<PlanLeaveCoordinator>();
     final controller = context.read<AccountContextController>();
+    final reader = context.journeyProfile;
+
+    Future<void> leaveOnce() async {
+      final membership = controller.selectedContext;
+      if (userId == null ||
+          userId.trim().isEmpty ||
+          membership?.role != AccountContextRole.contributor ||
+          membership?.weddingPlanId != planId ||
+          membership?.membershipId == null ||
+          membership?.membershipAuthorityVersion == null) {
+        throw StateError('The current participant membership is needed');
+      }
+      await coordinator.leavePlan(
+        userId: userId,
+        weddingPlanId: planId,
+        expectedMemberId: membership!.membershipId!,
+        expectedAuthorityVersion: membership.membershipAuthorityVersion!,
+        clientRequestId: _leaveRequestId ??= _newUuidV4(),
+        refreshAccountContexts: () async {
+          await controller.exitWorkspace();
+          await controller.refresh();
+        },
+      );
+    }
+
     final left = await showJourneySheet<bool>(
       context: context,
+      profile: reader,
       builder: (sheetContext) => _LeaveSheet(
-        planTitle: current.displayName,
+        planTitle: planTitle,
+        reader: reader,
         onLeave: () async {
-          final membership = controller.selectedContext;
-          if (userId == null ||
-              userId.trim().isEmpty ||
-              membership?.role != AccountContextRole.contributor ||
-              membership?.weddingPlanId != planId ||
-              membership?.membershipId == null ||
-              membership?.membershipAuthorityVersion == null) {
-            throw StateError('The current participant membership is needed');
+          try {
+            await leaveOnce();
+          } on ApiException catch (error) {
+            if (error.serverCode != _membershipChangedCode) rethrow;
+            // J2-10: the owner changed the rights after this path was
+            // read. That request is answered for good, so the leave is
+            // asked again once, as a new request with the fresh version.
+            _leaveRequestId = null;
+            await controller.refresh();
+            await leaveOnce();
           }
-          await coordinator.leavePlan(
-            userId: userId,
-            weddingPlanId: planId,
-            expectedMemberId: membership!.membershipId!,
-            expectedAuthorityVersion: membership.membershipAuthorityVersion!,
-            clientRequestId: requestId,
-            refreshAccountContexts: () async {
-              await controller.exitWorkspace();
-              await controller.refresh();
-            },
-          );
         },
       ),
     );
     if (left != true) return;
     _leaveRequestId = null;
     // Leaving clears the open path, which may close this page first; the
-    // app's router still reaches the home and its path choice.
+    // app's router still reaches the home and its path choice, and the
+    // toast goes on its navigator.
+    final navigator = router.routerDelegate.navigatorKey.currentState;
     router.go(AppRouter.home);
+    if (navigator != null && navigator.mounted) {
+      AarastToast.showInfo(
+        navigator.context,
+        'طلعت من $planTitle',
+        overlay: navigator.overlay,
+      );
+    }
   }
 
   @override
@@ -309,12 +338,22 @@ class _PlanRow extends StatelessWidget {
   }
 }
 
-/// «تطلع من عرس محمد؟»: leaving asks once; a failed leave says so and
-/// stays.
+const _membershipChangedCode = 'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST';
+
+/// «تطلع من عرس محمد؟»: leaving asks once; a failed leave says what
+/// happened and stays. Only a failure that never reached the server is
+/// blamed on the connection.
 class _LeaveSheet extends StatefulWidget {
-  const _LeaveSheet({required this.planTitle, required this.onLeave});
+  const _LeaveSheet({
+    required this.planTitle,
+    required this.reader,
+    required this.onLeave,
+  });
 
   final String planTitle;
+
+  /// B5: the sheet speaks to the reader as who they are.
+  final JourneyProfile reader;
   final Future<void> Function() onLeave;
 
   @override
@@ -333,21 +372,50 @@ class _LeaveSheetState extends State<_LeaveSheet> {
     try {
       await widget.onLeave();
       if (mounted) Navigator.of(context).pop(true);
-    } on Object {
+    } on Object catch (error) {
       if (mounted) {
         setState(() {
           _leaving = false;
-          _error = 'ما قدرنا نطلعك من الخطة. تأكد من النت وحاول مرة ثانية.';
+          _error = _failureMessage(error);
         });
       }
     }
   }
 
+  /// The server's refusal as it said it; the connection only when nothing
+  /// was answered.
+  String _failureMessage(Object error) {
+    final say = widget.reader.say;
+    if (error is ApiException) {
+      if (error.serverCode == _membershipChangedCode) {
+        return say(
+          'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
+          'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّبي الخروج مرة ثانية.',
+        );
+      }
+      final status = error.statusCode;
+      if (status != null && status >= 400 && status < 500) {
+        return error.message;
+      }
+    }
+    return say(
+      'ما قدرنا نطلعك من الخطة. تأكد من النت وجرّب مرة ثانية.',
+      'ما قدرنا نطلعك من الخطة. تأكدي من النت وجرّبي مرة ثانية.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final say = widget.reader.say;
     return JourneySheetBody(
-      title: 'تطلع من ${widget.planTitle}؟',
-      subtitle: 'تقدر ترجع لو أرسل لك دعوة ثانية',
+      title: say(
+        'تطلع من ${widget.planTitle}؟',
+        'تطلعين من ${widget.planTitle}؟',
+      ),
+      subtitle: say(
+        'تقدر ترجع لو أرسل لك دعوة ثانية',
+        'تقدرين ترجعين لو أرسل لك دعوة ثانية',
+      ),
       children: [
         if (_error case final error?) ...[
           JourneyNote(
@@ -361,7 +429,7 @@ class _LeaveSheetState extends State<_LeaveSheet> {
         ],
         JourneyButton(
           key: const ValueKey('participant-leave-confirm'),
-          label: 'اطلع من الخطة',
+          label: say('اطلع من الخطة', 'اطلعي من الخطة'),
           background: AarastV3Color.danger,
           expand: true,
           large: true,

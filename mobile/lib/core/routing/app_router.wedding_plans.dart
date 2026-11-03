@@ -271,7 +271,10 @@ List<RouteBase> _weddingPlanRoutes() => [
       return WeddingPlanContextGate(
         weddingPlanId: id,
         requiredAccess: WeddingPlanRouteAccess.inviteMembers,
-        child: EditSharedMemberScreen(sharedMemberId: memberId),
+        child: EditSharedMemberScreen(
+          weddingPlanId: id,
+          sharedMemberId: memberId,
+        ),
       );
     },
   ),

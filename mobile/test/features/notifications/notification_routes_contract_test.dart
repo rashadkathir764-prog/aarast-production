@@ -66,7 +66,9 @@ void main() {
             if (entry.value.isEmpty) entry.key,
         ]..sort(),
         // D63: PLAN_UPDATED tells a plan's members about its owner's deletion.
-        ['GENERAL', 'SHARING_UPDATED', 'SYNC_REQUIRED'],
+        // J2-07: SHARING_UPDATED now carries the member's rights change or
+        // removal, so it opens the plan or its state page.
+        ['GENERAL', 'SYNC_REQUIRED'],
       );
     },
   );

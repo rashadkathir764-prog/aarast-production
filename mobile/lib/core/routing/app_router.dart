@@ -10,6 +10,8 @@ import '../experience_v3/aarast_journey_profile.dart'
 import '../diagnostics/app_logger.dart';
 import '../../features/account_contexts/account_contexts_api.dart'
     show
+        AccountContextController,
+        AccountContextRole,
         SelectedWeddingPlanContextGate,
         WeddingPlanContextGate,
         WeddingPlanRouteAccess;

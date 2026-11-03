@@ -11,6 +11,7 @@ import { MessagingParticipationPublicModule } from "../../messaging/public/messa
 import { MessagingRealtimePublicModule } from "../../messaging/public/messaging-realtime-public.module";
 import { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";
 import { PlanReadPublicModule } from "../../planning/public/plan-read-public.module";
+import { TasksPublicModule } from "../../tasks/public/tasks-public.module";
 import { CollaborationHistoryInternalModule } from "./collaboration-history.internal.module";
 import { CollaborationPermissionInternalModule } from "./collaboration-permission.internal.module";
 
@@ -27,6 +28,7 @@ import { CollaborationPermissionInternalModule } from "./collaboration-permissio
     UserReadPublicModule,
     ActivePlanPublicModule,
     MessagingParticipationPublicModule,
+    TasksPublicModule,
   ],
   providers: [SharingService, InvitationDeliveryService, InviteAccessService],
   exports: [SharingService, InvitationDeliveryService, InviteAccessService],

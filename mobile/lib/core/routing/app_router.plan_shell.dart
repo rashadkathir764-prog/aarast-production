@@ -221,7 +221,18 @@ List<RouteBase> _planShellRoutes() => [
         path: '/wedding-plans/:id/guests/add',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return GuestListScreen(weddingPlanId: id, openAddOnStart: true);
+          // D80: a helper's list speaks of the owner's guests as the owner's.
+          final selected = context
+              .read<AccountContextController?>()
+              ?.selectedContext;
+          final helps =
+              selected?.role == AccountContextRole.contributor &&
+              selected?.weddingPlanId == id;
+          return GuestListScreen(
+            weddingPlanId: id,
+            openAddOnStart: true,
+            ownerWord: helps ? selected!.planOwnerWord : null,
+          );
         },
       ),
       GoRoute(

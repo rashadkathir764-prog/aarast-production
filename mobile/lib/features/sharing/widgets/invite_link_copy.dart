@@ -11,6 +11,11 @@ String newInviteLinkMessage(PlanInvite invite) =>
     'هذا رابطك الجديد، والقديم ما عاد يشتغل:\n'
     '${InviteShareContent.fromInvite(invite).inviteLink}';
 
+/// Aarast delivered a reissued link (C31): said of anyone, and the new link
+/// keeps the invite's 7 days (J2-13, J2-20).
+const newLinkDeliveredMessage =
+    'وصل رابط جديد على واتساب، والقديم ما عاد يشتغل. الرابط الجديد له 7 أيام.';
+
 /// Copies [text] and returns true. When the clipboard fails, the text is
 /// shown to copy by hand, since the link is not shown again.
 Future<bool> copyInviteText(BuildContext context, String text) async {

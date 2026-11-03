@@ -22,7 +22,8 @@ List<Guest> _filtered(List<Guest> guests, _ReplyFilter filter) {
     _ReplyFilter.confirmed => guests.where((g) => g.isConfirmed).toList(),
     _ReplyFilter.pending => guests.where((g) => g.isPending).toList(),
     _ReplyFilter.declined => guests.where((g) => g.isDeclined).toList(),
-    _ReplyFilter.noPhone => guests.where((g) => !g.hasPhone).toList(),
+    // A number the owner keeps (D80) is not a missing one.
+    _ReplyFilter.noPhone => guests.where((g) => g.missesPhone).toList(),
   };
 }
 
@@ -39,10 +40,16 @@ List<Guest> _search(List<Guest> guests, String query) {
   }).toList()..sort((a, b) => a.name.compareTo(b.name));
 }
 
-/// «124 مدعو · 86 أكدوا · 20 ما ردّوا».
-String _statusLine(GuestSummary summary, GuestWords words) {
+/// «124 مدعو · 86 أكدوا · 20 ما ردّوا». A helper (D80) starts the plan's
+/// list, not their own.
+String _statusLine(
+  GuestSummary summary,
+  GuestWords words, {
+  required bool helps,
+}) {
   if (summary.totalGuests == 0) {
-    return '${words.profile.say('ابدأ', 'ابدئي')} بقائمة ${words.yourGuests}';
+    return '${words.profile.say('ابدأ', 'ابدئي')} بقائمة '
+        '${helps ? words.guests : words.yourGuests}';
   }
   return [
     '${summary.totalGuests} ${words.invited}',
@@ -50,6 +57,11 @@ String _statusLine(GuestSummary summary, GuestWords words) {
     if (summary.pending > 0) '${summary.pending} ${words.pending}',
   ].join(' · ');
 }
+
+/// The empty plan said to a helper (D80): the list is the plan's, so it does
+/// not say «ما أضفت أحد».
+String _emptyPlanLine(BuildContext context) =>
+    'ما فيه ${context.planWord('ضيوف', 'ضيفات')} في القائمة بعد';
 
 /// «آخر تحديث قبل 20 دقيقة».
 String _lastUpdate(DateTime at) {
@@ -219,10 +231,15 @@ class _GroupRow extends StatelessWidget {
 /// one by one.
 class _FirstGuests extends StatelessWidget {
   const _FirstGuests({
+    required this.emptyLine,
     required this.onContacts,
     required this.onPaste,
     required this.onOne,
   });
+
+  /// «ما أضفت أحد بعد» on the owner's list, the plan's empty list to a
+  /// helper.
+  final String emptyLine;
 
   /// Null where the device has no address book (web, desktop).
   final VoidCallback? onContacts;
@@ -251,7 +268,7 @@ class _FirstGuests extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x1),
         Text(
-          '${GuestWords.of(context).noneAdded}.',
+          '$emptyLine.',
           style: JourneyType.of(
             JourneyType.body,
             color: AarastV3Color.textMuted,

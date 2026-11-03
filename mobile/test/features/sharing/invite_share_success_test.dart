@@ -168,6 +168,47 @@ void main() {
     expect(find.text('اكتب رقم جوال يمني صحيح'), findsOneWidget);
   });
 
+  testWidgets('J2-12: the signed-in number is caught before anything is sent', (
+    tester,
+  ) async {
+    final api = _FakeSharingApi(createDeliveryStatus: 'DELIVERED');
+    await _pumpScreen(
+      tester,
+      provider: SharingProvider(api),
+      selfPhone: '+967777123456',
+    );
+
+    // The same number however it is typed.
+    await _fill(tester, name: 'أنا', phone: '777 123 456');
+    await tester.tap(find.byKey(const ValueKey('participant-send')));
+    await tester.pumpAndSettle();
+    expect(api.createCalls, 0);
+    expect(find.text('هذا رقمك أنت، الدعوة لغيرك'), findsOneWidget);
+  });
+
+  testWidgets('D80: the sheet says what every participant reads', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      provider: SharingProvider(
+        _FakeSharingApi(createDeliveryStatus: 'DELIVERED'),
+      ),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-access-note')),
+        matching: find.text(
+          'كل مشارك يشوف أسماء الضيوف والمهام والحجوزات، ويعدّل بس في '
+          'القسم اللي تفتحه له. أرقام جوالات الضيوف لك ولمن أضافهم، '
+          'ومصادر فلوسك وسلفك تبقى لك.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('اللي أضافه هو أو اللي عليه'), findsNothing);
+  });
+
   testWidgets('failed delivery keeps the sheet open with the link to copy', (
     tester,
   ) async {
@@ -405,6 +446,7 @@ Future<void> _pumpScreen(
   WidgetTester tester, {
   required SharingProvider provider,
   String weddingPlanId = 'plan-1',
+  String? selfPhone,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1600);
@@ -414,9 +456,10 @@ Future<void> _pumpScreen(
   final authStorage = AuthStorage(preferences);
   await authStorage.saveSession(
     accessToken: 'invite-share-test-token',
-    user: const SafeUser(
+    user: SafeUser(
       id: 'user-1',
       name: 'رشاد',
+      phone: selfPhone,
       role: 'USER',
       status: 'ACTIVE',
     ),

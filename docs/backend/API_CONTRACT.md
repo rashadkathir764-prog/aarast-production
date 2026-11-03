@@ -2014,7 +2014,9 @@ the contributor reference across current and previous `ContributorTenure` rows,
 so a newly invited tenure can see that same person's qualifying live items only
 after the new membership has the current section permission. A historical
 event is never authority by itself, and no same-plan shortcut exposes another
-contributor's entities.
+contributor's entities. Guest and group lists are the D80 exception described
+under Guests: every name is listed, while phones, notes and edits keep this
+scope.
 
 The one exception is the plan's partner (V1 checklist 4.10): a member whose
 role is `GROOM` or `BRIDE` reads and manages the whole plan like its owner in
@@ -2134,9 +2136,20 @@ Guest response:
   "seatsCount": 1,
   "notes": "Optional note",
   "createdAt": "2026-06-18T00:00:00.000Z",
-  "updatedAt": "2026-06-18T00:00:00.000Z"
+  "updatedAt": "2026-06-18T00:00:00.000Z",
+  "editable": true
 }
 ```
+
+D80 (a refinement of D52): a contributor with `canManageGuests` lists every
+guest and every group of the plan, with the guest summary counted over the
+whole plan. `phone` and `notes` (a group's `notes`) are returned only for the
+guests and groups that contributor added and are `null` for the rest; each row
+carries `editable`, true for the owner (and a whole-plan partner with the
+guests right) and for the contributor's own rows, false otherwise. A guest or
+group outside that scope still answers `404` to `GET /api/v1/guests/:id`, update,
+delete and invitation links. A contributor without `canManageGuests` gets `[]`
+here and reads the names through the plan read view.
 
 Users with readable plan access can list guests. Guest mutations follow the live
 `PermissionService.canManageGuests` policy: owner access or the stored

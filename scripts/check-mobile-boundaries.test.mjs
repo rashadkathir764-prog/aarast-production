@@ -1727,7 +1727,9 @@ const r19ProviderPortalApi = Object.freeze({
 // through the auth owner API.
 // +1 (R16): the money items read how far their service got from the
 // marketplace owner API.
-const r19LegalRecordCount = 263;
+// -4 (R-01, 2026-11-03): the unreachable HomeScreen and HomeDashboardProvider
+// are gone with their four owner-API imports.
+const r19LegalRecordCount = 259;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1928,10 +1930,6 @@ const trackedOwnerApiContracts = [
       {
         uri: 'data/dashboard_summary_sources.dart',
         show: ['LocalGuestDashboardSummary', 'LocalGuestDashboardSummarySource'],
-      },
-      {
-        uri: 'providers/home_dashboard_provider.dart',
-        show: ['HomeDashboardProvider'],
       },
       { uri: 'screens/dashboard_entry_screen.dart', show: ['DashboardEntryScreen'] },
     ],
@@ -2716,7 +2714,13 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/sharing/screens/participant_plan_state_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContext', 'AccountContextController', 'AccountContextRole'],
+    // J2-07: the state page names the plan's owner in the owner's gender.
+    show: [
+      'AccountContext',
+      'AccountContextController',
+      'AccountContextPersona',
+      'AccountContextRole',
+    ],
   },
   {
     source: 'mobile/lib/features/sharing/screens/sharing_screen.dart',
@@ -3068,16 +3072,6 @@ const trackedShellEntryBatchContracts = [
     ],
   },
   {
-    source: 'mobile/lib/features/home/providers/home_dashboard_provider.dart',
-    target: 'mobile/lib/features/sharing/sharing_api.dart',
-    show: ['SharedWeddingPlan', 'SharingApi'],
-  },
-  {
-    source: 'mobile/lib/features/home/providers/home_dashboard_provider.dart',
-    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['WeddingPlan', 'WeddingPlansApi'],
-  },
-  {
     source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController', 'AccountContextEntryGate'],
@@ -3106,16 +3100,6 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['WeddingPlansApi'],
-  },
-  {
-    source: 'mobile/lib/features/home/screens/home_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController'],
-  },
-  {
-    source: 'mobile/lib/features/home/screens/home_screen.dart',
-    target: 'mobile/lib/features/notifications/notifications_api.dart',
-    show: ['NotificationsProvider'],
   },
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
@@ -3504,10 +3488,6 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/guests/guests_api.dart',
         show: ['GuestsApi', 'GuestsProvider'],
-      },
-      {
-        target: 'mobile/lib/features/home/home_api.dart',
-        show: ['HomeDashboardProvider'],
       },
       {
         target: 'mobile/lib/features/marketplace/marketplace_api.dart',

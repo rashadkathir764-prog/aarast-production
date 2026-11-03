@@ -31,6 +31,10 @@ import {
   planReopenedNotice,
 } from '../src/modules/identity/internal/profile/account-deletion-notices';
 import {
+  memberRemovedNotice,
+  memberRightsChangedNotice,
+} from '../src/modules/collaboration/internal/sharing-notices';
+import {
   reviewReceivedProviderNotification,
   reviewRepliedNotification,
 } from '../src/marketplace/review-notifications';
@@ -171,6 +175,15 @@ function allBuiltNotices(): Array<{ label: string; notice: CreateNotificationInp
         { label: `deletion/${persona}/erased`, notice: planErasedNotice({ memberUserId: 'user-3', weddingPlanId: ids.plan, owner, erasedAt: new Date('2026-11-27T09:00:00.000Z') }) },
       ];
     }),
+    // J2-07: a member re-scoped or taken out of the plan, by a groom or a bride.
+    ...(['GROOM', 'BRIDE'] as const).flatMap((persona) => {
+      const actor = { name: persona === 'BRIDE' ? 'سلمى أحمد' : 'محمد علي', persona };
+      const member = { memberUserId: 'user-3', sharedMemberId: 'member-3', weddingPlanId: ids.plan, planTitle: 'عرس سلمى', actor };
+      return [
+        { label: `sharing/${persona}/rights`, notice: memberRightsChangedNotice({ ...member, authorityVersion: 2 }) },
+        { label: `sharing/${persona}/removed`, notice: memberRemovedNotice(member) },
+      ];
+    }),
     ...[new Date('2027-01-21T00:00:00.000Z'), null].map((confirmedDay) => ({
       label: `deletion/provider/${confirmedDay ? 'booked' : 'request'}`,
       notice: customerClosedProviderNotification({ quoteRequestId: ids.quote, providerUserId: ids.provider, customerName: 'محمد علي', confirmedDay, at: new Date('2026-11-27T09:00:00.000Z') }),
@@ -237,8 +250,9 @@ test('B-19: every notification type has a route table entry, and a type with non
   assert.deepEqual(Object.keys(NOTIFICATION_ROUTES).sort(), enumValues);
   const unrouted = enumValues.filter((type) => NOTIFICATION_ROUTES[type].length === 0);
   // D63: PLAN_UPDATED tells a plan's members its owner asked to delete his
-  // account, took it back, or was erased.
-  assert.deepEqual(unrouted, ['GENERAL', 'SHARING_UPDATED', 'SYNC_REQUIRED']);
+  // account, took it back, or was erased. J2-07: SHARING_UPDATED tells a
+  // member their rights changed or they were taken out of the plan.
+  assert.deepEqual(unrouted, ['GENERAL', 'SYNC_REQUIRED']);
   const sources = sourceFiles(path.join(backendRoot, 'src'));
   for (const type of unrouted) {
     const writers = sources.filter((file) =>

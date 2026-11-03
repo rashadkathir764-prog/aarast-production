@@ -38,11 +38,17 @@ class GuestListScreen extends StatefulWidget {
     required this.weddingPlanId,
     this.openAddOnStart = false,
     this.openAddRequest = 0,
+    this.ownerWord,
     super.key,
   });
 
   final String weddingPlanId;
   final bool openAddOnStart;
+
+  /// «العريس», «العروسة» when the reader helps on another's plan (D80):
+  /// the list is the whole plan's, and the owner keeps the numbers and the
+  /// edits of every guest the reader did not add. Null on the owner's list.
+  final String? ownerWord;
 
   /// Raised by the home shell's «+» (D33): each new value opens the add
   /// sheet once.
@@ -109,6 +115,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
     final duplicates = _duplicateGuests(guests);
     final query = _query;
     final words = GuestWords.of(context);
+    final helps = widget.ownerWord != null;
+    final emptyLine = helps ? _emptyPlanLine(context) : words.noneAdded;
 
     final Widget body;
     if (provider.isLoading && guests.isEmpty) {
@@ -128,10 +136,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
         key: const ValueKey('guests-empty-offline'),
         phase: JourneyListPhase.empty,
         section: JourneySection.guests,
-        emptyTitle: words.noneAdded,
+        emptyTitle: emptyLine,
       );
     } else if (guests.isEmpty) {
       body = _FirstGuests(
+        emptyLine: emptyLine,
         onContacts: ContactPickerService.isAvailable
             ? () => _openImport(contacts: true)
             : null,
@@ -168,7 +177,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           children: [
             JourneyTabHeader(
               title: words.guests,
-              status: _statusLine(summary, words),
+              status: _statusLine(summary, words, helps: helps),
               actions: [
                 if (guests.isNotEmpty)
                   JourneyRoundButton(
@@ -213,6 +222,20 @@ class _GuestListScreenState extends State<GuestListScreen> {
             ] else if (provider.loadErrorMessage != null &&
                 guests.isNotEmpty) ...[
               JourneyListNotice(offline: false, onRetry: _load),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
+            if (widget.ownerWord case final owner?
+                when guests.any((guest) => !guest.editable)) ...[
+              JourneyNote(
+                key: const ValueKey('guests-helper-note'),
+                text: context.say(
+                  'تشوف كل ${words.guests}. تعدّل اللي من إضافتك، وأرقام البقية عند $owner.',
+                  'تشوفين كل ${words.guests}. تعدّلين اللي من إضافتك، وأرقام البقية عند $owner.',
+                ),
+                icon: LucideIcons.eye,
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.paper,
+              ),
               const SizedBox(height: AarastV3Space.x3),
             ],
             if (_searching) ...[
@@ -540,7 +563,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
       builder: (_) => GuestFormSheet(
         draftScope: scope,
         existingGuests: provider.guests,
-        groups: provider.groups,
+        // D80: a helper adds into the groups they made; the server refuses
+        // another's group.
+        groups: provider.editableGroups,
         blockDuplicatePhone: !_isLocalPlan,
         onCreateGroup: _isLocalPlan ? null : _createGroup,
       ),

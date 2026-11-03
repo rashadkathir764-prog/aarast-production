@@ -452,7 +452,8 @@ async function run() {
 
   const memberCreate = await request('POST', `/api/v1/wedding-plans/${planOneId}/members`, {
     userId: member.user.id,
-    role: 'VIEWER',
+    // D52 (J2-05): «يشوف بس» manages no providers; a helper may.
+    role: 'HELPER',
     canManageProviders: true,
   }, owner.token);
   const memberBody = await expectStatus('Grant member canManageProviders', memberCreate, 201);

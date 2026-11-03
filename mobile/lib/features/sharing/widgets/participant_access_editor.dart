@@ -5,6 +5,13 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../models/participant_access.dart';
 import '../models/plan_role_permissions.dart';
 
+/// D80, said to the plan's owner: what every participant reads, where they
+/// edit, and what stays the owner's.
+String participantReadingNote(BuildContext context) =>
+    'كل مشارك يشوف أسماء الضيوف والمهام والحجوزات، ويعدّل بس في القسم اللي '
+    '${context.say('تفتحه', 'تفتحينه')} له. أرقام جوالات الضيوف لك ولمن '
+    'أضافهم، ومصادر فلوسك وسلفك تبقى لك.';
+
 /// g06's ready roles and per-section levels, shared by adding a participant
 /// and editing one. Tasks, guests and providers are «لا / يعدّل»; money is
 /// «لا / يشوف / يعدّل». Choosing a role resets the levels to its defaults.
@@ -93,10 +100,7 @@ class ParticipantAccessEditor extends StatelessWidget {
               ? 'الشريك يشوف الخطة كلها في الأقسام اللي '
                     '${context.say('تفتحها', 'تفتحينها')} له، إلا مصادر '
                     'فلوسك وسلفك تبقى لك.'
-              : 'في كل قسم ${context.say('تفتحه', 'تفتحينه')}، المشارك يشوف '
-                    'اللي أضافه هو أو اللي عليه بس. '
-                    '"المهام: يعدّل" يعني يضيف مهام ويخلّص اللي عليه، ومصادر '
-                    'فلوسك وسلفك تبقى لك.',
+              : participantReadingNote(context),
         ),
       ],
     );

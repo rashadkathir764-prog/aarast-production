@@ -32,7 +32,8 @@ void main() {
 
       expect(provider.members, isEmpty);
       expect(provider.invites, isEmpty);
-      expect(provider.errorMessage, 'تعذر تحميل أعضاء المشاركة.');
+      // J2-20: the sharing messages are Yemeni.
+      expect(provider.errorMessage, 'ما قدرنا نجيب المشاركين.');
     });
 
     test('ignores a late result after a newer plan has loaded', () async {

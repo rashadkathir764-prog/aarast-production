@@ -164,7 +164,9 @@ async function run() {
     `/api/v1/wedding-plans/${planId}/members`,
     {
       userId: contributorA.userId,
-      role: "VIEWER",
+      // D52 (J2-05): «يشوف بس» manages nothing, so explicit task grants
+      // ride on a role that may hold them; direct members start with none.
+      role: "HELPER",
       canManageTasks: true,
       canInviteMembers: true,
     },
@@ -175,7 +177,7 @@ async function run() {
     `/api/v1/wedding-plans/${planId}/members`,
     {
       userId: contributorB.userId,
-      role: "VIEWER",
+      role: "HELPER",
       canManageTasks: true,
     },
     owner.token,
@@ -266,8 +268,10 @@ async function run() {
     `/api/v1/wedding-plans/${planId}/invites`,
     {
       userId: contributorC.userId,
-      role: "VIEWER",
+      role: "HELPER",
       canManageTasks: true,
+      canManageGuests: false,
+      canManageProviders: false,
     },
     contributorA.token,
   );
@@ -511,7 +515,7 @@ async function run() {
     `/api/v1/wedding-plans/${planId}/members`,
     {
       userId: contributorA.userId,
-      role: "VIEWER",
+      role: "HELPER",
       canManageTasks: true,
     },
     owner.token,
@@ -537,8 +541,10 @@ async function run() {
     `/api/v1/wedding-plans/${planId}/invites`,
     {
       userId: contributorA.userId,
-      role: "VIEWER",
+      role: "HELPER",
       canManageTasks: true,
+      canManageGuests: false,
+      canManageProviders: false,
     },
     owner.token,
   );

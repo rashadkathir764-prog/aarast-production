@@ -72,6 +72,9 @@ bool isSafeNotificationRouteTarget(String target) {
       _isBareIdPath(uri, const ['provider', 'requests', ':id']) ||
       _isBareIdPath(uri, const ['provider', 'reviews', ':id']) ||
       _isBareIdPath(uri, const ['quotes', ':id', 'conversation']) ||
+      // J2-07: a member taken off a plan, or re-scoped, opens that plan's
+      // state page (q19/q20), which lives outside the plan shell.
+      _isBareIdPath(uri, const ['shared', 'wedding-plans', ':id']) ||
       uri.path.startsWith('/providers/') ||
       uri.path.startsWith('/conversations/') ||
       uri.path.startsWith('/invites/') ||

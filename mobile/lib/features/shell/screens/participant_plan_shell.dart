@@ -43,7 +43,9 @@ Widget? participantPlanTab(
   final owner = selected.planOwnerWord;
   // D52: reading is separate from editing. Every participant reads the
   // tasks, the guests and the bookings (`canViewPlan`); a section's manage
-  // right opens its working page instead. Money keeps its own right.
+  // right opens its working page instead. Money keeps its own right. D80:
+  // the guests working page lists the whole plan, the owner keeping the
+  // numbers and edits of the guests the helper did not add.
   final reads = permissions.canViewPlan;
   Widget locked(JourneySection section) => ParticipantLockedScreen(
     key: ValueKey('participant-locked-$weddingPlanId-${section.name}'),
@@ -78,6 +80,7 @@ Widget? participantPlanTab(
           ? GuestListScreen(
               key: ValueKey('participant-guests-$weddingPlanId'),
               weddingPlanId: weddingPlanId,
+              ownerWord: owner,
             )
           : reads
           ? ParticipantGuestsScreen(

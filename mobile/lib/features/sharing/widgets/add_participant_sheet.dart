@@ -10,8 +10,10 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../shared/models/contact_phone_draft.dart';
+import '../../auth/auth_api.dart' show AuthController;
 import '../models/invite_share_content.dart';
 import '../models/participant_access.dart';
 import '../models/plan_role_permissions.dart';
@@ -302,6 +304,13 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     if (!analysis.isValid) {
       return context.say('اكتب رقم جوال يمني صحيح', 'اكتبي رقم جوال يمني صحيح');
     }
+    // J2-12: the signed-in number, compared as the duplicates are; the
+    // server says the same (CANNOT_INVITE_SELF).
+    final ownKey = PhoneNumberUtils.comparisonKey(_signedInPhone());
+    if (ownKey != null &&
+        ownKey == PhoneNumberUtils.comparisonKey(_phone.text)) {
+      return 'هذا رقمك أنت، الدعوة لغيرك';
+    }
     final member = ContactDuplicateUtils.findByPhone(
       provider.members.where(
         (member) => member.weddingPlanId == widget.weddingPlanId,
@@ -312,6 +321,12 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     if (member != null) return 'هذا الرقم مشارك معك من قبل';
     return null;
   }
+
+  /// The phone of the account signed in now: the live session, else the
+  /// session kept on the phone.
+  String? _signedInPhone() =>
+      context.read<AuthController?>()?.user?.phone ??
+      context.read<AuthStorage?>()?.readUser()?.phone;
 
   Future<void> _send() async {
     final provider = context.read<SharingProvider>();
@@ -389,7 +404,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       AarastToast.showSuccess(
         context,
         waiting != null
-            ? 'وصله رابط جديد على واتساب، والقديم ما عاد يشتغل.'
+            ? newLinkDeliveredMessage
             : 'وصلته الدعوة على واتساب. يدخل برقمه ويوافق.',
       );
       Navigator.of(context).pop();

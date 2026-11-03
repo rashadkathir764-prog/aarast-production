@@ -354,7 +354,10 @@ test("live scope accepts qualifying events from current and previous tenures aft
   assert.equal(observed[3].entityId, "quote-1");
 });
 
-test("guest list and summary only use the contributor guest scope", async () => {
+// D80 replaced the old rule (a helper saw only their own guests): the list
+// and the figures cover the whole plan, and the scope decides who reads the
+// number and who edits.
+test("guest list and summary cover the plan while the contributor guest scope keeps phones and edits", async () => {
   const own = guest("guest-a");
   const other = guest("guest-b");
   const prisma: any = {
@@ -384,11 +387,15 @@ test("guest list and summary only use the contributor guest scope", async () => 
   ) as GuestsService;
   const actor = { id: "contributor-a" } as any;
 
+  const rows = await guests.findForPlan(actor, "plan-1");
   assert.deepEqual(
-    (await guests.findForPlan(actor, "plan-1")).map((item) => item.id),
-    [own.id],
+    rows.map((item) => [item.id, item.editable, item.phone !== null]),
+    [
+      [own.id, true, true],
+      [other.id, false, false],
+    ],
   );
-  assert.equal((await guests.summary(actor, "plan-1")).totalGuests, 1);
+  assert.equal((await guests.summary(actor, "plan-1")).totalGuests, 2);
 });
 
 test("task create and completion append privacy-allowlisted events in the domain transaction", async () => {
@@ -666,7 +673,9 @@ test("contributor cannot move an own guest into an owner or another contributor 
   assert.equal(updated, false);
 });
 
-test("guest live reads authorize and query on one transaction and never inherit a foreign group through an own guest", async () => {
+// D80 replaced the old rule (a foreign group was hidden even through an own
+// guest): every group name is readable, its notes stay with whoever made it.
+test("guest live reads authorize and query on one transaction and read foreign groups without their notes", async () => {
   const own = { ...guest("guest-a"), groupId: "group-owner" };
   const ownGroup = {
     id: "group-a",
@@ -683,10 +692,12 @@ test("guest live reads authorize and query on one transaction and never inherit 
     name: "OWNER PRIVATE GROUP",
     notes: "OWNER PRIVATE NOTES",
   };
+  const plan = <T extends { id: string }>(rows: T[], where: any) =>
+    where.id?.in ? rows.filter((row) => where.id.in.includes(row.id)) : rows;
   const tx: any = {
     guest: {
       findMany: async ({ where, include }: any) => {
-        const rows = where.id?.in?.includes(own.id) ? [own] : [];
+        const rows = plan([own], where);
         return include
           ? rows.map((row) => ({
               ...row,
@@ -696,14 +707,9 @@ test("guest live reads authorize and query on one transaction and never inherit 
       },
     },
     guestGroup: {
-      findMany: async ({ where }: any) =>
-        [ownGroup, ownerGroup].filter((group) =>
-          where.id?.in?.includes(group.id),
-        ),
+      findMany: async ({ where }: any) => plan([ownGroup, ownerGroup], where),
       count: async ({ where }: any) =>
-        [ownGroup, ownerGroup].filter((group) =>
-          where.id?.in?.includes(group.id),
-        ).length,
+        plan([ownGroup, ownerGroup], where).length,
     },
   };
   const prisma: any = {
@@ -752,12 +758,19 @@ test("guest live reads authorize and query on one transaction and never inherit 
 
   const rows = await service.findForPlan(actor, "plan-1");
   assert.equal(rows.length, 1);
-  assert.equal(rows[0]?.groupId, null);
+  assert.equal(rows[0]?.groupId, ownerGroup.id);
   assert.deepEqual(
-    (await service.findGroups(actor, "plan-1")).map((group) => group.id),
-    [ownGroup.id],
+    (await service.findGroups(actor, "plan-1")).map((group) => [
+      group.id,
+      group.notes,
+      group.editable,
+    ]),
+    [
+      [ownGroup.id, ownGroup.notes, true],
+      [ownerGroup.id, null, false],
+    ],
   );
   const summary = await service.summary(actor, "plan-1");
-  assert.equal(summary.byGroup[ownerGroup.name], undefined);
-  assert.equal(summary.byGroup.ungrouped, 1);
+  assert.equal(summary.byGroup[ownerGroup.name], 1);
+  assert.equal(summary.byGroup.ungrouped, undefined);
 });

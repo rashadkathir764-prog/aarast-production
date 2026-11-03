@@ -83,7 +83,10 @@ test("task revocation records only an authority boundary and never rebuilds hist
         operation(tx),
     } as any,
     permissionService,
-    { purgeMoneyForMember: async () => undefined } as any,
+    {
+      purgeMoneyForMember: async () => undefined,
+      createNotificationInTransaction: async () => null,
+    } as any,
     {} as any,
     {
       ensureTenureInTransaction: async () => undefined,
@@ -100,7 +103,7 @@ test("task revocation records only an authority boundary and never rebuilds hist
   );
 
   await service.updateMemberForPlan(
-    { id: "owner-1" } as any,
+    { id: "owner-1", name: "سلمى أحمد" } as any,
     "plan-1",
     member.id,
     { canManageTasks: false },
@@ -178,13 +181,13 @@ test("changing a role never re-grants an explicitly revoked stored permission", 
         operation(tx),
     } as any,
     permissionService,
-    {} as any,
+    { createNotificationInTransaction: async () => null } as any,
     {} as any,
     {} as any,
   );
 
   await service.updateMemberForPlan(
-    { id: "owner-1" } as any,
+    { id: "owner-1", name: "سلمى أحمد" } as any,
     "plan-1",
     member.id,
     { role: SharedMemberRole.CONTRIBUTOR },
@@ -242,7 +245,10 @@ test("revoking money management keeps live money access and does not freeze the 
         operation(tx),
     } as any,
     permissionService,
-    { purgeMoneyForMember: async () => undefined } as any,
+    {
+      purgeMoneyForMember: async () => undefined,
+      createNotificationInTransaction: async () => null,
+    } as any,
     {} as any,
     {
       ensureTenureInTransaction: async () => {
@@ -255,7 +261,7 @@ test("revoking money management keeps live money access and does not freeze the 
   );
 
   const updated = await service.updateMemberForPlan(
-    { id: "owner-1" } as any,
+    { id: "owner-1", name: "سلمى أحمد" } as any,
     "plan-1",
     member.id,
     { canManageMoney: false },
@@ -356,7 +362,10 @@ test("revoking every permission records section boundaries without recapturing l
         operation(tx),
     } as any,
     permissionService,
-    { purgeMoneyForMember: async () => undefined } as any,
+    {
+      purgeMoneyForMember: async () => undefined,
+      createNotificationInTransaction: async () => null,
+    } as any,
     {} as any,
     {
       ensureTenureInTransaction: async () => undefined,
@@ -368,7 +377,7 @@ test("revoking every permission records section boundaries without recapturing l
   );
 
   await service.updateMemberForPlan(
-    { id: "owner-1" } as any,
+    { id: "owner-1", name: "سلمى أحمد" } as any,
     "plan-1",
     member.id,
     {

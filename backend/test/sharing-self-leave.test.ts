@@ -336,7 +336,7 @@ test("revoking member-management authority atomically revokes invitations create
         operation(tx),
     } as any,
     permissions as any,
-    {} as any,
+    { createNotificationInTransaction: async () => null } as any,
     {} as any,
     {
       ensureTenureInTransaction: async () => undefined,
@@ -345,7 +345,7 @@ test("revoking member-management authority atomically revokes invitations create
   );
 
   await service.updateMemberForPlan(
-    { id: "owner-1" } as any,
+    { id: "owner-1", name: "سلمى أحمد" } as any,
     "plan-1",
     member.id,
     { canInviteMembers: false },

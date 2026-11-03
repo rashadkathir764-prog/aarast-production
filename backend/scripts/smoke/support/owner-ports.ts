@@ -75,7 +75,7 @@ export function contributionHistoryService(
   return new ContributionHistoryService(prisma as any, ownerPorts.plans, permissions);
 }
 
-/** `SharingService` with the four owner ports it takes after the history service. */
+/** `SharingService` with the five owner ports it takes after the history service. */
 export function sharingService(
   prisma: unknown,
   permissions: PermissionService,
@@ -94,6 +94,7 @@ export function sharingService(
     ownerPorts.users,
     ownerPorts.users,
     messagingParticipation,
+    ownerPorts.tasks,
     realtime as any,
   );
 }

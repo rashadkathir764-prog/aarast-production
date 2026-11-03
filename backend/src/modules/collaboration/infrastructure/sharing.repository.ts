@@ -166,7 +166,7 @@ export class SharingRepository {
   rotatePendingInvite(
     tx: Prisma.TransactionClient, invite: PlanInvite, weddingPlanId: string,
     now: Date, tokenHash: string, role: SharedMemberRole | undefined,
-    permissions: PlanPermissionFlags,
+    permissions: PlanPermissionFlags, expiresAt: Date,
   ) {
     return tx.planInvite.updateMany({
       where: {
@@ -177,6 +177,7 @@ export class SharingRepository {
         tokenHash,
         deliveryStatus: PlanInviteDeliveryStatus.PENDING,
         deliveryAttemptedAt: now,
+        expiresAt,
         ...(role !== undefined ? { role } : {}),
         ...permissions,
       },

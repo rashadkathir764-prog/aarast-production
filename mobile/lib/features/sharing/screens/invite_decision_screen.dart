@@ -28,21 +28,35 @@ part 'invite_decision_screen.cards.dart';
 
 enum _InviteStep { phone, code, closed, invite }
 
+/// Why the closed step shows: the number does not open the link, or an
+/// in-app notice was opened with no one signed in.
+enum _ClosedReason { notForThisNumber, signInFirst }
+
 /// The message that asks the plan's owner for a new invite, when this one
 /// does not open with the proven number.
 const _askNewInviteMessage =
     'هلا، دعوة اعّرست ما فتحت معي. ممكن ترسلوا لي دعوة جديدة على رقمي؟';
+
+/// The private token a WhatsApp link carries; anything else in the route is
+/// an invite's id, from the in-app notice (`/invites/<inviteId>`).
+final _privateInviteToken = RegExp(r'^[A-Za-z0-9_-]{43}$');
 
 /// An invite link opens on the phone it was sent to (D75). The number (and,
 /// for a first visit, a name; no password) is proven with a WhatsApp code,
 /// and only then the invite shows who asks, the role and what each section
 /// allows. Joining or refusing is always an explicit press; nothing about
 /// the plan shows before the code. A link that does not open with that
-/// number (ended, or sent to another number; the server keeps the two
-/// apart from no one) says both and offers to ask for a new one.
+/// number (ended, cancelled, refused, replaced by a newer link, or sent to
+/// another number; the server keeps them apart from no one) says so before
+/// any code is sent, and offers to ask for a new one.
+///
+/// The in-app notice carries the invite's id instead of the private token
+/// (J2-02): the signed-in invitee sees the invite straight away, read with
+/// the session; with no one signed in it asks to sign in and comes back.
 class InviteDecisionScreen extends StatefulWidget {
   const InviteDecisionScreen({required this.token, super.key});
 
+  /// The private token of a link, or an invite's id from a notice.
   final String token;
 
   @override
@@ -59,6 +73,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   final _nameController = TextEditingController();
 
   _InviteStep _step = _InviteStep.phone;
+  _ClosedReason _closedReason = _ClosedReason.notForThisNumber;
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
   bool _isVerifying = false;
   bool _accountSetupRequired = false;
@@ -76,9 +91,28 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   String get _token => widget.token.trim();
 
+  /// A WhatsApp link (proven by its number) rather than a notice's id.
+  bool get _isPrivateLink => _privateInviteToken.hasMatch(_token);
+
   @override
   void initState() {
     super.initState();
+    if (!_isPrivateLink) {
+      // J2-02: a notice's id is read only with the invitee's own session;
+      // no number or code is asked for it.
+      final signedIn =
+          context.read<AuthController>().status == AuthStatus.authenticated;
+      if (signedIn) {
+        _step = _InviteStep.invite;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadInvite();
+        });
+      } else {
+        _step = _InviteStep.closed;
+        _closedReason = _ClosedReason.signInFirst;
+      }
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthController>();
@@ -108,14 +142,18 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final phone = _phoneController.text.trim();
     final phoneError = yemeniPhoneInputError(
       phone,
-      empty: 'اكتب الرقم اللي وصلتك عليه الدعوة',
+      empty: 'الرقم اللي وصلت عليه الدعوة مطلوب',
     );
     if (phoneError != null) {
       setState(() => _phoneError = phoneError);
       return;
     }
     final result = await auth.requestInviteOtp(token: _token, phone: phone);
-    if (!mounted || result == null) return;
+    if (!mounted) return;
+    if (result == null) {
+      _closeIfNotForThisNumber(auth);
+      return;
+    }
     _codePhone = normalizeOptionalYemeniPhone(phone);
     _otpController.clear();
     final needsName =
@@ -124,7 +162,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _accountSetupRequired = result.accountSetupRequired;
       // A first visit needs a name for the account: asked here, before
       // the code is typed, so the same code makes the account.
-      _nameError = needsName ? 'اكتب اسمك، أول مرة تدخل اعّرست' : null;
+      _nameError = needsName ? _nameRequired : null;
       _step = needsName ? _InviteStep.phone : _InviteStep.code;
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
@@ -132,6 +170,21 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     });
     _startResendCooldown();
   }
+
+  /// J2-01: the server answers one way for a link that ended, was
+  /// cancelled, refused, replaced by a newer one or sent to another number,
+  /// so that answer goes straight to the closed step, before any code.
+  void _closeIfNotForThisNumber(AuthController auth) {
+    if (auth.errorCode != 'INVITE_NOT_FOUND_FOR_PHONE') return;
+    _resendTimer?.cancel();
+    setState(() {
+      _closedReason = _ClosedReason.notForThisNumber;
+      _step = _InviteStep.closed;
+    });
+  }
+
+  /// Said to whoever was invited, a man or a woman alike.
+  static const _nameRequired = 'الاسم مطلوب لأول دخول في اعّرست';
 
   /// The same number however it is typed (spaces, +967).
   static bool _sameNumber(String typed, String? sent) {
@@ -146,7 +199,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   /// The name was missing on a first visit; the code is already on its way.
   void _continueWithName() {
     if (_nameController.text.trim().isEmpty) {
-      setState(() => _nameError = 'اكتب اسمك، أول مرة تدخل اعّرست');
+      setState(() => _nameError = _nameRequired);
       return;
     }
     setState(() {
@@ -162,7 +215,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       token: _token,
       phone: _phoneController.text.trim(),
     );
-    if (!mounted || result == null) return;
+    if (!mounted) return;
+    if (result == null) {
+      _closeIfNotForThisNumber(auth);
+      return;
+    }
     setState(() {
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
@@ -198,11 +255,12 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           // With a name already given, only an admin's number still needs
           // more (a password), which this screen does not take.
           _nameError = _nameController.text.trim().isEmpty
-              ? 'اكتب اسمك، أول مرة تدخل اعّرست'
+              ? _nameRequired
               : adminAppPasswordRequiredMessage;
           _step = _InviteStep.phone;
         } else if (auth.errorCode == 'INVITE_NOT_FOUND_FOR_PHONE') {
           _resendTimer?.cancel();
+          _closedReason = _ClosedReason.notForThisNumber;
           _step = _InviteStep.closed;
         }
       });
@@ -274,9 +332,17 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     });
   }
 
+  /// What the server answers this invite to: its token when it sent one,
+  /// else the route's own value (a notice's id for its invitee).
+  String _actionKey(PlanInvite invite) =>
+      invite.token.isNotEmpty ? invite.token : _token;
+
   Future<void> _accept(PlanInvite invite) async {
     final provider = context.read<SharingProvider>();
-    final ok = await provider.respondToInvite(invite.token, accept: true);
+    final ok = await provider.respondToInvite(
+      _actionKey(invite),
+      accept: true,
+    );
     if (!mounted || !ok) return;
     await _openPlan(provider.selectedInvite ?? invite);
   }
@@ -313,7 +379,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     );
     if (confirmed != true || !mounted) return;
     await context.read<SharingProvider>().respondToInvite(
-      invite.token,
+      _actionKey(invite),
       accept: false,
     );
   }
@@ -343,7 +409,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       setState(() => _openingPlan = false);
       AarastToast.showError(
         context,
-        accountContexts.errorMessage ?? 'ما قدرنا نفتح الخطة. حاول مرة ثانية.',
+        accountContexts.errorMessage ??
+            'ما قدرنا نفتح الخطة. المحاولة من جديد من «فتح الخطة».',
       );
       return;
     }
@@ -353,8 +420,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   void _handleBack() {
     switch (_step) {
       case _InviteStep.code:
-      case _InviteStep.closed:
+      case _InviteStep.closed when _isPrivateLink:
         _returnToPhone();
+      case _InviteStep.closed:
       case _InviteStep.phone:
       case _InviteStep.invite:
         context.popOrGo(
@@ -366,6 +434,16 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   }
 
   Future<void> _askNewInvite() => askOnWhatsApp(context, _askNewInviteMessage);
+
+  /// J2-02: sign in, then the app comes back to this notice.
+  void _signInFirst() {
+    context.go(
+      Uri(
+        path: AppRouter.login,
+        queryParameters: {'resume': AppRouter.inviteDecision(_token)},
+      ).toString(),
+    );
+  }
 
   void _showCodeHelp() {
     showJourneySheet<void>(
@@ -457,7 +535,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         controller: _nameController,
         textInputAction: TextInputAction.done,
         autofillHints: const [AutofillHints.name],
-        helper: 'لو أول مرة تدخل اعّرست',
+        helper: 'لو هذا أول دخول في اعّرست',
         helperColor: AarastV3Color.textMuted,
         errorText: _nameError,
         onChanged: (_) {
@@ -546,15 +624,30 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     ];
   }
 
-  /// The proven number does not open this link: it ended, or it was sent
-  /// to another number. Both are said, since the server tells them apart
-  /// to no one.
+  /// The number does not open this link: it ended, was cancelled or
+  /// refused, a newer link replaced it, or it went to another number. All
+  /// of it is said once, since the server tells them apart to no one. A
+  /// notice opened with no one signed in asks to sign in first.
   List<Widget> _closedStep() {
+    if (_closedReason == _ClosedReason.signInFirst) {
+      return const [
+        JourneyEntryQuestion(
+          question: 'هذي الدعوة لحسابك',
+          help: 'تفتح بعد الدخول بالحساب اللي انرسلت له الدعوة.',
+        ),
+        SizedBox(height: AarastV3Space.x5),
+        JourneyNote(
+          key: Key('invite-closed'),
+          text: 'بعد الدخول ترجع هنا على نفس الدعوة.',
+          icon: LucideIcons.logIn,
+          tone: JourneyNoteTone.paper,
+        ),
+      ];
+    }
     return const [
       JourneyEntryQuestion(
         question: 'الدعوة ما تفتح بهذا الرقم',
-        help:
-            'يا إنها انتهت، يا إنها انرسلت لرقم ثاني. الدعوة تفتح بس بالرقم اللي انرسلت له.',
+        help: 'يمكن انتهت، أو وصلت لرقم ثاني، أو صاحبها أرسل رابط جديد.',
       ),
       SizedBox(height: AarastV3Space.x5),
       JourneyNote(
@@ -603,11 +696,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final ended = invite.hasEndedMembership;
     return [
       const SizedBox(height: AarastV3Space.x2),
-      const JourneyNote(
-        text: 'تأكدنا من رقمك.',
-        icon: LucideIcons.check,
-        tone: JourneyNoteTone.bare,
-      ),
+      // A notice's invite is read with the session; no number was proven
+      // on this page.
+      if (_isPrivateLink)
+        const JourneyNote(
+          text: 'تأكدنا من رقمك.',
+          icon: LucideIcons.check,
+          tone: JourneyNoteTone.bare,
+        ),
       JourneyEntryQuestion(
         key: const ValueKey('invite-inviter-card'),
         question: _inviteTitle(invite, inviter, planTitle),
@@ -657,7 +753,16 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           ),
         ],
       ],
-      if (sharing.errorMessage case final error?) ...[
+      if (_planArchived(sharing)) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        JourneyNote(
+          key: const Key('invite-plan-archived'),
+          text: sharing.errorMessage ?? 'الخطة في الذكريات، ما تنعدل',
+          icon: LucideIcons.archive,
+          color: AarastV3Color.textMuted,
+          tone: JourneyNoteTone.paper,
+        ),
+      ] else if (sharing.errorMessage case final error?) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: error,
@@ -668,6 +773,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ],
     ];
   }
+
+  /// J2-11: the owner put the plan in the memories; it takes no one new.
+  static bool _planArchived(SharingProvider sharing) =>
+      sharing.errorCode == 'PLAN_ARCHIVED_READ_ONLY';
 
   Widget? _bottom(
     AuthController auth,
@@ -692,6 +801,18 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         );
       case _InviteStep.code:
         return null;
+      case _InviteStep.closed
+          when _closedReason == _ClosedReason.signInFirst:
+        return JourneyEntryActions(
+          primary: JourneyButton(
+            key: const Key('invite-sign-in-first'),
+            label: 'الدخول بحسابك أولًا',
+            icon: LucideIcons.logIn,
+            expand: true,
+            large: true,
+            onPressed: _signInFirst,
+          ),
+        );
       case _InviteStep.closed:
         return JourneyEntryActions(
           primary: JourneyButton(
@@ -709,7 +830,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           ),
         );
       case _InviteStep.invite:
-        if (sharing == null || invite == null || sharing.isLoading) {
+        if (sharing == null ||
+            invite == null ||
+            sharing.isLoading ||
+            _planArchived(sharing)) {
           return null;
         }
         if (invite.isPending) {
@@ -735,7 +859,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           return JourneyEntryActions(
             primary: JourneyButton(
               key: const Key('invite-open-plan-button'),
-              label: 'ادخل الخطة',
+              label: 'فتح الخطة',
               expand: true,
               large: true,
               loading: _openingPlan,

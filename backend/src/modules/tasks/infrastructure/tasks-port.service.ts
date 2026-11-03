@@ -330,9 +330,18 @@ export class TasksPortService implements TasksPort {
   async unassignUserTasksInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
+    scope?: { weddingPlanId: string },
   ): Promise<void> {
     await tx.weddingTask.updateMany({
-      where: { assigneeUserId: userId },
+      where: scope
+        ? {
+            weddingPlanId: scope.weddingPlanId,
+            assigneeUserId: userId,
+            status: {
+              in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS],
+            },
+          }
+        : { assigneeUserId: userId },
       data: { assigneeUserId: null },
     });
   }

@@ -80,6 +80,11 @@ export interface GuestResponse {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /**
+   * D80: the reader may change this guest (and reads its phone and notes):
+   * the owner for every guest, a helper for the guests they added.
+   */
+  editable: boolean;
 }
 
 export interface GuestGroupResponse {
@@ -90,6 +95,8 @@ export interface GuestGroupResponse {
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
+  /** D80: the reader may rename or remove this group. */
+  editable: boolean;
 }
 
 export interface BulkGuestsResponse {
@@ -152,28 +159,26 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
-        const includePrivateDetails = this.permissions.canManageGuests(context);
-        const [contributorScope, groupScope] = await Promise.all([
-          this.liveGuestScope(tx, context, currentUser.id),
-          this.liveGroupScope(tx, context, currentUser.id),
-        ]);
-        if (contributorScope !== null && !includePrivateDetails) return [];
-
-        const guests = await listPlanGuests(
+        const canManageGuests = this.permissions.canManageGuests(context);
+        const contributorScope = await this.liveGuestScope(
           tx,
-          weddingPlanId,
-          contributorScope ? [...contributorScope] : null,
-          query,
+          context,
+          currentUser.id,
         );
+        // A participant without the guests right reads the names through
+        // the plan read view, never these live rows.
+        if (contributorScope !== null && !canManageGuests) return [];
 
-        return guests
-          .filter(
-            (guest) =>
-              contributorScope === null || contributorScope.has(guest.id),
-          )
-          .map((guest) =>
-            this.toResponse(guest, includePrivateDetails, groupScope),
-          );
+        // D80: a helper reads every guest of the plan; the phone, the notes
+        // and the edit stay with the owner and with whoever added the guest.
+        const guests = await listPlanGuests(tx, weddingPlanId, null, query);
+        return guests.map((guest) =>
+          this.toResponse(
+            guest,
+            canManageGuests &&
+              (contributorScope === null || contributorScope.has(guest.id)),
+          ),
+        );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -199,15 +204,11 @@ export class GuestsService {
           currentUser.id,
           guest,
         );
-        const groupScope = await this.liveGroupScope(
-          tx,
-          context,
-          currentUser.id,
-        );
+        // Only the reader's own guests open here (D80), so the right to
+        // manage guests is the right to this one.
         return this.toResponse(
           guest,
           this.permissions.canManageGuests(context),
-          groupScope,
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -440,24 +441,23 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
-        const includePrivateDetails = this.permissions.canManageGuests(context);
+        const canManageGuests = this.permissions.canManageGuests(context);
         const contributorScope = await this.liveGroupScope(
           tx,
           context,
           currentUser.id,
         );
-        if (contributorScope !== null && !includePrivateDetails) return [];
-        const groups = await listPlanGuestGroups(
-          tx,
-          weddingPlanId,
-          contributorScope ? [...contributorScope] : null,
+        if (contributorScope !== null && !canManageGuests) return [];
+        // D80: every group of the plan is readable; its notes and its
+        // rename or removal stay with the owner and whoever made it.
+        const groups = await listPlanGuestGroups(tx, weddingPlanId, null);
+        return groups.map((group) =>
+          this.toGroupResponse(
+            group,
+            canManageGuests &&
+              (contributorScope === null || contributorScope.has(group.id)),
+          ),
         );
-        return groups
-          .filter(
-            (group) =>
-              contributorScope === null || contributorScope.has(group.id),
-          )
-          .map((group) => this.toGroupResponse(group, includePrivateDetails));
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -590,28 +590,15 @@ export class GuestsService {
           currentUser,
         );
         const canManageGuests = this.permissions.canManageGuests(context);
-        const [guestScope, groupScope] = await Promise.all([
-          this.liveGuestScope(tx, context, currentUser.id),
-          this.liveGroupScope(tx, context, currentUser.id),
-        ]);
-        const [guestRows, groupsCount] =
-          guestScope !== null && !canManageGuests
+        // D80: the figures count the whole plan for whoever reads its live
+        // guests; a participant without the guests right reads none here.
+        const [guests, groupsCount] =
+          this.isContributor(context) && !canManageGuests
             ? [[], 0]
             : await Promise.all([
-                listGuestsForSummary(
-                  tx,
-                  weddingPlanId,
-                  guestScope ? [...guestScope] : null,
-                ),
-                countGuestGroupsForSummary(
-                  tx,
-                  weddingPlanId,
-                  groupScope ? [...groupScope] : null,
-                ),
+                listGuestsForSummary(tx, weddingPlanId, null),
+                countGuestGroupsForSummary(tx, weddingPlanId, null),
               ]);
-        const guests = guestRows.filter(
-          (guest) => guestScope === null || guestScope.has(guest.id),
-        );
         const bySide = this.emptySideCounts();
         const byInvitationStatus = this.emptyInvitationStatusCounts();
         const byAttendanceStatus = this.emptyAttendanceStatusCounts();
@@ -628,12 +615,7 @@ export class GuestsService {
           byAttendanceStatus[guest.attendanceStatus]++;
           seatsTotal += guest.seatsCount;
           companionsTotal += guest.companionsCount;
-          const canReadGroup =
-            groupScope === null ||
-            (guest.groupId !== null && groupScope.has(guest.groupId));
-          const groupKey = canReadGroup
-            ? (guest.group?.name ?? "ungrouped")
-            : "ungrouped";
+          const groupKey = guest.group?.name ?? "ungrouped";
           byGroup[groupKey] = (byGroup[groupKey] ?? 0) + 1;
           if (!guest.phone) missingPhoneCount++;
           if (!guest.name.trim()) missingNameCount++;
@@ -1098,46 +1080,46 @@ export class GuestsService {
     return null;
   }
 
-  private toResponse(
-    guest: Guest,
-    includePrivateDetails = true,
-    readableGroupIds: Set<string> | null = null,
-  ): GuestResponse {
-    const canReadGroup =
-      readableGroupIds === null ||
-      (guest.groupId !== null && readableGroupIds.has(guest.groupId));
+  /**
+   * [editable]: the reader may change this guest (D80): the owner, a whole
+   * plan partner with the guests right, or the helper who added it. Only
+   * they read its phone and notes; everyone else gets the name and reply.
+   */
+  private toResponse(guest: Guest, editable = true): GuestResponse {
     return {
       id: guest.id,
       weddingPlanId: guest.weddingPlanId,
-      groupId: canReadGroup ? guest.groupId : null,
+      groupId: guest.groupId,
       name: guest.name,
-      // Phone is PII: only members who can manage guests may read it. Pure
-      // read-only members (e.g. VIEWER) see the guest without the number.
-      phone: includePrivateDetails ? guest.phone : null,
+      // Phone is PII: it stays with the owner and with whoever added the
+      // guest (D80). Every other reader sees the guest without the number.
+      phone: editable ? guest.phone : null,
       side: guest.side,
       status: guest.status,
       invitationStatus: guest.invitationStatus,
       attendanceStatus: guest.attendanceStatus,
       seatsCount: guest.seatsCount,
       companionsCount: guest.companionsCount,
-      notes: includePrivateDetails ? guest.notes : null,
+      notes: editable ? guest.notes : null,
       createdAt: guest.createdAt,
       updatedAt: guest.updatedAt,
+      editable,
     };
   }
 
   private toGroupResponse(
     group: GuestGroup,
-    includePrivateDetails = true,
+    editable = true,
   ): GuestGroupResponse {
     return {
       id: group.id,
       weddingPlanId: group.weddingPlanId,
       name: group.name,
-      notes: includePrivateDetails ? group.notes : null,
+      notes: editable ? group.notes : null,
       sortOrder: group.sortOrder,
       createdAt: group.createdAt,
       updatedAt: group.updatedAt,
+      editable,
     };
   }
 

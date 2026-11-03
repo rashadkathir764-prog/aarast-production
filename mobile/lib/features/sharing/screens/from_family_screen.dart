@@ -72,7 +72,9 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     }
     if (!mounted) return;
     if (text.trim().isEmpty) {
-      setState(() => _error = 'ما في شي منسوخ. انسخ الرابط من رسالة واتساب.');
+      setState(
+        () => _error = 'ما في شي منسوخ. الرابط موجود في رسالة الدعوة على واتساب.',
+      );
       return;
     }
     _linkController.text = text.trim();
@@ -82,7 +84,8 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     final found = inviteTokenFromText(_linkController.text);
     if (found == null) {
       setState(
-        () => _error = 'هذا مو رابط دعوة. انسخ الرابط كامل من رسالة واتساب.',
+        () => _error =
+            'هذا مو رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
       );
       return;
     }

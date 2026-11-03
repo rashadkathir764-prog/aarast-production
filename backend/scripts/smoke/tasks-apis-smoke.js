@@ -114,7 +114,8 @@ async function run() {
   {
     const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
       userId: member.userId,
-      role: 'VIEWER',
+      // D52 (J2-05): «يشوف بس» manages nothing; a task-capable member is a helper.
+      role: 'HELPER',
       canManageTasks: true,
     }, owner.token);
     check('owner adds task-capable member - HTTP 201', res.status === 201);

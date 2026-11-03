@@ -117,17 +117,24 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                   soft: context.accent.primarySoft,
                   title: group.name,
                   subtitle: count(widget.guestCounts[group.id] ?? 0),
-                  onTap: widget.saving ? null : () => _rename(group),
-                  trailing: IconButton(
-                    tooltip:
-                        '${context.say('شيل', 'شيلي')} مجموعة ${group.name}',
-                    onPressed: widget.saving ? null : () => _delete(group),
-                    icon: const Icon(
-                      LucideIcons.trash2,
-                      size: 18,
-                      color: AarastV3Color.textFaint,
-                    ),
-                  ),
+                  // D80: another's group is read, not renamed or removed.
+                  onTap: widget.saving || !group.editable
+                      ? null
+                      : () => _rename(group),
+                  trailing: group.editable
+                      ? IconButton(
+                          tooltip:
+                              '${context.say('شيل', 'شيلي')} مجموعة ${group.name}',
+                          onPressed: widget.saving
+                              ? null
+                              : () => _delete(group),
+                          icon: const Icon(
+                            LucideIcons.trash2,
+                            size: 18,
+                            color: AarastV3Color.textFaint,
+                          ),
+                        )
+                      : null,
                 ),
               JourneyListRow(
                 icon: LucideIcons.userX,

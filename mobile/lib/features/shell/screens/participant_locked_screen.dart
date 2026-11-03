@@ -29,24 +29,28 @@ class ParticipantLockedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // J2-18: every lock says who opens it, and where: the owner's screen
+    // is «المشاركين». The verb follows the plan's owner.
+    final opener = context.planWord(
+      'يفتحها لك $owner من «المشاركين».',
+      'تفتحها لك $owner من «المشاركين».',
+    );
     final (title, message) = switch (section) {
       JourneySection.money => (
         'المال خاص ب$owner',
-        // A lock says who opens it: the owner, from the sharing screen.
-        'ما عندك صلاحية تشوف المال في هذي الخطة. '
-            'يفتحها لك $owner من «المشاركة».',
+        'ما عندك صلاحية تشوف المال في هذي الخطة. $opener',
       ),
       JourneySection.providers => (
         'المزودين عند $owner',
-        'الطلبات والعروض خاصة ب$owner.',
+        'الطلبات والعروض خاصة ب$owner. $opener',
       ),
       JourneySection.tasks => (
         'المهام عند $owner',
-        'ما عندك صلاحية على المهام في هذي الخطة.',
+        'ما عندك صلاحية على المهام في هذي الخطة. $opener',
       ),
       JourneySection.guests => (
         'الضيوف عند $owner',
-        'ما عندك صلاحية على الضيوف في هذي الخطة.',
+        'ما عندك صلاحية على الضيوف في هذي الخطة. $opener',
       ),
       JourneySection.home => ('', ''),
     };

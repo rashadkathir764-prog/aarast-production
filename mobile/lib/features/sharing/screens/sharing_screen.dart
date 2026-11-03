@@ -19,6 +19,8 @@ import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/add_participant_sheet.dart';
 import '../widgets/invite_link_copy.dart';
+import '../widgets/participant_access_editor.dart' show participantReadingNote;
+import '../../../shared/models/contact_phone_draft.dart';
 
 /// g01 «المشاركين» and its x07 state «مين معك ومين لسا»: who helps with
 /// what (`GET P/members`, the line built from their stored flags), who has
@@ -255,10 +257,7 @@ class _SharingScreenState extends State<SharingScreen>
     if (!mounted || reissued == null) return;
 
     if (reissued.wasDeliveredByAarast) {
-      AarastToast.showSuccess(
-        context,
-        'وصله رابط جديد على واتساب، والقديم ما عاد يشتغل.',
-      );
+      AarastToast.showSuccess(context, newLinkDeliveredMessage);
       return;
     }
     final copied = await copyInviteText(
@@ -273,6 +272,21 @@ class _SharingScreenState extends State<SharingScreen>
         'نسخنا رابط جديد، أرسليه لها. القديم ما عاد يشتغل.',
       ),
     );
+  }
+
+  /// J2-13: an ended or refused invite gets a new one, on the same person.
+  Future<void> _inviteAgain(PlanInvite invite) async {
+    await showAddParticipantSheet(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+      preset: ParticipantPreset.ofRole(invite.role) ?? ParticipantPreset.helper,
+      contact: ContactPhoneDraft.fromInput(
+        name: invite.name?.trim() ?? '',
+        rawPhone: invite.phone ?? '',
+        requireYemeni: true,
+      ),
+    );
+    if (mounted) _syncPendingInviteRefreshTimer();
   }
 
   Future<void> _confirmCancel(PlanInvite invite) async {
@@ -425,18 +439,30 @@ class _SharingScreenState extends State<SharingScreen>
       ];
     }
     if (_showPermissionGate) {
-      return const [
+      return [
         JourneyListState(
           phase: JourneyListPhase.empty,
           section: JourneySection.home,
           emptyIcon: LucideIcons.lock,
           emptyTitle: 'المشاركين يديرهم صاحب الخطة',
-          emptyMessage: 'هو اللي يضيفهم ويحدد ايش يشوف كل واحد.',
+          emptyMessage: context.planWord(
+            'العريس هو اللي يضيفهم ويحدد ايش يشوف كل واحد.',
+            'العروسة هي اللي تضيفهم وتحدد ايش يشوف كل واحد.',
+          ),
         ),
       ];
     }
     final members = provider.members
         .where((member) => !member.isOwner)
+        .toList();
+    // J2-13: an invite that ended, was refused or cancelled stays in sight,
+    // in a small group under the waiting ones.
+    final closed = provider.invites
+        .where(
+          (invite) =>
+              invite.weddingPlanId == widget.weddingPlanId &&
+              _closedInviteWord(invite.status) != null,
+        )
         .toList();
     if (provider.isLoading && members.isEmpty) {
       return const [
@@ -504,6 +530,22 @@ class _SharingScreenState extends State<SharingScreen>
           ],
         ),
       ],
+      if (closed.isNotEmpty) ...[
+        const JourneySectionTitle('ما اكتملت'),
+        JourneyList(
+          children: [
+            for (final invite in closed)
+              _ClosedInviteRow(
+                invite: invite,
+                onInviteAgain:
+                    provider.isSubmitting || !_canInviteAgain(invite.status)
+                    ? null
+                    : () => _inviteAgain(invite),
+                showAction: _canInviteAgain(invite.status),
+              ),
+          ],
+        ),
+      ],
       if (members.isEmpty && pending.isEmpty)
         JourneyListState(
           phase: JourneyListPhase.empty,
@@ -522,10 +564,7 @@ class _SharingScreenState extends State<SharingScreen>
             ? 'الرابط يشتغل 7 أيام من يوم الدعوة. '
                   '${context.say('لما ترسل', 'لما ترسلين')} له رابط جديد، '
                   'القديم ما عاد يشتغل.'
-            : context.say(
-                'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحها له.',
-                'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحينها له.',
-              ),
+            : participantReadingNote(context),
       ),
       JourneySectionTitle(
         context.say('أضف مشارك', 'أضيفي مشارك'),
@@ -840,6 +879,71 @@ String _dayWord(DateTime? at) {
   if (days <= 0) return 'اليوم';
   if (days == 1) return 'أمس';
   return formatArabicDayMonth(local);
+}
+
+/// J2-13: the state word of an invite that is no longer waiting; null for
+/// a waiting or an accepted one.
+String? _closedInviteWord(String status) => switch (status) {
+  'EXPIRED' => 'انتهت',
+  'DECLINED' => 'رفض',
+  'CANCELLED' => 'أُلغيت',
+  _ => null,
+};
+
+/// A cancelled invite was the owner's own choice; an ended or refused one
+/// may be sent again.
+bool _canInviteAgain(String status) =>
+    status == 'EXPIRED' || status == 'DECLINED';
+
+/// One closed invite: the name, its state word, and «أرسل دعوة جديدة» when
+/// it ended or was refused. Quiet, so the list stays calm.
+class _ClosedInviteRow extends StatelessWidget {
+  const _ClosedInviteRow({
+    required this.invite,
+    required this.onInviteAgain,
+    required this.showAction,
+  });
+
+  final PlanInvite invite;
+  final VoidCallback? onInviteAgain;
+  final bool showAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final word = _closedInviteWord(invite.status) ?? '';
+    return Padding(
+      key: ValueKey('closed-invite-${invite.id}'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x3,
+        vertical: AarastV3Space.x1,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Opacity(
+              opacity: 0.7,
+              child: _Name(name: invite.name, phone: invite.phone),
+            ),
+          ),
+          const SizedBox(width: AarastV3Space.x2),
+          JourneyTag(
+            label: word,
+            color: AarastV3Color.textMuted,
+            soft: AarastV3Color.canvas,
+          ),
+          if (showAction) ...[
+            const SizedBox(width: AarastV3Space.x1),
+            JourneyTextAction(
+              key: ValueKey('closed-invite-resend-${invite.id}'),
+              label: context.say('أرسل دعوة جديدة', 'أرسلي دعوة جديدة'),
+              color: context.accent.primary,
+              onPressed: onInviteAgain,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _PresetCard extends StatelessWidget {

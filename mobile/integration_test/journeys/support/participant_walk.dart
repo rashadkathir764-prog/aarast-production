@@ -3,6 +3,8 @@
 // (backend/prisma/demo-seed/plan-data.ts): صالح is a HELPER (tasks, guests,
 // providers; no money), الوالد a VIEWER (no edit right). Reading is separate
 // from editing (D52): الوالد reads the plan's tasks, guests and bookings.
+// D80: صالح reads every guest and the numbers of only the ones he added.
+import 'package:flutter/widgets.dart' show ValueKey;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
@@ -66,6 +68,16 @@ const _privateMoney = [
 /// The seeded guests' phones start +96777; a participant who does not work
 /// on guests sees none of them, in any spelling.
 const _guestPhones = ['+967', '967 7', '77 0'];
+
+/// D80 (demo-seed/plan.ts): صالح added the first four of «الأصحاب»;
+/// ياسر الأهدل is his, at position 84 (+967 777 010 084). عبدالله الحمدي,
+/// the first guest of «آل الحمدي», is the groom's (+967 777 010 000).
+const _helperGuestId = 'demo_guest_groom-friends-1';
+const _helperGuestName = 'ياسر الأهدل';
+const _helperGuestPhone = '777 010 084';
+const _groomGuestId = 'demo_guest_groom-hamdi-1';
+const _groomGuestName = 'عبدالله الحمدي';
+const _groomGuestPhone = '777 010 000';
 
 Future<void> runParticipantWalk(
   WidgetTester tester,
@@ -137,8 +149,27 @@ Future<void> runParticipantWalk(
   await walk.step('participant_guests', 'الضيوف', () async {
     await walk.tab('الضيوف');
     if (p.managesGuests) {
-      walk.expectNotSee('124', why: 'يشوف بس الضيوف اللي أضافهم');
+      // D80: the helper reads every guest of the plan; he edits, and reads
+      // the number of, only the guests he added.
+      walk.expectSee('124 مدعو', why: 'عدد ضيوف الخطة كلها (D80)');
+      walk.expectSee('أكدوا من 124');
+      walk.expectSee('أرقام البقية عند العريس', why: 'يقال له لمن الأرقام');
       walk.expectNotSee(' 4 مقعد', why: 'العدد 3–10 جمعه «مقاعد»');
+      if (find.byKey(const ValueKey('guests-add')).evaluate().isEmpty) {
+        walk.fail('ما فيه زر إضافة ضيف، والمساعد له حق الضيوف');
+      }
+      await walk.tapKey('guest-group-all');
+      walk.expectSee(_helperGuestName, why: 'ضيف أضافه هو');
+      walk.expectSee(_groomGuestName, why: 'ضيف العريس بالاسم (D80)');
+      walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
+      // The groom's guest is a plain row: no way into his details.
+      await walk.tapKey('guest-row-$_groomGuestId');
+      walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
+      walk.expectNotSee('اتصل', why: 'ما يتصل بضيف العريس');
+      if (await walk.tapKey('guest-row-$_helperGuestId', wait: 3)) {
+        walk.expectSee(_helperGuestPhone, why: 'رقم ضيف أضافه هو');
+        await walk.back();
+      }
     } else {
       // D52: the plan's guests by name and reply, never their phones.
       walk.expectNotSee('ما عندك صلاحية');

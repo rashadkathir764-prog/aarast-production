@@ -253,10 +253,21 @@ async function run() {
   }
 
   {
+    // J2-05, D80: a VIEWER edits nothing, so granting a section comes with
+    // the role that may edit it.
+    const refused = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedMemberId}`, {
+      canManageTasks: true,
+    }, ownerToken);
+    check(
+      'owner cannot grant task management to a VIEWER',
+      refused.status === 400 && refused.body?.code === 'VIEWER_CANNOT_EDIT',
+    );
     const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedMemberId}`, {
+      role: 'HELPER',
       canManageTasks: true,
     }, ownerToken);
     check('owner grants task management - HTTP 200', res.status === 200);
+    check('granted member role is HELPER', res.body?.role === 'HELPER');
     check('task management permission enabled', res.body?.canManageTasks === true);
     check('permission update does not expose passwordHash', !hasPasswordHash(res.body));
   }

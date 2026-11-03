@@ -89,7 +89,8 @@ void main() {
 
     final icon = tester.widget<Icon>(find.byIcon(LucideIcons.listChecks));
     expect(icon.color, JourneyAccent.bride.primary);
-    expect(find.textContaining('في كل قسم تفتحينه'), findsOneWidget);
+    // D80: what every participant reads, spoken to her.
+    expect(find.textContaining('القسم اللي تفتحينه له'), findsOneWidget);
     expect(find.text('الضيفات'), findsOneWidget);
   });
 
@@ -98,7 +99,7 @@ void main() {
 
     final icon = tester.widget<Icon>(find.byIcon(LucideIcons.listChecks));
     expect(icon.color, JourneyAccent.groom.primary);
-    expect(find.textContaining('في كل قسم تفتحه،'), findsOneWidget);
+    expect(find.textContaining('القسم اللي تفتحه له'), findsOneWidget);
   });
 
   test('f02: an old price asks her to check it', () {

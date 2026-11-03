@@ -201,6 +201,22 @@ export function completePermissions<T extends object>(fake: T, client: unknown):
   return Object.assign(Object.create(Object.getPrototypeOf(fake ?? {})), owned, fake);
 }
 
+/**
+ * J2-08: a member who leaves or is removed lets go of their open tasks
+ * through the tasks port. A sharing fixture that models no task table has no
+ * tasks to let go of; a fixture that does gets the real tasks owner.
+ */
+const fixtureTasks = {
+  unassignUserTasksInTransaction: (
+    tx: Record<string, any>,
+    userId: string,
+    scope?: { weddingPlanId: string },
+  ) =>
+    tx?.weddingTask?.updateMany
+      ? ownerPorts.tasks.unassignUserTasksInTransaction(tx as any, userId, scope)
+      : Promise.resolve(),
+};
+
 export function sharingService(
   prisma: unknown,
   permissions: unknown,
@@ -208,6 +224,7 @@ export function sharingService(
   invitationDelivery: unknown,
   history: unknown,
   realtime?: unknown,
+  tasks: unknown = fixtureTasks,
 ): SharingService {
   const client = withOwnerTables(prisma as any);
   return new SharingService(
@@ -220,6 +237,7 @@ export function sharingService(
     ownerPorts.users,
     ownerPorts.users,
     messagingParticipation,
+    tasks as any,
     realtime as any,
   );
 }

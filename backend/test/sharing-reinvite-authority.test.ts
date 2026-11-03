@@ -447,7 +447,7 @@ test("narrowing a delegated inviter permission revokes only pending grants above
       assertMemberManageableInTransaction: async () => access,
       canViewMoney: () => false,
     } as any,
-    {} as any,
+    { createNotificationInTransaction: async () => null } as any,
     {} as any,
     {
       ensureTenureInTransaction: async () => undefined,

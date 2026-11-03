@@ -37,6 +37,10 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   String? get noticeMessage => _noticeMessage;
   List<Guest> get guests => _guests;
   List<GuestGroup> get groups => _groups;
+
+  /// The groups the reader may rename, remove and put guests in (D80).
+  List<GuestGroup> get editableGroups =>
+      _groups.where((group) => group.editable).toList();
   GuestSummary get summary =>
       _summary ??
       GuestSummary.fromGuests(

@@ -267,12 +267,15 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(api.reissueCalls, 1);
+        // J2-13: the new link has the same life; J2-20: said of anyone.
         expect(
-          find.textContaining(
-            'وصله رابط جديد على واتساب، والقديم ما عاد يشتغل',
+          find.text(
+            'وصل رابط جديد على واتساب، والقديم ما عاد يشتغل. '
+            'الرابط الجديد له 7 أيام.',
           ),
           findsOneWidget,
         );
+        expect(find.textContaining('وصله'), findsNothing);
         await tester.pump(const Duration(seconds: 6));
         expect(tester.takeException(), isNull);
       },
@@ -497,7 +500,116 @@ void main() {
       expect(find.text('يساعد في المهام والضيوف · بدون المال'), findsOneWidget);
       expect(find.text('معك'), findsNothing);
       expect(find.text('ينتظرون'), findsNothing);
-      expect(find.textContaining('كل مشارك يدخل برقمه'), findsOneWidget);
+      // D80: what every participant reads, and what stays the owner's.
+      expect(
+        find.text(
+          'كل مشارك يشوف أسماء الضيوف والمهام والحجوزات، ويعدّل بس في '
+          'القسم اللي تفتحه له. أرقام جوالات الضيوف لك ولمن أضافهم، '
+          'ومصادر فلوسك وسلفك تبقى لك.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('يشوف بس الأقسام'), findsNothing);
+    });
+
+    testWidgets(
+      'J2-13: ended, refused and cancelled invites stay in a small closed group',
+      (tester) async {
+        _setTallView(tester);
+        final api = _FakeSharingApi(
+          invites: [
+            _invite(),
+            _invite(id: 'invite-2', name: 'سعيد', status: 'EXPIRED'),
+            _invite(id: 'invite-3', name: 'منى', status: 'DECLINED'),
+            _invite(id: 'invite-4', name: 'عمر', status: 'CANCELLED'),
+          ],
+        );
+
+        await _pumpWithAuth(
+          tester,
+          provider: SharingProvider(api),
+          child: const SharingScreen(weddingPlanId: _planId),
+        );
+        await tester.pumpAndSettle();
+
+        // The waiting one stays where it was.
+        expect(find.text('ينتظرون'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('pending-invite-invite-1')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('pending-invite-invite-2')),
+          findsNothing,
+        );
+        // Under it, the closed ones with their state word.
+        expect(find.text('ما اكتملت'), findsOneWidget);
+        for (final (id, word) in [
+          ('invite-2', 'انتهت'),
+          ('invite-3', 'رفض'),
+          ('invite-4', 'أُلغيت'),
+        ]) {
+          expect(
+            find.descendant(
+              of: find.byKey(ValueKey('closed-invite-$id')),
+              matching: find.text(word),
+            ),
+            findsOneWidget,
+            reason: id,
+          );
+        }
+        // A new invite for the ended and the refused; a cancelled one was
+        // the owner's own choice.
+        expect(
+          find.byKey(const ValueKey('closed-invite-resend-invite-2')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('closed-invite-resend-invite-3')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('closed-invite-resend-invite-4')),
+          findsNothing,
+        );
+        expect(find.text('أرسل دعوة جديدة'), findsNWidgets(2));
+
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('closed-invite-resend-invite-2')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(const ValueKey('closed-invite-resend-invite-2')),
+        );
+        await tester.pumpAndSettle();
+        // The add sheet opens on the same person, ready to send.
+        expect(find.text('أضف سعيد'), findsOneWidget);
+        expect(find.byKey(const ValueKey('participant-send')), findsOneWidget);
+        expect(api.reissueCalls, 0);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('J2-20: the permission gate names the plan\'s owner', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final api = _PlanAwareAccessSharingApi(
+        members: const [],
+        invites: const [],
+      );
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: 'plan-of-someone-else'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('العريس هو اللي يضيفهم ويحدد ايش يشوف كل واحد.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('هو اللي يضيفهم ويحدد'), findsOneWidget);
     });
   });
 }
@@ -567,17 +679,19 @@ SharedMember _member({
 }
 
 PlanInvite _invite({
+  String id = 'invite-1',
+  String status = 'PENDING',
   String? name = 'خالد',
   String deliveryStatus = 'NOT_REQUESTED',
   DateTime? deliveryRetryAvailableAt,
   DateTime? deliveryAttemptedAt,
 }) {
   return PlanInvite(
-    id: 'invite-1',
+    id: id,
     weddingPlanId: _planId,
     token: 'invite-token',
     role: 'HELPER',
-    status: 'PENDING',
+    status: status,
     expiresAt: DateTime(2026, 7, 20),
     canViewMoney: false,
     canEditPlan: false,

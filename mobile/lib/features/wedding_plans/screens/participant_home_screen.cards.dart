@@ -503,18 +503,28 @@ class _ChangeCard extends StatelessWidget {
       if (before.canEditPlan && !after.canEditPlan) 'تعديل بيانات الخطة',
     ];
     final owner = voice.owner;
+    // J2-20: said to the reader as who they are.
+    final say = context.say;
+    final private =
+        'المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.';
     final String title;
     final String body;
     if (opened.length == 1 && closed.isEmpty) {
       title = '$owner ${voice.verb('فتح', 'فتحت')} لك ${opened.single}';
       body = switch (opened.single) {
-        'المال' when after.canManageMoney =>
-          'تقدر الآن تشوف المال وتسجّل الدفعات. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
-        'المال' =>
-          'تقدر الآن تشوف المال. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
-        'تسجيل المال' =>
-          'تقدر الآن تسجّل الدفعات. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
-        final section => _open(section),
+        'المال' when after.canManageMoney => say(
+          'تقدر الآن تشوف المال وتسجّل الدفعات. $private',
+          'تقدرين الآن تشوفين المال وتسجّلين الدفعات. $private',
+        ),
+        'المال' => say(
+          'تقدر الآن تشوف المال. $private',
+          'تقدرين الآن تشوفين المال. $private',
+        ),
+        'تسجيل المال' => say(
+          'تقدر الآن تسجّل الدفعات. $private',
+          'تقدرين الآن تسجّلين الدفعات. $private',
+        ),
+        final section => _open(section, say),
       };
     } else if (closed.length == 1 && opened.isEmpty) {
       title = '$owner ${voice.verb('قفل', 'قفلت')} عنك ${closed.single}';
@@ -567,9 +577,21 @@ class _ChangeCard extends StatelessWidget {
     );
   }
 
-  static String _open(String section) => switch (section) {
-    'إضافة المشاركين' => 'تقدر الآن تضيف ناس للخطة من «حسابي».',
-    'تعديل بيانات الخطة' => 'تقدر الآن تعدّل بيانات الخطة.',
-    final name => 'تقدر الآن تشتغل على $name، تلقاها في التبويبات تحت.',
+  static String _open(
+    String section,
+    String Function(String masculine, String feminine) say,
+  ) => switch (section) {
+    'إضافة المشاركين' => say(
+      'تقدر الآن تضيف ناس للخطة من «حسابي».',
+      'تقدرين الآن تضيفين ناس للخطة من «حسابي».',
+    ),
+    'تعديل بيانات الخطة' => say(
+      'تقدر الآن تعدّل بيانات الخطة.',
+      'تقدرين الآن تعدّلين بيانات الخطة.',
+    ),
+    final name => say(
+      'تقدر الآن تشتغل على $name، تلقاها في التبويبات تحت.',
+      'تقدرين الآن تشتغلين على $name، تلقينها في التبويبات تحت.',
+    ),
   };
 }

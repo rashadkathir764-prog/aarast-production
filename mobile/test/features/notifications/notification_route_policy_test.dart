@@ -120,6 +120,16 @@ void main() {
     expect(isSafeNotificationRouteTarget('/provider/reviews/a.b'), isFalse);
   });
 
+  test('J2-07: a plan state page is a safe target, bare and once', () {
+    expect(isSafeNotificationRouteTarget('/shared/wedding-plans/plan-7'), isTrue);
+    expect(
+      isSafeNotificationRouteTarget('/shared/wedding-plans/plan-7?next=/x'),
+      isFalse,
+    );
+    expect(isSafeNotificationRouteTarget('/shared/wedding-plans'), isFalse);
+    expect(isSafeNotificationRouteTarget('/shared/wedding-plans/a.b'), isFalse);
+  });
+
   test('only a bare quote conversation path is a safe target', () {
     expect(
       isSafeNotificationRouteTarget('/quotes/quote-7/conversation'),

@@ -22,7 +22,7 @@ export const NOTIFICATION_ROUTES = {
   PAYMENT_SCHEDULE_DUE_SOON: ['/wedding-plans/:planId/money/costs/:costId'],
   PAYMENT_SCHEDULE_OVERDUE: ['/wedding-plans/:planId/money/costs/:costId'],
   SHARING_INVITATION: ['/invites/:inviteId', '/wedding-plans/:planId/dashboard'],
-  SHARING_UPDATED: [],
+  SHARING_UPDATED: ['/wedding-plans/:planId/dashboard', '/shared/wedding-plans/:planId'],
   SHARING_INVITE_ACCEPTED: ['/wedding-plans/:planId/sharing'],
   SHARING_INVITE_DECLINED: ['/wedding-plans/:planId/sharing'],
   QUOTE_OFFER_RECEIVED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId'],
@@ -101,6 +101,10 @@ export const noticeRoutes = {
   },
   sharing(weddingPlanId: string): string {
     return `/wedding-plans/${part(weddingPlanId)}/sharing`;
+  },
+  /** q19: a plan the reader helped in, as it stands for them (J2-07: they were taken out of it). */
+  sharedPlanState(weddingPlanId: string): string {
+    return `/shared/wedding-plans/${part(weddingPlanId)}`;
   },
   invite(inviteId: string): string {
     return `/invites/${part(inviteId)}`;

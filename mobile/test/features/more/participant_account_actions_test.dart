@@ -248,10 +248,13 @@ void main() {
     expect(find.text('عرس قديم'), findsOneWidget);
     expect(find.text('لما الخطة تتغير'), findsOneWidget);
     expect(find.text('الخطة في الذكريات'), findsOneWidget);
+    // J2-20: the owner by the plan's word; the wedding is not assumed done.
     expect(
-      find.text('العرس تم الحمد لله، وصاحب الخطة حفظها في الذكريات.'),
+      find.text('الخطة في الذكريات: العريس حفظها هناك.'),
       findsOneWidget,
     );
+    expect(find.textContaining('صاحب الخطة'), findsNothing);
+    expect(find.textContaining('العرس تم'), findsNothing);
     // Paused, postponed and deleted wait for the plan states (q19).
     expect(find.text('الخطة متوقفة'), findsNothing);
     expect(find.text('الخطة انحذفت'), findsNothing);
@@ -261,6 +264,148 @@ void main() {
       'plan:shared-plan:contributor',
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'J2-07: a participant taken off the plan is told so, by name',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+
+      // The owner took them off; the phone still holds the old path when
+      // the notice opens.
+      harness.contextsGateway.contexts.removeWhere(
+        (context) => context.weddingPlanId == 'shared-plan',
+      );
+      harness.router.go('/shared/wedding-plans/shared-plan');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('participant-plan-removed')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك.'),
+        findsOneWidget,
+      );
+      expect(find.text('ما فيه تغيير على هذي الخطة'), findsNothing);
+      // The path is gone from the phone too.
+      expect(harness.contexts.selectedContext, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'J2-07: a notice for a plan the phone never knew still says it plainly',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+
+      harness.router.go('/shared/wedding-plans/unknown-plan');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('participant-plan-removed')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('ما عاد لك مكان في هذي الخطة. اللي سجّلته قبل يبقى باسمك.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'J2-10: a leave refused after a rights change refreshes and leaves once',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create();
+      addTearDown(harness.dispose);
+      harness.sharing
+        ..failuresRemaining = 1
+        ..failure = _membershipChanged;
+      await harness.pump(tester);
+
+      await _openLeave(tester);
+      // The owner changed the rights while the sheet was open.
+      harness.bumpContributorAuthority();
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(harness.sharing.versions, [1, 2]);
+      expect(harness.sharing.requestIds, hasLength(2));
+      expect(harness.sharing.requestIds.toSet(), hasLength(2));
+      expect(
+        find.byKey(const ValueKey('participant-leave-error')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
+      expect(harness.contexts.selectedContext, isNull);
+      expect(find.text('طلعت من عرس المشارك'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'J2-10: a second refusal says what happened and never blames the net',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create();
+      addTearDown(harness.dispose);
+      harness.sharing
+        ..failuresRemaining = 2
+        ..failure = _membershipChanged;
+      await harness.pump(tester);
+
+      await _openLeave(tester);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(harness.sharing.requestIds, hasLength(2));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('participant-leave-error')),
+          matching: find.text(
+            'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('النت'), findsNothing);
+      expect(harness.contexts.selectedContext?.weddingPlanId, 'shared-plan');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('J2-10: any other refusal is said as the server said it', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    harness.sharing
+      ..failuresRemaining = 1
+      ..failure = const ApiException(
+        'ما عاد لك مكان في هذي الخطة.',
+        statusCode: 403,
+      );
+    await harness.pump(tester);
+
+    await _openLeave(tester);
+    await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(harness.sharing.requestIds, hasLength(1));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-leave-error')),
+        matching: find.text('ما عاد لك مكان في هذي الخطة.'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('النت'), findsNothing);
   });
 
   testWidgets(
@@ -530,6 +675,12 @@ void main() {
   );
 }
 
+const _membershipChanged = ApiException(
+  'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
+  statusCode: 409,
+  serverCode: 'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST',
+);
+
 Future<void> _openLeave(WidgetTester tester) async {
   final leave = find.byKey(const ValueKey('participant-leave'));
   await tester.ensureVisible(leave);
@@ -591,11 +742,13 @@ class _ContributorActionHarness {
       role: AccountContextRole.contributor,
       planId: 'shared-plan',
       displayName: 'عرس المشارك',
+      persona: AccountContextPersona.groom,
     );
     final archived = accountContext(
       role: AccountContextRole.contributor,
       planId: 'old-plan',
       displayName: 'عرس قديم',
+      persona: AccountContextPersona.groom,
       lifecycle: 'ARCHIVED',
       isAvailable: false,
       unavailableReason: 'PLAN_ARCHIVED',
@@ -743,6 +896,21 @@ class _ContributorActionHarness {
     await tester.pumpAndSettle();
   }
 
+  /// The owner changed the participant's rights: the server's membership
+  /// moves to its next authority version.
+  void bumpContributorAuthority() {
+    final index = contextsGateway.contexts.indexWhere(
+      (context) => context.contextKey == 'plan:shared-plan:contributor',
+    );
+    contextsGateway.contexts[index] = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'shared-plan',
+      displayName: 'عرس المشارك',
+      persona: AccountContextPersona.groom,
+      membershipAuthorityVersion: 2,
+    );
+  }
+
   void dispose() {
     router.dispose();
     dashboard.dispose();
@@ -794,6 +962,7 @@ class _ControlledSharingApi extends SharingApi {
   int failuresRemaining = 0;
   ApiException failure = const ApiException('controlled leave failure');
   final List<String> requestIds = [];
+  final List<int> versions = [];
   Future<void> Function()? beforeLeave;
 
   @override
@@ -804,6 +973,7 @@ class _ControlledSharingApi extends SharingApi {
     required String clientRequestId,
   }) async {
     requestIds.add(clientRequestId);
+    versions.add(expectedAuthorityVersion);
     await beforeLeave?.call();
     if (failuresRemaining > 0) {
       failuresRemaining -= 1;

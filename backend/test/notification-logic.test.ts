@@ -620,6 +620,8 @@ test("revoking financial access purges stored financial notifications atomically
         userId === existing.userId &&
         weddingPlanId === existing.weddingPlanId;
     },
+    // J2-07: the member is told their rights changed.
+    createNotificationInTransaction: async () => null,
   };
   const sharing = sharingService(
     prisma,
@@ -637,7 +639,7 @@ test("revoking financial access purges stored financial notifications atomically
   );
 
   await sharing.updateMemberForPlan(
-    { id: "owner-1" } as AuthenticatedUser,
+    { id: "owner-1", name: "سلمى أحمد" } as AuthenticatedUser,
     "plan-1",
     existing.id,
     {

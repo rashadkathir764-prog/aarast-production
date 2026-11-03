@@ -1,7 +1,10 @@
 part of 'invite_decision_screen.dart';
 
-/// What each section allows, from the invite's flags (C27, C63). The rafd
-/// row and «البرنامج» wait for the rafd book and the wedding's events.
+/// What each section allows, from the invite's flags (C27, C63). D80: every
+/// participant reads the tasks, the guests' names and the bookings; a
+/// section's right adds editing there. Only money stays closed without its
+/// right. The rafd row and «البرنامج» wait for the rafd book and the
+/// wedding's events.
 class _InviteRights extends StatelessWidget {
   const _InviteRights({required this.invite});
 
@@ -24,14 +27,14 @@ class _InviteRights extends StatelessWidget {
               'المهام: إضافة مهام وإنهاء اللي عليك',
               true,
             )
-          : (LucideIcons.listChecks, 'المهام', false),
+          : (LucideIcons.listChecks, 'المهام: مشاهدة بس', true),
       invite.canManageGuests
           ? (LucideIcons.users, '$guests: إضافة وترتيب', true)
-          : (LucideIcons.users, guests, false),
+          : (LucideIcons.users, '$guests: مشاهدة الأسماء', true),
       (LucideIcons.wallet, money ?? 'المال', money != null),
       invite.canManageProviders
           ? (LucideIcons.store, 'المزودين: طلب عروض ومتابعتها', true)
-          : (LucideIcons.store, 'المزودين', false),
+          : (LucideIcons.store, 'المزودين: مشاهدة الحجوزات', true),
       if (invite.canInviteMembers)
         (LucideIcons.userPlus, 'المشاركين: إضافة ناس للخطة', true),
       if (invite.canEditPlan)

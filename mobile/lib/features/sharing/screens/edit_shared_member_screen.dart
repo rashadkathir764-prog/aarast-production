@@ -20,9 +20,17 @@ import '../widgets/participant_access_editor.dart';
 /// the plan. Flags the levels do not show (editing the plan, inviting) keep
 /// their stored value.
 class EditSharedMemberScreen extends StatefulWidget {
-  const EditSharedMemberScreen({required this.sharedMemberId, super.key});
+  const EditSharedMemberScreen({
+    required this.sharedMemberId,
+    this.weddingPlanId,
+    super.key,
+  });
 
   final String sharedMemberId;
+
+  /// The plan from the route (J2-17), so a cold open finds the member; the
+  /// list's cache is only a fallback.
+  final String? weddingPlanId;
 
   @override
   State<EditSharedMemberScreen> createState() => _EditSharedMemberScreenState();
@@ -51,7 +59,10 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   @override
   void didUpdateWidget(covariant EditSharedMemberScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.sharedMemberId == widget.sharedMemberId) return;
+    if (oldWidget.sharedMemberId == widget.sharedMemberId &&
+        oldWidget.weddingPlanId == widget.weddingPlanId) {
+      return;
+    }
     _memberPlanId = null;
     _verifiedMember = null;
     _initialized = false;
@@ -143,13 +154,16 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       ];
     }
     if (_showPermissionGate) {
-      return const [
+      return [
         JourneyListState(
           phase: JourneyListPhase.empty,
           section: JourneySection.home,
           emptyIcon: LucideIcons.lock,
           emptyTitle: 'المشاركين يديرهم صاحب الخطة',
-          emptyMessage: 'هو اللي يغيّر ايش يشوف كل واحد أو يشيله.',
+          emptyMessage: context.planWord(
+            'العريس هو اللي يغيّر ايش يشوف كل واحد أو يشيله.',
+            'العروسة هي اللي تغيّر ايش يشوف كل واحد أو تشيله.',
+          ),
         ),
       ];
     }
@@ -228,7 +242,10 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final candidate = selected?.id == widget.sharedMemberId
         ? selected
         : provider.findMember(widget.sharedMemberId);
-    final weddingPlanId = _memberPlanId ?? candidate?.weddingPlanId;
+    final routePlanId = widget.weddingPlanId?.trim();
+    final weddingPlanId = routePlanId != null && routePlanId.isNotEmpty
+        ? routePlanId
+        : _memberPlanId ?? candidate?.weddingPlanId;
 
     setState(() {
       _isCheckingAccess = true;

@@ -147,7 +147,8 @@ async function run() {
       `/api/v1/wedding-plans/${planId}/members`,
       {
         userId: manager.userId,
-        role: 'VIEWER',
+        // D52 (J2-05): «يشوف بس» manages no money; the money manager is one.
+        role: 'FINANCE_MANAGER',
         canViewMoney: true,
         canManageMoney: true,
       },

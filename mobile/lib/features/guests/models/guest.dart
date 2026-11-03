@@ -16,6 +16,7 @@ class Guest {
     this.groupId,
     this.phone,
     this.notes,
+    this.editable = true,
   });
 
   factory Guest.fromJson(Map<String, dynamic> json) {
@@ -35,6 +36,8 @@ class Guest {
           json['attendanceStatus']?.toString() ??
           _attendanceStatusFromStatus(json['status']?.toString()),
       notes: json['notes']?.toString(),
+      // An older server sends no flag and only the reader's own guests.
+      editable: json['editable'] != false,
       createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
       updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
     );
@@ -55,6 +58,11 @@ class Guest {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// D80: the reader may change this guest and reads its number: the owner
+  /// for every guest, a helper for the guests they added. Every other guest
+  /// is read by name and reply only.
+  final bool editable;
+
   bool get isConfirmed =>
       attendanceStatus == 'CONFIRMED' || status == 'CONFIRMED';
 
@@ -62,15 +70,21 @@ class Guest {
 
   bool get isPending => !isConfirmed && !isDeclined;
 
-  /// Invited and not answered: who a reminder can reach (e08).
-  bool get canBeReminded => isPending && invitationStatus != 'NOT_SENT';
+  /// Invited and not answered: who a reminder can reach (e08). Only a guest
+  /// the reader keeps: another's guest has no number or link to send.
+  bool get canBeReminded =>
+      editable && isPending && invitationStatus != 'NOT_SENT';
 
-  /// No invitation has gone out to this guest yet (e04).
-  bool get awaitsInvitation => invitationStatus == 'NOT_SENT' && !isDeclined;
+  /// No invitation has gone out to this guest yet (e04), from this reader.
+  bool get awaitsInvitation =>
+      editable && invitationStatus == 'NOT_SENT' && !isDeclined;
 
   bool get hasPhone => phone?.trim().isNotEmpty == true;
 
-  bool get hasMissingData => name.trim().isEmpty || !hasPhone;
+  /// The number is missing, not kept by the owner (D80).
+  bool get missesPhone => editable && !hasPhone;
+
+  bool get hasMissingData => name.trim().isEmpty || missesPhone;
 
   /// This guest after its group is deleted: the server keeps the guest and
   /// only clears the group (`onDelete: SetNull`).
@@ -88,6 +102,7 @@ class Guest {
     attendanceStatus: attendanceStatus,
     phone: phone,
     notes: notes,
+    editable: editable,
   );
 
   static DateTime? _dateTimeOrNull(Object? value) {
@@ -111,6 +126,7 @@ class GuestGroup {
     required this.name,
     this.notes,
     this.sortOrder = 0,
+    this.editable = true,
   });
 
   factory GuestGroup.fromJson(Map<String, dynamic> json) {
@@ -120,6 +136,7 @@ class GuestGroup {
       name: json['name']?.toString() ?? '',
       notes: json['notes']?.toString(),
       sortOrder: int.tryParse(json['sortOrder']?.toString() ?? '') ?? 0,
+      editable: json['editable'] != false,
     );
   }
 
@@ -128,6 +145,9 @@ class GuestGroup {
   final String name;
   final String? notes;
   final int sortOrder;
+
+  /// D80: the reader may rename, remove and add guests to this group.
+  final bool editable;
 }
 
 class GuestSummary {
@@ -226,7 +246,7 @@ class GuestSummary {
       } else {
         pending++;
       }
-      if (!guest.hasPhone) missingPhone++;
+      if (guest.missesPhone) missingPhone++;
       if (guest.name.trim().isEmpty) missingName++;
       expectedSeats += guest.seatsCount;
       companions += guest.companionsCount;

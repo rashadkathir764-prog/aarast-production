@@ -79,7 +79,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               ? null
               : JourneyNote(
                   key: const Key('provider-register-error'),
-                  text: offline ? 'ما قدرنا نرسل الرمز، النت مقطوع.' : error,
+                  text: offline ? 'ما قدرنا نرسل الرمز، ما وصلنا للخادم.' : error,
                   icon: offline ? LucideIcons.wifiOff : LucideIcons.alertCircle,
                   color: AarastV3Color.danger,
                   soft: AarastV3Color.dangerSoft,

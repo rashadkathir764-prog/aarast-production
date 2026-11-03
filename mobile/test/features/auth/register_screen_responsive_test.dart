@@ -119,7 +119,9 @@ void main() {
 
     expect(auth.failedOffline, isTrue);
     expect(
-      find.text('ما قدرنا نرسل الرمز، النت مقطوع. خطتك محفوظة على هذا الجوال.'),
+      find.text(
+        'ما قدرنا نرسل الرمز، ما وصلنا للخادم. خطتك محفوظة على هذا الجوال.',
+      ),
       findsOneWidget,
     );
     expect(find.text('أرسل الرمز مرة ثانية'), findsOneWidget);

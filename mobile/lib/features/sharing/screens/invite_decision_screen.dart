@@ -467,7 +467,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       if (error != null) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
-          text: auth.failedOffline ? 'ما قدرنا نرسل الرمز، النت مقطوع.' : error,
+          text: auth.failedOffline ? 'ما قدرنا نرسل الرمز، ما وصلنا للخادم.' : error,
           icon: LucideIcons.alertCircle,
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,

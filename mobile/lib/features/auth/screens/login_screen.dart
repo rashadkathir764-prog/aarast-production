@@ -103,8 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: const ValueKey('login-error'),
                   text: auth.failedOffline
                       ? context.say(
-                          'ما قدرنا نوصل، النت مقطوع. جرّب مرة ثانية.',
-                          'ما قدرنا نوصل، النت مقطوع. جرّبي مرة ثانية.',
+                          'ما قدرنا نوصل للخادم. تأكد من النت وجرّب مرة ثانية.',
+                          'ما قدرنا نوصل للخادم. تأكدي من النت وجرّبي مرة ثانية.',
                         )
                       : error,
                   icon: auth.failedOffline

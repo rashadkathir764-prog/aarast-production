@@ -312,8 +312,10 @@ mixin _AuthSession on _AuthControllerCore {
       if (error.serverCode == 'INVALID_CREDENTIALS') {
         return 'كلمة المرور الحالية غلط.';
       }
+      // A failed connection is not proof the net is down: the server, or
+      // its name, may be the one out of reach. Say what is known.
       return error.isNetworkFailure
-          ? 'ما قدرنا نوصل، النت مقطوع. جرّب مرة ثانية.'
+          ? 'ما قدرنا نوصل للخادم. تأكد من النت وجرّب مرة ثانية.'
           : error.message;
     }
     await refreshCurrentUser();

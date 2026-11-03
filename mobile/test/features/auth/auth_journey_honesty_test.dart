@@ -525,7 +525,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('ما قدرنا نوصل، النت مقطوع. جرّبي مرة ثانية.'),
+        // The app cannot tell a cut line from a server it cannot reach, so
+        // it never claims the net is down.
+        find.text('ما قدرنا نوصل للخادم. تأكدي من النت وجرّبي مرة ثانية.'),
         findsOneWidget,
       );
     });

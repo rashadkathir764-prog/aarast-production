@@ -2,17 +2,23 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../models/reference_catalog.dart';
 
 const _catalogVersionMetaKey = 'aarast.catalog.bootstrap.version.v1';
 const _catalogPayloadMetaKey = 'aarast.catalog.bootstrap.payload.v1';
 
+/// The reference catalog (money items, provider kinds), versioned.
+///
+/// D85: the last complete payload is the phone's copy; an unchanged
+/// version keeps it, and a server out of reach serves it.
 class ReferenceCatalogApi {
-  const ReferenceCatalogApi(this._apiClient, this._offline);
+  ReferenceCatalogApi(ApiClient apiClient, this._offline)
+    : _writes = OfflineWrites(apiClient, _offline);
 
-  final ApiClient _apiClient;
   final OfflineSyncService _offline;
+  final OfflineWrites _writes;
 
   Future<ReferenceCatalogBootstrap?> load() async {
     final cached = await _readCached();
@@ -23,8 +29,12 @@ class ReferenceCatalogApi {
         ? ''
         : '?version=${Uri.encodeQueryComponent(knownVersion)}';
     try {
-      final response = await _apiClient.getJson(
-        '/api/v1/catalogs/bootstrap$versionQuery',
+      // The version query makes this read its own: the copy is kept only
+      // when the server says the catalog changed.
+      final response = await _writes.serverOnly(
+        reason: 'الكتالوج يتحدّث من الخادم.',
+        method: 'GET',
+        path: '/api/v1/catalogs/bootstrap$versionQuery',
       );
       if (response['unchanged'] == true) return cached;
       final bootstrap = ReferenceCatalogBootstrap.fromJson(response);
@@ -39,12 +49,7 @@ class ReferenceCatalogApi {
       );
       return bootstrap;
     } on Object catch (error) {
-      if (cached != null && CachePolicy.shouldUseCache(error)) {
-        if (error is ApiException) {
-          await _offline.noteNetworkFailure(error.message);
-        }
-        return cached;
-      }
+      if (cached != null && CachePolicy.shouldUseCache(error)) return cached;
       rethrow;
     }
   }

@@ -53,6 +53,44 @@ class TaskTimelineApi {
     }
   }
 
+  /// D85: the phone's copy alone, shown before the server is asked.
+  Future<List<WeddingTask>> cachedTasks(String weddingPlanId) async {
+    final cached = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedTasks,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return (cached ?? const <Map<String, dynamic>>[])
+        .map(WeddingTask.fromJson)
+        .toList();
+  }
+
+  Future<Timeline?> cachedTimeline(String weddingPlanId) async {
+    final raw = await _offline?.database.getMeta('timeline:$weddingPlanId');
+    if (raw == null) return null;
+    try {
+      return Timeline.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<TaskSummary?> cachedTaskSummary(String weddingPlanId) async {
+    final raw = await _offline?.database.getMeta(
+      'task-summary:$weddingPlanId',
+    );
+    if (raw == null) return null;
+    try {
+      return TaskSummary.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
   Future<Timeline> getTimeline(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return _timelineFromCachedTasks(weddingPlanId);

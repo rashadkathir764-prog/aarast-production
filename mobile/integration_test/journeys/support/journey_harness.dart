@@ -83,7 +83,10 @@ class JourneyWalk {
   // ---------------------------------------------------------------- boot
 
   /// Starts the real app from a clean phone: no session, no saved plan.
-  Future<void> boot() async {
+  /// With [keepLocalData] (D85) the phone keeps what the previous walk left
+  /// on it: the session and the plan's copy, as a phone that lost the
+  /// server would.
+  Future<void> boot({bool keepLocalData = false}) async {
     final dir = _dir;
     if (dir.existsSync()) dir.deleteSync(recursive: true);
     dir.createSync(recursive: true);
@@ -97,13 +100,15 @@ class JourneyWalk {
         'Pass --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3215.',
       );
     }
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.clear();
-    try {
-      await const FlutterSecureStorage().deleteAll();
-    } on Object catch (error) {
-      // ignore: avoid_print
-      print('WALK $journey secure storage not cleared: $error');
+    if (!keepLocalData) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.clear();
+      try {
+        await const FlutterSecureStorage().deleteAll();
+      } on Object catch (error) {
+        // ignore: avoid_print
+        print('WALK $journey secure storage not cleared: $error');
+      }
     }
     await tester.binding.setSurfaceSize(phoneSurface);
     _errorWidgetBuilder = ErrorWidget.builder;

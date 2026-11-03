@@ -9,6 +9,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -221,7 +222,10 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     }
     final CostReceiptsApi api;
     try {
-      api = CostReceiptsApi(context.read<ApiClient>());
+      api = CostReceiptsApi(
+        context.read<ApiClient>(),
+        offline: context.read<OfflineSyncService?>(),
+      );
     } on ProviderNotFoundException {
       return;
     }

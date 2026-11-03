@@ -134,14 +134,6 @@ class _GuestListScreenState extends State<GuestListScreen> {
         section: JourneySection.guests,
         onRetry: _load,
       );
-    } else if (guests.isEmpty && offline) {
-      // The note above says why there is nothing to add with yet.
-      body = JourneyListState(
-        key: const ValueKey('guests-empty-offline'),
-        phase: JourneyListPhase.empty,
-        section: JourneySection.guests,
-        emptyTitle: emptyLine,
-      );
     } else if (guests.isEmpty) {
       body = _FirstGuests(
         emptyLine: emptyLine,
@@ -196,26 +188,28 @@ class _GuestListScreenState extends State<GuestListScreen> {
                       if (!_searching) _query = '';
                     }),
                   ),
-                if (!offline)
-                  JourneyRoundButton(
-                    key: const ValueKey('guests-add'),
-                    icon: LucideIcons.plus,
-                    tooltip: words.newGuest,
-                    onPressed: provider.isSubmitting
-                        ? null
-                        : () => _showGuestSheet(provider: provider),
-                  ),
+                // D85: adding never waits for the server; a guest added
+                // without it is kept on the phone and sent later.
+                JourneyRoundButton(
+                  key: const ValueKey('guests-add'),
+                  icon: LucideIcons.plus,
+                  tooltip: words.newGuest,
+                  onPressed: provider.isSubmitting
+                      ? null
+                      : () => _showGuestSheet(provider: provider),
+                ),
               ],
             ),
             const SizedBox(height: AarastV3Space.x3),
-            if (offline) ...[
+            if (offline || provider.isStale) ...[
               JourneyNote(
                 key: const ValueKey('guests-offline'),
                 text: [
-                  // D84: the server, not «النت»; the cause is on the banner.
+                  // D85: the copy is the phone's; the invitations need the
+                  // server because their links are its.
                   context.say(
-                    'تشوف القائمة. الإضافة والدعوات لما نوصل للخادم.',
-                    'تشوفين القائمة. الإضافة والدعوات لما نوصل للخادم.',
+                    'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                    'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
                   ),
                   if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
                 ].join('\n'),

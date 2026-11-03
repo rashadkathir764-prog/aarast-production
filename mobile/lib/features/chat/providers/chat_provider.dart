@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../data/chat_api.dart';
@@ -123,27 +124,38 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy of the conversations shows at once; the
+  /// server's answer replaces it.
   Future<void> loadConversations() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final page = await _api.listConversations();
-      _conversations = page.items;
-      _nextConversationCursor = page.nextCursor;
-      for (final conversation in _conversations) {
-        _realtime.join(conversation.id);
-      }
-      // G38: the server answers again; send what waited on the phone.
-      unawaited(flushOutbox());
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-    } catch (_) {
-      _errorMessage = aarastBackendConnectionErrorMessage;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await readCachedFirst<ChatConversationPage>(
+      cached: _api.cachedConversations,
+      remote: () async {
+        final page = await _api.listConversations();
+        // G38: the server answers again; send what waited on the phone.
+        unawaited(flushOutbox());
+        return page;
+      },
+      apply: (page) {
+        _conversations = page.items;
+        _nextConversationCursor = page.nextCursor;
+        for (final conversation in _conversations) {
+          _realtime.join(conversation.id);
+        }
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) => error is ApiException
+          ? error.message
+          : aarastBackendConnectionErrorMessage,
+    );
   }
 
   Future<void> loadMoreConversations() async {
@@ -192,44 +204,51 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     return null;
   }
 
+  /// D85: the phone's copy of the conversation's first page shows at once;
+  /// the server's answer replaces it, and the requests beside it follow.
   Future<void> openConversation(String conversationId) async {
     _activeConversationId = conversationId;
     _startRealtime();
-    _isLoading = true;
-    _errorMessage = null;
     _conversationLoadErrors.remove(conversationId);
-    notifyListeners();
-    try {
-      if (!_conversations.any((item) => item.id == conversationId)) {
-        _upsertConversation(await _api.getConversation(conversationId));
-      }
-      final results = await Future.wait<Object>([
-        _api.timeline(conversationId),
-        _api.quoteRequests(conversationId),
-      ]);
-      final timeline = results[0] as ChatTimelinePage;
-      final quoteRequests = results[1] as ChatQuoteRequestPage;
-      _timelines[conversationId] = [
-        ...timeline.items,
-        ..._queuedItems(conversationId),
-      ];
-      _quoteRequests[conversationId] = quoteRequests.items;
-      unawaited(flushOutbox());
-      _nextTimelineCursors[conversationId] = timeline.nextCursor;
-      _realtime.join(conversationId);
-      await _api.markRead(conversationId);
-      _realtime.markRead(conversationId);
-      _clearUnread(conversationId);
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      _conversationLoadErrors.add(conversationId);
-    } catch (_) {
-      _errorMessage = aarastBackendConnectionErrorMessage;
-      _conversationLoadErrors.add(conversationId);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await readCachedFirst<ChatTimelinePage>(
+      cached: () => _api.cachedTimeline(conversationId),
+      remote: () async {
+        if (!_conversations.any((item) => item.id == conversationId)) {
+          _upsertConversation(await _api.getConversation(conversationId));
+        }
+        final results = await Future.wait<Object>([
+          _api.timeline(conversationId),
+          _api.quoteRequests(conversationId),
+        ]);
+        final timeline = results[0] as ChatTimelinePage;
+        final quoteRequests = results[1] as ChatQuoteRequestPage;
+        _quoteRequests[conversationId] = quoteRequests.items;
+        unawaited(flushOutbox());
+        _realtime.join(conversationId);
+        // Kept on the phone and sent when the server answers (D85).
+        await _api.markRead(conversationId);
+        _realtime.markRead(conversationId);
+        _clearUnread(conversationId);
+        return timeline;
+      },
+      apply: (timeline) {
+        _timelines[conversationId] = [
+          ...timeline.items,
+          ..._queuedItems(conversationId),
+        ];
+        _nextTimelineCursors[conversationId] = timeline.nextCursor;
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
+        if (error != null) _conversationLoadErrors.add(conversationId);
+        notifyListeners();
+      },
+      describe: (error) => error is ApiException
+          ? error.message
+          : aarastBackendConnectionErrorMessage,
+    );
   }
 
   void closeConversation(String conversationId) {

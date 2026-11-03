@@ -35,7 +35,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 8;
+  static const _databaseVersion = 9;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -88,6 +88,11 @@ class SqliteLocalDatabase implements LocalDatabase {
         if (oldVersion < 8) {
           final batch = db.batch();
           _createDashboardSummaryCacheTable(batch);
+          await batch.commit();
+        }
+        if (oldVersion < 9) {
+          final batch = db.batch();
+          _createPlanExtrasCacheTables(batch);
           await batch.commit();
         }
       },
@@ -590,6 +595,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       'title TEXT, ownerId TEXT, status TEXT',
     );
     _createDashboardSummaryCacheTable(batch);
+    _createPlanExtrasCacheTables(batch);
     _cacheTable(
       batch,
       OfflineTables.cachedPlanMembers,
@@ -670,6 +676,21 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.cachedDashboardSummaries,
       'planId TEXT, title TEXT, weddingDate TEXT',
     );
+  }
+
+  /// D85 (schema 9): the plan's events, funding sources and guest groups.
+  static void _createPlanExtrasCacheTables(Batch batch) {
+    _cacheTable(
+      batch,
+      OfflineTables.cachedPlanEvents,
+      'planId TEXT, type TEXT, date TEXT',
+    );
+    _cacheTable(
+      batch,
+      OfflineTables.cachedFundingSources,
+      'planId TEXT, kind TEXT, status TEXT',
+    );
+    _cacheTable(batch, OfflineTables.cachedGuestGroups, 'planId TEXT, name TEXT');
   }
 
   static Future<void> _replaceLegacyFinanceSchema(Database db) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/funding_api.dart';
 import '../models/funding_source.dart';
@@ -37,30 +38,37 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     return null;
   }
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> load(String weddingPlanId) async {
     if (_loadedPlanId != weddingPlanId) {
       _loadedPlanId = weddingPlanId;
       _sources = const [];
     }
-    _isLoading = true;
-    _loadErrorMessage = null;
-    notifyListeners();
-    try {
-      final sources = await _api.getFundingSources(weddingPlanId);
-      if (_loadedPlanId != weddingPlanId) return;
-      _sources = sources;
-    } on ApiException catch (error) {
-      if (_loadedPlanId == weddingPlanId) _loadErrorMessage = error.message;
-    } catch (_) {
-      if (_loadedPlanId == weddingPlanId) {
-        _loadErrorMessage = 'تعذر تحميل مصادر التمويل الآن.';
-      }
-    } finally {
-      if (_loadedPlanId == weddingPlanId) {
-        _isLoading = false;
+    bool current() => _loadedPlanId == weddingPlanId;
+    await readCachedFirst<List<FundingSource>>(
+      cached: () async {
+        final copy = await _api.cachedFundingSources(weddingPlanId);
+        return copy.isEmpty ? null : copy;
+      },
+      remote: () => _api.getFundingSources(weddingPlanId),
+      apply: (sources) {
+        if (current()) _sources = sources;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _loadErrorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) => error is ApiException
+          ? error.message
+          : 'تعذر تحميل مصادر التمويل الآن.',
+    );
   }
 
   Future<bool> create({

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/cost_receipts_api.dart';
 import '../models/cost_receipt.dart';
@@ -59,7 +60,10 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
       _api = injected;
     } else {
       try {
-        _api = CostReceiptsApi(context.read<ApiClient>());
+        _api = CostReceiptsApi(
+          context.read<ApiClient>(),
+          offline: context.read<OfflineSyncService?>(),
+        );
       } on ProviderNotFoundException {
         setState(() => _available = false);
         return;

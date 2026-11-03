@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/diagnostics/app_logger.dart';
 import '../../core/offline/offline_status_widgets.dart';
-import '../../core/offline/offline_sync_service.dart';
-import '../../core/offline/sync_status.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
@@ -144,14 +142,13 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
     }
     final selectedPlanId = widget.weddingPlanId;
     final finance = context.watch<FinanceProvider?>();
-    final offline =
-        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
+    // D85: adding never waits for the server; a guest added without it is
+    // kept on the phone and sent later.
     final showQuickAdd = shouldShowPlanQuickAdd(
       tabIndex: _index,
       canManageMoney:
           _index != 1 ||
           (finance?.loadedPlanId == selectedPlanId && finance!.canManageMoney),
-      guestsWaitForConnection: offline,
     );
 
     return RootTabBackScope(

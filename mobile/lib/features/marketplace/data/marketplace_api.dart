@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
@@ -9,12 +10,23 @@ import '../../../core/utils/plan_day.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_portfolio.dart';
 
+/// The marketplace, as the couple and the provider each use it.
+///
+/// D85: the directory, a provider's page, the plan's requests and the
+/// provider's own portal (profile, summary, requests, bookings, reviews,
+/// portfolio, ledger, services, packages, blocked days) are the phone's
+/// copy when the server is out of reach. A request to a provider, an offer,
+/// a booking decision and a review reach another person, so they need the
+/// server now; favourites queue on the phone.
 class MarketplaceApi {
-  const MarketplaceApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  MarketplaceApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _apiClient = apiClient,
+      _offline = offline,
+      _reads = OfflineReads(apiClient, offline);
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+  final OfflineReads _reads;
 
   Future<List<MarketplaceCity>> getCities() async {
     try {
@@ -76,6 +88,58 @@ class MarketplaceApi {
 
   /// [categoryIds] (G40) are a money item's categories: a provider in any of
   /// them is listed. It replaces [categoryId] when given.
+  /// D85: the phone's copy of the directory alone, filtered as the screen
+  /// asks; null when nothing is on the phone yet.
+  Future<MarketplaceProviderPage?> cachedProvidersPage({
+    String? search,
+    String? cityId,
+    String? categoryId,
+    List<String>? categoryIds,
+  }) async {
+    final rows = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedProviders,
+    );
+    if (rows == null || rows.isEmpty) return null;
+    final categories = {
+      for (final id in categoryIds ?? const <String>[])
+        if (id.trim().isNotEmpty) id.trim(),
+    };
+    if (categories.isEmpty &&
+        categoryId != null &&
+        categoryId.trim().isNotEmpty) {
+      categories.add(categoryId.trim());
+    }
+    final items = _filterProviders(rows, search, cityId, categories)
+        .map(MarketplaceProvider.fromJson)
+        .toList();
+    if (items.isEmpty) return null;
+    return MarketplaceProviderPage(
+      items: items,
+      currentPage: 1,
+      total: items.length,
+      totalPages: 1,
+      hasMore: false,
+    );
+  }
+
+  Future<List<MarketplaceCity>> cachedCities() async {
+    final rows = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedCities,
+    );
+    return (rows ?? const <Map<String, dynamic>>[])
+        .map(MarketplaceCity.fromJson)
+        .toList();
+  }
+
+  Future<List<ProviderCategory>> cachedCategories() async {
+    final rows = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedProviderCategories,
+    );
+    return (rows ?? const <Map<String, dynamic>>[])
+        .map(ProviderCategory.fromJson)
+        .toList(growable: false);
+  }
+
   Future<MarketplaceProviderPage> getProvidersPage({
     String? search,
     String? cityId,
@@ -258,7 +322,10 @@ class MarketplaceApi {
   /// a bride only) and the provider's links. Needs a signed-in reader.
   Future<PublicPortfolio> getProviderPortfolio(String providerId) async {
     return PublicPortfolio.fromJson(
-      await _apiClient.getJson('/api/v1/providers/$providerId/portfolio'),
+      await _reads.blob(
+        '/api/v1/providers/$providerId/portfolio',
+        metaKey: 'provider-portfolio:$providerId',
+      ),
     );
   }
 
@@ -443,6 +510,20 @@ class MarketplaceApi {
       if (cached != null) return cached.map(QuoteRequest.fromJson).toList();
       rethrow;
     }
+  }
+
+  /// D85: the phone's copy of the plan's requests alone.
+  Future<List<QuoteRequest>> cachedPlanQuoteRequests(
+    String weddingPlanId,
+  ) async {
+    final planId = weddingPlanId.trim();
+    final rows = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedBookings,
+    );
+    return (rows ?? const <Map<String, dynamic>>[])
+        .where((item) => item['weddingPlanId']?.toString() == planId)
+        .map(QuoteRequest.fromJson)
+        .toList();
   }
 
   Future<List<QuoteRequest>> getPlanQuoteRequests(String weddingPlanId) async {
@@ -722,10 +803,19 @@ class MarketplaceProviderPage {
   final bool hasMore;
 }
 
+/// The provider's own portal.
+///
+/// D85: what he reads (profile, summary, requests, bookings, reviews,
+/// portfolio, ledger, services, packages, blocked days) is the phone's copy
+/// when the server is out of reach; what he does reaches a customer or the
+/// admin, so it needs the server now.
 class ProviderDashboardApi {
-  const ProviderDashboardApi(this._apiClient);
+  ProviderDashboardApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _apiClient = apiClient,
+      _reads = OfflineReads(apiClient, offline);
 
   final ApiClient _apiClient;
+  final OfflineReads _reads;
 
   /// A listing the admin made under this account's phone, not yet claimed
   /// (V1 checklist 4.18); null when there is none.
@@ -789,12 +879,25 @@ class ProviderDashboardApi {
   }
 
   Future<ProviderDashboardProfile> getProfile() async {
-    final json = await _apiClient.getJson('/api/v1/provider/me/profile');
+    final json = await _reads.blob(
+      '/api/v1/provider/me/profile',
+      metaKey: 'provider-me:profile',
+    );
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// D85: the phone's copy of his profile alone, or null before the first
+  /// answer.
+  Future<ProviderDashboardProfile?> cachedProfile() async {
+    final json = await _reads.cachedBlob('provider-me:profile');
+    return json == null ? null : ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<ProviderDashboardSummary> getSummary() async {
-    final json = await _apiClient.getJson('/api/v1/provider/me/summary');
+    final json = await _reads.blob(
+      '/api/v1/provider/me/summary',
+      metaKey: 'provider-me:summary',
+    );
     return ProviderDashboardSummary.fromJson(json);
   }
 
@@ -802,7 +905,10 @@ class ProviderDashboardApi {
   /// 180 days, a median, null under three requests). Reading the page does
   /// not count a view; only `POST /providers/:id/views` does.
   Future<ProviderResponsiveness?> getResponsiveness(String providerId) async {
-    final json = await _apiClient.getJson('/api/v1/providers/$providerId');
+    final json = await _reads.blob(
+      '/api/v1/providers/$providerId',
+      metaKey: 'provider-public:$providerId',
+    );
     final value = json['responsiveness'];
     return value is Map
         ? ProviderResponsiveness.fromJson(Map<String, dynamic>.from(value))
@@ -810,36 +916,28 @@ class ProviderDashboardApi {
   }
 
   Future<List<MarketplaceService>> getServices() async {
-    final list = await _apiClient.getJsonList('/api/v1/provider/me/services');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) =>
-              MarketplaceService.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    final list = await _reads.blobList(
+      '/api/v1/provider/me/services',
+      metaKey: 'provider-me:services',
+    );
+    return list.map(MarketplaceService.fromJson).toList();
   }
 
   Future<List<QuoteRequest>> getQuoteRequests() async {
-    final list = await _apiClient.getJsonList(
+    final list = await _reads.blobList(
       '/api/v1/provider/me/quote-requests',
+      metaKey: 'provider-me:quote-requests',
     );
-    return list
-        .whereType<Map>()
-        .map((item) => QuoteRequest.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    return list.map(QuoteRequest.fromJson).toList();
   }
 
   /// Open booking requests and confirmed bookings from today on (4.6).
   Future<List<MarketplaceBooking>> getBookings() async {
-    final list = await _apiClient.getJsonList('/api/v1/provider/me/bookings');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) =>
-              MarketplaceBooking.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    final list = await _reads.blobList(
+      '/api/v1/provider/me/bookings',
+      metaKey: 'provider-me:bookings',
+    );
+    return list.map(MarketplaceBooking.fromJson).toList();
   }
 
   /// [action] is `confirm`, `decline` or `cancel`.
@@ -906,11 +1004,14 @@ class ProviderDashboardApi {
   }
 
   Future<List<DateTime>> getBlockedDates() async {
-    final list = await _apiClient.getJsonList(
+    final list = await _reads.blobList(
       '/api/v1/provider/me/blocked-dates',
+      metaKey: 'provider-me:blocked-dates',
+      itemsKey: null,
+      wrapScalars: true,
     );
     // Days, read as the day in Sana'a (D11).
-    return [for (final item in list) ?planDayFromJson(item)];
+    return [for (final item in list) ?planDayFromJson(item['value'])];
   }
 
   Future<void> blockDate(DateTime day) async {
@@ -926,13 +1027,11 @@ class ProviderDashboardApi {
   }
 
   Future<List<ProviderPackage>> getPackages() async {
-    final list = await _apiClient.getJsonList('/api/v1/provider/me/packages');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => ProviderPackage.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    final list = await _reads.blobList(
+      '/api/v1/provider/me/packages',
+      metaKey: 'provider-me:packages',
+    );
+    return list.map(ProviderPackage.fromJson).toList();
   }
 
   /// B-09 (p27): the provider's one reply to a review of his.
@@ -948,11 +1047,11 @@ class ProviderDashboardApi {
   }
 
   Future<List<ProviderReview>> getReviews() async {
-    final list = await _apiClient.getJsonList('/api/v1/provider/me/reviews');
-    return list
-        .whereType<Map>()
-        .map((item) => ProviderReview.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    final list = await _reads.blobList(
+      '/api/v1/provider/me/reviews',
+      metaKey: 'provider-me:reviews',
+    );
+    return list.map(ProviderReview.fromJson).toList();
   }
 
   /// The application with the service the provider joins with and its
@@ -1024,7 +1123,10 @@ class ProviderDashboardApi {
   /// p37 (B-16): his photos with their review state, and his links.
   Future<ProviderPortfolio> getPortfolio() async {
     return ProviderPortfolio.fromJson(
-      await _apiClient.getJson('/api/v1/provider/me/portfolio'),
+      await _reads.blob(
+        '/api/v1/provider/me/portfolio',
+        metaKey: 'provider-me:portfolio',
+      ),
     );
   }
 
@@ -1046,8 +1148,9 @@ class ProviderDashboardApi {
     final key =
         '${month.year.toString().padLeft(4, '0')}-'
         '${month.month.toString().padLeft(2, '0')}';
-    final json = await _apiClient.getJson(
+    final json = await _reads.blob(
       '/api/v1/provider/me/ledger?month=$key',
+      metaKey: 'provider-me:ledger:$key',
     );
     return ProviderLedger.fromJson(json);
   }

@@ -1,114 +1,41 @@
-import 'dart:convert';
-
 import '../../../core/network/api_client.dart';
-import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../models/yemen_administrative_area.dart';
 
+/// Yemen's governorates, districts and localities.
+///
+/// D85: every list is the phone's copy when the server is out of reach.
 class YemenAdministrativeApi {
-  const YemenAdministrativeApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  YemenAdministrativeApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _reads = OfflineReads(apiClient, offline);
 
-  final ApiClient _apiClient;
-  final OfflineSyncService? _offline;
+  final OfflineReads _reads;
 
   Future<List<YemenGovernorate>> getGovernorates() async {
-    try {
-      final items = await _getList('/api/v1/governorates');
-      await _offline?.database.replaceCachedList(
-        table: OfflineTables.cachedGovernorates,
-        items: items,
-      );
-      return items.map(YemenGovernorate.fromJson).toList(growable: false);
-    } on Object catch (error) {
-      final cached = await _cachedList(
-        error,
-        table: OfflineTables.cachedGovernorates,
-      );
-      if (cached != null) {
-        return cached.map(YemenGovernorate.fromJson).toList(growable: false);
-      }
-      rethrow;
-    }
+    final items = await _reads.list(
+      '/api/v1/governorates',
+      table: OfflineTables.cachedGovernorates,
+    );
+    return items.map(YemenGovernorate.fromJson).toList(growable: false);
   }
 
   Future<List<YemenDistrict>> getDistricts(String governorateId) async {
-    try {
-      final items = await _getList(
-        '/api/v1/governorates/$governorateId/districts',
-      );
-      await _offline?.database.replaceCachedList(
-        table: OfflineTables.cachedDistricts,
-        items: items,
-        parentColumn: 'governorateId',
-        parentId: governorateId,
-      );
-      return items.map(YemenDistrict.fromJson).toList(growable: false);
-    } on Object catch (error) {
-      final cached = await _cachedList(
-        error,
-        table: OfflineTables.cachedDistricts,
-        parentColumn: 'governorateId',
-        parentId: governorateId,
-      );
-      if (cached != null) {
-        return cached.map(YemenDistrict.fromJson).toList(growable: false);
-      }
-      rethrow;
-    }
+    final items = await _reads.list(
+      '/api/v1/governorates/$governorateId/districts',
+      table: OfflineTables.cachedDistricts,
+      parentColumn: 'governorateId',
+      parentId: governorateId,
+    );
+    return items.map(YemenDistrict.fromJson).toList(growable: false);
   }
 
   Future<List<YemenLocality>> getLocalities(String districtId) async {
-    final cacheKey = 'aarast.geo.localities.v1.$districtId';
-    try {
-      final items = await _getList('/api/v1/districts/$districtId/localities');
-      await _offline?.database.setMeta(cacheKey, jsonEncode(items));
-      return items.map(YemenLocality.fromJson).toList(growable: false);
-    } on Object catch (error) {
-      final offline = _offline;
-      if (!CachePolicy.shouldUseCache(error) || offline == null) rethrow;
-      await offline.noteNetworkFailure((error as ApiException).message);
-      final raw = await offline.database.getMeta(cacheKey);
-      if (raw == null) rethrow;
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is! List) rethrow;
-        return decoded
-            .whereType<Map>()
-            .map(
-              (item) => YemenLocality.fromJson(Map<String, dynamic>.from(item)),
-            )
-            .toList(growable: false);
-      } on FormatException {
-        await offline.database.deleteMeta(cacheKey);
-        rethrow;
-      }
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _getList(String path) async {
-    final response = await _apiClient.getJsonList(path);
-    return response
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList(growable: false);
-  }
-
-  Future<List<Map<String, dynamic>>?> _cachedList(
-    Object error, {
-    required String table,
-    String? parentColumn,
-    String? parentId,
-  }) async {
-    final offline = _offline;
-    if (!CachePolicy.shouldUseCache(error) || offline == null) return null;
-    await offline.noteNetworkFailure((error as ApiException).message);
-    final cached = await offline.database.readCachedList(
-      table: table,
-      parentColumn: parentColumn,
-      parentId: parentId,
+    final items = await _reads.blobList(
+      '/api/v1/districts/$districtId/localities',
+      metaKey: 'aarast.geo.localities.v1.$districtId',
     );
-    return cached.isEmpty ? null : cached;
+    return items.map(YemenLocality.fromJson).toList(growable: false);
   }
 }

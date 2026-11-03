@@ -1,4 +1,6 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_contract.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/utils/plan_day.dart';
 
 /// One booking a plan holds with a provider, as the wedding-day move check
@@ -33,19 +35,20 @@ class PlanBookingDay {
 }
 
 /// The plan's open booking requests and upcoming confirmed bookings.
+///
+/// D85: the phone's copy when the server is out of reach.
 class PlanBookingsLookup {
-  const PlanBookingsLookup(this._apiClient);
+  PlanBookingsLookup(ApiClient apiClient, {OfflineSyncService? offline})
+    : _reads = OfflineReads(apiClient, offline);
 
-  final ApiClient _apiClient;
+  final OfflineReads _reads;
 
   Future<List<PlanBookingDay>> list(String weddingPlanId) async {
-    final json = await _apiClient.getJsonList(
+    final json = await _reads.blobList(
       '/api/v1/me/wedding-plans/$weddingPlanId/bookings',
+      metaKey: 'plan-booking-days:$weddingPlanId',
     );
-    return json
-        .whereType<Map>()
-        .map((item) => PlanBookingDay.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    return json.map(PlanBookingDay.fromJson).toList();
   }
 }
 

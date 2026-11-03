@@ -162,21 +162,37 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     }
   }
 
+  /// D85: the phone's copy of the plan's requests shows at once; the
+  /// server's answer replaces it, and a server out of reach keeps the copy
+  /// (stale) instead of asking to retry.
   Future<void> loadScopedQuoteRequests() async {
-    if (!_includeAccountData || _quotePlanId == null) {
+    final planId = _quotePlanId;
+    if (!_includeAccountData || planId == null) {
       _quoteRequests = const [];
       _quoteRequestsErrorMessage = null;
       notifyListeners();
       return;
     }
-    _isLoadingQuoteRequests = true;
-    notifyListeners();
-    try {
-      _quoteRequests = await _safeQuoteRequests(weddingPlanId: _quotePlanId);
-    } finally {
-      _isLoadingQuoteRequests = false;
-      notifyListeners();
-    }
+    await readCachedFirst<List<QuoteRequest>>(
+      cached: () async {
+        final copy = await _api.cachedPlanQuoteRequests(planId);
+        return copy.isEmpty ? null : copy;
+      },
+      remote: () => _api.getPlanQuoteRequests(planId),
+      apply: (quotes) {
+        if (_quotePlanId == planId) _quoteRequests = quotes;
+      },
+      state: ({required loading, required stale, error}) {
+        if (_quotePlanId != planId) return;
+        _isLoadingQuoteRequests = loading;
+        _quoteRequestsStale = stale;
+        _quoteRequestsErrorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) => error is ApiException
+          ? marketplaceErrorMessage(error.message)
+          : aarastBackendConnectionErrorMessage,
+    );
   }
 
   Future<bool> loadQuoteRequest(

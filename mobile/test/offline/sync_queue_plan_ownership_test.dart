@@ -316,7 +316,8 @@ void main() {
       'lib/core/offline/local_database_mobile.dart',
     ).readAsStringSync();
 
-    expect(source, contains('static const _databaseVersion = 8;'));
+    // D85 (schema 9): the plan's events, funding sources and guest groups.
+    expect(source, contains('static const _databaseVersion = 9;'));
     expect(source, contains('planId TEXT,'));
     expect(source, contains('sync_queue_plan_id_idx'));
     expect(source, contains("trustedLegacyQueuePlanId(row['payloadJson'])"));

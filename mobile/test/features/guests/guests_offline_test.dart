@@ -34,7 +34,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('an account plan offline shows its copy and waits to add', (
+  testWidgets('an account plan offline shows its copy and keeps adding', (
     tester,
   ) async {
     final harness = await _harness(
@@ -61,11 +61,11 @@ void main() {
 
     expect(find.byKey(const ValueKey('guests-offline')), findsOneWidget);
     expect(
-      find.textContaining('الإضافة والدعوات لما نوصل للخادم'),
+      find.textContaining('واللي تضيفه ينحفظ في جوالك'),
       findsOneWidget,
     );
-    // Adding would only fail now, so its button waits too.
-    expect(find.byKey(const ValueKey('guests-add')), findsNothing);
+    // D85: adding is kept on the phone and sent later, so the button stays.
+    expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
     expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

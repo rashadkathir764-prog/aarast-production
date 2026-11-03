@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -37,7 +38,11 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
   static const _maxPaymentPages = 20;
 
   late final CostReceiptsApi _api =
-      widget.api ?? CostReceiptsApi(context.read<ApiClient>());
+      widget.api ??
+      CostReceiptsApi(
+        context.read<ApiClient>(),
+        offline: context.read<OfflineSyncService?>(),
+      );
   Map<String, List<CostReceipt>> _receiptsByCost = const {};
   bool _loading = true;
   bool _failed = false;

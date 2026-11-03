@@ -32,67 +32,94 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     if (!_includeAccountData) {
       _quoteRequestsErrorMessage = null;
     }
-    _isLoading = true;
     _isLoadingMore = false;
-    _errorMessage = null;
     _loadMoreErrorMessage = null;
     final generation = ++_loadGeneration;
-    notifyListeners();
+    bool current() => generation == _loadGeneration;
 
-    try {
-      final results = await Future.wait<Object>([
-        _safeCities(),
-        _safeCategories(),
-        _api.getProvidersPage(
+    // D85: the phone's copy of the directory shows at once; the server's
+    // answer replaces it, and a server out of reach keeps the copy (stale)
+    // instead of a spinner until the timeout.
+    await readCachedFirst<_DirectoryBundle>(
+      cached: () async {
+        final page = await _api.cachedProvidersPage(
           search: _search,
           cityId: _cityId,
           categoryId: _categoryId,
           categoryIds: _budgetMatchIntent?.providerCategoryIds,
-        ),
-        _includeAccountData
-            ? _loadFavorites()
-            : Future.value(
-                const _MarketplaceLoadResult<List<FavoriteProvider>>.success(
-                  [],
+        );
+        if (page == null) return null;
+        return _DirectoryBundle(
+          cities: await _api.cachedCities(),
+          categories: await _api.cachedCategories(),
+          providers: page,
+          favorites: null,
+          quoteRequests: null,
+        );
+      },
+      remote: () async {
+        final results = await Future.wait<Object>([
+          _safeCities(),
+          _safeCategories(),
+          _api.getProvidersPage(
+            search: _search,
+            cityId: _cityId,
+            categoryId: _categoryId,
+            categoryIds: _budgetMatchIntent?.providerCategoryIds,
+          ),
+          _includeAccountData
+              ? _loadFavorites()
+              : Future.value(
+                  const _MarketplaceLoadResult<List<FavoriteProvider>>.success(
+                    [],
+                  ),
                 ),
-              ),
-        _includeAccountData && _quotePlanId != null
-            ? _safeQuoteRequests(weddingPlanId: _quotePlanId)
-            : Future.value(const <QuoteRequest>[]),
-      ]);
-
-      if (generation != _loadGeneration) return;
-
-      _cities = results[0] as List<MarketplaceCity>;
-      _categories = results[1] as List<ProviderCategory>;
-      final providerPage = results[2] as MarketplaceProviderPage;
-      _providers = providerPage.items;
-      _currentPage = providerPage.currentPage;
-      _totalProviders = providerPage.total;
-      _totalPages = providerPage.totalPages;
-      final favoritesResult =
-          results[3] as _MarketplaceLoadResult<List<FavoriteProvider>>;
-      final favorites = favoritesResult.data;
-      if (favorites != null) {
-        _favoriteProviders = favorites;
-        _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
-        _favoriteProvidersErrorMessage = null;
-      } else {
-        _favoriteProvidersErrorMessage = favoritesResult.errorMessage;
-      }
-      _quoteRequests = results[4] as List<QuoteRequest>;
-    } on ApiException catch (error) {
-      if (generation != _loadGeneration) return;
-      _errorMessage = providerDirectoryErrorMessage(error);
-    } catch (_) {
-      if (generation != _loadGeneration) return;
-      _errorMessage = aarastBackendConnectionErrorMessage;
-    } finally {
-      if (generation == _loadGeneration) {
-        _isLoading = false;
+          _includeAccountData && _quotePlanId != null
+              ? _safeQuoteRequests(weddingPlanId: _quotePlanId)
+              : Future.value(const <QuoteRequest>[]),
+        ]);
+        return _DirectoryBundle(
+          cities: results[0] as List<MarketplaceCity>,
+          categories: results[1] as List<ProviderCategory>,
+          providers: results[2] as MarketplaceProviderPage,
+          favorites: results[3] as _MarketplaceLoadResult<List<FavoriteProvider>>,
+          quoteRequests: results[4] as List<QuoteRequest>,
+        );
+      },
+      apply: (bundle) {
+        if (!current()) return;
+        if (bundle.cities.isNotEmpty) _cities = bundle.cities;
+        if (bundle.categories.isNotEmpty) _categories = bundle.categories;
+        _providers = bundle.providers.items;
+        _currentPage = bundle.providers.currentPage;
+        _totalProviders = bundle.providers.total;
+        _totalPages = bundle.providers.totalPages;
+        final favoritesResult = bundle.favorites;
+        if (favoritesResult != null) {
+          final favorites = favoritesResult.data;
+          if (favorites != null) {
+            _favoriteProviders = favorites;
+            _favoriteProviderIds = favorites
+                .map((item) => item.providerId)
+                .toSet();
+            _favoriteProvidersErrorMessage = null;
+          } else {
+            _favoriteProvidersErrorMessage = favoritesResult.errorMessage;
+          }
+        }
+        if (bundle.quoteRequests case final quotes?) _quoteRequests = quotes;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) => error is ApiException
+          ? providerDirectoryErrorMessage(error)
+          : aarastBackendConnectionErrorMessage,
+    );
   }
 
   Future<void> loadMoreProviders() async {

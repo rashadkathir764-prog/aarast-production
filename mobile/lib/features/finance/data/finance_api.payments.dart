@@ -2,6 +2,22 @@ part of 'finance_api.dart';
 
 // Cost payments.
 mixin _FinancePaymentsApi on _FinanceApiCore {
+  /// D85: the phone's copy of the payments alone, as the first page.
+  Future<FinancePage<CostPayment>> cachedPayments(
+    String planId, {
+    int limit = 30,
+  }) async {
+    final cached = await _readCachedPlanList(
+      OfflineTables.cachedCostPayments,
+      planId,
+    );
+    return _localPage(
+      cached.map(CostPayment.fromJson).toList(),
+      page: 1,
+      limit: limit,
+    );
+  }
+
   Future<FinancePage<CostPayment>> getPlanPayments(
     String planId, {
     int page = 1,

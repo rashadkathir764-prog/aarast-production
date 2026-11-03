@@ -77,6 +77,25 @@ class FinanceApi extends _FinanceApiCore
     }
   }
 
+  /// D85: the money picture from the phone's own rows alone, or null when
+  /// the plan has no cost, payment or category on the phone yet.
+  Future<MoneySummary?> cachedMoneySummary(String planId) async {
+    if (_offline == null) return null;
+    final costs = await _readCachedPlanList(OfflineTables.cachedCosts, planId);
+    final categories = await _readCachedPlanList(
+      OfflineTables.cachedBudgetCategories,
+      planId,
+    );
+    if (costs.isEmpty && categories.isEmpty) return null;
+    final context = await _localPlanContextLoader?.call(planId);
+    return _local.moneySummary(
+      planId,
+      estimatedBudget: context?.estimatedBudget,
+      currency: context?.currency,
+      funding: await _cachedFunding(planId),
+    );
+  }
+
   static String _fundingKey(String planId) => 'money-funding:$planId';
 
   /// G35: the funding block of the last server summary; it changes only

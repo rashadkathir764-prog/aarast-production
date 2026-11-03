@@ -1,4 +1,7 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_contract.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/plan_event.dart';
 
@@ -43,18 +46,34 @@ class PlanEventDraft {
 }
 
 /// D65: the wedding's events (`/wedding-plans/:id/events`).
+///
+/// D85: the plan's events are read from the phone's copy when the server
+/// is out of reach, and a change is kept on the phone and sent when the
+/// server answers; the copy is updated at once so the home and the guests
+/// see the event before it is sent.
 class PlanEventsApi {
-  const PlanEventsApi(this._apiClient);
+  PlanEventsApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _reads = OfflineReads(apiClient, offline),
+      _writes = OfflineWrites(apiClient, offline);
 
-  final ApiClient _apiClient;
+  final OfflineReads _reads;
+  final OfflineWrites _writes;
 
   String _base(String weddingPlanId) =>
       '/api/v1/wedding-plans/$weddingPlanId/events';
 
+  String _key(String weddingPlanId) => 'plan-events:$weddingPlanId';
+
   Future<PlanEventsView> list(String weddingPlanId) async {
     return PlanEventsView.fromJson(
-      await _apiClient.getJson(_base(weddingPlanId)),
+      await _reads.blob(_base(weddingPlanId), metaKey: _key(weddingPlanId)),
     );
+  }
+
+  /// The phone's copy alone, or null before the first answer.
+  Future<PlanEventsView?> cachedView(String weddingPlanId) async {
+    final json = await _reads.cachedBlob(_key(weddingPlanId));
+    return json == null ? null : PlanEventsView.fromJson(json);
   }
 
   Future<PlanEvent> create(
@@ -62,12 +81,24 @@ class PlanEventsApi {
     PlanEventType type,
     PlanEventDraft draft,
   ) async {
-    return PlanEvent.fromJson(
-      await _apiClient.postJson(_base(weddingPlanId), {
-        'type': type.wire,
-        ...draft.toJson(isMain: type == PlanEventType.wedding),
-      }),
+    final payload = {
+      'type': type.wire,
+      ...draft.toJson(isMain: type == PlanEventType.wedding),
+    };
+    final localId = OfflineWrites.localId('plan-event');
+    final json = await _writes.queued(
+      entityType: 'plan_event',
+      operation: 'create',
+      method: 'POST',
+      endpoint: _base(weddingPlanId),
+      payload: payload,
+      table: OfflineTables.cachedPlanEvents,
+      localJson: {'id': localId, 'weddingPlanId': weddingPlanId, ...payload},
+      planId: weddingPlanId,
+      localEntityId: localId,
     );
+    await _putInCopy(weddingPlanId, json);
+    return PlanEvent.fromJson(json);
   }
 
   Future<PlanEvent> update(
@@ -75,15 +106,73 @@ class PlanEventsApi {
     PlanEvent event,
     PlanEventDraft draft,
   ) async {
-    return PlanEvent.fromJson(
-      await _apiClient.patchJson(
-        '${_base(weddingPlanId)}/${event.id}',
-        draft.toJson(isMain: event.isMain),
+    final id = event.id!;
+    final payload = draft.toJson(isMain: event.isMain);
+    final cached =
+        await _reads.cachedItem(OfflineTables.cachedPlanEvents, id) ??
+        {'id': id, 'weddingPlanId': weddingPlanId, 'type': event.type.wire};
+    final localJson = {...cached, ...payload, 'id': id};
+    final json = await _writes.queued(
+      entityType: 'plan_event',
+      operation: 'update',
+      method: 'PATCH',
+      endpoint: '${_base(weddingPlanId)}/$id',
+      payload: payload,
+      table: OfflineTables.cachedPlanEvents,
+      localJson: localJson,
+      planId: weddingPlanId,
+      localEntityId: id,
+      replacePendingForEntity: true,
+      pendingCreate: PendingCreate(
+        endpoint: _base(weddingPlanId),
+        payload: {'type': event.type.wire, ...payload},
       ),
     );
+    await _putInCopy(weddingPlanId, json);
+    return PlanEvent.fromJson(json);
   }
 
   Future<void> remove(String weddingPlanId, String eventId) async {
-    await _apiClient.deleteJson('${_base(weddingPlanId)}/$eventId');
+    await _writes.queued(
+      entityType: 'plan_event',
+      operation: 'delete',
+      method: 'DELETE',
+      endpoint: '${_base(weddingPlanId)}/$eventId',
+      payload: const {},
+      table: OfflineTables.cachedPlanEvents,
+      localJson: {'id': eventId, 'weddingPlanId': weddingPlanId},
+      planId: weddingPlanId,
+      localEntityId: eventId,
+      replacePendingForEntity: true,
+    );
+    await _dropFromCopy(weddingPlanId, eventId);
+  }
+
+  /// The copy the screens read (the whole view) gets the row too, so an
+  /// event saved without the server shows at once.
+  Future<void> _putInCopy(
+    String weddingPlanId,
+    Map<String, dynamic> row,
+  ) async {
+    final view = await _reads.cachedBlob(_key(weddingPlanId));
+    if (view == null) return;
+    final items = [
+      for (final item in view['items'] as List? ?? const [])
+        if (item is Map && item['id']?.toString() != row['id']?.toString())
+          Map<String, dynamic>.from(item),
+      row,
+    ];
+    await _reads.putBlob(_key(weddingPlanId), {...view, 'items': items});
+  }
+
+  Future<void> _dropFromCopy(String weddingPlanId, String eventId) async {
+    final view = await _reads.cachedBlob(_key(weddingPlanId));
+    if (view == null) return;
+    final items = [
+      for (final item in view['items'] as List? ?? const [])
+        if (item is Map && item['id']?.toString() != eventId)
+          Map<String, dynamic>.from(item),
+    ];
+    await _reads.putBlob(_key(weddingPlanId), {...view, 'items': items});
   }
 }

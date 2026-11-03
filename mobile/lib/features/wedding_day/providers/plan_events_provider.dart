@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/plan_events_api.dart';
 import '../models/plan_event.dart';
@@ -24,30 +25,31 @@ class PlanEventsProvider extends ChangeNotifier with SessionScopedNotifier {
   PlanEventsView? viewOf(String weddingPlanId) =>
       _view?.weddingPlanId == weddingPlanId ? _view : null;
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> load(String weddingPlanId) async {
     final generation = ++_loadGeneration;
-    _isLoading = true;
-    _errorMessage = null;
     if (_view?.weddingPlanId != weddingPlanId) _view = null;
-    notifyListeners();
-    try {
-      final next = await api.list(weddingPlanId);
-      if (generation != _loadGeneration || isSessionDisposed) return;
-      _view = next;
-    } on ApiException catch (error) {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _errorMessage = error.message;
-      }
-    } catch (_) {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _errorMessage = 'ما قدرنا نجيب مناسباتك.';
-      }
-    } finally {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _isLoading = false;
+    bool current() => generation == _loadGeneration && !isSessionDisposed;
+    await readCachedFirst<PlanEventsView>(
+      cached: () => api.cachedView(weddingPlanId),
+      remote: () => api.list(weddingPlanId),
+      apply: (view) {
+        if (current()) _view = view;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'ما قدرنا نجيب مناسباتك.',
+    );
   }
 
   /// Saves b13: a new event from a suggestion, the wedding's first details,

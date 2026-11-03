@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/notifications_api.dart';
 import '../models/aarast_notification.dart';
@@ -27,25 +28,43 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
   int get unreadCount => _unreadCount;
   bool get hasMore => _hasMore;
 
-  Future<void> loadNotifications({String? weddingPlanId}) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
 
-    try {
-      final result = await _api.getNotifications(weddingPlanId: weddingPlanId);
-      _notifications = result.items;
-      _page = result.page;
-      _hasMore = result.hasMore;
-      _unreadCount = await _api.getUnreadCount();
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-    } catch (_) {
-      _errorMessage = 'تعذر تحميل التنبيهات.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  /// D85: the phone's copy of the first page shows at once; the server's
+  /// answer replaces it.
+  Future<void> loadNotifications({String? weddingPlanId}) async {
+    await readCachedFirst<NotificationsPage>(
+      cached: () => _api.cachedNotifications(weddingPlanId: weddingPlanId),
+      remote: () async {
+        final result = await _api.getNotifications(
+          weddingPlanId: weddingPlanId,
+        );
+        // The count is derived; a page that arrived is never lost to it.
+        try {
+          _unreadCount = await _api.getUnreadCount();
+        } on Object {
+          _unreadCount = result.items
+              .where((item) => item.readAt == null)
+              .length;
+        }
+        return result;
+      },
+      apply: (result) {
+        _notifications = result.items;
+        _page = result.page;
+        _hasMore = result.hasMore;
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'تعذر تحميل التنبيهات.',
+    );
   }
 
   Future<void> loadMore({String? weddingPlanId}) async {

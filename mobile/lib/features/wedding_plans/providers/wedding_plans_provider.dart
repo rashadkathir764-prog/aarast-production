@@ -2,6 +2,7 @@
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/wedding_plans_api.dart';
 import '../models/active_wedding_plan.dart';
@@ -50,80 +51,86 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
   }
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy of the open plan shows at once; the server's
+  /// answer replaces it. The server's «no active plan» (null) is an answer
+  /// too and clears the copy.
   Future<void> loadActiveWeddingPlan() async {
     final generation = ++_selectionGeneration;
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final activePlan = await _api.getActiveWeddingPlan();
-      if (generation != _selectionGeneration || isSessionDisposed) return;
-      _activePlan = activePlan;
-      _selectedPlan = activePlan?.toWeddingPlan();
-      if (_selectedPlan != null) {
-        _plans = [
-          _selectedPlan!,
-          ..._plans.where((item) => item.id != _selectedPlan!.id),
-        ];
-      }
-    } on ApiException catch (error) {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _errorMessage = error.message;
-      }
-    } catch (_) {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _errorMessage = 'تعذر تحميل الخطة الحالية.';
-      }
-    } finally {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _isLoading = false;
+    bool current() =>
+        generation == _selectionGeneration && !isSessionDisposed;
+    await readCachedFirst<_ActivePlanAnswer>(
+      cached: () async {
+        final copy = await _api.cachedActiveWeddingPlan();
+        return copy == null ? null : _ActivePlanAnswer(copy);
+      },
+      remote: () async => _ActivePlanAnswer(await _api.getActiveWeddingPlan()),
+      apply: (answer) {
+        if (!current()) return;
+        final activePlan = answer.plan;
+        _activePlan = activePlan;
+        _selectedPlan = activePlan?.toWeddingPlan();
+        if (_selectedPlan != null) {
+          _plans = [
+            _selectedPlan!,
+            ..._plans.where((item) => item.id != _selectedPlan!.id),
+          ];
+        }
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'تعذر تحميل الخطة الحالية.',
+    );
   }
 
   Future<void> loadMyWeddingPlans() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      _plans = await _api.getMyWeddingPlans();
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-    } catch (_) {
-      _errorMessage = 'تعذر تحميل خطط الزفاف.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await readCachedFirst<List<WeddingPlan>>(
+      cached: () async {
+        final copy = await _api.cachedWeddingPlans();
+        return copy.isEmpty ? null : copy;
+      },
+      remote: _api.getMyWeddingPlans,
+      apply: (plans) => _plans = plans,
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'تعذر تحميل خطط الزفاف.',
+    );
   }
 
   Future<void> loadWeddingPlan(String id) async {
     final generation = ++_selectionGeneration;
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final plan = await _api.getWeddingPlan(id);
-      if (generation != _selectionGeneration || isSessionDisposed) return;
-      _selectedPlan = plan;
-    } on ApiException catch (error) {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _errorMessage = error.message;
-      }
-    } catch (_) {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _errorMessage = 'تعذر تحميل خطة الزفاف.';
-      }
-    } finally {
-      if (generation == _selectionGeneration && !isSessionDisposed) {
-        _isLoading = false;
+    bool current() =>
+        generation == _selectionGeneration && !isSessionDisposed;
+    await readCachedFirst<WeddingPlan>(
+      cached: () => _api.cachedWeddingPlan(id),
+      remote: () => _api.getWeddingPlan(id),
+      apply: (plan) {
+        if (current()) _selectedPlan = plan;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'تعذر تحميل خطة الزفاف.',
+    );
   }
 
   Future<WeddingPlan?> createWeddingPlan({
@@ -290,4 +297,11 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
     _noticeMessage = null;
     notifyListeners();
   }
+}
+
+/// The server's answer about the open plan: a plan, or none (null).
+class _ActivePlanAnswer {
+  const _ActivePlanAnswer(this.plan);
+
+  final ActiveWeddingPlan? plan;
 }

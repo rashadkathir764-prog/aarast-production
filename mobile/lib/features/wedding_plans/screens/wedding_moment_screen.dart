@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
@@ -61,7 +62,10 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
     try {
       final load =
           widget.loadBookings ??
-          PlanBookingsLookup(context.read<ApiClient>()).list;
+          PlanBookingsLookup(
+            context.read<ApiClient>(),
+            offline: context.read<OfflineSyncService?>(),
+          ).list;
       final bookings = await load(widget.weddingPlanId);
       if (mounted) setState(() => _bookings = bookings);
     } on ApiException {

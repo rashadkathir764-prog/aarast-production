@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
@@ -49,28 +50,57 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         groups: _groups,
       );
 
-  Future<void> loadGuests(String weddingPlanId) async {
-    _isLoading = true;
-    _loadErrorMessage = null;
-    _noticeMessage = null;
-    notifyListeners();
+  /// D85: the phone's copy stays on screen because the server did not
+  /// answer; what is shown may be old.
+  bool _isStale = false;
+  bool get isStale => _isStale;
 
-    try {
-      _guests = await _api.getGuests(weddingPlanId);
-      _groups = await _api.getGroups(weddingPlanId);
-      _summary = await _api.getSummary(
-        weddingPlanId: weddingPlanId,
-        localGuests: _guests,
-        localGroups: _groups,
-      );
-    } on ApiException catch (error) {
-      _loadErrorMessage = _guestErrorMessage(error);
-    } catch (_) {
-      _loadErrorMessage = 'تعذر تحميل قائمة الضيوف.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  /// D85: the phone's copy shows at once; the server's answer replaces it.
+  Future<void> loadGuests(String weddingPlanId) async {
+    _noticeMessage = null;
+    await readCachedFirst<_GuestsBundle>(
+      cached: () async {
+        final guests = await _api.cachedGuests(weddingPlanId);
+        if (guests.isEmpty) return null;
+        return _GuestsBundle(guests, await _api.cachedGroups(weddingPlanId));
+      },
+      remote: () async {
+        final guests = await _api.getGuests(weddingPlanId);
+        final groups = await _api.getGroups(weddingPlanId);
+        // The summary is derived; a list that arrived is never lost to it.
+        GuestSummary? summary;
+        try {
+          summary = await _api.getSummary(
+            weddingPlanId: weddingPlanId,
+            localGuests: guests,
+            localGroups: groups,
+          );
+        } on Object {
+          summary = null;
+        }
+        return _GuestsBundle(guests, groups, summary);
+      },
+      apply: (bundle) {
+        _guests = bundle.guests;
+        _groups = bundle.groups;
+        _summary =
+            bundle.summary ??
+            GuestSummary.fromGuests(
+              weddingPlanId: weddingPlanId,
+              guests: _guests,
+              groups: _groups,
+            );
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _loadErrorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) => error is ApiException
+          ? _guestErrorMessage(error)
+          : 'تعذر تحميل قائمة الضيوف.',
+    );
   }
 
   Future<bool> createGuest({
@@ -319,6 +349,14 @@ bool _isLocalGuestPlanId(String? planId) {
 
 /// [savingGuest]: adding or editing a guest, where a conflict (409) means
 /// the guest is already on the list. Elsewhere (removing, reading, groups) a
+class _GuestsBundle {
+  const _GuestsBundle(this.guests, this.groups, [this.summary]);
+
+  final List<Guest> guests;
+  final List<GuestGroup> groups;
+  final GuestSummary? summary;
+}
+
 /// conflict means something else and keeps the server's own words.
 String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
   final normalized = error.message.trim();

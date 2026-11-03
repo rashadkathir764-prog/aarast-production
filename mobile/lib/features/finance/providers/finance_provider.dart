@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../sharing/sharing_api.dart' show PlanAccessPermissions, SharingApi;
@@ -192,7 +193,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     _loadErrorMessage = null;
     notifyListeners();
 
-    var accessResolved = false;
+    // The reader's right to the money is resolved first (it is the phone's
+    // copy too when the server is out of reach).
     try {
       final access = await _resolveAccess(
         planId,
@@ -200,57 +202,100 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         canManageMoney: canManageMoney,
       );
       if (!_isCurrent(generation)) return;
-      accessResolved = true;
       _access = access;
       if (!access.canViewMoney) {
         _clear(planId);
         _loadErrorMessage = 'لا تملك صلاحية عرض المال في هذه الخطة.';
+        _isLoading = false;
+        notifyListeners();
         return;
       }
-
-      final results = await Future.wait<Object>([
-        _api.getMoneySummary(planId),
-        _api.getCosts(planId),
-        _api.getPlanPayments(planId),
-        _api.getDuePaymentSchedules(planId),
-      ]);
-      if (!_isCurrent(generation)) return;
-      _summary = results[0] as MoneySummary;
-      _categories = _categoriesFromSummary(_summary);
-      final costsPage = results[1] as FinancePage<WeddingCost>;
-      final paymentsPage = results[2] as FinancePage<CostPayment>;
-      if (costRequest == _costRequestGeneration) {
-        _costs = costsPage.items;
-        _costsPage = costsPage.page;
-        _costsTotalPages = costsPage.totalPages;
-      }
-      if (paymentRequest == _paymentRequestGeneration) {
-        _payments = paymentsPage.items;
-        _paymentsPage = paymentsPage.page;
-        _paymentsTotalPages = paymentsPage.totalPages;
-      }
-      _dueSchedules = results[3] as List<PaymentSchedule>;
-      _sortState();
-      _hasLoadedMoney = true;
     } on ApiException catch (error) {
       if (!_isCurrent(generation)) return;
-      if (!accessResolved || _isPrivateAccessFailure(error)) {
-        _clear(planId);
-      }
+      _clear(planId);
       _loadErrorMessage = _isPrivateAccessFailure(error)
           ? 'لم يعد لديك وصول إلى المال في هذه الخطة.'
           : error.message;
+      _isLoading = false;
+      notifyListeners();
+      return;
     } catch (_) {
       if (!_isCurrent(generation)) return;
-      if (!accessResolved) _clear(planId);
+      _clear(planId);
       _loadErrorMessage = 'تعذر تحميل المال الآن. حاول مرة أخرى.';
-    } finally {
-      if (_isCurrent(generation)) {
-        _isLoading = false;
-        notifyListeners();
-      }
+      _isLoading = false;
+      notifyListeners();
+      return;
     }
+
+    // D85: the phone's copy of the money shows at once; the server's
+    // answer replaces it, and a server out of reach keeps it (stale).
+    await readCachedFirst<_MoneyBundle>(
+      cached: () async {
+        final summary = await _api.cachedMoneySummary(planId);
+        if (summary == null) return null;
+        return _MoneyBundle(
+          summary,
+          await _api.cachedCosts(planId),
+          await _api.cachedPayments(planId),
+          await _api.cachedDueSchedules(planId),
+        );
+      },
+      remote: () async {
+        final results = await Future.wait<Object>([
+          _api.getMoneySummary(planId),
+          _api.getCosts(planId),
+          _api.getPlanPayments(planId),
+          _api.getDuePaymentSchedules(planId),
+        ]);
+        return _MoneyBundle(
+          results[0] as MoneySummary,
+          results[1] as FinancePage<WeddingCost>,
+          results[2] as FinancePage<CostPayment>,
+          results[3] as List<PaymentSchedule>,
+        );
+      },
+      apply: (bundle) {
+        if (!_isCurrent(generation)) return;
+        _summary = bundle.summary;
+        _categories = _categoriesFromSummary(_summary);
+        if (costRequest == _costRequestGeneration) {
+          _costs = bundle.costs.items;
+          _costsPage = bundle.costs.page;
+          _costsTotalPages = bundle.costs.totalPages;
+        }
+        if (paymentRequest == _paymentRequestGeneration) {
+          _payments = bundle.payments.items;
+          _paymentsPage = bundle.payments.page;
+          _paymentsTotalPages = bundle.payments.totalPages;
+        }
+        _dueSchedules = bundle.dueSchedules;
+        _sortState();
+        _hasLoadedMoney = true;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!_isCurrent(generation)) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _loadErrorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) {
+        if (error is ApiException) {
+          if (_isPrivateAccessFailure(error)) {
+            _clear(planId);
+            return 'لم يعد لديك وصول إلى المال في هذه الخطة.';
+          }
+          return error.message;
+        }
+        return 'تعذر تحميل المال الآن. حاول مرة أخرى.';
+      },
+    );
   }
+
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
 
   Future<void> loadCostDetails(String costId) async {
     final generation = _loadGeneration;
@@ -982,4 +1027,19 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     _preferences?.removeListener(notifyListeners);
     super.dispose();
   }
+}
+
+/// What one read of the money brings, from the phone or from the server.
+class _MoneyBundle {
+  const _MoneyBundle(
+    this.summary,
+    this.costs,
+    this.payments,
+    this.dueSchedules,
+  );
+
+  final MoneySummary summary;
+  final FinancePage<WeddingCost> costs;
+  final FinancePage<CostPayment> payments;
+  final List<PaymentSchedule> dueSchedules;
 }

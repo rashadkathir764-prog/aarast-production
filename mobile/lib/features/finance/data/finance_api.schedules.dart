@@ -2,6 +2,15 @@ part of 'finance_api.dart';
 
 // Payment schedules.
 mixin _FinanceSchedulesApi on _FinanceApiCore {
+  /// D85: the phone's copy of the due schedules alone.
+  Future<List<PaymentSchedule>> cachedDueSchedules(String planId) async {
+    final cached = await _readCachedPlanList(
+      OfflineTables.cachedPaymentSchedules,
+      planId,
+    );
+    return _dueSchedules(cached);
+  }
+
   Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async {
     const table = OfflineTables.cachedPaymentSchedules;
     if (FinanceLocalDataSource.isLocalGuestPlanId(planId)) {

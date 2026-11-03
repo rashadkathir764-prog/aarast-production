@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
@@ -94,6 +95,16 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
 
   /// The plan's requests are being read; until then none is not «none».
   bool _isLoadingQuoteRequests = false;
+
+  /// D85: the phone's copy of the requests stays because the server did
+  /// not answer.
+  bool _quoteRequestsStale = false;
+  bool get quoteRequestsStale => _quoteRequestsStale;
+
+  /// D85: the phone's copy of the directory stays because the server did
+  /// not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
   List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
   final Set<String> _providerQuoteContextsLoading = {};
@@ -208,6 +219,24 @@ String? _normalizedOrNull(String? value) {
 bool _sameInstant(DateTime? a, DateTime? b) {
   if (a == null || b == null) return a == null && b == null;
   return a.toUtc().isAtSameMomentAs(b.toUtc());
+}
+
+/// What one read of the directory brings, from the phone (no favourites or
+/// requests: those stay as they were) or from the server.
+class _DirectoryBundle {
+  const _DirectoryBundle({
+    required this.cities,
+    required this.categories,
+    required this.providers,
+    required this.favorites,
+    required this.quoteRequests,
+  });
+
+  final List<MarketplaceCity> cities;
+  final List<ProviderCategory> categories;
+  final MarketplaceProviderPage providers;
+  final _MarketplaceLoadResult<List<FavoriteProvider>>? favorites;
+  final List<QuoteRequest>? quoteRequests;
 }
 
 class _MarketplaceLoadResult<T> {

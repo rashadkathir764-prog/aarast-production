@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
 import '../data/task_timeline_api.dart';
@@ -46,81 +47,67 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   Timeline get timeline => _timeline;
   TaskSummary get summary => _summary;
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy shows at once; the server's answer replaces it.
+  /// The tasks are the list; the timeline and the summary follow them and
+  /// never fail a list that arrived.
   Future<void> load(String weddingPlanId) async {
-    _isLoading = true;
-    _loadErrorMessage = null;
-    notifyListeners();
-
-    Object? loadError;
-
-    Future<List<WeddingTask>?> loadTasks() async {
-      try {
-        return await _api.getTasks(weddingPlanId);
-      } catch (error) {
-        loadError ??= error;
-        return null;
-      }
-    }
-
-    Future<Timeline?> loadTimeline() async {
-      try {
-        return await _api.getTimeline(weddingPlanId);
-      } catch (error) {
-        loadError ??= error;
-        return null;
-      }
-    }
-
-    Future<TaskSummary?> loadSummary() async {
-      try {
-        return await _api.getTaskSummary(weddingPlanId);
-      } catch (error) {
-        loadError ??= error;
-        return null;
-      }
-    }
-
-    try {
-      final results = await Future.wait<Object?>([
-        loadTasks(),
-        loadTimeline(),
-        loadSummary(),
-      ]);
-      final tasks = results[0] as List<WeddingTask>?;
-      final timeline = results[1] as Timeline?;
-      final summary = results[2] as TaskSummary?;
-
-      if (tasks != null) {
-        _tasks = tasks;
-      } else {
-        _tasks = _tasks
-            .where((task) => task.weddingPlanId == weddingPlanId)
-            .toList();
-      }
-
-      _timeline = timeline ?? Timeline.empty();
-      _summary =
-          summary ??
-          TaskSummary.fromTasks(weddingPlanId: weddingPlanId, tasks: _tasks);
-
-      if (loadError != null) {
-        _loadErrorMessage = _messageForLoadError(loadError!);
-      }
-    } on ApiException catch (error) {
-      _loadErrorMessage = error.message;
-    } catch (_) {
-      _loadErrorMessage = 'تعذر تحميل المهام والجدول الزمني.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await readCachedFirst<_TasksBundle>(
+      cached: () async {
+        final tasks = await _api.cachedTasks(weddingPlanId);
+        if (tasks.isEmpty) return null;
+        return _TasksBundle(
+          tasks,
+          await _api.cachedTimeline(weddingPlanId),
+          await _api.cachedTaskSummary(weddingPlanId),
+        );
+      },
+      remote: () async {
+        final tasks = await _api.getTasks(weddingPlanId);
+        Timeline? timeline;
+        TaskSummary? summary;
+        try {
+          timeline = await _api.getTimeline(weddingPlanId);
+        } on Object {
+          timeline = null;
+        }
+        try {
+          summary = await _api.getTaskSummary(weddingPlanId);
+        } on Object {
+          summary = null;
+        }
+        return _TasksBundle(tasks, timeline, summary);
+      },
+      apply: (bundle) {
+        _tasks = bundle.tasks;
+        _timeline = bundle.timeline ?? Timeline.empty();
+        _summary =
+            bundle.summary ??
+            TaskSummary.fromTasks(weddingPlanId: weddingPlanId, tasks: _tasks);
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _loadErrorMessage = error;
+        if (error != null) {
+          _tasks = _tasks
+              .where((task) => task.weddingPlanId == weddingPlanId)
+              .toList();
+        }
+        notifyListeners();
+      },
+      describe: _messageForLoadError,
+    );
   }
 
   String _messageForLoadError(Object error) {
     if (error is ApiException) {
       return error.message;
     }
-    return 'تعذر تحميل المهام.';
+    return 'تعذر تحميل المهام والجدول الزمني.';
   }
 
   Future<bool> createTask({
@@ -750,4 +737,12 @@ bool _isLocalGuestPlanId(String? planId) {
       value == 'local-guest-plan' ||
       value.startsWith('guest-plan-') ||
       value.startsWith('local-guest-');
+}
+
+class _TasksBundle {
+  const _TasksBundle(this.tasks, this.timeline, this.summary);
+
+  final List<WeddingTask> tasks;
+  final Timeline? timeline;
+  final TaskSummary? summary;
 }

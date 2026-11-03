@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../data/wedding_plans_api.dart';
@@ -123,35 +124,36 @@ class DashboardSummaryProvider extends ChangeNotifier
     notifyListeners();
   }
 
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
+
+  /// D85: the phone's copy of the home shows at once; the server's answer
+  /// replaces it, and a server out of reach keeps it (stale) instead of a
+  /// spinner or an error.
   Future<void> loadDashboard(
     String weddingPlanId, {
     SharedMember? sharedMember,
   }) async {
     final generation = ++_loadGeneration;
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final nextSummary = await weddingPlansApi.getDashboardSummary(
-        weddingPlanId,
-      );
-      if (generation != _loadGeneration || isSessionDisposed) return;
-      _summary = nextSummary;
-      _plan = nextSummary.toWeddingPlan();
-    } on ApiException catch (error) {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _errorMessage = error.message;
-      }
-    } catch (_) {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _errorMessage = 'ما قدرنا نجيب خطتك الحين.';
-      }
-    } finally {
-      if (generation == _loadGeneration && !isSessionDisposed) {
-        _isLoading = false;
+    bool current() => generation == _loadGeneration && !isSessionDisposed;
+    await readCachedFirst<DashboardSummary>(
+      cached: () => weddingPlansApi.cachedDashboardSummary(weddingPlanId),
+      remote: () => weddingPlansApi.getDashboardSummary(weddingPlanId),
+      apply: (summary) {
+        if (!current()) return;
+        _summary = summary;
+        _plan = summary.toWeddingPlan();
+      },
+      state: ({required loading, required stale, error}) {
+        if (!current()) return;
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'ما قدرنا نجيب خطتك الحين.',
+    );
   }
 }

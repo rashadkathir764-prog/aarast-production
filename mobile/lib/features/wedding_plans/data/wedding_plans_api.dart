@@ -116,6 +116,16 @@ class WeddingPlansApi {
     }
   }
 
+  /// D85: the phone's copy of the home alone, shown before the server is
+  /// asked.
+  Future<DashboardSummary?> cachedDashboardSummary(String planId) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedDashboardSummaries,
+      id: planId,
+    );
+    return cached == null ? null : DashboardSummary.fromJson(cached);
+  }
+
   Future<List<WeddingPlan>> getMyWeddingPlans() async {
     try {
       final items = await _getJsonMapList('/api/v1/wedding-plans/my');
@@ -356,5 +366,36 @@ class WeddingPlansApi {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
     return _offline.database.readCachedItem(table: table, id: id);
+  }
+
+  // --- D85: the phone's copies alone, shown before the server is asked ---
+
+  Future<ActiveWeddingPlan?> cachedActiveWeddingPlan() async {
+    final activePlanId = _authStorage?.readActivePlanId();
+    if (activePlanId == null || activePlanId.isEmpty) return null;
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      id: activePlanId,
+    );
+    if (cached == null) return null;
+    final plan = ActiveWeddingPlan.fromJson(cached);
+    return plan.status == 'ARCHIVED' ? null : plan;
+  }
+
+  Future<List<WeddingPlan>> cachedWeddingPlans() async {
+    final cached = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedWeddingPlans,
+    );
+    return (cached ?? const <Map<String, dynamic>>[])
+        .map(WeddingPlan.fromJson)
+        .toList();
+  }
+
+  Future<WeddingPlan?> cachedWeddingPlan(String id) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      id: id,
+    );
+    return cached == null ? null : WeddingPlan.fromJson(cached);
   }
 }

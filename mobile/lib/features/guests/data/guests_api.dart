@@ -1,45 +1,53 @@
-import 'dart:convert';
-
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../models/guest.dart';
 
+/// The plan's guests, groups and invitation card.
+///
+/// D85: every read keeps the server's answer on the phone and serves it
+/// when the server is out of reach; every change to a guest, a group or
+/// the card is kept on the phone first and sent when the server answers.
+/// The invitation link is the server's (it issues it), so it says so.
+/// A plan kept on the phone without an account (`local-guest-plan`) never
+/// talks to the server at all.
 class GuestsApi {
-  const GuestsApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  GuestsApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _offline = offline,
+      _reads = OfflineReads(apiClient, offline),
+      _writes = OfflineWrites(apiClient, offline);
 
-  final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+  final OfflineReads _reads;
+  final OfflineWrites _writes;
 
-  /// Reads keep the last server copy on this (encrypted) device, so the guest
-  /// list still opens without a connection; changes still need one.
+  static const _side = 'OTHER';
+
   Future<List<Guest>> getGuests(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _cachedGuests(weddingPlanId);
+      return cachedGuests(weddingPlanId);
     }
-    try {
-      final items = (await _apiClient.getJsonList(
-        '/api/v1/wedding-plans/$weddingPlanId/guests',
-      )).whereType<Map>().map((item) => Map<String, dynamic>.from(item));
-      final list = items.toList();
-      await _offline?.database.replaceCachedList(
-        table: OfflineTables.cachedGuests,
-        items: list,
-        parentColumn: 'planId',
-        parentId: weddingPlanId,
-      );
-      return list.map(Guest.fromJson).toList();
-    } on Object catch (error) {
-      if (!await _canReadOffline(error)) rethrow;
-      final cached = await _cachedGuests(weddingPlanId);
-      // No saved copy: report the failure instead of an empty guest list.
-      if (cached.isEmpty) rethrow;
-      return cached;
-    }
+    final items = await _reads.list(
+      '/api/v1/wedding-plans/$weddingPlanId/guests',
+      table: OfflineTables.cachedGuests,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return items.map(Guest.fromJson).toList();
+  }
+
+  /// The phone's copy alone (D85: shown before the server is asked).
+  Future<List<Guest>> cachedGuests(String weddingPlanId) async {
+    final rows = await _reads.cachedList(
+      OfflineTables.cachedGuests,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return rows.map(Guest.fromJson).toList();
   }
 
   Future<GuestSummary> getSummary({
@@ -50,21 +58,24 @@ class GuestsApi {
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return GuestSummary.fromGuests(
         weddingPlanId: weddingPlanId,
-        guests: localGuests ?? await _cachedGuests(weddingPlanId),
+        guests: localGuests ?? await cachedGuests(weddingPlanId),
         groups: localGroups ?? const [],
       );
     }
     try {
-      final json = await _apiClient.getJson(
-        '/api/v1/wedding-plans/$weddingPlanId/guests/summary',
+      return GuestSummary.fromJson(
+        await _reads.blob(
+          '/api/v1/wedding-plans/$weddingPlanId/guests/summary',
+          metaKey: 'guest-summary:$weddingPlanId',
+        ),
       );
-      return GuestSummary.fromJson(json);
     } on Object catch (error) {
-      if (!await _canReadOffline(error)) rethrow;
+      // No summary kept yet: the phone counts its own copy.
+      if (!CachePolicy.shouldUseCache(error)) rethrow;
       return GuestSummary.fromGuests(
         weddingPlanId: weddingPlanId,
-        guests: localGuests ?? await _cachedGuests(weddingPlanId),
-        groups: localGroups ?? await _cachedGroups(weddingPlanId),
+        guests: localGuests ?? await cachedGuests(weddingPlanId),
+        groups: localGroups ?? await cachedGroups(weddingPlanId),
       );
     }
   }
@@ -72,66 +83,27 @@ class GuestsApi {
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) return const [];
     try {
-      final list = (await _apiClient.getJsonList(
+      final items = await _reads.list(
         '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
-      )).whereType<Map>().map((item) => Map<String, dynamic>.from(item));
-      final items = list.toList();
-      await _offline?.database.setMeta(
-        _groupsCacheKey(weddingPlanId),
-        jsonEncode(items),
+        table: OfflineTables.cachedGuestGroups,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
       );
       return items.map(GuestGroup.fromJson).toList();
     } on Object catch (error) {
-      if (!await _canReadOffline(error)) rethrow;
-      return _cachedGroups(weddingPlanId);
+      // A plan may have no groups at all: an empty copy is still the copy.
+      if (!CachePolicy.shouldUseCache(error)) rethrow;
+      return cachedGroups(weddingPlanId);
     }
   }
 
-  /// A network failure with a device cache to fall back on.
-  Future<bool> _canReadOffline(Object error) async {
-    final offline = _offline;
-    if (!CachePolicy.shouldUseCache(error) || offline == null) return false;
-    await offline.noteNetworkFailure((error as ApiException).message);
-    return true;
-  }
-
-  String _groupsCacheKey(String weddingPlanId) => 'guest-groups:$weddingPlanId';
-
-  Future<List<GuestGroup>> _cachedGroups(String weddingPlanId) async {
-    final raw = await _offline?.database.getMeta(
-      _groupsCacheKey(weddingPlanId),
+  Future<List<GuestGroup>> cachedGroups(String weddingPlanId) async {
+    final rows = await _reads.cachedList(
+      OfflineTables.cachedGuestGroups,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
     );
-    if (raw == null) return const [];
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) return const [];
-    return [
-      for (final item in decoded)
-        if (item is Map) GuestGroup.fromJson(Map<String, dynamic>.from(item)),
-    ];
-  }
-
-  Future<GuestGroup> createGroup({
-    required String weddingPlanId,
-    required String name,
-  }) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
-      {'name': name.trim()},
-    );
-    return GuestGroup.fromJson(json);
-  }
-
-  Future<GuestGroup> renameGroup(GuestGroup group, String name) async {
-    final json = await _apiClient.patchJson(
-      '/api/v1/guest-groups/${group.id}',
-      {'name': name.trim()},
-    );
-    return GuestGroup.fromJson(json);
-  }
-
-  /// The server keeps the group's guests and only clears their group.
-  Future<void> deleteGroup(GuestGroup group) async {
-    await _apiClient.deleteJson('/api/v1/guest-groups/${group.id}');
+    return rows.map(GuestGroup.fromJson).toList();
   }
 
   Future<Guest> createGuest({
@@ -147,96 +119,51 @@ class GuestsApi {
     String? notes,
     List<String>? eventIds,
   }) async {
-    final normalizedPhone = _normalizeOptionalPhone(phone);
-    final normalizedGroupId = groupId?.trim();
-    final payload = <String, dynamic>{
-      'name': name.trim(),
-      'side': side,
-      'status': status,
-      'seatsCount': seatsCount,
-      // D83: the plan's events beyond the wedding; absent means none.
-      if (eventIds != null && eventIds.isNotEmpty) 'eventIds': eventIds,
-    };
-    if (normalizedGroupId != null && normalizedGroupId.isNotEmpty) {
-      payload['groupId'] = normalizedGroupId;
-    }
-    final normalizedAttendanceStatus = attendanceStatus?.trim();
-    if (normalizedAttendanceStatus != null &&
-        normalizedAttendanceStatus.isNotEmpty) {
-      payload['attendanceStatus'] = normalizedAttendanceStatus;
-    }
-    if (companionsCount != null) {
-      payload['companionsCount'] = companionsCount;
-    }
-    final normalizedNotes = notes?.trim();
-    if (normalizedNotes != null && normalizedNotes.isNotEmpty) {
-      payload['notes'] = normalizedNotes;
-    }
-    if (normalizedPhone != null) {
-      payload['phone'] = normalizedPhone;
-    }
+    final payload = _createPayload(
+      name: name,
+      phone: phone,
+      groupId: groupId,
+      side: side,
+      status: status,
+      attendanceStatus: attendanceStatus,
+      seatsCount: seatsCount,
+      companionsCount: companionsCount,
+      notes: notes,
+      eventIds: eventIds,
+    );
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return _createLocalGuest(weddingPlanId: weddingPlanId, payload: payload);
     }
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/guests',
-      payload,
-    );
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedGuests,
-      json: json,
-    );
-    return Guest.fromJson(json);
+    return _queuedCreate(weddingPlanId, payload);
   }
 
-  /// e03 / w28: many guests in one go, at most 200 per call. The server
-  /// takes them all or none, so duplicates are left out before calling.
+  /// e03 / w28: many guests in one go. Each is kept on the phone and sent
+  /// on its own, so a list added without the server still lands whole.
   Future<List<Guest>> createGuestsBulk({
     required String weddingPlanId,
     required List<({String name, String? phone})> people,
     String? groupId,
   }) async {
     final normalizedGroupId = groupId?.trim();
-    List<Map<String, dynamic>> payloads(
-      List<({String name, String? phone})> chunk,
-    ) => [
-      for (final person in chunk)
-        {
-          'name': person.name.trim(),
-          'side': 'OTHER',
-          'status': 'INVITED',
-          'seatsCount': 1,
-          if (normalizedGroupId != null && normalizedGroupId.isNotEmpty)
-            'groupId': normalizedGroupId,
-          'phone': ?_normalizeOptionalPhone(person.phone),
-        },
-    ];
     final created = <Guest>[];
-    if (_isLocalGuestPlanId(weddingPlanId)) {
-      for (final payload in payloads(people)) {
-        created.add(
-          await _createLocalGuest(
-            weddingPlanId: weddingPlanId,
-            payload: payload,
-          ),
-        );
-      }
-      return created;
-    }
-    for (var start = 0; start < people.length; start += 200) {
-      final end = start + 200 > people.length ? people.length : start + 200;
-      final json = await _apiClient.postJson(
-        '/api/v1/wedding-plans/$weddingPlanId/guests/bulk',
-        {'items': payloads(people.sublist(start, end))},
+    for (final person in people) {
+      final payload = {
+        'name': person.name.trim(),
+        'side': _side,
+        'status': 'INVITED',
+        'seatsCount': 1,
+        if (normalizedGroupId != null && normalizedGroupId.isNotEmpty)
+          'groupId': normalizedGroupId,
+        'phone': ?_normalizeOptionalPhone(person.phone),
+      };
+      created.add(
+        _isLocalGuestPlanId(weddingPlanId)
+            ? await _createLocalGuest(
+                weddingPlanId: weddingPlanId,
+                payload: payload,
+              )
+            : await _queuedCreate(weddingPlanId, payload),
       );
-      for (final item in json['created'] as List? ?? const []) {
-        final guestJson = Map<String, dynamic>.from(item as Map);
-        await _offline?.database.saveCachedItem(
-          table: OfflineTables.cachedGuests,
-          json: guestJson,
-        );
-        created.add(Guest.fromJson(guestJson));
-      }
     }
     return created;
   }
@@ -255,44 +182,49 @@ class GuestsApi {
     List<String>? eventIds,
   }) async {
     final payload = <String, dynamic>{};
-    if (name != null) {
-      payload['name'] = name.trim();
-    }
-    // D83: a list replaces the guest's events; null leaves them.
-    if (eventIds != null) {
-      payload['eventIds'] = eventIds;
-    }
-    if (phone != null) {
-      payload['phone'] = _normalizeOptionalPhone(phone);
-    }
+    if (name != null) payload['name'] = name.trim();
+    if (phone != null) payload['phone'] = _normalizeOptionalPhone(phone);
     if (groupId != null) {
       payload['groupId'] = groupId.trim().isEmpty ? null : groupId.trim();
     }
-    if (side != null) {
-      payload['side'] = side;
-    }
-    if (status != null) {
-      payload['status'] = status;
-    }
-    if (attendanceStatus != null) {
-      payload['attendanceStatus'] = attendanceStatus;
-    }
-    if (seatsCount != null) {
-      payload['seatsCount'] = seatsCount;
-    }
-    if (companionsCount != null) {
-      payload['companionsCount'] = companionsCount;
-    }
-    if (notes != null) {
-      payload['notes'] = notes.trim();
-    }
+    if (side != null) payload['side'] = side;
+    if (status != null) payload['status'] = status;
+    if (attendanceStatus != null) payload['attendanceStatus'] = attendanceStatus;
+    if (seatsCount != null) payload['seatsCount'] = seatsCount;
+    if (companionsCount != null) payload['companionsCount'] = companionsCount;
+    if (notes != null) payload['notes'] = notes.trim();
+    // D83: a list replaces the guest's events; null leaves them.
+    if (eventIds != null) payload['eventIds'] = eventIds;
     if (id.startsWith('local-guest-')) {
       return _updateLocalGuest(id: id, payload: payload);
     }
-    final json = await _apiClient.patchJson('/api/v1/guests/$id', payload);
-    await _offline?.database.saveCachedItem(
+    final cached =
+        await _reads.cachedItem(OfflineTables.cachedGuests, id) ?? {'id': id};
+    final localJson = {
+      ...cached,
+      ...payload,
+      if (eventIds != null) 'events': _eventRows(eventIds),
+      'id': id,
+      'updatedAt': DateTime.now().toIso8601String(),
+    }..remove('eventIds');
+    final planId = cached['weddingPlanId']?.toString();
+    final json = await _writes.queued(
+      entityType: 'guest',
+      operation: 'update',
+      method: 'PATCH',
+      endpoint: '/api/v1/guests/$id',
+      payload: payload,
       table: OfflineTables.cachedGuests,
-      json: json,
+      localJson: localJson,
+      planId: planId,
+      localEntityId: id,
+      replacePendingForEntity: true,
+      pendingCreate: planId == null
+          ? null
+          : PendingCreate(
+              endpoint: '/api/v1/wedding-plans/$planId/guests',
+              payload: _createPayloadFromRow(localJson),
+            ),
     );
     return Guest.fromJson(json);
   }
@@ -302,25 +234,34 @@ class GuestsApi {
       await _deleteLocalGuest(id);
       return;
     }
-    await _apiClient.deleteJson('/api/v1/guests/$id');
-    await _offline?.database.discardLocalEntity(
-      table: OfflineTables.cachedGuests,
+    final cached =
+        await _reads.cachedItem(OfflineTables.cachedGuests, id) ?? {'id': id};
+    await _writes.queued(
       entityType: 'guest',
-      entityId: id,
+      operation: 'delete',
+      method: 'DELETE',
+      endpoint: '/api/v1/guests/$id',
+      payload: const {},
+      table: OfflineTables.cachedGuests,
+      localJson: cached,
+      planId: cached['weddingPlanId']?.toString(),
+      localEntityId: id,
+      replacePendingForEntity: true,
     );
   }
 
   /// A new personal RSVP link for the guest and the WhatsApp text that
-  /// carries it (V1 checklist 4.7). The previous link stops working. The
-  /// text is the server's (D83, one source): the invitation from the card
-  /// and the guest's events, or with [reminder] the short reminder (e08).
+  /// carries it (V1 checklist 4.7). The server issues both (D83), so it
+  /// cannot wait on the phone.
   Future<GuestInvitationLink> createInvitationLink(
     String guestId, {
     bool reminder = false,
   }) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/guests/$guestId/invitation-link',
-      {if (reminder) 'reminder': true},
+    final json = await _writes.serverOnly(
+      reason: 'الرابط يصدره الخادم، فما ينفع بدونه.',
+      method: 'POST',
+      path: '/api/v1/guests/$guestId/invitation-link',
+      body: {if (reminder) 'reminder': true},
     );
     return GuestInvitationLink(
       url: json['url']?.toString() ?? '',
@@ -329,29 +270,222 @@ class GuestsApi {
     );
   }
 
-  /// D83: the plan's invitation card. A plan kept on the phone has none.
+  Future<GuestGroup> createGroup({
+    required String weddingPlanId,
+    required String name,
+  }) async {
+    final localId = OfflineWrites.localId('guest-group');
+    final now = DateTime.now().toIso8601String();
+    final json = await _writes.queued(
+      entityType: 'guest_group',
+      operation: 'create',
+      method: 'POST',
+      endpoint: '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
+      payload: {'name': name.trim()},
+      table: OfflineTables.cachedGuestGroups,
+      localJson: {
+        'id': localId,
+        'weddingPlanId': weddingPlanId,
+        'name': name.trim(),
+        'sortOrder': 0,
+        'editable': true,
+        'createdAt': now,
+        'updatedAt': now,
+      },
+      planId: weddingPlanId,
+      localEntityId: localId,
+    );
+    return GuestGroup.fromJson(json);
+  }
+
+  Future<GuestGroup> renameGroup(GuestGroup group, String name) async {
+    final cached =
+        await _reads.cachedItem(OfflineTables.cachedGuestGroups, group.id) ??
+        {'id': group.id, 'weddingPlanId': group.weddingPlanId};
+    final localJson = {
+      ...cached,
+      'name': name.trim(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    final json = await _writes.queued(
+      entityType: 'guest_group',
+      operation: 'update',
+      method: 'PATCH',
+      endpoint: '/api/v1/guest-groups/${group.id}',
+      payload: {'name': name.trim()},
+      table: OfflineTables.cachedGuestGroups,
+      localJson: localJson,
+      planId: group.weddingPlanId,
+      localEntityId: group.id,
+      replacePendingForEntity: true,
+      pendingCreate: PendingCreate(
+        endpoint: '/api/v1/wedding-plans/${group.weddingPlanId}/guest-groups',
+        payload: {'name': name.trim()},
+      ),
+    );
+    return GuestGroup.fromJson(json);
+  }
+
+  /// The server keeps the group's guests and only clears their group.
+  Future<void> deleteGroup(GuestGroup group) async {
+    await _writes.queued(
+      entityType: 'guest_group',
+      operation: 'delete',
+      method: 'DELETE',
+      endpoint: '/api/v1/guest-groups/${group.id}',
+      payload: const {},
+      table: OfflineTables.cachedGuestGroups,
+      localJson: {'id': group.id, 'weddingPlanId': group.weddingPlanId},
+      planId: group.weddingPlanId,
+      localEntityId: group.id,
+      replacePendingForEntity: true,
+    );
+  }
+
+  /// D83: the plan's invitation card as the account keeps it.
   Future<InvitationCard> getInvitationCard(String weddingPlanId) async {
-    if (_isLocalGuestPlanId(weddingPlanId)) return const InvitationCard();
     return InvitationCard.fromJson(
-      await _apiClient.getJson(
+      await _reads.blob(
         '/api/v1/wedding-plans/$weddingPlanId/guests/invitation-card',
+        metaKey: _cardKey(weddingPlanId),
       ),
     );
   }
 
   /// D83: writes the card. Only the given keys change; an empty string
-  /// clears that field.
+  /// clears that field. Kept on the phone and sent when the server answers.
   Future<InvitationCard> setInvitationCard(
     String weddingPlanId,
     Map<String, String?> changes,
   ) async {
-    return InvitationCard.fromJson(
-      await _apiClient.putJson(
-        '/api/v1/wedding-plans/$weddingPlanId/guests/invitation-card',
-        {for (final entry in changes.entries) entry.key: entry.value ?? ''},
-      ),
+    final payload = {
+      for (final entry in changes.entries) entry.key: entry.value ?? '',
+    };
+    final cached = await _reads.cachedBlob(_cardKey(weddingPlanId)) ?? {};
+    final localJson = {
+      ...cached,
+      for (final entry in changes.entries)
+        entry.key: (entry.value ?? '').isEmpty ? null : entry.value,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    final json = await _writes.queued(
+      entityType: 'guest_invitation_card',
+      operation: 'update',
+      method: 'PUT',
+      endpoint: '/api/v1/wedding-plans/$weddingPlanId/guests/invitation-card',
+      payload: payload,
+      metaKey: _cardKey(weddingPlanId),
+      localJson: localJson,
+      planId: weddingPlanId,
+      localEntityId: 'card:$weddingPlanId',
+      replacePendingForEntity: true,
     );
+    return InvitationCard.fromJson(json);
   }
+
+  // --- the phone's own rows ----------------------------------------------
+
+  Future<Guest> _queuedCreate(
+    String weddingPlanId,
+    Map<String, dynamic> payload,
+  ) async {
+    final localId = OfflineWrites.localId('guest');
+    final now = DateTime.now().toIso8601String();
+    final eventIds = payload['eventIds'];
+    final localJson = {
+      'id': localId,
+      'weddingPlanId': weddingPlanId,
+      ...payload,
+      'invitationStatus': 'NOT_SENT',
+      'attendanceStatus': payload['attendanceStatus'] ?? 'PENDING',
+      'companionsCount': payload['companionsCount'] ?? 0,
+      'editable': true,
+      'events': _eventRows(
+        eventIds is List ? eventIds.cast<String>() : const [],
+      ),
+      'createdAt': now,
+      'updatedAt': now,
+    }..remove('eventIds');
+    final json = await _writes.queued(
+      entityType: 'guest',
+      operation: 'create',
+      method: 'POST',
+      endpoint: '/api/v1/wedding-plans/$weddingPlanId/guests',
+      payload: payload,
+      table: OfflineTables.cachedGuests,
+      localJson: localJson,
+      planId: weddingPlanId,
+      localEntityId: localId,
+    );
+    return Guest.fromJson(json);
+  }
+
+  Map<String, dynamic> _createPayload({
+    required String name,
+    String? phone,
+    String? groupId,
+    required String side,
+    required String status,
+    String? attendanceStatus,
+    required int seatsCount,
+    int? companionsCount,
+    String? notes,
+    List<String>? eventIds,
+  }) {
+    final normalizedPhone = _normalizeOptionalPhone(phone);
+    final normalizedGroupId = groupId?.trim();
+    final normalizedAttendanceStatus = attendanceStatus?.trim();
+    final normalizedNotes = notes?.trim();
+    return {
+      'name': name.trim(),
+      'side': side,
+      'status': status,
+      'seatsCount': seatsCount,
+      if (normalizedGroupId != null && normalizedGroupId.isNotEmpty)
+        'groupId': normalizedGroupId,
+      if (normalizedAttendanceStatus != null &&
+          normalizedAttendanceStatus.isNotEmpty)
+        'attendanceStatus': normalizedAttendanceStatus,
+      'companionsCount': ?companionsCount,
+      if (normalizedNotes != null && normalizedNotes.isNotEmpty)
+        'notes': normalizedNotes,
+      'phone': ?normalizedPhone,
+      // D83: the plan's events beyond the wedding; absent means none.
+      if (eventIds != null && eventIds.isNotEmpty) 'eventIds': eventIds,
+    };
+  }
+
+  /// The create a queued guest is sent as after it was edited on the phone.
+  static Map<String, dynamic> _createPayloadFromRow(Map<String, dynamic> row) {
+    final events = row['events'];
+    final eventIds = [
+      if (events is List)
+        for (final item in events)
+          if (item is Map && item['planEventId'] != null)
+            item['planEventId'].toString(),
+    ];
+    return {
+      'name': row['name'],
+      'side': row['side'] ?? _side,
+      'status': row['status'] ?? 'INVITED',
+      'seatsCount': row['seatsCount'] ?? 1,
+      if (row['groupId'] != null) 'groupId': row['groupId'],
+      if (row['attendanceStatus'] != null)
+        'attendanceStatus': row['attendanceStatus'],
+      if (row['companionsCount'] != null)
+        'companionsCount': row['companionsCount'],
+      if ((row['notes']?.toString() ?? '').isNotEmpty) 'notes': row['notes'],
+      if (row['phone'] != null) 'phone': row['phone'],
+      if (eventIds.isNotEmpty) 'eventIds': eventIds,
+    };
+  }
+
+  static List<Map<String, dynamic>> _eventRows(List<String> eventIds) => [
+    for (final id in eventIds)
+      {'planEventId': id, 'attendanceStatus': 'PENDING', 'companionsCount': 0},
+  ];
+
+  String _cardKey(String weddingPlanId) => 'invitation-card:$weddingPlanId';
 
   String? _normalizeOptionalPhone(String? phone) {
     try {
@@ -361,16 +495,7 @@ class GuestsApi {
     }
   }
 
-  Future<List<Guest>> _cachedGuests(String weddingPlanId) async {
-    final cached = await _offline?.database.readCachedList(
-      table: OfflineTables.cachedGuests,
-      parentColumn: 'planId',
-      parentId: weddingPlanId,
-    );
-    return (cached ?? const <Map<String, dynamic>>[])
-        .map(Guest.fromJson)
-        .toList();
-  }
+  // --- a plan kept on the phone without an account ------------------------
 
   Future<Guest> _createLocalGuest({
     required String weddingPlanId,

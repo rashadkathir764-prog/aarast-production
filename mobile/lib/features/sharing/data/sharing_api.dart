@@ -1,7 +1,5 @@
-import 'dart:convert';
-
 import '../../../core/network/api_client.dart';
-import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
@@ -10,45 +8,51 @@ import '../models/shared_wedding_plan.dart';
 import '../models/plan_access_permissions.dart';
 import '../models/contribution_history.dart';
 
+/// Who shares the plan, their rights and invites.
+///
+/// D85: rights, members, invites, the shared plans and the history are the
+/// phone's copy when the server is out of reach. An invite, a right, a
+/// removal and leaving reach another person, so they need the server now
+/// and say so (D81).
 class SharingApi {
-  const SharingApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  SharingApi(ApiClient apiClient, {OfflineSyncService? offline})
+    : _reads = OfflineReads(apiClient, offline),
+      _writes = OfflineWrites(apiClient, offline);
 
-  final ApiClient _apiClient;
-  final OfflineSyncService? _offline;
+  final OfflineReads _reads;
+  final OfflineWrites _writes;
+
+  static const _reachesSomeone = 'هذا يوصل لشخص ثاني، فيحتاج الخادم.';
 
   Future<PlanAccessPermissions> getMyPlanPermissions(
     String weddingPlanId,
   ) async {
-    final json = await _apiClient.getJson(
-      '/api/v1/wedding-plans/$weddingPlanId/permissions/me',
+    return PlanAccessPermissions.fromJson(
+      await _reads.blob(
+        '/api/v1/wedding-plans/$weddingPlanId/permissions/me',
+        metaKey: 'plan-permissions:$weddingPlanId',
+      ),
     );
-    return PlanAccessPermissions.fromJson(json);
   }
 
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
-    try {
-      final items = await _getJsonMapList(
-        '/api/v1/wedding-plans/$weddingPlanId/members',
-      );
-      await _offline?.database.replaceCachedList(
-        table: OfflineTables.cachedPlanMembers,
-        items: items,
-        parentColumn: 'planId',
-        parentId: weddingPlanId,
-      );
-      return items.map(SharedMember.fromJson).toList();
-    } on Object catch (error) {
-      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
-      await _offline.noteNetworkFailure((error as ApiException).message);
-      final cached = await _offline.database.readCachedList(
-        table: OfflineTables.cachedPlanMembers,
-        parentColumn: 'planId',
-        parentId: weddingPlanId,
-      );
-      if (cached.isEmpty) rethrow;
-      return cached.map(SharedMember.fromJson).toList();
-    }
+    final items = await _reads.list(
+      '/api/v1/wedding-plans/$weddingPlanId/members',
+      table: OfflineTables.cachedPlanMembers,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return items.map(SharedMember.fromJson).toList();
+  }
+
+  /// The phone's copy of the members alone.
+  Future<List<SharedMember>> cachedSharedMembers(String weddingPlanId) async {
+    final rows = await _reads.cachedList(
+      OfflineTables.cachedPlanMembers,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return rows.map(SharedMember.fromJson).toList();
   }
 
   Future<SharedMember> createSharedMember({
@@ -67,22 +71,29 @@ class SharingApi {
       'canViewMoney': canViewMoney || canManageMoney,
       'canManageTasks': canManageTasks,
       'canManageMoney': canManageMoney,
+      'phone': ?normalizedPhone,
     };
-    if (normalizedPhone != null) {
-      payload['phone'] = normalizedPhone;
-    }
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/members',
-      payload,
+    final json = await _writes.serverOnly(
+      reason: _reachesSomeone,
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$weddingPlanId/members',
+      body: payload,
     );
     return SharedMember.fromJson(json);
   }
 
   Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
-    final items = await _getJsonMapList(
+    final items = await _reads.blobList(
       '/api/v1/wedding-plans/$weddingPlanId/invites',
+      metaKey: 'plan-invites:$weddingPlanId',
     );
     return items.map(PlanInvite.fromJson).toList();
+  }
+
+  /// The phone's copy of the invites alone, or null before the first answer.
+  Future<List<PlanInvite>?> cachedPlanInvites(String weddingPlanId) async {
+    final items = await _reads.cachedBlobList('plan-invites:$weddingPlanId');
+    return items?.map(PlanInvite.fromJson).toList();
   }
 
   Future<PlanInvite> createPlanInvite({
@@ -101,21 +112,25 @@ class SharingApi {
     int expiresInDays = 7,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
-    final json = await _apiClient
-        .postJson('/api/v1/wedding-plans/$weddingPlanId/invites', {
-          'phone': normalizedPhone,
-          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-          'role': role,
-          'canViewMoney': canViewMoney || canManageMoney,
-          'canEditPlan': canEditPlan,
-          'canManageTasks': canManageTasks,
-          'canManageGuests': canManageGuests,
-          'canManageProviders': canManageProviders,
-          'canInviteMembers': canInviteMembers,
-          'canManageMoney': canManageMoney,
-          'receiveNotifications': receiveNotifications,
-          'expiresInDays': expiresInDays,
-        });
+    final json = await _writes.serverOnly(
+      reason: 'الدعوة تُرسل من رقم اعّرست، فتحتاج الخادم.',
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$weddingPlanId/invites',
+      body: {
+        'phone': normalizedPhone,
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        'role': role,
+        'canViewMoney': canViewMoney || canManageMoney,
+        'canEditPlan': canEditPlan,
+        'canManageTasks': canManageTasks,
+        'canManageGuests': canManageGuests,
+        'canManageProviders': canManageProviders,
+        'canInviteMembers': canInviteMembers,
+        'canManageMoney': canManageMoney,
+        'receiveNotifications': receiveNotifications,
+        'expiresInDays': expiresInDays,
+      },
+    );
     return PlanInvite.fromJson(json);
   }
 
@@ -123,8 +138,10 @@ class SharingApi {
     required String weddingPlanId,
     required String inviteId,
   }) async {
-    await _apiClient.deleteJson(
-      '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId',
+    await _writes.serverOnly(
+      reason: _reachesSomeone,
+      method: 'DELETE',
+      path: '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId',
     );
   }
 
@@ -141,9 +158,11 @@ class SharingApi {
     bool? canManageMoney,
     bool? receiveNotifications,
   }) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
-      {
+    final json = await _writes.serverOnly(
+      reason: 'التذكير يُرسل من رقم اعّرست، فيحتاج الخادم.',
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
+      body: {
         'role': ?role,
         'canViewMoney': ?canViewMoney,
         'canEditPlan': ?canEditPlan,
@@ -159,19 +178,27 @@ class SharingApi {
   }
 
   Future<PlanInvite> getInvite(String token) async {
-    final json = await _apiClient.getJson('/api/v1/invites/$token');
+    final json = await _writes.serverOnly(
+      reason: 'الدعوة تُقرأ من الخادم.',
+      method: 'GET',
+      path: '/api/v1/invites/$token',
+    );
     return _currentUserInviteFromJson(json);
   }
 
   Future<List<PlanInvite>> getMyInvites() async {
-    final items = await _getJsonMapList('/api/v1/invites/mine');
+    final items = await _reads.blobList(
+      '/api/v1/invites/mine',
+      metaKey: 'my-invites',
+    );
     return items.map(_currentUserInviteFromJson).toList();
   }
 
   Future<AcceptedPlanInvite> acceptInvite(String token) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/invites/$token/accept',
-      const {},
+    final json = await _writes.serverOnly(
+      reason: 'القبول يسجّلك في الخطة عند الخادم.',
+      method: 'POST',
+      path: '/api/v1/invites/$token/accept',
     );
     final invite = PlanInvite.fromJson(
       Map<String, dynamic>.from(json['invite'] as Map),
@@ -199,9 +226,10 @@ class SharingApi {
   }
 
   Future<PlanInvite> declineInvite(String token) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/invites/$token/decline',
-      const {},
+    final json = await _writes.serverOnly(
+      reason: _reachesSomeone,
+      method: 'POST',
+      path: '/api/v1/invites/$token/decline',
     );
     return PlanInvite.fromJson(json);
   }
@@ -211,37 +239,42 @@ class SharingApi {
     String id,
     Map<String, dynamic> data,
   ) async {
-    final json = await _apiClient.patchJson(
-      '/api/v1/wedding-plans/$weddingPlanId/members/$id',
-      data,
+    final json = await _writes.serverOnly(
+      reason: _reachesSomeone,
+      method: 'PATCH',
+      path: '/api/v1/wedding-plans/$weddingPlanId/members/$id',
+      body: data,
     );
     return SharedMember.fromJson(json);
   }
 
   Future<void> deleteSharedMember(String weddingPlanId, String id) async {
-    await _apiClient.deleteJson(
-      '/api/v1/wedding-plans/$weddingPlanId/members/$id',
+    await _writes.serverOnly(
+      reason: _reachesSomeone,
+      method: 'DELETE',
+      path: '/api/v1/wedding-plans/$weddingPlanId/members/$id',
     );
   }
 
   /// Leaves the authenticated member's current plan membership.
   ///
-  /// This is deliberately online-only: callers retain [clientRequestId] for a
-  /// user-triggered retry after an ambiguous response, rather than placing a
-  /// membership removal in the planning offline queue.
+  /// This is deliberately the server's: callers retain [clientRequestId]
+  /// for a user-triggered retry after an ambiguous response, rather than
+  /// placing a membership removal in the planning offline queue.
   Future<void> leaveCurrentPlan({
     required String weddingPlanId,
     required String expectedMemberId,
     required int expectedAuthorityVersion,
     required String clientRequestId,
   }) async {
-    await _apiClient.mutateJson(
-      '/api/v1/wedding-plans/$weddingPlanId/members/me',
-      {
+    await _writes.serverOnly(
+      reason: 'الخروج من الخطة يُسجَّل عند الخادم.',
+      method: 'DELETE',
+      path: '/api/v1/wedding-plans/$weddingPlanId/members/me',
+      body: {
         'expectedMemberId': expectedMemberId,
         'expectedAuthorityVersion': expectedAuthorityVersion,
       },
-      method: 'DELETE',
       clientRequestId: clientRequestId,
     );
   }
@@ -256,49 +289,26 @@ class SharingApi {
     String? section,
     String? contributorUserId,
   }) async {
-    final json = await _apiClient.getJson(
-      Uri(
-        path: '/api/v1/wedding-plans/$weddingPlanId/contributions',
-        queryParameters: {
-          'limit': '$limit',
-          'offset': '$offset',
-          'section': ?section,
-          'contributorUserId': ?contributorUserId,
-        },
-      ).toString(),
+    final path = Uri(
+      path: '/api/v1/wedding-plans/$weddingPlanId/contributions',
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+        'section': ?section,
+        'contributorUserId': ?contributorUserId,
+      },
+    ).toString();
+    return ContributionHistoryResponse.fromJson(
+      await _reads.blob(path, metaKey: 'contributions:$path'),
     );
-    return ContributionHistoryResponse.fromJson(json);
   }
 
   Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
-    const key = 'shared_wedding_plans';
-    try {
-      final items = await _getJsonMapList('/api/v1/shared/wedding-plans');
-      await _offline?.database.setMeta(key, jsonEncode(items));
-      return items.map(SharedWeddingPlan.fromJson).toList();
-    } on Object catch (error) {
-      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
-      await _offline.noteNetworkFailure((error as ApiException).message);
-      final cached = await _offline.database.getMeta(key);
-      if (cached == null) rethrow;
-      final decoded = jsonDecode(cached);
-      if (decoded is! List) return const [];
-      return decoded
-          .whereType<Map>()
-          .map(
-            (item) =>
-                SharedWeddingPlan.fromJson(Map<String, dynamic>.from(item)),
-          )
-          .toList();
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {
-    final list = await _apiClient.getJsonList(path);
-    return list
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+    final items = await _reads.blobList(
+      '/api/v1/shared/wedding-plans',
+      metaKey: 'shared_wedding_plans',
+    );
+    return items.map(SharedWeddingPlan.fromJson).toList();
   }
 
   PlanInvite _currentUserInviteFromJson(Map<String, dynamic> json) {

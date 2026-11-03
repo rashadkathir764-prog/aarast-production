@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/settings_api.dart';
 import '../models/user_settings.dart';
@@ -26,24 +27,29 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get hasChanges =>
       _settings != null && _draft != null && !_settings!.sameValues(_draft!);
 
-  Future<void> loadSettings() async {
-    _isLoading = true;
-    _errorMessage = null;
-    _successMessage = null;
-    notifyListeners();
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
 
-    try {
-      final settings = await _api.getSettings();
-      _settings = settings;
-      _draft = settings;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-    } catch (_) {
-      _errorMessage = 'تعذر تحميل الإعدادات.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  /// D85: the phone's copy shows at once; the server's answer replaces it.
+  Future<void> loadSettings() async {
+    _successMessage = null;
+    await readCachedFirst<UserSettings>(
+      cached: _api.cachedSettings,
+      remote: _api.getSettings,
+      apply: (settings) {
+        _settings = settings;
+        _draft = settings;
+      },
+      state: ({required loading, required stale, error}) {
+        _isLoading = loading;
+        _isStale = stale;
+        _errorMessage = error;
+        notifyListeners();
+      },
+      describe: (error) =>
+          error is ApiException ? error.message : 'تعذر تحميل الإعدادات.',
+    );
   }
 
   void updateDraft(UserSettings settings) {

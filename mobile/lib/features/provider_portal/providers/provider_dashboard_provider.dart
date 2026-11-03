@@ -415,7 +415,16 @@ class ProviderDashboardProvider extends ChangeNotifier
   }
 
   Future<void> loadDashboard() async {
-    _isLoading = true;
+    // D85: his profile from the phone shows at once; the spinner is only
+    // for a phone with no copy at all.
+    if (_profile == null) {
+      final copy = await _api.cachedProfile();
+      if (copy != null) {
+        _profile = copy;
+        _hasProviderProfile = true;
+      }
+    }
+    _isLoading = _profile == null;
     _errorMessage = null;
     notifyListeners();
 

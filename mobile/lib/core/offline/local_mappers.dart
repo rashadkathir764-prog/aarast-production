@@ -159,6 +159,24 @@ LocalCacheRow buildCacheRow({
       base.addAll({
         'providerId': _string(json['providerId']) ?? _string(json['id']),
       });
+    // D85: the plan's events, funding sources and guest groups.
+    case OfflineTables.cachedPlanEvents:
+      base.addAll({
+        'planId': _string(json['weddingPlanId']),
+        'type': _string(json['type']),
+        'date': _string(json['date']),
+      });
+    case OfflineTables.cachedFundingSources:
+      base.addAll({
+        'planId': _string(json['weddingPlanId']),
+        'kind': _string(json['kind']),
+        'status': _string(json['status']),
+      });
+    case OfflineTables.cachedGuestGroups:
+      base.addAll({
+        'planId': _string(json['weddingPlanId']),
+        'name': _string(json['name']),
+      });
   }
 
   return LocalCacheRow(table: table, columns: base);

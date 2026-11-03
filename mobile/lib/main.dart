@@ -234,7 +234,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
       await pendingPlanCleanupStore.removeForUser(userId);
     },
   );
-  final accountContextsApi = AccountContextsApi(apiClient);
+  final accountContextsApi = AccountContextsApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
   apiClient.refreshSession = authRepository.refreshSession;
   final weddingPlansApi = WeddingPlansApi(
     apiClient,
@@ -278,13 +281,19 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     apiClient,
     offlineSyncService,
   );
-  final providerDashboardApi = ProviderDashboardApi(apiClient);
+  final providerDashboardApi = ProviderDashboardApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
   final mediaUploadApi = MediaUploadApi(apiClient);
-  final chatApi = ChatApi(apiClient);
+  final chatApi = ChatApi(apiClient, offline: offlineSyncService);
   final chatRealtimeClient = ChatRealtimeClient(authStorage);
-  final notificationsApi = NotificationsApi(apiClient);
+  final notificationsApi = NotificationsApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
   final guestsApi = GuestsApi(apiClient, offline: offlineSyncService);
-  final settingsApi = SettingsApi(apiClient);
+  final settingsApi = SettingsApi(apiClient, offline: offlineSyncService);
 
   logger.log(
     level: AppLogLevel.info,
@@ -612,14 +621,22 @@ class _AarastSessionProviders extends StatelessWidget {
             PlanEventsProvider
           >(
             create: (context) => _bindPlanScope(
-              PlanEventsProvider(api: PlanEventsApi(context.read<ApiClient>())),
+              PlanEventsProvider(
+                api: PlanEventsApi(
+                  context.read<ApiClient>(),
+                  offline: offlineSyncService,
+                ),
+              ),
               _unselectedPlanScope,
             ),
             update: (context, accountContexts, current) => _forPlanScope(
               current,
               _planScope(accountContexts),
               () => PlanEventsProvider(
-                api: PlanEventsApi(context.read<ApiClient>()),
+                api: PlanEventsApi(
+                  context.read<ApiClient>(),
+                  offline: offlineSyncService,
+                ),
               ),
             ),
           ),

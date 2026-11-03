@@ -1,6 +1,6 @@
 # Aarast Mobile Offline SQLite
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-11-04
 
 ## Scope
 
@@ -79,9 +79,26 @@ their separate secure token vault.
 
 ## Read Strategy
 
-Feature API classes remain the boundary used by UI providers. On successful remote reads, API classes update the local cache. On network failure, they return cached rows when available and mark sync state as offline. If no cache exists, the existing Arabic error flow is preserved.
+D85 (2026-11-04): one contract for every feature's data layer, in
+`lib/core/offline/offline_contract.dart`.
 
-Database schema version 8 adds `cached_dashboard_summaries`. The Wedding Day
+- `OfflineReads.list` / `item` / `blob` / `blobList`: the server's answer is
+  kept on the phone (a cache table, or a JSON blob in `local_meta` for a
+  payload no table models) and served when the server is out of reach. The
+  failure is measured and told to the sync service (D84), never swallowed;
+  only a phone with no copy at all reports it.
+- `cached*` readers return the phone's copy alone. Providers call
+  `readCachedFirst` (`lib/core/offline/cached_first_load.dart`): the server
+  request leaves at once, the copy shows while it is in flight, the answer
+  replaces the copy, and a server out of reach keeps the copy marked stale
+  instead of a spinner until the timeout or a retry screen.
+- `test/core/offline/offline_contract_test.dart` counts raw API calls per
+  data file and lets them only shrink. Money, tasks, plans and the
+  marketplace keep a bounded number inside their own cache/queue logic.
+
+Database schema version 9 adds `cached_plan_events`,
+`cached_funding_sources` and `cached_guest_groups` (D85). Version 8 added
+`cached_dashboard_summaries`. The Wedding Day
 route can cold-start without a network connection from the last successful full
 dashboard summary plus cached tasks. It never invents a provider phone,
 permission, time, or location that was not present in those cached contracts.
@@ -108,7 +125,11 @@ upgrade from the prior development schema so stale rows cannot reappear.
 
 ## Offline Write Queue
 
-Network-failed safe writes create a local dirty row and add a `sync_queue` item:
+Network-failed safe writes create a local dirty row and add a `sync_queue` item.
+D85 routes new ones through `OfflineWrites.queued`: the row is kept on the
+phone at once (a `queued-*` id until the server names it; an edit of such a
+row merges into its pending create through `PendingCreate`, a delete drops
+it), and the first answer from the server sends it:
 
 - create/update wedding plan
 - create budget category
@@ -117,12 +138,23 @@ Network-failed safe writes create a local dirty row and add a `sync_queue` item:
 - create/update/delete or pay a payment schedule
 - create/update/delete task
 - favorite/unfavorite provider
+- create/update/delete guest, guest group; the plan's invitation card (D85)
+- create/update/delete plan event (D85)
+- create/update/delete funding source; add, settle or remove a loan
+  repayment (D85; a repayment of a loan the server has not named yet waits
+  with the loan's create)
+- mark a notice read, read all, archive or remove it (D85)
+- mark a conversation read or muted (D85)
+- the account's settings and the privacy answer (D85)
 
-Login, registration, OTP, password flows, quote-request creation, provider
-dashboard/admin actions, shared-member permission mutations, guest and guest
-group changes on an account plan, and task checklist steps remain
-online-only. Quote-request reads may use `cached_bookings`, but a failed create
-is never presented as queued or saved offline.
+What reaches another person or the server's own authority goes through
+`OfflineWrites.serverOnly` and says so with the measured cause: login,
+registration, OTP, password flows, a member invite, its reminder, rights,
+removal and leaving, a chat message, a block or a report, a quote request,
+an offer, a booking decision, a review, task checklist steps, a phone
+change, account deletion, the data export, receipt and portfolio photos.
+Quote-request reads use `cached_bookings`, but a failed create is never
+presented as queued or saved offline.
 
 ## Sync Behavior
 
@@ -167,5 +199,10 @@ web/test fallback, clear browser site data or reset `shared_preferences`.
 - Conflict handling is MVP-safe and simple: local dirty data is preserved until sync succeeds.
 - A missing general budget remains null offline; category allocations never
   become its fallback value.
-- Shared-member permission writes and provider dashboard writes are not queued.
+- Shared-member permission writes and provider dashboard writes are not queued:
+  they reach another person, so they say they need the server (D85).
+- A participant's plan view (`plan-view`) is read from the server only: the
+  access fails closed (C64).
+- The provider portal keeps its own per-load offline flag, not yet unified on
+  `ServerReachability`.
 - Images loaded from remote URLs may not be available offline even when provider text data is cached.

@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_status_widgets.dart';
-import '../../../core/offline/offline_sync_service.dart';
-import '../../../core/offline/sync_status.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -133,16 +131,14 @@ class WeddingPlanShell extends StatelessWidget {
     // changes nothing in it and is not announced.
     final localPlan = AuthActionGuard.isLocalGuestPlanId(weddingPlanId);
     final finance = context.watch<FinanceProvider?>();
-    final offline =
-        !localPlan &&
-        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
+    // D85: adding never waits for the server; a guest added without it is
+    // kept on the phone and sent later.
     final showQuickAdd = shouldShowPlanQuickAdd(
       tabIndex: currentIndex,
       isRootDestination: currentIndex != 1 || location.endsWith('/money'),
       canManageMoney:
           currentIndex != 1 ||
           (finance?.loadedPlanId == weddingPlanId && finance!.canManageMoney),
-      guestsWaitForConnection: offline,
     );
 
     final shell = PlanShellChrome(

@@ -23,7 +23,16 @@
   static const cachedBookings = 'cached_bookings';
   static const cachedFavoriteProviders = 'cached_favorite_providers';
 
+  // D85: the plan's events, its funding sources and its guest groups are
+  // written on the phone too.
+  static const cachedPlanEvents = 'cached_plan_events';
+  static const cachedFundingSources = 'cached_funding_sources';
+  static const cachedGuestGroups = 'cached_guest_groups';
+
   static const cacheTables = [
+    cachedPlanEvents,
+    cachedFundingSources,
+    cachedGuestGroups,
     currentUserProfile,
     cachedWeddingPlans,
     cachedDashboardSummaries,
@@ -46,6 +55,9 @@
   ];
 
   static const planScopedCacheTables = [
+    cachedPlanEvents,
+    cachedFundingSources,
+    cachedGuestGroups,
     cachedWeddingPlans,
     cachedDashboardSummaries,
     cachedPlanMembers,
@@ -62,6 +74,9 @@
     'wedding_plan',
     'plan_member',
     'guest',
+    'guest_group',
+    'plan_event',
+    'funding_source',
     'task',
     'budget_category',
     'money_budget',
@@ -78,6 +93,9 @@
       'wedding_plan' => cachedWeddingPlans,
       'plan_member' => cachedPlanMembers,
       'guest' => cachedGuests,
+      'guest_group' => cachedGuestGroups,
+      'plan_event' => cachedPlanEvents,
+      'funding_source' => cachedFundingSources,
       'task' => cachedTasks,
       'budget_category' => cachedBudgetCategories,
       'cost' => cachedCosts,

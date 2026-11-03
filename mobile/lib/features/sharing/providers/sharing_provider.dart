@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/sharing_api.dart';
 import '../models/plan_access_permissions.dart';
@@ -86,29 +87,51 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       notifyListeners();
     }
 
-    try {
-      final results = await Future.wait<Object>([
-        _api.getSharedMembers(weddingPlanId),
-        _api.getPlanInvites(weddingPlanId),
-      ]);
-      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
-      _members = results[0] as List<SharedMember>;
-      _invites = results[1] as List<PlanInvite>;
-    } on ApiException catch (error) {
-      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
-      _handleApiError(error);
-    } catch (_) {
-      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
-      _errorMessage = 'ما قدرنا نجيب المشاركين.';
-    } finally {
-      if (_isCurrentMemberLoad(generation, weddingPlanId)) {
-        if (!preserveCurrentState) {
-          _isLoading = false;
-        }
+    // D85: the phone's copy shows at once; the server's answer replaces it.
+    await readCachedFirst<_MembersBundle>(
+      cached: () async {
+        final members = await _api.cachedSharedMembers(weddingPlanId);
+        if (members.isEmpty) return null;
+        return _MembersBundle(
+          members,
+          await _api.cachedPlanInvites(weddingPlanId) ?? const [],
+        );
+      },
+      remote: () async {
+        final results = await Future.wait<Object>([
+          _api.getSharedMembers(weddingPlanId),
+          _api.getPlanInvites(weddingPlanId),
+        ]);
+        return _MembersBundle(
+          results[0] as List<SharedMember>,
+          results[1] as List<PlanInvite>,
+        );
+      },
+      apply: (bundle) {
+        if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
+        _members = bundle.members;
+        _invites = bundle.invites;
+      },
+      state: ({required loading, required stale, error}) {
+        if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
+        if (!preserveCurrentState) _isLoading = loading;
+        _isStale = stale;
+        if (error != null) _errorMessage = error;
         notifyListeners();
-      }
-    }
+      },
+      describe: (error) {
+        if (error is ApiException) {
+          _handleApiError(error);
+          return _errorMessage ?? 'ما قدرنا نجيب المشاركين.';
+        }
+        return 'ما قدرنا نجيب المشاركين.';
+      },
+    );
   }
+
+  /// D85: the copy stays because the server did not answer.
+  bool _isStale = false;
+  bool get isStale => _isStale;
 
   bool _isCurrentMemberLoad(int generation, String weddingPlanId) {
     return generation == _memberLoadGeneration &&
@@ -720,4 +743,11 @@ String _sharingErrorMessage(
 }) {
   final message = error.message.trim();
   return message.isEmpty ? fallback : message;
+}
+
+class _MembersBundle {
+  const _MembersBundle(this.members, this.invites);
+
+  final List<SharedMember> members;
+  final List<PlanInvite> invites;
 }

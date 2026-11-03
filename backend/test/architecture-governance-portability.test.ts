@@ -348,9 +348,11 @@ describe('governance portability', () => {
     create('backend/src/tasks/task-probe.module.ts', 'import { Module } from "@nestjs/common";\n\n@Module({})\nexport class TaskProbeModule {}\n');
     replace('backend/src/modules/tasks/tasks.module.ts', 'imports: [TasksPublicModule, TasksServiceInternalModule],', 'imports: [TasksPublicModule, TasksServiceInternalModule, TaskProbeModule],');
     replace('backend/src/modules/tasks/tasks.module.ts', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";\nimport { TaskProbeModule } from "../../tasks/task-probe.module";');
-    replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', '    CollaborationScopePublicModule,\n  ],', '    CollaborationScopePublicModule,\n    NotificationsPublicModule,\n  ],');
+    // D83 added PlanReadPublicModule after the scope module; the probe
+    // anchors on the last import.
+    replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', '    PlanReadPublicModule,\n  ],', '    PlanReadPublicModule,\n    NotificationsPublicModule,\n  ],');
     replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";\nimport { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";');
-    replace('backend/src/guests/guests.service.ts', '    @Inject(COLLABORATION_SCOPE_PORT)\n    private readonly contributorScope: ContributorScopeService,\n  ) {}', '    @Inject(COLLABORATION_SCOPE_PORT)\n    private readonly contributorScope: ContributorScopeService,\n    @Inject(NOTIFICATIONS_PORT)\n    private readonly notificationsProbe: NotificationsPort,\n  ) {}');
+    replace('backend/src/guests/guests.service.ts', '    @Inject(PLAN_READ_PORT)\n    private readonly plans: PlanReadPort,\n  ) {}', '    @Inject(PLAN_READ_PORT)\n    private readonly plans: PlanReadPort,\n    @Inject(NOTIFICATIONS_PORT)\n    private readonly notificationsProbe: NotificationsPort,\n  ) {}');
     replace('backend/src/guests/guests.service.ts', 'import { PrismaService } from "../platform/database/prisma.service";', 'import { PrismaService } from "../platform/database/prisma.service";\nimport { NOTIFICATIONS_PORT, NotificationsPort } from "../modules/notifications/public/notifications.port";');
     // 2. Ordinary edits inside the relocated Identity, OTP-transport and
     //    Collaboration files.

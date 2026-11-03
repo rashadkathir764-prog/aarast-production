@@ -44,8 +44,17 @@ import {
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
 import { CreateGuestDto } from "./dto/create-guest.dto";
+import { CreateGuestWithEventsDto } from "./dto/create-guest-with-events.dto";
 import { UpdateGuestGroupDto } from "./dto/update-guest-group.dto";
 import { UpdateGuestDto } from "./dto/update-guest.dto";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../modules/planning/public/plan-read.port";
+import {
+  invitableEvents,
+  planEventLabel,
+} from "../modules/guests/domain/invitation-card";
 import {
   countGuestGroupsForSummary,
   createGuest,
@@ -55,15 +64,37 @@ import {
   findDuplicateGuest,
   findGuestById,
   findGuestGroupById,
+  type GuestEventInviteRow,
+  listGuestEventInvites,
   listGuestsForSummary,
   listPlanGuestGroups,
   listPlanGuests,
   lockGuestForUpdate,
   lockGuestGroupForShare,
   lockGuestGroupForUpdate,
+  replaceGuestEventInvites,
   updateGuest,
   updateGuestGroup,
 } from '../modules/guests/infrastructure/guests.repository';
+
+/** D83: the guest's reply to one event of the plan beyond the wedding. */
+export interface GuestEventReply {
+  planEventId: string;
+  attendanceStatus: GuestAttendanceStatus;
+  companionsCount: number;
+  respondedAt: Date | null;
+}
+
+/** D83: one event's figures in the guests summary. */
+export interface GuestEventCounters {
+  planEventId: string;
+  label: string;
+  invited: number;
+  confirmed: number;
+  declined: number;
+  pending: number;
+  companions: number;
+}
 
 export interface GuestResponse {
   id: string;
@@ -85,6 +116,8 @@ export interface GuestResponse {
    * the owner for every guest, a helper for the guests they added.
    */
   editable: boolean;
+  /** D83: the events beyond the wedding this guest is invited to, each with its reply. */
+  events: GuestEventReply[];
 }
 
 export interface GuestGroupResponse {
@@ -132,6 +165,8 @@ export interface GuestsSummaryResponse {
   byGroup: Record<string, number>;
   byInvitationStatus: Record<GuestInvitationStatus, number>;
   byAttendanceStatus: Record<GuestAttendanceStatus, number>;
+  /** D83: per event beyond the wedding, in the plan's order; only events with invited guests. */
+  byEvent: GuestEventCounters[];
 }
 
 @Injectable()
@@ -144,6 +179,8 @@ export class GuestsService {
     private readonly contributionHistory: ContributionHistoryService,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
   ) {}
 
   async findForPlan(
@@ -172,11 +209,15 @@ export class GuestsService {
         // D80: a helper reads every guest of the plan; the phone, the notes
         // and the edit stay with the owner and with whoever added the guest.
         const guests = await listPlanGuests(tx, weddingPlanId, null, query);
+        const events = this.groupEventReplies(
+          await listGuestEventInvites(tx, guests.map((guest) => guest.id)),
+        );
         return guests.map((guest) =>
           this.toResponse(
             guest,
             canManageGuests &&
               (contributorScope === null || contributorScope.has(guest.id)),
+            events.get(guest.id),
           ),
         );
       },
@@ -209,6 +250,7 @@ export class GuestsService {
         return this.toResponse(
           guest,
           this.permissions.canManageGuests(context),
+          await this.guestEvents(tx, guest.id),
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -218,14 +260,19 @@ export class GuestsService {
   async create(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-    dto: CreateGuestDto,
+    dto: CreateGuestWithEventsDto,
   ): Promise<GuestResponse> {
-    const guest = await this.catchDuplicateGuestConflict(
+    const { guest, events } = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
         const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           weddingPlanId,
           currentUser,
+        );
+        const eventIds = await this.resolveEventIds(
+          tx,
+          weddingPlanId,
+          dto.eventIds,
         );
         const created = await this.createGuestInTransaction(
           tx,
@@ -234,17 +281,18 @@ export class GuestsService {
           context,
           currentUser.id,
         );
+        const events = await this.linkGuestEvents(tx, created.id, eventIds);
         await this.recordGuestContribution(
           tx,
           context,
           created,
           ContributionAction.CREATED,
         );
-        return created;
+        return { guest: created, events };
       }),
     );
 
-    return this.toResponse(guest);
+    return this.toResponse(guest, true, events);
   }
 
   async bulkCreate(
@@ -266,8 +314,13 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
-        const guests: Guest[] = [];
+        const guests: Array<{ guest: Guest; events: GuestEventReply[] }> = [];
         for (const item of dto.items) {
+          const eventIds = await this.resolveEventIds(
+            tx,
+            weddingPlanId,
+            item.eventIds,
+          );
           const guest = await this.createGuestInTransaction(
             tx,
             weddingPlanId,
@@ -275,19 +328,24 @@ export class GuestsService {
             context,
             currentUser.id,
           );
+          const events = await this.linkGuestEvents(tx, guest.id, eventIds);
           await this.recordGuestContribution(
             tx,
             context,
             guest,
             ContributionAction.CREATED,
           );
-          guests.push(guest);
+          guests.push({ guest, events });
         }
         return guests;
       }),
     );
 
-    return { created: created.map((guest) => this.toResponse(guest)) };
+    return {
+      created: created.map(({ guest, events }) =>
+        this.toResponse(guest, true, events),
+      ),
+    };
   }
 
   async update(
@@ -303,7 +361,7 @@ export class GuestsService {
         ? this.statusFromAttendance(dto.attendanceStatus)
         : null;
 
-    const guest = await this.catchDuplicateGuestConflict(
+    const { guest, events } = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
         const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
@@ -387,13 +445,18 @@ export class GuestsService {
               : {}),
           },
         );
+        const events = await this.linkGuestEvents(
+          tx,
+          current.id,
+          await this.resolveEventIds(tx, current.weddingPlanId, dto.eventIds),
+        );
         const action = this.guestUpdateAction(current, updated);
         await this.recordGuestContribution(tx, context, updated, action);
-        return updated;
+        return { guest: updated, events };
       }),
     );
 
-    return this.toResponse(guest);
+    return this.toResponse(guest, true, events);
   }
 
   async remove(
@@ -624,8 +687,17 @@ export class GuestsService {
         const confirmed = byAttendanceStatus[GuestAttendanceStatus.CONFIRMED];
         const declined = byAttendanceStatus[GuestAttendanceStatus.DECLINED];
         const pending = byAttendanceStatus[GuestAttendanceStatus.PENDING];
+        const byEvent =
+          guests.length === 0
+            ? []
+            : await this.eventCounters(
+                tx,
+                weddingPlanId,
+                guests.map((guest) => guest.id),
+              );
 
         return {
+      byEvent,
       weddingPlanId,
       totalGuests: guests.length,
       confirmedGuests: confirmed,
@@ -663,6 +735,104 @@ export class GuestsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+  }
+
+  /**
+   * D83: the events a guest may be invited to beyond the wedding. Every id
+   * must be one of the plan's events other than the wedding row; checked
+   * before anything is written, so a refused list saves nothing.
+   */
+  private async resolveEventIds(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    eventIds: readonly string[] | undefined,
+  ): Promise<string[] | undefined> {
+    if (eventIds === undefined) return undefined;
+    const events = await this.plans.listPlanEvents(tx, weddingPlanId);
+    const allowed = new Set(invitableEvents(events).map((event) => event.id));
+    const wanted = [...new Set(eventIds.map((id) => id.trim()))];
+    if (wanted.some((id) => !allowed.has(id))) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "GUEST_EVENT_UNKNOWN",
+        message: "المناسبة مش من مناسبات الخطة.",
+      });
+    }
+    return wanted;
+  }
+
+  /**
+   * Given ids replace the guest's events (replies to events that stay are
+   * kept); undefined leaves them as they are. Returns the guest's events.
+   */
+  private async linkGuestEvents(
+    tx: Prisma.TransactionClient,
+    guestId: string,
+    eventIds: readonly string[] | undefined,
+  ): Promise<GuestEventReply[]> {
+    if (eventIds !== undefined) {
+      await replaceGuestEventInvites(tx, guestId, eventIds);
+    }
+    return this.guestEvents(tx, guestId);
+  }
+
+  private async guestEvents(
+    tx: Prisma.TransactionClient,
+    guestId: string,
+  ): Promise<GuestEventReply[]> {
+    return (await listGuestEventInvites(tx, [guestId])).map((row) =>
+      this.toEventReply(row),
+    );
+  }
+
+  private groupEventReplies(
+    rows: readonly GuestEventInviteRow[],
+  ): Map<string, GuestEventReply[]> {
+    const byGuest = new Map<string, GuestEventReply[]>();
+    for (const row of rows) {
+      const list = byGuest.get(row.guestId) ?? [];
+      list.push(this.toEventReply(row));
+      byGuest.set(row.guestId, list);
+    }
+    return byGuest;
+  }
+
+  private toEventReply(row: GuestEventInviteRow): GuestEventReply {
+    return {
+      planEventId: row.planEventId,
+      attendanceStatus: row.attendanceStatus,
+      companionsCount: row.companionsCount,
+      respondedAt: row.respondedAt,
+    };
+  }
+
+  /** D83: the summary's figures per event, in the plan's order. */
+  private async eventCounters(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    guestIds: readonly string[],
+  ): Promise<GuestEventCounters[]> {
+    const [events, invites] = await Promise.all([
+      this.plans.listPlanEvents(tx, weddingPlanId),
+      listGuestEventInvites(tx, guestIds),
+    ]);
+    return invitableEvents(events).flatMap((event) => {
+      const rows = invites.filter((row) => row.planEventId === event.id);
+      if (rows.length === 0) return [];
+      const count = (status: GuestAttendanceStatus) =>
+        rows.filter((row) => row.attendanceStatus === status).length;
+      return [
+        {
+          planEventId: event.id,
+          label: planEventLabel(event),
+          invited: rows.length,
+          confirmed: count(GuestAttendanceStatus.CONFIRMED),
+          declined: count(GuestAttendanceStatus.DECLINED),
+          pending: count(GuestAttendanceStatus.PENDING),
+          companions: rows.reduce((sum, row) => sum + row.companionsCount, 0),
+        },
+      ];
+    });
   }
 
   private isContributor(context: PlanAccessContext): boolean {
@@ -1085,7 +1255,11 @@ export class GuestsService {
    * plan partner with the guests right, or the helper who added it. Only
    * they read its phone and notes; everyone else gets the name and reply.
    */
-  private toResponse(guest: Guest, editable = true): GuestResponse {
+  private toResponse(
+    guest: Guest,
+    editable = true,
+    events: GuestEventReply[] = [],
+  ): GuestResponse {
     return {
       id: guest.id,
       weddingPlanId: guest.weddingPlanId,
@@ -1104,6 +1278,7 @@ export class GuestsService {
       createdAt: guest.createdAt,
       updatedAt: guest.updatedAt,
       editable,
+      events,
     };
   }
 

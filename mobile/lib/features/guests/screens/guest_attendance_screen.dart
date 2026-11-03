@@ -174,6 +174,45 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
           ],
         ),
       ),
+      // D83: each event beyond the wedding counts its own invited and replies.
+      for (final event in summary.byEvent) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        JourneyBox(
+          key: ValueKey('guest-attendance-event-${event.planEventId}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.label,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              Text(
+                '${event.confirmed} ${words.confirmed} من ${event.invited}',
+                style: JourneyType.of(
+                  JourneyType.title,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x1),
+              Text(
+                [
+                  event.pending == 0
+                      ? words.profile.plan('كلهم ردّوا', 'كلهن ردّن')
+                      : '${event.pending} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
+                  if (event.declined > 0) '${event.declined} ${words.declined}',
+                ].join(' · '),
+                style: JourneyType.of(
+                  JourneyType.detail,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
       // No forecast exists, and the note promises none: up to half answered
       // it says the numbers are the answers alone.
       if (answered * 2 <= total) ...[

@@ -67,7 +67,9 @@ export class GuestsPortService implements GuestsPort {
     weddingPlanIds: readonly string[],
   ): Promise<void> {
     const inPlans = { weddingPlanId: { in: [...weddingPlanIds] } };
+    // D83: a guest's event invites go with the guest (cascade).
     await tx.guest.deleteMany({ where: inPlans });
     await tx.guestGroup.deleteMany({ where: inPlans });
+    await tx.guestInvitationCard.deleteMany({ where: inPlans });
   }
 }

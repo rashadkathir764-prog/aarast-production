@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -15,15 +16,38 @@ import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { ListQueryDto } from "../platform/http/list-query.dto";
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
-import { CreateGuestDto } from "./dto/create-guest.dto";
+import { CreateGuestWithEventsDto } from "./dto/create-guest-with-events.dto";
+import { SetInvitationCardDto } from "./dto/set-invitation-card.dto";
 import { UpdateGuestGroupDto } from "./dto/update-guest-group.dto";
 import { UpdateGuestDto } from "./dto/update-guest.dto";
+import { GuestRsvpService } from "./guest-rsvp.service";
 import { GuestsService } from "./guests.service";
 
 @Controller("api/v1/wedding-plans/:weddingPlanId/guests")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanGuestsController {
-  constructor(private readonly guestsService: GuestsService) {}
+  constructor(
+    private readonly guestsService: GuestsService,
+    private readonly rsvp: GuestRsvpService,
+  ) {}
+
+  /** D83: the plan's one invitation card, for whoever manages its guests. */
+  @Get("invitation-card")
+  invitationCard(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+  ) {
+    return this.rsvp.getInvitationCard(currentUser, weddingPlanId);
+  }
+
+  @Put("invitation-card")
+  setInvitationCard(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Body() dto: SetInvitationCardDto,
+  ) {
+    return this.rsvp.setInvitationCard(currentUser, weddingPlanId, dto);
+  }
 
   @Get()
   findForPlan(
@@ -38,7 +62,7 @@ export class WeddingPlanGuestsController {
   create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("weddingPlanId") weddingPlanId: string,
-    @Body() dto: CreateGuestDto,
+    @Body() dto: CreateGuestWithEventsDto,
   ) {
     return this.guestsService.create(currentUser, weddingPlanId, dto);
   }

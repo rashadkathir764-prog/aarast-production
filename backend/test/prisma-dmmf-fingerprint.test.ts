@@ -296,10 +296,11 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
   assert.match(saved.sha256, /^[a-f0-9]{64}$/);
   // B-16: + PortfolioItem and PortfolioItemStatus (D62).
   // D63: + DataExport. D65: + PlanEvent and its two enums.
-  assert.equal(saved.modelCount, 68);
+  // D83: + GuestInvitationCard and GuestEventInvite.
+  assert.equal(saved.modelCount, 70);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1). D72: + BudgetItemSuggestion.
   assert.equal(saved.enumCount, 56);
-  assert.equal(saved.dmmf.models.length, 68);
+  assert.equal(saved.dmmf.models.length, 70);
   assert.equal(saved.dmmf.enums.length, 56);
 });
 

@@ -363,6 +363,8 @@ test("guest list and summary cover the plan while the contributor guest scope ke
   const prisma: any = {
     guest: { findMany: async () => [own, other] },
     guestGroup: { count: async () => 0 },
+    // D83: no events invited beyond the wedding here.
+    guestEventInvite: { findMany: async () => [] },
   };
   prisma.$transaction = async (
     operation: (tx: any) => Promise<unknown>,
@@ -384,6 +386,8 @@ test("guest list and summary cover the plan while the contributor guest scope ke
     permissions(),
     {},
     scope,
+    // D83: the summary counts per event; this plan has none.
+    { listPlanEvents: async () => [] },
   ) as GuestsService;
   const actor = { id: "contributor-a" } as any;
 
@@ -527,6 +531,8 @@ test("guest create/update append frozen allowlisted snapshots and reject another
         return currentGuest;
       },
     },
+    // D83: no events invited beyond the wedding here.
+    guestEventInvite: { findMany: async () => [] },
     $queryRaw: async () => [{ id: own.id }],
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
@@ -711,6 +717,8 @@ test("guest live reads authorize and query on one transaction and read foreign g
       count: async ({ where }: any) =>
         plan([ownGroup, ownerGroup], where).length,
     },
+    // D83: no events invited beyond the wedding here.
+    guestEventInvite: { findMany: async () => [] },
   };
   const prisma: any = {
     guest: tx.guest,
@@ -753,6 +761,8 @@ test("guest live reads authorize and query on one transaction and read foreign g
     permissions,
     {},
     scope,
+    // D83: the summary counts per event; this plan has none.
+    { listPlanEvents: async () => [] },
   ) as GuestsService;
   const actor = { id: "contributor-a" } as any;
 

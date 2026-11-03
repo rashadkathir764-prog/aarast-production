@@ -3,6 +3,7 @@ import { Prisma, type WeddingPlan, WeddingPlanStatus } from '@prisma/client';
 import type {
   LockedWeddingPlanRow,
   PlanReadPort,
+  ReadablePlanEvent,
 } from '../public/plan-read.port';
 
 @Injectable()
@@ -123,5 +124,25 @@ export class PlanReadService implements PlanReadPort {
     return createdAt
       ? client.weddingPlan.count({ where: { createdAt } })
       : client.weddingPlan.count();
+  }
+
+  async listPlanEvents(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadablePlanEvent[]> {
+    return client.planEvent.findMany({
+      where: { weddingPlanId },
+      select: {
+        id: true,
+        weddingPlanId: true,
+        type: true,
+        title: true,
+        date: true,
+        timeSlot: true,
+        exactTime: true,
+        placeLabel: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
   }
 }

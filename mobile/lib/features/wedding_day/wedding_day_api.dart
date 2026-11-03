@@ -1,5 +1,6 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
-export 'data/plan_events_api.dart' show PlanEventsApi;
+// D83: guests save the venue on the wedding event from the invitation card.
+export 'data/plan_events_api.dart' show PlanEventDraft, PlanEventsApi;
 export 'models/plan_event.dart'
     show
         PlanEvent,

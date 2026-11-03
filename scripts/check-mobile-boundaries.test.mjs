@@ -1729,7 +1729,9 @@ const r19ProviderPortalApi = Object.freeze({
 // marketplace owner API.
 // -4 (R-01, 2026-11-03): the unreachable HomeScreen and HomeDashboardProvider
 // are gone with their four owner-API imports.
-const r19LegalRecordCount = 259;
+// +2 (D83, 2026-11-03): the guests' card and form read the plan's events
+// from the wedding-day owner API.
+const r19LegalRecordCount = 261;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2288,8 +2290,9 @@ const trackedOwnerApiContracts = [
     area: 'features/wedding_day',
     path: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
     // D65: the wedding's events replace the old wedding-day mode.
+    // D83: guests save the venue on the wedding event (PlanEventDraft).
     exports: [
-      { uri: 'data/plan_events_api.dart', show: ['PlanEventsApi'] },
+      { uri: 'data/plan_events_api.dart', show: ['PlanEventDraft', 'PlanEventsApi'] },
       {
         uri: 'models/plan_event.dart',
         show: [
@@ -2841,6 +2844,18 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/guests/screens/guest_invite_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider'],
+  },
+  // D83: the card's venue is the wedding event's, and a guest is invited to
+  // the plan's other events.
+  {
+    source: 'mobile/lib/features/guests/screens/guest_invite_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEvent', 'PlanEventDraft', 'PlanEventType', 'PlanEventsProvider'],
+  },
+  {
+    source: 'mobile/lib/features/guests/utils/guest_plan_events.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEvent', 'PlanEventType', 'PlanEventsProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',

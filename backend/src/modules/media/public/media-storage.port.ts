@@ -12,7 +12,10 @@ export type MediaPurpose =
   | 'cost-receipt'
   // B-16 (D62): public like service images; a photo is listed to customers
   // only after review, and a refused one is deleted.
-  | 'provider-portfolio';
+  | 'provider-portfolio'
+  // D83: the plan's invitation card photo, read by its guests on their
+  // public RSVP page; public like service images, no review.
+  | 'guest-invitation-card';
 
 /**
  * Purposes kept off the public CDN: read only through a short-lived signed
@@ -34,7 +37,8 @@ export interface MediaConsumptionTarget {
     | 'SERVICE_IMAGE'
     | 'CHAT_ATTACHMENT'
     | 'COST_RECEIPT'
-    | 'PORTFOLIO_ITEM';
+    | 'PORTFOLIO_ITEM'
+    | 'GUEST_INVITATION_CARD';
   id: string;
 }
 

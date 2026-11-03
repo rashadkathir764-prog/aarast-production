@@ -49,6 +49,7 @@ model Guest {
   updatedAt        DateTime              @updatedAt
   weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   group            GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  eventInvites     GuestEventInvite[]
 
   @@unique([weddingPlanId, normalizedPhone])
   @@index([weddingPlanId, status])
@@ -71,4 +72,42 @@ model GuestGroup {
 
   @@unique([weddingPlanId, name])
   @@index([weddingPlanId, sortOrder])
+}
+
+// D83: the plan's one invitation card, as its guests read it on their RSVP
+// page and in the WhatsApp text: the photo (a public upload of the owner's),
+// the host line («يتشرف فلان»), free text or a verse, and where (a map link
+// or an address). The names, the date, the time and the venue come from the
+// plan itself and are not stored here.
+model GuestInvitationCard {
+  id            String      @id @default(cuid())
+  weddingPlanId String      @unique
+  hostLine      String?
+  freeText      String?
+  photoUrl      String?
+  mapUrl        String?
+  address       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+}
+
+// D83: a guest's invitation to one of the plan's events beyond the wedding
+// (the lunch, the aqd, the samra...), with their reply to that event. The
+// wedding itself needs no row: every guest is invited to it, and their
+// reply to it lives on the Guest row.
+model GuestEventInvite {
+  id               String                @id @default(cuid())
+  guestId          String
+  planEventId      String
+  attendanceStatus GuestAttendanceStatus @default(PENDING)
+  companionsCount  Int                   @default(0)
+  respondedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  guest            Guest                 @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  planEvent        PlanEvent             @relation(fields: [planEventId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, planEventId])
+  @@index([planEventId])
 }

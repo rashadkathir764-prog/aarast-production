@@ -32,9 +32,14 @@ const contributorScope = {
   qualifyingEntityIds: async () => [],
   qualifyingEntityIdsInTransaction: async () => [],
 };
+// D83: the plan's events, none here.
+const plans = { listPlanEvents: async () => [] };
 
 function transactionalPrisma(models: Record<string, unknown>) {
-  const prisma: any = { ...models };
+  const prisma: any = {
+    guestEventInvite: { findMany: async () => [] },
+    ...models,
+  };
   prisma.$transaction = async (
     operation: (tx: any) => Promise<unknown>,
   ) => operation(prisma);
@@ -74,6 +79,7 @@ test("a read-only member receives no live guests, while a manager reads the priv
     } as any,
     contributionHistory as any,
     contributorScope as any,
+    plans as any,
   );
   const hidden = await viewer.findForPlan(user("u2"), "p1");
   assert.deepEqual(hidden, [], "revoked guest access must expose no live row");
@@ -95,6 +101,7 @@ test("a read-only member receives no live guests, while a manager reads the priv
         entityTypes: string[],
       ) => (entityTypes.includes("GUEST_GROUP") ? [] : ["g1"]),
     } as any,
+    plans as any,
   );
   const [full] = await manager.findForPlan(user("u2"), "p1");
   assert.equal(full.phone, "+967711111111");
@@ -124,6 +131,7 @@ test("a read-only member receives no live guest groups, while a manager reads th
     } as any,
     contributionHistory as any,
     contributorScope as any,
+    plans as any,
   );
   const hidden = await viewer.findGroups(user("u2"), "p1");
   assert.deepEqual(hidden, []);
@@ -149,6 +157,7 @@ test("a read-only member receives no live guest groups, while a manager reads th
         entityTypes: string[],
       ) => (entityTypes.includes("GUEST_GROUP") ? ["group-1"] : []),
     } as any,
+    plans as any,
   );
   const [full] = await manager.findGroups(user("u2"), "p1");
   assert.equal(full.notes, "private family note");

@@ -19,6 +19,7 @@ import '../data/guests_api.dart';
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
+import '../utils/guest_plan_events.dart';
 import '../widgets/guest_form_sheet.dart';
 
 /// e07 «تفاصيل ضيف»: who, their group and number, their answer (which can
@@ -52,6 +53,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       if (!mounted) return;
       final provider = context.read<GuestsProvider>();
       if (_guest(provider) == null) provider.loadGuests(widget.weddingPlanId);
+      // D83: the events' names, for the guest's replies to them.
+      if (!_isLocalPlan) readPlanEventsOnce(context, widget.weddingPlanId);
     });
   }
 
@@ -272,6 +275,19 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             ),
           ),
         ],
+        // D83: the guest's reply to each event beyond the wedding, as the
+        // guest gave it from their link.
+        for (final reply in guest.events) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          Text(
+            _eventReplyLine(context, reply),
+            key: ValueKey('guest-event-${reply.planEventId}'),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
         if (!_isLocalPlan && !guest.id.startsWith('local-guest-')) ...[
           const JourneySectionTitle('الدعوة'),
           JourneyBox(
@@ -409,8 +425,29 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     }
   }
 
+  /// «الغداء: أكّد» or «الغداء: ما ردّ»; the event by its plan name.
+  String _eventReplyLine(BuildContext context, GuestEventReply reply) {
+    final events = guestFormEventsOf(context, widget.weddingPlanId);
+    final label = events
+        .where((event) => event.id == reply.planEventId)
+        .map((event) => event.label)
+        .firstOrNull;
+    final word = reply.isConfirmed
+        ? context.planWord('أكّد', 'أكّدت')
+        : reply.isDeclined
+        ? context.planWord('اعتذر', 'اعتذرت')
+        : context.planWord('ما ردّ', 'ما ردّت');
+    final with_ = reply.isConfirmed && reply.companionsCount > 0
+        ? ' · ${context.say('معه', 'معها')} ${reply.companionsCount}'
+        : '';
+    return '${label ?? 'مناسبة'}: $word$with_';
+  }
+
   Future<void> _edit(GuestsProvider provider, Guest guest) async {
     final scope = 'guest:${widget.weddingPlanId}:${guest.id}';
+    final events = _isLocalPlan
+        ? const <GuestFormEvent>[]
+        : guestFormEventsOf(context, widget.weddingPlanId, listen: false);
     final result = await showJourneySheet<GuestFormResult>(
       context: context,
       useRootNavigator: true,
@@ -418,6 +455,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         guest: guest,
         draftScope: scope,
         existingGuests: provider.guests,
+        events: events,
         // D80: the reader's own groups, and the one the guest is in now
         // even when the owner put it there.
         groups: [
@@ -450,6 +488,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       seatsCount: result.seatsCount,
       companionsCount: result.companionsCount,
       notes: result.notes,
+      // D83: only when the form offered the plan's events; otherwise the
+      // guest keeps theirs.
+      eventIds: events.isEmpty ? null : result.eventIds,
     );
     if (!mounted) return;
     if (ok) {

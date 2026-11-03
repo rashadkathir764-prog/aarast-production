@@ -12,6 +12,7 @@ export const mediaPurposes = [
   'chat-image',
   'cost-receipt',
   'provider-portfolio',
+  'guest-invitation-card',
 ] as const;
 
 const extensionByContentType = new Map([

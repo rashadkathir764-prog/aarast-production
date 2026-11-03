@@ -8,22 +8,22 @@ import '../models/guest.dart';
 import '../models/guest_invite_text.dart';
 
 /// Sends to [guests] one after another from this phone's WhatsApp (C30):
-/// each guest's own link is made when their turn comes, and their chat
-/// opens with the text ready. Closing keeps what was sent.
+/// each guest's own link and text are made when their turn comes (the text
+/// is the server's, D83), and their chat opens with it ready. Closing keeps
+/// what was sent.
 class GuestSendSheet extends StatefulWidget {
   const GuestSendSheet({
     required this.guests,
     required this.makeLink,
-    required this.buildText,
     required this.title,
     super.key,
   });
 
   final List<Guest> guests;
 
-  /// The guest's own RSVP link, made now (a new one replaces the old).
-  final Future<String> Function(Guest guest) makeLink;
-  final String Function(Guest guest, String url) buildText;
+  /// The guest's own RSVP link and message, made now (a new link replaces
+  /// the old).
+  final Future<GuestInvitationLink> Function(Guest guest) makeLink;
   final String title;
 
   @override
@@ -45,9 +45,9 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
       _error = null;
     });
     try {
-      final url = await widget.makeLink(guest);
+      final link = await widget.makeLink(guest);
       final opened = await launchUrl(
-        guestWhatsAppUri(guest.phone, widget.buildText(guest, url)),
+        guestWhatsAppUri(guest.phone ?? link.phone, link.message),
         mode: LaunchMode.externalApplication,
       );
       if (!mounted) return;

@@ -1,10 +1,28 @@
-import type { Prisma, WeddingPlan, WeddingPlanStatus } from '@prisma/client';
+import type {
+  PlanEvent,
+  Prisma,
+  WeddingPlan,
+  WeddingPlanStatus,
+} from '@prisma/client';
 
 export const PLAN_READ_PORT = Symbol('PLAN_READ_PORT');
 
 export interface LockedWeddingPlanRow {
   id: string;
 }
+
+/** One of the plan's events (D65) as other contexts read it (D83: guests). */
+export type ReadablePlanEvent = Pick<
+  PlanEvent,
+  | 'id'
+  | 'weddingPlanId'
+  | 'type'
+  | 'title'
+  | 'date'
+  | 'timeSlot'
+  | 'exactTime'
+  | 'placeLabel'
+>;
 
 // Planning owns `WeddingPlan`. Every other context reads a plan row through
 // this port instead of querying the table; the caller passes the client it
@@ -64,4 +82,9 @@ export interface PlanReadPort {
     client: Prisma.TransactionClient,
     createdAt?: { gte?: Date; lte?: Date },
   ): Promise<number>;
+  /** D83: the plan's events in creation order (the wedding row among them when saved). */
+  listPlanEvents(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadablePlanEvent[]>;
 }

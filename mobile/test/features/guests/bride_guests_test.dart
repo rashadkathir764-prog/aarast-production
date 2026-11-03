@@ -97,18 +97,17 @@ void main() {
     expect(guestReplyLabel(pending, JourneyProfile.groom), 'ما ردّ');
   });
 
-  test('e04: her invitation is in her mother\'s name to women guests', () {
-    final text = guestInviteMessage(
-      const GuestInviteCard(
-        title: 'زفة سلمى',
-        host: 'أم سلمى',
-        profile: JourneyProfile.bride,
-      ),
-      guestName: 'أسماء',
-      url: 'aarast.app/rsvp/x',
+  // e04: her invitation text («تتشرف أم سلمى بدعوتكن») is the server's
+  // (D83), proven in backend/test/guest-rsvp.test.ts; the card preview here
+  // keeps her forms.
+  test('e04: her card speaks as a woman to women guests', () {
+    const card = GuestInviteCard(
+      title: 'زفة سلمى',
+      host: 'أم سلمى',
+      profile: JourneyProfile.bride,
     );
-    expect(text, contains('تتشرف أم سلمى بدعوتكن'));
-    expect(text, contains('أكّدي حضورك'));
+    expect(card.profile.plan('بدعوتكم', 'بدعوتكن'), 'بدعوتكن');
+    expect(card.profile.plan('أكّد حضورك', 'أكّدي حضورك'), 'أكّدي حضورك');
   });
 
   testWidgets('e01: her list is «الضيفات» with «مدعوة · أكدن · ما ردّن»', (

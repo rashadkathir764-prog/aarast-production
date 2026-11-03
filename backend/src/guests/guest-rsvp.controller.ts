@@ -7,7 +7,16 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { IsIn, IsInt, IsOptional, Max, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -22,6 +31,19 @@ export class RsvpAnswerDto {
   @Min(0)
   @Max(RSVP_MAX_COMPANIONS)
   companionsCount?: number;
+
+  /** D83: the reply is to this event of the plan; absent, it is to the wedding. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  planEventId?: string;
+}
+
+export class InvitationLinkDto {
+  /** e08: the reminder text with the new link instead of the invitation. */
+  @IsOptional()
+  @IsBoolean()
+  reminder?: boolean;
 }
 
 /** The plan side: a personal invitation link for one guest (V1 checklist 4.7). */
@@ -34,8 +56,11 @@ export class GuestInvitationLinksController {
   createInvitationLink(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,
+    @Body() dto: InvitationLinkDto,
   ) {
-    return this.rsvp.createInvitationLink(currentUser, id);
+    return this.rsvp.createInvitationLink(currentUser, id, {
+      reminder: dto?.reminder === true,
+    });
   }
 }
 
@@ -56,6 +81,11 @@ export class PublicRsvpController {
   @Post(":token")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   respond(@Param("token") token: string, @Body() dto: RsvpAnswerDto) {
-    return this.rsvp.respond(token, dto.attendance, dto.companionsCount);
+    return this.rsvp.respond(
+      token,
+      dto.attendance,
+      dto.companionsCount,
+      dto.planEventId?.trim() || undefined,
+    );
   }
 }

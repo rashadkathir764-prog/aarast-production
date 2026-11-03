@@ -2102,6 +2102,8 @@ Protected routes:
 - `POST /api/v1/wedding-plans/:weddingPlanId/guests`
 - `POST /api/v1/wedding-plans/:weddingPlanId/guests/bulk`
 - `GET /api/v1/wedding-plans/:weddingPlanId/guests/summary`
+- `GET /api/v1/wedding-plans/:weddingPlanId/guests/invitation-card`
+- `PUT /api/v1/wedding-plans/:weddingPlanId/guests/invitation-card`
 - `GET /api/v1/wedding-plans/:weddingPlanId/guest-groups`
 - `POST /api/v1/wedding-plans/:weddingPlanId/guest-groups`
 - `GET /api/v1/guests/:id`
@@ -2109,6 +2111,45 @@ Protected routes:
 - `DELETE /api/v1/guests/:id`
 - `PATCH /api/v1/guest-groups/:id`
 - `DELETE /api/v1/guest-groups/:id`
+
+### Events beyond the wedding (D83)
+
+Every guest is invited to the wedding by being a guest; their reply to it is
+the guest row's `attendanceStatus` and `companionsCount`. The plan's other
+events (the lunch, the aqd, the samra...; `PlanEvent` rows whose type is not
+`WEDDING`) are chosen per guest:
+
+- `POST .../guests`, `POST .../guests/bulk` items and `PATCH /api/v1/guests/:id`
+  take `eventIds?: string[]` (at most 20, ids of the plan's events other than
+  the wedding row). On create, absent means none. On update, absent keeps the
+  guest's events; a list replaces them, and the replies to events that stay
+  are kept. An id that is not one of the plan's events, or the wedding row,
+  answers `400 GUEST_EVENT_UNKNOWN` and nothing is saved.
+- Every guest response carries `events: [{ planEventId, attendanceStatus,
+  companionsCount, respondedAt }]`, one per event the guest is invited to.
+- The summary carries `byEvent: [{ planEventId, label, invited, confirmed,
+  declined, pending, companions }]` in the plan's event order, only for events
+  with at least one invited guest. `label` is the event's title or its type's
+  Arabic name.
+
+### The invitation card (D83)
+
+One card per plan, kept in the account, for whoever manages the plan's guests
+(the owner, a partner with the guests right, a helper with it):
+
+- `GET .../guests/invitation-card` returns `{ weddingPlanId, hostLine,
+  freeText, photoUrl, mapUrl, address, updatedAt }`; every field is `null`
+  (and `updatedAt` null) before the first write.
+- `PUT .../guests/invitation-card` takes any of `hostLine` (≤80), `freeText`
+  (≤300), `photoUrl`, `mapUrl` (≤500, HTTPS, else `400
+  INVITATION_CARD_MAP_URL_INVALID`), `address` (≤160). A missing field keeps
+  its stored value; `null` or blank clears it. `photoUrl` must be the writer's
+  own verified public upload with purpose `guest-invitation-card`; the card
+  consumes it, and a replaced or cleared photo is released for deletion.
+  Returns the same shape as `GET`.
+
+The names, the date, the time and the venue are the plan's and are not
+stored on the card.
 
 Create guest request:
 
@@ -2961,18 +3002,32 @@ V1 checklist 4.7. Each guest gets a personal link to confirm or decline,
 without an account.
 
 - `POST /api/v1/guests/:id/invitation-link` (guest-management permission; a
-  contributor only for guests they added) returns `{ guestId, url, phone,
-  invitationStatus, message }`. `url` is `INVITE_PUBLIC_ORIGIN/rsvp/<token>`
-  with a 43-character token; only its SHA-256 is stored, and a new link
-  retires the previous one. A `NOT_SENT` invitation becomes `SENT`.
-  `message` is the Arabic WhatsApp text (plan title, date, place, link).
+  contributor only for guests they added) takes `{ reminder?: boolean }` and
+  returns `{ guestId, url, phone, invitationStatus, message }`. `url` is
+  `INVITE_PUBLIC_ORIGIN/rsvp/<token>` with a 43-character token; only its
+  SHA-256 is stored, and a new link retires the previous one. A `NOT_SENT`
+  invitation becomes `SENT`. `message` is the Arabic WhatsApp text the app
+  sends as is (D83, one source): the host line of the card in the plan's form
+  («يتشرف … بدعوتكم» / «تتشرف … بدعوتكن»), the card's free text, the wedding's
+  date with its time and venue, the events beyond the wedding this guest is
+  invited to, the map link or the address, and the link. With `reminder:
+  true` it is the short reminder text with the new link instead.
 - `GET /api/v1/public/rsvp/:token` (no auth, 30/min) returns `{ guestName,
   planTitle, weddingDate, locationLabel, attendanceStatus, companionsCount,
-  maxCompanions, respondedAt }`.
+  maxCompanions, respondedAt, wedding, card, hostPhrase, events }`. `wedding`
+  is the wedding row's `{ timeSlot, exactTime, timeLabel, placeLabel }` or
+  null; `card` is `{ hostLine, freeText, photoUrl, mapUrl, address }` or null;
+  `hostPhrase` is the host line as a sentence in the plan's form, or null;
+  `events` lists the events beyond the wedding this guest is invited to:
+  `{ id, label, date, timeSlot, exactTime, timeLabel, placeLabel,
+  attendanceStatus, companionsCount, respondedAt }`.
 - `POST /api/v1/public/rsvp/:token` (no auth, 10/min) `{ attendance:
-  "CONFIRMED" | "DECLINED", companionsCount? }` (0–20; 0 when declining)
-  updates the guest's attendance, status and companions, and notifies the
-  plan owner (`GUEST_RESPONDED`).
+  "CONFIRMED" | "DECLINED", companionsCount?, planEventId? }` (0–20; 0 when
+  declining). Without `planEventId` it updates the guest's attendance, status
+  and companions (the wedding); with it, the reply to that one event (`404
+  RSVP_EVENT_NOT_INVITED` when the guest is not invited to it), leaving the
+  wedding reply as it is. Either way the plan owner is notified
+  (`GUEST_RESPONDED`, the event named in the title).
 
 An unknown or malformed token, or an archived plan, returns
 `404 RSVP_LINK_NOT_FOUND`. The public page `/rsvp/<token>` on the public site
@@ -3728,6 +3783,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guests` | `guests.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/guests` | `guests.create` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/guests/bulk` | `guests.bulkCreate` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/guests/invitation-card` | `guests.invitationCard` | 🔒 |
+| PUT | `/api/v1/wedding-plans/:weddingPlanId/guests/invitation-card` | `guests.setInvitationCard` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guests/summary` | `guests.summary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/invites` | `sharing.findInvites` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/invites` | `sharing.createInvite` | 🔒 |

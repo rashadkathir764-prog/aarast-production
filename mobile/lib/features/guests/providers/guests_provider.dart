@@ -84,6 +84,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     required int seatsCount,
     int? companionsCount,
     String? notes,
+    List<String>? eventIds,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -102,6 +103,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         seatsCount: seatsCount,
         companionsCount: companionsCount,
         notes: notes,
+        eventIds: eventIds,
       );
       _guests = [guest, ..._guests];
       _refreshSummary(weddingPlanId);
@@ -168,6 +170,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     int? seatsCount,
     int? companionsCount,
     String? notes,
+    List<String>? eventIds,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -186,6 +189,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         seatsCount: seatsCount,
         companionsCount: companionsCount,
         notes: notes,
+        eventIds: eventIds,
       );
       _replace(updated);
       _refreshSummary(updated.weddingPlanId);

@@ -73,6 +73,7 @@ function recorder() {
     weddingTask: delegate('weddingTask'),
     guest: delegate('guest'),
     guestGroup: delegate('guestGroup'),
+    guestInvitationCard: delegate('guestInvitationCard'),
     outboxEvent: delegate('outboxEvent'),
     idempotencyKey: delegate('idempotencyKey', null),
   } as unknown as Prisma.TransactionClient;
@@ -237,6 +238,8 @@ test('tasks and guests delete the plan rows (groups after guests) and tasks unas
     ['weddingTask.updateMany', { where: { assigneeUserId: 'user-1' }, data: { assigneeUserId: null } }],
     ['guest.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     ['guestGroup.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
+    // D83: the plan's invitation card; the guests' event invites cascade.
+    ['guestInvitationCard.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
   ]);
 });
 

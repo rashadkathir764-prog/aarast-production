@@ -67,6 +67,7 @@ class _FakeGuestsApi extends GuestsApi {
     int? seatsCount,
     int? companionsCount,
     String? notes,
+    List<String>? eventIds,
   }) async {
     updates.add(status);
     guest = _guest(

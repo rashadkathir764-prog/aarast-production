@@ -5,6 +5,8 @@ import {
   GuestStatus,
 } from '@prisma/client';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
   IsInt,
   IsOptional,
@@ -59,4 +61,12 @@ export class UpdateGuestDto {
   @IsString()
   @IsOptional()
   notes?: string | null;
+
+  /** D83: replaces the guest's events beyond the wedding; absent, they stay. */
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  @IsOptional()
+  eventIds?: string[];
 }

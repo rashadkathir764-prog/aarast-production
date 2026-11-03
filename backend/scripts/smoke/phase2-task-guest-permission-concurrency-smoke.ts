@@ -61,6 +61,7 @@ const guests = new GuestsService(
   permissions,
   contributionHistory,
   contributorScope,
+  ownerPorts.plans,
 );
 
 function authenticatedUser(user: {

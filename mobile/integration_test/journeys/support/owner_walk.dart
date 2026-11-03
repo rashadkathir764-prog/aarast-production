@@ -189,6 +189,20 @@ const bridePersona = OwnerPersona(
   ),
 );
 
+/// The seeded groom plan's id, as route_sweep gets it (AARAST_SWEEP_IDS);
+/// null when the run gave none.
+String? _sweepPlanId() {
+  const ids = String.fromEnvironment('AARAST_SWEEP_IDS');
+  for (final pair in ids.split(',')) {
+    final parts = pair.split('=');
+    if (parts.length == 2 && parts[0].trim() == 'planId') {
+      final id = parts[1].trim();
+      if (id.isNotEmpty) return id;
+    }
+  }
+  return null;
+}
+
 Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   final walk = JourneyWalk(tester, p.journey);
   await walk.boot();
@@ -451,6 +465,45 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee(p.say('اعتذروا 18', 'اعتذرن 18'));
   });
   await walk.back();
+
+  // D83: the lunch is one of the plan's events (b12); a guest is invited
+  // to it from the guest form, and their reply to it reads in their
+  // details. The seeded ids name his plan only.
+  final planId = _sweepPlanId();
+  if (!p.bride && planId != null) {
+    await walk.step('e06_lunch_event', 'أضف الغداء لمناسبات العرس', () async {
+      // No button leads to b12 before the wedding week: the direct route.
+      await walk.goTo('/wedding-plans/$planId/events');
+      if (await walk.tapKey(
+        'plan-event-suggest-LUNCH',
+        required: false,
+        wait: 3,
+      )) {
+        await walk.tapKey('plan-event-save', wait: 4);
+      }
+      walk.expectSee('الغداء', why: 'الغداء صار من مناسبات الخطة');
+    });
+
+    await walk.step('e06_guest_lunch', 'ضيف يحضر الغداء أيضًا', () async {
+      await walk.goTo('/wedding-plans/$planId/guests');
+      await walk.tapKey('guests-add', wait: 3);
+      await walk.enterField('الاسم', 'ضيف الغداء');
+      walk.expectSee('يحضر أيضًا', why: 'النموذج يعرض مناسبات الخطة (D83)');
+      // The sheet is the last «الغداء» on screen; an earlier match (the
+      // screen under it) takes the tap and selects nothing.
+      await walk.tapText('الغداء', last: true, wait: 1.5);
+      await walk.tapKey('guest-form-save', wait: 4);
+      // The guests tab lists the families; the names are under «كل الضيوف».
+      await walk.tapText('كل ${p.guestsTab}', wait: 3);
+      if (!await walk.tapText('ضيف الغداء', wait: 3.5)) return;
+      walk.expectSee('الغداء: ما ردّ', why: 'رد الضيف على الغداء في تفاصيله');
+    });
+    // The direct routes left the plan shell's own history; the provider
+    // steps count their backs from the home shell, as before these steps.
+    await walk.leaveTo('/home');
+  } else if (!p.bride) {
+    walk.note('ما وصلنا planId في AARAST_SWEEP_IDS، فخطوتا الغداء متروكتان');
+  }
 
   // -------------------------------------------------------- providers
   await walk.step('f01_prov_requests', 'المزودين: طلباتي', () async {

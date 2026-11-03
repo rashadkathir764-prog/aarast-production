@@ -18,9 +18,11 @@
   <body>
     <main class="rsvp-shell" aria-live="polite">
       <section class="rsvp-card" aria-labelledby="rsvp-title">
+        <img id="rsvp-photo" class="rsvp-photo" alt="" hidden>
         <p id="rsvp-greeting" class="rsvp-greeting"></p>
-        <h1 id="rsvp-title">نفتح الدعوة…</h1>
         <p id="rsvp-invite-line" class="rsvp-invite-line"></p>
+        <h1 id="rsvp-title">نفتح الدعوة…</h1>
+        <p id="rsvp-free-text" class="rsvp-free-text" hidden></p>
         <dl id="rsvp-details" class="rsvp-details" hidden>
           <div id="rsvp-date-row">
             <dt>الموعد</dt>
@@ -33,15 +35,28 @@
             <dt>المكان</dt>
             <dd id="rsvp-place"></dd>
           </div>
+          <div id="rsvp-where-row" hidden>
+            <dt>الموقع</dt>
+            <dd>
+              <a id="rsvp-map" class="rsvp-map" target="_blank" rel="noopener noreferrer" hidden>افتح الموقع على الخريطة</a>
+              <span id="rsvp-address" hidden></span>
+            </dd>
+          </div>
         </dl>
       </section>
 
       <section id="rsvp-answer" class="rsvp-answer" hidden aria-labelledby="rsvp-companions-label">
+        <h2 id="rsvp-answer-title" class="rsvp-section-title" hidden>العرس</h2>
         <p id="rsvp-companions-label" class="rsvp-question">كم معك؟</p>
         <div id="rsvp-companions" class="rsvp-chips" role="group" aria-labelledby="rsvp-companions-label"></div>
         <button id="rsvp-yes" class="rsvp-yes" type="button">إن شاء الله حاضر</button>
         <button id="rsvp-no" class="rsvp-no" type="button">أعتذر</button>
         <p id="rsvp-status" class="rsvp-status" role="status"></p>
+      </section>
+
+      <section id="rsvp-events" class="rsvp-events" hidden aria-labelledby="rsvp-events-title">
+        <h2 id="rsvp-events-title" class="rsvp-section-title">والدعوة تشمل أيضًا</h2>
+        <div id="rsvp-events-list" class="rsvp-events-list"></div>
       </section>
 
       <p class="rsvp-footnote">ما تحتاج تنزل أي تطبيق.</p>

@@ -4,21 +4,29 @@
   // e05, a guest's personal RSVP link (V1 checklist 4.7): /rsvp/<token>. The
   // page reads the invitation and sends the answer to the same origin, which
   // the edge proxy forwards to the API; no account, no cookies, no form post.
+  // D83: the card (photo, host line, free text, map or address) and the
+  // events beyond the wedding, each answered on its own.
 
   const $ = (id) => document.getElementById(id);
   const title = $("rsvp-title");
   const greeting = $("rsvp-greeting");
   const inviteLine = $("rsvp-invite-line");
+  const photo = $("rsvp-photo");
+  const freeText = $("rsvp-free-text");
   const details = $("rsvp-details");
   const answer = $("rsvp-answer");
+  const answerTitle = $("rsvp-answer-title");
   const status = $("rsvp-status");
   const chips = $("rsvp-companions");
   const yes = $("rsvp-yes");
   const no = $("rsvp-no");
+  const eventsSection = $("rsvp-events");
+  const eventsList = $("rsvp-events-list");
 
   // «لحالي / +1 / +2 / +3»; a larger number the hosts set stays offered.
   const CHIP_LIMIT = 3;
   let companions = 0;
+  let maxCompanions = CHIP_LIMIT;
 
   const segments = window.location.pathname.split("/").filter(Boolean);
   const token = segments.length === 2 && segments[0] === "rsvp" ? segments[1] : "";
@@ -32,11 +40,14 @@
     greeting.textContent = "";
     title.textContent = "الرابط ما يشتغل";
     inviteLine.textContent = "اطلب من صاحب الدعوة يرسل لك رابط جديد.";
+    photo.hidden = true;
+    freeText.hidden = true;
     details.hidden = true;
     answer.hidden = true;
+    eventsSection.hidden = true;
   }
 
-  function weddingDay(value) {
+  function calendarDay(value) {
     const [year, month, day] = value.split("-").map(Number);
     return new Date(Date.UTC(year, month - 1, day));
   }
@@ -64,25 +75,31 @@
     }
   }
 
+  /** Only a link the server accepted (HTTPS) is opened or shown. */
+  function secureLink(value) {
+    return typeof value === "string" && /^https:/.test(value) ? value : "";
+  }
+
   function chipLabel(count) {
     return count === 0 ? "لحالي" : `+${count}`;
   }
 
-  function renderChips(max, current) {
+  /** Fills [container] with the companion chips; [onPick] gets the choice. */
+  function renderChips(container, max, current, onPick) {
     const counts = [];
     for (let count = 0; count <= Math.min(CHIP_LIMIT, max); count += 1) counts.push(count);
     if (current > CHIP_LIMIT && current <= max) counts.push(current);
-    chips.replaceChildren(
+    container.replaceChildren(
       ...counts.map((count) => {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.textContent = chipLabel(count);
         // «+2» reads left to right inside the Arabic line.
         if (count > 0) chip.dir = "ltr";
-        chip.setAttribute("aria-pressed", String(count === companions));
+        chip.setAttribute("aria-pressed", String(count === current));
         chip.addEventListener("click", () => {
-          companions = count;
-          for (const other of chips.children) {
+          onPick(count);
+          for (const other of container.children) {
             other.setAttribute("aria-pressed", String(other === chip));
           }
         });
@@ -91,33 +108,146 @@
     );
   }
 
-  function render(invitation) {
+  function statusText(attendanceStatus, picked, what) {
+    if (attendanceStatus === "CONFIRMED") {
+      const withWhom = picked > 0 ? ` مع ${picked}` : "";
+      return `سجّلنا حضورك${what}${withWhom}. تقدر تغيّر ردك متى ما تشتي.`;
+    }
+    if (attendanceStatus === "DECLINED") {
+      return `سجّلنا اعتذارك${what}. تقدر تغيّر ردك متى ما تشتي.`;
+    }
+    return "";
+  }
+
+  function renderCard(invitation) {
+    const card = invitation.card || {};
     greeting.textContent = `أهلًا ${invitation.guestName}`;
+    inviteLine.textContent = invitation.hostPhrase || "يسعدنا حضورك";
     title.textContent = invitation.planTitle;
-    inviteLine.textContent = "يسعدنا حضورك";
-    const day = invitation.weddingDate ? weddingDay(invitation.weddingDate) : null;
+
+    const photoUrl = secureLink(card.photoUrl);
+    photo.hidden = !photoUrl;
+    if (photoUrl) photo.src = photoUrl;
+    else photo.removeAttribute("src");
+
+    freeText.hidden = !card.freeText;
+    freeText.textContent = card.freeText || "";
+
+    const wedding = invitation.wedding || {};
+    const day = invitation.weddingDate ? calendarDay(invitation.weddingDate) : null;
     $("rsvp-date-row").hidden = !day;
     if (day) {
-      $("rsvp-date").textContent = formatDay(day);
+      $("rsvp-date").textContent = wedding.timeLabel
+        ? `${formatDay(day)} · ${wedding.timeLabel}`
+        : formatDay(day);
       $("rsvp-hijri").textContent = formatHijri(day);
     }
-    $("rsvp-place-row").hidden = !invitation.locationLabel;
-    if (invitation.locationLabel) $("rsvp-place").textContent = invitation.locationLabel;
-    details.hidden = !day && !invitation.locationLabel;
+    const place = wedding.placeLabel || invitation.locationLabel || "";
+    $("rsvp-place-row").hidden = !place;
+    $("rsvp-place").textContent = place;
 
+    const mapUrl = secureLink(card.mapUrl);
+    const address = card.address || "";
+    const map = $("rsvp-map");
+    const addressLine = $("rsvp-address");
+    map.hidden = !mapUrl;
+    if (mapUrl) map.href = mapUrl;
+    else map.removeAttribute("href");
+    addressLine.hidden = !address || Boolean(mapUrl);
+    addressLine.textContent = address;
+    $("rsvp-where-row").hidden = !mapUrl && !address;
+
+    details.hidden = !day && !place && !mapUrl && !address;
+  }
+
+  function renderWeddingAnswer(invitation) {
+    maxCompanions = invitation.maxCompanions;
     companions = invitation.companionsCount || 0;
-    renderChips(invitation.maxCompanions, companions);
+    renderChips(chips, maxCompanions, companions, (count) => {
+      companions = count;
+    });
     answer.hidden = false;
-    status.className = "rsvp-status";
-    if (invitation.attendanceStatus === "CONFIRMED") {
-      status.className = "rsvp-status rsvp-done";
-      const withWhom = companions > 0 ? ` مع ${companions}` : "";
-      status.textContent = `سجّلنا حضورك${withWhom}. تقدر تغيّر ردك متى ما تشتي.`;
-    } else if (invitation.attendanceStatus === "DECLINED") {
-      status.textContent = "سجّلنا اعتذارك. تقدر تغيّر ردك متى ما تشتي.";
-    } else {
-      status.textContent = "";
-    }
+    answerTitle.hidden = !(invitation.events && invitation.events.length);
+    status.className =
+      invitation.attendanceStatus === "CONFIRMED" ? "rsvp-status rsvp-done" : "rsvp-status";
+    status.textContent = statusText(invitation.attendanceStatus, companions, "");
+  }
+
+  function renderEvents(invitation) {
+    const events = Array.isArray(invitation.events) ? invitation.events : [];
+    eventsSection.hidden = events.length === 0;
+    eventsList.replaceChildren(
+      ...events.map((event) => {
+        const block = document.createElement("article");
+        block.className = "rsvp-event";
+
+        const heading = document.createElement("h3");
+        heading.textContent = event.label;
+        block.append(heading);
+
+        const whenParts = [];
+        if (event.date) whenParts.push(formatDay(calendarDay(event.date)));
+        if (event.timeLabel) whenParts.push(event.timeLabel);
+        if (event.placeLabel) whenParts.push(event.placeLabel);
+        if (whenParts.length) {
+          const when = document.createElement("p");
+          when.className = "rsvp-event-when";
+          when.textContent = whenParts.join(" · ");
+          block.append(when);
+        }
+
+        const question = document.createElement("p");
+        question.className = "rsvp-question";
+        question.textContent = "كم معك؟";
+        block.append(question);
+
+        let picked = event.companionsCount || 0;
+        const eventChips = document.createElement("div");
+        eventChips.className = "rsvp-chips";
+        eventChips.setAttribute("role", "group");
+        renderChips(eventChips, maxCompanions, picked, (count) => {
+          picked = count;
+        });
+        block.append(eventChips);
+
+        const actions = document.createElement("div");
+        actions.className = "rsvp-event-actions";
+        const eventYes = document.createElement("button");
+        eventYes.type = "button";
+        eventYes.className = "rsvp-yes";
+        eventYes.textContent = "حاضر";
+        const eventNo = document.createElement("button");
+        eventNo.type = "button";
+        eventNo.className = "rsvp-no";
+        eventNo.textContent = "أعتذر";
+        actions.append(eventYes, eventNo);
+        block.append(actions);
+
+        const eventStatus = document.createElement("p");
+        eventStatus.className =
+          event.attendanceStatus === "CONFIRMED" ? "rsvp-status rsvp-done" : "rsvp-status";
+        eventStatus.setAttribute("role", "status");
+        eventStatus.textContent = statusText(event.attendanceStatus, picked, ` في ${event.label}`);
+        block.append(eventStatus);
+
+        const sendEvent = (attendance) =>
+          send(attendance, {
+            planEventId: event.id,
+            companions: picked,
+            buttons: [eventYes, eventNo],
+            statusLine: eventStatus,
+          });
+        eventYes.addEventListener("click", () => sendEvent("CONFIRMED"));
+        eventNo.addEventListener("click", () => sendEvent("DECLINED"));
+        return block;
+      }),
+    );
+  }
+
+  function render(invitation) {
+    renderCard(invitation);
+    renderWeddingAnswer(invitation);
+    renderEvents(invitation);
   }
 
   async function load() {
@@ -133,36 +263,42 @@
     }
   }
 
-  async function send(attendance) {
-    yes.disabled = true;
-    no.disabled = true;
-    status.className = "rsvp-status";
-    status.textContent = "نرسل ردك…";
+  /**
+   * Sends one reply: to the wedding (no planEventId) or to one event. The
+   * whole page re-renders from the server's answer, so every reply shown is
+   * the stored one.
+   */
+  async function send(attendance, options) {
+    const buttons = options.buttons;
+    const statusLine = options.statusLine;
+    for (const button of buttons) button.disabled = true;
+    statusLine.className = "rsvp-status";
+    statusLine.textContent = "نرسل ردك…";
+    const body = { attendance };
+    if (attendance === "CONFIRMED") body.companionsCount = options.companions;
+    if (options.planEventId) body.planEventId = options.planEventId;
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(
-          attendance === "CONFIRMED"
-            ? { attendance, companionsCount: companions }
-            : { attendance },
-        ),
+        body: JSON.stringify(body),
       });
       if (response.status === 404) return showInvalid();
       if (response.status === 429) throw new Error("rate");
       if (!response.ok) throw new Error(String(response.status));
       render(await response.json());
     } catch (error) {
-      status.textContent = error && error.message === "rate"
+      statusLine.textContent = error && error.message === "rate"
         ? "محاولات كثيرة. انتظر دقيقة وجرّب ثاني."
         : "ما وصل ردك. جرّب مرة ثانية.";
     } finally {
-      yes.disabled = false;
-      no.disabled = false;
+      for (const button of buttons) button.disabled = false;
     }
   }
 
-  yes.addEventListener("click", () => send("CONFIRMED"));
-  no.addEventListener("click", () => send("DECLINED"));
+  const weddingReply = (attendance) =>
+    send(attendance, { companions, buttons: [yes, no], statusLine: status });
+  yes.addEventListener("click", () => weddingReply("CONFIRMED"));
+  no.addEventListener("click", () => weddingReply("DECLINED"));
   load();
 })();

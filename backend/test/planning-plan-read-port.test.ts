@@ -57,6 +57,26 @@ test('the plan read port runs the owner queries on the client it is given', asyn
   ]);
 });
 
+// D83: guests invite each guest to the plan's events beyond the wedding, and
+// read them through this port (planning owns PlanEvent).
+test('the plan read port lists the plan events on the client it is given', async () => {
+  const calls: unknown[] = [];
+  const event = { id: 'event-1', weddingPlanId: 'plan-1', type: 'LUNCH', title: null };
+  const client = {
+    planEvent: {
+      findMany: async (args: unknown) => {
+        calls.push(args);
+        return [event];
+      },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new PlanReadService();
+
+  assert.deepEqual(await service.listPlanEvents(client, 'plan-1'), [event]);
+  assert.equal(calls.length, 1);
+  assert.deepEqual((calls[0] as { where: unknown }).where, { weddingPlanId: 'plan-1' });
+});
+
 test('the plan lifecycle locks take the plan row with the same statements callers used', async () => {
   const statements: string[] = [];
   const tx = {

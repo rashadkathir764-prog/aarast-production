@@ -22,6 +22,7 @@ import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
+import '../utils/guest_plan_events.dart';
 import '../widgets/guest_form_sheet.dart';
 import '../widgets/guest_groups_sheet.dart';
 import '../widgets/guest_row.dart';
@@ -94,8 +95,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
     }
   }
 
-  Future<void> _load() =>
-      context.read<GuestsProvider>().loadGuests(widget.weddingPlanId);
+  Future<void> _load() {
+    // D83: the plan's events, so a new guest can be invited to the lunch.
+    if (!_isLocalPlan) readPlanEventsOnce(context, widget.weddingPlanId);
+    return context.read<GuestsProvider>().loadGuests(widget.weddingPlanId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -557,6 +561,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
 
   Future<void> _showGuestSheet({required GuestsProvider provider}) async {
     final scope = 'guest:${widget.weddingPlanId}:new';
+    final events = _isLocalPlan
+        ? const <GuestFormEvent>[]
+        : guestFormEventsOf(context, widget.weddingPlanId, listen: false);
     final result = await showJourneySheet<GuestFormResult>(
       context: context,
       useRootNavigator: true,
@@ -566,6 +573,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         // D80: a helper adds into the groups they made; the server refuses
         // another's group.
         groups: provider.editableGroups,
+        events: events,
         blockDuplicatePhone: !_isLocalPlan,
         onCreateGroup: _isLocalPlan ? null : _createGroup,
       ),
@@ -589,6 +597,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
       seatsCount: result.seatsCount,
       companionsCount: result.companionsCount,
       notes: result.notes,
+      // D83: only when the form offered the plan's events.
+      eventIds: events.isEmpty ? null : result.eventIds,
     );
     if (!mounted) return;
     if (!ok) {

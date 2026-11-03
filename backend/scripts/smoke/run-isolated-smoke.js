@@ -439,6 +439,8 @@ async function configureBucket(client, identity) {
     'service-image',
     // B-16: listed to customers only after review; a refused one is deleted.
     'provider-portfolio',
+    // D83: the invitation card photo, read on the public RSVP page.
+    'guest-invitation-card',
   ];
   await client.send(new PutBucketPolicyCommand({
     Bucket: identity.bucketName,

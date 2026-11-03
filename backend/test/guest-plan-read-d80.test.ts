@@ -120,6 +120,8 @@ function database() {
       count: async ({ where }: any) =>
         byIds([ownerGroup, helperGroup], where).length,
     },
+    // D83: no events beyond the wedding here.
+    guestEventInvite: { findMany: async () => [] },
     $queryRaw: async () => [{ id: "locked" }],
   };
   tx.$transaction = async (operation: (client: any) => Promise<unknown>) =>
@@ -150,6 +152,7 @@ function service(context: any) {
           ? [helperGroup.id]
           : [helperGuest.id],
     },
+    { listPlanEvents: async () => [] },
   ) as GuestsService;
 }
 

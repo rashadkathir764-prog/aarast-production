@@ -12,10 +12,19 @@ import '../../../shared/widgets/contact_phone_field.dart';
 import '../models/guest.dart';
 import '../utils/guest_display.dart';
 
+/// D83: one of the plan's events beyond the wedding, as the form offers it.
+class GuestFormEvent {
+  const GuestFormEvent({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
 /// e06 «ضيف جديد» and editing a guest: the name, an optional number, the
-/// family (a new one made right here), how many come with them, and, under
-/// «تفاصيل أكثر», the side, the answer and a note. Presentational: the
-/// caller saves the result.
+/// family (a new one made right here), how many come with them, which of
+/// the plan's events beyond the wedding they are invited to (D83), and,
+/// under «تفاصيل أكثر», the side, the answer and a note. Presentational:
+/// the caller saves the result.
 class GuestFormSheet extends StatefulWidget {
   const GuestFormSheet({
     required this.existingGuests,
@@ -24,6 +33,7 @@ class GuestFormSheet extends StatefulWidget {
     this.guest,
     this.draftScope,
     this.onCreateGroup,
+    this.events = const [],
     super.key,
   });
 
@@ -32,6 +42,9 @@ class GuestFormSheet extends StatefulWidget {
   final List<GuestGroup> groups;
   final bool blockDuplicatePhone;
   final String? draftScope;
+
+  /// The plan's events beyond the wedding; none hides the choice.
+  final List<GuestFormEvent> events;
 
   /// Makes a group by name and returns its id; null hides «جديدة» (a
   /// phone-only plan keeps no groups).
@@ -51,6 +64,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   late int _seatsCount;
   late int _companionsCount;
   late List<GuestGroup> _groups = List.of(widget.groups);
+  late Set<String> _eventIds;
   late bool _showMore;
   String? _nameError;
   String? _phoneError;
@@ -82,6 +96,12 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
         : null;
     _seatsCount = guest?.seatsCount ?? 1;
     _companionsCount = guest?.companionsCount ?? 0;
+    // Only events the plan still has: a deleted one is not offered back.
+    final offered = {for (final event in widget.events) event.id};
+    _eventIds = {
+      for (final id in guest?.eventIds ?? const <String>[])
+        if (offered.contains(id)) id,
+    };
     _showMore =
         guest != null &&
         (guest.side != 'OTHER' ||
@@ -139,10 +159,18 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     final side = data['side']?.toString();
     final status = data['status']?.toString();
     final groupId = data['groupId']?.toString();
+    final eventIds = data['eventIds'];
     setState(() {
       if (_sideValues.contains(side)) _side = side!;
       if (_statusValues.contains(status)) _status = status!;
       if (_groups.any((group) => group.id == groupId)) _groupId = groupId;
+      if (eventIds is List) {
+        final offered = {for (final event in widget.events) event.id};
+        _eventIds = {
+          for (final id in eventIds)
+            if (offered.contains(id.toString())) id.toString(),
+        };
+      }
       _companionsCount = _draftInt(
         data['companionsCount'],
         _companionsCount,
@@ -174,6 +202,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
       'groupId': _groupId,
       'seatsCount': _seatsCount,
       'companionsCount': _companionsCount,
+      'eventIds': _eventIds.toList(),
     });
   }
 
@@ -258,6 +287,10 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
         seatsCount: _seatsCount,
         companionsCount: _companionsCount,
         notes: _notesController.text,
+        eventIds: [
+          for (final event in widget.events)
+            if (_eventIds.contains(event.id)) event.id,
+        ],
         addAnother: addAnother,
       ),
     );
@@ -382,6 +415,26 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ),
           ],
         ),
+        // D83: the wedding needs no choice; the plan's other events do.
+        if (widget.events.isNotEmpty) ...[
+          _label(context.planWord('يحضر أيضًا', 'تحضر أيضًا')),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final event in widget.events)
+                JourneyChip(
+                  key: ValueKey('guest-form-event-${event.id}'),
+                  label: event.label,
+                  selected: _eventIds.contains(event.id),
+                  selectedColor: context.accent.primary,
+                  onTap: () => _mutate(() {
+                    if (!_eventIds.remove(event.id)) _eventIds.add(event.id);
+                  }),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x2),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -496,6 +549,7 @@ class GuestFormResult {
     this.phone,
     this.groupId,
     this.notes,
+    this.eventIds = const [],
     this.addAnother = false,
   });
 
@@ -507,6 +561,9 @@ class GuestFormResult {
   final int seatsCount;
   final int companionsCount;
   final String? notes;
+
+  /// D83: the plan's events beyond the wedding the guest is invited to.
+  final List<String> eventIds;
 
   /// «حفظ وأضف التالي»: open the form again once this one is saved.
   final bool addAnother;

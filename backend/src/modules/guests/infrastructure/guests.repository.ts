@@ -257,3 +257,128 @@ export async function lockGuestGroupForShare(
   );
   return locked.length === 1;
 }
+
+// D83: a guest's invitations to the plan's events beyond the wedding, with
+// their reply to each; and the plan's one invitation card.
+
+const guestEventInviteSelect = {
+  guestId: true,
+  planEventId: true,
+  attendanceStatus: true,
+  companionsCount: true,
+  respondedAt: true,
+} satisfies Prisma.GuestEventInviteSelect;
+
+export type GuestEventInviteRow = Prisma.GuestEventInviteGetPayload<{
+  select: typeof guestEventInviteSelect;
+}>;
+
+export function listGuestEventInvites(
+  client: PrismaService | Prisma.TransactionClient,
+  guestIds: readonly string[],
+): Promise<GuestEventInviteRow[]> {
+  if (guestIds.length === 0) return Promise.resolve([]);
+  return client.guestEventInvite.findMany({
+    where: { guestId: { in: [...guestIds] } },
+    select: guestEventInviteSelect,
+    orderBy: [{ createdAt: 'asc' }, { planEventId: 'asc' }],
+  });
+}
+
+export function findGuestEventInvite(
+  tx: Prisma.TransactionClient,
+  guestId: string,
+  planEventId: string,
+): Promise<GuestEventInviteRow | null> {
+  return tx.guestEventInvite.findFirst({
+    where: { guestId, planEventId },
+    select: guestEventInviteSelect,
+  });
+}
+
+/** The guest's events become exactly [planEventIds]; replies to kept events stay. */
+export async function replaceGuestEventInvites(
+  tx: Prisma.TransactionClient,
+  guestId: string,
+  planEventIds: readonly string[],
+): Promise<void> {
+  const ids = [...new Set(planEventIds)];
+  await tx.guestEventInvite.deleteMany({
+    where: { guestId, planEventId: { notIn: ids } },
+  });
+  if (ids.length === 0) return;
+  await tx.guestEventInvite.createMany({
+    data: ids.map((planEventId) => ({ guestId, planEventId })),
+    skipDuplicates: true,
+  });
+}
+
+export function recordGuestEventAnswer(
+  tx: Prisma.TransactionClient,
+  guestId: string,
+  planEventId: string,
+  answer: {
+    attendanceStatus: GuestAttendanceStatus;
+    companionsCount: number;
+    respondedAt: Date;
+  },
+): Promise<GuestEventInviteRow> {
+  return tx.guestEventInvite.update({
+    where: { guestId_planEventId: { guestId, planEventId } },
+    data: answer,
+    select: guestEventInviteSelect,
+  });
+}
+
+const invitationCardSelect = {
+  id: true,
+  weddingPlanId: true,
+  hostLine: true,
+  freeText: true,
+  photoUrl: true,
+  mapUrl: true,
+  address: true,
+  updatedAt: true,
+} satisfies Prisma.GuestInvitationCardSelect;
+
+export type GuestInvitationCardRow = Prisma.GuestInvitationCardGetPayload<{
+  select: typeof invitationCardSelect;
+}>;
+
+export function findGuestInvitationCard(
+  client: PrismaService | Prisma.TransactionClient,
+  weddingPlanId: string,
+): Promise<GuestInvitationCardRow | null> {
+  return client.guestInvitationCard.findUnique({
+    where: { weddingPlanId },
+    select: invitationCardSelect,
+  });
+}
+
+export function upsertGuestInvitationCard(
+  tx: Prisma.TransactionClient,
+  weddingPlanId: string,
+  values: {
+    hostLine: string | null;
+    freeText: string | null;
+    photoUrl: string | null;
+    mapUrl: string | null;
+    address: string | null;
+  },
+): Promise<GuestInvitationCardRow> {
+  return tx.guestInvitationCard.upsert({
+    where: { weddingPlanId },
+    create: { weddingPlanId, ...values },
+    update: values,
+    select: invitationCardSelect,
+  });
+}
+
+export function deleteGuestInvitationCards(
+  tx: Prisma.TransactionClient,
+  weddingPlanIds: readonly string[],
+) {
+  return tx.guestInvitationCard.deleteMany({
+    where: { weddingPlanId: { in: [...weddingPlanIds] } },
+  });
+}

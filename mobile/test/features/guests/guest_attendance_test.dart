@@ -67,6 +67,38 @@ void main() {
     expect(find.text('reminder plan-1 null'), findsOneWidget);
   });
 
+  // D83: each event beyond the wedding counts its own replies.
+  testWidgets('the lunch counts its own invited and replies', (tester) async {
+    final api = _FakeGuestsApi(
+      GuestSummary.fromJson({
+        'weddingPlanId': 'plan-1',
+        'totalGuests': 3,
+        'confirmed': 1,
+        'pending': 2,
+        'byEvent': [
+          {
+            'planEventId': 'event-lunch',
+            'label': 'الغداء',
+            'invited': 2,
+            'confirmed': 1,
+            'declined': 1,
+            'pending': 0,
+            'companions': 1,
+          },
+        ],
+      }),
+    );
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    expect(
+      find.byKey(const ValueKey('guest-attendance-event-event-lunch')),
+      findsOneWidget,
+    );
+    expect(find.text('الغداء'), findsOneWidget);
+    expect(find.text('1 أكدوا من 2'), findsOneWidget);
+    expect(find.text('كلهم ردّوا · 1 اعتذروا'), findsOneWidget);
+  });
+
   testWidgets('everyone answered: no reminder', (tester) async {
     final api = _FakeGuestsApi(
       _summary(confirmed: 120, pending: 0, declined: 4),

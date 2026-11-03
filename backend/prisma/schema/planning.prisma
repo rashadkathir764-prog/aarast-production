@@ -43,6 +43,7 @@ model WeddingPlan {
   notifications           Notification[]
   guests                  Guest[]
   guestGroups             GuestGroup[]
+  guestInvitationCard     GuestInvitationCard?
   providerLinks           PlanProviderLink[]
   conversations           Conversation[]
   contributorHistoryScope ContributorHistoryScope?
@@ -93,6 +94,7 @@ model PlanEvent {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  guestInvites    GuestEventInvite[]
 
   @@index([weddingPlanId, date])
 }

@@ -30,7 +30,7 @@
     {
       "owner": "guests",
       "file": "guests.prisma",
-      "models": ["Guest", "GuestGroup"],
+      "models": ["Guest", "GuestGroup", "GuestInvitationCard", "GuestEventInvite"],
       "enums": ["GuestSide", "GuestStatus", "GuestInvitationStatus", "GuestAttendanceStatus"]
     },
     {
@@ -118,6 +118,8 @@
     "OutboxEvent",
     "Guest",
     "GuestGroup",
+    "GuestInvitationCard",
+    "GuestEventInvite",
     "City",
     "Governorate",
     "District",

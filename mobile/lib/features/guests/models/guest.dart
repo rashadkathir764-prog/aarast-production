@@ -1,5 +1,36 @@
 import 'guest_invite_text.dart';
 
+/// D83: the guest's reply to one of the plan's events beyond the wedding
+/// (the lunch, the aqd...). Their reply to the wedding itself is the guest's
+/// own `attendanceStatus`.
+class GuestEventReply {
+  const GuestEventReply({
+    required this.planEventId,
+    this.attendanceStatus = 'PENDING',
+    this.companionsCount = 0,
+    this.respondedAt,
+  });
+
+  factory GuestEventReply.fromJson(Map<String, dynamic> json) {
+    return GuestEventReply(
+      planEventId: json['planEventId']?.toString() ?? '',
+      attendanceStatus: json['attendanceStatus']?.toString() ?? 'PENDING',
+      companionsCount:
+          int.tryParse(json['companionsCount']?.toString() ?? '') ?? 0,
+      respondedAt: Guest._dateTimeOrNull(json['respondedAt']),
+    );
+  }
+
+  final String planEventId;
+  final String attendanceStatus;
+  final int companionsCount;
+  final DateTime? respondedAt;
+
+  bool get isConfirmed => attendanceStatus == 'CONFIRMED';
+  bool get isDeclined => attendanceStatus == 'DECLINED';
+  bool get isPending => !isConfirmed && !isDeclined;
+}
+
 class Guest {
   const Guest({
     required this.id,
@@ -17,9 +48,11 @@ class Guest {
     this.phone,
     this.notes,
     this.editable = true,
+    this.events = const [],
   });
 
   factory Guest.fromJson(Map<String, dynamic> json) {
+    final events = json['events'];
     return Guest(
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
@@ -40,6 +73,12 @@ class Guest {
       editable: json['editable'] != false,
       createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
       updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      events: [
+        if (events is List)
+          for (final item in events)
+            if (item is Map)
+              GuestEventReply.fromJson(Map<String, dynamic>.from(item)),
+      ],
     );
   }
 
@@ -62,6 +101,11 @@ class Guest {
   /// for every guest, a helper for the guests they added. Every other guest
   /// is read by name and reply only.
   final bool editable;
+
+  /// D83: the plan's events beyond the wedding this guest is invited to.
+  final List<GuestEventReply> events;
+
+  List<String> get eventIds => [for (final event in events) event.planEventId];
 
   bool get isConfirmed =>
       attendanceStatus == 'CONFIRMED' || status == 'CONFIRMED';
@@ -103,6 +147,7 @@ class Guest {
     phone: phone,
     notes: notes,
     editable: editable,
+    events: events,
   );
 
   static DateTime? _dateTimeOrNull(Object? value) {
@@ -150,6 +195,82 @@ class GuestGroup {
   final bool editable;
 }
 
+/// D83: one event's figures in the guests summary (the server's).
+class GuestEventCounters {
+  const GuestEventCounters({
+    required this.planEventId,
+    required this.label,
+    required this.invited,
+    required this.confirmed,
+    required this.declined,
+    required this.pending,
+    required this.companions,
+  });
+
+  factory GuestEventCounters.fromJson(Map<String, dynamic> json) {
+    return GuestEventCounters(
+      planEventId: json['planEventId']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      invited: GuestSummary._intOrZero(json['invited']),
+      confirmed: GuestSummary._intOrZero(json['confirmed']),
+      declined: GuestSummary._intOrZero(json['declined']),
+      pending: GuestSummary._intOrZero(json['pending']),
+      companions: GuestSummary._intOrZero(json['companions']),
+    );
+  }
+
+  final String planEventId;
+  final String label;
+  final int invited;
+  final int confirmed;
+  final int declined;
+  final int pending;
+  final int companions;
+}
+
+/// D83: the plan's one invitation card, as the account keeps it. The
+/// names, the date, the time and the venue are the plan's, not the card's.
+class InvitationCard {
+  const InvitationCard({
+    this.hostLine,
+    this.freeText,
+    this.photoUrl,
+    this.mapUrl,
+    this.address,
+    this.updatedAt,
+  });
+
+  factory InvitationCard.fromJson(Map<String, dynamic> json) {
+    String? text(Object? value) {
+      final trimmed = value?.toString().trim() ?? '';
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
+    return InvitationCard(
+      hostLine: text(json['hostLine']),
+      freeText: text(json['freeText']),
+      photoUrl: text(json['photoUrl']),
+      mapUrl: text(json['mapUrl']),
+      address: text(json['address']),
+      updatedAt: Guest._dateTimeOrNull(json['updatedAt']),
+    );
+  }
+
+  final String? hostLine;
+  final String? freeText;
+  final String? photoUrl;
+  final String? mapUrl;
+  final String? address;
+  final DateTime? updatedAt;
+
+  bool get isEmpty =>
+      hostLine == null &&
+      freeText == null &&
+      photoUrl == null &&
+      mapUrl == null &&
+      address == null;
+}
+
 class GuestSummary {
   const GuestSummary({
     required this.weddingPlanId,
@@ -165,6 +286,7 @@ class GuestSummary {
     required this.bySideForSuper,
     required this.byGroup,
     required this.groupsCount,
+    this.byEvent = const [],
   });
 
   factory GuestSummary.empty(String weddingPlanId) {
@@ -189,7 +311,14 @@ class GuestSummary {
     final weddingPlanId = json['weddingPlanId']?.toString() ?? '';
     final bySide = _mapOfInt(json['bySideForSuper']);
     final byGroup = _mapOfInt(json['byGroup']);
+    final byEvent = json['byEvent'];
     return GuestSummary(
+      byEvent: [
+        if (byEvent is List)
+          for (final item in byEvent)
+            if (item is Map)
+              GuestEventCounters.fromJson(Map<String, dynamic>.from(item)),
+      ],
       weddingPlanId: weddingPlanId,
       totalGuests:
           _intOrNull(json['totalGuests']) ?? _intOrZero(json['guestCount']),
@@ -296,6 +425,10 @@ class GuestSummary {
   final Map<String, int> bySideForSuper;
   final Map<String, int> byGroup;
   final int groupsCount;
+
+  /// D83: per event beyond the wedding, in the plan's order; only events
+  /// with invited guests. Empty for a plan kept on the phone.
+  final List<GuestEventCounters> byEvent;
 
   double get completionRatio {
     if (totalGuests <= 0) return 0;

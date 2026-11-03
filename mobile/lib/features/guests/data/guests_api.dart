@@ -145,14 +145,17 @@ class GuestsApi {
     required int seatsCount,
     int? companionsCount,
     String? notes,
+    List<String>? eventIds,
   }) async {
     final normalizedPhone = _normalizeOptionalPhone(phone);
     final normalizedGroupId = groupId?.trim();
-    final payload = {
+    final payload = <String, dynamic>{
       'name': name.trim(),
       'side': side,
       'status': status,
       'seatsCount': seatsCount,
+      // D83: the plan's events beyond the wedding; absent means none.
+      if (eventIds != null && eventIds.isNotEmpty) 'eventIds': eventIds,
     };
     if (normalizedGroupId != null && normalizedGroupId.isNotEmpty) {
       payload['groupId'] = normalizedGroupId;
@@ -249,10 +252,15 @@ class GuestsApi {
     int? seatsCount,
     int? companionsCount,
     String? notes,
+    List<String>? eventIds,
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) {
       payload['name'] = name.trim();
+    }
+    // D83: a list replaces the guest's events; null leaves them.
+    if (eventIds != null) {
+      payload['eventIds'] = eventIds;
     }
     if (phone != null) {
       payload['phone'] = _normalizeOptionalPhone(phone);
@@ -303,16 +311,45 @@ class GuestsApi {
   }
 
   /// A new personal RSVP link for the guest and the WhatsApp text that
-  /// carries it (V1 checklist 4.7). The previous link stops working.
-  Future<GuestInvitationLink> createInvitationLink(String guestId) async {
+  /// carries it (V1 checklist 4.7). The previous link stops working. The
+  /// text is the server's (D83, one source): the invitation from the card
+  /// and the guest's events, or with [reminder] the short reminder (e08).
+  Future<GuestInvitationLink> createInvitationLink(
+    String guestId, {
+    bool reminder = false,
+  }) async {
     final json = await _apiClient.postJson(
       '/api/v1/guests/$guestId/invitation-link',
-      const {},
+      {if (reminder) 'reminder': true},
     );
     return GuestInvitationLink(
       url: json['url']?.toString() ?? '',
       message: json['message']?.toString() ?? '',
       phone: json['phone']?.toString(),
+    );
+  }
+
+  /// D83: the plan's invitation card. A plan kept on the phone has none.
+  Future<InvitationCard> getInvitationCard(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) return const InvitationCard();
+    return InvitationCard.fromJson(
+      await _apiClient.getJson(
+        '/api/v1/wedding-plans/$weddingPlanId/guests/invitation-card',
+      ),
+    );
+  }
+
+  /// D83: writes the card. Only the given keys change; an empty string
+  /// clears that field.
+  Future<InvitationCard> setInvitationCard(
+    String weddingPlanId,
+    Map<String, String?> changes,
+  ) async {
+    return InvitationCard.fromJson(
+      await _apiClient.putJson(
+        '/api/v1/wedding-plans/$weddingPlanId/guests/invitation-card',
+        {for (final entry in changes.entries) entry.key: entry.value ?? ''},
+      ),
     );
   }
 

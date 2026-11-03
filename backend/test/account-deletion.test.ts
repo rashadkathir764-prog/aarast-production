@@ -13,6 +13,8 @@ const PLAN_CHILDREN = [
   "weddingTask",
   "guest",
   "guestGroup",
+  // D83: the plan's invitation card.
+  "guestInvitationCard",
   "planProviderLink",
   "sharedMember",
   "planInvite",

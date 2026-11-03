@@ -1,13 +1,20 @@
 import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
-/// What an invitation says, before it meets a guest and their own link.
+/// The card as e04 draws it before it meets a guest: what the plan and the
+/// saved card say (D83). The WhatsApp text itself is the server's, built
+/// from the same card and the guest's events, so the words live once.
 class GuestInviteCard {
   const GuestInviteCard({
     required this.title,
     this.host,
     this.weddingDate,
+    this.timeLabel,
     this.place,
+    this.freeText,
+    this.photoUrl,
+    this.mapUrl,
+    this.address,
     this.profile = JourneyProfile.groom,
   });
 
@@ -21,55 +28,23 @@ class GuestInviteCard {
   /// «يتشرف …»: whose invitation it is; card text only (C29).
   final String? host;
   final DateTime? weddingDate;
+
+  /// «بعد العشاء», «الساعة 20:30»: the wedding event's time (b12).
+  final String? timeLabel;
   final String? place;
+
+  /// A verse or a word from the hosts, as the card keeps it.
+  final String? freeText;
+  final String? photoUrl;
+  final String? mapUrl;
+  final String? address;
 
   String? get dateLine {
     final date = weddingDate;
-    return date == null ? null : formatArabicWeekdayDayMonth(date);
+    if (date == null) return null;
+    final day = formatArabicWeekdayDayMonth(date);
+    return timeLabel == null ? day : '$day · $timeLabel';
   }
-}
-
-/// e04: the first invitation. Every guest gets their own link, so the text
-/// is built for each one.
-String guestInviteMessage(
-  GuestInviteCard card, {
-  required String guestName,
-  required String url,
-}) {
-  final host = card.host?.trim();
-  // The plan's words: its host and its guests, whoever sends it.
-  final say = card.profile.plan;
-  return [
-    'أهلًا ${guestName.trim()} 🌸',
-    host == null || host.isEmpty
-        ? 'يسعدنا دعوتك لحضور ${card.title}.'
-        : say(
-            'يتشرف $host بدعوتكم لحضور ${card.title}.',
-            'تتشرف $host بدعوتكن لحضور ${card.title}.',
-          ),
-    if (card.dateLine case final date?) 'الموعد: $date',
-    if (card.place?.trim() case final place? when place.isNotEmpty)
-      'المكان: $place',
-    say('أكّد حضورك بضغطة من رابطك:', 'أكّدي حضورك بضغطة من رابطك:'),
-    url,
-  ].join('\n');
-}
-
-/// e08: a reminder for who has not answered. Sending it makes a new link,
-/// and the old one stops working, so it says so (C31).
-String guestReminderMessage(
-  GuestInviteCard card, {
-  required String guestName,
-  required String url,
-}) {
-  return [
-    'أهلًا ${guestName.trim()}',
-    card.dateLine == null
-        ? 'نذكرك بـ${card.title}.'
-        : 'نذكرك بـ${card.title} يوم ${card.dateLine}.',
-    'هذا رابطك الجديد للرد بضغطة:',
-    url,
-  ].join('\n');
 }
 
 /// A WhatsApp chat with [phone], [text] ready to send.

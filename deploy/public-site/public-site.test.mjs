@@ -169,6 +169,20 @@ assert.doesNotMatch(rsvpJs, /https?:\/\//, "The RSVP page calls only its own ori
 for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "console."]) {
   assert.doesNotMatch(rsvpJs, new RegExp(forbidden.replace(".", "\\.")));
 }
+// D83: the card (photo, host line, free text, map or address) and the events
+// beyond the wedding, each answered on its own through the same endpoint.
+for (const id of ["rsvp-photo", "rsvp-free-text", "rsvp-map", "rsvp-address", "rsvp-events", "rsvp-events-list"]) {
+  assert.match(rsvpHtml, new RegExp(`id="${id}"`));
+}
+assert.match(rsvpHtml, /rel="noopener noreferrer"/);
+assert.match(rsvpJs, /body\.planEventId = options\.planEventId/);
+assert.match(rsvpJs, /\/\^https:\/\.test\(value\)/, "Only HTTPS links from the server are opened or shown.");
+assert.match(rsvpJs, /hostPhrase \|\| "يسعدنا حضورك"/);
+// The card photo comes from the public media bucket and nowhere else.
+assert.match(
+  nginx,
+  /img-src 'self' https:\/\/\*\.s3\.eu-central-1\.amazonaws\.com https:\/\/aarast-media\.shadowgardn\.com;/,
+);
 
 // V1 checklist 6.3: the terms say plainly that no money moves through the
 // app and that providers are independent parties.

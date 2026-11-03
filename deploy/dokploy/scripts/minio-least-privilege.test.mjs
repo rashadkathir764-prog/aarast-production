@@ -79,6 +79,7 @@ test('service account policy is limited to the application bucket prefixes', () 
     'provider-cover',
     'service-image',
     'provider-portfolio',
+    'guest-invitation-card',
     'chat-image',
   ]) {
     assert.match(policySource, new RegExp(`${prefix}/\\*`));

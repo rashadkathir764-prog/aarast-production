@@ -61,7 +61,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('guests-offline')), findsOneWidget);
     expect(
-      find.textContaining('الإضافة والدعوات لما يرجع النت'),
+      find.textContaining('الإضافة والدعوات لما نوصل للخادم'),
       findsOneWidget,
     );
     // Adding would only fail now, so its button waits too.

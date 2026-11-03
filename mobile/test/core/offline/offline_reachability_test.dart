@@ -76,7 +76,7 @@ void main() {
 
     expect(find.textContaining('بدون نت'), findsNothing);
     expect(
-      find.text('ما نقدر نوصل للخادم الحين، واللي تضيفه ينحفظ في جوالك'),
+      find.text('ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك'),
       findsOneWidget,
     );
     expect(find.text('الخادم تأخر في الرد · اضغط للفحص'), findsOneWidget);
@@ -94,7 +94,10 @@ void main() {
     await service.noteNetworkFailure('ما فيه نت');
     await _pumpBanner(tester, service);
 
-    expect(find.text('بدون نت، واللي تضيفه ينحفظ في جوالك'), findsOneWidget);
+    expect(
+      find.text('بدون نت. المال والمهام تنحفظ في جوالك لين يرجع'),
+      findsOneWidget,
+    );
     expect(
       find.text('ما فيه نت في الجوال الحين · اضغط للفحص'),
       findsOneWidget,

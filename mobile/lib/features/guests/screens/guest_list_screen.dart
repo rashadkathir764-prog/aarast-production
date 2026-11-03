@@ -212,9 +212,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
               JourneyNote(
                 key: const ValueKey('guests-offline'),
                 text: [
+                  // D84: the server, not «النت»; the cause is on the banner.
                   context.say(
-                    'تشوف القائمة. الإضافة والدعوات لما يرجع النت.',
-                    'تشوفين القائمة. الإضافة والدعوات لما يرجع النت.',
+                    'تشوف القائمة. الإضافة والدعوات لما نوصل للخادم.',
+                    'تشوفين القائمة. الإضافة والدعوات لما نوصل للخادم.',
                   ),
                   if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
                 ].join('\n'),

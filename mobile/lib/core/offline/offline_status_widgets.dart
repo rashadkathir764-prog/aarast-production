@@ -40,10 +40,12 @@ class OfflineStatusBanner extends StatelessWidget {
     final phoneOffline =
         failure == null || failure.cause == ReachabilityCause.noNetwork;
     final label = switch (state) {
+      // Only the money, the tasks, the plan and the requests queue on the
+      // phone; the guests wait for the server, so the promise names them.
       SyncState.offline =>
         phoneOffline
-            ? 'بدون نت، واللي تضيفه ينحفظ في جوالك'
-            : 'ما نقدر نوصل للخادم الحين، واللي تضيفه ينحفظ في جوالك',
+            ? 'بدون نت. المال والمهام تنحفظ في جوالك لين يرجع'
+            : 'ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
       _ => 'تغييراتك تنرسل لما يرجع النت',

@@ -3580,6 +3580,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/auth/me` | `auth.me` | 🔒 |
 | POST | `/api/v1/auth/otp/request` | `auth.requestOtp` |  |
 | POST | `/api/v1/auth/otp/verify` | `auth.verifyOtp` |  |
+| POST | `/api/v1/auth/password` | `auth.setPassword` | 🔒 |
 | POST | `/api/v1/auth/password-reset/confirm` | `auth.confirmPasswordReset` |  |
 | POST | `/api/v1/auth/password-reset/request` | `auth.requestPasswordReset` |  |
 | POST | `/api/v1/auth/phone-change/confirm` | `auth.confirmPhoneChange` | 🔒 |
@@ -3589,6 +3590,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/register/complete` | `auth.completeRegistration` |  |
 | DELETE | `/api/v1/budget-categories/:id` | `budget-categories.remove` | 🔒 |
 | PATCH | `/api/v1/budget-categories/:id` | `budget-categories.update` | 🔒 |
+| PUT | `/api/v1/budget-categories/:id/suggestion` | `budget-categories.setSuggestion` | 🔒 |
 | GET | `/api/v1/catalogs/bootstrap` | `catalogs.getBootstrap` |  |
 | GET | `/api/v1/cities` | `marketplace.findCities` |  |
 | GET | `/api/v1/contexts` | `contexts.list` | 🔒 |
@@ -3810,4 +3812,5 @@ configuration, and smoke checks.
 | GET | `/live` | `health.getLiveness` |  |
 | GET | `/metrics` | `metrics.metrics` |  |
 | GET | `/ready` | `health.getReadiness` |  |
+| GET | `/ready/core` | `health.getCoreReadiness` |  |
 <!-- DOCS-SYNC:END -->

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../experience_v3/aarast_v3.dart';
+import '../network/server_reachability.dart';
+import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_clock.dart';
 import '../utils/arabic_count.dart';
@@ -31,15 +34,26 @@ class OfflineStatusBanner extends StatelessWidget {
       SyncState.syncing => AarastV3Color.cobalt,
       _ => context.accent.primary,
     };
+    // D84: «بدون نت» only when the phone's own network refused; a slow or
+    // down server is said as measured, and the line opens «فحص الاتصال».
+    final failure = service.lastReachabilityFailure;
+    final phoneOffline =
+        failure == null || failure.cause == ReachabilityCause.noNetwork;
     final label = switch (state) {
-      SyncState.offline => 'بدون نت، واللي تضيفه ينحفظ في جوالك',
+      SyncState.offline =>
+        phoneOffline
+            ? 'بدون نت، واللي تضيفه ينحفظ في جوالك'
+            : 'ما نقدر نوصل للخادم الحين، واللي تضيفه ينحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
       _ => 'تغييراتك تنرسل لما يرجع النت',
     };
-    final lastSync = service.lastSyncedAt == null
+    final lastSync = state == SyncState.offline && failure != null
+        ? '${reachabilityCauseLabel(failure.cause)} · اضغط للفحص'
+        : service.lastSyncedAt == null
         ? 'آخر بيانات محفوظة'
         : 'آخر إرسال: ${_shortTime(service.lastSyncedAt!)}';
+    final opensCheck = state == SyncState.offline;
 
     final hasBlockedIssues = service.blockedCount > 0;
     final canRetry = state == SyncState.syncError || hasBlockedIssues;
@@ -59,7 +73,15 @@ class OfflineStatusBanner extends StatelessWidget {
             container: true,
             liveRegion: true,
             label: '$label. $lastSync',
-            child: Container(
+            child: GestureDetector(
+              key: const ValueKey('aarast-sync-status-tap'),
+              behavior: HitTestBehavior.opaque,
+              onTap: opensCheck
+                  ? () => GoRouter.maybeOf(
+                      context,
+                    )?.push(AppRouter.connectionCheck)
+                  : null,
+              child: Container(
               key: const ValueKey('aarast-sync-status'),
               padding: const EdgeInsetsDirectional.fromSTEB(
                 AarastV3Space.x2,
@@ -148,6 +170,7 @@ class OfflineStatusBanner extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
               ),
             ),
           ),

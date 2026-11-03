@@ -17,6 +17,7 @@ import 'core/diagnostics/sentry_log_sink.dart';
 import 'core/forms/aarast_form_draft_store.dart';
 import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
+import 'core/network/server_reachability.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
 import 'core/offline/pending_plan_cleanup.dart';
@@ -174,7 +175,13 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     vault: sensitiveValueVault,
     authStorage: authStorage,
   );
-  final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  // D84: one measured answer to «هل الخادم يرد؟», read by the sync
+  // service, the banner and «فحص الاتصال».
+  final serverReachability = ServerReachability();
+  final apiClient = ApiClient(
+    tokenProvider: authStorage.readAccessToken,
+    reachability: serverReachability,
+  );
   final devicePreferences = DevicePreferences(preferences);
   late final LocalDatabase localDatabase;
   try {
@@ -200,6 +207,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     database: localDatabase,
     apiClient: apiClient,
     pendingPlanCleanupStore: pendingPlanCleanupStore,
+    reachability: serverReachability,
   );
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
@@ -288,6 +296,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
       providers: [
         Provider<AppLogger>.value(value: logger),
         Provider<MemoryRingBufferSink>.value(value: memoryLogSink),
+        ChangeNotifierProvider<ServerReachability>.value(
+          value: serverReachability,
+        ),
         Provider<DiagnosticReportService>.value(value: diagnosticReportService),
         Provider<AuthStorage>.value(value: authStorage),
         Provider<AarastFormDraftStore>.value(value: formDraftStore),

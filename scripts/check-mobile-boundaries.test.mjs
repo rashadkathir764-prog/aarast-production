@@ -2170,6 +2170,8 @@ const trackedOwnerApiContracts = [
     exports: [
       { uri: 'data/settings_api.dart', show: ['SettingsApi'] },
       { uri: 'providers/settings_provider.dart', show: ['SettingsProvider'] },
+      // D84: the measured connection report.
+      { uri: 'screens/connection_check_screen.dart', show: ['ConnectionCheckScreen'] },
       // D63: w05, w06 and w40.
       { uri: 'screens/delete_account_screen.dart', show: ['DeleteAccountScreen'] },
       { uri: 'screens/deletion_pending_screen.dart', show: ['DeletionPendingScreen'] },
@@ -3413,7 +3415,14 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',
-        show: ['DeleteAccountScreen', 'LockSettingsScreen', 'PrivacyScreen', 'SettingsScreen'],
+        // D84: + ConnectionCheckScreen.
+        show: [
+          'ConnectionCheckScreen',
+          'DeleteAccountScreen',
+          'LockSettingsScreen',
+          'PrivacyScreen',
+          'SettingsScreen',
+        ],
       },
       {
         target: 'mobile/lib/features/sharing/sharing_api.dart',

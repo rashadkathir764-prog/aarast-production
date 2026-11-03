@@ -26,6 +26,7 @@ const _routes = [
   '/settings',
   '/settings/lock',
   '/settings/privacy',
+  '/settings/connection',
   '/settings/delete-account',
   '/support',
   '/providers',

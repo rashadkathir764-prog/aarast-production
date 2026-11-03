@@ -515,7 +515,7 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 57 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 57 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -525,16 +525,16 @@ rewrite as permission to restore a removed live model.
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
-| `WeddingPlan` | 32 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
-| `PlanEvent` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 10 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 33 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `PlanEvent` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `BudgetCategory` | 12 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
 | `FundingSource` | 14 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
-| `WeddingTask` | 19 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `createdAt`, `updatedAt` |
+| `WeddingTask` | 23 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `ContributorHistoryScope` | 11 | `id`, `weddingPlanId`, `historyCoverageStartsAt`, `archivedAt`, `deletedAt`, `createdAt`, `updatedAt` |
@@ -546,8 +546,10 @@ rewrite as permission to restore a removed live model.
 | `PushInstallation` | 9 | `id`, `userId`, `lastSeenAt`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
-| `Guest` | 20 | `id`, `weddingPlanId`, `groupId`, `respondedAt`, `createdAt`, `updatedAt` |
+| `Guest` | 21 | `id`, `weddingPlanId`, `groupId`, `respondedAt`, `createdAt`, `updatedAt` |
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `GuestInvitationCard` | 10 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `GuestEventInvite` | 10 | `id`, `guestId`, `planEventId`, `respondedAt`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `Governorate` | 11 | `id`, `createdAt`, `updatedAt` |
 | `District` | 13 | `id`, `governorateId`, `createdAt`, `updatedAt` |
@@ -582,5 +584,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 68
+Total models: 70
 <!-- DOCS-SYNC:END -->

@@ -66,7 +66,10 @@ void main() {
     expect(screen, contains('showJourneySheet'));
     expect(screen, contains('AuthActionGuard'));
     expect(screen, contains('AppRouter'));
-    final rows = screen.substring(screen.indexOf('class _Row '));
+    // D84: the row widget lives in its own part file; it still holds no
+    // flow of its own.
+    final rows = _read('lib/features/more/screens/more_screen.rows.dart');
+    expect(rows, contains('class _Row '));
     for (final forbidden in [
       'AuthActionGuard',
       'AppRouter',

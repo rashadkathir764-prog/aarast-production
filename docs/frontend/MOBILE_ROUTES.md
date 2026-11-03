@@ -13,6 +13,7 @@
 - `/notifications`
 - `/onboarding`
 - `/otp`
+- `/provider/`
 - `/provider/apply`
 - `/provider/dashboard`
 - `/provider/gallery`
@@ -37,6 +38,7 @@
 - `/register`
 - `/reset-password`
 - `/settings`
+- `/settings/connection`
 - `/settings/delete-account`
 - `/settings/lock`
 - `/settings/privacy`
@@ -90,4 +92,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 89 unique routes
+Total: 91 unique routes

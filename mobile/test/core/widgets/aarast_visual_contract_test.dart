@@ -389,6 +389,8 @@ void main() {
         'lib/features/notifications/screens/notifications_screen.dart',
         'lib/features/more/screens/more_screen.dart',
         // D63: w05, w06 and w40.
+        // D84: the measured connection report.
+        'lib/features/settings/screens/connection_check_screen.dart',
         'lib/features/settings/screens/delete_account_screen.dart',
         'lib/features/settings/screens/deletion_pending_screen.dart',
         'lib/features/settings/screens/lock_settings_screen.dart',

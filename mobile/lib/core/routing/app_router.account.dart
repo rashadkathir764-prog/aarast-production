@@ -35,6 +35,11 @@ List<RouteBase> _accountRoutes() => [
     path: AppRouter.privacy,
     builder: (context, state) => const PrivacyScreen(),
   ),
+  // D84 «فحص الاتصال»: open to everyone, account or not.
+  GoRoute(
+    path: AppRouter.connectionCheck,
+    builder: (context, state) => const ConnectionCheckScreen(),
+  ),
   GoRoute(
     path: AppRouter.deleteAccount,
     builder: (context, state) => const DeleteAccountScreen(),

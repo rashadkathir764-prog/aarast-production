@@ -6,6 +6,8 @@ import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
 import '../diagnostics/app_logger.dart';
+import '../utils/app_clock.dart';
+import 'server_reachability.dart';
 
 typedef TokenProvider = Future<String?> Function();
 typedef SessionRefresher = Future<bool> Function();
@@ -26,8 +28,12 @@ const _requestResponseLoggedKey = 'aarast_request_response_logged';
 const _requestFinalFailureLoggedKey = 'aarast_request_final_failure_logged';
 
 class ApiClient {
-  ApiClient({required TokenProvider tokenProvider, Dio? uploadDio})
-    : _tokenProvider = tokenProvider,
+  ApiClient({
+    required TokenProvider tokenProvider,
+    Dio? uploadDio,
+    ServerReachability? reachability,
+  }) : _tokenProvider = tokenProvider,
+       _reachability = reachability,
       _uploadDio =
           uploadDio ??
           Dio(
@@ -80,6 +86,8 @@ class ApiClient {
           handler.next(options);
         },
         onResponse: (response, handler) {
+          // D84: the server answered, so the transport works.
+          _reachability?.noteReached();
           if (_requestUsesAStaleScope(response.requestOptions)) {
             final error = DioException(
               requestOptions: response.requestOptions,
@@ -102,6 +110,9 @@ class ApiClient {
         },
         onError: (error, handler) async {
           _logAttemptFailure(error);
+          // D84: an answer of any status is «reached»; a transport failure
+          // is recorded with its measured cause.
+          _reachability?.observe(error);
           if (await _requestUsesAStaleSessionToken(error.requestOptions)) {
             _logFinalFailure(error);
             handler.next(error);
@@ -163,7 +174,49 @@ class ApiClient {
   final Dio dio;
   final Dio _uploadDio;
   final TokenProvider _tokenProvider;
+  final ServerReachability? _reachability;
   final _acceptedWrites = StreamController<String>.broadcast();
+
+  /// D84 «فحص الاتصال»: one short request to the server's liveness route.
+  /// Null when it answered; otherwise the measured failure.
+  Future<ReachabilityFailure?> probeLive() async {
+    try {
+      final response = await dio.get<Object?>(
+        '/live',
+        options: Options(
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      final status = response.statusCode ?? 0;
+      if (status >= 500) {
+        return ReachabilityFailure(
+          cause: ReachabilityCause.serverError,
+          at: appNow(),
+          path: '/live',
+          detail: 'HTTP $status',
+        );
+      }
+      return null;
+    } on DioException catch (error) {
+      if (error.response != null) {
+        final status = error.response!.statusCode ?? 0;
+        if (status < 500) return null;
+        return ReachabilityFailure(
+          cause: ReachabilityCause.serverError,
+          at: appNow(),
+          path: '/live',
+          detail: 'HTTP $status',
+        );
+      }
+      return ReachabilityFailure(
+        cause: classifyTransportFailure(error) ?? ReachabilityCause.unknown,
+        at: appNow(),
+        path: '/live',
+        detail: error.error?.toString() ?? error.message,
+      );
+    }
+  }
 
   /// The path of every write the server accepted. Whatever is derived from
   /// the plan, such as the home, reads again from this one place, so a screen
@@ -694,7 +747,11 @@ class ApiException implements Exception {
     this.serverCode,
     this.retryAfterSeconds,
     this.phoneProof,
+    this.transportCause,
   });
+
+  /// D84: the measured cause when [isNetworkFailure]; null otherwise.
+  final ReachabilityCause? transportCause;
 
   /// The number this sign-in code proved, for signing up without a second
   /// code (ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF); null otherwise.
@@ -735,13 +792,17 @@ class ApiException implements Exception {
       );
     }
 
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.sendTimeout ||
-        error.type == DioExceptionType.receiveTimeout ||
-        error.type == DioExceptionType.connectionError) {
-      return const ApiException(
-        aarastBackendConnectionErrorMessage,
+    // D84: a transport failure says what was measured (no net, a slow or
+    // refused server, the secure connection) instead of blaming the net.
+    final transportCause = classifyTransportFailure(error);
+    if (transportCause != null) {
+      return ApiException(
+        transportCause == ReachabilityCause.unknown
+            ? aarastBackendConnectionErrorMessage
+            : '${reachabilityCauseLabel(transportCause)}. '
+                  '${reachabilityCauseAdvice(transportCause)}',
         isNetworkFailure: true,
+        transportCause: transportCause,
       );
     }
 

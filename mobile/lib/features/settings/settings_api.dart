@@ -1,6 +1,7 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/settings_api.dart' show SettingsApi;
 export 'providers/settings_provider.dart' show SettingsProvider;
+export 'screens/connection_check_screen.dart' show ConnectionCheckScreen;
 export 'screens/delete_account_screen.dart' show DeleteAccountScreen;
 export 'screens/deletion_pending_screen.dart' show DeletionPendingScreen;
 export 'screens/lock_settings_screen.dart' show LockSettingsScreen;

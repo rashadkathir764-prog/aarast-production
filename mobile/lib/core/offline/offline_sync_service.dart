@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import '../session/safe_user.dart';
 import '../diagnostics/app_logger.dart';
 import '../network/api_client.dart';
+import '../network/server_reachability.dart';
 import 'cache_policy.dart';
 import 'local_database.dart';
 import 'offline_tables.dart';
@@ -19,7 +20,35 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     required this.database,
     required this.apiClient,
     PendingPlanCleanupStore? pendingPlanCleanupStore,
-  }) : _pendingPlanCleanupStore = pendingPlanCleanupStore;
+    ServerReachability? reachability,
+  }) : _pendingPlanCleanupStore = pendingPlanCleanupStore,
+       _reachability = reachability {
+    _reachability?.addListener(_onReachabilityChanged);
+  }
+
+  /// D84: the measured server reachability. The first answer from the
+  /// server after a failure ends «بدون نت» here and sends what waited.
+  final ServerReachability? _reachability;
+
+  ReachabilityFailure? get lastReachabilityFailure =>
+      _reachability?.lastFailure;
+
+  void _onReachabilityChanged() {
+    final reachability = _reachability;
+    if (reachability == null || !reachability.reachable) return;
+    if (_state != SyncState.offline) return;
+    _state = SyncState.synced;
+    _lastError = null;
+    unawaited(
+      refreshStatus().then((_) => syncPendingChanges()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _reachability?.removeListener(_onReachabilityChanged);
+    super.dispose();
+  }
 
   static const _lastSyncedAtKey = 'last_synced_at';
   static const _cacheOwnerUserIdKey = 'cache_owner_user_id';

@@ -233,9 +233,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
         ),
         children: [
-          if (marketplace.quoteRequestsErrorMessage != null) ...[
+          if (marketplace.quoteRequestsErrorMessage != null ||
+              marketplace.quoteRequestsStale) ...[
+            // D87: an old copy of the requests; decisions need the server.
             JourneyListNotice(
-              offline: false,
+              offline: marketplace.quoteRequestsErrorMessage == null,
               onRetry: marketplace.loadScopedQuoteRequests,
             ),
             const SizedBox(height: AarastV3Space.x3),

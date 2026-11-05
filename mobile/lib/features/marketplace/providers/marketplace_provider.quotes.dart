@@ -140,7 +140,8 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       }
       return false;
     } catch (_) {
-      _quoteSubmitErrorMessage = 'تعذر إرسال طلب عرض السعر.';
+      _quoteSubmitErrorMessage =
+          'ما انرسل طلب عرض السعر الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -357,7 +358,7 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       }
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث حالة عرض السعر.';
+      _errorMessage = 'ما انحفظ قرارك الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;

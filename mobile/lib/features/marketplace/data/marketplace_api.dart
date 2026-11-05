@@ -22,11 +22,21 @@ class MarketplaceApi {
   MarketplaceApi(ApiClient apiClient, {OfflineSyncService? offline})
     : _apiClient = apiClient,
       _offline = offline,
-      _reads = OfflineReads(apiClient, offline);
+      _reads = OfflineReads(apiClient, offline),
+      _writes = OfflineWrites(apiClient, offline);
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
   final OfflineReads _reads;
+  final OfflineWrites _writes;
+
+  /// D90: these reach the provider the moment they are sent, so they
+  /// cannot wait on the phone; the failure says so with the measured cause.
+  static const _reachesProvider = 'قرارك يوصل المزود فورًا، فيحتاج الخادم.';
+  static const _bookingReachesProvider =
+      'طلب الحجز يوصل المزود فورًا، فيحتاج الخادم.';
+  static const _reviewReachesProvider =
+      'تقييمك ينشر عند المزود فورًا، فيحتاج الخادم.';
 
   Future<List<MarketplaceCity>> getCities() async {
     try {
@@ -569,9 +579,10 @@ class MarketplaceApi {
   }
 
   Future<QuoteRequest> cancelQuoteRequest(String quoteRequestId) async {
-    final json = await _apiClient.patchJson(
-      '/api/v1/quote-requests/$quoteRequestId/cancel',
-      const {},
+    final json = await _writes.serverOnly(
+      reason: _reachesProvider,
+      method: 'PATCH',
+      path: '/api/v1/quote-requests/$quoteRequestId/cancel',
     );
     await _offline?.database.saveCachedItem(
       table: OfflineTables.cachedBookings,
@@ -587,9 +598,12 @@ class MarketplaceApi {
     required String quoteOfferId,
     required int versionNo,
   }) async {
-    await _apiClient.patchJson('/api/v1/quote-offers/$quoteOfferId/accept', {
-      'versionNo': versionNo,
-    });
+    await _writes.serverOnly(
+      reason: _reachesProvider,
+      method: 'PATCH',
+      path: '/api/v1/quote-offers/$quoteOfferId/accept',
+      body: {'versionNo': versionNo},
+    );
     return getQuoteRequest(quoteRequestId);
   }
 
@@ -600,10 +614,12 @@ class MarketplaceApi {
     String? reason,
     String? message,
   }) async {
-    await _apiClient.patchJson('/api/v1/quote-offers/$quoteOfferId/reject', {
-      'reason': ?reason,
-      'message': ?message,
-    });
+    await _writes.serverOnly(
+      reason: _reachesProvider,
+      method: 'PATCH',
+      path: '/api/v1/quote-offers/$quoteOfferId/reject',
+      body: {'reason': ?reason, 'message': ?message},
+    );
     return getQuoteRequest(quoteRequestId);
   }
 
@@ -614,9 +630,11 @@ class MarketplaceApi {
     required String quoteRequestId,
     DateTime? eventDate,
   }) async {
-    await _apiClient.postJson(
-      '/api/v1/me/quote-requests/$quoteRequestId/booking',
-      {
+    await _writes.serverOnly(
+      reason: _bookingReachesProvider,
+      method: 'POST',
+      path: '/api/v1/me/quote-requests/$quoteRequestId/booking',
+      body: {
         if (eventDate != null)
           'eventDate': MarketplaceBooking.dayParam(eventDate),
       },
@@ -630,20 +648,26 @@ class MarketplaceApi {
     required int rating,
     String? comment,
   }) async {
-    await _apiClient.postJson('/api/v1/providers/$providerId/reviews', {
-      'rating': rating,
-      if (comment != null && comment.trim().isNotEmpty)
-        'comment': comment.trim(),
-    });
+    await _writes.serverOnly(
+      reason: _reviewReachesProvider,
+      method: 'POST',
+      path: '/api/v1/providers/$providerId/reviews',
+      body: {
+        'rating': rating,
+        if (comment != null && comment.trim().isNotEmpty)
+          'comment': comment.trim(),
+      },
+    );
   }
 
   Future<QuoteRequest> cancelBooking({
     required String quoteRequestId,
     required String bookingId,
   }) async {
-    await _apiClient.patchJson(
-      '/api/v1/me/bookings/$bookingId/cancel',
-      const {},
+    await _writes.serverOnly(
+      reason: _bookingReachesProvider,
+      method: 'PATCH',
+      path: '/api/v1/me/bookings/$bookingId/cancel',
     );
     return getQuoteRequest(quoteRequestId);
   }
@@ -653,9 +677,10 @@ class MarketplaceApi {
     required String quoteRequestId,
     required String bookingId,
   }) async {
-    await _apiClient.postJson(
-      '/api/v1/me/bookings/$bookingId/delivery/confirm',
-      const {},
+    await _writes.serverOnly(
+      reason: _bookingReachesProvider,
+      method: 'POST',
+      path: '/api/v1/me/bookings/$bookingId/delivery/confirm',
     );
     return getQuoteRequest(quoteRequestId);
   }
@@ -667,10 +692,15 @@ class MarketplaceApi {
     required DateTime eventDate,
     String? note,
   }) async {
-    await _apiClient.postJson('/api/v1/me/bookings/$bookingId/change', {
-      'eventDate': MarketplaceBooking.dayParam(eventDate),
-      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
-    });
+    await _writes.serverOnly(
+      reason: _bookingReachesProvider,
+      method: 'POST',
+      path: '/api/v1/me/bookings/$bookingId/change',
+      body: {
+        'eventDate': MarketplaceBooking.dayParam(eventDate),
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
     return getQuoteRequest(quoteRequestId);
   }
 

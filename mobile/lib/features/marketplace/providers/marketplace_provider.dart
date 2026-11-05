@@ -282,8 +282,8 @@ String providerDirectoryErrorMessage(Object error) {
   return providerDirectoryGenericErrorMessage;
 }
 
-const providerReferenceDataErrorMessage = 'تعذر تحميل خيارات المدينة والفئة.';
+const providerReferenceDataErrorMessage = 'ما قدرنا نجيب المدن والأقسام الحين.';
 const providerDirectoryGenericErrorMessage =
-    'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.';
+    'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.';
 const providerDetailsStaleErrorMessage =
     'تعذر تحديث بيانات المزود؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';

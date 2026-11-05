@@ -233,13 +233,13 @@ void main() {
       providerDirectoryErrorMessage(
         const ApiException('Internal server error', statusCode: 500),
       ),
-      'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.',
+      'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.',
     );
     expect(
       providerDirectoryErrorMessage(
         const ApiException('Provider not found', statusCode: 404),
       ),
-      'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.',
+      'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.',
     );
     expect(
       providerDirectoryErrorMessage(

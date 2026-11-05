@@ -446,8 +446,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           onEmptyAction: () => _clearMarketplaceFilters(provider),
         )
       else ...[
-        if (provider.errorMessage != null) ...[
-          JourneyListNotice(offline: false, onRetry: provider.loadMarketplace),
+        if (provider.errorMessage != null || provider.isStale) ...[
+          // D87: an old copy of the directory is said, view only.
+          JourneyListNotice(
+            offline: provider.errorMessage == null,
+            onRetry: provider.loadMarketplace,
+          ),
           const SizedBox(height: AarastV3Space.x3),
         ],
         // f02: the cards alone; each says where it stands against the item.

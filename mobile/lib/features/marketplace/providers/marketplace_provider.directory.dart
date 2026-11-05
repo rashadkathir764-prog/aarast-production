@@ -82,7 +82,8 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
           cities: results[0] as List<MarketplaceCity>,
           categories: results[1] as List<ProviderCategory>,
           providers: results[2] as MarketplaceProviderPage,
-          favorites: results[3] as _MarketplaceLoadResult<List<FavoriteProvider>>,
+          favorites:
+              results[3] as _MarketplaceLoadResult<List<FavoriteProvider>>,
           quoteRequests: results[4] as List<QuoteRequest>,
         );
       },

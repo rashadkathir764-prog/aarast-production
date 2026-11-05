@@ -376,6 +376,31 @@ void main() {
     });
   });
 
+  testWidgets('D87: an old copy of the requests says so, view only', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: [
+        QuoteRequest.fromJson({
+          'id': 'quote-stale',
+          'providerId': 'provider-1',
+          'weddingPlanId': 'plan-1',
+          'status': 'SENT',
+          'lifecycleStatus': 'SENT',
+          'provider': {'id': 'provider-1', 'businessName': 'فرقة الأفراح'},
+        }),
+      ],
+      quoteRequestsStale: true,
+    );
+    await _pump(tester, state);
+
+    expect(
+      find.byKey(const ValueKey('journey-list-notice-offline')),
+      findsOneWidget,
+    );
+    expect(find.text('آخر نسخة محفوظة · تشوف بس'), findsOneWidget);
+  });
+
   testWidgets('y09 a booking confirmed since the last look opens its moment', (
     tester,
   ) async {
@@ -1069,16 +1094,22 @@ class _LoadedFinance extends FinanceProvider {
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     List<QuoteRequest> quoteRequests = const [],
+    bool quoteRequestsStale = false,
     this.quoteOnDirectLoad,
     this.quoteRequestsError,
     this.favorites = const [],
     this.favoritesError,
     this.pages = const {},
-  }) : quoteRequestsData = List.of(quoteRequests),
+  }) : stale = quoteRequestsStale,
+       quoteRequestsData = List.of(quoteRequests),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<FavoriteProvider> favorites;
   final String? favoritesError;
+  final bool stale;
+
+  @override
+  bool get quoteRequestsStale => stale;
 
   @override
   String? get favoriteProvidersErrorMessage => favoritesError;

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/app_clock.dart';
@@ -68,6 +69,7 @@ class FinanceApi extends _FinanceApiCore
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await cachedMoneySummary(planId);
       if (cached == null) rethrow;
+      OfflineReads.noteCopyServed();
       return cached;
     }
   }
@@ -192,7 +194,9 @@ abstract class _FinanceApiCore {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
     final cached = await _readCachedPlanList(table, planId);
-    return cached.isEmpty ? null : cached;
+    if (cached.isEmpty) return null;
+    OfflineReads.noteCopyServed();
+    return cached;
   }
 
   Future<List<Map<String, dynamic>>> _readCachedPlanList(

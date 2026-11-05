@@ -49,7 +49,10 @@ class ReferenceCatalogApi {
       );
       return bootstrap;
     } on Object catch (error) {
-      if (cached != null && CachePolicy.shouldUseCache(error)) return cached;
+      if (cached != null && CachePolicy.shouldUseCache(error)) {
+        OfflineReads.noteCopyServed();
+        return cached;
+      }
       rethrow;
     }
   }

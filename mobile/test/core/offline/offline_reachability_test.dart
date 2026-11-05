@@ -27,7 +27,11 @@ Future<OfflineSyncService> _service(ServerReachability reachability) async {
   return service;
 }
 
-Future<void> _pumpBanner(WidgetTester tester, OfflineSyncService service) {
+Future<void> _pumpBanner(
+  WidgetTester tester,
+  OfflineSyncService service, {
+  OfflineAudience audience = OfflineAudience.couple,
+}) {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 640);
   addTearDown(tester.view.reset);
@@ -36,7 +40,7 @@ Future<void> _pumpBanner(WidgetTester tester, OfflineSyncService service) {
       value: service,
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const Scaffold(body: OfflineStatusBanner()),
+        home: Scaffold(body: OfflineStatusBanner(audience: audience)),
       ),
     ),
   );
@@ -82,6 +86,26 @@ void main() {
     expect(find.text('الخادم تأخر في الرد · اضغط للفحص'), findsOneWidget);
   });
 
+  testWidgets('the provider is told what his phone keeps: his offers', (
+    tester,
+  ) async {
+    final reachability = ServerReachability();
+    final service = await _service(reachability);
+    reachability.noteFailure(
+      ReachabilityFailure(
+        cause: ReachabilityCause.timeout,
+        at: DateTime(2026, 11, 3),
+      ),
+    );
+    await service.noteNetworkFailure('الخادم تأخر في الرد');
+    await _pumpBanner(tester, service, audience: OfflineAudience.provider);
+
+    expect(
+      find.text('ما نقدر نوصل للخادم الحين. عروضك تنحفظ في جوالك'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a phone without net is «بدون نت»', (tester) async {
     final reachability = ServerReachability();
     final service = await _service(reachability);
@@ -98,9 +122,6 @@ void main() {
       find.text('بدون نت. المال والمهام تنحفظ في جوالك لين يرجع'),
       findsOneWidget,
     );
-    expect(
-      find.text('ما فيه نت في الجوال الحين · اضغط للفحص'),
-      findsOneWidget,
-    );
+    expect(find.text('ما فيه نت في الجوال الحين · اضغط للفحص'), findsOneWidget);
   });
 }

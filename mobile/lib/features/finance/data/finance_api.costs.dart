@@ -111,6 +111,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         id: costId,
       );
       if (cached == null) rethrow;
+      OfflineReads.noteCopyServed();
       return WeddingCost.fromJson(cached);
     }
   }

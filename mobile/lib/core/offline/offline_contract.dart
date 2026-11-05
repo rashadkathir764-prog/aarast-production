@@ -22,6 +22,17 @@ class OfflineReads {
   final ApiClient _api;
   final OfflineSyncService? _offline;
 
+  /// D87: how many times a phone's copy stood in for the server's answer
+  /// since the app started. A screen that asked the server and saw this
+  /// count rise meanwhile is showing an old copy, and says so; nothing
+  /// else can tell a served copy from a fresh answer.
+  static int copiesServed = 0;
+
+  /// Called by every path that serves the phone's copy instead of the
+  /// server's answer, inside this contract and in the data files that keep
+  /// a queue of their own.
+  static void noteCopyServed() => copiesServed++;
+
   /// A list the server returns as a JSON array (or under [itemsKey] in an
   /// object), kept in [table], scoped by [parentColumn]/[parentId].
   Future<List<Map<String, dynamic>>> list(
@@ -52,6 +63,7 @@ class OfflineReads {
       );
       // No copy on the phone: the failure is reported, never an empty list.
       if (cached.isEmpty) rethrow;
+      noteCopyServed();
       return cached;
     }
   }
@@ -70,6 +82,7 @@ class OfflineReads {
       if (!await _servesCache(error)) rethrow;
       final cached = await cachedItem(table, id);
       if (cached == null) rethrow;
+      noteCopyServed();
       return cached;
     }
   }
@@ -88,6 +101,7 @@ class OfflineReads {
       if (!await _servesCache(error)) rethrow;
       final cached = await cachedBlob(metaKey);
       if (cached == null) rethrow;
+      noteCopyServed();
       return cached;
     }
   }
@@ -105,7 +119,9 @@ class OfflineReads {
           ? await _api.getJsonList(path)
           : (await _api.getJson(path))[itemsKey];
       final items = wrapScalars && raw is List
-          ? [for (final value in raw) <String, dynamic>{'value': value}]
+          ? [
+              for (final value in raw) <String, dynamic>{'value': value},
+            ]
           : _maps(raw);
       await _offline?.database.setMeta(metaKey, jsonEncode(items));
       return items;
@@ -113,6 +129,7 @@ class OfflineReads {
       if (!await _servesCache(error)) rethrow;
       final cached = await cachedBlobList(metaKey);
       if (cached == null) rethrow;
+      noteCopyServed();
       return cached;
     }
   }
@@ -251,7 +268,9 @@ class OfflineWrites {
       if (operation != 'create') {
         final create = pendingCreate;
         if (create == null) {
-          throw StateError('$entityType $operation on a queued row needs pendingCreate');
+          throw StateError(
+            '$entityType $operation on a queued row needs pendingCreate',
+          );
         }
         return _keepOnPhone(
           database: database,

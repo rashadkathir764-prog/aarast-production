@@ -109,9 +109,12 @@ class MarketplaceApi {
         categoryId.trim().isNotEmpty) {
       categories.add(categoryId.trim());
     }
-    final items = _filterProviders(rows, search, cityId, categories)
-        .map(MarketplaceProvider.fromJson)
-        .toList();
+    final items = _filterProviders(
+      rows,
+      search,
+      cityId,
+      categories,
+    ).map(MarketplaceProvider.fromJson).toList();
     if (items.isEmpty) return null;
     return MarketplaceProviderPage(
       items: items,
@@ -203,6 +206,7 @@ class MarketplaceApi {
       );
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _offline.database.readCachedList(
         table: OfflineTables.cachedProviders,
@@ -339,6 +343,7 @@ class MarketplaceApi {
       return items.map(ProviderReview.fromJson).toList();
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _offline.database.getMeta(key);
       if (cached == null) return const [];
@@ -708,7 +713,9 @@ class MarketplaceApi {
       parentColumn: parentColumn,
       parentId: parentId,
     );
-    return cached.isEmpty ? null : cached;
+    if (cached.isEmpty) return null;
+    OfflineReads.noteCopyServed();
+    return cached;
   }
 
   Future<Map<String, dynamic>?> _cachedItemOnNetworkFailure(
@@ -718,7 +725,9 @@ class MarketplaceApi {
   }) async {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
-    return _offline.database.readCachedItem(table: table, id: id);
+    final cached = await _offline.database.readCachedItem(table: table, id: id);
+    if (cached != null) OfflineReads.noteCopyServed();
+    return cached;
   }
 
   bool _isUnfiltered(

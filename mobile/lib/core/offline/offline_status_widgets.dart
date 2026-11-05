@@ -12,8 +12,16 @@ import '../utils/arabic_count.dart';
 import 'offline_sync_service.dart';
 import 'sync_status.dart';
 
+/// Who reads the banner: what the phone keeps differs by side.
+enum OfflineAudience { couple, provider }
+
 class OfflineStatusBanner extends StatelessWidget {
-  const OfflineStatusBanner({super.key});
+  const OfflineStatusBanner({
+    this.audience = OfflineAudience.couple,
+    super.key,
+  });
+
+  final OfflineAudience audience;
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +47,16 @@ class OfflineStatusBanner extends StatelessWidget {
     final failure = service.lastReachabilityFailure;
     final phoneOffline =
         failure == null || failure.cause == ReachabilityCause.noNetwork;
+    // D87: the provider's phone keeps his offers; the couple's keeps the
+    // money and the tasks.
+    final kept = audience == OfflineAudience.provider
+        ? 'عروضك'
+        : 'المال والمهام';
     final label = switch (state) {
-      // Only the money, the tasks, the plan and the requests queue on the
-      // phone; the guests wait for the server, so the promise names them.
       SyncState.offline =>
         phoneOffline
-            ? 'بدون نت. المال والمهام تنحفظ في جوالك لين يرجع'
-            : 'ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك',
+            ? 'بدون نت. $kept تنحفظ في جوالك لين يرجع'
+            : 'ما نقدر نوصل للخادم الحين. $kept تنحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
       _ => 'تغييراتك تنرسل لما يرجع النت',

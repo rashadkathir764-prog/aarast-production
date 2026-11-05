@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/data/provider_offer_queue.dart';
@@ -21,6 +22,10 @@ class OfflineApi extends RequestsApi {
   OfflineApi({super.quotes, super.bookings});
 
   bool offline = false;
+
+  /// The server is out of reach and the phone has a copy: the contract
+  /// serves it without failing (D85), and counts it (D87).
+  bool copy = false;
   bool alreadyExists = false;
 
   /// What the server answers for the requests from now on, when set.
@@ -38,7 +43,17 @@ class OfflineApi extends RequestsApi {
   @override
   Future<ProviderDashboardProfile> getProfile() {
     if (offline) throw _noNetwork;
+    if (copy) OfflineReads.noteCopyServed();
     return super.getProfile();
+  }
+
+  @override
+  Future<ProviderReview> replyToReview({
+    required String reviewId,
+    required String body,
+  }) {
+    if (offline) throw _noNetwork;
+    return super.replyToReview(reviewId: reviewId, body: body);
   }
 
   @override
@@ -168,6 +183,45 @@ void main() {
     expect(find.text('آخر تحديث قبل لحظات'), findsOne);
     // The lists read before are still there.
     expect(find.text('عادل الريمي'), findsOne);
+    await _done(tester, dashboard);
+  });
+
+  testWidgets('a profile served from the phone\'s copy says offline and keeps '
+      'the time of the last real read', (tester) async {
+    final api = _api();
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await tester.runAsync(dashboard.loadDashboard);
+    final readAt = dashboard.lastUpdatedAt;
+    expect(readAt, isNotNull);
+    api.copy = true;
+    await tester.runAsync(dashboard.loadDashboard);
+    expect(dashboard.isOffline, isTrue);
+    expect(dashboard.lastUpdatedAt, readAt);
+    expect(dashboard.errorMessage, isNull);
+    await _done(tester, dashboard);
+  });
+
+  testWidgets('a change that needs the server says so, as measured', (
+    tester,
+  ) async {
+    final api = _api();
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await tester.runAsync(dashboard.loadDashboard);
+    api.offline = true;
+    final saved = await tester.runAsync(
+      () => dashboard.replyToReview('review-1', 'شكرًا'),
+    );
+    expect(saved, isFalse);
+    expect(
+      dashboard.errorMessage,
+      'ما قدرنا نوصل للخادم الحين. ردك يحتاج الخادم، جرّب لما يرجع.',
+    );
     await _done(tester, dashboard);
   });
 

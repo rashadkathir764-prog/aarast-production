@@ -95,6 +95,7 @@ mixin _FinancePaymentsApi on _FinanceApiCore {
         id: paymentId,
       );
       if (cached == null) rethrow;
+      OfflineReads.noteCopyServed();
       return CostPayment.fromJson(cached);
     }
   }
@@ -120,6 +121,7 @@ mixin _FinancePaymentsApi on _FinanceApiCore {
       return items.map(CostPayment.fromJson).toList();
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _offline.database.readCachedList(
         table: OfflineTables.cachedCostPayments,

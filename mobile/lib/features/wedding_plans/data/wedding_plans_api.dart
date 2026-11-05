@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/storage/auth_storage.dart';
@@ -355,7 +356,9 @@ class WeddingPlansApi {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
     final cached = await _offline.database.readCachedList(table: table);
-    return cached.isEmpty ? null : cached;
+    if (cached.isEmpty) return null;
+    OfflineReads.noteCopyServed();
+    return cached;
   }
 
   Future<Map<String, dynamic>?> _cachedItemOnNetworkFailure(
@@ -365,7 +368,9 @@ class WeddingPlansApi {
   }) async {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
-    return _offline.database.readCachedItem(table: table, id: id);
+    final cached = await _offline.database.readCachedItem(table: table, id: id);
+    if (cached != null) OfflineReads.noteCopyServed();
+    return cached;
   }
 
   // --- D85: the phone's copies alone, shown before the server is asked ---

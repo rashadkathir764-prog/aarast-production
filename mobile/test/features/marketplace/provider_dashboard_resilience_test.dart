@@ -63,7 +63,7 @@ void main() {
       expect(dashboard.packages, isEmpty);
       expect(dashboard.reviews, isEmpty);
       expect(dashboard.quoteRequests, isEmpty);
-      expect(dashboard.errorMessage, contains('صلاحية مساحة المزوّد'));
+      expect(dashboard.errorMessage, contains('صلاحيتك كمزود'));
 
       api.denyOperationalAccess = false;
       await dashboard.loadDashboard();

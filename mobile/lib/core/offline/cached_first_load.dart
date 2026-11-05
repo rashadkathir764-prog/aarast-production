@@ -1,3 +1,5 @@
+import 'offline_contract.dart';
+
 /// D85: a screen shows the phone's copy at once and asks the server at the
 /// same time.
 ///
@@ -21,6 +23,9 @@ Future<void> readCachedFirst<T>({
   bool Function(T value)? isEmpty,
 }) async {
   var remoteDone = false;
+  // D87: the contract serves the phone's copy without failing; a copy
+  // served while the server was asked means the answer is that copy.
+  final served = OfflineReads.copiesServed;
   late final Future<T> answer;
   try {
     answer = remote().whenComplete(() => remoteDone = true);
@@ -50,7 +55,7 @@ Future<void> readCachedFirst<T>({
   try {
     final fresh = await answer;
     apply(fresh);
-    state(loading: false, stale: false);
+    state(loading: false, stale: OfflineReads.copiesServed > served);
   } on Object catch (error) {
     if (hasCopy) {
       // The server failed before the copy was read: the copy shows now.

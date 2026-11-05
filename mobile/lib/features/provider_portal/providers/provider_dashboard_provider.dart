@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -205,7 +206,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         await loadClaim();
         return _claim?.isPending ?? false;
       }
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'طلب الاستلام يحتاج الخادم');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
@@ -257,7 +258,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       final message = switch (error.serverCode) {
         'PROVIDER_SERVICE_REQUIRED' => 'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
-        _ => marketplaceErrorMessage(error.message),
+        _ => _said(error, 'ملفك يحتاج الخادم'),
       };
       // The state changed elsewhere (the team decided, or rewrote its
       // notes, meanwhile): read it, then say why; reading it clears the
@@ -316,7 +317,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await _loadJoiningServices();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'خدمتك تحتاج الخادم');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
@@ -427,14 +428,15 @@ class ProviderDashboardProvider extends ChangeNotifier
     _isLoading = _profile == null;
     _errorMessage = null;
     notifyListeners();
+    // D87: the contract serves the phone's copy without failing; a copy
+    // served while this read ran means the server did not answer.
+    final served = OfflineReads.copiesServed;
 
     try {
       final profile = await _api.getProfile();
       _profile = profile;
       _hasProviderProfile = true;
       _operationsAccessDenied = false;
-      _offline = false;
-      _lastUpdatedAt = DateTime.now();
 
       if (!canUseProviderOperations) {
         _clearOperationalData();
@@ -445,6 +447,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         }
         // Waiting for approval, p09 shows the service he joined with.
         await _loadJoiningServices();
+        _settleRead(served);
         return;
       }
 
@@ -502,8 +505,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         } catch (_) {
           // Keep the last safe profile shell while operational data stays clear.
         }
-        _errorMessage =
-            'تغيّرت صلاحية مساحة المزوّد. حدّث المسارات أو أعد المحاولة.';
+        _errorMessage = 'تغيّرت صلاحيتك كمزود. اسحب للتحديث.';
         return;
       }
       final summary = results[0];
@@ -522,13 +524,16 @@ class ProviderDashboardProvider extends ChangeNotifier
         _quoteRequests = quoteRequests;
       }
       if (reviews is List<ProviderReview>) _reviews = reviews;
+      _settleRead(served);
       await _sendQueuedOffers(
         profile.id,
         quotesRead: quoteRequests is List<QuoteRequest>,
       );
       if (sectionErrors.isNotEmpty) {
-        _errorMessage =
-            'تم تحميل ملف المزوّد، لكن تعذر تحديث: ${sectionErrors.join('، ')}.';
+        final names = sectionErrors.join('، ');
+        _errorMessage = _offline
+            ? 'ما قدرنا نوصل للخادم، و$names ما لها نسخة في جوالك بعد.'
+            : 'ما قدرنا نجيب $names. اسحب للتحديث.';
       }
     } on ApiException catch (error) {
       // What was read before stays on screen, with its time (p43).
@@ -548,6 +553,12 @@ class ProviderDashboardProvider extends ChangeNotifier
       _scheduleRetry();
       notifyListeners();
     }
+  }
+
+  /// What this read was: the server's answer, with its time, or copies.
+  void _settleRead(int served) {
+    _offline = OfflineReads.copiesServed > served;
+    if (!_offline) _lastUpdatedAt = DateTime.now();
   }
 
   void _scheduleRetry() {
@@ -762,7 +773,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       }
       _errorMessage = error.serverCode == 'PROVIDER_SERVICE_REQUIRED'
           ? 'اكتب خدمتك وسعرها قبل ما ترسل.'
-          : marketplaceErrorMessage(error.message);
+          : _said(error, 'طلبك يحتاج الخادم');
       return ProviderJoinResult.failed;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';
@@ -809,10 +820,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       _hasProviderProfile = true;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'ملفك يحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حفظ بيانات المزود الآن.';
+      _errorMessage = 'ما انحفظ ملفك الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -833,10 +844,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       _hasProviderProfile = true;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'صورة ملفك تحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حفظ صورة ملف المزوّد الآن.';
+      _errorMessage = 'ما انحفظت الصورة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -926,10 +937,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'الخدمة الجديدة تحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إضافة الخدمة. حاول مرة أخرى.';
+      _errorMessage = 'ما انضافت الخدمة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -978,11 +989,11 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'تعديل الخدمة يحتاج الخادم');
       notifyListeners();
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث الخدمة. حاول مرة أخرى.';
+      _errorMessage = 'ما اتعدّلت الخدمة الحين. جرّب مرة ثانية.';
       notifyListeners();
       return false;
     }
@@ -1016,10 +1027,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'الباقة الجديدة تحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إضافة الباقة. حاول مرة أخرى.';
+      _errorMessage = 'ما انضافت الباقة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1069,11 +1080,11 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'تعديل الباقة يحتاج الخادم');
       notifyListeners();
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث الباقة. حاول مرة أخرى.';
+      _errorMessage = 'ما اتعدّلت الباقة الحين. جرّب مرة ثانية.';
       notifyListeners();
       return false;
     }
@@ -1122,10 +1133,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'حالة الطلب تحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث حالة الطلب. حاول مرة أخرى.';
+      _errorMessage = 'ما اتغيّرت حالة الطلب الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1210,10 +1221,10 @@ class ProviderDashboardProvider extends ChangeNotifier
           )) {
         return ProviderOfferSend.queued;
       }
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'عرضك يحتاج الخادم');
       return ProviderOfferSend.failed;
     } catch (_) {
-      _errorMessage = 'تعذر إرسال عرض السعر. حاول مرة أخرى.';
+      _errorMessage = 'ما انرسل عرضك الحين. جرّب مرة ثانية.';
       return ProviderOfferSend.failed;
     } finally {
       _isSubmitting = false;
@@ -1249,10 +1260,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'تعديل العرض يحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تعديل عرض السعر. حاول مرة أخرى.';
+      _errorMessage = 'ما اتعدّل العرض الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1272,7 +1283,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'سحب العرض يحتاج الخادم');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
@@ -1297,10 +1308,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = _said(error, 'ردك يحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا ننشر ردك. حاول مرة ثانية.';
+      _errorMessage = 'ما انرسل ردك الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1318,7 +1329,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     final decided = await _calendarMutation(
       () =>
           _api.decideBooking(bookingId: bookingId, action: action, note: note),
-      fallback: 'تعذر تحديث الحجز. حاول مرة أخرى.',
+      fallback: 'ما اتحدّث الحجز الحين. جرّب مرة ثانية.',
     );
     // The quote cards, the booking list and the calendar all change together.
     if (decided) await loadDashboard();
@@ -1395,9 +1406,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _ledgers[_monthKey(month)] = await _api.getLedger(month);
     } on ApiException catch (error) {
-      _ledgerError = error.isNetworkFailure
-          ? 'ما فيه نت. حساباتك تظهر لما يرجع.'
-          : marketplaceErrorMessage(error.message);
+      _ledgerError = _said(error, 'حساباتك تحتاج الخادم');
     } catch (_) {
       _ledgerError = 'ما قدرنا نقرأ حساباتك. جرّب مرة ثانية.';
     }
@@ -1408,14 +1417,14 @@ class ProviderDashboardProvider extends ChangeNotifier
     return _calendarMutation(() async {
       await _api.blockDate(day);
       _blockedDates = await _api.getBlockedDates();
-    }, fallback: 'تعذر إغلاق اليوم. حاول مرة أخرى.');
+    }, fallback: 'ما انقفل اليوم الحين. جرّب مرة ثانية.');
   }
 
   Future<bool> unblockDate(DateTime day) {
     return _calendarMutation(() async {
       await _api.unblockDate(day);
       _blockedDates = await _api.getBlockedDates();
-    }, fallback: 'تعذر فتح اليوم. حاول مرة أخرى.');
+    }, fallback: 'ما انفتح اليوم الحين. جرّب مرة ثانية.');
   }
 
   Future<bool> _calendarMutation(
@@ -1436,7 +1445,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _lastChangeOffline = error.isNetworkFailure;
       _errorMessage =
           bookingErrorMessage(error.serverCode) ??
-          marketplaceErrorMessage(error.message);
+          _said(error, 'التغيير يحتاج الخادم');
       return false;
     } catch (_) {
       _errorMessage = fallback;
@@ -1452,6 +1461,12 @@ class ProviderDashboardProvider extends ChangeNotifier
     notifyListeners();
   }
 }
+
+/// D87: a failure said as measured (D84): the server out of reach is not
+/// the server refusing; [needs] names what waits («ردك يحتاج الخادم»).
+String _said(ApiException error, String needs) => error.isNetworkFailure
+    ? 'ما قدرنا نوصل للخادم الحين. $needs، جرّب لما يرجع.'
+    : marketplaceErrorMessage(error.message);
 
 bool _isMissingProviderProfile(String message) {
   final normalized = message.toLowerCase();

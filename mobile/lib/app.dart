@@ -45,6 +45,20 @@ class _AarastAppState extends State<AarastApp> {
   late final AarastBackButtonDispatcher _backButtonDispatcher =
       AarastBackButtonDispatcher(_router);
 
+  /// D87: read when a notification is tapped, never as a dependency of the
+  /// root builder (a rebuild of the whole app on every context change).
+  static bool _providerAccount(BuildContext context) {
+    try {
+      return context
+              .read<AccountContextController>()
+              .selectedContext
+              ?.isProvider ??
+          false;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -116,6 +130,7 @@ class _AarastAppState extends State<AarastApp> {
                 child: AarastPushLifecycleBridge(
                   router: _router,
                   authenticatedUserId: authenticatedUserId,
+                  isProviderAccount: () => _providerAccount(context),
                   child: AarastV3AdaptiveExperienceShell(
                     routeListenable: _router.routeInformationProvider,
                     readLocation: () =>

@@ -34,9 +34,7 @@ class FundingApi {
   }
 
   /// The phone's copy alone.
-  Future<List<FundingSource>> cachedFundingSources(
-    String weddingPlanId,
-  ) async {
+  Future<List<FundingSource>> cachedFundingSources(String weddingPlanId) async {
     final rows = await _reads.cachedList(
       _table,
       parentColumn: 'planId',

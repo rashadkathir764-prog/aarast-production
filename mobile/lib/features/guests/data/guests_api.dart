@@ -72,6 +72,7 @@ class GuestsApi {
     } on Object catch (error) {
       // No summary kept yet: the phone counts its own copy.
       if (!CachePolicy.shouldUseCache(error)) rethrow;
+      OfflineReads.noteCopyServed();
       return GuestSummary.fromGuests(
         weddingPlanId: weddingPlanId,
         guests: localGuests ?? await cachedGuests(weddingPlanId),
@@ -93,6 +94,7 @@ class GuestsApi {
     } on Object catch (error) {
       // A plan may have no groups at all: an empty copy is still the copy.
       if (!CachePolicy.shouldUseCache(error)) rethrow;
+      OfflineReads.noteCopyServed();
       return cachedGroups(weddingPlanId);
     }
   }
@@ -189,7 +191,9 @@ class GuestsApi {
     }
     if (side != null) payload['side'] = side;
     if (status != null) payload['status'] = status;
-    if (attendanceStatus != null) payload['attendanceStatus'] = attendanceStatus;
+    if (attendanceStatus != null) {
+      payload['attendanceStatus'] = attendanceStatus;
+    }
     if (seatsCount != null) payload['seatsCount'] = seatsCount;
     if (companionsCount != null) payload['companionsCount'] = companionsCount;
     if (notes != null) payload['notes'] = notes.trim();

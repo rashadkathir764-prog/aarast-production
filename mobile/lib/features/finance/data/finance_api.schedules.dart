@@ -55,6 +55,7 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
       return items.map(PaymentSchedule.fromJson).toList();
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _cachedSchedulesForCost(costId);
       if (cached.isEmpty) rethrow;

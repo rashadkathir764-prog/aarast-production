@@ -13,12 +13,18 @@ class AarastPushLifecycleBridge extends StatefulWidget {
   const AarastPushLifecycleBridge({
     required this.router,
     required this.authenticatedUserId,
+    this.isProviderAccount,
     required this.child,
     super.key,
   });
 
   final GoRouter router;
   final String? authenticatedUserId;
+
+  /// D87: a provider's notifications live in his portal, not the account
+  /// inbox the couple reads. Asked at the tap, so the root never rebuilds
+  /// on a context change.
+  final bool Function()? isProviderAccount;
   final Widget child;
 
   @override
@@ -115,7 +121,11 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
         if (push.claimNotificationsOpen()) {
           // A notification tap never selects a plan context. The inbox and
           // existing route guards remain authoritative for any target action.
-          widget.router.go(AppRouter.notifications);
+          widget.router.go(
+            (widget.isProviderAccount?.call() ?? false)
+                ? AppRouter.providerNotifications
+                : AppRouter.notifications,
+          );
         }
       });
     }

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
@@ -78,9 +79,7 @@ class TaskTimelineApi {
   }
 
   Future<TaskSummary?> cachedTaskSummary(String weddingPlanId) async {
-    final raw = await _offline?.database.getMeta(
-      'task-summary:$weddingPlanId',
-    );
+    final raw = await _offline?.database.getMeta('task-summary:$weddingPlanId');
     if (raw == null) return null;
     try {
       return TaskSummary.fromJson(
@@ -104,6 +103,7 @@ class TaskTimelineApi {
       return Timeline.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _offline.database.getMeta(key);
       if (cached != null) {
@@ -140,6 +140,7 @@ class TaskTimelineApi {
       return TaskSummary.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
       final cached = await _offline.database.getMeta(key);
       if (cached != null) {
@@ -416,7 +417,9 @@ class TaskTimelineApi {
       parentColumn: parentColumn,
       parentId: parentId,
     );
-    return cached.isEmpty ? null : cached;
+    if (cached.isEmpty) return null;
+    OfflineReads.noteCopyServed();
+    return cached;
   }
 
   Future<Timeline> _timelineFromCachedTasks(String weddingPlanId) async {

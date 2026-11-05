@@ -34,10 +34,7 @@ class CostReceiptsApi {
       reason: 'الصورة تُحفظ عند الخادم.',
       method: 'POST',
       path: '/api/v1/costs/$costId/receipts',
-      body: {
-        'attachmentRef': attachmentRef,
-        'costPaymentId': ?costPaymentId,
-      },
+      body: {'attachmentRef': attachmentRef, 'costPaymentId': ?costPaymentId},
     );
     return CostReceipt.fromJson(json);
   }

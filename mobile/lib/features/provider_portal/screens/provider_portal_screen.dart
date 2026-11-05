@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -232,20 +233,28 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
               : 0,
           onSelected: _openTab,
         ),
-        child: IndexedStack(
-          index: _activeIndex,
+        child: Column(
           children: [
-            ProviderHomeTab(onOpenTab: _openTab),
-            canUseOperations
-                ? const ProviderRequestsTab()
-                : const _ProviderOperationsUnavailable(),
-            canUseOperations
-                ? const ProviderCalendarTab()
-                : const _ProviderOperationsUnavailable(),
-            canUseOperations
-                ? const ProviderChatsTab()
-                : const _ProviderOperationsUnavailable(),
-            const ProviderProfileTab(),
+            // D87: the same measured line as the couple's shell (D84).
+            const OfflineStatusBanner(audience: OfflineAudience.provider),
+            Expanded(
+              child: IndexedStack(
+                index: _activeIndex,
+                children: [
+                  ProviderHomeTab(onOpenTab: _openTab),
+                  canUseOperations
+                      ? const ProviderRequestsTab()
+                      : const _ProviderOperationsUnavailable(),
+                  canUseOperations
+                      ? const ProviderCalendarTab()
+                      : const _ProviderOperationsUnavailable(),
+                  canUseOperations
+                      ? const ProviderChatsTab()
+                      : const _ProviderOperationsUnavailable(),
+                  const ProviderProfileTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),

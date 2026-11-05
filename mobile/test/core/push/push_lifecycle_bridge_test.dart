@@ -90,6 +90,24 @@ void main() {
     expect(router.goCalls, ['/notifications']);
   });
 
+  testWidgets('a provider account opens the provider inbox', (tester) async {
+    final push = await _createPushController()
+      ..markNotificationsOpenPending();
+    final router = _RecordingRouter();
+    addTearDown(push.close);
+    addTearDown(router.dispose);
+
+    await _pumpBridge(
+      tester,
+      push: push,
+      router: router,
+      userId: 'user-A',
+      providerAccount: true,
+    );
+
+    expect(router.goCalls, ['/provider/notifications']);
+  });
+
   testWidgets('resume while user-A refreshes the existing binding once', (
     tester,
   ) async {
@@ -178,6 +196,7 @@ Future<void> _pumpBridge(
   required _FakePushController push,
   required _RecordingRouter router,
   required String? userId,
+  bool providerAccount = false,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<PushNotificationsController>.value(
@@ -186,6 +205,7 @@ Future<void> _pumpBridge(
         home: AarastPushLifecycleBridge(
           router: router,
           authenticatedUserId: userId,
+          isProviderAccount: () => providerAccount,
           child: const SizedBox(key: Key('push-bridge-child')),
         ),
       ),

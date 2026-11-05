@@ -285,7 +285,10 @@ void main() {
         ),
       );
 
-      expect(exception.message, aarastBackendConnectionErrorMessage);
+      // D88: a route the server does not know means the server is older
+      // than the app; said so, with a code a screen can act on.
+      expect(exception.message, aarastServerOlderMessage);
+      expect(exception.serverCode, 'SERVER_OLDER_THAN_APP');
       expect(exception.message, isNot(contains('Cannot GET')));
     });
 

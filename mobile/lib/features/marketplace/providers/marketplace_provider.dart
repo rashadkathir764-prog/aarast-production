@@ -257,10 +257,15 @@ String marketplaceErrorMessage(String message) {
   )) {
     return 'أكمل موقع الزفاف: المحافظة والمدينة أو المديرية مطلوبة قبل إرسال الطلب.';
   }
+  // D88: a route the server does not know is an older server, not a
+  // connection to retry.
+  if (normalized.startsWith('Cannot ') ||
+      normalized == aarastServerOlderMessage) {
+    return aarastServerOlderMessage;
+  }
   if (normalized.isEmpty ||
       normalized.contains(aarastBackendConnectionErrorMessage) ||
-      normalized.contains('هذه الخدمة غير متاحة') ||
-      normalized.startsWith('Cannot ')) {
+      normalized.contains('هذه الخدمة غير متاحة')) {
     return aarastBackendConnectionErrorMessage;
   }
   if (normalized.contains('انتهت الجلسة') ||

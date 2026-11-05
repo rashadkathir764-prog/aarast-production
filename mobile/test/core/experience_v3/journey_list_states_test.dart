@@ -57,6 +57,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('error says the measured reason under the title', (tester) async {
+    await _pump(
+      tester,
+      const JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.guests,
+        errorMessage: 'الخادم أقدم من التطبيق.',
+      ),
+    );
+    expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
+    expect(find.text('الخادم أقدم من التطبيق.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('error offers one retry', (tester) async {
     var retried = 0;
     await _pump(

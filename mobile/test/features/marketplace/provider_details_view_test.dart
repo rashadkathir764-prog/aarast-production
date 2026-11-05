@@ -56,6 +56,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('D88: a provider with a logo and no cover shows the logo, as '
+      'the list does', (tester) async {
+    await _pumpView(
+      tester,
+      withinBudget: true,
+      provider: _provider(coverUrl: null, logoUrl: 'https://img.test/logo.jpg'),
+    );
+
+    expect(find.byType(Image), findsOneWidget);
+  });
+
   testWidgets('B-16: the approved portfolio photos join the count and the '
       'links show', (tester) async {
     await _pumpView(tester, portfolio: _twoPhotos);
@@ -217,6 +228,8 @@ void main() {
 MarketplaceProvider _provider({
   bool withResponses = true,
   String? address = 'حدة',
+  String? coverUrl = 'https://img.test/cover.jpg',
+  String? logoUrl,
 }) => MarketplaceProvider(
   id: 'provider-1',
   businessName: 'استوديو ضوء صنعاء',
@@ -225,7 +238,8 @@ MarketplaceProvider _provider({
   ratingCount: 63,
   city: const MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
   address: address,
-  coverUrl: 'https://img.test/cover.jpg',
+  coverUrl: coverUrl,
+  logoUrl: logoUrl,
   verifiedAt: DateTime(2026, 9, 1),
   responsiveness: withResponses
       ? const ProviderResponsiveness(

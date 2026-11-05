@@ -7,7 +7,7 @@ void main() {
     test('backend routing failures use the required connection copy', () {
       expect(
         marketplaceErrorMessage('Cannot GET /providers'),
-        aarastBackendConnectionErrorMessage,
+        aarastServerOlderMessage,
       );
       expect(
         marketplaceErrorMessage('هذه الخدمة غير متاحة الآن.'),

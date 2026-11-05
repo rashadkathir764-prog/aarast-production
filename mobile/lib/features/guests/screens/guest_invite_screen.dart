@@ -59,6 +59,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   InvitationCard? _card;
   bool _cardUnread = false;
 
+  /// D88: why the card could not be read, said under «ما قدرنا نجيبها».
+  String? _cardError;
+
   /// The photo as it will be saved: null untouched, '' removed, else a URL.
   String? _photo;
   bool _placeFilled = false;
@@ -107,8 +110,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         _address.text = card.address ?? '';
         _photo = null;
       });
-    } catch (_) {
-      if (mounted) setState(() => _cardUnread = true);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cardUnread = true;
+        _cardError = error is ApiException ? error.message : null;
+      });
     }
   }
 
@@ -123,9 +130,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
 
   /// The wedding event (b12): its venue and time are the card's.
   PlanEvent? _wedding(BuildContext context) {
-    final view = context
-        .watch<PlanEventsProvider?>()
-        ?.viewOf(widget.weddingPlanId);
+    final view = context.watch<PlanEventsProvider?>()?.viewOf(
+      widget.weddingPlanId,
+    );
     if (view == null) return null;
     for (final event in view.items) {
       if (event.type == PlanEventType.wedding) return event;
@@ -305,6 +312,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     JourneyListState(
                       phase: JourneyListPhase.error,
                       section: JourneySection.guests,
+                      errorMessage: _cardError,
                       onRetry: _readCard,
                     )
                   else

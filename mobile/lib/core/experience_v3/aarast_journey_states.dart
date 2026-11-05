@@ -24,8 +24,12 @@ class JourneyListState extends StatelessWidget {
     this.onEmptyAction,
     this.onRetry,
     this.emptyIcon,
+    this.errorMessage,
     super.key,
   });
+
+  /// D88: why it could not be read, as measured (D84), under the title.
+  final String? errorMessage;
 
   final JourneyListPhase phase;
   final JourneySection section;
@@ -117,10 +121,11 @@ class JourneyListState extends StatelessWidget {
               weight: JourneyType.bold,
             ),
           ),
-          if (phase == JourneyListPhase.empty && emptyMessage != null) ...[
+          if (phase == JourneyListPhase.error && errorMessage != null ||
+              phase == JourneyListPhase.empty && emptyMessage != null) ...[
             const SizedBox(height: AarastV3Space.x1),
             Text(
-              emptyMessage!,
+              phase == JourneyListPhase.error ? errorMessage! : emptyMessage!,
               textAlign: TextAlign.center,
               style: JourneyType.of(
                 JourneyType.body,

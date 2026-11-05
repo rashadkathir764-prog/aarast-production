@@ -14,6 +14,13 @@ typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
+
+/// D88: the server answered that it does not know the route («Cannot GET
+/// …»): the app is newer than the server. Retrying changes nothing; the
+/// server must be updated, and the screen says so instead of «حاول».
+const aarastServerOlderMessage =
+    'الخادم أقدم من التطبيق. هذي الشاشة تشتغل بعد ما يتحدّث الخادم.';
+const aarastServerOlderCode = 'SERVER_OLDER_THAN_APP';
 // A number without WhatsApp and a channel outage look the same to the server
 // (field test Q07), so the message names what the user can check.
 const aarastOtpDeliveryUnavailableMessage =
@@ -34,25 +41,25 @@ class ApiClient {
     ServerReachability? reachability,
   }) : _tokenProvider = tokenProvider,
        _reachability = reachability,
-      _uploadDio =
-          uploadDio ??
-          Dio(
-            BaseOptions(
-              connectTimeout: const Duration(seconds: 12),
-              receiveTimeout: const Duration(seconds: 12),
-            ),
-          ),
-      dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          connectTimeout: const Duration(seconds: 12),
-          receiveTimeout: const Duration(seconds: 12),
-          headers: const {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        ),
-      ) {
+       _uploadDio =
+           uploadDio ??
+           Dio(
+             BaseOptions(
+               connectTimeout: const Duration(seconds: 12),
+               receiveTimeout: const Duration(seconds: 12),
+             ),
+           ),
+       dio = Dio(
+         BaseOptions(
+           baseUrl: ApiConfig.baseUrl,
+           connectTimeout: const Duration(seconds: 12),
+           receiveTimeout: const Duration(seconds: 12),
+           headers: const {
+             'Accept': 'application/json',
+             'Content-Type': 'application/json',
+           },
+         ),
+       ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -831,13 +838,11 @@ class ApiException implements Exception {
         phoneProof: phoneProof,
       );
     }
-    if (serverMessage != null &&
-        _cleanServerMessage(serverMessage) ==
-            aarastBackendConnectionErrorMessage) {
+    if (serverMessage != null && _isUnknownRoute(serverMessage)) {
       return ApiException(
-        aarastBackendConnectionErrorMessage,
+        aarastServerOlderMessage,
         statusCode: statusCode,
-        serverCode: serverCode,
+        serverCode: aarastServerOlderCode,
         retryAfterSeconds: retryAfterSeconds,
         phoneProof: phoneProof,
       );
@@ -895,15 +900,13 @@ class ApiException implements Exception {
     };
   }
 
-  static String _cleanServerMessage(String message) {
+  static bool _isUnknownRoute(String message) {
     final normalized = message.trim();
-    if (normalized.startsWith('Cannot GET') ||
+    return normalized.startsWith('Cannot GET') ||
         normalized.startsWith('Cannot POST') ||
+        normalized.startsWith('Cannot PUT') ||
         normalized.startsWith('Cannot PATCH') ||
-        normalized.startsWith('Cannot DELETE')) {
-      return aarastBackendConnectionErrorMessage;
-    }
-    return normalized;
+        normalized.startsWith('Cannot DELETE');
   }
 
   static String? _extractServerCode(Object? data) {

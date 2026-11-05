@@ -664,7 +664,8 @@ Future<void> _openLink(BuildContext context, String link) async {
   }
 }
 
-/// The cover first, then his approved portfolio photos (B-16), once each.
+/// The cover first (D88: the logo when he has no cover, the same face the
+/// list shows), then his approved portfolio photos (B-16), once each.
 /// Only reviewed photos reach customers (D62): the services' own photos,
 /// never reviewed, are not shown.
 List<String> _photoUrls(
@@ -672,8 +673,10 @@ List<String> _photoUrls(
   PublicPortfolio? portfolio,
 ) {
   final cover = provider.coverUrl?.trim();
+  final logo = provider.logoUrl?.trim();
+  final face = cover != null && cover.isNotEmpty ? cover : logo;
   return <String>{
-    if (cover != null && cover.isNotEmpty) cover,
+    if (face != null && face.isNotEmpty) face,
     for (final photo in portfolio?.items ?? const <PublicPortfolioPhoto>[])
       if (photo.imageUrl.trim().isNotEmpty) photo.imageUrl.trim(),
   }.toList();

@@ -67,7 +67,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
       },
       describe: (error) => error is ApiException
           ? error.message
-          : 'تعذر تحميل مصادر التمويل الآن.',
+          : 'ما قدرنا نجيب مصادر الفلوس الحين.',
     );
   }
 
@@ -181,7 +181,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حفظ التغيير الآن. حاول مرة أخرى.';
+      _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSaving = false;

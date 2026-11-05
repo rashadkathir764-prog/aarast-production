@@ -21,12 +21,11 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
       final items = await _getJsonMapList(
         '/api/v1/wedding-plans/$planId/payment-schedules/due',
       );
-      await _offline?.database.replaceCachedList(
-        table: table,
-        items: items,
-        parentColumn: 'planId',
-        parentId: planId,
-      );
+      // D86: the due ones join the phone's copy; the paid and the far ones
+      // a cost's own read kept are not thrown away.
+      for (final item in items) {
+        await _cache(table, item);
+      }
       return items.map(PaymentSchedule.fromJson).toList();
     } on Object catch (error) {
       final cached = await _cachedListOnNetworkFailure(

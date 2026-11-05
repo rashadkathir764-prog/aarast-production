@@ -29,7 +29,7 @@ class _CostAgreementCard extends StatelessWidget {
       if (cost.agreementDate != null)
         formatArabicWeekdayDayMonth(cost.agreementDate!),
       if (cost.quoteOfferId != null) 'من عرض مقبول في اعّرست',
-      if (cost.isCancelled) 'ملغية',
+      if (cost.isCancelled) 'ملغي',
     ].join(' · ');
     return JourneyBox(
       key: const ValueKey('cost-agreement-card'),
@@ -391,7 +391,9 @@ class _CostMoreMenu extends StatelessWidget {
   });
 
   final bool disabled;
-  final VoidCallback onEdit;
+
+  /// Null for a cancelled agreement: it is only removed.
+  final VoidCallback? onEdit;
   final VoidCallback onRemove;
 
   @override
@@ -400,18 +402,19 @@ class _CostMoreMenu extends StatelessWidget {
       enabled: !disabled,
       tooltip: 'المزيد',
       icon: const Icon(LucideIcons.moreHorizontal),
-      onSelected: (edit) => edit ? onEdit() : onRemove(),
+      onSelected: (edit) => edit ? onEdit?.call() : onRemove(),
       itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: true,
-          child: Row(
-            children: [
-              Icon(LucideIcons.pencil, size: 18),
-              SizedBox(width: AarastV3Space.x2),
-              Flexible(child: Text('تعديل الاتفاق')),
-            ],
+        if (onEdit != null)
+          const PopupMenuItem(
+            value: true,
+            child: Row(
+              children: [
+                Icon(LucideIcons.pencil, size: 18),
+                SizedBox(width: AarastV3Space.x2),
+                Flexible(child: Text('تعديل الاتفاق')),
+              ],
+            ),
           ),
-        ),
         PopupMenuItem(
           key: const ValueKey('cost-remove'),
           value: false,

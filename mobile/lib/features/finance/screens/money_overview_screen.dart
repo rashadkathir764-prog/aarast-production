@@ -172,6 +172,22 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             if (provider.loadErrorMessage != null) ...[
               JourneyListNotice(offline: false, onRetry: _load),
               const SizedBox(height: AarastV3Space.x3),
+            ] else if (provider.isStale) ...[
+              // D86: the numbers are the server's last; what waits on the
+              // phone is counted apart, never added to them.
+              JourneyListNotice(offline: true, onRetry: _load),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
+            if (provider.pendingMoneyChanges > 0) ...[
+              JourneyNote(
+                key: const ValueKey('money-pending-changes'),
+                text:
+                    '${arabicCount(provider.pendingMoneyChanges, one: 'تغيير واحد', two: 'تغييران', few: 'تغييرات', many: 'تغيير')} في المال ${provider.pendingMoneyChanges == 1 ? 'ينتظر' : 'تنتظر'} الإرسال للخادم. الأرقام فوق من آخر رد الخادم.',
+                icon: LucideIcons.clock,
+                color: AarastV3Color.brandAccentStrong,
+                soft: AarastV3Color.brandAccentSoft,
+              ),
+              const SizedBox(height: AarastV3Space.x3),
             ],
             ...switch (tab) {
               0 => _summaryTab(provider),
@@ -195,12 +211,8 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                 _MoneyPaymentsTab(
                   planId: widget.weddingPlanId,
                   provider: provider,
-                  onPay: (schedule) {
-                    final cost = _payableCost(provider, schedule);
-                    return cost == null
-                        ? null
-                        : (schedule) => _paySchedule(schedule, cost);
-                  },
+                  onPay: (schedule) =>
+                      _canPay(provider, schedule) ? _paySchedule : null,
                 ),
               ],
               _ => [
@@ -279,9 +291,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           onTap: () => context.push(
             AppRouter.moneyCostDetails(widget.weddingPlanId, schedule.costId),
           ),
-          onPay: _payableCost(provider, schedule) == null
-              ? null
-              : () => _paySchedule(schedule, _payableCost(provider, schedule)!),
+          onPay: _canPay(provider, schedule)
+              ? () => _paySchedule(schedule)
+              : null,
         ),
       ],
       const SizedBox(height: AarastV3Space.x3),
@@ -360,22 +372,22 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         (provider.dueSchedules.isEmpty ? null : provider.dueSchedules.first);
   }
 
-  WeddingCost? _payableCost(
-    FinanceProvider provider,
-    PaymentSchedule schedule,
-  ) {
+  /// D86: a due payment is payable on its own; its agreement need not be
+  /// in the page read so far (the pay screen reads it by id).
+  bool _canPay(FinanceProvider provider, PaymentSchedule schedule) {
     final cost = provider.costById(schedule.costId);
     return provider.canManageMoney &&
-            schedule.isPending &&
-            cost != null &&
-            !cost.isCancelled
-        ? cost
-        : null;
+        schedule.isPending &&
+        !(cost?.isCancelled ?? false);
   }
 
-  Future<void> _paySchedule(PaymentSchedule schedule, WeddingCost cost) async {
+  Future<void> _paySchedule(PaymentSchedule schedule) async {
     final changed = await context.push<bool>(
-      AppRouter.moneySchedulePay(widget.weddingPlanId, cost.id, schedule.id),
+      AppRouter.moneySchedulePay(
+        widget.weddingPlanId,
+        schedule.costId,
+        schedule.id,
+      ),
       extra: schedule,
     );
     if (changed == true && mounted) await _load();

@@ -39,9 +39,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     if (_state != SyncState.offline) return;
     _state = SyncState.synced;
     _lastError = null;
-    unawaited(
-      refreshStatus().then((_) => syncPendingChanges()),
-    );
+    unawaited(refreshStatus().then((_) => syncPendingChanges()));
   }
 
   @override
@@ -118,11 +116,13 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   Future<List<PendingChangeSummary>> loadPendingChanges() async {
     final blocked = await database.blockedSyncItems();
     final pending = await database.pendingSyncItems();
+    final everything = [...blocked, ...pending];
     PendingChangeSummary summarize(
       SyncQueueItem item, {
       required bool refused,
     }) {
       return PendingChangeSummary(
+        id: item.id,
         entityType: item.entityType,
         title: _pendingChangeTitle(item),
         createdAt: item.createdAt,
@@ -131,6 +131,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             ? isSyncQueueOwnershipQuarantineError(item.lastError)
                   ? 'ما قدرنا نتأكد إنه من خطتك، فما بنرسله'
                   : 'السيرفر رفضه، راجعه وحاول مرة ثانية'
+            // D86: a child of a change that has not gone yet waits for it.
+            : _waitsForAnotherChange(item, everything)
+            ? 'ينتظر تغييرًا قبله'
             : null,
       );
     }
@@ -245,6 +248,58 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Removes cached rows and queued writes owned by one plan context while
   /// preserving the authenticated account and other plan graphs.
+  /// D86: moving to another plan or to the provider portal keeps what this
+  /// plan has on the phone, queued writes included: they belong to the same
+  /// account (C58) and go when the server answers. Only leaving the plan
+  /// ([clearPlanContext]) removes them.
+  Future<void> switchPlanContext(String previousPlanId) async {
+    if (previousPlanId.trim().isEmpty) return;
+    await refreshStatus();
+  }
+
+  /// D86: a change the server refused is dropped by the person: its row on
+  /// the phone goes with it (a create), or stays as the server last had it.
+  Future<void> discardBlockedChange(String id) async {
+    final blocked = await database.blockedSyncItems();
+    final item = blocked.where((candidate) => candidate.id == id).firstOrNull;
+    if (item == null) return;
+    final table = OfflineTables.tableForEntityType(item.entityType);
+    final localEntityId = item.localEntityId;
+    if (item.operation == 'create' && table != null && localEntityId != null) {
+      await database.discardLocalEntity(
+        table: table,
+        entityType: item.entityType,
+        entityId: localEntityId,
+      );
+    } else {
+      await database.markSyncItemSynced(item.id);
+    }
+    await refreshStatus();
+  }
+
+  static final _localIdPattern = RegExp(r'(?:local|queued)-[A-Za-z0-9_-]+');
+
+  /// D86: [item] names a row the server has not named yet (a local id in
+  /// its path or payload) whose own change is still in [others].
+  static bool _waitsForAnotherChange(
+    SyncQueueItem item,
+    Iterable<SyncQueueItem> others,
+  ) {
+    final references = {
+      for (final match in _localIdPattern.allMatches(item.endpoint))
+        match.group(0)!,
+      for (final match in _localIdPattern.allMatches(item.payloadJson))
+        match.group(0)!,
+    }..remove(item.localEntityId);
+    if (references.isEmpty) return false;
+    return others.any(
+      (other) =>
+          other.id != item.id &&
+          other.localEntityId != null &&
+          references.contains(other.localEntityId),
+    );
+  }
+
   Future<void> clearPlanContext(String planId) async {
     final normalized = planId.trim();
     if (normalized.isEmpty) return;
@@ -444,6 +499,16 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           }
           if (candidate.planId != null &&
               _quarantinedPlanIds.contains(candidate.planId)) {
+            processedItemIds.add(candidate.id);
+            continue;
+          }
+          // D86: a child never goes before its parent is named by the
+          // server; a parent that failed keeps its children waiting, not
+          // refused with a local id.
+          if (_waitsForAnotherChange(candidate, [
+            ...refreshedItems,
+            ...await database.blockedSyncItems(),
+          ])) {
             processedItemIds.add(candidate.id);
             continue;
           }

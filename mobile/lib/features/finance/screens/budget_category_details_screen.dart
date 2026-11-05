@@ -55,8 +55,13 @@ class _BudgetCategoryDetailsScreenState
     final provider = context.watch<FinanceProvider>();
     final category = provider.categoryById(widget.categoryId);
     final currency = provider.summary.currency;
+    // D86: a cancelled agreement no longer holds its item: the item can be
+    // removed once nothing live is on it.
     final costs = provider.costs
-        .where((cost) => cost.budgetCategoryId == widget.categoryId)
+        .where(
+          (cost) =>
+              cost.budgetCategoryId == widget.categoryId && !cost.isCancelled,
+        )
         .toList();
     final canManage = provider.canManageMoney;
 

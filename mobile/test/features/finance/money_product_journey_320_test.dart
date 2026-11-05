@@ -206,7 +206,7 @@ void main() {
         addTearDown(harness.dispose);
         await _pumpProduct(tester, harness.app);
 
-        expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
+        expect(find.text('ما قدرنا نتأكد من صلاحيتك'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('money-budget-reserve')),
           findsNothing,
@@ -756,7 +756,7 @@ void main() {
         );
         await _pumpProduct(tester, harness.app);
 
-        expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
+        expect(find.text('ما قدرنا نتأكد من صلاحيتك'), findsOneWidget);
         expect(find.textContaining('العرض بعملة'), findsNothing);
         await tester.tap(find.text('حاول مرة أخرى'));
         await tester.pumpAndSettle();

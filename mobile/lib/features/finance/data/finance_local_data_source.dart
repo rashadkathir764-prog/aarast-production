@@ -337,15 +337,19 @@ class FinanceLocalDataSource {
     required Map<String, dynamic> payload,
   }) async {
     final cached = await _read(OfflineTables.cachedCosts, cost.id);
+    // D86: a cancelled agreement is not edited; the server refuses (409).
+    if ((cached?['status'] ?? cost.status) == 'CANCELLED') {
+      throw const ApiException('الاتفاق ملغي، ما يتعدّل.');
+    }
     final total = FinanceMoneyRules.assertPositive(
       payload['totalAmount'],
-      'إجمالي التكلفة',
+      'إجمالي الاتفاق',
     );
     final paid = FinanceMoneyRules.value(
       cached?['paidAmount'] ?? cost.paidAmount,
     );
     if (total < paid) {
-      throw const ApiException('إجمالي التكلفة لا يمكن أن يقل عن المدفوع.');
+      throw const ApiException('إجمالي الاتفاق ما ينقص عن المدفوع.');
     }
     final json = <String, dynamic>{
       ...?cached,
@@ -421,7 +425,7 @@ class FinanceLocalDataSource {
     required String reason,
   }) async {
     if (!payment.reversible || payment.isReversal || payment.isReversed) {
-      throw const ApiException('هذه الدفعة لا يمكن عكسها.');
+      throw const ApiException('هذي الدفعة ما تنعكس.');
     }
     final currentCost = await _currentCost(cost);
     final now = DateTime.now();
@@ -457,6 +461,9 @@ class FinanceLocalDataSource {
     required Map<String, dynamic> payload,
   }) async {
     final currentCost = await _currentCost(cost);
+    if (currentCost.isCancelled || currentCost.isPaid) {
+      throw const ApiException('الاتفاق خالص أو ملغي، ما يحتاج موعد دفع.');
+    }
     final amount = FinanceMoneyRules.assertPositive(
       payload['amount'],
       'المبلغ',
@@ -485,7 +492,10 @@ class FinanceLocalDataSource {
     required Map<String, dynamic> payload,
   }) async {
     if (!schedule.isPending) {
-      throw const ApiException('لا يمكن تعديل موعد مدفوع أو ملغي.');
+      throw const ApiException('الموعد مدفوع أو ملغي، ما يتعدّل.');
+    }
+    if (schedule.paidAt != null) {
+      throw const ApiException('هذا الموعد اندفع من قبل، ما يتعدّل.');
     }
     final currentCost = await _currentCost(cost);
     final amount = FinanceMoneyRules.assertPositive(
@@ -519,7 +529,7 @@ class FinanceLocalDataSource {
     required Map<String, dynamic> payload,
   }) async {
     if (!schedule.isPending) {
-      throw const ApiException('موعد الدفع هذا غير متاح للدفع.');
+      throw const ApiException('هذا الموعد ما يندفع الحين.');
     }
     final currentCost = await _currentCost(cost);
     if (FinanceMoneyRules.value(schedule.amount) >

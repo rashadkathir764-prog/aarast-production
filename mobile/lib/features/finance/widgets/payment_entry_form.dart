@@ -175,10 +175,23 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     if (file != null && mounted) setState(() => _receipt = file);
   }
 
+  bool _saving = false;
+
   Future<void> _save() async {
+    // D86: two quick taps are one payment.
+    if (_saving) return;
     final error = _validate();
     setState(() => _amountError = error);
     if (error != null) return;
+    _saving = true;
+    try {
+      await _saveOnce();
+    } finally {
+      _saving = false;
+    }
+  }
+
+  Future<void> _saveOnce() async {
     final payment = await widget.onSave((
       amount: _fixed ? null : '${_typedAmount!}',
       paidAt: _paidAt,
@@ -214,8 +227,8 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       AarastToast.showInfo(
         context,
         context.say(
-          'الدفعة انحفظت. أضف الإيصال من تفاصيلها لما يرجع النت.',
-          'الدفعة انحفظت. أضيفي الإيصال من تفاصيلها لما يرجع النت.',
+          'الدفعة انحفظت في جوالك. الإيصال يُضاف من تفاصيلها بعد ما توصل للخادم.',
+          'الدفعة انحفظت في جوالك. الإيصال يُضاف من تفاصيلها بعد ما توصل للخادم.',
         ),
       );
       return;

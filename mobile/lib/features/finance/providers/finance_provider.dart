@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -28,7 +30,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   final DevicePreferences? _preferences;
 
   static const savedButStaleMessage =
-      'تم الحفظ، لكن تعذر تحديث عرض المال الآن. اسحب للتحديث.';
+      'انحفظ، بس ما قدرنا نحدّث شاشة المال الحين. اسحب للتحديث.';
 
   final FinanceApi _api;
   final SharingApi? _permissionsApi;
@@ -222,7 +224,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     } catch (_) {
       if (!_isCurrent(generation)) return;
       _clear(planId);
-      _loadErrorMessage = 'تعذر تحميل المال الآن. حاول مرة أخرى.';
+      _loadErrorMessage = 'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.';
       _isLoading = false;
       notifyListeners();
       return;
@@ -288,14 +290,44 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           }
           return error.message;
         }
-        return 'تعذر تحميل المال الآن. حاول مرة أخرى.';
+        return 'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.';
       },
     );
+    await _refreshPendingMoney(planId);
   }
 
   /// D85: the copy stays because the server did not answer.
   bool _isStale = false;
   bool get isStale => _isStale;
+
+  /// D86: money changes of this plan still on the phone (queued or
+  /// refused), shown beside the server's numbers, never added to them.
+  int _pendingMoneyChanges = 0;
+  int get pendingMoneyChanges => _pendingMoneyChanges;
+
+  Future<void> _refreshPendingMoney(String planId) async {
+    final count = await _api.pendingMoneyChangeCount(planId);
+    if (_loadedPlanId != planId || isSessionDisposed) return;
+    if (count != _pendingMoneyChanges) {
+      _pendingMoneyChanges = count;
+      notifyListeners();
+    }
+  }
+
+  /// D86 (w20 «مين دفع ايش»): every agreement and payment of the plan, not
+  /// the first page only, so a list under a server total is never short.
+  Future<void> loadAllCostsAndPayments() async {
+    while (hasMoreCosts && !_isLoadingMoreCosts) {
+      final before = _costsPage;
+      await loadMoreCosts();
+      if (_costsPage == before) break;
+    }
+    while (hasMorePayments && !_isLoadingMorePayments) {
+      final before = _paymentsPage;
+      await loadMorePayments();
+      if (_paymentsPage == before) break;
+    }
+  }
 
   Future<void> loadCostDetails(String costId) async {
     final generation = _loadGeneration;
@@ -312,13 +344,30 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         }
         _costs = [cost, ..._costs.where((item) => item.id != cost!.id)];
       }
-      final results = await Future.wait([
-        _api.getCostPayments(costId, planId: cost.weddingPlanId),
-        _api.getCostSchedules(costId, planId: cost.weddingPlanId),
-      ]);
+      // D86: the payments and the dates are read apart; one that the
+      // phone has no copy of never hides the other.
+      var stale = false;
+      try {
+        _paymentsByCost[costId] = await _api.getCostPayments(
+          costId,
+          planId: cost.weddingPlanId,
+        );
+      } on ApiException catch (error) {
+        if (!error.isNetworkFailure) rethrow;
+        stale = true;
+      }
+      try {
+        _schedulesByCost[costId] = await _api.getCostSchedules(
+          costId,
+          planId: cost.weddingPlanId,
+        );
+      } on ApiException catch (error) {
+        if (!error.isNetworkFailure) rethrow;
+        stale = true;
+        _schedulesByCost[costId] ??= const [];
+      }
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;
-      _paymentsByCost[costId] = results[0] as List<CostPayment>;
-      _schedulesByCost[costId] = results[1] as List<PaymentSchedule>;
+      if (stale) _isStale = true;
       notifyListeners();
     } on ApiException catch (error) {
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;
@@ -821,7 +870,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         _errorMessage = error.message;
         return false;
       } catch (_) {
-        _errorMessage = 'تعذر حفظ التغيير الآن. حاول مرة أخرى.';
+        _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
         return false;
       }
       var refreshed = true;
@@ -850,6 +899,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       return true;
     } finally {
       _endSubmit();
+      unawaited(_refreshPendingMoney(planId));
     }
   }
 

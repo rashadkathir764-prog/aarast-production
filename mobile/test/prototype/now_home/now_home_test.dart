@@ -360,6 +360,7 @@ class _FakeSync extends OfflineSyncService {
   @override
   Future<List<PendingChangeSummary>> loadPendingChanges() async => [
     PendingChangeSummary(
+      id: 'change-1',
       entityType: 'guest',
       title: 'ضيف: عبدالله الحمدي',
       createdAt: appNow().subtract(const Duration(hours: 2, minutes: 1)),
@@ -367,12 +368,14 @@ class _FakeSync extends OfflineSyncService {
       reason: 'رفض الخادم هذا التغيير',
     ),
     PendingChangeSummary(
+      id: 'change-2',
       entityType: 'task',
       title: 'مهمة: حجز المصور',
       createdAt: appNow().subtract(const Duration(hours: 5, minutes: 1)),
       blocked: false,
     ),
     PendingChangeSummary(
+      id: 'change-3',
       entityType: 'cost',
       title: 'دفعة: قاعة ليالي صنعاء',
       createdAt: appNow().subtract(const Duration(days: 1, hours: 1)),
@@ -380,7 +383,6 @@ class _FakeSync extends OfflineSyncService {
     ),
   ];
 }
-
 
 void main() {
   setUpAll(loadPreviewAppFonts);
@@ -838,5 +840,4 @@ void main() {
       h: 1060,
     );
   });
-
 }

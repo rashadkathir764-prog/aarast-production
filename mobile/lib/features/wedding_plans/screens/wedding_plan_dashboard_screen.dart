@@ -292,7 +292,12 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     final total = value(money.costs.total) + value(funding?.loanTotal);
     final left =
         value(money.costs.outstanding) + value(funding?.loanOutstanding);
-    return DashboardAfterWedding(left: left, paid: total - left, total: total);
+    return DashboardAfterWedding(
+      left: left,
+      paid: total - left,
+      total: total,
+      loansLeft: value(funding?.loanOutstanding),
+    );
   }
 
   /// b02: the owner's money in hand, promised and short from the money

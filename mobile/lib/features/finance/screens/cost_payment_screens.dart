@@ -90,7 +90,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
         onEmptyAction: () =>
             context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );
-    } else if (paymentRefusal(provider, cost) case final refusal?) {
+    } else if (paymentRefusal(context, provider, cost) case final refusal?) {
       body = JourneyNote(text: refusal, icon: LucideIcons.info);
     } else {
       return paymentEntryFrame(
@@ -201,7 +201,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
         onEmptyAction: () =>
             context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );
-    } else if (paymentRefusal(provider, cost) case final refusal?) {
+    } else if (paymentRefusal(context, provider, cost) case final refusal?) {
       body = JourneyNote(text: refusal, icon: LucideIcons.info);
     } else if (!schedule.isPending) {
       body = const JourneyNote(
@@ -258,11 +258,22 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
 }
 
 /// Why no payment can be recorded on [cost] here, or null when one can.
-String? paymentRefusal(FinanceProvider provider, WeddingCost cost) {
+String? paymentRefusal(
+  BuildContext context,
+  FinanceProvider provider,
+  WeddingCost cost,
+) {
   if (!provider.canManageMoney) return 'تسجيل الدفعات لمدير المال.';
   if (cost.isCancelled) return 'هذا الاتفاق ملغي، ما تنسجل عليه دفعات.';
   if (cost.isPaid || moneyValue(cost.remainingAmount) <= 0) {
-    return 'هذا الاتفاق خالص، ما بقي عليك شي.';
+    // D59: «عليك» is the owner's; a helper reads whose it is.
+    final left = context.ownerDid(
+      'ما بقي عليك شي',
+      'ما بقي عليك شي',
+      groom: 'ما بقي عليه شي',
+      bride: 'ما بقي عليها شي',
+    );
+    return 'هذا الاتفاق خالص، $left.';
   }
   return null;
 }

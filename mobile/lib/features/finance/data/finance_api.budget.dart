@@ -410,14 +410,15 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
         );
       }
       if (clientId != null && !_uuidV4Pattern.hasMatch(clientId)) {
-        throw const ApiException(
-          'تعذر حفظ التصنيف الجديد: معرّف المزامنة غير صالح.',
-        );
+        throw const ApiException('ما قدرنا نحفظ البند الجديد. جرّب مرة ثانية.');
       }
       final name = category['name']?.toString().trim() ?? '';
-      if (name.isEmpty) throw const ApiException('اسم التصنيف مطلوب.');
-      if (!names.add(name.toLowerCase())) {
-        throw const ApiException('لا يمكن تكرار اسم التصنيف.');
+      if (name.isEmpty) throw const ApiException('اكتب اسم البند.');
+      // D86: the server compares names with their spaces collapsed; so
+      // does the phone, before a budget waits to be refused.
+      final folded = name.replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+      if (!names.add(folded)) {
+        throw const ApiException('فيه بند بنفس الاسم.');
       }
       allocated += FinanceMoneyRules.assertOptionalNonNegative(
         category['allocatedAmount'],

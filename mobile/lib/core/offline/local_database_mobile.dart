@@ -365,6 +365,8 @@ class SqliteLocalDatabase implements LocalDatabase {
         'timeline:$normalizedPlanId',
         'task-summary:$normalizedPlanId',
         'money_budget:$normalizedPlanId',
+        'money-summary:$normalizedPlanId',
+        'money-funding:$normalizedPlanId',
         'guest-groups:$normalizedPlanId',
         'funding:$normalizedPlanId',
       ]) {
@@ -690,7 +692,11 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.cachedFundingSources,
       'planId TEXT, kind TEXT, status TEXT',
     );
-    _cacheTable(batch, OfflineTables.cachedGuestGroups, 'planId TEXT, name TEXT');
+    _cacheTable(
+      batch,
+      OfflineTables.cachedGuestGroups,
+      'planId TEXT, name TEXT',
+    );
   }
 
   static Future<void> _replaceLegacyFinanceSchema(Database db) async {

@@ -32,6 +32,7 @@ class SyncStatusSnapshot {
 /// whether the server refused it.
 class PendingChangeSummary {
   const PendingChangeSummary({
+    required this.id,
     required this.entityType,
     required this.title,
     required this.createdAt,
@@ -39,6 +40,8 @@ class PendingChangeSummary {
     this.reason,
   });
 
+  /// The queue item, for discarding a refused change (D86).
+  final String id;
   final String entityType;
 
   /// «مهمة: احجز القاعة», or the kind of change when it has no name.

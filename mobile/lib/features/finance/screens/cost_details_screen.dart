@@ -116,10 +116,12 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
               title: cost?.title ?? 'تفاصيل الاتفاق',
               subtitle: cost?.partyLabel,
               onBack: _goBack,
-              trailing: cost != null && canManage && !cost.isCancelled
+              // D86: a cancelled agreement is not edited, but it can be
+              // dropped for good; before, it stayed in the list forever.
+              trailing: cost != null && canManage
                   ? _CostMoreMenu(
                       disabled: provider.isSubmitting,
-                      onEdit: () => _editCost(cost),
+                      onEdit: cost.isCancelled ? null : () => _editCost(cost),
                       onRemove: () => _remove(cost),
                     )
                   : null,
@@ -273,7 +275,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('cost-private-banner'),
-            text: 'تكلفة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
+            text: 'اتفاق خاص بك: ما يشوفه شريكك ولا يدخل في أرقامه.',
             icon: LucideIcons.lock,
           ),
           if (canManage)
@@ -291,8 +293,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         if (!canManage) ...[
           const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
-            text:
-                'هذه التفاصيل للعرض فقط. إجراءات التعديل والدفع متاحة لمدير المال.',
+            text: 'تشوف بس. التعديل والدفع لمن معه صلاحية المال.',
             icon: LucideIcons.eye,
           ),
         ],
@@ -433,7 +434,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر مشاركة التكلفة.',
+        provider.errorMessage ?? 'ما قدرنا نشارك الاتفاق.',
       );
     }
   }

@@ -1,17 +1,27 @@
 import '../../../core/network/api_client.dart';
 
 abstract final class FinanceMoneyRules {
+  /// D86: the server's own shape for an amount (`money.ts`): up to twelve
+  /// digits and two decimals. The phone refuses the same, so a change kept
+  /// on the phone is never refused later for its shape.
+  static final RegExp serverAmount = RegExp(r'^\d{1,12}(\.\d{1,2})?$');
+
+  static const _shapeMessage =
+      'أرقام بس، بحد أقصى 12 رقمًا وخانتين بعد الفاصلة.';
+
   static num value(Object? value) {
     return num.tryParse(value?.toString().replaceAll(',', '').trim() ?? '') ??
         0;
   }
 
   static num assertPositive(Object? value, String label) {
-    final parsed = num.tryParse(
-      value?.toString().replaceAll(',', '').trim() ?? '',
-    );
+    final raw = value?.toString().replaceAll(',', '').trim() ?? '';
+    final parsed = num.tryParse(raw);
     if (parsed == null || parsed <= 0) {
-      throw ApiException('$label يجب أن يكون أكبر من صفر.');
+      throw ApiException('$label لازم يكون أكبر من صفر.');
+    }
+    if (!serverAmount.hasMatch(raw)) {
+      throw ApiException('$label: $_shapeMessage');
     }
     return parsed;
   }
@@ -21,7 +31,10 @@ abstract final class FinanceMoneyRules {
     if (raw.isEmpty) return 0;
     final parsed = num.tryParse(raw);
     if (parsed == null || parsed < 0) {
-      throw ApiException('$label غير صحيح.');
+      throw ApiException('$label مش صحيح.');
+    }
+    if (!serverAmount.hasMatch(raw)) {
+      throw ApiException('$label: $_shapeMessage');
     }
     return parsed;
   }
@@ -36,7 +49,7 @@ abstract final class FinanceMoneyRules {
       'الدفعة الأولى',
     );
     if (paid > total) {
-      throw const ApiException('الدفعة الأولى لا يمكن أن تتجاوز التكلفة.');
+      throw const ApiException('الدفعة الأولى ما تزيد عن الاتفاق.');
     }
   }
 
@@ -45,7 +58,7 @@ abstract final class FinanceMoneyRules {
     required num amount,
   }) {
     if (cost['status']?.toString() == 'CANCELLED') {
-      throw const ApiException('لا يمكن تسجيل دفعة على تكلفة ملغاة.');
+      throw const ApiException('الاتفاق ملغي، ما تنسجّل عليه دفعة.');
     }
     final total = value(cost['totalAmount']);
     final paid = value(cost['paidAmount']);

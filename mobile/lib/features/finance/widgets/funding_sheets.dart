@@ -194,7 +194,10 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
         const JourneySectionTitle('السداد'),
         if (repayments.isEmpty)
           Text(
-            'قسّم السداد على دفعات بمواعيد، ونذكّرك فيها.',
+            context.say(
+              'قسّم السداد على دفعات بمواعيد، ونذكّرك فيها.',
+              'قسّمي السداد على دفعات بمواعيد، ونذكّرك فيها.',
+            ),
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,

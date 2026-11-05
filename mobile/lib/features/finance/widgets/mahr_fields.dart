@@ -6,6 +6,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/release_field_focus.dart';
@@ -24,8 +25,12 @@ class MahrFields extends StatelessWidget {
     required this.onChanged,
     this.totalError,
     this.settledError,
+    this.currency = 'YER',
     super.key,
   });
+
+  /// D86: the plan's currency; the mahr is not always in rial.
+  final String currency;
 
   /// The groom's plan pays the mahr to the bride's family; the bride's plan
   /// receives it (C1). The plan's side, not the reader's gender.
@@ -74,7 +79,7 @@ class MahrFields extends StatelessWidget {
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,
           inputFormatters: formatters,
-          suffix: 'ر.ي',
+          suffix: currencyLabelAr(currency),
           errorText: totalError,
           onChanged: (_) => onChanged(),
         ),
@@ -96,7 +101,7 @@ class MahrFields extends StatelessWidget {
                 ),
                 if (remaining != null && remaining > 0)
                   Text(
-                    'باقي ${mahrWords(remaining)}',
+                    'باقي ${mahrWords(remaining, currency)}',
                     key: const ValueKey('mahr-remaining'),
                     style: JourneyType.of(
                       JourneyType.bodySmall,
@@ -115,7 +120,7 @@ class MahrFields extends StatelessWidget {
               ? context.say('سلّمت منه', 'سلّمتِ منه')
               : context.say('استلمت منه', 'استلمتِ منه'),
           controller: settledController,
-          suffix: 'ر.ي',
+          suffix: currencyLabelAr(currency),
           hint: '0',
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,
@@ -149,8 +154,8 @@ class MahrFields extends StatelessWidget {
 
 /// An amount the way people say it (as amountInWords does): «مليون»,
 /// «مليونين», «3 مليون», «1.5 مليون», «500,000».
-String mahrWords(num amount) {
-  final parts = compactMoneyParts(amount, currencyCode: 'YER');
+String mahrWords(num amount, [String currency = 'YER']) {
+  final parts = compactMoneyParts(amount, currencyCode: currency);
   final unit = parts.millionUnit;
   if (unit == null) return parts.number;
   if (parts.number == '1') return unit;

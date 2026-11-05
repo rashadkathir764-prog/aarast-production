@@ -242,7 +242,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           ? 'عندك بند بهذا الاسم'
           : null;
       _amountError = _amountController.text.trim().isNotEmpty && _amount == null
-          ? 'المبلغ مو صحيح'
+          ? 'المبلغ مش صحيح'
           : amount > 0 && !hasBudget
           ? context.say(
               'حدد ميزانيتك أول، بعدين خصص للبنود',

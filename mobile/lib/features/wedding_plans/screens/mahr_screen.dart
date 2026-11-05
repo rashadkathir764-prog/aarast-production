@@ -25,6 +25,14 @@ class MahrScreen extends StatefulWidget {
 }
 
 class _MahrScreenState extends State<MahrScreen> {
+  /// D86: the plan's currency once its money is loaded; rial until then.
+  String _currency(BuildContext context) {
+    final finance = context.watch<FinanceProvider>();
+    return finance.loadedPlanId == widget.weddingPlanId
+        ? finance.summary.currency
+        : 'YER';
+  }
+
   final _total = TextEditingController();
   final _settled = TextEditingController();
   DateTime? _dueDate;
@@ -132,6 +140,8 @@ class _MahrScreenState extends State<MahrScreen> {
         onSkip: () => context.popOrGo(AppRouter.home),
         children: [
           MahrFields(
+            // D86: the plan's currency, as the money tab shows it.
+            currency: _currency(context),
             pays: pays,
             totalController: _total,
             settledController: _settled,

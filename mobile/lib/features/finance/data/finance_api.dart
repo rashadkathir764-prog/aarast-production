@@ -58,59 +58,71 @@ class FinanceApi extends _FinanceApiCore
       );
       final summary = MoneySummary.fromJson(json);
       await _cacheSummary(summary, planId);
-      // G35: the owner's «من وين» as last read, for the offline summary.
-      await _offline?.database.setMeta(
-        _fundingKey(planId),
-        jsonEncode(json['funding']),
-      );
+      // D86 (C2): the server's whole answer is the phone's copy. Without
+      // the server the picture is this answer, never a sum the phone makes
+      // from a partial cache; what waits on the phone is counted apart.
+      await _offline?.database.setMeta(_summaryKey(planId), jsonEncode(json));
       return summary;
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
       await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await cachedMoneySummary(planId);
+      if (cached == null) rethrow;
+      return cached;
+    }
+  }
+
+  /// D85/D86: the money picture without the server: the server's last
+  /// answer for an account plan (null before the first one); the phone's
+  /// own sum only for a plan kept on the phone without an account.
+  Future<MoneySummary?> cachedMoneySummary(String planId) async {
+    if (_offline == null) return null;
+    if (FinanceLocalDataSource.isLocalGuestPlanId(planId)) {
       final context = await _localPlanContextLoader?.call(planId);
       return _local.moneySummary(
         planId,
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
-        funding: await _cachedFunding(planId),
       );
     }
-  }
-
-  /// D85: the money picture from the phone's own rows alone, or null when
-  /// the plan has no cost, payment or category on the phone yet.
-  Future<MoneySummary?> cachedMoneySummary(String planId) async {
-    if (_offline == null) return null;
-    final costs = await _readCachedPlanList(OfflineTables.cachedCosts, planId);
-    final categories = await _readCachedPlanList(
-      OfflineTables.cachedBudgetCategories,
-      planId,
-    );
-    if (costs.isEmpty && categories.isEmpty) return null;
-    final context = await _localPlanContextLoader?.call(planId);
-    return _local.moneySummary(
-      planId,
-      estimatedBudget: context?.estimatedBudget,
-      currency: context?.currency,
-      funding: await _cachedFunding(planId),
-    );
-  }
-
-  static String _fundingKey(String planId) => 'money-funding:$planId';
-
-  /// G35: the funding block of the last server summary; it changes only
-  /// online (funding writes need a connection), so offline it stays true.
-  Future<MoneyFundingSummary?> _cachedFunding(String planId) async {
+    final raw = await _offline.database.getMeta(_summaryKey(planId));
+    if (raw == null || raw.isEmpty) return null;
     try {
-      final raw = await _offline?.database.getMeta(_fundingKey(planId));
-      final decoded = raw == null ? null : jsonDecode(raw);
+      final decoded = jsonDecode(raw);
       return decoded is Map
-          ? MoneyFundingSummary.fromJson(Map<String, dynamic>.from(decoded))
+          ? MoneySummary.fromJson(Map<String, dynamic>.from(decoded))
           : null;
     } on FormatException {
+      await _offline.database.deleteMeta(_summaryKey(planId));
       return null;
     }
   }
+
+  /// D86: how many money changes of this plan still wait on the phone
+  /// (queued or refused), shown beside the server's numbers.
+  Future<int> pendingMoneyChangeCount(String planId) async {
+    final database = _offline?.database;
+    if (database == null) return 0;
+    const money = {
+      'cost',
+      'cost_payment',
+      'payment_schedule',
+      'budget_category',
+      'money_budget',
+      'funding_source',
+    };
+    final items = [
+      ...await database.pendingSyncItems(),
+      ...await database.blockedSyncItems(),
+    ];
+    return items
+        .where(
+          (item) => item.planId == planId && money.contains(item.entityType),
+        )
+        .length;
+  }
+
+  static String _summaryKey(String planId) => 'money-summary:$planId';
 
   /// a06 for a saved plan (b01's mahr step): the owner records the mahr
   /// once; the server files it as the groom's agreement with the bride's

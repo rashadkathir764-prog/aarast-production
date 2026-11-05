@@ -84,95 +84,95 @@ class OfflineStatusBanner extends StatelessWidget {
                     )?.push(AppRouter.connectionCheck)
                   : null,
               child: Container(
-              key: const ValueKey('aarast-sync-status'),
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                AarastV3Space.x2,
-                AarastV3Space.x2,
-                AarastV3Space.x2,
-                AarastV3Space.x2,
-              ),
-              decoration: BoxDecoration(
-                color: AarastV3Color.paper,
-                borderRadius: BorderRadius.circular(AarastV3Radius.control),
-                border: Border.all(color: AarastV3Color.line),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      state == SyncState.syncing
-                          ? LucideIcons.refreshCw
-                          : canRetry
-                          ? LucideIcons.cloudCog
-                          : LucideIcons.cloudOff,
-                      color: color,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: AarastV3Space.x2),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: AarastV3Color.ink,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        Text(
-                          lastSync,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: AarastV3Color.textMuted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (service.unsyncedCount > 0) ...[
-                    const SizedBox(width: AarastV3Space.x2),
-                    _CountPill(count: service.unsyncedCount, color: color),
-                  ],
-                  if (canRetry || hasWaiting) ...[
-                    const SizedBox(width: AarastV3Space.x1),
-                    IconButton(
-                      onPressed: service.isSyncing
-                          ? null
-                          : hasWaiting
-                          ? () => showPendingChangesSheet(context, service)
-                          : service.syncPendingChanges,
-                      tooltip: hasWaiting
-                          ? 'شوف التغييرات اللي تنتظر'
-                          : 'حاول ترسل مرة ثانية',
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        hasBlockedIssues
-                            ? LucideIcons.alertCircle
-                            : hasWaiting
-                            ? LucideIcons.listChecks
-                            : LucideIcons.refreshCw,
-                        size: 17,
+                key: const ValueKey('aarast-sync-status'),
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AarastV3Space.x2,
+                  AarastV3Space.x2,
+                  AarastV3Space.x2,
+                  AarastV3Space.x2,
+                ),
+                decoration: BoxDecoration(
+                  color: AarastV3Color.paper,
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
+                  border: Border.all(color: AarastV3Color.line),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        state == SyncState.syncing
+                            ? LucideIcons.refreshCw
+                            : canRetry
+                            ? LucideIcons.cloudCog
+                            : LucideIcons.cloudOff,
+                        color: color,
+                        size: 16,
                       ),
                     ),
+                    const SizedBox(width: AarastV3Space.x2),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: AarastV3Color.ink,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                          Text(
+                            lastSync,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: AarastV3Color.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (service.unsyncedCount > 0) ...[
+                      const SizedBox(width: AarastV3Space.x2),
+                      _CountPill(count: service.unsyncedCount, color: color),
+                    ],
+                    if (canRetry || hasWaiting) ...[
+                      const SizedBox(width: AarastV3Space.x1),
+                      IconButton(
+                        onPressed: service.isSyncing
+                            ? null
+                            : hasWaiting
+                            ? () => showPendingChangesSheet(context, service)
+                            : service.syncPendingChanges,
+                        tooltip: hasWaiting
+                            ? 'شوف التغييرات اللي تنتظر'
+                            : 'حاول ترسل مرة ثانية',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          hasBlockedIssues
+                              ? LucideIcons.alertCircle
+                              : hasWaiting
+                              ? LucideIcons.listChecks
+                              : LucideIcons.refreshCw,
+                          size: 17,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
               ),
             ),
           ),
@@ -354,7 +354,19 @@ class _PendingChangesSheet extends StatelessWidget {
                 child: JourneyList(
                   children: [
                     for (final change in changes)
-                      _PendingChangeRow(change: change, now: now),
+                      _PendingChangeRow(
+                        change: change,
+                        now: now,
+                        // D86: a refused change is the person's to drop.
+                        onDiscard: change.blocked
+                            ? () async {
+                                await service.discardBlockedChange(change.id);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              }
+                            : null,
+                      ),
                   ],
                 ),
               ),
@@ -366,7 +378,13 @@ class _PendingChangesSheet extends StatelessWidget {
 }
 
 class _PendingChangeRow extends StatelessWidget {
-  const _PendingChangeRow({required this.change, required this.now});
+  const _PendingChangeRow({
+    required this.change,
+    required this.now,
+    this.onDiscard,
+  });
+
+  final Future<void> Function()? onDiscard;
 
   final PendingChangeSummary change;
   final DateTime now;
@@ -393,9 +411,16 @@ class _PendingChangeRow extends StatelessWidget {
       color: color,
       soft: soft,
       title: change.title,
-      subtitle: change.blocked ? '${change.reason} · $when' : when,
+      subtitle: change.reason != null ? '${change.reason} · $when' : when,
       trailing: change.blocked
-          ? null
+          ? (onDiscard == null
+                ? null
+                : JourneyTextAction(
+                    key: ValueKey('sync-discard-${change.id}'),
+                    label: 'احذفه',
+                    color: AarastV3Color.danger,
+                    onPressed: onDiscard,
+                  ))
           : const Icon(
               LucideIcons.clock,
               size: 18,

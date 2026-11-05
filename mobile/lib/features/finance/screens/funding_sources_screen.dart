@@ -49,6 +49,13 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
 
   Future<void> _load() async {
     if (!mounted) return;
+    // D86: the money picture (currency, «معك») is this plan's, read first
+    // when the screen opens from a link before the money tab did.
+    final finance = context.read<FinanceProvider?>();
+    if (finance != null && finance.loadedPlanId != widget.weddingPlanId) {
+      await finance.loadMoney(widget.weddingPlanId);
+      if (!mounted) return;
+    }
     final funding = context.read<FundingProvider>();
     await funding.load(widget.weddingPlanId);
     final id = widget.openSourceId;

@@ -796,9 +796,11 @@ class _AarastSessionProviders extends StatelessWidget {
       resetContextState: (previousContext, nextContext) async {
         apiClient.bindContextIdentity(nextContext?.contextKey);
         plans.clearContextState();
+        // D86: the previous plan's copy and queued writes stay on the
+        // phone; only leaving a plan removes them.
         final previousPlanId = previousContext?.weddingPlanId;
         if (previousPlanId != null) {
-          await offlineSyncService.clearPlanContext(previousPlanId);
+          await offlineSyncService.switchPlanContext(previousPlanId);
         }
       },
       beforeRefresh: userId == null

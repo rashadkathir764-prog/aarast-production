@@ -181,6 +181,8 @@ class _PartySection extends StatelessWidget {
             controller: nameController,
             icon: LucideIcons.user,
             textInputAction: TextInputAction.next,
+            // D86: the server's own limit, so nothing waits to be refused.
+            maxLength: 160,
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
@@ -190,6 +192,7 @@ class _PartySection extends StatelessWidget {
             icon: LucideIcons.phone,
             keyboardType: TextInputType.phone,
             textDirection: TextDirection.ltr,
+            maxLength: 40,
           ),
         ],
         if (error != null)
@@ -501,6 +504,7 @@ class _MoreDetails extends StatelessWidget {
             hint: context.planWord('مثلًا: الوالد', 'مثلًا: الوالدة'),
             controller: payerNameController,
             icon: LucideIcons.user,
+            maxLength: 120,
           ),
         ],
         // V1 checklist 4.10: the owner or partner may keep a new cost to

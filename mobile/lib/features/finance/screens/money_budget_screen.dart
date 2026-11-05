@@ -423,11 +423,22 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     if (changed == true && mounted) await _refreshCategories();
   }
 
+  /// D86: what the person typed in the shares survives a visit to an item
+  /// or a new one; only the rows change under it.
   Future<void> _refreshCategories() async {
     final provider = context.read<FinanceProvider>();
+    final typed = {
+      for (final row in _rows)
+        if (row.id != null) row.id!: row.amount.text,
+    };
     await provider.loadMoney(widget.weddingPlanId);
     if (!mounted || provider.loadErrorMessage != null) return;
     _replaceRows(provider);
+    for (final row in _rows) {
+      final kept = typed[row.id];
+      if (kept != null && kept != row.amount.text) row.amount.text = kept;
+    }
+    setState(() {});
   }
 
   /// Each problem in plain words; null when the budget can be saved.

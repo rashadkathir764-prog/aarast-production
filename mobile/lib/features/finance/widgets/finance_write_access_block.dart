@@ -13,22 +13,18 @@ Widget? financeWriteAccessBlock({
 }) {
   if (AuthActionGuard.isLocalGuestPlanId(weddingPlanId)) return null;
   if (provider.loadedPlanId != weddingPlanId || provider.isLoading) {
-    return const AarastScreenLoading(
-      label: 'جاري التحقق من صلاحية تعديل المال',
-    );
+    return const AarastScreenLoading(label: 'نتأكد من صلاحيتك في المال');
   }
   if (!provider.hasLoadedMoney) {
     final error = provider.loadErrorMessage;
     if (error == null) {
-      return const AarastScreenLoading(
-        label: 'جاري التحقق من صلاحية تعديل المال',
-      );
+      return const AarastScreenLoading(label: 'نتأكد من صلاحيتك في المال');
     }
     return AarastScreenFrame(
       maxWidth: 520,
       child: Center(
         child: AarastErrorState(
-          title: 'تعذر التحقق من الصلاحيات',
+          title: 'ما قدرنا نتأكد من صلاحيتك',
           message: error,
           onRetry: () => provider.loadMoney(weddingPlanId),
         ),
@@ -41,7 +37,7 @@ Widget? financeWriteAccessBlock({
       child: Center(
         child: AarastEmptyState(
           title: 'العرض فقط',
-          message: 'لا تملك صلاحية إدارة المال في هذه الخطة.',
+          message: 'ما معك صلاحية تعديل المال في هذي الخطة.',
           icon: LucideIcons.lock,
         ),
       ),

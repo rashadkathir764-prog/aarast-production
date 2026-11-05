@@ -512,11 +512,13 @@ class DashboardAfterWedding {
     required this.left,
     required this.paid,
     required this.total,
+    this.loansLeft = 0,
   });
 
   final num left;
   final num paid;
   final num total;
+  final num loansLeft; // D86: the loans within [left] («مع السلف»).
 }
 
 /// b07's hero: «1.9 مليون باقي عليك», the share paid and «سددت … من …».
@@ -584,7 +586,7 @@ class _AfterWeddingHero extends StatelessWidget {
                         child: Text(
                           hidden
                               ? 'باقي عليك'
-                              : '${left.millionUnit ?? left.currency} باقي عليك',
+                              : '${left.millionUnit ?? left.currency} باقي عليك${debt.loansLeft > 0 ? ' مع السلف' : ''}',
                           style: JourneyType.of(
                             JourneyType.title,
                             weight: JourneyType.bold,

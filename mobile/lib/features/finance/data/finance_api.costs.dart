@@ -7,10 +7,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String planId, {
     int limit = 30,
   }) async {
-    final cached = await _readCachedPlanList(
-      OfflineTables.cachedCosts,
-      planId,
-    );
+    final cached = await _readCachedPlanList(OfflineTables.cachedCosts, planId);
     return _localCostPage(cached, page: 1, limit: limit);
   }
 
@@ -165,7 +162,15 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     if (FinanceLocalDataSource.isLocalGuestPlanId(planId)) {
       return _local.createCost(weddingPlanId: planId, payload: payload);
     }
+    // D86: an item the server has not named yet (a budget kept on the
+    // phone) cannot be sent; the agreement waits with it instead of being
+    // refused.
+    final waitsForItem =
+        _offline != null && !_isServerCategoryId(budgetCategoryId);
     try {
+      if (waitsForItem) {
+        throw const ApiException('البند ينتظر الخادم', isNetworkFailure: true);
+      }
       final json = await mutation.send();
       await _cache(OfflineTables.cachedCosts, json);
       await _offline?.syncPendingChanges();
@@ -256,7 +261,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
   Future<void> deleteCost(WeddingCost cost) async {
     if (!cost.canDelete) {
       throw const ApiException(
-        'لا يمكن حذف تكلفة لها دفعات. ألغِ التكلفة للاحتفاظ بالسجل الصحيح.',
+        'اتفاق عليه دفعات ما ينحذف. ألغِه عشان يبقى السجل صحيح.',
       );
     }
     final mutation = _mutation('DELETE', '/api/v1/costs/${cost.id}', const {});

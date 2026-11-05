@@ -175,7 +175,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('حجز الصالة'), findsWidgets);
-    expect(find.textContaining('هذه التفاصيل للعرض فقط'), findsOneWidget);
+    expect(
+      find.textContaining('تشوف بس. التعديل والدفع لمن معه صلاحية المال.'),
+      findsOneWidget,
+    );
     expect(find.byTooltip('تعديل التكلفة'), findsNothing);
     expect(find.text('تسجيل دفعة'), findsNothing);
     expect(find.text('حذف'), findsNothing);

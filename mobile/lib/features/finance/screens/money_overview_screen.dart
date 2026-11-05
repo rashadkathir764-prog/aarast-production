@@ -175,7 +175,11 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             ] else if (provider.isStale) ...[
               // D86: the numbers are the server's last; what waits on the
               // phone is counted apart, never added to them.
-              JourneyListNotice(offline: true, onRetry: _load),
+              JourneyListNotice(
+                offline: true,
+                keepsChanges: true,
+                onRetry: _load,
+              ),
               const SizedBox(height: AarastV3Space.x3),
             ],
             if (provider.pendingMoneyChanges > 0) ...[

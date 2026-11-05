@@ -107,7 +107,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     if (error is ApiException) {
       return error.message;
     }
-    return 'تعذر تحميل المهام والجدول الزمني.';
+    return 'ما قدرنا نجيب المهام الحين.';
   }
 
   Future<bool> createTask({
@@ -165,7 +165,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إنشاء المهمة.';
+      _errorMessage = 'ما انحفظت المهمة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -270,7 +270,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر مشاركة المهمة.';
+      _errorMessage = 'ما قدرنا نشارك المهمة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -301,7 +301,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر ربط المهمة.';
+      _errorMessage = 'ما قدرنا نربط المهمة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -353,7 +353,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } catch (_) {
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
-        _errorMessage = 'تعذر تحديث المهمة.';
+        _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
       }
       return false;
     } finally {
@@ -453,7 +453,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
               ? error.message
               : 'تعذر تغيير المسؤول.';
           await _refreshTaskData(weddingPlanId);
-          _errorMessage = 'تم حفظ تفاصيل المهمة، لكن لم يتغير المسؤول: $reason';
+          _errorMessage = 'انحفظت تفاصيل المهمة، بس المسؤول ما تغيّر: $reason';
           return false;
         }
       }
@@ -471,7 +471,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } catch (_) {
       _replaceTask(previousTask);
-      _errorMessage = 'تعذر تحديث المهمة.';
+      _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -551,7 +551,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حذف المهمة.';
+      _errorMessage = 'ما انحذفت المهمة الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;

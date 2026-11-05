@@ -12,8 +12,20 @@ import '../models/timeline.dart';
 import '../models/wedding_task.dart';
 
 class TaskTimelineApi {
-  const TaskTimelineApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  TaskTimelineApi(this._apiClient, {OfflineSyncService? offline})
+    : _offline = offline,
+      _writes = OfflineWrites(_apiClient, offline);
+
+  final OfflineWrites _writes;
+
+  /// D89: the sub-steps, the assignment and the bulk date shift are the
+  /// server's to keep (their ids and members live there); the task itself
+  /// stays on the phone (D85).
+  static const _stepsNeedServer =
+      'الخطوات الفرعية تُحفظ في الخادم الحين؛ المهمة نفسها محفوظة في جوالك.';
+  static const _assignNeedsServer =
+      'تعيين المسؤول يتأكد من عضويته في الخطة، فيحتاج الخادم.';
+  static const _shiftNeedsServer = 'نقل كل المواعيد مرة وحدة يحتاج الخادم.';
 
   static int _localTaskSequence = 0;
 
@@ -119,9 +131,11 @@ class TaskTimelineApi {
   /// dated tasks by [days]. Online only: it is a one-off decision the owner
   /// takes right after changing the date. Returns how many tasks moved.
   Future<int> shiftOpenDueDates(String weddingPlanId, int days) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/tasks/shift-due-dates',
-      {'days': days},
+    final json = await _writes.serverOnly(
+      reason: _shiftNeedsServer,
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$weddingPlanId/tasks/shift-due-dates',
+      body: {'days': days},
     );
     final shifted = json['shifted'];
     return shifted is num ? shifted.toInt() : 0;
@@ -288,9 +302,11 @@ class TaskTimelineApi {
       return _updateLocalTask(id: id, data: localData);
     }
 
-    final json = await _apiClient.patchJson(
-      '/api/v1/tasks/$id/assign',
-      payload,
+    final json = await _writes.serverOnly(
+      reason: _assignNeedsServer,
+      method: 'PATCH',
+      path: '/api/v1/tasks/$id/assign',
+      body: payload,
     );
     final hydratedJson = {
       ...Map<String, dynamic>.from(json),
@@ -737,9 +753,11 @@ class TaskTimelineApi {
     String title,
   ) async {
     _assertChecklistAvailable(task);
-    final json = await _apiClient.postJson(
-      '/api/v1/tasks/${task.id}/checklist',
-      {'title': title.trim(), 'sortOrder': task.checklist.length},
+    final json = await _writes.serverOnly(
+      reason: _stepsNeedServer,
+      method: 'POST',
+      path: '/api/v1/tasks/${task.id}/checklist',
+      body: {'title': title.trim(), 'sortOrder': task.checklist.length},
     );
     final item = TaskChecklistItem.fromJson(json);
     await _cacheChecklist(task, [...task.checklist, item]);
@@ -753,9 +771,11 @@ class TaskTimelineApi {
     bool? isDone,
   }) async {
     _assertChecklistAvailable(task);
-    final json = await _apiClient.patchJson(
-      '/api/v1/tasks/${task.id}/checklist/${item.id}',
-      {'title': ?title?.trim(), 'isDone': ?isDone},
+    final json = await _writes.serverOnly(
+      reason: _stepsNeedServer,
+      method: 'PATCH',
+      path: '/api/v1/tasks/${task.id}/checklist/${item.id}',
+      body: {'title': ?title?.trim(), 'isDone': ?isDone},
     );
     final updated = TaskChecklistItem.fromJson(json);
     await _cacheChecklist(task, [
@@ -770,8 +790,10 @@ class TaskTimelineApi {
     TaskChecklistItem item,
   ) async {
     _assertChecklistAvailable(task);
-    await _apiClient.deleteJson(
-      '/api/v1/tasks/${task.id}/checklist/${item.id}',
+    await _writes.serverOnly(
+      reason: _stepsNeedServer,
+      method: 'DELETE',
+      path: '/api/v1/tasks/${task.id}/checklist/${item.id}',
     );
     await _cacheChecklist(task, [
       for (final current in task.checklist)

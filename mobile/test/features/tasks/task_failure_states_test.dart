@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_checklist_item.dart';
@@ -50,6 +51,26 @@ void main() {
       expect(provider.loadErrorMessage, isNull);
     },
   );
+
+  testWidgets('an old copy says so, and that changes keep on the phone', (
+    tester,
+  ) async {
+    final api = _Api()..serveCopy = true;
+    final provider = TaskTimelineProvider(api);
+    await provider.load('plan-1');
+    await _pumpDetails(tester, provider);
+
+    expect(
+      find.byKey(const ValueKey('journey-list-notice-offline')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('آخر نسخة محفوظة · تغييراتك تنحفظ في جوالك'),
+      findsOneWidget,
+    );
+    expect(find.text('احجز القاعة'), findsWidgets);
+    await tester.pump(const Duration(seconds: 5));
+  });
 
   testWidgets('a failed delete says so and stays on the task', (tester) async {
     final api = _Api()..failDelete = true;
@@ -216,6 +237,9 @@ class _Api extends TaskTimelineApi {
   bool failChecklist = false;
   bool failRead = false;
 
+  /// D87: the server is out of reach and the phone has a copy.
+  bool serveCopy = false;
+
   WeddingTask task = WeddingTask(
     id: 'task-1',
     weddingPlanId: 'plan-1',
@@ -239,6 +263,7 @@ class _Api extends TaskTimelineApi {
     if (failRead) {
       throw const ApiException('ما وصلنا', statusCode: 503);
     }
+    if (serveCopy) OfflineReads.noteCopyServed();
   }
 
   @override

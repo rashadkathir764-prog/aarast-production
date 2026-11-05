@@ -40,7 +40,7 @@ void main() {
       final shown = provider.tasks.singleWhere((task) => task.id == 'task-1');
       expect(shown.title, 'Updated');
       expect(shown.assigneeUserId, isNull);
-      expect(provider.errorMessage, contains('تم حفظ تفاصيل المهمة'));
+      expect(provider.errorMessage, contains('انحفظت تفاصيل المهمة'));
       expect(provider.errorMessage, contains('المسؤول غير متاح.'));
     },
   );

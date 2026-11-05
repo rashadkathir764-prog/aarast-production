@@ -228,9 +228,11 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               ],
             ),
             const SizedBox(height: AarastV3Space.x3),
-            if (provider.loadErrorMessage != null && tasks.isNotEmpty) ...[
+            if ((provider.loadErrorMessage != null || provider.isStale) &&
+                tasks.isNotEmpty) ...[
               JourneyListNotice(
-                offline: false,
+                offline: provider.loadErrorMessage == null,
+                keepsChanges: true,
                 onRetry: () => provider.load(widget.weddingPlanId),
               ),
               const SizedBox(height: AarastV3Space.x3),

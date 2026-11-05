@@ -197,9 +197,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (provider.loadErrorMessage != null) ...[
+        if (provider.loadErrorMessage != null || provider.isStale) ...[
           JourneyListNotice(
-            offline: false,
+            offline: provider.loadErrorMessage == null,
+            keepsChanges: true,
             onRetry: () => provider.load(widget.weddingPlanId),
           ),
           const SizedBox(height: AarastV3Space.x3),

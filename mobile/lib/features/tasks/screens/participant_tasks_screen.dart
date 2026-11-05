@@ -244,10 +244,11 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
       ];
     }
     return [
-      if (provider.loadErrorMessage != null) ...[
+      if (provider.loadErrorMessage != null || provider.isStale) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyListNotice(
-          offline: false,
+          offline: provider.loadErrorMessage == null,
+          keepsChanges: true,
           onRetry: () => provider.load(widget.weddingPlanId),
         ),
       ],

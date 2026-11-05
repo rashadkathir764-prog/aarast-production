@@ -150,7 +150,16 @@ class JourneyListState extends StatelessWidget {
 
 /// Above a list that still has rows: why they may be old, and a retry.
 class JourneyListNotice extends StatelessWidget {
-  const JourneyListNotice({required this.offline, this.onRetry, super.key});
+  const JourneyListNotice({
+    required this.offline,
+    this.onRetry,
+    this.keepsChanges = false,
+    super.key,
+  });
+
+  /// D89: this section's changes queue on the phone (D85), so the old copy
+  /// is not «تشوف بس».
+  final bool keepsChanges;
 
   /// Offline shows «آخر نسخة محفوظة · تشوف بس»; otherwise the load failed.
   final bool offline;
@@ -192,8 +201,12 @@ class JourneyListNotice extends StatelessWidget {
                   child: Text(
                     offline
                         ? context.say(
-                            'آخر نسخة محفوظة · تشوف بس',
-                            'آخر نسخة محفوظة · تشوفين بس',
+                            keepsChanges
+                                ? 'آخر نسخة محفوظة · تغييراتك تنحفظ في جوالك'
+                                : 'آخر نسخة محفوظة · تشوف بس',
+                            keepsChanges
+                                ? 'آخر نسخة محفوظة · تغييراتك تنحفظ في جوالك'
+                                : 'آخر نسخة محفوظة · تشوفين بس',
                           )
                         : 'ما قدرنا نحدّثها، وهذي آخر نسخة',
                     style: JourneyType.of(

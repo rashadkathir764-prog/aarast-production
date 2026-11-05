@@ -90,6 +90,15 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
               onRetry: () => provider.load(widget.weddingPlanId),
             )
           else ...[
+            if (provider.isStale) ...[
+              // D87: the copy is old; events queue on the phone (D85).
+              JourneyListNotice(
+                offline: true,
+                keepsChanges: true,
+                onRetry: () => provider.load(widget.weddingPlanId),
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             for (final event in view.items) ...[
               _EventCard(
                 event: event,

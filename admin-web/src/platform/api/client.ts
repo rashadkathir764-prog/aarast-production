@@ -158,10 +158,11 @@ const connectionError = 'تعذر الاتصال بالخادم. تأكد من �
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await readJson(response);
   if (!response.ok) {
+    const message = cleanMessage(payload);
     throw new ApiError(
-      arabicMessage(cleanMessage(payload), response.status),
+      arabicMessage(message, response.status),
       response.status,
-      extractErrorCode(payload),
+      unknownRoute.test(message.trim()) ? serverOlderCode : extractErrorCode(payload),
     );
   }
 
@@ -201,8 +202,15 @@ const arabicLetter = /[؀-ۿ]/;
  * are; an English framework or validation detail becomes Arabic for its kind
  * of failure. The error code stays on the ApiError for pages that need it.
  */
+/** D88: Nest answers «Cannot GET /path» for a route this server does not have. */
+const unknownRoute = /^Cannot (GET|POST|PUT|PATCH|DELETE) /;
+export const serverOlderCode = 'SERVER_OLDER_THAN_APP';
+export const serverOlderMessage =
+  'الخادم على نسخة أقدم من اللوحة. هذه الشاشة تعمل بعد تحديث الخادم.';
+
 function arabicMessage(message: string, status: number): string {
   if (arabicLetter.test(message)) return message;
+  if (unknownRoute.test(message.trim())) return serverOlderMessage;
   if (status === 400 || status === 422) return 'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.';
   if (status === 401) return 'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول من جديد.';
   if (status === 403) return 'لا تملك صلاحية لهذا الإجراء.';

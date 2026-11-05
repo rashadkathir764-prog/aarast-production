@@ -485,6 +485,14 @@ class _SharingScreenState extends State<SharingScreen>
     }
 
     return [
+      if (provider.isStale && provider.errorMessage == null) ...[
+        // D87: an old copy; inviting and permissions need the server.
+        JourneyListNotice(
+          offline: true,
+          onRetry: () => provider.loadMembers(widget.weddingPlanId),
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+      ],
       if (provider.errorMessage != null) ...[
         JourneyNote(
           key: const ValueKey('sharing-error'),

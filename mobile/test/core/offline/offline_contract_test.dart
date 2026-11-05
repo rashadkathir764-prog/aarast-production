@@ -21,8 +21,8 @@ const _baseline = <String, int>{
   'finance/data/finance_api.payments.dart': 2,
   // Own queue for favourites; the rest are provider-side actions that
   // reach another person and plan-side requests, each said so.
-  'marketplace/data/marketplace_api.dart': 43,
-  'tasks/data/task_timeline_api.dart': 11,
+  'marketplace/data/marketplace_api.dart': 35,
+  'tasks/data/task_timeline_api.dart': 6,
   'wedding_plans/data/wedding_plans_api.dart': 11,
 };
 

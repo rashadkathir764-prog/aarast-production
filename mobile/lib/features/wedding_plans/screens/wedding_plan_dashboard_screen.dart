@@ -515,8 +515,14 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           builder: (_) {
             return AarastDashboardView(
               summary: summary,
-              // w39: an account whose phone turned notifications off.
-              notice: _isLocalGuestPlan ? null : const PushOffCard(),
+              // D87: an old copy of the home is said first (the money and
+              // the tasks queue on the phone); w39: an account whose phone
+              // turned notifications off.
+              notice: provider.isStale
+                  ? const JourneyListNotice(offline: true, keepsChanges: true)
+                  : _isLocalGuestPlan
+                  ? null
+                  : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
               funding: _homeFunding(summary, selectedPlanId),
               mahr: _watchMahrMoment(

@@ -130,6 +130,11 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (plans.isStale) ...[
+          // D87: an old copy of the plans; opening one reads it afresh.
+          JourneyListNotice(offline: true, onRetry: plans.loadMyWeddingPlans),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
         for (final entry in entries) ...[
           _PlanCard(
             key: ValueKey(

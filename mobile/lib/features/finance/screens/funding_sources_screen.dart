@@ -205,9 +205,13 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: AarastV3Density.pageInsets,
                 children: [
-                  if (funding.loadErrorMessage != null &&
+                  if ((funding.loadErrorMessage != null || funding.isStale) &&
                       sources.isNotEmpty) ...[
-                    JourneyListNotice(offline: false, onRetry: _load),
+                    JourneyListNotice(
+                      offline: funding.loadErrorMessage == null,
+                      keepsChanges: true,
+                      onRetry: _load,
+                    ),
                     const SizedBox(height: AarastV3Space.x3),
                   ],
                   if (sources.isNotEmpty) ...[

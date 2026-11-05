@@ -186,9 +186,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
                 children: [
                   for (final event in failures)
                     Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: AarastV3Space.x1,
-                      ),
+                      padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
                       child: Text(
                         '${_time(event.timestamp)} · ${event.attributes['method'] ?? ''} ${event.attributes['routeTemplate'] ?? ''} · ${_errorWord(event.attributes)}',
                         style: JourneyType.of(
@@ -255,9 +253,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
     final status = attributes['statusCode'];
     if (status is int && status > 0) return 'HTTP $status';
     return switch (attributes['errorType']) {
-      'connectionTimeout' ||
-      'receiveTimeout' ||
-      'sendTimeout' => 'الخادم تأخر',
+      'connectionTimeout' || 'receiveTimeout' || 'sendTimeout' => 'الخادم تأخر',
       'connectionError' => 'ما وصلنا',
       'badCertificate' => 'الاتصال الآمن',
       final other => other?.toString() ?? '',

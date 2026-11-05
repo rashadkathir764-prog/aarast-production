@@ -215,10 +215,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     final now = (widget.clock ?? appNow)();
+    // D87: an old copy is said; reads and archives queue on the phone.
+    final staleNotice = <Widget>[
+      if (provider.isStale) ...[
+        JourneyListNotice(offline: true, keepsChanges: true, onRetry: _load),
+        const SizedBox(height: AarastV3Space.x3),
+      ],
+    ];
     if (participant) {
       return ListView(
         padding: AarastV3Density.pageInsets,
         children: [
+          ...staleNotice,
           JourneyList(
             children: [
               for (final notification in notifications)
@@ -260,6 +268,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return ListView(
       padding: AarastV3Density.pageInsets,
       children: [
+        ...staleNotice,
         for (final group in groups) ...[
           JourneySectionTitle(group.$1),
           JourneyBox(

@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/tasks/tasks_api.dart';
 import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
@@ -56,8 +57,16 @@ class _Api extends PlanEventsApi {
   final created = <(PlanEventType, Map<String, dynamic>)>[];
   final updated = <(String, Map<String, dynamic>)>[];
 
+  /// D87: the server is out of reach and the phone has a copy.
+  bool serveCopy = false;
+
   @override
   Future<PlanEventsView> list(String weddingPlanId) async {
+    if (serveCopy) OfflineReads.noteCopyServed();
+    return _list(weddingPlanId);
+  }
+
+  Future<PlanEventsView> _list(String weddingPlanId) async {
     reads++;
     return view;
   }
@@ -252,6 +261,21 @@ void main() {
     expect(find.text('عقد القران'), findsOneWidget);
     expect(find.text('مناسبة ثانية'), findsOneWidget);
     expect(find.byTooltip('تعديل السمرة'), findsOneWidget);
+  });
+
+  testWidgets('D91: an old copy of the events says so', (tester) async {
+    final api = _Api(_view())..serveCopy = true;
+    final provider = PlanEventsProvider(api: api);
+    await _pump(tester, provider);
+
+    expect(
+      find.byKey(const ValueKey('journey-list-notice-offline')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('آخر نسخة محفوظة · تغييراتك تنحفظ في جوالك'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a member who only follows reads them without a control (D52)', (

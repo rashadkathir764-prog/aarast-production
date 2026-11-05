@@ -82,7 +82,7 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حفظ الإعدادات.';
+      _errorMessage = 'ما انحفظت الإعدادات الحين. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;

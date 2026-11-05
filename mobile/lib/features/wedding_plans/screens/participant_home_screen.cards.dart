@@ -505,8 +505,7 @@ class _ChangeCard extends StatelessWidget {
     final owner = voice.owner;
     // J2-20: said to the reader as who they are.
     final say = context.say;
-    final private =
-        'المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.';
+    final private = 'المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.';
     final String title;
     final String body;
     if (opened.length == 1 && closed.isEmpty) {

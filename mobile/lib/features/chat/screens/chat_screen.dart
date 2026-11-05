@@ -305,6 +305,17 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: strip,
             ),
+          if (chat.isStale && timeline.isNotEmpty)
+            // D87: an old copy of the conversation; sending needs the server.
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                0,
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+              ),
+              child: JourneyListNotice(offline: true),
+            ),
           Expanded(child: body),
           if (conversation?.blocked == true)
             _Notice(

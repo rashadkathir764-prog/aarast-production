@@ -88,6 +88,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (provider.isStale) ...[
+            // D87: the copy is old; the settings queue on the phone (D85).
+            JourneyListNotice(
+              offline: true,
+              keepsChanges: true,
+              onRetry: provider.loadSettings,
+            ),
+            const SizedBox(height: AarastV3Space.x3),
+          ],
           JourneyList(
             dividers: false,
             children: [

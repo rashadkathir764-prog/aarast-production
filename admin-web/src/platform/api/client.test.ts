@@ -231,6 +231,21 @@ describe('apiRequest', () => {
     expect(error.status).toBe(404);
   });
 
+  it('a route the server does not know is said as an older server (D88)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      response(
+        404,
+        JSON.stringify({ statusCode: 404, error: 'Not Found', message: 'Cannot GET /api/v1/admin/photos' }),
+      ),
+    );
+    const error = (await apiRequest('/api/v1/admin/photos').catch((caught: unknown) => caught)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe(
+      'الخادم على نسخة أقدم من اللوحة. هذه الشاشة تعمل بعد تحديث الخادم.',
+    );
+    expect(error.code).toBe('SERVER_OLDER_THAN_APP');
+  });
+
   it('falls back to a generic Arabic message when body has none', async () => {
     fetchMock.mockResolvedValueOnce(response(500, ''));
     await expect(apiRequest('/x')).rejects.toBeInstanceOf(ApiError);

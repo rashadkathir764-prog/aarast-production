@@ -1,5 +1,28 @@
 part of 'aarast_dashboard_view.dart';
 
+/// b01's countdown in words. The drawn line carries the counted word alone,
+/// because the days sit beside it in 52 point: «أيام» has to follow the
+/// number's own rule (arabicCountWord) and never read «3 يوم». The spoken
+/// line carries the number with it, so a reader hears one line instead of
+/// the figure twice.
+({String drawn, String spoken}) homeCountdownWords(int? days) {
+  if (days == null) return (drawn: '', spoken: '');
+  if (days > 0) {
+    final word = arabicCountWord(
+      days,
+      one: 'يوم واحد',
+      two: 'يومين',
+      few: 'أيام',
+      many: 'يوم',
+    );
+    return (drawn: '$word على عرسك', spoken: '${arabicDays(days)} على عرسك');
+  }
+  if (days == 0) return (drawn: 'اليوم عرسك', spoken: 'اليوم عرسك');
+  // The header already congratulates by name (b07), so the moment box states
+  // the day instead of saying «ألف مبروك» a second time.
+  return (drawn: 'عرسك كان', spoken: 'عرسك كان');
+}
+
 /// The design's five moments of the wedding (b01, b02, b04, b05, b07).
 const _homeMoments = [
   'البداية',

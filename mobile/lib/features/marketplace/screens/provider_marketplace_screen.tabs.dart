@@ -3,8 +3,8 @@ part of 'provider_marketplace_screen.dart';
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _categoryStripHeight = 92.0;
 
-/// The four tabs of «المزودين»: طلباتي (f01), استكشف (f02), المحادثات (f08)
-/// and المفضلة (f09).
+/// The four tabs of «المزودين», in the order they are drawn: استكشف (f02),
+/// طلباتي (f01), المحادثات (f08) and المفضلة (f09).
 extension _ProviderTabs on _ProviderMarketplaceScreenState {
   List<ProviderBoardRow> _board(ProviderMarketplaceProvider marketplace) {
     final planId = _weddingLocationPlanId!;

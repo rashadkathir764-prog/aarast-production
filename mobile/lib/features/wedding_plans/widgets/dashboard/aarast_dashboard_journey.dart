@@ -153,20 +153,8 @@ class _JourneyHomeHero extends StatelessWidget {
         ? null
         : [formatArabicWeekdayDayMonth(date), ?hijri?.dayAndMonth].join(' · ');
 
-    final String countLine;
-    if (date == null || days == null) {
-      countLine = '';
-    } else if (days > 0) {
-      countLine = days == 1
-          ? 'يوم واحد على عرسك'
-          : days == 2
-          ? 'يومين على عرسك'
-          : 'يوم على عرسك';
-    } else if (days == 0) {
-      countLine = 'اليوم عرسك';
-    } else {
-      countLine = 'ألف مبروك';
-    }
+    final count = homeCountdownWords(date == null ? null : days);
+    final countLine = count.drawn;
 
     return Semantics(
       button: true,
@@ -175,7 +163,7 @@ class _JourneyHomeHero extends StatelessWidget {
               'الموعد لسا ما ثبت. ثبّت الموعد',
               'الموعد لسا ما ثبت. ثبّتي الموعد',
             )
-          : '${days != null && days > 0 ? '$days ' : ''}$countLine، $dateLine',
+          : '${count.spoken}، $dateLine',
       onTap: onTap,
       excludeSemantics: true,
       child: AarastPressable(

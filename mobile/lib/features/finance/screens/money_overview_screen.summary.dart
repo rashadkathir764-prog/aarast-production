@@ -15,19 +15,21 @@ String _amount(BuildContext context, Object? value, String currency) {
   return compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
 }
 
-/// The status line under «المال».
+/// The status line under «المال»: one true state, never a reassurance the
+/// server did not work out, and never the shortfall's figure (that figure is
+/// the card's own 28-point lead, see [_ShortfallLine], so saying it here
+/// would be the same number twice at opposite weights).
+///
+/// Being over the budget is said even when the money is also short: the two
+/// are different facts, and the over-budget one used to be dropped in
+/// silence because the shortfall was checked first.
 String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
-  final funding = summary.funding;
-  if (funding != null && funding.shortfall != null) {
-    return 'ماشية، بس ومع الموعود ناقصك شي';
-  }
   if (!summary.hasBudget) {
     return profile.say(
       'حدد ميزانيتك ونرتب لك الباقي',
       'حددي ميزانيتك ونرتب لك الباقي',
     );
   }
-  if (moneyValue(summary.budget.remaining) < 0) return 'فوق الميزانية';
   if (summary.costs.count == 0) {
     return profile.ownerDid(
       'ما سجلت اتفاقات بعد',
@@ -36,7 +38,13 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
       bride: 'ما انسجلت اتفاقات بعد',
     );
   }
-  return 'ماشية';
+  final funding = summary.funding;
+  final short = funding != null && funding.shortfall != null;
+  final over = moneyValue(summary.budget.remaining) < 0;
+  if (over && short) return 'فوق الميزانية، وفلوسك ما تغطي اتفاقاتك';
+  if (short) return 'فلوسك ما تغطي اتفاقاتك';
+  if (over) return 'فوق الميزانية';
+  return 'في حدود ميزانيتك';
 }
 
 /// D59: what was paid, said by whose money paid it: the owner's own part

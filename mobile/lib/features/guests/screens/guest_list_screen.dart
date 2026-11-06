@@ -455,7 +455,18 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
         ),
         const SizedBox(height: AarastV3Space.x3),
-        _guestBox(provider, visible, duplicates, empty: 'ما فيه أحد هنا'),
+        _guestBox(
+          provider,
+          visible,
+          duplicates,
+          empty: _reply == _ReplyFilter.all
+              ? 'ما فيه أحد هنا'
+              : 'ما فيه أحد تحت «${_reply.labelFor(words)}» في $title',
+          emptyAction: _reply == _ReplyFilter.all ? null : 'شوف الكل',
+          onEmptyAction: _reply == _ReplyFilter.all
+              ? null
+              : () => setState(() => _reply = _ReplyFilter.all),
+        ),
       ],
     );
   }
@@ -465,17 +476,34 @@ class _GuestListScreenState extends State<GuestListScreen> {
     List<Guest> guests,
     Set<String> duplicates, {
     required String empty,
+    String? emptyAction,
+    VoidCallback? onEmptyAction,
   }) {
     if (guests.isEmpty) {
+      // A filter that matched nobody is not an empty list, and it must say
+      // the way back out of itself.
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x6),
-        child: Text(
-          empty,
-          textAlign: TextAlign.center,
-          style: JourneyType.of(
-            JourneyType.body,
-            color: AarastV3Color.textMuted,
-          ),
+        child: Column(
+          children: [
+            Text(
+              empty,
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            if (emptyAction != null && onEmptyAction != null) ...[
+              const SizedBox(height: AarastV3Space.x2),
+              JourneyTextAction(
+                key: const ValueKey('guests-clear-reply-filter'),
+                label: emptyAction,
+                color: context.accent.primary,
+                onPressed: onEmptyAction,
+              ),
+            ],
+          ],
         ),
       );
     }

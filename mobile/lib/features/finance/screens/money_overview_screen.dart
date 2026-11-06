@@ -252,12 +252,17 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     // The four tabs are a state inside one route, so Android back has to
     // undo them before it leaves money; otherwise picking «الدفعات» and
     // pressing back threw the reader out of the tab altogether.
-    final atRoot = (_tab ?? _opening ?? 0) == 0;
+    // The root is the tab the screen opened on, not index 0: a plan with
+    // nothing in it opens on «البنود», so comparing against «الملخص» sent
+    // the first back press to a tab the reader had never opened, and only
+    // the second one left.
+    final opening = _opening ?? 0;
+    final atRoot = (_tab ?? opening) == opening;
     if (widget.embedded) {
       return PopScope(
         canPop: atRoot,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && !atRoot) setState(() => _tab = 0);
+          if (!didPop && !atRoot) setState(() => _tab = opening);
         },
         child: ColoredBox(
           key: const ValueKey('money-overview-surface'),

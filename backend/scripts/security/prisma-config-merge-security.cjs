@@ -63,22 +63,36 @@ const PINNED_PACKAGE_JSON_SHA256 =
 // advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
 // GHSA-qvfw-j98x-7q72, GHSA-rgj7-g3m4-5g8c), then the V1 planning assistant
 // (V1 checklist 4.12: the official Anthropic SDK, @anthropic-ai/sdk 0.131.0,
-// chosen two weeks after its release). Live callers validate the current
-// lock; historical projections re-validate the lock of their own era, so the
+// chosen two weeks after its release), then the V1 release security
+// prerequisite (2026-11-06, release audit RA-BE-08: proxy-addr 2.0.8,
+// body-parser 2.4.0, engine.io 6.6.11, sharp 0.35.5, @fastify/busboy 3.2.4,
+// @grpc/grpc-js 1.14.6, qs 6.16.1, and the overrides multer 2.5.0 and
+// brace-expansion 5.0.12; every version resolved with `--before=2026-10-23`,
+// so each was public for two weeks). Live callers validate the current lock;
+// historical projections re-validate the lock of their own era, so the
 // default accepts exactly this lineage and nothing else.
 const R12B_PACKAGE_LOCK_SHA256 =
   '6d3f757db4c2ec3f6d5d97168d325a6eae418e0038b3da7dc057340352c2dea3';
 const R12C_PACKAGE_LOCK_SHA256 =
   'c1980760454f8ff757b2545fa39b40cee3a233cd28ba88343d16901d339123cb';
-const PINNED_PACKAGE_LOCK_SHA256 =
+const V1_ASSISTANT_PACKAGE_LOCK_SHA256 =
   'f83eaf7fd4063180c276d2dbfe866b30418e1177789e0540c3e0d3257e1e188a';
+const PINNED_PACKAGE_LOCK_SHA256 =
+  '36142d501155fca2e52ec983a9d860f3406fbfdb68fd65c28666fab4d8e0d6df';
 const PACKAGE_LOCK_LINEAGE = Object.freeze([
   R12B_PACKAGE_LOCK_SHA256,
   R12C_PACKAGE_LOCK_SHA256,
+  V1_ASSISTANT_PACKAGE_LOCK_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
 ]);
 const R12B_MULTER_OVERRIDE = '2.2.0';
 const R12C_MULTER_OVERRIDE = '2.3.0';
+// The V1 release security prerequisite (GHSA-3pph-fpjx-jg34 and
+// GHSA-q7qp-rjg7-q26m for multer < 2.5.0; GHSA-q2hr-2g5m-vwhr,
+// GHSA-qhr7-859c-m2p7 and GHSA-6j4f-fj2g-mc7p for brace-expansion < 5.0.12).
+const V1_SECURITY_MULTER_OVERRIDE = '2.5.0';
+const V1_SECURITY_BRACE_EXPANSION_OVERRIDE = '5.0.12';
+const PREDECESSOR_BRACE_EXPANSION_OVERRIDE = '5.0.9';
 // The planning assistant's SDK (V1 checklist 4.12): pinned to its approved
 // minor; the historical chain fingerprints the package without it.
 const V1_ASSISTANT_SDK = '@anthropic-ai/sdk';
@@ -338,10 +352,21 @@ function projectR12CArchitectureScripts(value) {
   if (imports === 'depcruise --config .dependency-cruiser.cjs src') {
     if (Object.prototype.hasOwnProperty.call(scripts, 'architecture:imports:baseline')) fail();
     projectedScripts['architecture:imports:baseline'] = R12C_RETIRED_BASELINE_GENERATOR;
-    // R12C security prerequisite: the strict package pins multer 2.3.0; the
-    // historical chain fingerprints the R12B-era override.
-    if (multer !== R12C_MULTER_OVERRIDE) fail();
+    // R12C security prerequisite pinned multer 2.3.0 (with brace-expansion
+    // 5.0.9); the V1 release security prerequisite pins multer 2.5.0 and
+    // brace-expansion 5.0.12. A strict package carries exactly one era's pair
+    // (the R12C scanner rebuilds its own era's package, the live tree carries
+    // the newest), never a mix; the lock lineage decides which era's lock
+    // goes with it. The historical chain fingerprints the R12B-era multer and
+    // the predecessor brace-expansion.
+    const braceExpansion = ownValue(overrides, 'brace-expansion');
+    const r12cEraPins = multer === R12C_MULTER_OVERRIDE
+      && braceExpansion === PREDECESSOR_BRACE_EXPANSION_OVERRIDE;
+    const v1SecurityPins = multer === V1_SECURITY_MULTER_OVERRIDE
+      && braceExpansion === V1_SECURITY_BRACE_EXPANSION_OVERRIDE;
+    if (!r12cEraPins && !v1SecurityPins) fail();
     projectedOverrides.multer = R12B_MULTER_OVERRIDE;
+    projectedOverrides['brace-expansion'] = PREDECESSOR_BRACE_EXPANSION_OVERRIDE;
   } else if (multer !== R12B_MULTER_OVERRIDE) fail();
   const dependencies = plainRecord(ownValue(packageJson, 'dependencies'));
   const projectedDependencies = { ...dependencies };
@@ -1050,7 +1075,10 @@ module.exports = {
   PINNED_PACKAGE_LOCK_SHA256,
   R12B_PACKAGE_LOCK_SHA256,
   R12C_PACKAGE_LOCK_SHA256,
+  V1_ASSISTANT_PACKAGE_LOCK_SHA256,
   V1_ASSISTANT_SDK_RANGE,
+  V1_SECURITY_BRACE_EXPANSION_OVERRIDE,
+  V1_SECURITY_MULTER_OVERRIDE,
   R12A_ARCHITECTURE_SCRIPT,
   R12A_STANDALONE_SCRIPT,
   R12B_ARCHITECTURE_SCRIPT,

@@ -55,25 +55,44 @@ test('the package fingerprint covers the dependency surface, so ordinary npm scr
   }
 });
 
-test('R12C security prerequisite projects the multer override and accepts only the approved lock lineage', () => {
+test('the security prerequisites project the overrides and accept only the approved lock lineage', () => {
   const checker = require(checkerPath);
   const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
-  // Registry advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
+  // R12C: registry advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
   // GHSA-qvfw-j98x-7q72 (multer < 2.3.0) and GHSA-rgj7-g3m4-5g8c (sharp < 0.35.4).
-  assert.equal(packageJson.overrides.multer, '2.3.0');
-  assert.equal(packageLock.packages['node_modules/multer'].version, '2.3.0');
-  assert.equal(packageLock.packages['node_modules/sharp'].version, '0.35.4');
+  // V1 release (2026-11-06, RA-BE-08): GHSA-3pph-fpjx-jg34 and GHSA-q7qp-rjg7-q26m
+  // (multer < 2.5.0), GHSA-q2hr-2g5m-vwhr (brace-expansion < 5.0.12), the librsvg
+  // advisory for sharp < 0.35.5, and the proxy-addr IPv4-mapped trust advisory (< 2.0.8).
+  assert.equal(packageJson.overrides.multer, checker.V1_SECURITY_MULTER_OVERRIDE);
+  assert.equal(packageJson.overrides['brace-expansion'], checker.V1_SECURITY_BRACE_EXPANSION_OVERRIDE);
+  assert.equal(packageLock.packages['node_modules/multer'].version, '2.5.0');
+  assert.equal(packageLock.packages['node_modules/brace-expansion'].version, '5.0.12');
+  assert.equal(packageLock.packages['node_modules/sharp'].version, '0.35.5');
+  assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
   const projected = checker.projectR12CArchitectureScripts(packageJson);
   assert.equal(projected.overrides.multer, '2.2.0', 'the historical fingerprint chain sees the R12B-era override');
+  assert.equal(projected.overrides['brace-expansion'], '5.0.9', 'the historical fingerprint chain sees the predecessor override');
   assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
   assert.equal(checker.fingerprintPlainJson(packageLock), checker.PINNED_PACKAGE_LOCK_SHA256, 'the live lock is the current approved lock');
   assert.deepEqual(checker.PACKAGE_LOCK_LINEAGE, [
     checker.R12B_PACKAGE_LOCK_SHA256,
     checker.R12C_PACKAGE_LOCK_SHA256,
+    checker.V1_ASSISTANT_PACKAGE_LOCK_SHA256,
     checker.PINNED_PACKAGE_LOCK_SHA256,
   ]);
-  assert.equal(new Set(checker.PACKAGE_LOCK_LINEAGE).size, 3);
+  assert.equal(new Set(checker.PACKAGE_LOCK_LINEAGE).size, 4);
+  for (const value of ['5.0.9', '5.0.11', '^5.0.12', undefined]) {
+    const copy = structuredClone(packageJson);
+    if (value === undefined) delete copy.overrides['brace-expansion']; else copy.overrides['brace-expansion'] = value;
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'), `brace-expansion override ${value}`);
+  }
+  // The R12C scanner rebuilds its own era's strict package (multer 2.3.0 with
+  // brace-expansion 5.0.9); that exact pair still projects, a mix never does.
+  const r12cEra = structuredClone(packageJson);
+  r12cEra.overrides.multer = '2.3.0';
+  r12cEra.overrides['brace-expansion'] = '5.0.9';
+  assert.deepEqual(checker.projectR12CArchitectureScripts(r12cEra), projected);
   // V1 checklist 4.12: the planning assistant's SDK is pinned to its approved
   // minor and projected away for the historical chain; any other range fails.
   assert.equal(packageJson.dependencies['@anthropic-ai/sdk'], checker.V1_ASSISTANT_SDK_RANGE);
@@ -84,7 +103,7 @@ test('R12C security prerequisite projects the multer override and accepts only t
     copy.dependencies['@anthropic-ai/sdk'] = range;
     assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'), `sdk ${range}`);
   }
-  for (const value of ['2.2.0', '2.4.0', '^2.3.0', '3.0.0-alpha.2', undefined]) {
+  for (const value of ['2.2.0', '2.3.0', '2.4.0', '^2.5.0', '3.0.0-alpha.2', undefined]) {
     const copy = structuredClone(packageJson);
     if (value === undefined) delete copy.overrides.multer; else copy.overrides.multer = value;
     assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'), `override ${value}`);
@@ -357,6 +376,8 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   // without the planning assistant's SDK (V1 checklist 4.12).
   (validR8.overrides as JsonRecord).multer = '2.2.0';
   delete (validR8.dependencies as JsonRecord)['@anthropic-ai/sdk'];
+  // ...and before the V1 release security prerequisite's brace-expansion pin.
+  (validR8.overrides as JsonRecord)['brace-expansion'] = '5.0.9';
   delete (validR8.scripts as JsonRecord)['architecture:r12c'];
   delete (validR8.scripts as JsonRecord)['architecture:r12b'];
   delete (validR8.scripts as JsonRecord)['architecture:r12a'];
@@ -910,8 +931,10 @@ test('R12B package wiring and security projection are exact and fail closed', ()
   livePackage.scripts['architecture:imports:baseline'] =
     'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   livePackage.overrides.multer = '2.2.0';
-  // ...and predated the planning assistant's SDK (V1 checklist 4.12).
+  // ...and predated the planning assistant's SDK (V1 checklist 4.12) and the
+  // V1 release security prerequisite's brace-expansion pin.
   delete livePackage.dependencies['@anthropic-ai/sdk'];
+  livePackage.overrides['brace-expansion'] = '5.0.9';
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
   assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);
@@ -954,8 +977,10 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   predecessor.scripts['architecture:imports:baseline'] = retiredGenerator;
   predecessor.overrides.multer = '2.2.0';
-  // The R12B-era package predates the planning assistant's SDK (V1 checklist 4.12).
+  // The R12B-era package predates the planning assistant's SDK (V1 checklist 4.12)
+  // and the V1 release security prerequisite's brace-expansion pin.
   delete predecessor.dependencies['@anthropic-ai/sdk'];
+  predecessor.overrides['brace-expansion'] = '5.0.9';
   assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
   assert.equal(checker.projectR12CArchitectureScripts(packageJson).scripts['architecture:imports:baseline'], retiredGenerator);
   for (const mutate of [

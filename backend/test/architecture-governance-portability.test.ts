@@ -411,51 +411,42 @@ describe('governance portability', () => {
   });
 
   test('the recorded lineage commit still passes the complete lineage gates verbatim', { skip: closedOnly }, () => {
-    // History stays provable: the clone is checked out at the lineage commit,
-    // where no closure record exists, and the lineage gates the record names
-    // that need only the installed dependency surface run there unchanged
-    // (every package the lineage lock installs is installed identically; an
-    // approved later lock may only add packages, as the planning assistant's
-    // SDK did in V1 checklist 4.12). The typecheck gate additionally needs
-    // the generated Prisma client, an install-time step this clone does not
-    // perform; it is verified in the clean-room checkout, not here.
+    // History stays provable: a second clone is checked out at the lineage
+    // commit, where no closure record exists, and installs that commit's own
+    // lock, so the lineage gates the record names run there unchanged on the
+    // exact dependency surface they were proven with. HEAD may move its
+    // dependencies forward under an approved lock (the planning assistant's
+    // SDK in V1 checklist 4.12, the V1 release security prerequisite of
+    // 2026-11-06) without touching history. The typecheck gate additionally
+    // needs the generated Prisma client, an install-time step this clone does
+    // not perform; it is verified in the clean-room checkout, not here.
     const lineageCommit = (closure as { lineageCommit: string }).lineageCommit;
-    type LockPackages = Record<string, { version?: string; integrity?: string; resolved?: string }>;
-    const lockAt = (ref: string) =>
-      JSON.parse(git(clone, ['show', `${ref}:backend/package-lock.json`])) as { packages: LockPackages };
-    const lineageLock = lockAt(lineageCommit);
-    const headLock = lockAt('HEAD');
+    const headLock = JSON.parse(git(clone, ['show', 'HEAD:backend/package-lock.json']));
     const security = require(path.join(clone, 'backend', 'scripts', 'security', 'prisma-config-merge-security.cjs'));
     assert.ok(
       security.PACKAGE_LOCK_LINEAGE.includes(security.fingerprintPlainJson(headLock)),
       'the HEAD lock is an approved lock',
     );
-    for (const [name, entry] of Object.entries(lineageLock.packages)) {
-      if (name === '') continue;
-      const head = headLock.packages[name];
-      assert.ok(head, `the HEAD lock still installs ${name}`);
-      assert.deepEqual(
-        { version: head.version, integrity: head.integrity, resolved: head.resolved },
-        { version: entry.version, integrity: entry.integrity, resolved: entry.resolved },
-        `${name} is installed exactly as at the lineage commit`,
-      );
-    }
-    git(clone, ['checkout', '--quiet', '--detach', lineageCommit]);
+    const lineageClone = path.join(scratch, 'lineage-checkout');
+    git(scratch, ['clone', '--quiet', '--shared', '--no-checkout', repositoryRoot, lineageClone]);
     try {
-      assert.equal(existsSync(path.join(clone, closureModule.CLOSURE_PATH)), false, 'the lineage commit predates the closure record');
-      assert.equal(git(clone, ['status', '--porcelain']), '');
-      const architecture = npmRun(clone, 'architecture');
+      git(lineageClone, ['checkout', '--quiet', '--detach', lineageCommit]);
+      const install = spawnSync(npmCommand, ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline', '--loglevel=error'], {
+        cwd: path.join(lineageClone, 'backend'), encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32',
+      });
+      assert.equal(install.status, 0, `dependency install at the lineage commit failed:\n${install.stdout}${install.stderr}`);
+      assert.equal(existsSync(path.join(lineageClone, closureModule.CLOSURE_PATH)), false, 'the lineage commit predates the closure record');
+      assert.equal(git(lineageClone, ['status', '--porcelain']), '');
+      const architecture = npmRun(lineageClone, 'architecture');
       assert.equal(architecture.status, 0, `lineage architecture aggregate:\n${architecture.output}`);
       for (const phase of ['R12A', 'R12B', 'R12C']) {
         assert.match(architecture.output, new RegExp(`^PASS - ${phase} .*stage=strict`, 'mu'), `${phase} lineage gate`);
         assert.doesNotMatch(architecture.output, new RegExp(`^PASS - ${phase} .*\\(closed\\)`, 'mu'), `${phase} must run in lineage mode`);
       }
-      const security = npmRun(clone, 'security:prisma-config-merge');
-      assert.equal(security.status, 0, `lineage security prerequisite:\n${security.output}`);
+      const lineageSecurity = npmRun(lineageClone, 'security:prisma-config-merge');
+      assert.equal(lineageSecurity.status, 0, `lineage security prerequisite:\n${lineageSecurity.output}`);
     } finally {
-      git(clone, ['checkout', '--quiet', 'portability-proof']);
-      git(clone, ['reset', '--quiet', '--hard', snapshot]);
-      git(clone, ['clean', '--quiet', '-fd']);
+      rmSync(lineageClone, { recursive: true, force: true });
     }
   });
 

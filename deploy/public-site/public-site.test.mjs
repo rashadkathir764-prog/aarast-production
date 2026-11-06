@@ -128,7 +128,7 @@ for (const [name, html] of [
   assert.doesNotMatch(html, /<form/i, `${name} must not collect user data.`);
 }
 
-assert.match(privacyHtml, /info@aarast\.app/);
+assert.match(privacyHtml, /href="\/support"/);
 assert.match(privacyHtml, /لا نعالج مدفوعات داخل التطبيق/);
 assert.match(privacyHtml, /لا نتتبع موقعك الجغرافي/);
 assert.match(privacyHtml, /لا نستخدم إعلانات/);
@@ -145,8 +145,16 @@ assert.match(privacyHtml, /لا يحذف حساب الإدارة/);
 assert.match(privacyHtml, /تُجدول الوسائط المرفوعة\s+للحذف/);
 assert.match(privacyHtml, /الأطفال/);
 assert.match(privacyHtml, /دون 13 عاماً/);
-assert.match(supportHtml, /info@aarast\.app/);
+// RA-ST-01: aarast.app belongs to another company (no mail on it), so no page
+// may send people, or their deletion requests, there.
+for (const [name, html] of [['privacy', privacyHtml], ['terms', termsHtml], ['support', supportHtml]]) {
+  assert.doesNotMatch(html, /aarast\.app/, `${name} must not publish an address on aarast.app`);
+}
 assert.match(supportHtml, /حذف الحساب/);
+// RA-ST-02: the pages say what the server does (D63): a 30-day grace that a
+// sign-in cancels, then the erasure.
+assert.match(privacyHtml, /30 يومًا/);
+assert.match(supportHtml, /30 يومًا/);
 assert.match(publicCss, /font-family:/);
 
 // Guest RSVP (V1 checklist 4.7): a private, uncached, unindexed page whose

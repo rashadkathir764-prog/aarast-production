@@ -68,9 +68,16 @@ local tests are not evidence that a production release or public domain is live.
 
 ## Contact and policy
 
-- Support email: `info@aarast.app`
-- Privacy policy: `https://aarast.shadowgardn.com/privacy`
-- Support and account deletion: `https://aarast.shadowgardn.com/support`
+- Support email: **not set yet (release blocker RA-ST-01).** The old
+  `info@aarast.app` is on another company's domain with no mail on it and was
+  removed on 2026-11-07. It needs an address the owner reads, for example a
+  Namecheap forward on `shadowgardn.com`; Play also requires a web way to ask
+  for account deletion without the app, which that address provides.
+- Privacy policy: `https://aarast.shadowgardn.com/privacy`, once the
+  `aarast.*` names point at the AWS host (today they reach the old rk-server
+  stack, RA-OP-02).
+- Support and account deletion: `https://aarast.shadowgardn.com/support`, same
+  condition.
 
 The repository contains static source for both URLs, with no forms, analytics,
 or third-party scripts on those two pages. Verify HTTPS responses and final

@@ -48,6 +48,28 @@ void main() {
     expect(homeCountdownWords(null).drawn, '');
   });
 
+  test('both countdowns read a count the same way', () {
+    // b01/b02's hero and b04's wedding-week hero each wrote their own
+    // wording; the week one said «4 يوم على عرسك» while the greeting above it
+    // said «باقي 4 أيام». They share homeCountdownWords now.
+    for (final days in [3, 4, 7, 10, 103]) {
+      expect(
+        homeCountdownWords(days).drawn,
+        'أيام على عرسك',
+        reason: 'days=$days',
+      );
+    }
+    for (final days in [11, 60, 111]) {
+      expect(
+        homeCountdownWords(days).drawn,
+        'يوم على عرسك',
+        reason: 'days=$days',
+      );
+    }
+    expect(homeCountdownWords(2).drawn, 'يومين على عرسك');
+    expect(homeCountdownWords(1).drawn, 'يوم واحد على عرسك');
+  });
+
   test('any counted word', () {
     String items(int n) =>
         arabicCount(n, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند');

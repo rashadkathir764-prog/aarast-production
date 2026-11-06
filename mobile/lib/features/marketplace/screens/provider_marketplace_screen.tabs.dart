@@ -70,9 +70,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     List<ProviderBoardRow> board,
   ) {
     final planId = _weddingLocationPlanId;
-    if (_firstVisitLeft || planId == null || !marketplace.includesAccountData) {
-      return false;
-    }
+    if (_firstVisitLeft || planId == null) return false;
+    // The account's own requests have not been asked for yet, so neither
+    // view is known to be the right one: say «still reading» rather than
+    // flash an empty board that then turns into «نبدأ بالقاعة».
+    if (!marketplace.includesAccountData) return null;
     if (marketplace.quotesForPlan(planId).isNotEmpty ||
         marketplace.favoriteProviders.isNotEmpty ||
         board.any((row) => row.stage > 0) ||

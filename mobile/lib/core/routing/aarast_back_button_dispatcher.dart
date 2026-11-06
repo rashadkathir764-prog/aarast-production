@@ -13,6 +13,13 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   }
 
   final GoRouter router;
+
+  /// How many steps back the app keeps. Without a bound, moving around the
+  /// plan's five tabs appended an entry per tap (A→B→C→A grows; only an
+  /// immediate A→B→A folds), so leaving the plan took one back press for
+  /// every tap made. Twenty is more than any real path and still bounded.
+  static const _historyLimit = 20;
+
   final List<_ContextRouteEntry> _history = <_ContextRouteEntry>[];
   String _currentLocation;
   Listenable? _contextListenable;
@@ -198,6 +205,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
           contextKey: _currentContextKey,
         ),
       );
+      if (_history.length > _historyLimit) {
+        _history.removeRange(0, _history.length - _historyLimit);
+      }
     }
     _currentLocation = next;
   }

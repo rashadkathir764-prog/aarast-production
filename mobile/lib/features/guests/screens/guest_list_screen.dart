@@ -156,95 +156,115 @@ class _GuestListScreenState extends State<GuestListScreen> {
       body = _overview(provider, guests, summary);
     }
 
-    return AarastScreenFrame(
-      maxWidth: 600,
-      backgroundColor: AarastV3Color.canvas,
-      child: RefreshIndicator(
-        color: context.accent.primary,
-        onRefresh: _isLocalPlan ? () async {} : _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x4,
-            AarastV3Space.x3,
-            AarastV3Space.x4,
-            AarastV3Density.pageBottomWithQuickAction,
-          ),
-          children: [
-            JourneyTabHeader(
-              title: words.guests,
-              status: _statusLine(summary, words, helps: helps),
-              actions: [
-                if (guests.isNotEmpty)
-                  JourneyRoundButton(
-                    key: const ValueKey('guests-search'),
-                    icon: _searching ? LucideIcons.x : LucideIcons.search,
-                    tooltip: _searching
-                        ? context.say('سكّر البحث', 'سكّري البحث')
-                        : '${context.say('دوّر', 'دوّري')} على '
-                              '${context.planWord('ضيف', 'ضيفة')}',
-                    onPressed: () => setState(() {
-                      _searching = !_searching;
-                      if (!_searching) _query = '';
-                    }),
-                  ),
-                // D85: adding never waits for the server; a guest added
-                // without it is kept on the phone and sent later.
-                JourneyRoundButton(
-                  key: const ValueKey('guests-add'),
-                  icon: LucideIcons.plus,
-                  tooltip: words.newGuest,
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => _showGuestSheet(provider: provider),
-                ),
-              ],
+    // The open group and the search box are states inside one route, and the
+    // screen draws its own way back out of them («كل العائلات», the X on the
+    // search). Android back has to undo the same states, or it leaves the
+    // tab while the screen still shows a back affordance.
+    final nested = _openGroup != null || _searching;
+    return PopScope(
+      canPop: !nested,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !nested) return;
+        setState(() {
+          if (_searching) {
+            _searching = false;
+            _query = '';
+          } else {
+            _openGroup = null;
+            _reply = _ReplyFilter.all;
+          }
+        });
+      },
+      child: AarastScreenFrame(
+        maxWidth: 600,
+        backgroundColor: AarastV3Color.canvas,
+        child: RefreshIndicator(
+          color: context.accent.primary,
+          onRefresh: _isLocalPlan ? () async {} : _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+              AarastV3Space.x4,
+              AarastV3Density.pageBottomWithQuickAction,
             ),
-            const SizedBox(height: AarastV3Space.x3),
-            if (offline || provider.isStale) ...[
-              JourneyNote(
-                key: const ValueKey('guests-offline'),
-                text: [
-                  // D85: the copy is the phone's; the invitations need the
-                  // server because their links are its.
-                  context.say(
-                    'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
-                    'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+            children: [
+              JourneyTabHeader(
+                title: words.guests,
+                status: _statusLine(summary, words, helps: helps),
+                actions: [
+                  if (guests.isNotEmpty)
+                    JourneyRoundButton(
+                      key: const ValueKey('guests-search'),
+                      icon: _searching ? LucideIcons.x : LucideIcons.search,
+                      tooltip: _searching
+                          ? context.say('سكّر البحث', 'سكّري البحث')
+                          : '${context.say('دوّر', 'دوّري')} على '
+                                '${context.planWord('ضيف', 'ضيفة')}',
+                      onPressed: () => setState(() {
+                        _searching = !_searching;
+                        if (!_searching) _query = '';
+                      }),
+                    ),
+                  // D85: adding never waits for the server; a guest added
+                  // without it is kept on the phone and sent later.
+                  JourneyRoundButton(
+                    key: const ValueKey('guests-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: words.newGuest,
+                    onPressed: provider.isSubmitting
+                        ? null
+                        : () => _showGuestSheet(provider: provider),
                   ),
-                  if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
-                ].join('\n'),
-                icon: LucideIcons.wifiOff,
-                color: AarastV3Color.textMuted,
-                soft: AarastV3Color.paper,
+                ],
               ),
               const SizedBox(height: AarastV3Space.x3),
-            ] else if (provider.loadErrorMessage != null &&
-                guests.isNotEmpty) ...[
-              JourneyListNotice(offline: false, onRetry: _load),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            if (widget.ownerWord case final owner?
-                when guests.any((guest) => !guest.editable)) ...[
-              JourneyNote(
-                key: const ValueKey('guests-helper-note'),
-                text: context.say(
-                  'تشوف كل ${words.guests}. تعدّل اللي من إضافتك، وأرقام البقية عند $owner.',
-                  'تشوفين كل ${words.guests}. تعدّلين اللي من إضافتك، وأرقام البقية عند $owner.',
+              if (offline || provider.isStale) ...[
+                JourneyNote(
+                  key: const ValueKey('guests-offline'),
+                  text: [
+                    // D85: the copy is the phone's; the invitations need the
+                    // server because their links are its.
+                    context.say(
+                      'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                      'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                    ),
+                    if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
+                  ].join('\n'),
+                  icon: LucideIcons.wifiOff,
+                  color: AarastV3Color.textMuted,
+                  soft: AarastV3Color.paper,
                 ),
-                icon: LucideIcons.eye,
-                color: AarastV3Color.textMuted,
-                soft: AarastV3Color.paper,
-              ),
-              const SizedBox(height: AarastV3Space.x3),
+                const SizedBox(height: AarastV3Space.x3),
+              ] else if (provider.loadErrorMessage != null &&
+                  guests.isNotEmpty) ...[
+                JourneyListNotice(offline: false, onRetry: _load),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              if (widget.ownerWord case final owner?
+                  when guests.any((guest) => !guest.editable)) ...[
+                JourneyNote(
+                  key: const ValueKey('guests-helper-note'),
+                  text: context.say(
+                    'تشوف كل ${words.guests}. تعدّل اللي من إضافتك، وأرقام البقية عند $owner.',
+                    'تشوفين كل ${words.guests}. تعدّلين اللي من إضافتك، وأرقام البقية عند $owner.',
+                  ),
+                  icon: LucideIcons.eye,
+                  color: AarastV3Color.textMuted,
+                  soft: AarastV3Color.paper,
+                ),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              if (_searching) ...[
+                GuestSearchField(
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              body,
             ],
-            if (_searching) ...[
-              GuestSearchField(
-                onChanged: (value) => setState(() => _query = value),
-              ),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            body,
-          ],
+          ),
         ),
       ),
     );

@@ -248,6 +248,10 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     ),
                     onPressed: () => _share(tasks),
                   ),
+                // Kept, and not a duplicate of the shell's floating «+»:
+                // this screen is also the whole of /wedding-plans/:id/timeline,
+                // which carries no shell and so no floating button. There it
+                // is the only way to add a task.
                 JourneyRoundButton(
                   key: const Key('tasks-add'),
                   icon: LucideIcons.plus,

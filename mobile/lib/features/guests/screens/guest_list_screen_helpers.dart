@@ -3,6 +3,21 @@ part of 'guest_list_screen.dart';
 const _allGroups = '*';
 const _noGroup = '';
 
+/// What the page lists under its header (RA-MO-16): fixed [widgets], then
+/// the guest [rows], which the page builds only as they scroll in, so every
+/// name of a list of hundreds is reached by scrolling.
+class _ListPart {
+  const _ListPart(
+    this.widgets, [
+    this.rows = const [],
+    this.duplicates = const {},
+  ]);
+
+  final List<Widget> widgets;
+  final List<Guest> rows;
+  final Set<String> duplicates;
+}
+
 /// The answers a group's guests can be narrowed to.
 enum _ReplyFilter { all, confirmed, pending, declined, noPhone }
 

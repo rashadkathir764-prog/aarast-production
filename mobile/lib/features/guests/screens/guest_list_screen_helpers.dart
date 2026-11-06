@@ -287,6 +287,7 @@ class _FirstGuests extends StatelessWidget {
         if (onContacts case final contacts?) ...[
           JourneyChoiceCard(
             key: const ValueKey('guests-first-contacts'),
+            choosable: false,
             title: 'من جهات الاتصال',
             subtitle: context.say(
               'تختار مين تعزم، والمكرر نعلّمه لك',
@@ -299,6 +300,7 @@ class _FirstGuests extends StatelessWidget {
         ],
         JourneyChoiceCard(
           key: const ValueKey('guests-first-paste'),
+          choosable: false,
           title: context.say('الصق قائمة', 'الصقي قائمة'),
           subtitle: context.planWord(
             'اسم في كل سطر، ورقمه لو عندك',
@@ -310,6 +312,7 @@ class _FirstGuests extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyChoiceCard(
           key: const ValueKey('guests-first-one'),
+          choosable: false,
           title: context.planWord('ضيف واحد', 'ضيفة وحدة'),
           subtitle: context.planWord(
             'اسمه ورقمه وكم معه',

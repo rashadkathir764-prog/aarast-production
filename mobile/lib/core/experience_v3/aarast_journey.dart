@@ -1151,6 +1151,13 @@ class JourneyList extends StatelessWidget {
 }
 
 /// A large choice card: icon or picture, title, subtitle, selected outline.
+///
+/// The radio ring belongs to a card that is one answer among answers, where
+/// something later confirms the pick. A card that acts the moment it is
+/// tapped is not that, and a ring on it promises a choice to confirm that
+/// never comes: the guests' empty list drew three rings that could never
+/// fill. Such a card passes [choosable] false and gets a chevron, the
+/// app's mark for «this opens something».
 class JourneyChoiceCard extends StatelessWidget {
   const JourneyChoiceCard({
     required this.title,
@@ -1158,6 +1165,7 @@ class JourneyChoiceCard extends StatelessWidget {
     required this.leading,
     required this.onTap,
     this.selected = false,
+    this.choosable = true,
     super.key,
   });
 
@@ -1167,11 +1175,15 @@ class JourneyChoiceCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
 
+  /// Whether this card is one answer among answers. False for a card that
+  /// acts at once.
+  final bool choosable;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      selected: selected,
+      selected: choosable ? selected : null,
       label: '$title، $subtitle',
       onTap: onTap,
       excludeSemantics: true,
@@ -1216,7 +1228,14 @@ class JourneyChoiceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AarastV3Space.x2),
-              _SelectionMark(selected: selected),
+              if (choosable)
+                _SelectionMark(selected: selected)
+              else
+                const Icon(
+                  LucideIcons.chevronLeft,
+                  size: 18,
+                  color: AarastV3Color.textFaint,
+                ),
             ],
           ),
         ),

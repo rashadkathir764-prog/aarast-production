@@ -50,3 +50,10 @@ temp/
 # Local AI tooling state and backups
 .codex/
 _ai_backups/
+
+# real-app walks (scripts/walks): the demo password, seeded ids, logs and screens
+scripts/walks/walk-pass.txt
+scripts/walks/sweep-ids.txt
+scripts/walks/api.log
+scripts/walks/api.err
+scripts/walks/out/

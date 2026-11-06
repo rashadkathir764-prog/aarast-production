@@ -328,9 +328,9 @@ FinancePage<WeddingCost> _localCostPage(
     }
     if (query != null && query.isNotEmpty) {
       // Folded, so «قاعه» finds «قاعة» and «احمد» finds «أحمد».
-      final needle = arabicSortKey(query.toLowerCase());
-      final title = arabicSortKey(cost.title.toLowerCase());
-      final party = arabicSortKey((cost.partyLabel ?? '').toLowerCase());
+      final needle = arabicSearchKey(query);
+      final title = arabicSearchKey(cost.title);
+      final party = arabicSearchKey(cost.partyLabel ?? '');
       if (!title.contains(needle) && !party.contains(needle)) return false;
     }
     return true;

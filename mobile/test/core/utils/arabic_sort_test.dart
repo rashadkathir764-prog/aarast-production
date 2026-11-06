@@ -36,7 +36,7 @@ void main() {
     // This is what a guest search does: match on the key, not letter for
     // letter. «احمد» used to find no «أحمد» in a list of hundreds.
     bool finds(String saved, String typed) =>
-        arabicSortKey(saved).contains(arabicSortKey(typed));
+        arabicSearchKey(saved).contains(arabicSearchKey(typed));
     expect(finds('أحمد', 'احمد'), isTrue);
     expect(finds('احمد', 'أحمد'), isTrue);
     expect(finds('عبد الله', 'عبدالله'), isTrue);
@@ -50,6 +50,21 @@ void main() {
 
   test('a space inside a name is spelling, not order', () {
     expect(arabicSortKey('عبد الله'), arabicSortKey('عبدالله'));
+    expect(arabicSearchKey('أم علي'), arabicSearchKey('ام علي'));
+    expect(arabicSearchKey('عبد الرحمن'), arabicSearchKey('عبدالرحمن'));
+  });
+
+  test('two words stay two words in the order (RA-MO-17)', () {
+    // Removing every space put «أمل» between «أم علي» and «أم محمد»
+    // («امعلي» < «امل» < «اممحمد»). Only the compound «عبد …» is joined.
+    final names = ['أمل', 'أم محمد', 'أبو بكر', 'أم علي', 'أبوظبي']
+      ..sort(compareArabicNames);
+    expect(names, ['أبو بكر', 'أبوظبي', 'أم علي', 'أم محمد', 'أمل']);
+  });
+
+  test('the hamza seats on waw and yaa fold like the alef forms', () {
+    expect(arabicSearchKey('مؤمن'), arabicSearchKey('مومن'));
+    expect(arabicSearchKey('رئيس'), arabicSearchKey('رييس'));
   });
 
   test('taa marbuta, alef maqsura and harakat do not move a name', () {

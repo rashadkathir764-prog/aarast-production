@@ -38,9 +38,9 @@ List<Guest> _search(List<Guest> guests, String query) {
   final digits = PhoneNumberUtils.toAsciiDigits(
     query,
   ).replaceAll(RegExp(r'[^0-9]'), '');
-  final name = arabicSortKey(query);
+  final name = arabicSearchKey(query);
   return guests.where((guest) {
-    if (name.isNotEmpty && arabicSortKey(guest.name).contains(name)) {
+    if (name.isNotEmpty && arabicSearchKey(guest.name).contains(name)) {
       return true;
     }
     if (digits.length < 3) return false;

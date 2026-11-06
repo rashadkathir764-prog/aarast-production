@@ -824,7 +824,7 @@ class MarketplaceApi {
       ].whereType<Object>().join(' ').toLowerCase();
       // Folded the same way as the typed words, so «قاعه» finds «قاعة»
       // and «الصنعاني» finds «الصنعانى».
-      return arabicSortKey(haystack).contains(arabicSortKey(query));
+      return arabicSearchKey(haystack).contains(arabicSearchKey(query));
     }).toList();
   }
 }

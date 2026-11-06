@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/utils/arabic_sort.dart';
 import '../data/yemen_administrative_api.dart';
 import '../data/yemen_administrative_fallback.dart';
 import '../models/yemen_administrative_area.dart';
@@ -167,23 +168,16 @@ List<T> _sortByArabicName<T>(
   sorted.sort((left, right) {
     final leftName = nameOf(left);
     final rightName = nameOf(right);
-    final byKey = _arabicSortKey(leftName).compareTo(_arabicSortKey(rightName));
+    final byKey = _placeSortKey(leftName).compareTo(_placeSortKey(rightName));
     return byKey != 0 ? byKey : leftName.compareTo(rightName);
   });
   return List.unmodifiable(sorted);
 }
 
-String _arabicSortKey(String value) {
-  var normalized = value
-      .trim()
-      .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u0640]'), '')
-      .replaceAll(RegExp('[أإآٱ]'), 'ا')
-      .replaceAll('ؤ', 'و')
-      .replaceAll('ئ', 'ي')
-      .replaceAll('ى', 'ي')
-      .replaceAll('ة', 'ه');
-  if (normalized.startsWith('ال') && normalized.length > 2) {
-    normalized = normalized.substring(2);
-  }
-  return normalized;
+/// A place sorts by the same folding as a name ([arabicSortKey]) without its
+/// article, so «الحديدة» sits under ح as a gazetteer lists it. This used to
+/// be a second copy of the folding (RA-MO-17).
+String _placeSortKey(String value) {
+  final key = arabicSortKey(value);
+  return key.startsWith('ال') && key.length > 2 ? key.substring(2) : key;
 }

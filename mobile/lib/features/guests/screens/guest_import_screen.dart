@@ -267,10 +267,10 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     // The name is matched on its sort key: these names come straight from
     // the phone book, where «أحمد» and «احمد» and «عبد الله» are all
     // written as their owner felt like writing them.
-    final name = arabicSortKey(query);
+    final name = arabicSearchKey(query);
     bool matches(int i) =>
         query.isEmpty ||
-        (name.isNotEmpty && arabicSortKey(candidates[i].name).contains(name)) ||
+        (name.isNotEmpty && arabicSearchKey(candidates[i].name).contains(name)) ||
         contacts[i].rawPhone.replaceAll(RegExp(r'\D'), '').contains(query);
     final sections = [
       for (final section in groupByFamily([

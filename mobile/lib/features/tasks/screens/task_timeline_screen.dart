@@ -106,14 +106,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
-    // The members were asked for and did not arrive, while a task here is
-    // assigned to one of them.
     final sharing = context.watch<SharingProvider?>();
-    final membersUnread =
-        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
-        _didRequestMembers &&
-        members.isEmpty &&
-        sharing?.errorMessage != null;
     final user = context.watch<AuthController?>()?.user;
     final userId = user?.id;
     final selfName = user?.name.trim() ?? '';
@@ -123,6 +116,20 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         .where((task) => task.weddingPlanId == widget.weddingPlanId)
         .map((task) => _hydrateTaskParticipant(task, members))
         .toList();
+    // The members were asked for and did not arrive, while a task here is
+    // given to one of them and so reads «عضو مشارك» (RA-MO-15: the note
+    // showed over any task, saying names were missing that nobody needed).
+    final membersUnread =
+        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
+        _didRequestMembers &&
+        members.isEmpty &&
+        sharing?.errorMessage != null &&
+        tasks.any(
+          (task) =>
+              task.hasResponsibleParticipant &&
+              !task.isMineFor(userId) &&
+              task.responsibleLabel == 'عضو مشارك',
+        );
     final people = _people(tasks, userId);
     final person =
         _person == _everyone || _person == _mine || people.contains(_person)
@@ -282,7 +289,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
             // them under that one placeholder, and a filter chip by that
             // name, with nothing saying a name is missing rather than
             // absent.
-            if (membersUnread && tasks.isNotEmpty) ...[
+            if (membersUnread) ...[
               JourneyNote(
                 key: const ValueKey('tasks-members-unread'),
                 icon: LucideIcons.userX,

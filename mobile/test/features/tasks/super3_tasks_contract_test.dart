@@ -691,6 +691,85 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  // RA-MO-15: the note explains why a task shows «عضو مشارك». With no task
+  // given to a member, nothing on the screen needs it, and it said that
+  // names were missing that nobody was looking for.
+  testWidgets(
+    'the missing-names note shows only over a task given to a member',
+    (tester) async {
+      final harness = await _createHarness();
+      Future<void> pump(WeddingTask task) async {
+        _setPhoneView(tester);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(
+          _providers(
+            harness,
+            _FixedTaskProvider(harness.api, [task]),
+            const MaterialApp(
+              home: TaskTimelineScreen(weddingPlanId: 'account-plan'),
+            ),
+            sharingProvider: _UnreadMembersProvider(harness),
+          ),
+        );
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      WeddingTask accountTask(String? assigneeUserId) => WeddingTask(
+        id: 'task-${assigneeUserId ?? 'mine'}',
+        weddingPlanId: 'account-plan',
+        title: 'تأكيد القاعة',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        assigneeUserId: assigneeUserId,
+        createdAt: DateTime(2026, 6, 28),
+        updatedAt: DateTime(2026, 6, 28),
+      );
+
+      await pump(accountTask(null));
+      expect(find.text('تأكيد القاعة'), findsOneWidget);
+      expect(find.byKey(const ValueKey('tasks-members-unread')), findsNothing);
+
+      await pump(accountTask('member-2'));
+        expect(
+        find.byKey(const ValueKey('tasks-members-unread')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+}
+
+/// An account plan's tasks, held as given: nothing is read from a server.
+class _FixedTaskProvider extends TaskTimelineProvider {
+  _FixedTaskProvider(super.api, this._fixed);
+
+  final List<WeddingTask> _fixed;
+
+  @override
+  List<WeddingTask> get tasks => _fixed;
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> load(String weddingPlanId) async {}
+}
+
+/// The plan's members were asked for and did not arrive.
+class _UnreadMembersProvider extends _FakeSharingProvider {
+  _UnreadMembersProvider(_Harness harness) : super(harness, const []);
+
+  @override
+  String? get errorMessage => 'ما قدرنا نجيب المشاركين';
+
+  @override
+  Future<void> loadMembers(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async => notifyListeners();
 }
 
 WeddingTask _task({

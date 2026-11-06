@@ -87,7 +87,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   final _mahrTotalController = TextEditingController();
   final _mahrSettledController = TextEditingController();
   DateTime? _mahrDueDate;
-  String? _mahrError;
 
   /// «أكثر من المهر نفسه» belongs under the settled field, as on c-mahr.
   String? _mahrSettledError;
@@ -139,16 +138,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   bool get _mahrTotalMissing =>
       (MahrFields.amountOf(_mahrTotalController) ?? 0) <= 0;
 
-  /// «التالي» on a06: what is typed must hold together.
+  /// «التالي» on a06: what is typed must hold together. It is only enabled
+  /// with an amount (_mahrTotalMissing), and the line under the fields says
+  /// so while it is missing.
   void _confirmMahr() {
     final total = MahrFields.amountOf(_mahrTotalController) ?? 0;
     final settled = MahrFields.amountOf(_mahrSettledController) ?? 0;
-    if (total <= 0) {
-      setState(
-        () => _mahrError = _profile.say('اكتب كم المهر', 'اكتبي كم المهر'),
-      );
-      return;
-    }
     if (settled > total) {
       setState(() => _mahrSettledError = 'أكثر من المهر نفسه');
       return;
@@ -803,11 +798,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             settledController: _mahrSettledController,
             dueDate: _mahrDueDate,
             onPickDueDate: _pickMahrDueDate,
-            onChanged: () => setState(() {
-              _mahrError = null;
-              _mahrSettledError = null;
-            }),
-            totalError: _mahrError,
+            onChanged: () => setState(() => _mahrSettledError = null),
             settledError: _mahrSettledError,
           ),
           // A reminder needs a day to remind of, and an account to send

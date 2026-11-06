@@ -1,6 +1,7 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart'
     show
         GeneratedDashboardSeed,
@@ -93,15 +94,12 @@ class LocalGuestDashboardSummary {
     DateTime? now,
     LocalDashboardMetrics metrics = LocalDashboardMetrics.empty,
   }) {
-    final today = now ?? appNow();
     final weddingDate = plan.weddingDate;
+    // D11: from today in Sana'a, as the server counts an account plan's
+    // (RA-MO-20).
     final daysRemaining = weddingDate == null
         ? null
-        : DateTime(
-            weddingDate.year,
-            weddingDate.month,
-            weddingDate.day,
-          ).difference(DateTime(today.year, today.month, today.day)).inDays;
+        : daysUntilPlanDay(weddingDate, now: now);
 
     return LocalGuestDashboardSummary(
       plan: plan,

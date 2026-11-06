@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -356,13 +356,8 @@ class _PlanCard extends StatelessWidget {
       return 'في الذكريات · ${(day ?? plan.updatedAt).year}';
     }
     if (day == null) return 'خطتك';
-    final now = appNow();
-    final today = DateTime(now.year, now.month, now.day);
-    final left = DateTime(
-      day.year,
-      day.month,
-      day.day,
-    ).difference(today).inDays;
+    // D11: from today in Sana'a, as the server counts (RA-MO-20).
+    final left = daysUntilPlanDay(day);
     if (left < 0) return 'خطتك · مرّ العرس';
     if (left == 0) return 'خطتك · اليوم';
     return 'خطتك · ${arabicDays(left)}';

@@ -523,6 +523,18 @@ void main() {
 
     expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
+
+  // RA-MO-20 (D11): a plan kept on the phone counts its days from today in
+  // Sana'a too, as the server counts an account plan's.
+  test('a phone plan counts its days from today in Sana\'a', () {
+    final plan = _guestPlan().copyWith(weddingDate: DateTime(2026, 11, 7));
+    // 22:00 UTC on the 6th is 01:00 on the 7th in Sana'a.
+    final summary = LocalGuestDashboardSummary.fromPlan(
+      plan,
+      now: DateTime.utc(2026, 11, 6, 22),
+    );
+    expect(summary.daysRemaining, 0);
+  });
 }
 
 GuestOnboardingDraft _guestPlan() {

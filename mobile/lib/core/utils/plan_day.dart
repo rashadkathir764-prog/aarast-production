@@ -2,6 +2,8 @@
 // of that day in Sana'a and Riyadh, UTC+3 (backend `startOfRiyadhDay`), so a
 // phone in any time zone must read and send the same calendar day.
 
+import 'app_clock.dart';
+
 /// The day as the server reads it: `2027-01-21`.
 String planDayToJson(DateTime day) {
   final month = day.month.toString().padLeft(2, '0');
@@ -18,4 +20,24 @@ DateTime? planDayFromJson(Object? value) {
   if (parsed == null) return null;
   final day = parsed.isUtc ? parsed.add(const Duration(hours: 3)) : parsed;
   return DateTime(day.year, day.month, day.day);
+}
+
+/// Today in Sana'a (D11): the calendar day the server counts the wedding
+/// from (`startOfRiyadhDay`), whatever zone the phone is set to.
+DateTime sanaaToday({DateTime? now}) {
+  final at = (now ?? appNow()).toUtc().add(const Duration(hours: 3));
+  return DateTime(at.year, at.month, at.day);
+}
+
+/// Whole days from today in Sana'a to the calendar [day]: 0 on the day,
+/// negative after it (RA-MO-20). Counted on UTC dates, so a daylight-saving
+/// change in the phone's zone never makes one day read as none, and every
+/// screen that says how far the wedding is says the same number.
+int daysUntilPlanDay(DateTime day, {DateTime? now}) {
+  final today = sanaaToday(now: now);
+  return DateTime.utc(
+    day.year,
+    day.month,
+    day.day,
+  ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
 }

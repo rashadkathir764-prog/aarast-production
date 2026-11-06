@@ -1,3 +1,4 @@
+import '../../../core/utils/plan_day.dart';
 import '../../catalogs/catalogs_api.dart' show ManagedReferenceCatalog;
 
 /// The managed catalog of suggested tasks (`tasks.starter` on the server).
@@ -142,13 +143,14 @@ DateTime? taskStarterDueDate(
   int? longestDaysBefore,
 }) {
   if (weddingDate == null || daysBefore == null) return null;
+  // D11: from today in Sana'a, as the server counts (RA-MO-20).
+  final todayDate = sanaaToday(now: today);
   final wedding = DateTime(
     weddingDate.year,
     weddingDate.month,
     weddingDate.day,
   );
-  final todayDate = DateTime(today.year, today.month, today.day);
-  final daysLeft = wedding.difference(todayDate).inDays;
+  final daysLeft = daysUntilPlanDay(wedding, now: today);
   var lead = daysBefore;
   if (longestDaysBefore != null &&
       longestDaysBefore > daysLeft &&

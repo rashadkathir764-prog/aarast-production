@@ -1,4 +1,4 @@
-import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 
 enum WeddingPlanStage {
   foundation,
@@ -51,9 +51,8 @@ WeddingPlanStageState resolveWeddingPlanStage(
     );
   }
 
-  final today = _dateOnly(now ?? appNow());
-  final eventDay = _dateOnly(weddingDate);
-  final days = eventDay.difference(today).inDays;
+  // D11: counted from today in Sana'a, as the server counts (RA-MO-20).
+  final days = daysUntilPlanDay(weddingDate, now: now);
 
   if (days < 0) {
     return WeddingPlanStageState(
@@ -114,6 +113,3 @@ WeddingPlanStageState resolveWeddingPlanStage(
     guidance: 'ثبّت الأساس، ثم وزّع المهام والضيوف والمزوّدين تدريجيًا.',
   );
 }
-
-DateTime _dateOnly(DateTime value) =>
-    DateTime(value.year, value.month, value.day);

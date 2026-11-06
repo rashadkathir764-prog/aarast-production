@@ -13,6 +13,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -211,13 +212,10 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
 
     final now = appNow();
     final date = summary?.weddingDate;
+    // D11: from today in Sana'a, as the server counts (RA-MO-20).
     final days =
         summary?.daysRemaining ??
-        (date == null
-            ? null
-            : DateUtils.dateOnly(
-                date,
-              ).difference(DateUtils.dateOnly(now)).inDays);
+        (date == null ? null : daysUntilPlanDay(date, now: now));
     final weddingDay = date != null && days == 0;
     final title = (summary?.title ?? selected.displayName).trim();
     final role = summary?.permissions.role;

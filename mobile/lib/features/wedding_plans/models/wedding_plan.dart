@@ -1,5 +1,4 @@
-﻿import '../../../core/utils/app_clock.dart';
-import '../../../core/utils/plan_day.dart';
+﻿import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class WeddingPlan {
@@ -61,14 +60,8 @@ class WeddingPlan {
     if (weddingDate == null) {
       return null;
     }
-    final today = appNow();
-    final currentDate = DateTime(today.year, today.month, today.day);
-    final weddingDay = DateTime(
-      weddingDate!.year,
-      weddingDate!.month,
-      weddingDate!.day,
-    );
-    return weddingDay.difference(currentDate).inDays;
+    // D11: from today in Sana'a, as the server counts (RA-MO-20).
+    return daysUntilPlanDay(weddingDate!);
   }
 
   WeddingLocationDraft get weddingLocation {

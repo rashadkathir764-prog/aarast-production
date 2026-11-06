@@ -12,6 +12,7 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthController;
 import '../../wedding_day/wedding_day_api.dart'
@@ -127,9 +128,8 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
         .split(RegExp(r'\s+'))
         .first;
     final hijri = showHijri ? HijriDate.fromGregorian(today) : null;
-    final days = weddingDate == null
-        ? 7
-        : DateUtils.dateOnly(weddingDate).difference(today).inDays;
+    // D11: from today in Sana'a, as the server counts (RA-MO-20).
+    final days = weddingDate == null ? 7 : daysUntilPlanDay(weddingDate);
     final color = week ? context.accent.night : AarastV3Color.saffron;
 
     return AarastScreenFrame(

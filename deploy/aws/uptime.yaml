@@ -16,6 +16,9 @@ Parameters:
       The same readiness at the address the app is built with (RA-OP-06). Its
       certificate is a short-lived IP certificate, so this probe is what
       notices a failed renewal.
+  InstanceId:
+    Type: String
+    Description: The host (aarast-host stack output), for its CPU credits and status checks.
 
 Resources:
   Topic:
@@ -180,6 +183,76 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  # RA-OP-06: a t3 host runs on CPU credits; with none left it is held to a
+  # fifth of a core and every request slows. Warned while some remain.
+  CpuCreditsLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-cpu-credits-low
+      AlarmDescription: >-
+        The host's CPU credits are nearly spent; it will be held to its
+        baseline. A sustained load needs t3.medium or unlimited credits.
+      Namespace: AWS/EC2
+      MetricName: CPUCreditBalance
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref InstanceId
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 30
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  # RA-OP-06: AWS's own check of the machine under the host. When it fails
+  # the instance is moved to healthy hardware (same disk, same address).
+  HostSystemCheckFailed:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-host-system-check-failed
+      AlarmDescription: >-
+        AWS's system status check of the host failed; it is being recovered
+        onto other hardware.
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed_System
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref InstanceId
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref Topic
+        - !Sub arn:aws:automate:${AWS::Region}:ec2:recover
+      OKActions: [!Ref Topic]
+
+  # The host's own operating system stopped answering AWS's check.
+  HostInstanceCheckFailed:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-host-instance-check-failed
+      AlarmDescription: >-
+        The host's own status check failed (the system inside it, not AWS's
+        hardware): reboot it from the console if it does not return.
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed_Instance
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref InstanceId
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions: [!Ref Topic]
       OKActions: [!Ref Topic]

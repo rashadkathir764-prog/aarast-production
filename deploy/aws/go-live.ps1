@@ -86,7 +86,7 @@ $alertEmail = & $aws cloudformation describe-stacks --region us-east-1 --stack-n
   --query "Stacks[0].Parameters[?ParameterKey=='AlertEmail'].ParameterValue" --output text
 & $aws cloudformation deploy --region $Region --stack-name aarast-uptime `
   --template-file (Join-Path $PSScriptRoot 'uptime.yaml') --capabilities CAPABILITY_NAMED_IAM `
-  --no-fail-on-empty-changeset --parameter-overrides "AlertEmail=$alertEmail"
+  --no-fail-on-empty-changeset --parameter-overrides "AlertEmail=$alertEmail" "InstanceId=$instance"
 if ($LASTEXITCODE -ne 0) { throw 'ما انخلقت التنبيهات' }
 Write-Host 'افتح البريد واضغط تأكيد الاشتراك في AWS Notifications، وإلا لن تصلك التنبيهات.'
 

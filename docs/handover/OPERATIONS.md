@@ -126,7 +126,7 @@ curl https://api.<الدومين>/ready
 | هل الخادم يعمل؟ | `https://3.121.198.183/live` (يرد 200) |
 | هل كل أجزائه جاهزة؟ | `https://3.121.198.183/ready` |
 | هل أساس الخادم سليم بدون OpenWA؟ | `/ready/core` داخل الشبكة، وهو فحص صحة الحاوية |
-| تنبيه بالبريد عند التوقف | البنية `aarast-uptime` (`deploy/aws/uptime.yaml`، يُنشئها `go-live.ps1`): فحص من خارج الخادم كل 5 دقائق لـ`/ready` على الاسم وعلى `https://3.121.198.183` الذي يستعمله التطبيق. أربعة تنبيهات: الخادم (`aarast-api-down`)، رموز واتساب (`aarast-whatsapp-codes-down`)، حد رموز اليوم (`aarast-whatsapp-codes-near-limit`، من أول قراءة عند 80%، D92)، والعنوان المباشر وشهادته (`aarast-direct-ip-down`). الثلاثة الأخرى بعد فحصين فاشلين |
+| تنبيه بالبريد عند التوقف | البنية `aarast-uptime` (`deploy/aws/uptime.yaml`، يُنشئها `go-live.ps1`): فحص من خارج الخادم كل 5 دقائق لـ`/ready` على الاسم وعلى `https://3.121.198.183` الذي يستعمله التطبيق. تنبيهات الخدمة: الخادم (`aarast-api-down`)، رموز واتساب (`aarast-whatsapp-codes-down`)، حد رموز اليوم (`aarast-whatsapp-codes-near-limit`، من أول قراءة عند 80%، D92)، والعنوان المباشر وشهادته (`aarast-direct-ip-down`)، كل منها بعد فحصين فاشلين إلا حد الرموز. وتنبيهات الآلة من AWS نفسها: رصيد المعالج قارب النفاد (`aarast-cpu-credits-low`)، وفحص AWS للآلة (`aarast-host-system-check-failed`، ينقل الخادم لعتاد سليم تلقائيًا بالقرص والعنوان نفسيهما)، وفحص النظام داخلها (`aarast-host-instance-check-failed`). الذاكرة والقرص لا تقيسهما AWS بلا وكيل على الخادم |
 | مقاييس الأداء | `/metrics` بالرمز `METRICS_TOKEN` |
 | أعطال التطبيق والخادم | Sentry، بعد ضبط `SENTRY_DSN` و`AARAST_SENTRY_DSN` (البند 6.2) |
 | سجلات الخادم | على الخادم: `docker compose logs --tail 200 backend` |

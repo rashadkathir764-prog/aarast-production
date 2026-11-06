@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Aarast hosting - daily snapshots of the host's disk, seven kept (RA-OP-04)
+
+# The nightly dump covers the database; a snapshot covers everything else on
+# the disk too (the env file with the host's secrets, Caddy's certificates,
+# the release images), so a lost host comes back as it was, not rebuilt by
+# hand. Its own stack, so it never touches server.yaml (see RA-OP-13 there).
+
+Resources:
+  SnapshotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: dlm.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole
+
+  # Every volume of the instance tagged Name=aarast-host, at 00:30 UTC
+  # (03:30 in Sana'a, the quietest hour), the last seven kept.
+  DailySnapshots:
+    Type: AWS::DLM::LifecyclePolicy
+    Properties:
+      Description: aarast-host daily snapshots, seven kept
+      State: ENABLED
+      ExecutionRoleArn: !GetAtt SnapshotRole.Arn
+      PolicyDetails:
+        PolicyType: EBS_SNAPSHOT_MANAGEMENT
+        ResourceTypes: [INSTANCE]
+        TargetTags:
+          - Key: Name
+            Value: aarast-host
+        Schedules:
+          - Name: daily
+            CopyTags: true
+            CreateRule:
+              Interval: 24
+              IntervalUnit: HOURS
+              Times: ['00:30']
+            RetainRule:
+              Count: 7

@@ -1,6 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Aarast hosting - one EC2 host running the production compose, S3 media and an ops bucket for backups and releases
 
+# RA-OP-13, read before any update of this stack: UbuntuAmi is an SSM path
+# that resolves to the newest Ubuntu image on every deploy, and a new ImageId
+# REPLACES the host. Its disk is kept (DeleteOnTermination: false) but the new
+# host starts on an empty one, with the database left on the old. Pass the
+# running image's id as UbuntuAmi, and read the change set before applying.
+# go-live.ps1 never redeploys this template: the buckets' versions and the
+# disk snapshots are set by its step 6 and backups.yaml instead.
+#
 # One small host runs the same services as the Dokploy compose (Postgres,
 # Redis, Backend, Admin web, public site, backups, OpenWA OTP) with Caddy for
 # HTTPS. Media lives in S3 instead of MinIO. The host is reached through

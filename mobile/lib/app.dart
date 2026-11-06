@@ -18,6 +18,7 @@ import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import 'core/widgets/aarast_toast.dart';
+import 'core/widgets/app_update_gate.dart';
 import 'features/account_contexts/account_contexts_api.dart'
     show
         AccountContext,
@@ -146,7 +147,11 @@ class _AarastAppState extends State<AarastApp> {
                           onForgotCode: auth.logout,
                           name: auth.user?.name,
                           child: AarastDeletionPendingGate(
-                            child: child ?? const SizedBox.shrink(),
+                            // D93: «حدّث التطبيق» once the server stops
+                            // serving this app's contract.
+                            child: AppUpdateGate(
+                              child: child ?? const SizedBox.shrink(),
+                            ),
                           ),
                         ),
                       ),

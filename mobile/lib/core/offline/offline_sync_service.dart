@@ -546,6 +546,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             sessionChanged = true;
             break;
           }
+          // D93: a server that no longer serves this app's contract. Stop,
+          // and keep every queued change (a 4xx would block it) for the
+          // updated app to send; the app shows «حدّث التطبيق».
+          if (ApiClient.isAppUpdateRequired(error)) break;
           final apiError = ApiException.fromDio(error);
           blockedAny = await _handleSyncError(item, apiError) || blockedAny;
           if (apiError.isNetworkFailure) stopForNetworkFailure = true;

@@ -1,5 +1,6 @@
 import { loadWhatsAppOtpConfig } from "../otp-transport/whatsapp-otp-config";
 import { loadOpenWaOtpConfig } from "../otp-transport/openwa-otp-config";
+import { minClientContract } from "../http/client-contract";
 
 export type IdentitySecretValidator = (
   environment: NodeJS.ProcessEnv,
@@ -33,6 +34,8 @@ export function validateRuntimeEnvironment(
   environment: NodeJS.ProcessEnv,
   validateIdentitySecret: IdentitySecretValidator,
 ): void {
+  // RA-BE-01: a broken minimum app contract stops the boot.
+  minClientContract(environment);
   const missing = ["DATABASE_URL", "JWT_SECRET"].filter(
     (name) => !environment[name]?.trim(),
   );

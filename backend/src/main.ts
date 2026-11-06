@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { getCorsOptions } from './platform/config/cors-options';
 import { validateRuntimeEnvironment } from './platform/config/runtime-environment';
+import { clientContractGate, minClientContract } from './platform/http/client-contract';
 import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
 import { requestObservability } from './platform/observability/request-observability.middleware';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
@@ -66,6 +67,8 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(requestObservability);
+  // RA-BE-01: an app older than MIN_CLIENT_CONTRACT is told to update.
+  app.use(clientContractGate(minClientContract()));
 
   app.enableCors(getCorsOptions());
 

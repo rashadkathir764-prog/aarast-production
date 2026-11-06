@@ -111,6 +111,37 @@ void main() {
     expect(adapter.received.single.headers['X-Client-Request-Id'], item.id);
   });
 
+  // D93 (RA-BE-01): «حدّث التطبيق» is not a rejection of the change. The
+  // queue stops and keeps every write, for the updated app to send.
+  test('426 APP_UPDATE_REQUIRED stops the queue and keeps its writes', () async {
+    final database = await _freshDb();
+    for (final title in ['مهمة أولى', 'مهمة ثانية']) {
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks',
+        method: 'POST',
+        payload: {'title': title},
+        planId: 'plan-1',
+      );
+    }
+    final adapter = _ScriptedAdapter([
+      (_) => _status(
+        426,
+        '{"statusCode":426,"code":"APP_UPDATE_REQUIRED","message":"حدّث"}',
+      ),
+    ]);
+    final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
+
+    await service.syncPendingChanges();
+
+    expect(adapter.received, hasLength(1), reason: 'stops at the first');
+    expect(await database.pendingSyncCount(), 2);
+    expect(service.blockedCount, 0);
+    expect(await database.blockedSyncItems(), isEmpty);
+  });
+
   test('a 400 rejection blocks the item immediately (no retry spin)', () async {
     final database = await _freshDb();
     await database.enqueueSync(

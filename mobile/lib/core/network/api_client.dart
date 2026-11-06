@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../diagnostics/app_logger.dart';
 import '../utils/app_clock.dart';
+import 'api_contract.dart';
 import 'server_reachability.dart';
 
 typedef TokenProvider = Future<String?> Function();
@@ -170,6 +171,9 @@ class ApiClient {
             onSessionExpired?.call();
           } else if (_isAccountDeletionPending(error)) {
             onAccountDeletionPending?.call();
+          } else if (_isAppUpdateRequired(error)) {
+            // D93: the server no longer serves this app's contract.
+            appUpdateRequired.value = true;
           }
           _logFinalFailure(error);
           handler.next(error);
@@ -259,6 +263,18 @@ class ApiClient {
         data['code'] == 'ACCOUNT_DELETION_PENDING';
   }
 
+  /// D93 (RA-BE-01): `426 APP_UPDATE_REQUIRED`, this app is older than the
+  /// server serves.
+  static bool isAppUpdateRequired(Object error) {
+    final response = error is DioException ? error.response : null;
+    final data = response?.data;
+    return response?.statusCode == 426 &&
+        data is Map &&
+        data['code'] == appUpdateRequiredCode;
+  }
+
+  bool _isAppUpdateRequired(DioException error) => isAppUpdateRequired(error);
+
   void _beginRequestAttempt(RequestOptions options) {
     final requestId =
         _safeRequestId(options.extra[_requestClientIdKey]?.toString()) ??
@@ -270,6 +286,8 @@ class ApiClient {
       (name, _) => name.toLowerCase() == clientRequestIdHeader.toLowerCase(),
     );
     options.headers[clientRequestIdHeader] = requestId;
+    // D93: the contract this app was built for, on every request.
+    options.headers[apiContractHeader] = '$apiContractVersion';
     options.extra[_requestClientIdKey] = requestId;
     options.extra[_requestAttemptKey] = attempt;
     options.extra[_requestAttemptTimerKey] = Stopwatch()..start();

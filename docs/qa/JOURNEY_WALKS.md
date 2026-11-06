@@ -32,7 +32,7 @@
 كل الخطوات أدناه مجموعة في `scripts/walks/walks.ps1`: يعيد إنشاء القاعدة المعزولة `aarast_walks_20261101` ويزرعها ويشغّل الخادم على 3116 (`walks-clean.ps1`)، ويشيل `flutter_secure_storage_windows` من ملفي ويندوز ويرجعهما في النهاية، ويحفظ الصور والنصوص في `scripts/walks/out/<الرحلة>/`.
 
 ```powershell
-& D:\projectsarast\scripts\walks\walks.ps1 -walks @('groom','route_sweep')
+& D:\projects\aarast\scripts\walks\walks.ps1 -walks @('groom','route_sweep')
 ```
 
 - يحتاج Docker Desktop شغالًا (الحاوية `aarast-db`)، ويقول ذلك إن كان مطفأ.
@@ -55,7 +55,7 @@
    $env:PORT='3116'; $env:AUTH_OTP_MODE='dev'; $env:AUTH_DEV_OTP_CODE='123456'; $env:NODE_ENV='development'
    node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts
    ```
-4. **ويندوز:** شيل `flutter_secure_storage_windows` محليًا من `mobile/windows/flutter/generated_plugins.cmake` و`generated_plugin_registrant.cc`، لأنه يحتاج ATL، واضبط `JAVA_HOME` على JDK 17. بعد المشي: `git checkout -- mobile/windows`. لا تحفظ هذا التعديل.
+4. **ويندوز:** شيل `flutter_secure_storage_windows` محليًا من `mobile/windows/flutter/generated_plugins.cmake` و`generated_plugin_registrant.cc`، لأنه يحتاج ATL، واضبط `JAVA_HOME` على JDK 17. بعد المشي أرجع الملفين وحدهما: `git checkout -- mobile/windows/flutter/generated_plugins.cmake mobile/windows/flutter/generated_plugin_registrant.cc`. لا تحفظ هذا التعديل.
 5. **المشي:** من `mobile`، ملف واحد في كل مرة:
    ```powershell
    flutter test --no-pub integration_test/journeys/groom_walk_test.dart -d windows `

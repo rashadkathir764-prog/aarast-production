@@ -20,3 +20,33 @@
 # Reviewed R0 Symbol-type rejection fixture from 182ade08f0489b6036a820a6c420d626c067a6c4.
 # The secret-shaped fixture text is also removed from the current test source.
 182ade08f0489b6036a820a6c420d626c067a6c4:backend/test/architecture-ports.test.ts:generic-api-key:735
+
+# Reviewed 2026-11-06 (release audit RA-OP-01): a full-history scan of a complete
+# mirror found these 23 generic-api-key hits. Each line was read with its value
+# masked: SHA-256 hashes in the published-migration manifest, JWT_SECRET values
+# local to unit tests (production generates its own with `openssl rand` in
+# deploy/aws/host/prepare-env.sh), identifier lists in architecture scans, and an
+# old spec. None is a credential.
+04d37391c1c92cc89a2c15da1247e447267526c7:docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md:generic-api-key:349
+53646ef2e120f42267833e45be69549ce52ba6ed:backend/test/auth-app-password-phone-proof.test.ts:generic-api-key:22
+53646ef2e120f42267833e45be69549ce52ba6ed:backend/test/auth-app-password-phone-proof.test.ts:generic-api-key:409
+6703cb5823cc28f140dc1e93bde5f8f485c6dfd4:backend/test/admin-auth-session-security.test.ts:generic-api-key:277
+6703cb5823cc28f140dc1e93bde5f8f485c6dfd4:backend/test/admin-trusted-device.test.ts:generic-api-key:47
+6703cb5823cc28f140dc1e93bde5f8f485c6dfd4:backend/test/admin-trusted-device.test.ts:generic-api-key:9
+7375491a25698327ad63b3bf423180f5c734624d:backend/test/architecture-r7-collaboration-relocation.test.ts:generic-api-key:325
+a9b62ae5dbdc54741149f2fd9484fadc44bff19f:backend/architecture/published-migrations.json:generic-api-key:111
+b59d4391354a1a584ef8541d73976223c17e4824:backend/architecture/published-migrations.json:generic-api-key:111
+c661fb32491fb5863b736bc276285a8f7d93ff00:backend/scripts/architecture/r5-identity-scan.cjs:generic-api-key:21
+c661fb32491fb5863b736bc276285a8f7d93ff00:backend/scripts/architecture/r5-identity-scan.cjs:generic-api-key:22
+c661fb32491fb5863b736bc276285a8f7d93ff00:backend/scripts/architecture/r5-identity-scan.cjs:generic-api-key:35
+c661fb32491fb5863b736bc276285a8f7d93ff00:backend/scripts/architecture/r5-identity-scan.cjs:generic-api-key:42
+c661fb32491fb5863b736bc276285a8f7d93ff00:backend/scripts/architecture/r5-identity-scan.cjs:generic-api-key:44
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:29
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:32
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:39
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:60
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:61
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:64
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:66
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:71
+f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:73

@@ -15,6 +15,7 @@ These rules apply to every AI agent working on Aarast / اعّرست.
 - Do not restore, recreate or summarise anything from Git history as a plan. Read history only to answer one specific question.
 - Do not open a new direction, redesign, audit or roadmap unless the owner asks for it. Take the next item in `STATUS.md`.
 - Do not add plan, report, inventory or tracking files. Progress goes in `STATUS.md`, a decision goes in `DECISIONS.md` as one line.
+- One exception, by the owner's order on 2026-11-06: `docs/project/RELEASE_AUDIT.md` is the pre-release closing round's inventory, coverage and issue log. Update it after every batch; `STATUS.md` points to it and holds the resume point.
 - The seven files under `docs/superpowers/{plans,specs,reports}` dated 2026-08 and 2026-09 are pinned by the architecture gates. They are fixtures, not plans. Do not read them for direction.
 
 ## Frontend freeze (D67, D68)

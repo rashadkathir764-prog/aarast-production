@@ -146,6 +146,7 @@ test('controller emits 503 for a non-ready report', async () => {
       media: { status: 'up', latencyMs: 1 },
       openwa: { status: 'up', latencyMs: 1 },
       otpCapacity: { status: 'up' },
+      disk: { status: 'up' },
     },
   };
   const controller = new HealthController({
@@ -185,6 +186,56 @@ for (const [capacity, status, ready] of [
     assert.equal('otpCapacity' in core.checks, false);
   });
 }
+
+// RA-OP-06: the host's disk, read from inside the container (its root is the
+// host's disk). Low under 2 GiB or a tenth free; it warns, it never fails
+// /ready, and it is not part of the host check a deploy waits on.
+const GiB = 1024 ** 3;
+for (const [freeGiB, status] of [
+  [20, 'up'],
+  [3.5, 'up'],
+  [2.5, 'low'],
+  [1, 'low'],
+] as const) {
+  test(`a disk with ${freeGiB} GiB of 30 free reads ${status}`, async () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.REDIS_URL;
+    delete process.env.AARAST_MEDIA_ENDPOINT;
+    delete process.env.AARAST_MEDIA_BUCKET;
+    process.env.AUTH_OTP_MODE = 'disabled';
+    const asked: string[] = [];
+    const service = new ReadinessService(
+      { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
+      { checkReadiness: async () => undefined } as MediaReadinessPort,
+      fetch,
+      undefined,
+      async (path: string) => {
+        asked.push(path);
+        return { bsize: 4096, blocks: (30 * GiB) / 4096, bavail: (freeGiB * GiB) / 4096 };
+      },
+    );
+    const report = await service.check();
+    assert.deepEqual(report.checks.disk, { status });
+    assert.equal(report.status, 'ready');
+    assert.deepEqual(asked, ['/']);
+    assert.equal('disk' in (await service.checkCore()).checks, false);
+  });
+}
+
+test('an unreadable disk is not reported', async () => {
+  process.env.NODE_ENV = 'test';
+  process.env.AUTH_OTP_MODE = 'disabled';
+  const service = new ReadinessService(
+    { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
+    fetch,
+    undefined,
+    async () => {
+      throw new Error('statfs unsupported');
+    },
+  );
+  assert.deepEqual((await service.check()).checks.disk, { status: 'disabled' });
+});
 
 test('an unreadable code quota reads down, and no quota without codes', async () => {
   process.env.NODE_ENV = 'test';

@@ -52,11 +52,12 @@ Resources:
                   StringEquals:
                     cloudwatch:namespace: Aarast/Uptime
 
-  # Reads /ready from outside the host every five minutes and records four
+  # Reads /ready from outside the host every five minutes and records five
   # numbers: Api (database, Redis and media answer), WhatsApp (OpenWA can send
-  # a code), WhatsAppCapacity (the daily code limit is not near, RA-BE-02) and
-  # DirectIp (the address the app uses answers over valid TLS, RA-OP-06). An
-  # unreachable API counts against the first three.
+  # a code), WhatsAppCapacity (the daily code limit is not near, RA-BE-02),
+  # Disk (the host's disk is not nearly full, RA-OP-06) and DirectIp (the
+  # address the app uses answers over valid TLS, RA-OP-06). An unreachable API
+  # counts against the first two only.
   Probe:
     Type: AWS::Lambda::Function
     Properties:
@@ -95,15 +96,18 @@ Resources:
               names.every((name) => checks[name]?.status === 'up') ? 1 : 0;
             const api = up('database', 'redis', 'media');
             const whatsapp = up('openwa');
-            // A server older than the capacity check has no field: no warning.
-            const capacity = checks.otpCapacity?.status ?? 'up';
+            // A warning is read from an answer: an unreachable API is the
+            // Api alarm's to tell, not a second "near the limit" or "disk
+            // low" mail. A server older than a check has no field: no warning.
+            const capacity = checks.otpCapacity?.status;
             const whatsappCapacity =
-              named && (capacity === 'up' || capacity === 'disabled') ? 1 : 0;
+              capacity === 'near_limit' || capacity === 'down' ? 0 : 1;
+            const disk = checks.disk?.status === 'low' ? 0 : 1;
             // fetch rejects an invalid or expired certificate, so a missed
             // renewal of the IP certificate reads as unreachable here.
             const directIp =
               direct && direct.database?.status === 'up' ? 1 : 0;
-            console.log(JSON.stringify({ api, whatsapp, whatsappCapacity, directIp }));
+            console.log(JSON.stringify({ api, whatsapp, whatsappCapacity, disk, directIp }));
             await client.send(
               new PutMetricDataCommand({
                 Namespace: 'Aarast/Uptime',
@@ -111,6 +115,7 @@ Resources:
                   { MetricName: 'Api', Value: api },
                   { MetricName: 'WhatsApp', Value: whatsapp },
                   { MetricName: 'WhatsAppCapacity', Value: whatsappCapacity },
+                  { MetricName: 'Disk', Value: disk },
                   { MetricName: 'DirectIp', Value: directIp },
                 ],
               }),
@@ -181,6 +186,27 @@ Resources:
       Statistic: Minimum
       Period: 300
       EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  # RA-OP-06: the database stops writing when the disk fills; the dumps and
+  # release images grow on it. Two readings, so a passing spike is quiet.
+  DiskLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-disk-low
+      AlarmDescription: >-
+        The host's disk has under 2 GiB or a tenth free. See OPERATIONS.md:
+        docker image prune without -a (the previous release's image is the
+        rollback), old dumps, or grow the volume.
+      Namespace: Aarast/Uptime
+      MetricName: Disk
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching

@@ -1,3 +1,4 @@
+import { statfs as readStatfs } from 'node:fs/promises';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
@@ -29,6 +30,25 @@ export interface OtpCapacityReadiness {
   status: 'up' | 'near_limit' | 'down' | 'disabled';
 }
 
+/**
+ * The host's disk (RA-OP-06), read from inside the container, whose root is
+ * the host's disk. `low` under 2 GiB or a tenth free: the database stops
+ * writing when it fills, and the dumps and release images grow on it. It
+ * warns; it never fails /ready. Status only, no sizes.
+ */
+export interface DiskReadiness {
+  status: 'up' | 'low' | 'disabled';
+}
+
+/** What `fs.promises.statfs` answers, as far as the disk check reads it. */
+export type ReadinessStatfs = (
+  path: string,
+) => Promise<{ bsize: number; blocks: number; bavail: number }>;
+
+export const READINESS_STATFS = Symbol('READINESS_STATFS');
+const lowDiskBytes = 2 * 1024 ** 3;
+const lowDiskShare = 0.1;
+
 export interface ReadinessReport {
   status: 'ready' | 'not_ready';
   service: 'aarast-backend';
@@ -38,13 +58,14 @@ export interface ReadinessReport {
     media: DependencyReadiness;
     openwa: DependencyReadiness;
     otpCapacity: OtpCapacityReadiness;
+    disk: DiskReadiness;
   };
 }
 
 export interface CoreReadinessReport {
   status: ReadinessReport['status'];
   service: ReadinessReport['service'];
-  checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity'>;
+  checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity' | 'disk'>;
 }
 
 const dependencyTimeoutMs = 2_500;
@@ -70,15 +91,19 @@ export class ReadinessService {
     @Optional()
     @Inject(OTP_CAPACITY_READINESS_PORT)
     private readonly otpCapacity?: OtpCapacityReadinessPort,
+    @Optional()
+    @Inject(READINESS_STATFS)
+    private readonly statfs: ReadinessStatfs = (path) => readStatfs(path),
   ) {}
 
   async check(): Promise<ReadinessReport> {
-    const [core, openwa, otpCapacity] = await Promise.all([
+    const [core, openwa, otpCapacity, disk] = await Promise.all([
       this.checkCore(),
       this.checkOpenWa(),
       this.checkOtpCapacity(),
+      this.checkDisk(),
     ]);
-    const checks = { ...core.checks, openwa, otpCapacity };
+    const checks = { ...core.checks, openwa, otpCapacity, disk };
     return {
       status: readinessOf(checks),
       service: 'aarast-backend',
@@ -150,6 +175,19 @@ export class ReadinessService {
     } catch {
       // The quota could not be read; the database check says why.
       return { status: 'down' };
+    }
+  }
+
+  private async checkDisk(): Promise<DiskReadiness> {
+    try {
+      const stats = await withTimeout(this.statfs('/'), dependencyTimeoutMs);
+      const total = stats.blocks * stats.bsize;
+      const free = stats.bavail * stats.bsize;
+      if (!(total > 0)) return { status: 'disabled' };
+      const low = free < Math.max(lowDiskBytes, total * lowDiskShare);
+      return { status: low ? 'low' : 'up' };
+    } catch {
+      return { status: 'disabled' };
     }
   }
 

@@ -11,6 +11,9 @@ import { ResilientThrottlerStorage } from "./platform/redis/resilient-throttler-
 import { HealthController } from "./platform/health/health.controller";
 import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
 import { MEDIA_READINESS_PORT } from "./platform/health/media-readiness.port";
+import { OTP_CAPACITY_READINESS_PORT } from "./platform/health/otp-capacity-readiness.port";
+import { OtpCapacityPublicModule } from "./modules/identity/public/otp-capacity-public.module";
+import { OTP_CAPACITY_PORT } from "./modules/identity/public/otp-capacity.port";
 import { PrismaModule } from "./platform/database/prisma.module";
 import { MediaStoragePublicModule } from "./modules/media/public/media-storage-public.module";
 import { MEDIA_STORAGE_PORT } from "./modules/media/public/media-storage.port";
@@ -78,11 +81,14 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     MessagingModule,
     MediaModule,
     MediaStoragePublicModule,
+    OtpCapacityPublicModule,
   ],
   controllers: [HealthController, MetricsController],
   providers: [
     { provide: READINESS_FETCH, useValue: fetch },
     { provide: MEDIA_READINESS_PORT, useExisting: MEDIA_STORAGE_PORT },
+    // J1-19, RA-BE-02: /ready warns before the daily code limit stops sign-ups.
+    { provide: OTP_CAPACITY_READINESS_PORT, useExisting: OTP_CAPACITY_PORT },
     ReadinessService,
     IdempotencyCleanupScheduler,
     {

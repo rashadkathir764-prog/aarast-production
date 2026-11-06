@@ -7,15 +7,26 @@ import {
   Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  OTP_CAPACITY_WARNING_SHARE,
+  otpGlobalDailyLimit,
+} from '../../../../platform/config/runtime-environment';
 import { PrismaService } from '../../../../platform/database/prisma.service';
 import { otpDeliveryUnavailableError } from '../../public/auth-error';
 import type { OtpDispatchContext } from '../../public/identity-auth.port';
+import type { OtpCapacity } from '../../public/otp-capacity.port';
 import {
   consumeOtpDispatchQuotaAttempt,
+  readOtpDispatchQuotaCount,
   type OtpQuotaPolicy,
 } from '../../infrastructure/otp-dispatch-quota.repository';
 
 export const OTP_DISPATCH_NOW = Symbol('OTP_DISPATCH_NOW');
+
+/** The app-wide rolling-day quota every code counts against. */
+const GLOBAL_SCOPE = 'GLOBAL_DAY';
+const GLOBAL_SUBJECT = 'aarast-otp';
+const GLOBAL_WINDOW_MS = 24 * 60 * 60_000;
 
 @Injectable()
 export class OtpDispatchQuotaService {
@@ -66,10 +77,10 @@ export class OtpDispatchQuotaService {
       { scope: 'PHONE_HOUR', subject: phone, limit: 5, windowMs: 60 * 60_000 },
       { scope: 'PHONE_DAY', subject: phone, limit: 10, windowMs: 24 * 60 * 60_000 },
       {
-        scope: 'GLOBAL_DAY',
-        subject: 'aarast-otp',
+        scope: GLOBAL_SCOPE,
+        subject: GLOBAL_SUBJECT,
         limit: this.globalDailyLimit(),
-        windowMs: 24 * 60 * 60_000,
+        windowMs: GLOBAL_WINDOW_MS,
       },
     ];
     const ip = rawIp?.trim().toLowerCase().slice(0, 128);
@@ -82,12 +93,30 @@ export class OtpDispatchQuotaService {
     return policies;
   }
 
+  /**
+   * RA-BE-02 (J1-19): how close the whole app is to its daily code limit, for
+   * the readiness check and its alarm. Exhausted means no new account can be
+   * made by WhatsApp code until the rolling day turns.
+   */
+  async capacity(): Promise<OtpCapacity> {
+    const limit = this.globalDailyLimit();
+    const used = await readOtpDispatchQuotaCount(
+      this.prisma,
+      GLOBAL_SCOPE,
+      OtpDispatchQuotaService.subjectHash(GLOBAL_SCOPE, GLOBAL_SUBJECT),
+      GLOBAL_WINDOW_MS,
+      this.now(),
+    );
+    if (used >= limit) return 'exhausted';
+    return used >= Math.ceil(limit * OTP_CAPACITY_WARNING_SHARE) ? 'near_limit' : 'up';
+  }
+
   private globalDailyLimit(): number {
-    const configured = Number(process.env.OTP_GLOBAL_DAILY_LIMIT ?? 150);
-    if (!Number.isInteger(configured) || configured < 1 || configured > 10_000) {
+    try {
+      return otpGlobalDailyLimit();
+    } catch {
       throw otpDeliveryUnavailableError();
     }
-    return configured;
   }
 
   static subjectHash(scope: string, subject: string): string {

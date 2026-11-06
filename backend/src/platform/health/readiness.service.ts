@@ -7,12 +7,26 @@ import {
   MEDIA_READINESS_PORT,
   MediaReadinessPort,
 } from './media-readiness.port';
+import {
+  OTP_CAPACITY_READINESS_PORT,
+  type OtpCapacityReadinessPort,
+} from './otp-capacity-readiness.port';
 
 export type DependencyState = 'up' | 'down' | 'disabled';
 
 export interface DependencyReadiness {
   status: DependencyState;
   latencyMs?: number;
+}
+
+/**
+ * The app-wide daily WhatsApp-code quota (J1-19, RA-BE-02). `near_limit`
+ * warns while codes still go out; `down` is the limit reached, when no new
+ * account can be made by code. Status only: the public /ready carries no
+ * sign-up counts.
+ */
+export interface OtpCapacityReadiness {
+  status: 'up' | 'near_limit' | 'down' | 'disabled';
 }
 
 export interface ReadinessReport {
@@ -23,20 +37,21 @@ export interface ReadinessReport {
     redis: DependencyReadiness;
     media: DependencyReadiness;
     openwa: DependencyReadiness;
+    otpCapacity: OtpCapacityReadiness;
   };
 }
 
 export interface CoreReadinessReport {
   status: ReadinessReport['status'];
   service: ReadinessReport['service'];
-  checks: Omit<ReadinessReport['checks'], 'openwa'>;
+  checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity'>;
 }
 
 const dependencyTimeoutMs = 2_500;
 export const READINESS_FETCH = Symbol('READINESS_FETCH');
 
 function readinessOf(
-  checks: Record<string, DependencyReadiness>,
+  checks: Record<string, { status: string }>,
 ): ReadinessReport['status'] {
   return Object.values(checks).every((check) => check.status !== 'down')
     ? 'ready'
@@ -52,14 +67,18 @@ export class ReadinessService {
     @Optional()
     @Inject(READINESS_FETCH)
     private readonly fetchImplementation: typeof fetch = fetch,
+    @Optional()
+    @Inject(OTP_CAPACITY_READINESS_PORT)
+    private readonly otpCapacity?: OtpCapacityReadinessPort,
   ) {}
 
   async check(): Promise<ReadinessReport> {
-    const [core, openwa] = await Promise.all([
+    const [core, openwa, otpCapacity] = await Promise.all([
       this.checkCore(),
       this.checkOpenWa(),
+      this.checkOtpCapacity(),
     ]);
-    const checks = { ...core.checks, openwa };
+    const checks = { ...core.checks, openwa, otpCapacity };
     return {
       status: readinessOf(checks),
       service: 'aarast-backend',
@@ -118,6 +137,20 @@ export class ReadinessService {
       return { status: required ? 'down' : 'disabled' };
     }
     return this.checkDependency(() => this.mediaStorage.checkReadiness());
+  }
+
+  private async checkOtpCapacity(): Promise<OtpCapacityReadiness> {
+    const mode = process.env.AUTH_OTP_MODE?.trim().toLowerCase();
+    if (!this.otpCapacity || mode === 'disabled' || mode === undefined) {
+      return { status: 'disabled' };
+    }
+    try {
+      const capacity = await withTimeout(this.otpCapacity.capacity(), dependencyTimeoutMs);
+      return { status: capacity === 'exhausted' ? 'down' : capacity };
+    } catch {
+      // The quota could not be read; the database check says why.
+      return { status: 'down' };
+    }
   }
 
   private async checkOpenWa(): Promise<DependencyReadiness> {

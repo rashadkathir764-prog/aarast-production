@@ -9,6 +9,13 @@ Parameters:
     Type: String
     Default: https://api.3-121-198-183.sslip.io/ready
     Description: The API's readiness address. It names each dependency's state and no secret.
+  DirectReadyUrl:
+    Type: String
+    Default: https://3.121.198.183/ready
+    Description: >-
+      The same readiness at the address the app is built with (RA-OP-06). Its
+      certificate is a short-lived IP certificate, so this probe is what
+      notices a failed renewal.
 
 Resources:
   Topic:
@@ -42,9 +49,11 @@ Resources:
                   StringEquals:
                     cloudwatch:namespace: Aarast/Uptime
 
-  # Reads /ready from outside the host every five minutes and records two
-  # numbers: Api (database, Redis and media answer) and WhatsApp (OpenWA can
-  # send a code). An unreachable API counts against both.
+  # Reads /ready from outside the host every five minutes and records four
+  # numbers: Api (database, Redis and media answer), WhatsApp (OpenWA can send
+  # a code), WhatsAppCapacity (the daily code limit is not near, RA-BE-02) and
+  # DirectIp (the address the app uses answers over valid TLS, RA-OP-06). An
+  # unreachable API counts against the first three.
   Probe:
     Type: AWS::Lambda::Function
     Properties:
@@ -57,32 +66,49 @@ Resources:
       Environment:
         Variables:
           READY_URL: !Ref ReadyUrl
+          DIRECT_READY_URL: !Ref DirectReadyUrl
       Code:
         ZipFile: |
           const { CloudWatchClient, PutMetricDataCommand } = require('@aws-sdk/client-cloudwatch');
           const client = new CloudWatchClient({});
 
-          exports.handler = async () => {
-            let checks = {};
+          const read = async (url) => {
             try {
-              const response = await fetch(process.env.READY_URL, {
-                signal: AbortSignal.timeout(12000),
-              });
-              checks = (await response.json()).checks ?? {};
+              const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+              return (await response.json()).checks ?? {};
             } catch (error) {
-              console.log('unreachable', error.name);
+              console.log('unreachable', url, error.name);
+              return null;
             }
+          };
+
+          exports.handler = async () => {
+            const [named, direct] = await Promise.all([
+              read(process.env.READY_URL),
+              read(process.env.DIRECT_READY_URL),
+            ]);
+            const checks = named ?? {};
             const up = (...names) =>
               names.every((name) => checks[name]?.status === 'up') ? 1 : 0;
             const api = up('database', 'redis', 'media');
             const whatsapp = up('openwa');
-            console.log(JSON.stringify({ api, whatsapp }));
+            // A server older than the capacity check has no field: no warning.
+            const capacity = checks.otpCapacity?.status ?? 'up';
+            const whatsappCapacity =
+              named && (capacity === 'up' || capacity === 'disabled') ? 1 : 0;
+            // fetch rejects an invalid or expired certificate, so a missed
+            // renewal of the IP certificate reads as unreachable here.
+            const directIp =
+              direct && direct.database?.status === 'up' ? 1 : 0;
+            console.log(JSON.stringify({ api, whatsapp, whatsappCapacity, directIp }));
             await client.send(
               new PutMetricDataCommand({
                 Namespace: 'Aarast/Uptime',
                 MetricData: [
                   { MetricName: 'Api', Value: api },
                   { MetricName: 'WhatsApp', Value: whatsapp },
+                  { MetricName: 'WhatsAppCapacity', Value: whatsappCapacity },
+                  { MetricName: 'DirectIp', Value: directIp },
                 ],
               }),
             );
@@ -129,6 +155,46 @@ Resources:
       AlarmDescription: OpenWA cannot send WhatsApp codes. Password sign-in still works.
       Namespace: Aarast/Uptime
       MetricName: WhatsApp
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  # J1-19, RA-BE-02: one reading is enough; the share only grows within the day.
+  WhatsAppCapacityLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-whatsapp-codes-near-limit
+      AlarmDescription: >-
+        The day's WhatsApp codes reached 80% of OTP_GLOBAL_DAILY_LIMIT, or the
+        limit itself. New accounts by code stop at the limit until the rolling
+        day turns; raise the limit in the host env file if the demand is real.
+      Namespace: Aarast/Uptime
+      MetricName: WhatsAppCapacity
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  # RA-OP-06: the app is built with the IP address; its certificate lives
+  # about six days, so a failed renewal breaks every phone within days.
+  DirectIpDown:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-direct-ip-down
+      AlarmDescription: >-
+        https://3.121.198.183 (the address the app uses) stopped answering over
+        valid TLS: the IP certificate may not have renewed.
+      Namespace: Aarast/Uptime
+      MetricName: DirectIp
       Statistic: Minimum
       Period: 300
       EvaluationPeriods: 2

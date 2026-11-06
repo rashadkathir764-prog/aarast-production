@@ -145,6 +145,7 @@ test('controller emits 503 for a non-ready report', async () => {
       redis: { status: 'up', latencyMs: 1 },
       media: { status: 'up', latencyMs: 1 },
       openwa: { status: 'up', latencyMs: 1 },
+      otpCapacity: { status: 'up' },
     },
   };
   const controller = new HealthController({
@@ -155,6 +156,56 @@ test('controller emits 503 for a non-ready report', async () => {
     () => controller.getReadiness(),
     ServiceUnavailableException,
   );
+});
+
+// J1-19, RA-BE-02: /ready says how close the daily WhatsApp-code limit is, so
+// the uptime alarm warns before sign-ups stop. Status only, no counts.
+for (const [capacity, status, ready] of [
+  ['up', 'up', 'ready'],
+  ['near_limit', 'near_limit', 'ready'],
+  ['exhausted', 'down', 'not_ready'],
+] as const) {
+  test(`a ${capacity} code quota reads ${status} and leaves /ready ${ready}`, async () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.REDIS_URL;
+    delete process.env.AARAST_MEDIA_ENDPOINT;
+    delete process.env.AARAST_MEDIA_BUCKET;
+    process.env.AUTH_OTP_MODE = 'dev';
+    const service = new ReadinessService(
+      { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
+      { checkReadiness: async () => undefined } as MediaReadinessPort,
+      fetch,
+      { capacity: async () => capacity },
+    );
+    const report = await service.check();
+    assert.deepEqual(report.checks.otpCapacity, { status });
+    assert.equal(report.status, ready);
+    const core = await service.checkCore();
+    assert.equal(core.status, 'ready', 'the quota never fails the host check');
+    assert.equal('otpCapacity' in core.checks, false);
+  });
+}
+
+test('an unreadable code quota reads down, and no quota without codes', async () => {
+  process.env.NODE_ENV = 'test';
+  delete process.env.REDIS_URL;
+  delete process.env.AARAST_MEDIA_ENDPOINT;
+  delete process.env.AARAST_MEDIA_BUCKET;
+  const prisma = { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService;
+  const media = { checkReadiness: async () => undefined } as MediaReadinessPort;
+  process.env.AUTH_OTP_MODE = 'openwa';
+  const failing = new ReadinessService(prisma, media, fetch, {
+    capacity: async () => {
+      throw new Error('database gone');
+    },
+  });
+  assert.deepEqual((await failing.check()).checks.otpCapacity, { status: 'down' });
+  process.env.AUTH_OTP_MODE = 'disabled';
+  const off = new ReadinessService(prisma, media, fetch, { capacity: async () => 'exhausted' });
+  assert.deepEqual((await off.check()).checks.otpCapacity, { status: 'disabled' });
+  // A context without the port (tests, tools) reports it disabled too.
+  process.env.AUTH_OTP_MODE = 'openwa';
+  assert.deepEqual((await new ReadinessService(prisma, media).check()).checks.otpCapacity, { status: 'disabled' });
 });
 
 test('a stopped OpenWA leaves the core ready while /ready tells the truth', async () => {

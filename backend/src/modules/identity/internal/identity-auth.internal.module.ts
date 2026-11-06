@@ -19,6 +19,7 @@ import { MessagingRealtimePublicModule } from '../../messaging/public/messaging-
 export const IDENTITY_AUTH_IMPLEMENTATION = Symbol(
   'IDENTITY_AUTH_IMPLEMENTATION',
 );
+export const OTP_CAPACITY_IMPLEMENTATION = Symbol('OTP_CAPACITY_IMPLEMENTATION');
 
 @Module({
   imports: [
@@ -45,7 +46,14 @@ export const IDENTITY_AUTH_IMPLEMENTATION = Symbol(
     OtpDispatchQuotaCleanupScheduler,
     AuthChallengeCleanupScheduler,
     { provide: IDENTITY_AUTH_IMPLEMENTATION, useExisting: AuthService },
+    // J1-19, RA-BE-02: the same quota the codes count in, read for /ready.
+    { provide: OTP_CAPACITY_IMPLEMENTATION, useExisting: OtpDispatchQuotaService },
   ],
-  exports: [AuthService, IDENTITY_AUTH_IMPLEMENTATION, JwtModule],
+  exports: [
+    AuthService,
+    IDENTITY_AUTH_IMPLEMENTATION,
+    OTP_CAPACITY_IMPLEMENTATION,
+    JwtModule,
+  ],
 })
 export class IdentityAuthInternalModule {}

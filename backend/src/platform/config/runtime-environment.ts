@@ -11,6 +11,24 @@ export function isProductionEnvironment(
   return environment.NODE_ENV === "production";
 }
 
+/**
+ * How many WhatsApp codes the whole app may send in a rolling day (J1-19).
+ * One reading for the start-up check, the quota and the readiness signal
+ * (RA-BE-02); the quota used to read the variable again on its own.
+ */
+export function otpGlobalDailyLimit(
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  const limit = Number(environment.OTP_GLOBAL_DAILY_LIMIT ?? 150);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10_000) {
+    throw new Error("OTP_GLOBAL_DAILY_LIMIT must be an integer from 1 to 10000");
+  }
+  return limit;
+}
+
+/** The share of the daily limit at which the readiness check warns. */
+export const OTP_CAPACITY_WARNING_SHARE = 0.8;
+
 export function validateRuntimeEnvironment(
   environment: NodeJS.ProcessEnv,
   validateIdentitySecret: IdentitySecretValidator,
@@ -73,16 +91,7 @@ export function validateRuntimeEnvironment(
     throw new Error("AUTH_LOGIN_THROTTLE_PEPPER is required in production");
   }
 
-  const globalOtpLimit = Number(environment.OTP_GLOBAL_DAILY_LIMIT ?? 150);
-  if (
-    !Number.isInteger(globalOtpLimit) ||
-    globalOtpLimit < 1 ||
-    globalOtpLimit > 10_000
-  ) {
-    throw new Error(
-      "OTP_GLOBAL_DAILY_LIMIT must be an integer from 1 to 10000",
-    );
-  }
+  otpGlobalDailyLimit(environment);
 
   const pushNotificationsEnabled =
     environment.PUSH_NOTIFICATIONS_ENABLED?.trim().toLowerCase();

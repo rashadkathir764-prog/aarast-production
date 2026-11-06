@@ -13,6 +13,25 @@ interface QuotaRow {
   count: number;
 }
 
+/**
+ * How many codes a quota counted in its current window: none once the window
+ * has passed, as the next consume would start it again.
+ */
+export async function readOtpDispatchQuotaCount(
+  prisma: PrismaService,
+  scope: string,
+  subjectHash: string,
+  windowMs: number,
+  now: Date,
+): Promise<number> {
+  const row = await prisma.otpDispatchQuota.findUnique({
+    where: { scope_subjectHash: { scope, subjectHash } },
+    select: { count: true, windowStartedAt: true },
+  });
+  if (!row) return 0;
+  return row.windowStartedAt.getTime() <= now.getTime() - windowMs ? 0 : row.count;
+}
+
 export function consumeOtpDispatchQuotaAttempt(
   prisma: PrismaService,
   policies: readonly OtpQuotaPolicy[],

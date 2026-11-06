@@ -197,6 +197,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
           color: context.accent.primary,
           onRefresh: _isLocalPlan ? () async {} : _load,
           child: CustomScrollView(
+            // The overview, a family and the search each start at their top:
+            // a family opened from low on the overview kept its scroll and
+            // opened in the middle of its rows, its title, its way back and
+            // its answer chips above the screen (RA-MO-16).
+            key: ValueKey('guests-${_openGroup ?? '-'}-$_searching'),
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverPadding(

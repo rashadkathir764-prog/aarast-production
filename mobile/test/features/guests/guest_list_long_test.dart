@@ -41,6 +41,72 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-16: a family opened from low on the overview starts at its top,
+  // with its title, its way back and its answer chips, not in the middle of
+  // its rows where the overview had been scrolled.
+  testWidgets('a family opens at its top, wherever the overview was', (
+    tester,
+  ) async {
+    // A short phone: the family rows sit below the summary, so the overview
+    // is scrolled before «كل الضيوف» can be tapped.
+    await _pump(tester, [
+      for (var index = 0; index < 60; index++)
+        _guest('guest-$index', 'سالم رقم ${index.toString().padLeft(3, '0')}'),
+    ], height: 480);
+    final page = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('guest-group-all')),
+      120,
+      scrollable: page,
+    );
+    await tester.pumpAndSettle();
+    final scrolled = tester.state<ScrollableState>(page).position.pixels;
+    expect(scrolled, greaterThan(200), reason: 'the overview was scrolled');
+    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('guest-group-back')).hitTestable(),
+      findsOneWidget,
+    );
+    expect(find.text('كل الضيوف · 60 ضيف'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('guest-filter-all')).hitTestable(),
+      findsOneWidget,
+    );
+  });
+
+  // RA-TS-03: the family the reader opened and the search are states of one
+  // screen; Android back undoes each, then leaves.
+  testWidgets('android back closes the family, then the search, then leaves', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _guest('guest-1', 'أحمد علي'),
+      _guest('guest-2', 'بدر سالم'),
+    ]);
+
+    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('guest-group-back')), findsOneWidget);
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('guest-group-back')), findsNothing);
+    expect(find.byKey(const ValueKey('guest-group-all')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('guests-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'أحمد');
+    await tester.pumpAndSettle();
+    expect(find.text('أحمد علي'), findsOneWidget);
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('أحمد علي'), findsNothing, reason: 'the search is gone');
+
+    expect(await tester.binding.handlePopRoute(), isFalse);
+  });
+
   testWidgets('a search lists every match the same way', (tester) async {
     final guests = [
       for (var index = 0; index < 80; index++)
@@ -91,7 +157,11 @@ class _CachedGuestsApi extends GuestsApi {
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async => const [];
 }
 
-Future<void> _pump(WidgetTester tester, List<Guest> guests) async {
+Future<void> _pump(
+  WidgetTester tester,
+  List<Guest> guests, {
+  double height = 900,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
@@ -103,7 +173,7 @@ Future<void> _pump(WidgetTester tester, List<Guest> guests) async {
   final api = _CachedGuestsApi(apiClient, guests, offline: offline);
 
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(384, 900);
+  tester.view.physicalSize = Size(384, height);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MultiProvider(

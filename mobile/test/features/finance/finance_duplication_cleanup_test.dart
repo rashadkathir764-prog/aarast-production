@@ -263,6 +263,87 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // RA-MO-10: the label says what the figure adds up. «المستحق عليك الآن»
+    // over late and coming payments called the coming ones due now.
+    testWidgets('the «الدفعات» total names late, coming, or both', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      PaymentSchedule schedule(String id, int days) => PaymentSchedule(
+        id: id,
+        costId: 'cost-1',
+        amount: '1000',
+        dueDate: today.add(Duration(days: days)),
+        status: 'PENDING',
+        costTitle: 'تكلفة 1',
+      );
+      Future<void> openPayments(List<PaymentSchedule> due) async {
+        // A fresh tree each time: the provider keeps its first instance.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(
+          _wrap(_FakeFinanceApi.withCosts(dueSchedules: due)),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('journey-tab-2')));
+        await tester.pumpAndSettle();
+      }
+
+      await openPayments([schedule('late', -5), schedule('soon', 10)]);
+      expect(find.text('المتأخر والقادم خلال 30 يوم'), findsOneWidget);
+      expect(find.text('المستحق عليك الآن'), findsNothing);
+
+      await openPayments([schedule('late', -5)]);
+      expect(find.text('المتأخر'), findsOneWidget);
+
+      await openPayments([schedule('soon', 10)]);
+      expect(find.text('خلال 30 يوم'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    // RA-MO-11 and RA-MO-12: the money texts address no one wrongly.
+    testWidgets('money copy is neutral where any reader may read it', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            warnings: [
+              for (var index = 0; index < 5; index++)
+                MoneyWarning(
+                  type: 'CATEGORY_EXCEEDED',
+                  severity: 'warning',
+                  categoryId: 'category-1',
+                  amount: '100',
+                ),
+            ],
+            payers: const [
+              MoneyPayerSummary(payer: 'FATHER', ownerMoney: false, paid: '100'),
+              MoneyPayerSummary(payer: 'MOTHER', ownerMoney: false, paid: '100'),
+              MoneyPayerSummary(payer: 'BROTHER', ownerMoney: false, paid: '100'),
+              MoneyPayerSummary(payer: 'SISTER', ownerMoney: false, paid: '100'),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Within the budget, said the same way to the owner and a participant.
+      expect(find.text('في حدود الميزانية'), findsOneWidget);
+      expect(find.text('في حدود ميزانيتك'), findsNothing);
+      // Five over-limit items, three shown: the note counts the other two.
+      expect(
+        find.text('تجاوز المخصص في بندين ثانيين كذلك. كلها في «البنود».'),
+        findsOneWidget,
+      );
+      // Four payers, two named: the other two are people, «اثنين».
+      expect(find.textContaining('اثنين كذلك'), findsOneWidget);
+      expect(find.textContaining('ثنتين'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     // c05: the owner's «من وين» shows what reached them and what is
     // promised, then each source with its state.
     testWidgets('«من وين» shows the sources and their state at 320px', (
@@ -485,6 +566,9 @@ class _FakeFinanceApi extends FinanceApi {
     this.hasBudget = false,
     this.nextSchedule,
     this.funding,
+    this.dueSchedules,
+    this.warnings = const [],
+    this.payers = const [],
   }) : super(ApiClient(tokenProvider: () async => null));
 
   factory _FakeFinanceApi.noBudget() => _FakeFinanceApi._(const []);
@@ -497,6 +581,9 @@ class _FakeFinanceApi extends FinanceApi {
   factory _FakeFinanceApi.withCosts({
     PaymentSchedule? nextSchedule,
     MoneyFundingSummary? funding,
+    List<PaymentSchedule>? dueSchedules,
+    List<MoneyWarning> warnings = const [],
+    List<MoneyPayerSummary> payers = const [],
   }) => _FakeFinanceApi._(
     [
       for (var index = 1; index <= 4; index++)
@@ -515,6 +602,9 @@ class _FakeFinanceApi extends FinanceApi {
     ],
     nextSchedule: nextSchedule,
     funding: funding,
+    dueSchedules: dueSchedules,
+    warnings: warnings,
+    payers: payers,
   );
 
   final List<WeddingCost> _costs;
@@ -522,6 +612,9 @@ class _FakeFinanceApi extends FinanceApi {
   final bool fail;
   final bool hasBudget;
   final PaymentSchedule? nextSchedule;
+  final List<PaymentSchedule>? dueSchedules;
+  final List<MoneyWarning> warnings;
+  final List<MoneyPayerSummary> payers;
 
   @override
   Future<MoneySummary> getMoneySummary(String planId) async {
@@ -574,6 +667,8 @@ class _FakeFinanceApi extends FinanceApi {
         next: nextSchedule,
       ),
       funding: funding,
+      warnings: warnings,
+      payers: payers,
       categories: const [
         MoneyCategorySummary(
           categoryId: 'category-1',
@@ -620,7 +715,7 @@ class _FakeFinanceApi extends FinanceApi {
 
   @override
   Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
-      nextSchedule == null ? const [] : [nextSchedule!];
+      dueSchedules ?? (nextSchedule == null ? const [] : [nextSchedule!]);
 }
 
 SharedMember _deniedMember() {

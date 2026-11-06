@@ -78,11 +78,15 @@ class _MoneyPaymentsTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        // The figure covers the late ones too, so it cannot
-                        // be called «خلال 30 يوم».
+                        // The label says what the figure adds up: the late
+                        // ones, the next 30 days, or both. «المستحق عليك
+                        // الآن» over both called the coming ones due now,
+                        // and spoke to a participant as the owner (RA-MO-10).
                         late.isEmpty
                             ? 'خلال 30 يوم'
-                            : 'المستحق عليك الآن',
+                            : soon.isEmpty
+                            ? 'المتأخر'
+                            : 'المتأخر والقادم خلال 30 يوم',
                         style: JourneyType.of(
                           JourneyType.small,
                           color: AarastV3Color.textMuted,

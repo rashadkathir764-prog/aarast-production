@@ -48,7 +48,9 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   if (over && short) return 'فوق الميزانية، وفلوسك ما تغطي اتفاقاتك';
   if (short) return 'فلوسك ما تغطي اتفاقاتك';
   if (over) return 'فوق الميزانية';
-  return 'في حدود ميزانيتك';
+  // Neutral like «فوق الميزانية»: a participant who reads the money is not
+  // the owner of this budget (RA-MO-11).
+  return 'في حدود الميزانية';
 }
 
 /// D59: what was paid, said by whose money paid it: the owner's own part
@@ -103,7 +105,8 @@ class _MoneySummaryCard extends StatelessWidget {
         paidForOwnerPhrase(group, inSentence(group.paid), profile),
       if (payers.length > _maxNamedPayers)
         'دفع ${profile.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} '
-            '${arabicCount(payers.length - _maxNamedPayers, one: 'واحد', two: 'ثنتين', few: 'غيرهم', many: 'غيرهم')} كذلك',
+            // Payers are people: «اثنين» (RA-MO-12), not the feminine «ثنتين».
+            '${arabicCount(payers.length - _maxNamedPayers, one: 'واحد', two: 'اثنين', few: 'غيرهم', many: 'غيرهم')} كذلك',
     ];
 
     // c01: a 17 sentence (1.7 apart) in a box padded 20, then the 34 gap.

@@ -332,9 +332,13 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           icon: LucideIcons.alertTriangle,
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,
+          // «وبند واحد ثانية تجاوزت» paired a masculine item with feminine
+          // words, and «تشوفها» spoke to a bride as a man (RA-MO-12). The
+          // verb now agrees with «المخصص» for any count, and the pointer to
+          // «البنود» addresses no one.
           text:
-              'و${arabicCount(summary.exceededCategories.length - _maxExceededNotes, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} '
-              'ثانية تجاوزت المخصص لها. تشوفها كلها في «البنود».',
+              'تجاوز المخصص في ${arabicCount(summary.exceededCategories.length - _maxExceededNotes, one: 'بند ثاني', two: 'بندين ثانيين', few: 'بنود ثانية', many: 'بند ثاني')} كذلك. '
+              'كلها في «البنود».',
         ),
       ],
       if (_nextSchedule(provider) case final schedule?) ...[

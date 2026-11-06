@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../models/wedding_task.dart';
 
 /// عرض المهام — مصدر حقيقة واحد للألوان والتسميات والأيقونات،
@@ -11,10 +11,12 @@ import '../models/wedding_task.dart';
 DateTime taskDateOnly(DateTime date) =>
     DateTime(date.year, date.month, date.day);
 
+/// Late from the day after its due day, today counted in Sana'a (D11,
+/// RA-MO-25), as the server counts it.
 bool isTaskLate(WeddingTask task, {DateTime? now}) {
   final dueDate = task.dueDate;
   if (dueDate == null || task.isDone) return false;
-  return taskDateOnly(dueDate).isBefore(taskDateOnly(now ?? appNow()));
+  return daysUntilPlanDay(dueDate, now: now) < 0;
 }
 
 /// y14: a task about the fireworks, known by its title («الألعاب النارية»,
@@ -91,4 +93,3 @@ IconData taskCategoryIcon(String? category) {
     _ => LucideIcons.tag,
   };
 }
-

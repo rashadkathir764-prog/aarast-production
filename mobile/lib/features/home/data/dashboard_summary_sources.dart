@@ -1,6 +1,5 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart'
     show
@@ -341,7 +340,8 @@ class LocalDashboardMetrics {
       parentId: planId,
     );
 
-    final today = _dateOnly(appNow());
+    // D11, RA-MO-25: today in Sana'a, as an account plan's summary counts.
+    final today = sanaaToday();
     final activeTasks = tasks.where((task) {
       return _statusOf(task) != 'DELETED';
     }).toList();
@@ -530,7 +530,8 @@ List<DashboardImportantItem> _localPriorityItems({
   required List<Map<String, dynamic>> paymentSchedules,
   required List<Map<String, dynamic>> costs,
 }) {
-  final today = _dateOnly(appNow());
+  // D11, RA-MO-25: today in Sana'a, as an account plan's summary counts.
+  final today = sanaaToday();
   final priorities = <DashboardImportantItem>[];
   final overdueTask = _firstOrNull(
     tasks.where((task) {

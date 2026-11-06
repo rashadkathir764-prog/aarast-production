@@ -11,6 +11,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
@@ -367,9 +368,8 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
   String _dueLine(PaymentSchedule schedule, DateTime now) {
     final date = formatArabicDayMonth(schedule.dueDate);
     if (schedule.isOverdueAt(now)) return 'متأخرة · $date';
-    final days = DateUtils.dateOnly(
-      schedule.dueDate,
-    ).difference(DateUtils.dateOnly(now)).inDays;
+    // D11, RA-MO-25: from today in Sana'a, as isOverdueAt counts.
+    final days = daysUntilPlanDay(schedule.dueDate, now: now);
     if (days <= 0) return 'اليوم · $date';
     if (days == 1) return 'بكرة · $date';
     if (days <= 30) {

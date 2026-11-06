@@ -3,7 +3,7 @@ import 'package:flutter/semantics.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_task.dart';
@@ -16,9 +16,8 @@ String taskWhenLabel(WeddingTask task, {DateTime? now}) {
   if (task.isDone) return 'خلصت';
   final due = task.dueDate;
   if (due == null) return 'بدون موعد';
-  final today = taskDateOnly(now ?? appNow());
-  final day = taskDateOnly(due);
-  final days = day.difference(today).inDays;
+  // D11, RA-MO-25: whole days from today in Sana'a.
+  final days = daysUntilPlanDay(due, now: now);
   if (days < 0) return 'كان موعدها ${formatArabicDayMonth(due)}';
   if (days == 0) return 'اليوم';
   if (days == 1) return 'بكرة';

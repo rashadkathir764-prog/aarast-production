@@ -489,9 +489,8 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
     if (due.isEmpty) return null;
     final next = due.first;
     if (next.isOverdueAt(now)) return ('دفعة متأخرة', AarastV3Color.danger);
-    final days = DateUtils.dateOnly(
-      next.dueDate,
-    ).difference(DateUtils.dateOnly(now)).inDays;
+    // D11, RA-MO-25: from today in Sana'a, as isOverdueAt counts.
+    final days = daysUntilPlanDay(next.dueDate, now: now);
     final when = days <= 0
         ? 'اليوم'
         : days == 1

@@ -1,4 +1,5 @@
 import '../models/wedding_task.dart';
+import '../../../core/utils/plan_day.dart';
 import 'task_display.dart';
 
 /// d01's sections, in the order they are shown: the owner's tasks and the
@@ -33,7 +34,8 @@ TaskGroup taskGroupOf(WeddingTask task, DateTime today) {
   if (isTaskLate(task, now: today)) return TaskGroup.overdue;
   final due = task.dueDate;
   if (due == null) return TaskGroup.undated;
-  final days = taskDateOnly(due).difference(taskDateOnly(today)).inDays;
+  // D11, RA-MO-25: whole days from today in Sana'a.
+  final days = daysUntilPlanDay(due, now: today);
   // Both bounds inclusive: a day exactly a week out belongs to the week,
   // the way its label reads. The two used to disagree (< 7 against <= 30).
   if (days <= 7) return TaskGroup.week;

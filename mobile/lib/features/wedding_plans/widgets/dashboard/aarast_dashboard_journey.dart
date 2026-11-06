@@ -400,9 +400,8 @@ class _JourneyNextStep extends StatelessWidget {
     final String action;
     final IconData icon;
     if (due != null) {
-      final days = DateUtils.dateOnly(
-        due.dueDate,
-      ).difference(DateUtils.dateOnly(now)).inDays;
+      // D11, RA-MO-25: from today in Sana'a, as the server counts.
+      final days = daysUntilPlanDay(due.dueDate, now: now);
       final when = days > 1
           ? 'بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}'
           : days == 1

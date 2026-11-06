@@ -7,6 +7,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/funding_source.dart';
 import '../models/wedding_cost.dart' show moneyValue;
@@ -99,7 +100,8 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     }
     final due = repayment.dueDate;
     if (due == null) return 'بدون موعد';
-    final days = DateUtils.dateOnly(due).difference(today).inDays;
+    // D11, RA-MO-25: whole days from today in Sana'a.
+    final days = daysUntilPlanDay(due, now: today);
     final date = formatArabicDayMonth(due);
     if (days < 0) return '$date · متأخرة';
     if (days == 0) return '$date · اليوم';
@@ -112,7 +114,8 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
   @override
   Widget build(BuildContext context) {
     final loan = widget.loan;
-    final today = DateUtils.dateOnly(appNow());
+    // A moment: the lines count whole days from it in Sana'a (RA-MO-25).
+    final today = appNow();
     final repayments = [
       for (final repayment in loan.repayments)
         if (!repayment.isCancelled) repayment,

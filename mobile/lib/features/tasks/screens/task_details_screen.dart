@@ -12,6 +12,7 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_for.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -188,9 +189,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final late = isTaskLate(task);
     final mine = task.isMineFor(context.watch<AuthController?>()?.user?.id);
     final due = task.dueDate;
-    final lateDays = due == null
-        ? 0
-        : taskDateOnly(appNow()).difference(taskDateOnly(due)).inDays;
+    // D11, RA-MO-25: whole days past, today counted in Sana'a.
+    final lateDays = due == null ? 0 : -daysUntilPlanDay(due);
     final phone = task.responsiblePhone ?? task.assigneePhone;
     final steps = task.checklist;
     final fireworks = isFireworksTask(task);

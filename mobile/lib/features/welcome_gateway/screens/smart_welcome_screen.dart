@@ -135,6 +135,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     );
   }
 
+  /// Nothing worth saving as a mahr yet, so «التالي» has nothing to do.
+  bool get _mahrTotalMissing =>
+      (MahrFields.amountOf(_mahrTotalController) ?? 0) <= 0;
+
   /// «التالي» on a06: what is typed must hold together.
   void _confirmMahr() {
     final total = MahrFields.amountOf(_mahrTotalController) ?? 0;
@@ -771,7 +775,14 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             ? 'اللي بتستلمينه من العريس. نحسبه برّا الميزانية ونقول لك كم باقي.'
             : 'اللي بتسلّمه لأهل العروسة. نحسبه برّا الميزانية ونقول لك كم باقي.',
         primaryLabel: 'التالي',
-        onPrimary: _confirmMahr,
+        // J1-18, as the two steps before it: «التالي» waits, greyed, and a
+        // quiet line says what it waits for. This step alone kept it live
+        // and answered a press with a red error, so a reader who had learnt
+        // «grey means something is missing» over two steps met a green
+        // button on the third and was told off for trusting it. «ما اتفقنا
+        // بعد» stays the way past, which is the real answer when there is
+        // no mahr yet.
+        onPrimary: _mahrTotalMissing ? null : _confirmMahr,
         onBack: _back,
         skipLabel: 'ما اتفقنا بعد',
         onSkip: _skipMahr,
@@ -818,6 +829,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               tone: JourneyNoteTone.bare,
             ),
           ],
+          ..._missingLine(
+            _mahrTotalMissing
+                ? context.say('اكتب كم المهر', 'اكتبي كم المهر')
+                : null,
+          ),
         ],
       ),
       _WelcomeStep.ready => _ReadyStep(

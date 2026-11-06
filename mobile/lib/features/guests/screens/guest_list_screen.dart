@@ -126,8 +126,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<GuestsProvider>();
     final sync = context.watch<OfflineSyncService?>();
-    // w29: an account plan without a connection shows its last copy and
-    // waits to add. A plan kept on the phone needs no connection at all.
+    // An account plan without a connection shows its last copy with a note;
+    // adding still works, saved on the phone (D85). A plan kept on the phone
+    // needs no connection at all.
     final offline = !_isLocalPlan && sync?.state == SyncState.offline;
     final guests = provider.guests
         .where((guest) => guest.weddingPlanId == widget.weddingPlanId)

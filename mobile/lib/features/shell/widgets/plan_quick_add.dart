@@ -157,27 +157,20 @@ void rememberPlanQuickAdd(String planId, PlanQuickAddKind kind) {
 
 /// The same visibility in both shells. Money shows it only at the tab root
 /// and only to whoever manages the money; the providers tab never shows it
-/// because its own search is the way to a quote. The guests hide it while
-/// an account plan has no connection, since a new guest is sent at once
-/// (w29).
+/// because its own search is the way to a quote. Adding never waits for the
+/// server (D85): a new guest, task or agreement is saved on the phone and
+/// sent with the first answer, so no tab hides it without a connection.
 ///
 /// The providers tab stays without one on purpose, and not only for the
 /// reason above: `quote` resolves to onFindProviders, which goes to the
 /// providers tab, so a «+» there would send the reader to the screen they
 /// are already on.
-///
-/// [guestsWaitForConnection] has a test (w29) but no caller: neither shell
-/// passes it, so that behaviour does not happen today, and the shells cite
-/// D85 for the opposite («adding never waits for the server»). w29 against
-/// D85 is the owner's call, so nothing here decides it.
 bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
   bool canManageMoney = false,
-  bool guestsWaitForConnection = false,
 }) {
   return tabIndex != _providersTab &&
-      (tabIndex != _guestsTab || !guestsWaitForConnection) &&
       (tabIndex != _moneyTab || canManageMoney) &&
       (tabIndex != _moneyTab || isRootDestination);
 }

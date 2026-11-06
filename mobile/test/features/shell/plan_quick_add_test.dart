@@ -34,20 +34,13 @@ void main() {
       expect(shouldShowPlanQuickAdd(tabIndex: 4), isFalse);
     });
 
-    test('w29 guests hide it while an account plan is offline', () {
-      expect(
-        shouldShowPlanQuickAdd(tabIndex: 3, guestsWaitForConnection: true),
-        isFalse,
-      );
-      // The other tabs queue their writes, so they keep it.
-      expect(
-        shouldShowPlanQuickAdd(tabIndex: 2, guestsWaitForConnection: true),
-        isTrue,
-      );
-      expect(
-        shouldShowPlanQuickAdd(tabIndex: 0, guestsWaitForConnection: true),
-        isTrue,
-      );
+    // D85 (RA-MO-21): adding never waits for the server, so the visibility
+    // has no connection input at all; the guests keep their «+» offline,
+    // which the screen test below proves on the real screen.
+    test('no tab hides its «+» for want of a connection (D85)', () {
+      expect(shouldShowPlanQuickAdd(tabIndex: 3), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 2), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
     });
 
     test('each tab names its «+»', () {

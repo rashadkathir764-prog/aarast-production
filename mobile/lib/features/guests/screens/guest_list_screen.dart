@@ -325,7 +325,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 )
               : null,
         ),
-        if (!_isLocalPlan) ...[
+        // The door to the invitation card, except while the card's own
+        // button is right above it going to the very same place: «أرسل
+        // الدعوة على واتساب» and this link were two controls, one under the
+        // other, with one destination. The reminder button is a different
+        // destination, so the link stays beside it.
+        if (!_isLocalPlan && !(uninvited && remindable == 0)) ...[
           const SizedBox(height: AarastV3Space.x1),
           Align(
             alignment: AlignmentDirectional.centerStart,

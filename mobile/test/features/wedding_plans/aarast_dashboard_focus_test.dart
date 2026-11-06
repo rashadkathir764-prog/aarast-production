@@ -71,7 +71,9 @@ void main() {
     final focus = resolveDashboardFocus(
       _summary(hasBudget: false, providerCount: 0),
     );
-    expect(focus.target, AarastDashboardFocusTarget.money);
+    // The step's button says «حدّد الميزانية», so it opens the budget (w19)
+    // and not the money tab's root, which is what `money` means.
+    expect(focus.target, AarastDashboardFocusTarget.budget);
     expect(focus.title, contains('ميزانية'));
   });
 }

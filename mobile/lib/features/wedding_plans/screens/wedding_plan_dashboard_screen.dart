@@ -584,6 +584,12 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(selectedPlanId)),
               onOpenMoney: () => context.go(AppRouter.money(selectedPlanId)),
+              // b01's steps open what their buttons name (w19 and the item
+              // form), not the money tab's root.
+              onOpenBudget: () =>
+                  context.push(AppRouter.moneyBudget(selectedPlanId)),
+              onOpenBudgetItem: () =>
+                  context.push(AppRouter.moneyCategoryCreate(selectedPlanId)),
               onOpenTasks: () => context.go(AppRouter.tasks(selectedPlanId)),
               onOpenProviders: () =>
                   context.go(AppRouter.planProviders(selectedPlanId)),

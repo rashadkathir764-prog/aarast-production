@@ -807,16 +807,35 @@ class JourneyTabHeader extends StatelessWidget {
                     ),
                   )
                 else
+                  // A pressable status line used to be drawn exactly like a
+                  // plain one: same size, same muted colour, no mark. The
+                  // bookings (w34) hung off it and so had no visible door
+                  // at all. It now reads as the app's other links do — the
+                  // plan's colour and a chevron.
                   AarastPressable(
                     onTap: onStatusTap,
                     semanticLabel: statusTapLabel,
                     borderRadius: BorderRadius.circular(AarastV3Radius.control),
-                    child: Text(
-                      status,
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        color: AarastV3Color.textMuted,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            status,
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
+                              color: context.accent.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AarastV3Space.half),
+                        Icon(
+                          LucideIcons.chevronLeft,
+                          size: 16,
+                          color: context.accent.primary,
+                        ),
+                      ],
                     ),
                   ),
               ],

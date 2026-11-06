@@ -10,6 +10,14 @@ enum AarastDashboardFocusTarget {
   item,
   plan,
   money,
+
+  /// The budget screen itself (w19), for a step whose button says
+  /// «حدّد الميزانية»: it used to open the money tab's root and leave the
+  /// reader to find the budget.
+  budget,
+
+  /// The new-item form, for a step whose button says «أضف بند».
+  budgetItem,
   mahr,
   tasks,
   guests,
@@ -144,7 +152,7 @@ AarastDashboardFocus resolveDashboardFocus(
       actionLabel: say('حدّد الميزانية', 'حدّدي الميزانية'),
       icon: LucideIcons.wallet,
       tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.money,
+      target: AarastDashboardFocusTarget.budget,
     );
   }
 
@@ -172,7 +180,7 @@ AarastDashboardFocus resolveDashboardFocus(
       actionLabel: say('أضف بند', 'أضيفي بند'),
       icon: LucideIcons.wallet,
       tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.money,
+      target: AarastDashboardFocusTarget.budgetItem,
     );
   }
 

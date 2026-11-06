@@ -37,6 +37,8 @@ class AarastDashboardView extends StatelessWidget {
     required this.onProfile,
     required this.onOpenPlan,
     required this.onOpenMoney,
+    this.onOpenBudget,
+    this.onOpenBudgetItem,
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
@@ -87,6 +89,12 @@ class AarastDashboardView extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onOpenPlan;
   final VoidCallback onOpenMoney;
+
+  /// The budget screen (w19) and the new-item form, so b01's «حدّد
+  /// الميزانية» and «أضف بند» open what they name instead of the money
+  /// tab's root. Null falls back to the money tab.
+  final VoidCallback? onOpenBudget;
+  final VoidCallback? onOpenBudgetItem;
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
@@ -409,6 +417,10 @@ class AarastDashboardView extends StatelessWidget {
         onOpenPlan();
       case AarastDashboardFocusTarget.money:
         onOpenMoney();
+      case AarastDashboardFocusTarget.budget:
+        (onOpenBudget ?? onOpenMoney)();
+      case AarastDashboardFocusTarget.budgetItem:
+        (onOpenBudgetItem ?? onOpenMoney)();
       case AarastDashboardFocusTarget.mahr:
         (onOpenMahr ?? onOpenMoney)();
       case AarastDashboardFocusTarget.tasks:

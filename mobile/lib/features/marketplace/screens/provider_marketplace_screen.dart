@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/currency_label.dart';
@@ -241,22 +242,28 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     // The four tabs and the search box are states inside one route, the
     // same as c01's tabs and e01's groups. Android back has to undo them
     // before it leaves the providers, or picking «المحادثات» and pressing
-    // back throws the reader out of the tab altogether.
-    final nested = _searchOpen || _tabLabel != null;
-    return PopScope(
-      canPop: !nested,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop || !nested) return;
-        setState(() {
-          if (_searchOpen) {
-            _searchOpen = false;
-            _searchController.clear();
-            _searchFocusNode.unfocus();
-          } else {
-            // Back to the tab the screen opened on.
-            _tabLabel = null;
+    // back throws the reader out of the tab altogether. A tab picked by hand
+    // that is the opening tab is not a step to undo (RA-MO-05).
+    final opening = _settledOpening ?? 'استكشف';
+    final awayFromOpening = _tabLabel != null && _tabLabel != opening;
+    final nested = _searchShown || awayFromOpening;
+    return TabBackStep(
+      nested: nested,
+      onBack: () {
+        if (_searchShown) {
+          // The same as the box's X: a search the reader can no longer see
+          // must not keep filtering the list (RA-MO-05).
+          final hadText = _searchController.text.trim().isNotEmpty;
+          _searchController.clear();
+          _searchFocusNode.unfocus();
+          setState(() => _searchOpen = false);
+          if (hadText) {
+            context.read<ProviderMarketplaceProvider>().setSearch('');
           }
-        });
+          return;
+        }
+        // Back to the tab the screen opened on.
+        setState(() => _tabLabel = null);
       },
       child: AarastScreenFrame(
         maxWidth: 520,

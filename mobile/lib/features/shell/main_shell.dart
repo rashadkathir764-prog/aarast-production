@@ -252,7 +252,10 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
   }
 
   Widget _buildLazyTab(int index, Widget child) {
-    return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
+    return RootTabBackScope.tab(
+      index: index,
+      child: _visitedTabs.contains(index) ? child : const SizedBox.shrink(),
+    );
   }
 }
 

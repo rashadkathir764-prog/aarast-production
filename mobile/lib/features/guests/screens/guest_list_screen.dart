@@ -14,6 +14,7 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/sync_status.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -181,10 +182,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
     // search). Android back has to undo the same states, or it leaves the
     // tab while the screen still shows a back affordance.
     final nested = _openGroup != null || _searching;
-    return PopScope(
-      canPop: !nested,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop || !nested) return;
+    return TabBackStep(
+      nested: nested,
+      onBack: () {
         setState(() {
           if (_searching) {
             _searching = false;

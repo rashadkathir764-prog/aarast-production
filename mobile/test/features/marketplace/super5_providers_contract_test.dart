@@ -284,6 +284,24 @@ void main() {
     expect(find.text('ما في مزودين في الدليل بعد'), findsNothing);
   });
 
+  testWidgets('Android back on a shown search clears its filter too', (
+    tester,
+  ) async {
+    // RA-MO-05: back used to hide the box and its words while the list stayed
+    // filtered by a search the reader could no longer see.
+    final state = _FakeMarketplaceProvider(search: 'قاعة');
+
+    await _pumpMarketplace(tester, state);
+    expect(find.text('قاعة'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(state.search, isEmpty);
+    expect(find.text('قاعة'), findsNothing);
+    expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
+  });
+
   testWidgets('clearing filters also clears the visible search text', (
     tester,
   ) async {

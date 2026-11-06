@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_clock.dart';
@@ -259,11 +260,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     final opening = _opening ?? 0;
     final atRoot = (_tab ?? opening) == opening;
     if (widget.embedded) {
-      return PopScope(
-        canPop: atRoot,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && !atRoot) setState(() => _tab = opening);
-        },
+      return TabBackStep(
+        nested: !atRoot,
+        onBack: () => setState(() => _tab = opening),
         child: ColoredBox(
           key: const ValueKey('money-overview-surface'),
           color: AppTheme.canvas,

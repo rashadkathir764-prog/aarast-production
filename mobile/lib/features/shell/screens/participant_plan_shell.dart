@@ -172,10 +172,13 @@ class _ParticipantPlanShellState extends State<ParticipantPlanShell>
           index: _index,
           children: [
             for (var index = 0; index < 5; index++)
-              _visited.contains(index)
-                  ? participantPlanTab(context, widget.weddingPlanId, index) ??
-                        const SizedBox.shrink()
-                  : const SizedBox.shrink(),
+              RootTabBackScope.tab(
+                index: index,
+                child: _visited.contains(index)
+                    ? participantPlanTab(context, widget.weddingPlanId, index) ??
+                          const SizedBox.shrink()
+                    : const SizedBox.shrink(),
+              ),
           ],
         ),
       ),

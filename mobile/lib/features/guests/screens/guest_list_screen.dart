@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_picker_service.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
@@ -451,7 +452,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             'المجموعة',
     };
     final visible = _filtered(inGroup, _reply)
-      ..sort((a, b) => a.name.compareTo(b.name));
+      ..sort((a, b) => compareArabicNames(a.name, b.name));
     // Each chip's count, worked out once. Every chip used to re-filter the
     // whole group on every frame, so a group of four hundred ran two
     // thousand checks a frame just to label five chips.

@@ -183,6 +183,107 @@ void main() {
     );
   });
 
+  // RA-MO-13: a tab of the route-owned plan shell is a place, not a step.
+  // However many taps, back goes to the plan's first tab, then to where the
+  // plan was opened from.
+  testWidgets('tab taps in a route-owned plan shell never stack', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go('/first');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/plan-1/dashboard');
+    await tester.pumpAndSettle();
+    const tabs = ['money', 'tasks', 'guests', 'providers'];
+    for (var tap = 0; tap < 30; tap++) {
+      harness.router.go('/wedding-plans/plan-1/${tabs[tap % tabs.length]}');
+      await tester.pumpAndSettle();
+    }
+    expect(harness.router.state.uri.path, '/wedding-plans/plan-1/tasks');
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/wedding-plans/plan-1/dashboard');
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/first');
+  });
+
+  testWidgets('a plan opened on a later tab still backs to its first tab', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go('/first');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/plan-1/providers');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/plan-1/tasks');
+    await tester.pumpAndSettle();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/wedding-plans/plan-1/dashboard');
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/first');
+  });
+
+  testWidgets('a plan kept on the phone backs to its one home, then exits', (
+    tester,
+  ) async {
+    final harness = _RouterHarness(
+      keptOnPhone: (planId) => planId.startsWith('guest-plan-'),
+    );
+    addTearDown(harness.dispose);
+    await tester.pumpWidget(harness.app);
+
+    // Opened from another screen: /home is still the end of back, as when
+    // it is reached going forward.
+    harness.router.go('/first');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/guest-plan-1/money');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/guest-plan-1/tasks');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/guest-plan-1/guests');
+    await tester.pumpAndSettle();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, AppRouter.home);
+
+    expect(await harness.dispatcher.didPopRoute(), isFalse);
+  });
+
+  testWidgets('a step inside a tab is still one back away', (tester) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go('/wedding-plans/plan-1/dashboard');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/plan-1/money');
+    await tester.pumpAndSettle();
+    harness.router.go('/wedding-plans/plan-1/money/costs/create');
+    await tester.pumpAndSettle();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/wedding-plans/plan-1/money');
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, '/wedding-plans/plan-1/dashboard');
+  });
+
   test('deep-link routes have a logical back fallback', () {
     expect(
       AarastBackButtonDispatcher.fallbackLocationFor(
@@ -227,7 +328,7 @@ class _CollectingLogSink implements AppLogSink {
 }
 
 class _RouterHarness {
-  _RouterHarness()
+  _RouterHarness({bool Function(String planId)? keptOnPhone})
     : router = GoRouter(
         initialLocation: AppRouter.home,
         routes: [
@@ -243,17 +344,24 @@ class _RouterHarness {
             path: '/second',
             builder: (context, state) => const _Screen('second'),
           ),
-          GoRoute(
-            path: '/wedding-plans/:id/money',
-            builder: (context, state) => const _Screen('money'),
-          ),
+          for (final tab in const [
+            'dashboard',
+            'money',
+            'tasks',
+            'guests',
+            'providers',
+          ])
+            GoRoute(
+              path: '/wedding-plans/:id/$tab',
+              builder: (context, state) => _Screen(tab),
+            ),
           GoRoute(
             path: '/wedding-plans/:id/money/costs/create',
             builder: (context, state) => const _Screen('create cost'),
           ),
         ],
       ) {
-    dispatcher = AarastBackButtonDispatcher(router);
+    dispatcher = AarastBackButtonDispatcher(router, keptOnPhone: keptOnPhone);
   }
 
   final GoRouter router;

@@ -7,18 +7,34 @@ import 'app_router.dart';
 /// Preserves app-level back navigation when a forward transition used
 /// [GoRouter.go] and therefore did not leave a Navigator page to pop.
 class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
-  AarastBackButtonDispatcher(this.router)
-    : _currentLocation = router.routeInformationProvider.value.uri.toString() {
+  AarastBackButtonDispatcher(
+    this.router, {
+    bool Function(String planId)? keptOnPhone,
+  }) : _keptOnPhone = keptOnPhone ?? _noPlanKeptOnPhone,
+       _currentLocation = router.routeInformationProvider.value.uri.toString() {
     router.routerDelegate.addListener(_handleRouteChanged);
   }
 
   final GoRouter router;
 
-  /// How many steps back the app keeps. Without a bound, moving around the
-  /// plan's five tabs appended an entry per tap (A→B→C→A grows; only an
-  /// immediate A→B→A folds), so leaving the plan took one back press for
-  /// every tap made. Twenty is more than any real path and still bounded.
+  /// Whether a plan id names a plan kept on the phone, whose «الرئيسية» tab
+  /// leads to /home (AuthActionGuard.isLocalGuestPlanId, given by the app).
+  final bool Function(String planId) _keptOnPhone;
+  static bool _noPlanKeptOnPhone(String planId) => false;
+
+  /// How many steps back the app keeps, so a long walk between screens that
+  /// are not tabs (provider to provider, say) stays bounded. Tabs never stack
+  /// (see [_handleRouteChanged]); twenty is more than any real path.
   static const _historyLimit = 20;
+
+  /// The tabs of the route-owned plan shell (WeddingPlanShell).
+  static const _planTabs = {
+    'dashboard',
+    'money',
+    'tasks',
+    'guests',
+    'providers',
+  };
 
   final List<_ContextRouteEntry> _history = <_ContextRouteEntry>[];
   String _currentLocation;
@@ -177,6 +193,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
 
     if (_restoringHistory) {
       _restoringHistory = false;
+      // Back that lands on a root has nothing left behind it, as when the
+      // root is reached going forward.
+      if (_isNavigationRoot(Uri.parse(next).path)) _history.clear();
       _currentLocation = next;
       return;
     }
@@ -190,6 +209,30 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
 
     if (_isNavigationRoot(Uri.parse(next).path)) {
       _history.clear();
+      _currentLocation = next;
+      return;
+    }
+
+    // RA-MO-13: a tab of the route-owned plan shell is a place, not a step.
+    // Switching between two tabs of one plan stacks nothing; only the place
+    // the plan's first tab leads to stays above where the plan was opened,
+    // so back goes there and then out, however many taps were made (as the
+    // in-route shells do, RootTabBackScope).
+    final leavingPlan = _planOfTab(_currentLocation);
+    final nextPlan = _planOfTab(next);
+    if (leavingPlan != null && leavingPlan == nextPlan) {
+      final first = _firstTabOf(nextPlan!);
+      final firstOnTop =
+          _history.isNotEmpty &&
+          _history.last.contextKey == _currentContextKey &&
+          _history.last.location == first;
+      if (Uri.parse(next).path == first) {
+        if (firstOnTop) _history.removeLast();
+      } else if (!firstOnTop) {
+        _history.add(
+          _ContextRouteEntry(location: first, contextKey: _currentContextKey),
+        );
+      }
       _currentLocation = next;
       return;
     }
@@ -236,6 +279,26 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
         path == AppRouter.providerDashboard ||
         path == AppRouter.welcome;
   }
+
+  /// The plan whose shell tab [location] is (`/wedding-plans/<id>/<tab>`),
+  /// else null. A step inside a tab (`/money/costs/create`) is not a tab.
+  static String? _planOfTab(String location) {
+    final segments = Uri.tryParse(location)?.pathSegments;
+    if (segments == null ||
+        segments.length != 3 ||
+        segments.first != 'wedding-plans' ||
+        segments[1].isEmpty ||
+        !_planTabs.contains(segments[2])) {
+      return null;
+    }
+    return segments[1];
+  }
+
+  /// Where the plan's «الرئيسية» tab leads (WeddingPlanShell._onNavigate):
+  /// a plan kept on the phone has its one home at /home.
+  String _firstTabOf(String planId) => _keptOnPhone(planId)
+      ? AppRouter.home
+      : AppRouter.weddingPlanDashboard(planId);
 
   static String? _planIdFromLocation(String location) {
     final segments = Uri.tryParse(location)?.pathSegments;

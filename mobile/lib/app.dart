@@ -24,7 +24,8 @@ import 'features/account_contexts/account_contexts_api.dart'
         AccountContextController,
         AccountContextPersona,
         AccountContextRole;
-import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
+import 'features/auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus;
 import 'features/onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona;
 import 'features/settings/settings_api.dart' show DeletionPendingScreen;
@@ -43,7 +44,10 @@ class _AarastAppState extends State<AarastApp> {
   // recreate the router, or the whole navigation state would be lost.
   late final GoRouter _router = AppRouter.create();
   late final AarastBackButtonDispatcher _backButtonDispatcher =
-      AarastBackButtonDispatcher(_router);
+      AarastBackButtonDispatcher(
+        _router,
+        keptOnPhone: AuthActionGuard.isLocalGuestPlanId,
+      );
 
   /// D87: read when a notification is tapped, never as a dependency of the
   /// root builder (a rebuild of the whole app on every context change).

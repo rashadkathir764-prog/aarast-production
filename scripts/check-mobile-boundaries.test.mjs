@@ -3284,7 +3284,8 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/auth/auth_api.dart',
-        show: ['AuthController', 'AuthStatus'],
+        // RA-MO-13: the back dispatcher learns which plans live on the phone.
+        show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
       },
       {
         target: 'mobile/lib/features/onboarding/onboarding_api.dart',

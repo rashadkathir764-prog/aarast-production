@@ -39,5 +39,6 @@ export 'screens/wedding_plan_dashboard_screen.dart'
 export 'utils/assistant_consent.dart' show AssistantConsent;
 export 'utils/plan_pulse_sync.dart'
     show publishGuestPlanPulse, publishTaskPlanPulse;
-export 'widgets/dashboard/aarast_dashboard_view.dart' show AarastDashboardView;
+export 'widgets/dashboard/aarast_dashboard_view.dart'
+    show AarastDashboardView, DashboardAfterWedding;
 export 'widgets/postpone_sheet.dart' show showPostponeSheet;

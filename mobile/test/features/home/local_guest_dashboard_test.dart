@@ -191,6 +191,56 @@ void main() {
     },
   );
 
+  // RA-MO-22: D22 and C12 make the home after the wedding the debt. A plan
+  // kept on the phone used to drop it (its debt was assumed the server's),
+  // leaving the greeting and the box alone.
+  testWidgets('a phone-only plan after its wedding shows what it still owes', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final plan = _guestPlan().copyWith(
+      weddingDate: DateTime.now().subtract(const Duration(days: 10)),
+    );
+    const metrics = LocalDashboardMetrics(
+      taskCount: 0,
+      completedTaskCount: 0,
+      overdueTaskCount: 0,
+      todayTaskCount: 0,
+      guestCount: 0,
+      confirmedGuestCount: 0,
+      pendingGuestCount: 0,
+      declinedGuestCount: 0,
+      incompleteGuestCount: 0,
+      confirmedCostTotal: 4200000,
+      paidTotal: 2300000,
+      outstandingTotal: 1900000,
+      duePaymentSchedulesCount: 0,
+      overduePaymentSchedulesCount: 0,
+      dueSoonPaymentSchedulesCount: 0,
+      nextPaymentScheduleDue: null,
+      importantItems: [],
+      recentActivity: [],
+    );
+    final summary = LocalGuestDashboardSummary.fromPlan(plan, metrics: metrics);
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp(home: LocalGuestDashboardScreen(summary: summary)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('بعد العرس'), findsOneWidget);
+    expect(find.text('1.9'), findsOneWidget);
+    expect(find.text('مليون باقي عليك'), findsOneWidget);
+    expect(find.text('سددت 2.3 مليون ر.ي من 4.2 مليون ر.ي'), findsOneWidget);
+    // No bookings without an account, so no providers to rate.
+    expect(find.text('قيّم'), findsNothing);
+  });
+
   testWidgets('guest plan hero opens plan center with local summary', (
     tester,
   ) async {

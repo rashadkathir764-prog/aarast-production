@@ -270,12 +270,23 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     DashboardSummary summary,
     String planId,
   ) {
-    if (_isLocalGuestPlan ||
-        !summary.canViewMoney ||
-        resolveWeddingPlanStage(summary.weddingDate).stage !=
-            WeddingPlanStage.wrapUp) {
+    if (resolveWeddingPlanStage(summary.weddingDate).stage !=
+        WeddingPlanStage.wrapUp) {
       return null;
     }
+    if (_isLocalGuestPlan) {
+      // RA-MO-22: a plan kept on the phone owes what its own money says.
+      final owed = _localSummary?.agreementsOwed;
+      if (owed == null) return null;
+      return DashboardAfterWedding(
+        left: owed.left,
+        paid: owed.total - owed.left,
+        total: owed.total,
+        loansLeft: 0,
+      );
+    }
+    if (!summary.canViewMoney) return null;
+    num value(String? text) => num.tryParse(text ?? '') ?? 0;
     final finance = context.watch<FinanceProvider?>();
     if (finance == null) return null;
     if (finance.loadedPlanId != planId) {
@@ -286,7 +297,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       }
       return null;
     }
-    num value(String? text) => num.tryParse(text ?? '') ?? 0;
     final money = finance.summary;
     final funding = money.funding;
     final total = value(money.costs.total) + value(funding?.loanTotal);

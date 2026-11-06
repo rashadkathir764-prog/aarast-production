@@ -17,6 +17,7 @@ import '../../shell/shell_api.dart'
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         AarastDashboardView,
+        DashboardAfterWedding,
         DashboardImportantItem,
         DashboardSummary,
         DashboardSummaryProvider;
@@ -68,6 +69,9 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     final summary = _summary;
     final dashboardSummary = summary.toDashboardSummary();
     final planId = dashboardSummary.planId;
+    // b07 after the day: the debt from the phone's own money (RA-MO-22); the
+    // view shows it only once the wedding day has passed.
+    final owed = summary.agreementsOwed;
 
     return PlanShellChrome(
       activeIndex: 0,
@@ -94,6 +98,12 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
             ? dashboardSummary.title.trim().substring(4)
             : '',
         bottomPadding: 132,
+        afterWedding: DashboardAfterWedding(
+          left: owed.left,
+          paid: owed.total - owed.left,
+          total: owed.total,
+          loansLeft: 0,
+        ),
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,
           signedIn: widget.onSaveToAccount != null,

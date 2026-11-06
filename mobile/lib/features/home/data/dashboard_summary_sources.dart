@@ -136,6 +136,15 @@ class LocalGuestDashboardSummary {
     );
   }
 
+  /// What the plan still owes on its agreements, for the home after the
+  /// wedding (D22, C12; RA-MO-22). A plan kept on the phone has no server to
+  /// ask, so these are the phone's own figures, the same its money tab shows.
+  /// No loans: money sources need an account.
+  ({num total, num left}) get agreementsOwed => (
+    total: _moneyValue(confirmedCostTotal),
+    left: _moneyValue(outstandingTotal),
+  );
+
   DashboardSummary toDashboardSummary() {
     final budget = _cleanAmount(plan.estimatedBudget);
     final remainingBudget = budget == null

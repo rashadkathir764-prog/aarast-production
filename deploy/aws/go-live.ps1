@@ -11,6 +11,18 @@ param(
   [string]$Stack = 'aarast-host',
   [string]$ApiUrl = 'https://api.3-121-198-183.sslip.io'
 )
+# Written for PowerShell 7 (pwsh). From Windows PowerShell 5.1 the script
+# runs itself again under pwsh, so an Arabic string or a 7-only option never
+# breaks it (go-live from Rashad's window, 2026-11-06).
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+  $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+  if (-not $pwsh) { throw 'هذا السكربت يحتاج PowerShell 7: ثبّته ثم شغّله بالأمر pwsh' }
+  $forward = @()
+  foreach ($name in $PSBoundParameters.Keys) { $forward += "-$name"; $forward += $PSBoundParameters[$name] }
+  & $pwsh.Source -NoProfile -File $PSCommandPath @forward
+  exit $LASTEXITCODE
+}
+
 $ErrorActionPreference = 'Stop'
 $aws = 'C:\Program Files\Amazon\AWSCLIV2\aws.exe'
 

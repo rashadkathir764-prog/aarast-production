@@ -534,6 +534,13 @@ void main() {
       now: DateTime.utc(2026, 11, 6, 22),
     );
     expect(summary.daysRemaining, 0);
+    // RA-TS-03 (39c2fc0): the day after is a day past, not «اليوم عرسك»:
+    // the count is not clamped at zero.
+    final after = LocalGuestDashboardSummary.fromPlan(
+      plan,
+      now: DateTime.utc(2026, 11, 8, 9),
+    );
+    expect(after.daysRemaining, -1);
   });
 }
 

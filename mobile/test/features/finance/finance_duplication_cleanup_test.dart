@@ -348,10 +348,26 @@ void main() {
                 ),
             ],
             payers: const [
-              MoneyPayerSummary(payer: 'FATHER', ownerMoney: false, paid: '100'),
-              MoneyPayerSummary(payer: 'MOTHER', ownerMoney: false, paid: '100'),
-              MoneyPayerSummary(payer: 'BROTHER', ownerMoney: false, paid: '100'),
-              MoneyPayerSummary(payer: 'SISTER', ownerMoney: false, paid: '100'),
+              MoneyPayerSummary(
+                payer: 'FATHER',
+                ownerMoney: false,
+                paid: '100',
+              ),
+              MoneyPayerSummary(
+                payer: 'MOTHER',
+                ownerMoney: false,
+                paid: '100',
+              ),
+              MoneyPayerSummary(
+                payer: 'BROTHER',
+                ownerMoney: false,
+                paid: '100',
+              ),
+              MoneyPayerSummary(
+                payer: 'SISTER',
+                ownerMoney: false,
+                paid: '100',
+              ),
             ],
           ),
         ),
@@ -480,6 +496,51 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // RA-TS-03: Android back in money undoes the tab the reader picked, then
+    // leaves; it is the tab the screen opened on that counts as its root.
+    testWidgets('android back returns money to its opening tab, then leaves', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(
+        _wrap(_FakeFinanceApi.withCosts(), embedded: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-tabs')),
+          matching: find.text('الدفعات'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('اتفقت على', findRichText: true),
+        findsNothing,
+      );
+
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('اتفقت على', findRichText: true),
+        findsOneWidget,
+        reason: 'back on «الملخص», the tab money opened on',
+      );
+      expect(await tester.binding.handlePopRoute(), isFalse);
+    });
+
+    testWidgets('an empty plan leaves money from «البنود» on the first back', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      await tester.pumpWidget(
+        _wrap(_FakeFinanceApi.noBudget(), embedded: true),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('أضف أول بند'), findsOneWidget);
+
+      expect(await tester.binding.handlePopRoute(), isFalse);
+    });
+
     testWidgets('member without money access sees the private state only', (
       tester,
     ) async {
@@ -568,9 +629,7 @@ Widget _wrap(
         create: (_) => FundingProvider(_FakeFundingApi()),
       ),
       if (catalogs != null)
-        ChangeNotifierProvider<ReferenceCatalogProvider>.value(
-          value: catalogs,
-        ),
+        ChangeNotifierProvider<ReferenceCatalogProvider>.value(value: catalogs),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(

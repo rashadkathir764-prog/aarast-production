@@ -14,6 +14,11 @@ import type {
 import { groupPrices, type PriceGroup } from '../public/market-prices';
 import { featuredNowProviderWhere } from '../public/featured-placement';
 import { listPricedServices } from './market-prices.repository';
+import {
+  ARABIC_FOLD_FROM,
+  ARABIC_FOLD_TO,
+  arabicSearchKey,
+} from '../../../shared-kernel/text/arabic-search';
 
 @Injectable()
 export class ProviderReadService implements ProviderReadPort {
@@ -54,14 +59,13 @@ export class ProviderReadService implements ProviderReadPort {
     providerIds: readonly string[],
     search: string,
   ): Promise<string[]> {
-    if (providerIds.length === 0) return [];
-    const providers = await client.provider.findMany({
-      where: {
-        id: { in: [...providerIds] },
-        businessName: { contains: search, mode: 'insensitive' },
-      },
-      select: { id: true },
-    });
+    const key = arabicSearchKey(search);
+    if (providerIds.length === 0 || key.length === 0) return [];
+    // RA-BE-09: the name is matched folded, as the phone matches it.
+    const providers = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT p."id" FROM "Provider" p
+      WHERE p."id" IN (${Prisma.join([...providerIds])})
+        AND strpos(translate(lower(p."businessName"), ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
     return providers.map((provider) => provider.id);
   }
 

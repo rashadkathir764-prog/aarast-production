@@ -50,10 +50,11 @@ test("provider and service filters keep canonical active-only constraints", () =
     })));
   const providerWhere = JSON.stringify(providers.where);
   assert.match(providerWhere, /ACTIVE/);
-  assert.match(providerWhere, /قاعة/);
   assert.match(providerWhere, /services/);
-  assert.match(providerWhere, /title/);
-  assert.match(providerWhere, /description/);
+  // RA-BE-09: the text is matched folded by the service's search query
+  // (findProviderIdsMatchingSearch), so the filter carries only its key.
+  assert.doesNotMatch(providerWhere, /قاعة|insensitive/);
+  assert.equal(providers.searchKey, "قاعه");
 
   const services = MarketplaceQuery.serviceSearch({
     minPrice: "100",
@@ -62,7 +63,9 @@ test("provider and service filters keep canonical active-only constraints", () =
   });
   assert.equal(services.where.isActive, true);
   assert.deepEqual(services.where.basePrice, { gte: "100", lte: "500" });
-  assert.match(JSON.stringify(services.where), /تصوير/);
+  assert.doesNotMatch(JSON.stringify(services.where), /تصوير|insensitive/);
+  assert.equal(services.searchKey, "تصوير");
+  assert.equal(MarketplaceQuery.searchKey("  ـــ "), null);
 });
 
 // Field test Q14: an approved provider with no service was listed as an empty

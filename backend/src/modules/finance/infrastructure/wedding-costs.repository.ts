@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type CostPayer, type WeddingCost } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
 import { weddingCostResponseInclude } from '../public/wedding-cost.presenter';
+import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from '../../../shared-kernel/text/arabic-search';
 
 type Client = Prisma.TransactionClient | PrismaService;
 
@@ -13,7 +14,6 @@ const scheduleInclude = Prisma.validator<Prisma.PaymentScheduleInclude>()({
   weddingCost: { include: { budgetCategory: { select: { name: true } } } },
 });
 
-type TextSearch = { contains: string; mode: 'insensitive' };
 type IdSet = { in: string[] };
 type CostWhere = {
   id?: string | IdSet;
@@ -23,12 +23,6 @@ type CostWhere = {
   quoteOfferId?: string;
   providerId?: { not: null };
   payer?: CostPayer;
-  OR?: Array<{
-    title?: TextSearch;
-    partyName?: TextSearch;
-    providerId?: IdSet;
-    budgetCategory?: { name: TextSearch };
-  }>;
 };
 type CostData = {
   weddingPlanId: string;
@@ -243,6 +237,30 @@ export async function lockBudgetCategoriesForCost(
       SELECT "id" FROM "BudgetCategory"
       WHERE "id" IN (${Prisma.join(orderedIds)}) AND "weddingPlanId" = ${weddingPlanId}
       ORDER BY "id" ASC FOR SHARE
+    `,
+  );
+  return rows.map((row) => row.id);
+}
+
+/**
+ * RA-BE-09: the plan's agreements whose title, party or item name holds the
+ * search folded as the phone folds it, or that are with one of
+ * [providerIds] (the plan's providers whose name matched).
+ */
+export async function findWeddingCostIdsMatchingSearch(
+  tx: Prisma.TransactionClient,
+  weddingPlanId: string,
+  key: string,
+  providerIds: readonly string[],
+): Promise<string[]> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`
+      SELECT c."id" FROM "WeddingCost" c
+      JOIN "BudgetCategory" b ON b."id" = c."budgetCategoryId"
+      WHERE c."weddingPlanId" = ${weddingPlanId}
+        AND (strpos(translate(lower(concat_ws(chr(1), c."title", c."partyName", b."name")),
+               ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
+          OR c."providerId" = ANY(${[...providerIds]}::text[]))
     `,
   );
   return rows.map((row) => row.id);

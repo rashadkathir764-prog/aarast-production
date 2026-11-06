@@ -17,6 +17,7 @@ import { featuredNowConditions, featuredUntil, listedProviderConditions, notFeat
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { publicReviewReply } from "../modules/marketplace/public/review-reply";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
+import { arabicSearchKey } from "../shared-kernel/text/arabic-search";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
 import {
   FavoriteWithProvider,
@@ -58,6 +59,7 @@ export class MarketplaceQuery {
   static providerSearch(query: ListProvidersQueryDto, now: Date): {
     pagination: MarketplacePagination;
     where: ProviderSearchWhere;
+    searchKey: string | null;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
     // An approved provider is listed once it offers something; its page
@@ -76,34 +78,22 @@ export class MarketplaceQuery {
       if (featured) and.push(...featuredNowConditions(now));
       else and.push(notFeaturedNowCondition(now));
     }
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { businessName: { contains: search, mode: "insensitive" } },
-          { ownerName: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-          {
-            services: {
-              some: {
-                isActive: true,
-                OR: [
-                  { title: { contains: search, mode: "insensitive" } },
-                  { description: { contains: search, mode: "insensitive" } },
-                ],
-              },
-            },
-          },
-        ],
-      });
-    }
-    return { pagination, where };
+    // RA-BE-09: the text is matched folded, as the phone matches it, by the
+    // caller (findProviderIdsMatchingSearch), which adds the ids it found.
+    return { pagination, where, searchKey: this.searchKey(query.search) };
+  }
+
+  /** The folded search, or null when there is nothing left to match. */
+  static searchKey(value: string | null | undefined): string | null {
+    const search = this.optionalText(value);
+    const key = search ? arabicSearchKey(search) : "";
+    return key.length > 0 ? key : null;
   }
 
   static serviceSearch(query: ListServicesQueryDto): {
     pagination: MarketplacePagination;
     where: ServiceSearchWhere;
+    searchKey: string | null;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
     const and: ServiceSearchWhere["AND"] = [
@@ -131,20 +121,6 @@ export class MarketplaceQuery {
         ],
       });
     }
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { title: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-          {
-            provider: {
-              businessName: { contains: search, mode: "insensitive" },
-            },
-          },
-        ],
-      });
-    }
     const minPrice = this.optionalDecimal(query.minPrice, "minPrice");
     const maxPrice = this.optionalDecimal(query.maxPrice, "maxPrice");
     if (minPrice !== null || maxPrice !== null) {
@@ -153,7 +129,7 @@ export class MarketplaceQuery {
         ...(maxPrice !== null ? { lte: maxPrice } : {}),
       };
     }
-    return { pagination, where };
+    return { pagination, where, searchKey: this.searchKey(query.search) };
   }
 
   static optionalBoolean(

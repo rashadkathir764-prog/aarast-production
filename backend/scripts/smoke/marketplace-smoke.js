@@ -454,6 +454,16 @@ async function run() {
   }
 
   {
+    // RA-BE-09: typed as people type it (ه for ة, no spaces, a tatweel), the
+    // search still finds «خدمة سموك للسوق», as the phone's copy does.
+    const res = await request('GET', `/api/v1/providers?search=${encodeURIComponent('خدمه سـموكللسوق')}`);
+    check('provider search folds the spelling - HTTP 200', res.status === 200);
+    check('provider search folds the spelling finds fixture', res.body?.items?.some((provider) => provider.id === fixture.provider.id));
+    const services = await request('GET', `/api/v1/services?search=${encodeURIComponent('خدمه سموك')}`);
+    check('service search folds the spelling finds fixture', services.body?.items?.some((service) => service.id === fixture.service.id));
+  }
+
+  {
     const res = await request('GET', `/api/v1/providers/${fixture.provider.id}`);
     check('GET /api/v1/providers/:id - HTTP 200', res.status === 200);
     check('provider detail id matches', res.body?.id === fixture.provider.id);

@@ -7,6 +7,7 @@ import type {
 } from "../../../marketplace/marketplace.contracts";
 import { MARKETPLACE_QUOTE_INCLUDE } from "../../../marketplace/marketplace.contracts";
 import type { ProviderResponseSample } from "../../../marketplace/provider-responsiveness";
+import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from "../../../shared-kernel/text/arabic-search";
 import {
   activeFeaturedPeriodInclude,
   featuredNowConditions,
@@ -14,6 +15,36 @@ import {
 } from "../public/featured-placement";
 
 type Client = Prisma.TransactionClient;
+
+/**
+ * RA-BE-09: the providers whose name, owner, description or address, or an
+ * active service's title or description, holds the search folded as the
+ * phone folds it (shared-kernel/text/arabic-search). The listing rules still
+ * apply on top (the caller's where).
+ */
+export async function findProviderIdsMatchingSearch(client: Client, key: string): Promise<string[]> {
+  const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT p."id" FROM "Provider" p
+    WHERE strpos(translate(lower(concat_ws(chr(1), p."businessName", p."ownerName", p."description", p."address")),
+            ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
+       OR EXISTS (
+         SELECT 1 FROM "ProviderService" s
+         WHERE s."providerId" = p."id" AND s."isActive" = true
+           AND strpos(translate(lower(concat_ws(chr(1), s."title", s."description")),
+                 ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
+       )`);
+  return rows.map((row) => row.id);
+}
+
+/** RA-BE-09: the services whose title or description, or provider's name, holds the folded search. */
+export async function findServiceIdsMatchingSearch(client: Client, key: string): Promise<string[]> {
+  const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT s."id" FROM "ProviderService" s
+    JOIN "Provider" p ON p."id" = s."providerId"
+    WHERE strpos(translate(lower(concat_ws(chr(1), s."title", s."description", p."businessName")),
+            ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+  return rows.map((row) => row.id);
+}
 
 export function countActiveProviders(client: Client, where: ProviderSearchWhere) {
   return client.provider.count({ where });

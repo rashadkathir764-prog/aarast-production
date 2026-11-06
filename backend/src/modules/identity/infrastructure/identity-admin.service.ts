@@ -15,6 +15,11 @@ import type {
   CreatedAtRange,
   IdentityAdminPort,
 } from '../public/identity-admin.port';
+import {
+  ARABIC_FOLD_FROM,
+  ARABIC_FOLD_TO,
+  arabicSearchKey,
+} from '../../../shared-kernel/text/arabic-search';
 
 const adminAccountSelect = {
   id: true,
@@ -95,7 +100,7 @@ export class IdentityAdminService implements IdentityAdminPort {
     const where = search
       ? {
           OR: [
-            { name: textMatch(search) },
+            { id: { in: await namedAccountIds(client, search) } },
             { phone: textMatch(search) },
             { email: textMatch(search) },
           ],
@@ -139,14 +144,12 @@ export class IdentityAdminService implements IdentityAdminPort {
     fields: readonly AccountSearchField[],
   ): Promise<string[]> {
     if (fields.length === 0) return [];
+    const named = fields.includes('name')
+      ? await namedAccountIds(client, search)
+      : [];
+    if (!fields.includes('phone')) return named;
     const rows = await client.user.findMany({
-      where: {
-        OR: fields.map((field) =>
-          field === 'name'
-            ? { name: textMatch(search) }
-            : { phone: textMatch(search) },
-        ),
-      },
+      where: { OR: [{ id: { in: named } }, { phone: textMatch(search) }] },
       select: { id: true },
     });
     return rows.map((row) => row.id);
@@ -182,6 +185,19 @@ export class IdentityAdminService implements IdentityAdminPort {
     ]);
     return { total, active, disabled, admins, providers };
   }
+}
+
+/** RA-BE-09: the accounts whose name holds the search folded as the phone folds it. */
+async function namedAccountIds(
+  client: Prisma.TransactionClient,
+  search: string,
+): Promise<string[]> {
+  const key = arabicSearchKey(search);
+  if (key.length === 0) return [];
+  const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT u."id" FROM "User" u
+    WHERE strpos(translate(lower(u."name"), ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+  return rows.map((row) => row.id);
 }
 
 function textMatch(search: string): TextMatch {

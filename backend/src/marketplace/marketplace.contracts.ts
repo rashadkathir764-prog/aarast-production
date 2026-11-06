@@ -21,14 +21,13 @@ import type { ActiveFeaturedPeriodWhere, FeaturedWindow } from "../modules/marke
 // The search and access filters name marketplace's own columns and relations
 // exactly (the ownership scan proves a declared shape; a generated Prisma
 // input type admits every key and is never a proof).
-type TextMatch = { contains: string; mode: "insensitive" };
 export interface ProviderSearchWhere {
   AND: Array<
     | { status: ProviderStatus } | { services: { some: { isActive: boolean } } }
     | { cityId: string }
     | { userId: { not: null } } | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } } | { OR: Array<{ userId: null } | { featuredPeriods: { none: ActiveFeaturedPeriodWhere } }> }
     | { OR: Array<{ primaryCategoryId: { in: string[] } } | { services: { some: { categoryId: { in: string[] }; isActive: boolean } } }> }
-    | { OR: Array<{ businessName: TextMatch } | { ownerName: TextMatch } | { description: TextMatch } | { address: TextMatch } | { services: { some: { isActive: boolean; OR: Array<{ title: TextMatch } | { description: TextMatch }> } } }> }
+    | { id: { in: string[] } }
   >;
 }
 export interface ServiceSearchWhere {
@@ -39,7 +38,7 @@ export interface ServiceSearchWhere {
   AND: Array<
     | { provider: { status: ProviderStatus } }
     | { OR: Array<{ cityId: string } | { cityId: null; provider: { cityId: string } }> }
-    | { OR: Array<{ title: TextMatch } | { description: TextMatch } | { provider: { businessName: TextMatch } }> }
+    | { id: { in: string[] } }
   >;
 }
 /** A user's own quotes: plan-less, in an owned plan, or created in a plan the user still manages providers for. */

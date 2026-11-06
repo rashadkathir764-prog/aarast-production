@@ -67,6 +67,12 @@ import {
   priceStampForNewService,
   priceStampForServiceUpdate,
 } from './service-price-stamp';
+import { findServiceIdsMatchingSearch } from './marketplace-core.repository';
+import {
+  ARABIC_FOLD_FROM,
+  ARABIC_FOLD_TO,
+  arabicSearchKey,
+} from '../../../shared-kernel/text/arabic-search';
 
 interface TextMatch {
   contains: string;
@@ -75,6 +81,11 @@ interface TextMatch {
 
 interface AccountMatch {
   userId: { in: string[] };
+}
+
+/** RA-BE-09: the rows whose Arabic text matched the folded search. */
+interface FoldedMatch {
+  id: { in: string[] };
 }
 
 type ProviderAdminCondition =
@@ -89,8 +100,7 @@ type ProviderAdminCondition =
     }
   | {
       OR: Array<
-        | { businessName: TextMatch }
-        | { ownerName: TextMatch }
+        | FoldedMatch
         | { phone: TextMatch }
         | { email: TextMatch }
         | AccountMatch
@@ -107,23 +117,14 @@ type ServiceAdminCondition =
       >;
     }
   | {
-      OR: Array<
-        | { title: TextMatch }
-        | { description: TextMatch }
-        | { provider: { businessName: TextMatch } }
-        | { provider: { phone: TextMatch } }
-      >;
+      OR: Array<FoldedMatch | { provider: { phone: TextMatch } }>;
     };
 
 type ReviewAdminCondition =
   | { status: ReviewStatus }
   | { providerId: string }
   | {
-      OR: Array<
-        | { comment: TextMatch }
-        | AccountMatch
-        | { provider: { businessName: TextMatch } }
-      >;
+      OR: Array<FoldedMatch | AccountMatch>;
     };
 
 /** a12 (B-40): what a booking is to the people (COMPLETED once its day passed). */
@@ -266,10 +267,14 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     }
     if (filter.search) {
       const text = textMatch(filter.search.text);
+      const key = arabicSearchKey(filter.search.text);
+      const named = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT p."id" FROM "Provider" p
+        WHERE strpos(translate(lower(concat_ws(chr(1), p."businessName", p."ownerName")),
+                ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
       and.push({
         OR: [
-          { businessName: text },
-          { ownerName: text },
+          { id: { in: named.map((row) => row.id) } },
           { phone: text },
           { email: text },
           { userId: { in: [...filter.search.userIds] } },
@@ -544,13 +549,11 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       });
     }
     if (filter.search) {
-      const text = textMatch(filter.search);
+      const key = arabicSearchKey(filter.search);
       and.push({
         OR: [
-          { title: text },
-          { description: text },
-          { provider: { businessName: text } },
-          { provider: { phone: text } },
+          { id: { in: await findServiceIdsMatchingSearch(client, key) } },
+          { provider: { phone: textMatch(filter.search) } },
         ],
       });
     }
@@ -739,12 +742,16 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     if (filter.status) and.push({ status: filter.status });
     if (filter.providerId) and.push({ providerId: filter.providerId });
     if (filter.search) {
-      const text = textMatch(filter.search.text);
+      const key = arabicSearchKey(filter.search.text);
+      const matched = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT r."id" FROM "ProviderReview" r
+        JOIN "Provider" p ON p."id" = r."providerId"
+        WHERE strpos(translate(lower(concat_ws(chr(1), r."comment", p."businessName")),
+                ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
       and.push({
         OR: [
-          { comment: text },
+          { id: { in: matched.map((row) => row.id) } },
           { userId: { in: [...filter.search.userIds] } },
-          { provider: { businessName: text } },
         ],
       });
     }

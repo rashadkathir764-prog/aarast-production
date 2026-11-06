@@ -166,13 +166,17 @@ export class MarketplaceService {
 
   async findProviders(query: ListProvidersQueryDto) {
     const now = new Date();
-    const { pagination, where } = MarketplaceQuery.providerSearch(query, now);
-    // One snapshot for the count and both featured and regular reads (B-43).
+    const { pagination, where, searchKey } = MarketplaceQuery.providerSearch(query, now);
+    // One snapshot for the search, the count and both featured and regular
+    // reads (B-43). RA-BE-09: the text is matched folded, as on the phone.
     const [total, providerRows] = await this.prisma.$transaction(
-      async (tx) => [
-        await core.countActiveProviders(tx, where),
-        await core.searchActiveProviders(tx, where, pagination, now),
-      ] as const,
+      async (tx) => {
+        if (searchKey) where.AND.push({ id: { in: await core.findProviderIdsMatchingSearch(tx, searchKey) } });
+        return [
+          await core.countActiveProviders(tx, where),
+          await core.searchActiveProviders(tx, where, pagination, now),
+        ] as const;
+      },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
     // Catalog's city and category rows are attached after the own-table read.
@@ -242,7 +246,9 @@ export class MarketplaceService {
   }
 
   async findServices(query: ListServicesQueryDto) {
-    const { pagination, where } = MarketplaceQuery.serviceSearch(query);
+    const { pagination, where, searchKey } = MarketplaceQuery.serviceSearch(query);
+    // RA-BE-09: the text is matched folded, as on the phone.
+    if (searchKey) where.AND.push({ id: { in: await core.findServiceIdsMatchingSearch(this.prisma, searchKey) } });
 
     const [total, serviceRows] = await this.prisma.$transaction([
       core.countActiveServices(this.prisma, where),

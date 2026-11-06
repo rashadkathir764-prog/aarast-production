@@ -131,16 +131,21 @@ test('identity locks the accounts in id order, once each, and skips an empty loc
 
 test('identity lists accounts without credentials and searches the requested fields', async () => {
   const { client, calls } = recordingClient({
+    $queryRaw: [{ id: 'named-1' }],
     'user.count': 1,
     'user.findMany': (args: any) => (args.select.id && Object.keys(args.select).length === 1 ? [{ id: 'u1' }] : []),
   });
   const service = new IdentityAdminService();
 
-  await service.listAccounts(client, 'sara', { skip: 20, take: 10 });
-  const text = { contains: 'sara', mode: 'insensitive' };
-  const where = { OR: [{ name: text }, { phone: text }, { email: text }] };
-  assert.deepEqual(calls[0], ['user.count', { where }]);
-  const [, list] = calls[1] as [string, any];
+  await service.listAccounts(client, 'سارة', { skip: 20, take: 10 });
+  // RA-BE-09: the name is matched folded (by id); phone and email as typed.
+  const [, nameQuery] = calls[0] as [string, { sql: string; values: unknown[] }];
+  assert.match(nameQuery.sql, /FROM "User" u\s+WHERE strpos\(translate\(lower\(u\."name"\)/);
+  assert.equal(nameQuery.values[nameQuery.values.length - 1], 'ساره');
+  const text = { contains: 'سارة', mode: 'insensitive' };
+  const where = { OR: [{ id: { in: ['named-1'] } }, { phone: text }, { email: text }] };
+  assert.deepEqual(calls[1], ['user.count', { where }]);
+  const [, list] = calls[2] as [string, any];
   assert.deepEqual(list.where, where);
   assert.deepEqual(Object.keys(list.select).sort(), [
     'avatarUrl', 'createdAt', 'email', 'id', 'name', 'phone', 'role', 'status', 'updatedAt',
@@ -148,11 +153,14 @@ test('identity lists accounts without credentials and searches the requested fie
   assert.deepEqual([list.orderBy, list.skip, list.take], [{ createdAt: 'desc' }, 20, 10]);
 
   calls.length = 0;
-  assert.deepEqual(await service.searchAccountIds(client, 'sara', ['name', 'phone']), ['u1']);
-  assert.deepEqual(calls[0], [
+  assert.deepEqual(await service.searchAccountIds(client, 'سارة', ['name', 'phone']), ['u1']);
+  assert.deepEqual(calls[1], [
     'user.findMany',
-    { where: { OR: [{ name: text }, { phone: text }] }, select: { id: true } },
+    { where: { OR: [{ id: { in: ['named-1'] } }, { phone: text }] }, select: { id: true } },
   ]);
+  calls.length = 0;
+  assert.deepEqual(await service.searchAccountIds(client, 'سارة', ['name']), ['named-1']);
+  assert.deepEqual(calls.map(([name]) => name), ['$queryRaw']);
   calls.length = 0;
   assert.deepEqual(await service.searchAccountIds(client, 'sara', []), []);
   assert.deepEqual(calls, []);
@@ -195,7 +203,11 @@ test('catalog locks a category before reading it and never reads a missing one',
 });
 
 test('marketplace filters providers by its own columns and the accounts identity matched', async () => {
-  const { client, calls } = recordingClient({ 'provider.count': 0, 'provider.findMany': [] });
+  const { client, calls } = recordingClient({
+    $queryRaw: [{ id: 'provider-named' }],
+    'provider.count': 0,
+    'provider.findMany': [],
+  });
   const service = new MarketplaceAdminService();
 
   await service.listProviders(
@@ -220,11 +232,14 @@ test('marketplace filters providers by its own columns and the accounts identity
       { resubmittedAt: { not: null } },
       { cityId: 'city-1' },
       { OR: [{ primaryCategoryId: 'category-1' }, { services: { some: { categoryId: 'category-1' } } }] },
-      { OR: [{ businessName: text }, { ownerName: text }, { phone: text }, { email: text }, { userId: { in: ['u1'] } }] },
+      // RA-BE-09: the names are matched folded (by id); phone and email as typed.
+      { OR: [{ id: { in: ['provider-named'] } }, { phone: text }, { email: text }, { userId: { in: ['u1'] } }] },
     ],
   };
-  assert.deepEqual(calls[0], ['provider.count', { where }]);
-  const [, list] = calls[1] as [string, any];
+  const [, nameQuery] = calls[0] as [string, { sql: string }];
+  assert.match(nameQuery.sql, /"businessName"[\s\S]*"ownerName"/);
+  assert.deepEqual(calls[1], ['provider.count', { where }]);
+  const [, list] = calls[2] as [string, any];
   assert.deepEqual(list.where, where);
   // The counts, and the latest decision whose notes the row shows (B-01).
   assert.deepEqual(Object.keys(list.include), ['_count', 'reviewEvents']);

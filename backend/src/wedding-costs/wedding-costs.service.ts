@@ -119,7 +119,9 @@ import {
   lockCostPayment,
   lockPaymentSchedule,
   readBudgetCategoryKinds,
+  findWeddingCostIdsMatchingSearch,
 } from "../modules/finance/infrastructure/wedding-costs.repository";
+import { arabicSearchKey } from "../shared-kernel/text/arabic-search";
 import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { mahrItemMoveViolation } from "../modules/finance/domain/mahr-policy";
 
@@ -352,31 +354,26 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const searchedProviderIds = search
-          ? await this.providerIdsMatchingSearch(tx, weddingPlanId, search)
-          : [];
+        // RA-BE-09: an agreement is found by its title, party, item or
+        // provider's name, folded as the phone folds them.
+        const searchKey = search ? arabicSearchKey(search) : "";
+        const searchedCostIds = searchKey
+          ? await findWeddingCostIdsMatchingSearch(
+              tx,
+              weddingPlanId,
+              searchKey,
+              await this.providerIdsMatchingSearch(tx, weddingPlanId, searchKey),
+            )
+          : null;
+        const costIds = intersectIds(scopedCostIds, searchedCostIds);
         const where = {
           weddingPlanId,
-          ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+          ...(costIds ? { id: { in: costIds } } : {}),
           ...(query.status ? { status: query.status } : {}),
           ...(query.categoryId?.trim()
             ? { budgetCategoryId: query.categoryId.trim() }
             : {}),
           ...(query.payer ? { payer: query.payer } : {}),
-          ...(search
-            ? {
-                OR: [
-                  { title: { contains: search, mode: "insensitive" } },
-                  { partyName: { contains: search, mode: "insensitive" } },
-                  { providerId: { in: searchedProviderIds } },
-                  {
-                    budgetCategory: {
-                      name: { contains: search, mode: "insensitive" },
-                    },
-                  },
-                ],
-              }
-            : {}),
           ...liveFilter,
         } satisfies Prisma.WeddingCostWhereInput;
         const [costs, total] = await Promise.all([
@@ -2189,4 +2186,15 @@ export class WeddingCostsService {
 /** The account reading through this context (the owner or the member). */
 function readerUserId(context: PlanAccessContext): string {
   return context.sharedMember?.userId ?? context.plan.ownerUserId;
+}
+
+/** The ids both lists allow; a null list allows every id. */
+function intersectIds(
+  first: string[] | null,
+  second: string[] | null,
+): string[] | null {
+  if (first === null) return second;
+  if (second === null) return first;
+  const allowed = new Set(second);
+  return first.filter((id) => allowed.has(id));
 }

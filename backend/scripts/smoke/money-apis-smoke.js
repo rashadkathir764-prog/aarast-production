@@ -171,6 +171,28 @@ async function run() {
     );
     check('cost update persists canonical fields', updateCost.status === 200 && updateCost.body?.title === 'Updated hall agreement');
 
+    // RA-BE-09: an agreement is found by its title folded as the phone folds
+    // it: «قاعه» (ه for ة, a tatweel) finds «اتفاق القاعة».
+    const arabicCost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      { budgetCategoryId: categoryId, title: 'اتفاق القاعة', totalAmount: '100' },
+      owner.token,
+    );
+    const foldedSearch = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/costs?search=${encodeURIComponent('القـاعه')}`,
+      null,
+      owner.token,
+    );
+    check(
+      'cost search folds the Arabic spelling',
+      foldedSearch.status === 200
+        && foldedSearch.body?.items?.length === 1
+        && foldedSearch.body.items[0].id === arabicCost.body?.id,
+    );
+    await request('DELETE', `/api/v1/costs/${arabicCost.body?.id}`, null, owner.token);
+
     const invalidCost = await request(
       'POST',
       `/api/v1/wedding-plans/${planId}/costs`,

@@ -486,7 +486,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
 
     await walk.step('e06_guest_lunch', 'ضيف يحضر الغداء أيضًا', () async {
       await walk.goTo('/wedding-plans/$planId/guests');
-      await walk.tapKey('guests-add', wait: 3);
+      await walk.tapAddGuest();
       await walk.enterField('الاسم', 'ضيف الغداء');
       walk.expectSee('يحضر أيضًا', why: 'النموذج يعرض مناسبات الخطة (D83)');
       // The sheet is the last «الغداء» on screen; an earlier match (the

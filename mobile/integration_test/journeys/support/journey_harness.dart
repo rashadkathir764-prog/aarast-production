@@ -265,6 +265,22 @@ class JourneyWalk {
     return true;
   }
 
+  /// Whether the guests tab offers a way to add a guest: the header «+» where
+  /// the screen keeps one (a helper's plan), or the plan's floating quick-add,
+  /// which on that tab opens the guest form directly (a8ff4d4 dropped the
+  /// owner's header «+» because it duplicated the floating one).
+  bool get seesAddGuest =>
+      find.byKey(const ValueKey('guests-add')).evaluate().isNotEmpty ||
+      find.byKey(const ValueKey('aarast-quick-action')).evaluate().isNotEmpty;
+
+  /// Opens the guest form through whichever add path [seesAddGuest] found.
+  Future<bool> tapAddGuest({double wait = 3}) async {
+    if (find.byKey(const ValueKey('guests-add')).evaluate().isNotEmpty) {
+      return tapKey('guests-add', wait: wait);
+    }
+    return tapKey('aarast-quick-action', wait: wait);
+  }
+
   /// Taps [label] inside the widget keyed [key] (a card, a header).
   Future<bool> tapWithin(
     String key,

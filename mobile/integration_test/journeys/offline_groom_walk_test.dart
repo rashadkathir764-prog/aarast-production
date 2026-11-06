@@ -3,7 +3,6 @@
 // at a closed port: the plan opens from the phone, every tab shows its copy,
 // a guest is added and kept, and nothing asks to retry.
 // Run: see docs/qa/JOURNEY_WALKS.md.
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -47,13 +46,11 @@ void main() {
     await walk.step('o04_guests', 'الضيوف: القائمة والزر موجودان', () async {
       await walk.tab('الضيوف');
       walk.expectSee('آل الحمدي', why: 'العائلات من نسخة الجوال');
-      if (find.byKey(const ValueKey('guests-add')).evaluate().isEmpty) {
-        walk.fail('زر إضافة الضيف اختفى بدون خادم');
-      }
+      if (!walk.seesAddGuest) walk.fail('زر إضافة الضيف اختفى بدون خادم');
     });
 
     await walk.step('o05_add_guest', 'إضافة ضيف بدون خادم', () async {
-      await walk.tapKey('guests-add', wait: 3);
+      await walk.tapAddGuest();
       await walk.enterField('الاسم', 'ضيف بدون نت');
       await walk.tapKey('guest-form-save', wait: 4);
       walk.expectNotSee('ما قدرنا نحفظ', why: 'الحفظ على الجوال لا يفشل');

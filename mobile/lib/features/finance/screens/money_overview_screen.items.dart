@@ -118,12 +118,16 @@ class _MoneyItemsTab extends StatelessWidget {
             services[category.id]?.detail ?? 'ما انحجز',
             AarastV3Color.brandAccentStrong,
           ),
+          // A row opens the thing it names. An item with a service under
+          // way opens where that service is (its note says so); an item on
+          // its own opens the item, whoever is reading. It used to open a
+          // blank «agreement» form for whoever may manage the money: the
+          // row looked the same and landed the reader in a creation form
+          // they had not asked for. Adding the agreement is still one tap
+          // away, from the item's own «أضف اتفاق».
           onTap: switch (services[category.id]) {
             final service? => () => context.push(
               AppRouter.providerRequests(planId, itemKey: service.key),
-            ),
-            null when provider.canManageMoney => () => context.push(
-              AppRouter.moneyCostCreate(planId, categoryId: category.id),
             ),
             null => () => context.push(
               AppRouter.moneyCategoryDetails(planId, category.id),

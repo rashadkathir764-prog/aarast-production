@@ -188,7 +188,24 @@ void main() {
       expect(reordered.first.recommended, isTrue);
     });
 
-    test('a payment due puts the agreement first', () {
+    test('a payment due puts recording the payment first on the money tab', () {
+      // Where «تسجيل دفعة» is offered it is what a due date asks for;
+      // writing another agreement is not.
+      final actions = planQuickAddActions(
+        planId: 'due-money-plan',
+        tabIndex: 1,
+        canManageMoney: true,
+        offerAgreementActions: true,
+        signals: const PlanQuickAddSignals(
+          duePaymentSchedules: 1,
+          providerCount: 1,
+        ),
+      );
+      expect(actions.first.kind, PlanQuickAddKind.payment);
+      expect(actions.first.recommended, isTrue);
+    });
+
+    test('a payment due puts the agreement first where no payment is offered', () {
       final actions = planQuickAddActions(
         planId: 'due-plan',
         tabIndex: 2,

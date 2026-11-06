@@ -300,6 +300,20 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     );
   }
 
+  /// True once the money section was read for this plan and the read
+  /// failed. Without it the home drops b02's funding lines and b01's mahr
+  /// step in silence, so a failed read looks exactly like «you have no
+  /// funding recorded» and «your mahr is already settled».
+  bool _moneyReadFailed(DashboardSummary summary, String planId) {
+    if (_isLocalGuestPlan || !summary.canViewMoney) return false;
+    final finance = context.watch<FinanceProvider?>();
+    return finance != null &&
+        finance.loadedPlanId == planId &&
+        !finance.hasLoadedMoney &&
+        !finance.isLoading &&
+        finance.loadErrorMessage != null;
+  }
+
   /// b02: the owner's money in hand, promised and short from the money
   /// section (only the owner receives funding). Null until it is loaded.
   DashboardHomeFunding? _homeFunding(DashboardSummary summary, String planId) {
@@ -525,6 +539,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                   : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
               funding: _homeFunding(summary, selectedPlanId),
+              // A failed money read is said, not swallowed.
+              moneyReadFailed: _moneyReadFailed(summary, selectedPlanId),
+              onRetryMoney: () =>
+                  context.read<FinanceProvider?>()?.loadMoney(selectedPlanId),
               mahr: _watchMahrMoment(
                 selectedPlanId,
                 _homeMahr(summary, selectedPlanId),

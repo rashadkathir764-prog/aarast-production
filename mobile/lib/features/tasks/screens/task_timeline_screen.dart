@@ -95,6 +95,14 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
+    // The members were asked for and did not arrive, while a task here is
+    // assigned to one of them.
+    final sharing = context.watch<SharingProvider?>();
+    final membersUnread =
+        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
+        _didRequestMembers &&
+        members.isEmpty &&
+        sharing?.errorMessage != null;
     final user = context.watch<AuthController?>()?.user;
     final userId = user?.id;
     final selfName = user?.name.trim() ?? '';
@@ -261,6 +269,35 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               ],
             ),
             const SizedBox(height: AarastV3Space.x3),
+            // A task assigned to a participant shows «عضو مشارك» until the
+            // plan's members are read; a failed read leaves every one of
+            // them under that one placeholder, and a filter chip by that
+            // name, with nothing saying a name is missing rather than
+            // absent.
+            if (membersUnread && tasks.isNotEmpty) ...[
+              JourneyNote(
+                key: const ValueKey('tasks-members-unread'),
+                icon: LucideIcons.userX,
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.paper,
+                text:
+                    'ما قدرنا نجيب أسماء المشاركين، فاللي عليهم مهام يطلعون '
+                    '«عضو مشارك». المهام ومواعيدها صحيحة.',
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: JourneyTextAction(
+                  key: const ValueKey('tasks-members-retry'),
+                  label: 'حاول مرة ثانية',
+                  icon: LucideIcons.refreshCw,
+                  color: context.accent.primary,
+                  onPressed: () => context
+                      .read<SharingProvider?>()
+                      ?.loadMembers(widget.weddingPlanId),
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             if ((provider.loadErrorMessage != null || provider.isStale) &&
                 tasks.isNotEmpty) ...[
               JourneyListNotice(
@@ -455,10 +492,36 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       action: SnackBarAction(
         label: 'تراجع',
         textColor: AarastV3Color.onPrimary,
-        onPressed: () => unawaited(
-          provider.updateTaskStatus(widget.weddingPlanId, task, previous),
-        ),
+        // A failed undo used to say nothing and leave the task closed.
+        onPressed: () => unawaited(_undoFinish(provider, task, previous)),
       ),
+    );
+  }
+
+  /// Puts the task back the way it was. The toast's «تراجع» is the only
+  /// way out of a mistaken close, so its own failure has to be said.
+  Future<void> _undoFinish(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+    String previous,
+  ) async {
+    final ok = await provider.updateTaskStatus(
+      widget.weddingPlanId,
+      task,
+      previous,
+    );
+    if (!mounted) return;
+    if (ok) {
+      publishTaskPlanPulse(
+        context,
+        weddingPlanId: widget.weddingPlanId,
+        summary: provider.summary,
+      );
+      return;
+    }
+    AarastToast.showError(
+      context,
+      provider.errorMessage ?? 'ما قدرنا نرجّع المهمة. لسا مقفولة.',
     );
   }
 

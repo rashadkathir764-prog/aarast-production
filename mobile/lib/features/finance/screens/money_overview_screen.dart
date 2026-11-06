@@ -184,6 +184,20 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               ),
               const SizedBox(height: AarastV3Space.x3),
             ],
+            // «مقفل أو بدون صلاحية: يقول لماذا، ومن يفتحه». A reader who
+            // may see the money but not manage it loses the «+», the swipe,
+            // «سجّل الدفعة» on every row and the budget button, and nothing
+            // said why any of them were missing.
+            if (provider.hasLoadedMoney && !provider.canManageMoney) ...[
+              JourneyNote(
+                key: const ValueKey('money-read-only'),
+                icon: LucideIcons.eye,
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.paper,
+                text: _readOnlyLine(context),
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             if (provider.pendingMoneyChanges > 0) ...[
               JourneyNote(
                 key: const ValueKey('money-pending-changes'),
@@ -340,6 +354,20 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
       ),
     ];
+  }
+
+  /// Why the money is read-only here, and who can open it.
+  ///
+  /// Neutral Arabic, with no verb addressed to the reader, so one line
+  /// serves a man and a woman and the only thing that changes is who holds
+  /// the right. readerIsOwner and planWord are already how this screen
+  /// speaks (see _mahrToRecord), so nothing new crosses the context
+  /// boundary either.
+  String _readOnlyLine(BuildContext context) {
+    final who = context.journeyProfile.readerIsOwner
+        ? 'يحتاج صلاحية إضافية'
+        : 'عند ${context.planWord('العريس', 'العروسة')}';
+    return 'المال هنا للقراءة. التسجيل والتعديل $who.';
   }
 
   /// Where the bride's mahr card goes. «من وين» (c05) is in the tab list

@@ -50,6 +50,8 @@ class AarastDashboardView extends StatelessWidget {
     this.onOpenPayment,
     this.afterWedding,
     this.funding,
+    this.moneyReadFailed = false,
+    this.onRetryMoney,
     this.mahr,
     this.onOpenMahr,
     this.onOpenReviews,
@@ -105,6 +107,14 @@ class AarastDashboardView extends StatelessWidget {
   /// b02: the owner's money in hand, promised and short, once the money
   /// section is loaded.
   final DashboardHomeFunding? funding;
+
+  /// The money section was read for this plan and the read failed. Without
+  /// saying so, b02 loses its funding lines and b01 loses its mahr step with
+  /// nothing to tell the reader that a number is missing rather than zero.
+  final bool moneyReadFailed;
+
+  /// Reads the money section again.
+  final VoidCallback? onRetryMoney;
 
   /// The plan's mahr for b01's step and b02's card (a groom's or a bride's
   /// plan, the owner, once the money section is read); null leaves both out.
@@ -313,6 +323,31 @@ class AarastDashboardView extends StatelessWidget {
                         onToggleAmounts: onToggleAmounts,
                         onTap: onOpenMoney,
                       ),
+                      if (moneyReadFailed) ...[
+                        const SizedBox(height: AarastV3Space.x2),
+                        const JourneyNote(
+                          key: ValueKey('aarast-home-money-unread'),
+                          icon: LucideIcons.cloudOff,
+                          color: AarastV3Color.brandAccentStrong,
+                          soft: AarastV3Color.brandAccentSoft,
+                          text:
+                              'ما قدرنا نقرأ «معك» و«الموعود» والمهر. '
+                              'الأرقام فوق من ملخص خطتك.',
+                        ),
+                        if (onRetryMoney case final retry?)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: JourneyTextAction(
+                              key: const ValueKey(
+                                'aarast-home-money-unread-retry',
+                              ),
+                              label: 'حاول مرة ثانية',
+                              icon: LucideIcons.refreshCw,
+                              color: AarastV3Color.brandAccentStrong,
+                              onPressed: retry,
+                            ),
+                          ),
+                      ],
                     ],
                     if (_homeSuggestions(summary) case final suggestions
                         when suggestions.isNotEmpty &&

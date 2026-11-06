@@ -71,6 +71,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   ) {
     final planId = _weddingLocationPlanId;
     if (_firstVisitLeft || planId == null) return false;
+    // Without an account there are no requests to read and never will be
+    // until the plan is saved, so this is a first visit, not a wait. It
+    // used to return «still reading» here, and on a plan kept on the phone
+    // that left «طلباتي» on a loading skeleton for good, with the tab row
+    // hidden behind it and no way back but the bottom bar.
+    if (_hasAccount == false) return true;
     // The account's own requests have not been asked for yet, so neither
     // view is known to be the right one: say «still reading» rather than
     // flash an empty board that then turns into «نبدأ بالقاعة».

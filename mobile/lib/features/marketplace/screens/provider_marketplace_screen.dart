@@ -89,6 +89,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   String? _settledOpening;
   bool _chatsLoaded = false;
 
+  /// Whether this reader has an account, once asked. Null until the answer
+  /// is back. «no account» is an answer, not a wait: without it the tabs
+  /// that need one sat on a loading skeleton that could never end.
+  bool? _hasAccount;
+
   /// x22 gives way to the tabs once a way to start was picked. Kept on the
   /// phone, not in this State: the owner's shell rebuilds this screen on
   /// every tab switch, so a State-only latch brought «نبدأ بالقاعة» back
@@ -125,6 +130,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       setState(() => _searchController.text = provider.search);
       final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
+      setState(() => _hasAccount = includeAccountData);
       final startPlanId = _weddingLocationPlanId;
       if (startPlanId != null) {
         final preferences = await SharedPreferences.getInstance();
@@ -268,7 +274,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             // reader's finger on the first visit of a session. A plan in hand
             // is enough to know the four tabs belong here; each one shows its
             // own loading state until its data lands.
-            final planMode = _weddingLocationPlanId != null;
+            // Once the account answer is in: a plan gets the four tabs. Before
+          // it, the directory alone, so the row is drawn once and does not
+          // go from one tab to four under the reader's finger.
+          final planMode = _weddingLocationPlanId != null && _hasAccount != null;
             final tabs = planMode
                 ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
                 : const ['استكشف'];

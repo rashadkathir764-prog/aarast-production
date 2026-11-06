@@ -18,6 +18,8 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
+import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
@@ -553,6 +555,38 @@ void main() {
     expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
   });
 
+  // RA-MO-19: a plan without an account opens «طلباتي» on x22 at once, and
+  // x22 read money that nothing had loaded there: «حجزت برا اعّرست» (it
+  // needs the money rights) and «على قد بندك» were left out without a word.
+  testWidgets('x22 without an account reads the plan money first', (
+    tester,
+  ) async {
+    final finance = _UnreadFinance(
+      planId: _phonePlanId,
+      items: const [
+        BudgetCategory(
+          id: 'item-hall',
+          weddingPlanId: _phonePlanId,
+          name: 'القاعة',
+          allocatedAmount: '1500000',
+        ),
+      ],
+    );
+
+    await _pump(
+      tester,
+      openRequests: true,
+      _FakeMarketplaceProvider(),
+      finance: finance,
+      account: false,
+    );
+
+    expect(finance.loads, [_phonePlanId]);
+    expect(find.text('نبدأ بالقاعة'), findsOneWidget);
+    expect(find.text('حجزت برا اعّرست'), findsOneWidget);
+    expect(find.textContaining('على قد بندك'), findsOneWidget);
+  });
+
   testWidgets('x22 «حجزت برا اعّرست» opens the agreement on someone outside', (
     tester,
   ) async {
@@ -913,6 +947,8 @@ Future<GoRouter> _pump(
   bool openRequests = false,
   FinanceProvider? finance,
   bool planReadFails = false,
+  // A plan kept on the phone: no session, so no account (RA-MO-19).
+  bool account = true,
 }) async {
   final router = GoRouter(
     initialLocation: '/providers',
@@ -953,15 +989,44 @@ Future<GoRouter> _pump(
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
-  await authStorage.saveSession(
-    accessToken: 'test-token',
-    user: const SafeUser(
-      id: 'user-1',
-      name: 'رشاد',
-      role: 'CUSTOMER',
-      status: 'ACTIVE',
-    ),
-  );
+  // Without an account the plan is the one kept on the phone, with its place.
+  final guestStorage = GuestOnboardingStorage(preferences);
+  if (!account) {
+    await guestStorage.saveDraft(
+      GuestOnboardingDraft(
+        guestPlanId: _phonePlanId,
+        planName: 'خطة على الجوال',
+        createdAt: DateTime.utc(2026, 10, 1),
+        isGuestPlan: true,
+        needsSync: true,
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.groom,
+        governorate: 'صنعاء',
+        city: 'صنعاء',
+        district: 'السبعين',
+        neighborhood: 'حدة',
+        street: null,
+        addressNote: null,
+        weddingDate: DateTime(2027, 1, 21),
+        weddingDateUnknown: false,
+        priorities: const ['budget'],
+        currency: 'YER',
+        estimatedBudget: '1000000',
+        selectedCategoryKeys: const ['hall'],
+      ),
+    );
+  }
+  if (account) {
+    await authStorage.saveSession(
+      accessToken: 'test-token',
+      user: const SafeUser(
+        id: 'user-1',
+        name: 'رشاد',
+        role: 'CUSTOMER',
+        status: 'ACTIVE',
+      ),
+    );
+  }
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
   final authRepository = AuthRepository(apiClient, authStorage);
   final authController = _AuthedController(authRepository)..restoreSession();
@@ -995,6 +1060,7 @@ Future<GoRouter> _pump(
     MultiProvider(
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
+        Provider<GuestOnboardingStorage>.value(value: guestStorage),
         Provider<AuthRepository>.value(value: authRepository),
         ChangeNotifierProvider<AuthController>.value(value: authController),
         ChangeNotifierProvider<AccountContextController>.value(
@@ -1089,6 +1155,38 @@ class _LoadedFinance extends FinanceProvider {
     bool canViewMoney = true,
     bool canManageMoney = true,
   }) async {}
+}
+
+/// A plan kept on the phone, without an account (RA-MO-19).
+const _phonePlanId = 'guest-plan-board';
+
+/// The plan's money before anything read it: loaded only when asked.
+class _UnreadFinance extends _LoadedFinance {
+  _UnreadFinance({required this.planId, super.items});
+
+  final String planId;
+  final loads = <String>[];
+  bool _read = false;
+
+  @override
+  String? get loadedPlanId => _read ? planId : null;
+
+  @override
+  bool get canManageMoney => _read;
+
+  @override
+  List<BudgetCategory> get categories => _read ? items : const [];
+
+  @override
+  Future<void> loadMoney(
+    String planId, {
+    bool canViewMoney = true,
+    bool canManageMoney = true,
+  }) async {
+    loads.add(planId);
+    _read = true;
+    notifyListeners();
+  }
 }
 
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {

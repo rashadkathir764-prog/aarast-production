@@ -76,7 +76,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     // used to return «still reading» here, and on a plan kept on the phone
     // that left «طلباتي» on a loading skeleton for good, with the tab row
     // hidden behind it and no way back but the bottom bar.
-    if (_hasAccount == false) return true;
+    // RA-MO-19: x22 offers what the plan's money allows («حجزت برا اعّرست»
+    // needs its rights, «على قد بندك» the hall's item), so it waits for
+    // that money, which _firstVisitPending asks for; read nowhere else on a
+    // plan without an account, both were left out without a word.
+    if (_hasAccount == false) return _moneyReadFor(planId) ? true : null;
     // The account's own requests have not been asked for yet, so neither
     // view is known to be the right one: say «still reading» rather than
     // flash an empty board that then turns into «نبدأ بالقاعة».
@@ -90,12 +94,14 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     }
     if (marketplace.isLoading || _participantPlanPending) return null;
     if (marketplace.quoteRequestsErrorMessage != null) return false;
+    return _moneyReadFor(planId) ? true : null;
+  }
+
+  /// Whether this plan's money items are read (or there is no money here).
+  bool _moneyReadFor(String planId) {
     final finance = context.read<FinanceProvider?>();
-    if (finance != null &&
-        (finance.loadedPlanId != planId || finance.isLoading)) {
-      return null;
-    }
-    return true;
+    return finance == null ||
+        (finance.loadedPlanId == planId && !finance.isLoading);
   }
 
   Widget _firstVisitPending() {
@@ -118,7 +124,9 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     List<String> tabs,
   ) {
     final planId = _weddingLocationPlanId!;
-    final finance = context.read<FinanceProvider?>();
+    // This plan's money only (_firstVisitOf waited for it).
+    final read = context.read<FinanceProvider?>();
+    final finance = read?.loadedPlanId == planId ? read : null;
     // The venue kind by the catalog's own slug, and the item it lands in by
     // the server's list (G40).
     final venue = marketplace.categories

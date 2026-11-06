@@ -1,4 +1,4 @@
-# Ships the committed HEAD of this repository to the Aarast AWS host:
+﻿# Ships the committed HEAD of this repository to the Aarast AWS host:
 # packs backend, admin-web and deploy (LF line endings), uploads the archive to
 # the ops bucket, and runs deploy/aws/host/deploy.sh on the host through SSM.
 # Requires `aws login` on this machine. No secrets pass through here.

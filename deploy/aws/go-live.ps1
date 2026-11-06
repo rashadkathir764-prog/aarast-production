@@ -1,4 +1,4 @@
-# Stage 3 in one run, by the operator from a signed-in machine:
+﻿# Stage 3 in one run, by the operator from a signed-in machine:
 #   1. restarts OpenWA on its host, so WhatsApp codes work again
 #   2. takes a database backup and copies it off the host
 #   3. ships the committed HEAD (migrations included), through release.ps1

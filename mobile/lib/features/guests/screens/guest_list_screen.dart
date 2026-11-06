@@ -62,6 +62,17 @@ class GuestListScreen extends StatefulWidget {
 class _GuestListScreenState extends State<GuestListScreen> {
   /// null: the overview; otherwise the group being looked at.
   String? _openGroup;
+
+  /// How many guest rows are drawn at once. The list is one Column inside
+  /// the page's ListView, so it is not lazy: a plan with four hundred
+  /// guests built and laid out four hundred rows on every frame, on the one
+  /// screen meant to hold hundreds. The rest come on «باقي المعازيم», the
+  /// way c02 pages its own items («باقي البنود»).
+  static const _rowsPerPage = 50;
+  int _rowsShown = _rowsPerPage;
+
+  /// Back to one page of rows whenever the list underneath changes.
+  void _resetRows() => _rowsShown = _rowsPerPage;
   _ReplyFilter _reply = _ReplyFilter.all;
   bool _searching = false;
   String _query = '';
@@ -173,6 +184,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             _openGroup = null;
             _reply = _ReplyFilter.all;
           }
+          _resetRows();
         });
       },
       child: AarastScreenFrame(
@@ -205,6 +217,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                       onPressed: () => setState(() {
                         _searching = !_searching;
                         if (!_searching) _query = '';
+                        _resetRows();
                       }),
                     ),
                   // D85: adding never waits for the server; a guest added
@@ -258,7 +271,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
               ],
               if (_searching) ...[
                 GuestSearchField(
-                  onChanged: (value) => setState(() => _query = value),
+                  onChanged: (value) => setState(() {
+                    _query = value;
+                    _resetRows();
+                  }),
                 ),
                 const SizedBox(height: AarastV3Space.x3),
               ],
@@ -436,6 +452,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
     };
     final visible = _filtered(inGroup, _reply)
       ..sort((a, b) => a.name.compareTo(b.name));
+    // Each chip's count, worked out once. Every chip used to re-filter the
+    // whole group on every frame, so a group of four hundred ran two
+    // thousand checks a frame just to label five chips.
+    final counts = <_ReplyFilter, int>{
+      for (final filter in _ReplyFilter.values)
+        filter: _filtered(inGroup, filter).length,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -468,11 +491,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
               for (final filter in _ReplyFilter.values) ...[
                 JourneyChip(
                   key: ValueKey('guest-filter-${filter.name}'),
-                  label:
-                      '${filter.labelFor(words)} ${_filtered(inGroup, filter).length}',
+                  label: '${filter.labelFor(words)} ${counts[filter] ?? 0}',
                   selected: _reply == filter,
                   selectedColor: context.accent.primary,
-                  onTap: () => setState(() => _reply = filter),
+                  onTap: () => setState(() {
+                    _reply = filter;
+                    _resetRows();
+                  }),
                 ),
                 const SizedBox(width: AarastV3Space.x2),
               ],
@@ -490,7 +515,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
           emptyAction: _reply == _ReplyFilter.all ? null : 'شوف الكل',
           onEmptyAction: _reply == _ReplyFilter.all
               ? null
-              : () => setState(() => _reply = _ReplyFilter.all),
+              : () => setState(() {
+                  _reply = _ReplyFilter.all;
+                  _resetRows();
+                }),
         ),
       ],
     );
@@ -532,35 +560,60 @@ class _GuestListScreenState extends State<GuestListScreen> {
         ),
       );
     }
-    return JourneyBox(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var index = 0; index < guests.length; index++) ...[
-            if (index > 0)
-              const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AarastV3Color.line,
-              ),
-            GuestRow(
-              guest: guests[index],
-              groupLabel: guestGroupLabel(guests[index], provider.groups),
-              isDuplicate: duplicates.contains(guests[index].id),
-              onOpen: () => context.push(
-                AppRouter.guestDetails(widget.weddingPlanId, guests[index].id),
-              ),
+    // One page of rows at a time: the whole list used to be built on every
+    // frame, and this is the screen that holds hundreds.
+    final shown = guests.length <= _rowsShown ? guests.length : _rowsShown;
+    final rest = guests.length - shown;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var index = 0; index < shown; index++) ...[
+                if (index > 0)
+                  const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AarastV3Color.line,
+                  ),
+                GuestRow(
+                  guest: guests[index],
+                  groupLabel: guestGroupLabel(guests[index], provider.groups),
+                  isDuplicate: duplicates.contains(guests[index].id),
+                  onOpen: () => context.push(
+                    AppRouter.guestDetails(
+                      widget.weddingPlanId,
+                      guests[index].id,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (rest > 0) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('guests-more-rows'),
+              label: 'باقي ${GuestWords.of(context).count(rest)}',
+              icon: LucideIcons.chevronDown,
+              color: context.accent.primary,
+              onPressed: () => setState(() => _rowsShown += _rowsPerPage),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
   void _openGroupView(String key) => setState(() {
     _openGroup = key;
     _reply = _ReplyFilter.all;
+    _resetRows();
   });
 
   /// Groups are saved on the account, so a device-only plan has none (w27).

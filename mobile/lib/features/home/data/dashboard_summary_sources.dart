@@ -106,7 +106,11 @@ class LocalGuestDashboardSummary {
     return LocalGuestDashboardSummary(
       plan: plan,
       seed: GeneratedDashboardSeed.fromDraft(plan),
-      daysRemaining: daysRemaining?.clamp(0, 100000),
+      // Not clamped at zero: a wedding that has passed is a negative
+      // count, and the home reads it to say «عرسك كان». Clamping made the
+      // day after the wedding read «اليوم عرسك», right beside the «بعد
+      // العرس» tag that the same screen works out from the date.
+      daysRemaining: daysRemaining,
       progressPercent: metrics.progressPercent,
       taskCount: metrics.taskCount,
       completedTaskCount: metrics.completedTaskCount,

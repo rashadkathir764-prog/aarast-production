@@ -298,6 +298,13 @@ class AarastDashboardView extends StatelessWidget {
                       const SizedBox(height: AarastV3Space.x3),
                       _RateProvidersCard(onTap: onOpenReviews!),
                     ],
+                    // b07 keeps only the debt and the providers to rate;
+                    // the planning cards are done with, and
+                    // home_after_wedding_test holds that contract. A plan
+                    // kept on the phone has neither card (both are the
+                    // server's), so its home after the day is the greeting
+                    // and the moment box alone. That is the design's own
+                    // consequence, not a defect to patch here.
                   ] else ...[
                     const SizedBox(height: AarastV3Space.x3),
                     _JourneyNextStep(

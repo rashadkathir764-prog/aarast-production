@@ -61,7 +61,12 @@ services:
   redis:
     image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     restart: unless-stopped
-    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    # Redis holds the rate-limit counters and the chat adapter's pub/sub, no
+    # cache. Evicting a counter under memory pressure would quietly reset a
+    # limit (an attacker spraying new keys evicts everyone else's), so a full
+    # Redis refuses writes instead and the backend falls back to in-process
+    # limits (ResilientThrottlerStorage) that are still enforced (RA-OP-07).
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

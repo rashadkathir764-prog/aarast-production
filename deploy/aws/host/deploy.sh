@@ -6,7 +6,8 @@ set -euo pipefail
 release=${1:?release sha}
 ops_bucket=${2:?ops bucket}
 tree=/opt/aarast/releases/$release
-env_file=/opt/aarast/app/.env
+# shellcheck source=release-lib.sh
+. "$tree/deploy/aws/host/release-lib.sh"
 [ -f "$env_file" ] || { echo "FAIL: run prepare-env.sh first" >&2; exit 1; }
 api_host=$(sed -n 's/^AARAST_API_HOST=//p' "$env_file")
 
@@ -19,30 +20,18 @@ docker build -q -t "aarast-public-site:$release" --build-arg "AARAST_GIT_REVISIO
 docker build -q -t "aarast-openwa-link:$release" deploy/aws/openwa-link
 echo "images built for $release"
 
-# Push notifications: the FCM service account lives in SSM as a SecureString.
-# It is written root-made, backend-readable only (uid 1000, mode 0600) and is
-# never printed. Without it the backend starts with push disabled.
-region=$(sed -n 's/^AWS_REGION=//p' "$env_file")
-install -d -m 0755 /opt/aarast/firebase
-key_file=/opt/aarast/firebase/service-account.json
-if aws ssm get-parameter --region "$region" --name /aarast/firebase-service-account \
-     --with-decryption --query Parameter.Value --output text >"$key_file.tmp" 2>/dev/null; then
-  chown 1000:1000 "$key_file.tmp"
-  chmod 0600 "$key_file.tmp"
-  mv -f "$key_file.tmp" "$key_file"
-  export PUSH_NOTIFICATIONS_ENABLED=true
-  FIREBASE_PROJECT_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_id"])' "$key_file")
-  export FIREBASE_PROJECT_ID
-  echo "push notifications enabled for $FIREBASE_PROJECT_ID"
-else
-  rm -f "$key_file.tmp"
-  export PUSH_NOTIFICATIONS_ENABLED=false
-  echo "push notifications disabled (no FCM key in SSM)"
-fi
+release_push_env
 
 cd "$tree/deploy/aws"
 export AARAST_RELEASE=$release
-dc() { docker compose --env-file "$env_file" "$@"; }
+# The migrations of the new release run inside `up` and only go forward, so
+# the database is dumped first; and the release that was live is recorded so
+# rollback.sh can put it back (RA-OP-05).
+previous=$(release_current)
+release_backup_before "before-$release" "$ops_bucket"
+if [ -n "$previous" ] && [ "$previous" != "$release" ]; then
+  echo "$previous" >/opt/aarast/previous-release
+fi
 dc up -d --remove-orphans --quiet-pull
 ln -sfn "$tree" /opt/aarast/current
 
@@ -52,7 +41,8 @@ cat >/etc/cron.d/aarast-backup-sync <<EOF
 EOF
 chmod 0644 /etc/cron.d/aarast-backup-sync
 
-# Keep the two newest release trees and their images.
+# Keep the two newest release trees and their images: the live one and the
+# one rollback.sh can return to.
 ls -1dt /opt/aarast/releases/*/ | tail -n +3 | while read -r old; do
   old_sha=$(basename "$old")
   rm -rf "$old"
@@ -61,12 +51,8 @@ ls -1dt /opt/aarast/releases/*/ | tail -n +3 | while read -r old; do
 done
 docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
 
-echo "waiting for the backend to become healthy"
-for _ in $(seq 1 40); do
-  state=$(docker inspect --format '{{.State.Health.Status}}' "$(dc ps -q backend)" 2>/dev/null || echo starting)
-  [ "$state" = healthy ] && break
-  sleep 6
-done
-dc ps --format 'table {{.Service}}\t{{.Status}}'
-[ "$state" = healthy ] || { dc logs --tail 60 backend; exit 1; }
+if ! release_wait_healthy; then
+  echo "FAIL: release $release is not healthy; rollback.sh puts back ${previous:-the previous release}" >&2
+  exit 1
+fi
 echo "PASS: release $release is live"

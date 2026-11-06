@@ -6,6 +6,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/budget_category.dart';
@@ -325,11 +326,12 @@ FinancePage<WeddingCost> _localCostPage(
         cost.budgetCategoryId != categoryId) {
       return false;
     }
-    if (query != null &&
-        query.isNotEmpty &&
-        !cost.title.toLowerCase().contains(query) &&
-        !(cost.partyLabel?.toLowerCase().contains(query) ?? false)) {
-      return false;
+    if (query != null && query.isNotEmpty) {
+      // Folded, so «قاعه» finds «قاعة» and «احمد» finds «أحمد».
+      final needle = arabicSortKey(query.toLowerCase());
+      final title = arabicSortKey(cost.title.toLowerCase());
+      final party = arabicSortKey((cost.partyLabel ?? '').toLowerCase());
+      if (!title.contains(needle) && !party.contains(needle)) return false;
     }
     return true;
   }).toList();

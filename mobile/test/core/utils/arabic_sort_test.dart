@@ -32,6 +32,22 @@ void main() {
     ]);
   });
 
+  test('a search finds the name whichever way it was spelled', () {
+    // This is what a guest search does: match on the key, not letter for
+    // letter. «احمد» used to find no «أحمد» in a list of hundreds.
+    bool finds(String saved, String typed) =>
+        arabicSortKey(saved).contains(arabicSortKey(typed));
+    expect(finds('أحمد', 'احمد'), isTrue);
+    expect(finds('احمد', 'أحمد'), isTrue);
+    expect(finds('عبد الله', 'عبدالله'), isTrue);
+    expect(finds('عبدالله', 'عبد الله'), isTrue);
+    expect(finds('فاطمة', 'فاطمه'), isTrue);
+    expect(finds('مُحَمَّد', 'محمد'), isTrue);
+    expect(finds('أحمد المقطري', 'المقطري'), isTrue);
+    // A different name is still a different name.
+    expect(finds('أحمد', 'محمد'), isFalse);
+  });
+
   test('a space inside a name is spelling, not order', () {
     expect(arabicSortKey('عبد الله'), arabicSortKey('عبدالله'));
   });

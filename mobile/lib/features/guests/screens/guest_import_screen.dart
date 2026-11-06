@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -263,9 +264,13 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     }
 
     final query = PhoneNumberUtils.toAsciiDigits(_query);
+    // The name is matched on its sort key: these names come straight from
+    // the phone book, where «أحمد» and «احمد» and «عبد الله» are all
+    // written as their owner felt like writing them.
+    final name = arabicSortKey(query);
     bool matches(int i) =>
         query.isEmpty ||
-        candidates[i].name.contains(query) ||
+        (name.isNotEmpty && arabicSortKey(candidates[i].name).contains(name)) ||
         contacts[i].rawPhone.replaceAll(RegExp(r'\D'), '').contains(query);
     final sections = [
       for (final section in groupByFamily([

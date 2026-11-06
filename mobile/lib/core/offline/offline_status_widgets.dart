@@ -61,8 +61,12 @@ class OfflineStatusBanner extends StatelessWidget {
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
       _ => 'تغييراتك تنرسل لما يرجع النت',
     };
+    // RA-MO-23: a cause that only repeats the line above («ما قدرنا نوصل
+    // للخادم» under «ما نقدر نوصل للخادم الحين») is not said again.
     final lastSync = state == SyncState.offline && failure != null
-        ? '${reachabilityCauseLabel(failure.cause)} · اضغط للفحص'
+        ? failure.cause == ReachabilityCause.unknown && !phoneOffline
+              ? 'اضغط للفحص'
+              : '${reachabilityCauseLabel(failure.cause)} · اضغط للفحص'
         : service.lastSyncedAt == null
         ? 'آخر بيانات محفوظة'
         : 'آخر إرسال: ${_shortTime(service.lastSyncedAt!)}';
@@ -133,9 +137,11 @@ class OfflineStatusBanner extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // RA-MO-23: two lines, so the half that says what
+                          // the phone keeps is never the half cut off.
                           Text(
                             label,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(

@@ -106,6 +106,47 @@ void main() {
     );
   });
 
+  // RA-MO-23: one line cut the sentence at «المال والمها…», so the half that
+  // reassures («تنحفظ في جوالك») was the half nobody read.
+  testWidgets('the whole sentence is read on a narrow phone', (tester) async {
+    final reachability = ServerReachability();
+    final service = await _service(reachability);
+    reachability.noteFailure(
+      ReachabilityFailure(
+        cause: ReachabilityCause.timeout,
+        at: DateTime(2026, 11, 3),
+      ),
+    );
+    await service.noteNetworkFailure('الخادم تأخر في الرد');
+    await _pumpBanner(tester, service);
+
+    // The test font cannot measure Arabic as the app draws it; the picture
+    // with the app's font is test/prototype/now_home (home_offline.png),
+    // which shows the sentence whole on two lines.
+    final sentence = tester.widget<Text>(
+      find.text('ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك'),
+    );
+    expect(sentence.maxLines, greaterThanOrEqualTo(2));
+  });
+
+  // RA-MO-23: an unknown cause read «ما قدرنا نوصل للخادم» under «ما نقدر
+  // نوصل للخادم الحين»: the same fact twice.
+  testWidgets('a cause that adds nothing is not said again', (tester) async {
+    final reachability = ServerReachability();
+    final service = await _service(reachability);
+    reachability.noteFailure(
+      ReachabilityFailure(
+        cause: ReachabilityCause.unknown,
+        at: DateTime(2026, 11, 3),
+      ),
+    );
+    await service.noteNetworkFailure('ما قدرنا نوصل للخادم');
+    await _pumpBanner(tester, service);
+
+    expect(find.textContaining('ما قدرنا نوصل للخادم'), findsNothing);
+    expect(find.text('اضغط للفحص'), findsOneWidget);
+  });
+
   testWidgets('a phone without net is «بدون نت»', (tester) async {
     final reachability = ServerReachability();
     final service = await _service(reachability);

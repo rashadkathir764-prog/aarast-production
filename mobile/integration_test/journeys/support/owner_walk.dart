@@ -492,7 +492,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       // The sheet is the last «الغداء» on screen; an earlier match (the
       // screen under it) takes the tap and selects nothing.
       await walk.tapText('الغداء', last: true, wait: 1.5);
-      await walk.tapKey('guest-form-save', wait: 4);
+      // The receipt (4.2s) sits over the header's search until it goes.
+      await walk.tapKey('guest-form-save', wait: 5);
       // One name among a hundred is found the way a person finds it: «دوّر».
       if (!await walk.openGuest('ضيف الغداء', wait: 3.5)) return;
       walk.expectSee('الغداء: ما ردّ', why: 'رد الضيف على الغداء في تفاصيله');

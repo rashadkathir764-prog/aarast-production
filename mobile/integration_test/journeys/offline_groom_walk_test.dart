@@ -52,7 +52,8 @@ void main() {
     await walk.step('o05_add_guest', 'إضافة ضيف بدون خادم', () async {
       await walk.tapAddGuest();
       await walk.enterField('الاسم', 'ضيف بدون نت');
-      await walk.tapKey('guest-form-save', wait: 4);
+      // The receipt (4.2s) sits over the header's search until it goes.
+      await walk.tapKey('guest-form-save', wait: 5);
       walk.expectNotSee('ما قدرنا نحفظ', why: 'الحفظ على الجوال لا يفشل');
       // Found the way a person finds one name among a hundred: «دوّر».
       if (!await walk.searchGuest('ضيف بدون نت')) {

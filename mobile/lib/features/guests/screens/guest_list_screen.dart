@@ -732,6 +732,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
       await _showGuestSheet(provider: provider);
       return;
     }
+    // RA-MO-26: from /guests/add this screen closes right after (its route
+    // goes back to the list), while the receipt stays. Its «أضف ثاني» then
+    // opens the add route again through the router, not a sheet on a screen
+    // that is gone.
+    final router = GoRouter.maybeOf(context);
+    final planId = widget.weddingPlanId;
     AarastFormSuccess.show(
       context,
       message:
@@ -740,7 +746,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
       // The verb is the reader's, «ثاني/ثانية» the plan's guest.
       nextLabel:
           '${context.say('أضف', 'أضيفي')} ${context.planWord('ثاني', 'ثانية')}',
-      onNext: () => _showGuestSheet(provider: provider),
+      onNext: () {
+        if (mounted) {
+          _showGuestSheet(provider: provider);
+        } else {
+          router?.go(AppRouter.guestListAdd(planId));
+        }
+      },
     );
   }
 

@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3_foundations.dart';
+import 'package:aarast_mobile/features/catalogs/data/reference_catalog_api.dart';
+import 'package:aarast_mobile/features/catalogs/models/reference_catalog.dart';
+import 'package:aarast_mobile/features/catalogs/providers/reference_catalog_provider.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/utils/money_formatters.dart';
@@ -34,6 +38,30 @@ void main() {
       expect(find.text('أضف أول بند'), findsOneWidget);
       expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    // RA-MO-14: the opening tab follows the money alone. Waiting for the
+    // catalogs and the quote requests too showed «الملخص» first and jumped
+    // to «البنود» when those slower reads came back.
+    testWidgets('an empty plan opens on «البنود» before the catalogs answer', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final catalog = Completer<ReferenceCatalogBootstrap?>();
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.noBudget(),
+          catalogs: ReferenceCatalogProvider(_HeldCatalogApi(catalog)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('أضف أول بند'), findsOneWidget);
+
+      catalog.complete(null);
+      await tester.pumpAndSettle();
+      expect(find.text('أضف أول بند'), findsOneWidget);
     });
 
     testWidgets('first load failure shows only a retryable error state', (
@@ -528,6 +556,7 @@ Widget _wrap(
   SharedMember? sharedMember,
   double textScale = 1,
   bool embedded = false,
+  ReferenceCatalogProvider? catalogs,
 }) {
   const planId = 'plan-money-cleanup';
   return MultiProvider(
@@ -538,6 +567,10 @@ Widget _wrap(
       ChangeNotifierProvider<FundingProvider>(
         create: (_) => FundingProvider(_FakeFundingApi()),
       ),
+      if (catalogs != null)
+        ChangeNotifierProvider<ReferenceCatalogProvider>.value(
+          value: catalogs,
+        ),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
@@ -557,6 +590,19 @@ Widget _wrap(
       ),
     ),
   );
+}
+
+/// A catalog read that answers only when the test says so.
+class _HeldCatalogApi implements ReferenceCatalogApi {
+  _HeldCatalogApi(this._answer);
+
+  final Completer<ReferenceCatalogBootstrap?> _answer;
+
+  @override
+  Future<ReferenceCatalogBootstrap?> load() => _answer.future;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeFinanceApi extends FinanceApi {

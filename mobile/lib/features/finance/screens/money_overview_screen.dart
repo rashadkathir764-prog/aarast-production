@@ -87,6 +87,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   void didUpdateWidget(covariant MoneyOverviewScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      // Another plan opens as a first visit, on its own opening tab.
+      _tab = null;
+      _opening = null;
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
@@ -119,6 +122,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         // «من وين» is the owner's: only the owner receives funding.
         if (hasFunding) 'من وين',
       ];
+      _settleOpeningTab(provider);
       final tab = (_tab ?? _opening ?? 0).clamp(0, tabs.length - 1);
       content = RefreshIndicator(
         color: context.accent.primary,
@@ -503,17 +507,22 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       );
       futures.add(marketplace.loadScopedQuoteRequests());
     }
-    return Future.wait(futures).then((_) => _settleOpeningTab());
+    return Future.wait(futures);
   }
 
   /// Nothing in money yet: «البنود» is where the first item goes. Decided
-  /// once, on a read that worked, so a failed read never sends the reader to
-  /// an «أضف أول بند» that is really «ما قدرنا نقرأ».
-  void _settleOpeningTab() {
-    if (!mounted || _opening != null) return;
-    final finance = context.read<FinanceProvider>();
-    if (!finance.hasLoadedMoney) return;
-    setState(() => _opening = _isEmpty(finance) ? 1 : 0);
+  /// once, on the first build that has this plan's money (the phone's copy
+  /// or the server's), so a failed read never sends the reader to an «أضف
+  /// أول بند» that is really «ما قدرنا نقرأ». It follows the money alone
+  /// (RA-MO-14): waiting for the catalogs and quote requests as well showed
+  /// «الملخص» and then jumped to «البنود» when those slower reads came back.
+  void _settleOpeningTab(FinanceProvider finance) {
+    if (_opening != null ||
+        !finance.hasLoadedMoney ||
+        finance.loadedPlanId != widget.weddingPlanId) {
+      return;
+    }
+    _opening = _isEmpty(finance) ? 1 : 0;
   }
 }
 

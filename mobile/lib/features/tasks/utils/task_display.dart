@@ -3,7 +3,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_clock.dart';
-import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/wedding_task.dart';
 
 /// عرض المهام — مصدر حقيقة واحد للألوان والتسميات والأيقونات،
@@ -93,13 +92,3 @@ IconData taskCategoryIcon(String? category) {
   };
 }
 
-String taskRelativeDueLabel(DateTime date, {DateTime? now}) {
-  final today = taskDateOnly(now ?? appNow());
-  final target = taskDateOnly(date);
-  final diff = target.difference(today).inDays;
-  if (diff < 0) return 'متأخر ${-diff} ${-diff == 1 ? 'يوم' : 'يوم'}';
-  if (diff == 0) return 'اليوم';
-  if (diff == 1) return 'غدًا';
-  if (diff <= 7) return 'بعد $diff أيام';
-  return formatArabicCompactDate(date);
-}

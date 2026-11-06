@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_picker_service.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
@@ -40,11 +41,19 @@ class GuestListScreen extends StatefulWidget {
     this.openAddOnStart = false,
     this.openAddRequest = 0,
     this.ownerWord,
+    this.showHeaderAdd = true,
     super.key,
   });
 
   final String weddingPlanId;
   final bool openAddOnStart;
+
+  /// Whether the header draws its own «+». False where a shell already
+  /// floats one over this tab: the two opened the same sheet, so the screen
+  /// showed two controls for one action. It stays true for the participant's
+  /// shell, which floats none, and for /guests/add, which has no chrome —
+  /// there the header's «+» is the only way in.
+  final bool showHeaderAdd;
 
   /// «العريس», «العروسة» when the reader helps on another's plan (D80):
   /// the list is the whole plan's, and the owner keeps the numbers and the
@@ -62,6 +71,17 @@ class GuestListScreen extends StatefulWidget {
 class _GuestListScreenState extends State<GuestListScreen> {
   /// null: the overview; otherwise the group being looked at.
   String? _openGroup;
+
+  /// How many guest rows are drawn at once. The list is one Column inside
+  /// the page's ListView, so it is not lazy: a plan with four hundred
+  /// guests built and laid out four hundred rows on every frame, on the one
+  /// screen meant to hold hundreds. The rest come on «باقي المعازيم», the
+  /// way c02 pages its own items («باقي البنود»).
+  static const _rowsPerPage = 50;
+  int _rowsShown = _rowsPerPage;
+
+  /// Back to one page of rows whenever the list underneath changes.
+  void _resetRows() => _rowsShown = _rowsPerPage;
   _ReplyFilter _reply = _ReplyFilter.all;
   bool _searching = false;
   String _query = '';
@@ -156,95 +176,121 @@ class _GuestListScreenState extends State<GuestListScreen> {
       body = _overview(provider, guests, summary);
     }
 
-    return AarastScreenFrame(
-      maxWidth: 600,
-      backgroundColor: AarastV3Color.canvas,
-      child: RefreshIndicator(
-        color: context.accent.primary,
-        onRefresh: _isLocalPlan ? () async {} : _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x4,
-            AarastV3Space.x3,
-            AarastV3Space.x4,
-            AarastV3Density.pageBottomWithQuickAction,
-          ),
-          children: [
-            JourneyTabHeader(
-              title: words.guests,
-              status: _statusLine(summary, words, helps: helps),
-              actions: [
-                if (guests.isNotEmpty)
-                  JourneyRoundButton(
-                    key: const ValueKey('guests-search'),
-                    icon: _searching ? LucideIcons.x : LucideIcons.search,
-                    tooltip: _searching
-                        ? context.say('سكّر البحث', 'سكّري البحث')
-                        : '${context.say('دوّر', 'دوّري')} على '
-                              '${context.planWord('ضيف', 'ضيفة')}',
-                    onPressed: () => setState(() {
-                      _searching = !_searching;
-                      if (!_searching) _query = '';
-                    }),
-                  ),
-                // D85: adding never waits for the server; a guest added
-                // without it is kept on the phone and sent later.
-                JourneyRoundButton(
-                  key: const ValueKey('guests-add'),
-                  icon: LucideIcons.plus,
-                  tooltip: words.newGuest,
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => _showGuestSheet(provider: provider),
-                ),
-              ],
+    // The open group and the search box are states inside one route, and the
+    // screen draws its own way back out of them («كل العائلات», the X on the
+    // search). Android back has to undo the same states, or it leaves the
+    // tab while the screen still shows a back affordance.
+    final nested = _openGroup != null || _searching;
+    return PopScope(
+      canPop: !nested,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !nested) return;
+        setState(() {
+          if (_searching) {
+            _searching = false;
+            _query = '';
+          } else {
+            _openGroup = null;
+            _reply = _ReplyFilter.all;
+          }
+          _resetRows();
+        });
+      },
+      child: AarastScreenFrame(
+        maxWidth: 600,
+        backgroundColor: AarastV3Color.canvas,
+        child: RefreshIndicator(
+          color: context.accent.primary,
+          onRefresh: _isLocalPlan ? () async {} : _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x4,
+              AarastV3Space.x3,
+              AarastV3Space.x4,
+              AarastV3Density.pageBottomWithQuickAction,
             ),
-            const SizedBox(height: AarastV3Space.x3),
-            if (offline || provider.isStale) ...[
-              JourneyNote(
-                key: const ValueKey('guests-offline'),
-                text: [
-                  // D85: the copy is the phone's; the invitations need the
-                  // server because their links are its.
-                  context.say(
-                    'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
-                    'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
-                  ),
-                  if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
-                ].join('\n'),
-                icon: LucideIcons.wifiOff,
-                color: AarastV3Color.textMuted,
-                soft: AarastV3Color.paper,
+            children: [
+              JourneyTabHeader(
+                title: words.guests,
+                status: _statusLine(summary, words, helps: helps),
+                actions: [
+                  if (guests.isNotEmpty)
+                    JourneyRoundButton(
+                      key: const ValueKey('guests-search'),
+                      icon: _searching ? LucideIcons.x : LucideIcons.search,
+                      tooltip: _searching
+                          ? context.say('سكّر البحث', 'سكّري البحث')
+                          : '${context.say('دوّر', 'دوّري')} على '
+                                '${context.planWord('ضيف', 'ضيفة')}',
+                      onPressed: () => setState(() {
+                        _searching = !_searching;
+                        if (!_searching) _query = '';
+                        _resetRows();
+                      }),
+                    ),
+                  // D85: adding never waits for the server; a guest added
+                  // without it is kept on the phone and sent later.
+                  if (widget.showHeaderAdd)
+                    JourneyRoundButton(
+                      key: const ValueKey('guests-add'),
+                      icon: LucideIcons.plus,
+                      tooltip: words.newGuest,
+                      onPressed: provider.isSubmitting
+                          ? null
+                          : () => _showGuestSheet(provider: provider),
+                    ),
+                ],
               ),
               const SizedBox(height: AarastV3Space.x3),
-            ] else if (provider.loadErrorMessage != null &&
-                guests.isNotEmpty) ...[
-              JourneyListNotice(offline: false, onRetry: _load),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            if (widget.ownerWord case final owner?
-                when guests.any((guest) => !guest.editable)) ...[
-              JourneyNote(
-                key: const ValueKey('guests-helper-note'),
-                text: context.say(
-                  'تشوف كل ${words.guests}. تعدّل اللي من إضافتك، وأرقام البقية عند $owner.',
-                  'تشوفين كل ${words.guests}. تعدّلين اللي من إضافتك، وأرقام البقية عند $owner.',
+              if (offline || provider.isStale) ...[
+                JourneyNote(
+                  key: const ValueKey('guests-offline'),
+                  text: [
+                    // D85: the copy is the phone's; the invitations need the
+                    // server because their links are its.
+                    context.say(
+                      'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                      'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                    ),
+                    if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
+                  ].join('\n'),
+                  icon: LucideIcons.wifiOff,
+                  color: AarastV3Color.textMuted,
+                  soft: AarastV3Color.paper,
                 ),
-                icon: LucideIcons.eye,
-                color: AarastV3Color.textMuted,
-                soft: AarastV3Color.paper,
-              ),
-              const SizedBox(height: AarastV3Space.x3),
+                const SizedBox(height: AarastV3Space.x3),
+              ] else if (provider.loadErrorMessage != null &&
+                  guests.isNotEmpty) ...[
+                JourneyListNotice(offline: false, onRetry: _load),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              if (widget.ownerWord case final owner?
+                  when guests.any((guest) => !guest.editable)) ...[
+                JourneyNote(
+                  key: const ValueKey('guests-helper-note'),
+                  text: context.say(
+                    'تشوف كل ${words.guests}. تعدّل اللي من إضافتك، وأرقام البقية عند $owner.',
+                    'تشوفين كل ${words.guests}. تعدّلين اللي من إضافتك، وأرقام البقية عند $owner.',
+                  ),
+                  icon: LucideIcons.eye,
+                  color: AarastV3Color.textMuted,
+                  soft: AarastV3Color.paper,
+                ),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              if (_searching) ...[
+                GuestSearchField(
+                  onChanged: (value) => setState(() {
+                    _query = value;
+                    _resetRows();
+                  }),
+                ),
+                const SizedBox(height: AarastV3Space.x3),
+              ],
+              body,
             ],
-            if (_searching) ...[
-              GuestSearchField(
-                onChanged: (value) => setState(() => _query = value),
-              ),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            body,
-          ],
+          ),
         ),
       ),
     );
@@ -305,7 +351,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 )
               : null,
         ),
-        if (!_isLocalPlan) ...[
+        // The door to the invitation card, except while the card's own
+        // button is right above it going to the very same place: «أرسل
+        // الدعوة على واتساب» and this link were two controls, one under the
+        // other, with one destination. The reminder button is a different
+        // destination, so the link stays beside it.
+        if (!_isLocalPlan && !(uninvited && remindable == 0)) ...[
           const SizedBox(height: AarastV3Space.x1),
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -410,7 +461,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
             'المجموعة',
     };
     final visible = _filtered(inGroup, _reply)
-      ..sort((a, b) => a.name.compareTo(b.name));
+      ..sort((a, b) => compareArabicNames(a.name, b.name));
+    // Each chip's count, worked out once. Every chip used to re-filter the
+    // whole group on every frame, so a group of four hundred ran two
+    // thousand checks a frame just to label five chips.
+    final counts = <_ReplyFilter, int>{
+      for (final filter in _ReplyFilter.values)
+        filter: _filtered(inGroup, filter).length,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -443,11 +501,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
               for (final filter in _ReplyFilter.values) ...[
                 JourneyChip(
                   key: ValueKey('guest-filter-${filter.name}'),
-                  label:
-                      '${filter.labelFor(words)} ${_filtered(inGroup, filter).length}',
+                  label: '${filter.labelFor(words)} ${counts[filter] ?? 0}',
                   selected: _reply == filter,
                   selectedColor: context.accent.primary,
-                  onTap: () => setState(() => _reply = filter),
+                  onTap: () => setState(() {
+                    _reply = filter;
+                    _resetRows();
+                  }),
                 ),
                 const SizedBox(width: AarastV3Space.x2),
               ],
@@ -455,7 +515,21 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
         ),
         const SizedBox(height: AarastV3Space.x3),
-        _guestBox(provider, visible, duplicates, empty: 'ما فيه أحد هنا'),
+        _guestBox(
+          provider,
+          visible,
+          duplicates,
+          empty: _reply == _ReplyFilter.all
+              ? 'ما فيه أحد هنا'
+              : 'ما فيه أحد تحت «${_reply.labelFor(words)}» في $title',
+          emptyAction: _reply == _ReplyFilter.all ? null : 'شوف الكل',
+          onEmptyAction: _reply == _ReplyFilter.all
+              ? null
+              : () => setState(() {
+                  _reply = _ReplyFilter.all;
+                  _resetRows();
+                }),
+        ),
       ],
     );
   }
@@ -465,49 +539,91 @@ class _GuestListScreenState extends State<GuestListScreen> {
     List<Guest> guests,
     Set<String> duplicates, {
     required String empty,
+    String? emptyAction,
+    VoidCallback? onEmptyAction,
   }) {
     if (guests.isEmpty) {
+      // A filter that matched nobody is not an empty list, and it must say
+      // the way back out of itself.
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x6),
-        child: Text(
-          empty,
-          textAlign: TextAlign.center,
-          style: JourneyType.of(
-            JourneyType.body,
-            color: AarastV3Color.textMuted,
-          ),
+        child: Column(
+          children: [
+            Text(
+              empty,
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            if (emptyAction != null && onEmptyAction != null) ...[
+              const SizedBox(height: AarastV3Space.x2),
+              JourneyTextAction(
+                key: const ValueKey('guests-clear-reply-filter'),
+                label: emptyAction,
+                color: context.accent.primary,
+                onPressed: onEmptyAction,
+              ),
+            ],
+          ],
         ),
       );
     }
-    return JourneyBox(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var index = 0; index < guests.length; index++) ...[
-            if (index > 0)
-              const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AarastV3Color.line,
-              ),
-            GuestRow(
-              guest: guests[index],
-              groupLabel: guestGroupLabel(guests[index], provider.groups),
-              isDuplicate: duplicates.contains(guests[index].id),
-              onOpen: () => context.push(
-                AppRouter.guestDetails(widget.weddingPlanId, guests[index].id),
-              ),
+    // One page of rows at a time: the whole list used to be built on every
+    // frame, and this is the screen that holds hundreds.
+    final shown = guests.length <= _rowsShown ? guests.length : _rowsShown;
+    final rest = guests.length - shown;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var index = 0; index < shown; index++) ...[
+                if (index > 0)
+                  const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AarastV3Color.line,
+                  ),
+                GuestRow(
+                  guest: guests[index],
+                  groupLabel: guestGroupLabel(guests[index], provider.groups),
+                  isDuplicate: duplicates.contains(guests[index].id),
+                  onOpen: () => context.push(
+                    AppRouter.guestDetails(
+                      widget.weddingPlanId,
+                      guests[index].id,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (rest > 0) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('guests-more-rows'),
+              label: 'باقي ${GuestWords.of(context).count(rest)}',
+              icon: LucideIcons.chevronDown,
+              color: context.accent.primary,
+              onPressed: () => setState(() => _rowsShown += _rowsPerPage),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
   void _openGroupView(String key) => setState(() {
     _openGroup = key;
     _reply = _ReplyFilter.all;
+    _resetRows();
   });
 
   /// Groups are saved on the account, so a device-only plan has none (w27).

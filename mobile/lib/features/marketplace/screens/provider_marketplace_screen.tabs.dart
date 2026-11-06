@@ -3,8 +3,8 @@ part of 'provider_marketplace_screen.dart';
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _categoryStripHeight = 92.0;
 
-/// The four tabs of «المزودين»: طلباتي (f01), استكشف (f02), المحادثات (f08)
-/// and المفضلة (f09).
+/// The four tabs of «المزودين», in the order they are drawn: استكشف (f02),
+/// طلباتي (f01), المحادثات (f08) and المفضلة (f09).
 extension _ProviderTabs on _ProviderMarketplaceScreenState {
   List<ProviderBoardRow> _board(ProviderMarketplaceProvider marketplace) {
     final planId = _weddingLocationPlanId!;
@@ -70,9 +70,17 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     List<ProviderBoardRow> board,
   ) {
     final planId = _weddingLocationPlanId;
-    if (_firstVisitLeft || planId == null || !marketplace.includesAccountData) {
-      return false;
-    }
+    if (_firstVisitLeft || planId == null) return false;
+    // Without an account there are no requests to read and never will be
+    // until the plan is saved, so this is a first visit, not a wait. It
+    // used to return «still reading» here, and on a plan kept on the phone
+    // that left «طلباتي» on a loading skeleton for good, with the tab row
+    // hidden behind it and no way back but the bottom bar.
+    if (_hasAccount == false) return true;
+    // The account's own requests have not been asked for yet, so neither
+    // view is known to be the right one: say «still reading» rather than
+    // flash an empty board that then turns into «نبدأ بالقاعة».
+    if (!marketplace.includesAccountData) return null;
     if (marketplace.quotesForPlan(planId).isNotEmpty ||
         marketplace.favoriteProviders.isNotEmpty ||
         board.any((row) => row.stage > 0) ||

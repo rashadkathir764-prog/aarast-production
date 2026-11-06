@@ -47,14 +47,21 @@ class _WeddingSkyHero extends StatelessWidget {
     final line = day
         ? [?hijri?.dayAndMonth, formatArabicWeekday(date)].join(' · ')
         : 'كل ليلة تنوّر حبل · $lit من 7';
+    // b04's countdown reads by the same rule as b01/b02's, from the same
+    // homeCountdownWords: this hero wrote its own and so said «4 يوم على
+    // عرسك» where the greeting above it said «باقي 4 أيام».
+    final words = homeCountdownWords(days);
+    // Three or more is drawn as a figure beside its word; «يوم واحد» and
+    // «يومين» already carry their number, so no figure goes next to them.
+    final showCount = day || days > 2;
     final count = day ? 'اليوم' : '$days';
-    final title = day
-        ? 'يوم عرسك'
-        : (days == 1 ? 'يوم واحد على عرسك' : 'يوم على عرسك');
+    final title = day ? 'يوم عرسك' : words.drawn;
     final accent = context.accent;
     return Semantics(
       button: true,
-      label: '$count $title، $line',
+      // The spoken line carries the number once; «1 يوم واحد» was the
+      // same bug the home hero had.
+      label: day ? '$count $title، $line' : '${words.spoken}، $line',
       onTap: onTap,
       excludeSemantics: true,
       child: AarastPressable(
@@ -118,25 +125,27 @@ class _WeddingSkyHero extends StatelessWidget {
                             children: [
                               // The count keeps its size; only a very narrow
                               // card scales it down.
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: constraints.maxWidth * 0.45,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: AlignmentDirectional.bottomStart,
-                                  child: Text(
-                                    count,
-                                    style: JourneyType.of(
-                                      day ? 50 : JourneyType.homeCount,
-                                      weight: JourneyType.bold,
-                                      color: AarastV3Color.onPrimary,
-                                      height: 0.95,
+                              if (showCount) ...[
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: constraints.maxWidth * 0.45,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: AlignmentDirectional.bottomStart,
+                                    child: Text(
+                                      count,
+                                      style: JourneyType.of(
+                                        day ? 50 : JourneyType.homeCount,
+                                        weight: JourneyType.bold,
+                                        color: AarastV3Color.onPrimary,
+                                        height: 0.95,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: AarastV3Space.x2),
+                                const SizedBox(width: AarastV3Space.x2),
+                              ],
                               Expanded(
                                 child: Padding(
                                   padding: const EdgeInsets.only(

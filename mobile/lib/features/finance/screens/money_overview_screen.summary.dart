@@ -15,19 +15,25 @@ String _amount(BuildContext context, Object? value, String currency) {
   return compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
 }
 
-/// The status line under «المال».
+/// At most this many payers are named in c01's sentence; the rest are
+/// counted, and w20 «مين دفع ايش» lists every one of them.
+const _maxNamedPayers = 2;
+
+/// The status line under «المال»: one true state, never a reassurance the
+/// server did not work out, and never the shortfall's figure (that figure is
+/// the card's own 28-point lead, see [_ShortfallLine], so saying it here
+/// would be the same number twice at opposite weights).
+///
+/// Being over the budget is said even when the money is also short: the two
+/// are different facts, and the over-budget one used to be dropped in
+/// silence because the shortfall was checked first.
 String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
-  final funding = summary.funding;
-  if (funding != null && funding.shortfall != null) {
-    return 'ماشية، بس ومع الموعود ناقصك شي';
-  }
   if (!summary.hasBudget) {
     return profile.say(
       'حدد ميزانيتك ونرتب لك الباقي',
       'حددي ميزانيتك ونرتب لك الباقي',
     );
   }
-  if (moneyValue(summary.budget.remaining) < 0) return 'فوق الميزانية';
   if (summary.costs.count == 0) {
     return profile.ownerDid(
       'ما سجلت اتفاقات بعد',
@@ -36,7 +42,13 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
       bride: 'ما انسجلت اتفاقات بعد',
     );
   }
-  return 'ماشية';
+  final funding = summary.funding;
+  final short = funding != null && funding.shortfall != null;
+  final over = moneyValue(summary.budget.remaining) < 0;
+  if (over && short) return 'فوق الميزانية، وفلوسك ما تغطي اتفاقاتك';
+  if (short) return 'فلوسك ما تغطي اتفاقاتك';
+  if (over) return 'فوق الميزانية';
+  return 'في حدود ميزانيتك';
 }
 
 /// D59: what was paid, said by whose money paid it: the owner's own part
@@ -80,10 +92,18 @@ class _MoneySummaryCard extends StatelessWidget {
     final ownPaid = inSentence(summary.costs.paidByOwner);
     final left = inSentence(summary.costs.outstanding);
     final hasAgreements = summary.costs.count > 0;
-    // D59: what others paid for the owner, by payer, from the server.
+    // D59: what others paid for the owner, by payer, from the server. At
+    // most two are named in the sentence: every payer used to add a clause
+    // to the same sentence, so five of them made one unreadable paragraph.
+    // The rest are counted in one clause, and «مين دفع ايش» (w20) in the
+    // payments tab lists them all.
+    final payers = payersForOwner(summary);
     final paidForOwner = [
-      for (final group in payersForOwner(summary))
+      for (final group in payers.take(_maxNamedPayers))
         paidForOwnerPhrase(group, inSentence(group.paid), profile),
+      if (payers.length > _maxNamedPayers)
+        'دفع ${profile.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} '
+            '${arabicCount(payers.length - _maxNamedPayers, one: 'واحد', two: 'ثنتين', few: 'غيرهم', many: 'غيرهم')} كذلك',
     ];
 
     // c01: a 17 sentence (1.7 apart) in a box padded 20, then the 34 gap.
@@ -654,10 +674,16 @@ class _MoneyBudgetCard extends StatelessWidget {
           ),
           const SizedBox(height: AarastV3Space.x2),
           Text(
+            // The share is drawn by the bar above, so repeating it as a
+            // percentage says one thing twice. It is kept only when the
+            // agreements are over the budget: there the bar is pinned full
+            // and the percentage is the only place that says how far over.
             hidden
                 ? 'الميزانية مخفية'
-                : 'من ميزانية ${_amount(context, summary.budget.total, currency)} · '
-                      'الاتفاقات ${(summary.confirmedRatio * 100).round()}% منها',
+                : over
+                ? 'من ميزانية ${_amount(context, summary.budget.total, currency)} · '
+                      'الاتفاقات ${(summary.confirmedRatio * 100).round()}% منها'
+                : 'من ميزانية ${_amount(context, summary.budget.total, currency)}',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

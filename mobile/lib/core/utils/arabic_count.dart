@@ -8,11 +8,32 @@ String arabicCount(
   required String few,
   required String many,
 }) {
+  final word = arabicCountWord(
+    count,
+    one: one,
+    two: two,
+    few: few,
+    many: many,
+  );
+  if (count == 1 || count == 2) return word;
+  return '$count $word';
+}
+
+/// The counted word on its own, by the same rule, for a screen that draws
+/// the number itself: the home countdown's days in 52 point beside their
+/// word (b01). 1 «يوم واحد», 2 «يومين», 3 to 10 «أيام», 11 and up «يوم».
+String arabicCountWord(
+  int count, {
+  required String one,
+  required String two,
+  required String few,
+  required String many,
+}) {
   if (count == 1) return one;
   if (count == 2) return two;
   final lastTwo = count % 100;
-  if (count == 0 || (lastTwo >= 3 && lastTwo <= 10)) return '$count $few';
-  return '$count $many';
+  if (count == 0 || (lastTwo >= 3 && lastTwo <= 10)) return few;
+  return many;
 }
 
 String arabicDays(int count) =>

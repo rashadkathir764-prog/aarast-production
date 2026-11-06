@@ -1,7 +1,8 @@
 part of 'aarast_dashboard_view.dart';
 
-/// Tasks, guests and providers, each in its own colour, with the server's
-/// counts and what each count is of.
+/// Tasks, guests and providers, with the server's counts and what each count
+/// is of. All three wear the plan's one colour (D68); they do not take a
+/// colour per section.
 class _JourneyHomeTiles extends StatelessWidget {
   const _JourneyHomeTiles({
     required this.summary,
@@ -105,7 +106,12 @@ class _JourneyHomeTiles extends StatelessWidget {
               soft: context.accent.primarySoft,
               // D60: the server's one count, the board's «محجوز N» too.
               value: s.bookedServices.count,
-              of: 'محجوز',
+              // Its two neighbours say «ما في مهام بعد» and «ما في ضيوف
+              // بعد» at zero; this one left a bare «0 محجوز», a number
+              // that looks like data and tells nothing.
+              of: s.bookedServices.count == 0
+                  ? context.say('ما حجزت أحد بعد', 'ما حجزتِ أحد بعد')
+                  : 'محجوز',
               note: providersNote,
               progress: null,
               onTap: onOpenProviders,

@@ -807,16 +807,35 @@ class JourneyTabHeader extends StatelessWidget {
                     ),
                   )
                 else
+                  // A pressable status line used to be drawn exactly like a
+                  // plain one: same size, same muted colour, no mark. The
+                  // bookings (w34) hung off it and so had no visible door
+                  // at all. It now reads as the app's other links do — the
+                  // plan's colour and a chevron.
                   AarastPressable(
                     onTap: onStatusTap,
                     semanticLabel: statusTapLabel,
                     borderRadius: BorderRadius.circular(AarastV3Radius.control),
-                    child: Text(
-                      status,
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        color: AarastV3Color.textMuted,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            status,
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
+                              color: context.accent.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AarastV3Space.half),
+                        Icon(
+                          LucideIcons.chevronLeft,
+                          size: 16,
+                          color: context.accent.primary,
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -1132,6 +1151,13 @@ class JourneyList extends StatelessWidget {
 }
 
 /// A large choice card: icon or picture, title, subtitle, selected outline.
+///
+/// The radio ring belongs to a card that is one answer among answers, where
+/// something later confirms the pick. A card that acts the moment it is
+/// tapped is not that, and a ring on it promises a choice to confirm that
+/// never comes: the guests' empty list drew three rings that could never
+/// fill. Such a card passes [choosable] false and gets a chevron, the
+/// app's mark for «this opens something».
 class JourneyChoiceCard extends StatelessWidget {
   const JourneyChoiceCard({
     required this.title,
@@ -1139,6 +1165,7 @@ class JourneyChoiceCard extends StatelessWidget {
     required this.leading,
     required this.onTap,
     this.selected = false,
+    this.choosable = true,
     super.key,
   });
 
@@ -1148,11 +1175,15 @@ class JourneyChoiceCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
 
+  /// Whether this card is one answer among answers. False for a card that
+  /// acts at once.
+  final bool choosable;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      selected: selected,
+      selected: choosable ? selected : null,
       label: '$title، $subtitle',
       onTap: onTap,
       excludeSemantics: true,
@@ -1197,7 +1228,14 @@ class JourneyChoiceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AarastV3Space.x2),
-              _SelectionMark(selected: selected),
+              if (choosable)
+                _SelectionMark(selected: selected)
+              else
+                const Icon(
+                  LucideIcons.chevronLeft,
+                  size: 18,
+                  color: AarastV3Color.textFaint,
+                ),
             ],
           ),
         ),

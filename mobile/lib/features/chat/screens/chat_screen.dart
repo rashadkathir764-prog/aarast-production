@@ -958,7 +958,7 @@ class _ReportSheet extends StatelessWidget {
             title: reason,
             subtitle: '',
             leading: const SizedBox.shrink(),
-            selected: false,
+            choosable: false,
             onTap: () => Navigator.of(context).pop(reason),
           ),
           const SizedBox(height: AarastV3Space.x2),

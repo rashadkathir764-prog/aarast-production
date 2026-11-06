@@ -1,9 +1,14 @@
 part of 'money_overview_screen.dart';
 
 // c03 «الدفعات»: what is late and what falls due in the next 30 days (the
-// server's due list), the total of those, and each one recorded with a
-// swipe («دفعتها»). A row opens its agreement (c07), where every date of it
-// is listed; later dates are not shown here, as drawn.
+// server's due list: `dueDate <= today + 30` with no lower bound, so every
+// old overdue date is in it), the total of those, and each one recorded with
+// its own «سجّل الدفعة» or a swipe. A row opens its agreement (c07), where
+// every date of it is listed; later dates are not shown here, as drawn.
+//
+// The late ones are their own section: they were under a heading that said
+// «قادمة», and counted into a figure labelled «خلال 30 يوم», while they are
+// neither upcoming nor inside that window.
 
 class _MoneyPaymentsTab extends StatelessWidget {
   const _MoneyPaymentsTab({
@@ -29,6 +34,14 @@ class _MoneyPaymentsTab extends StatelessWidget {
       (sum, schedule) => sum + moneyValue(schedule.amount),
     );
     final canSwipe = provider.canManageMoney;
+    final late = [
+      for (final schedule in schedules)
+        if (schedule.isOverdueAt(now)) schedule,
+    ];
+    final soon = [
+      for (final schedule in schedules)
+        if (!schedule.isOverdueAt(now)) schedule,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -65,7 +78,11 @@ class _MoneyPaymentsTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'خلال 30 يوم',
+                        // The figure covers the late ones too, so it cannot
+                        // be called «خلال 30 يوم».
+                        late.isEmpty
+                            ? 'خلال 30 يوم'
+                            : 'المستحق عليك الآن',
                         style: JourneyType.of(
                           JourneyType.small,
                           color: AarastV3Color.textMuted,
@@ -100,7 +117,6 @@ class _MoneyPaymentsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AarastV3Space.x2),
-          const JourneySectionTitle('قادمة'),
           if (canSwipe)
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(
@@ -120,36 +136,82 @@ class _MoneyPaymentsTab extends StatelessWidget {
                 ),
               ),
             ),
-          JourneyBox(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var index = 0; index < schedules.length; index++) ...[
-                  if (index > 0)
-                    const Divider(
-                      height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                      color: AarastV3Color.line,
-                    ),
-                  _DueRow(
-                    schedule: schedules[index],
-                    amount: _amount(context, schedules[index].amount, currency),
-                    overdue: schedules[index].isOverdueAt(now),
-                    onOpen: () => context.push(
-                      AppRouter.moneyCostDetails(
-                        planId,
-                        schedules[index].costId,
-                      ),
-                    ),
-                    onPay: canSwipe ? onPay(schedules[index]) : null,
-                  ),
-                ],
-              ],
+          if (late.isNotEmpty) ...[
+            const JourneySectionTitle('متأخرة'),
+            _DueList(
+              key: const ValueKey('money-due-late'),
+              planId: planId,
+              schedules: late,
+              currency: currency,
+              now: now,
+              canPay: canSwipe,
+              onPay: onPay,
             ),
-          ),
+            const SizedBox(height: AarastV3Space.x3),
+          ],
+          if (soon.isNotEmpty) ...[
+            const JourneySectionTitle('قادمة خلال 30 يوم'),
+            _DueList(
+              key: const ValueKey('money-due-soon'),
+              planId: planId,
+              schedules: soon,
+              currency: currency,
+              now: now,
+              canPay: canSwipe,
+              onPay: onPay,
+            ),
+          ],
         ],
       ],
+    );
+  }
+}
+
+/// One section's rows, so «متأخرة» and «قادمة» are drawn the same way.
+class _DueList extends StatelessWidget {
+  const _DueList({
+    required this.planId,
+    required this.schedules,
+    required this.currency,
+    required this.now,
+    required this.canPay,
+    required this.onPay,
+    super.key,
+  });
+
+  final String planId;
+  final List<PaymentSchedule> schedules;
+  final String currency;
+  final DateTime now;
+  final bool canPay;
+  final ValueChanged<PaymentSchedule>? Function(PaymentSchedule) onPay;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var index = 0; index < schedules.length; index++) ...[
+            if (index > 0)
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AarastV3Color.line,
+              ),
+            _DueRow(
+              schedule: schedules[index],
+              amount: _amount(context, schedules[index].amount, currency),
+              overdue: schedules[index].isOverdueAt(now),
+              onOpen: () => context.push(
+                AppRouter.moneyCostDetails(planId, schedules[index].costId),
+              ),
+              onPay: canPay ? onPay(schedules[index]) : null,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

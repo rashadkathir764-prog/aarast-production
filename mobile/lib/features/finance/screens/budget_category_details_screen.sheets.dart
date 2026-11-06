@@ -183,6 +183,7 @@ class _OverChoices extends StatelessWidget {
       children: [
         JourneyChoiceCard(
           key: const ValueKey('category-over-grow'),
+          choosable: false,
           title: '${context.say('زِد', 'زيدي')} الميزانية $overLabel',
           subtitle: 'تصير ميزانية عرسك $budgetAfter',
           leading: Icon(LucideIcons.trendingUp, color: context.accent.primary),
@@ -191,6 +192,7 @@ class _OverChoices extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyChoiceCard(
           key: const ValueKey('category-over-move'),
+          choosable: false,
           title: context.say('خذها من بند ثاني', 'خذيها من بند ثاني'),
           subtitle: context.say(
             'تنقص من بند ما احتاج كل اللي حطيته له',

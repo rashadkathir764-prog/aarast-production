@@ -163,7 +163,9 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
             ? const SizedBox.shrink()
             : JourneyGlassRows(rows: rows),
         action: week
-            ? context.say('وريني برنامج الأسبوع', 'وريني برنامج الأسبوع')
+            // The reader is speaking, not being spoken to, so this one
+            // wording serves both.
+            ? 'وريني برنامج الأسبوع'
             : context.say('ابدأ يومك', 'ابدئي يومك'),
         onAction: () => context.popOrGo(
           AppRouter.weddingPlanDashboard(widget.weddingPlanId),

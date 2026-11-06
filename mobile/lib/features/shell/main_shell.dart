@@ -197,6 +197,8 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                 TaskTimelineScreen(
                   key: ValueKey('tasks-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
+                  // This shell floats «إضافة مهمة» over the tab.
+                  showHeaderAdd: false,
                 ),
               ),
 
@@ -207,6 +209,8 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                   key: ValueKey('guests-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
                   openAddRequest: _guestAddRequest,
+                  // This shell floats «إضافة ضيف» over the tab.
+                  showHeaderAdd: false,
                 ),
               ),
 

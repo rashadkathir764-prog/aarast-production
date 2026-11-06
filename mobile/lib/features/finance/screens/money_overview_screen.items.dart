@@ -5,7 +5,7 @@ part of 'money_overview_screen.dart';
 // yet reads «ما انحجز». Then «أضف بند»: the starter items the plan does not
 // have, or any other.
 
-class _MoneyItemsTab extends StatelessWidget {
+class _MoneyItemsTab extends StatefulWidget {
   const _MoneyItemsTab({
     required this.planId,
     required this.provider,
@@ -17,7 +17,18 @@ class _MoneyItemsTab extends StatelessWidget {
   final MoneyStarterCatalog catalog;
 
   @override
+  State<_MoneyItemsTab> createState() => _MoneyItemsTabState();
+}
+
+class _MoneyItemsTabState extends State<_MoneyItemsTab> {
+  /// Cancelled agreements, folded away like «اللي خلصت» in the tasks.
+  bool _showCancelled = false;
+
+  @override
   Widget build(BuildContext context) {
+    final planId = widget.planId;
+    final provider = widget.provider;
+    final catalog = widget.catalog;
     final currency = provider.summary.currency;
     // c02: the mahr is its own section above «عرسك» (C1): the groom's
     // agreement with the bride's family, or the bride's mahr coming in.
@@ -30,15 +41,19 @@ class _MoneyItemsTab extends StatelessWidget {
         if (mahrItemIds.contains(cost.budgetCategoryId) && !cost.isCancelled)
           cost,
     ];
-    final costs = [
-      ...provider.costs.where(
-        (cost) =>
-            !cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId),
-      ),
-      ...provider.costs.where(
-        (cost) =>
-            cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId),
-      ),
+    final live = [
+      for (final cost in provider.costs)
+        if (!cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId))
+          cost,
+    ];
+    // Cancelled agreements piled into the same list for good, with no
+    // filter and no divider: a graveyard mixed into live rows. They are
+    // kept reachable (this list is the only door to an agreement's
+    // details) but folded away under their own count.
+    final cancelled = [
+      for (final cost in provider.costs)
+        if (cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId))
+          cost,
     ];
     final withCosts = {
       for (final cost in provider.costs) cost.budgetCategoryId,
@@ -79,7 +94,7 @@ class _MoneyItemsTab extends StatelessWidget {
       bride: 'ما اندفع شي',
     );
     final rows = <Widget>[
-      for (final cost in costs)
+      for (final cost in live)
         _MoneyItemRow(
           key: ValueKey('money-item-${cost.id}'),
           icon: iconFor(
@@ -118,12 +133,16 @@ class _MoneyItemsTab extends StatelessWidget {
             services[category.id]?.detail ?? 'ما انحجز',
             AarastV3Color.brandAccentStrong,
           ),
+          // A row opens the thing it names. An item with a service under
+          // way opens where that service is (its note says so); an item on
+          // its own opens the item, whoever is reading. It used to open a
+          // blank «agreement» form for whoever may manage the money: the
+          // row looked the same and landed the reader in a creation form
+          // they had not asked for. Adding the agreement is still one tap
+          // away, from the item's own «أضف اتفاق».
           onTap: switch (services[category.id]) {
             final service? => () => context.push(
               AppRouter.providerRequests(planId, itemKey: service.key),
-            ),
-            null when provider.canManageMoney => () => context.push(
-              AppRouter.moneyCostCreate(planId, categoryId: category.id),
             ),
             null => () => context.push(
               AppRouter.moneyCategoryDetails(planId, category.id),
@@ -238,6 +257,63 @@ class _MoneyItemsTab extends StatelessWidget {
               ],
             ),
           ),
+        if (cancelled.isNotEmpty) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('money-items-toggle-cancelled'),
+              label: _showCancelled
+                  ? 'خبّي الملغية'
+                  : 'الملغية · ${cancelled.length}',
+              icon: _showCancelled
+                  ? LucideIcons.chevronUp
+                  : LucideIcons.chevronDown,
+              color: AarastV3Color.textMuted,
+              onPressed: () => setState(() => _showCancelled = !_showCancelled),
+            ),
+          ),
+          if (_showCancelled)
+            JourneyBox(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var index = 0; index < cancelled.length; index++) ...[
+                    if (index > 0)
+                      const Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: AarastV3Color.line,
+                      ),
+                    _MoneyItemRow(
+                      key: ValueKey('money-item-${cancelled[index].id}'),
+                      icon: iconFor(
+                        provider
+                                .categoryById(cancelled[index].budgetCategoryId)
+                                ?.name ??
+                            cancelled[index].categoryName,
+                      ),
+                      title: _itemTitle(cancelled[index]),
+                      amount: _amount(
+                        context,
+                        cancelled[index].totalAmount,
+                        currency,
+                      ),
+                      paidRatio: 0,
+                      paidLine: 'ملغي',
+                      note: null,
+                      muted: true,
+                      private: cancelled[index].isPrivate,
+                      onTap: () => context.push(
+                        AppRouter.moneyCostDetails(planId, cancelled[index].id),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
         // The server sends the agreements a page at a time; the rest load
         // here, in the same list.
         if (provider.hasMoreCosts) ...[
@@ -304,9 +380,9 @@ class _MoneyItemsTab extends StatelessWidget {
   /// it is with is on the agreement's page; its own title only tells two
   /// agreements on one item apart, and stands in for the catch-all «أخرى».
   String _itemTitle(WeddingCost cost) {
-    final item = provider.categoryById(cost.budgetCategoryId)?.name.trim();
+    final item = widget.provider.categoryById(cost.budgetCategoryId)?.name.trim();
     if (item == null || item.isEmpty || item == 'أخرى') return cost.title;
-    final shared = provider.costs
+    final shared = widget.provider.costs
         .where(
           (other) =>
               other.budgetCategoryId == cost.budgetCategoryId &&
@@ -323,16 +399,16 @@ class _MoneyItemsTab extends StatelessWidget {
     if (marketplace == null) return const {};
     final rows = buildProviderBoard(
       items: [
-        for (final category in provider.categories)
+        for (final category in widget.provider.categories)
           if (!category.isMahr)
             (
               id: category.id,
               name: category.name,
-              providerCategoryIds: provider.providerCategoryIdsFor(category.id),
+              providerCategoryIds: widget.provider.providerCategoryIdsFor(category.id),
             ),
       ],
       costs: [
-        for (final cost in provider.costs)
+        for (final cost in widget.provider.costs)
           (
             budgetCategoryId: cost.budgetCategoryId,
             providerId: cost.providerId,
@@ -340,10 +416,10 @@ class _MoneyItemsTab extends StatelessWidget {
           ),
       ],
       costItemById: {
-        for (final cost in provider.costs) cost.id: cost.budgetCategoryId,
+        for (final cost in widget.provider.costs) cost.id: cost.budgetCategoryId,
       },
       reader: context.journeyProfile,
-      quotes: marketplace.quotesForPlan(planId),
+      quotes: marketplace.quotesForPlan(widget.planId),
     );
     return {
       for (final row in rows)
@@ -389,14 +465,14 @@ class _MoneyItemsTab extends StatelessWidget {
   /// The day the cost's next payment is due, if one is pending.
   DateTime? _nextDueDay(FinanceProvider provider, WeddingCost cost) {
     final due =
-        provider.dueSchedules
+        widget.provider.dueSchedules
             .where((schedule) => schedule.costId == cost.id)
             .toList()
           ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     if (due.isNotEmpty) return due.first.dueDate;
     // The mahr's rest is usually weeks away, past the due list's 30 days:
     // the summary names its day.
-    return provider.summary.mahr?.nextDueAt;
+    return widget.provider.summary.mahr?.nextDueAt;
   }
 
   /// «دفعة بعد 5 أيام» or «دفعة متأخرة» from the cost's own schedules.
@@ -406,7 +482,7 @@ class _MoneyItemsTab extends StatelessWidget {
     DateTime now,
   ) {
     final due =
-        provider.dueSchedules
+        widget.provider.dueSchedules
             .where((schedule) => schedule.costId == cost.id)
             .toList()
           ..sort((a, b) => a.dueDate.compareTo(b.dueDate));

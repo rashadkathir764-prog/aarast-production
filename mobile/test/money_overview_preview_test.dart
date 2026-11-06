@@ -92,7 +92,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('26%'), findsOneWidget);
+    // Under the budget the bar draws the 26% share; the card does not say it
+    // again as a number (the screen card's «لا تكرار», e19c2da). The number
+    // stays only over the budget, where the bar is pinned full.
+    expect(find.textContaining('26%'), findsNothing);
     expect(find.text('دفعة متأخرة'), findsOneWidget);
     expect(find.text('سجّل الدفعة'), findsOneWidget);
     await expectLater(

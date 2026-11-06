@@ -70,6 +70,12 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   /// «الملخص · البنود · الدفعات · من وين» (c01); null until chosen.
   int? _tab;
 
+  /// The tab money opens on, settled once the money is first read: a plan
+  /// with nothing in it opens on «البنود». It is kept after that, because
+  /// it used to be worked out on every build from _isEmpty, so adding the
+  /// first item moved the reader to «الملخص» by itself.
+  int? _opening;
+
   @override
   void initState() {
     super.initState();
@@ -112,11 +118,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         // «من وين» is the owner's: only the owner receives funding.
         if (hasFunding) 'من وين',
       ];
-      // Nothing in money yet: «البنود» is where the first item goes.
-      final tab = (_tab ?? (_isEmpty(provider) ? 1 : 0)).clamp(
-        0,
-        tabs.length - 1,
-      );
+      final tab = (_tab ?? _opening ?? 0).clamp(0, tabs.length - 1);
       content = RefreshIndicator(
         color: context.accent.primary,
         onRefresh: _load,
@@ -182,6 +184,20 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               ),
               const SizedBox(height: AarastV3Space.x3),
             ],
+            // «مقفل أو بدون صلاحية: يقول لماذا، ومن يفتحه». A reader who
+            // may see the money but not manage it loses the «+», the swipe,
+            // «سجّل الدفعة» on every row and the budget button, and nothing
+            // said why any of them were missing.
+            if (provider.hasLoadedMoney && !provider.canManageMoney) ...[
+              JourneyNote(
+                key: const ValueKey('money-read-only'),
+                icon: LucideIcons.eye,
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.paper,
+                text: _readOnlyLine(context),
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             if (provider.pendingMoneyChanges > 0) ...[
               JourneyNote(
                 key: const ValueKey('money-pending-changes'),
@@ -233,11 +249,29 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       );
     }
 
+    // The four tabs are a state inside one route, so Android back has to
+    // undo them before it leaves money; otherwise picking «الدفعات» and
+    // pressing back threw the reader out of the tab altogether.
+    // The root is the tab the screen opened on, not index 0: a plan with
+    // nothing in it opens on «البنود», so comparing against «الملخص» sent
+    // the first back press to a tab the reader had never opened, and only
+    // the second one left.
+    final opening = _opening ?? 0;
+    final atRoot = (_tab ?? opening) == opening;
     if (widget.embedded) {
-      return ColoredBox(
-        key: const ValueKey('money-overview-surface'),
-        color: AppTheme.canvas,
-        child: Directionality(textDirection: TextDirection.rtl, child: content),
+      return PopScope(
+        canPop: atRoot,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && !atRoot) setState(() => _tab = opening);
+        },
+        child: ColoredBox(
+          key: const ValueKey('money-overview-surface'),
+          color: AppTheme.canvas,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: content,
+          ),
+        ),
       );
     }
     return AarastScreenFrame(maxWidth: 560, child: content);
@@ -270,12 +304,17 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                     setState(() => _tab = 1);
                   }
                 }
-              : () => setState(() => _tab = 3),
+              : () => setState(() => _tab = _fundingTab(provider)),
           onWedding: () => setState(() => _tab = 1),
         ),
       ],
       // Field test Q03: an overspent category shows the moment money opens.
-      for (final exceeded in summary.exceededCategories) ...[
+      // At most three, like the home's suggestions: eight overspent items
+      // used to stack eight red notes and push the rest of the tab off the
+      // screen. The count of the ones left out is said after them.
+      for (final exceeded in summary.exceededCategories.take(
+        _maxExceededNotes,
+      )) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: ValueKey('money-category-exceeded-${exceeded.name}'),
@@ -285,6 +324,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           text: provider.amountsHidden || exceeded.overrun == null
               ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
               : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${keepCurrencyOnLine(formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency))}.',
+        ),
+      ],
+      if (summary.exceededCategories.length > _maxExceededNotes) ...[
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyNote(
+          key: const ValueKey('money-exceeded-more'),
+          icon: LucideIcons.alertTriangle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          text:
+              'و${arabicCount(summary.exceededCategories.length - _maxExceededNotes, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} '
+              'ثانية تجاوزت المخصص لها. تشوفها كلها في «البنود».',
         ),
       ],
       if (_nextSchedule(provider) case final schedule?) ...[
@@ -309,6 +360,27 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       ),
     ];
   }
+
+  /// Why the money is read-only here, and who can open it.
+  ///
+  /// Neutral Arabic, with no verb addressed to the reader, so one line
+  /// serves a man and a woman and the only thing that changes is who holds
+  /// the right. readerIsOwner and planWord are already how this screen
+  /// speaks (see _mahrToRecord), so nothing new crosses the context
+  /// boundary either.
+  String _readOnlyLine(BuildContext context) {
+    final who = context.journeyProfile.readerIsOwner
+        ? 'يحتاج صلاحية إضافية'
+        : 'عند ${context.planWord('العريس', 'العروسة')}';
+    return 'المال هنا للقراءة. التسجيل والتعديل $who.';
+  }
+
+  /// Where the bride's mahr card goes. «من وين» (c05) is in the tab list
+  /// only while the plan has funding, so a bare index 3 was clamped down to
+  /// «الدفعات» whenever it was absent — a silent wrong destination. Without
+  /// it the mahr belongs in «البنود», where its row is.
+  int _fundingTab(FinanceProvider provider) =>
+      provider.summary.funding != null ? 3 : 1;
 
   MoneyStarterPersona _starterPersona(BuildContext context) {
     final explicit = widget.personaCode;
@@ -428,9 +500,23 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       );
       futures.add(marketplace.loadScopedQuoteRequests());
     }
-    return Future.wait(futures);
+    return Future.wait(futures).then((_) => _settleOpeningTab());
+  }
+
+  /// Nothing in money yet: «البنود» is where the first item goes. Decided
+  /// once, on a read that worked, so a failed read never sends the reader to
+  /// an «أضف أول بند» that is really «ما قدرنا نقرأ».
+  void _settleOpeningTab() {
+    if (!mounted || _opening != null) return;
+    final finance = context.read<FinanceProvider>();
+    if (!finance.hasLoadedMoney) return;
+    setState(() => _opening = _isEmpty(finance) ? 1 : 0);
   }
 }
+
+/// At most this many overspent-item notes at once, so they warn and do not
+/// crowd (the home's suggestions use the same limit).
+const _maxExceededNotes = 3;
 
 /// No item, agreement or payment date in the plan yet.
 bool _isEmpty(FinanceProvider provider) =>

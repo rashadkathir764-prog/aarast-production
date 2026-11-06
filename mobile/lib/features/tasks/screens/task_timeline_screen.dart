@@ -40,9 +40,20 @@ part 'task_timeline_screen.starter.dart';
 /// whose task it is, with the done count. Swipe or tap the circle to finish
 /// a task; tap it for its details.
 class TaskTimelineScreen extends StatefulWidget {
-  const TaskTimelineScreen({required this.weddingPlanId, super.key});
+  const TaskTimelineScreen({
+    required this.weddingPlanId,
+    this.showHeaderAdd = true,
+    super.key,
+  });
 
   final String weddingPlanId;
+
+  /// Whether the header draws its own «+». False where a shell already
+  /// floats one over this tab: the two went to the same form, and with the
+  /// empty list's «أضف مهمة» that made three controls for one action on one
+  /// screen. It stays true on /wedding-plans/:id/timeline, which carries no
+  /// shell and so no floating button.
+  final bool showHeaderAdd;
 
   @override
   State<TaskTimelineScreen> createState() => _TaskTimelineScreenState();
@@ -51,6 +62,10 @@ class TaskTimelineScreen extends StatefulWidget {
 class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   String _person = _everyone;
   bool _showDone = false;
+
+  /// The cancelled tasks, collapsed like the finished ones. They need a way
+  /// in: the list is the only door to a task's details.
+  bool _showCancelled = false;
 
   /// w24: the list (false) or the months timeline (true).
   bool _byMonth = false;
@@ -91,6 +106,14 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
+    // The members were asked for and did not arrive, while a task here is
+    // assigned to one of them.
+    final sharing = context.watch<SharingProvider?>();
+    final membersUnread =
+        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
+        _didRequestMembers &&
+        members.isEmpty &&
+        sharing?.errorMessage != null;
     final user = context.watch<AuthController?>()?.user;
     final userId = user?.id;
     final selfName = user?.name.trim() ?? '';
@@ -147,7 +170,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final entry in groups.entries)
-                  if (entry.key != TaskGroup.done) ...[
+                  if (isOpenTaskGroup(entry.key)) ...[
                     TaskGroupTitle(group: entry.key, count: entry.value.length),
                     _taskBox(provider, entry.value, person, selfLetter),
                   ],
@@ -170,7 +193,27 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   if (_showDone)
                     _taskBox(provider, finished, person, selfLetter),
                 ],
-                if (groups.keys.any((group) => group != TaskGroup.done)) ...[
+                if (groups[TaskGroup.cancelled] case final cancelled?) ...[
+                  const SizedBox(height: AarastV3Space.x1),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: JourneyTextAction(
+                      key: const ValueKey('tasks-toggle-cancelled'),
+                      label: _showCancelled
+                          ? 'خبّي الملغية'
+                          : 'الملغية · ${cancelled.length}',
+                      icon: _showCancelled
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      color: AarastV3Color.textMuted,
+                      onPressed: () =>
+                          setState(() => _showCancelled = !_showCancelled),
+                    ),
+                  ),
+                  if (_showCancelled)
+                    _taskBox(provider, cancelled, person, selfLetter),
+                ],
+                if (groups.keys.any(isOpenTaskGroup)) ...[
                   const SizedBox(height: AarastV3Space.x2),
                   Center(
                     child: Text(
@@ -207,7 +250,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           children: [
             JourneyTabHeader(
               title: 'المهام',
-              status: _statusLine(tasks, today, context.journeyProfile),
+              status: _statusLine(
+                visible,
+                today,
+                context.journeyProfile,
+                filtered: person != _everyone,
+              ),
               actions: [
                 if (tasks.isNotEmpty)
                   JourneyRoundButton(
@@ -219,15 +267,45 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     ),
                     onPressed: () => _share(tasks),
                   ),
-                JourneyRoundButton(
-                  key: const Key('tasks-add'),
-                  icon: LucideIcons.plus,
-                  tooltip: 'مهمة جديدة',
-                  onPressed: _add,
-                ),
+                if (widget.showHeaderAdd)
+                  JourneyRoundButton(
+                    key: const Key('tasks-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: 'مهمة جديدة',
+                    onPressed: _add,
+                  ),
               ],
             ),
             const SizedBox(height: AarastV3Space.x3),
+            // A task assigned to a participant shows «عضو مشارك» until the
+            // plan's members are read; a failed read leaves every one of
+            // them under that one placeholder, and a filter chip by that
+            // name, with nothing saying a name is missing rather than
+            // absent.
+            if (membersUnread && tasks.isNotEmpty) ...[
+              JourneyNote(
+                key: const ValueKey('tasks-members-unread'),
+                icon: LucideIcons.userX,
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.paper,
+                text:
+                    'ما قدرنا نجيب أسماء المشاركين، فاللي عليهم مهام يطلعون '
+                    '«عضو مشارك». المهام ومواعيدها صحيحة.',
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: JourneyTextAction(
+                  key: const ValueKey('tasks-members-retry'),
+                  label: 'حاول مرة ثانية',
+                  icon: LucideIcons.refreshCw,
+                  color: context.accent.primary,
+                  onPressed: () => context
+                      .read<SharingProvider?>()
+                      ?.loadMembers(widget.weddingPlanId),
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             if ((provider.loadErrorMessage != null || provider.isStale) &&
                 tasks.isNotEmpty) ...[
               JourneyListNotice(
@@ -422,10 +500,36 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       action: SnackBarAction(
         label: 'تراجع',
         textColor: AarastV3Color.onPrimary,
-        onPressed: () => unawaited(
-          provider.updateTaskStatus(widget.weddingPlanId, task, previous),
-        ),
+        // A failed undo used to say nothing and leave the task closed.
+        onPressed: () => unawaited(_undoFinish(provider, task, previous)),
       ),
+    );
+  }
+
+  /// Puts the task back the way it was. The toast's «تراجع» is the only
+  /// way out of a mistaken close, so its own failure has to be said.
+  Future<void> _undoFinish(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+    String previous,
+  ) async {
+    final ok = await provider.updateTaskStatus(
+      widget.weddingPlanId,
+      task,
+      previous,
+    );
+    if (!mounted) return;
+    if (ok) {
+      publishTaskPlanPulse(
+        context,
+        weddingPlanId: widget.weddingPlanId,
+        summary: provider.summary,
+      );
+      return;
+    }
+    AarastToast.showError(
+      context,
+      provider.errorMessage ?? 'ما قدرنا نرجّع المهمة. لسا مقفولة.',
     );
   }
 

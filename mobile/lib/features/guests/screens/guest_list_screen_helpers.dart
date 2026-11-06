@@ -28,16 +28,25 @@ List<Guest> _filtered(List<Guest> guests, _ReplyFilter filter) {
 }
 
 /// Guests whose name or number holds [query].
+///
+/// The name is matched on its sort key, not letter for letter: typing
+/// «احمد» used to find no «أحمد», «عبدالله» no «عبد الله» and «فاطمه» no
+/// «فاطمة» — in a list of hundreds that reads as «the guest is not there».
+/// Both spellings are everyday, and the person typing cannot know which one
+/// was saved.
 List<Guest> _search(List<Guest> guests, String query) {
   final digits = PhoneNumberUtils.toAsciiDigits(
     query,
   ).replaceAll(RegExp(r'[^0-9]'), '');
+  final name = arabicSortKey(query);
   return guests.where((guest) {
-    if (guest.name.contains(query)) return true;
+    if (name.isNotEmpty && arabicSortKey(guest.name).contains(name)) {
+      return true;
+    }
     if (digits.length < 3) return false;
     final phone = PhoneNumberUtils.toAsciiDigits(guest.phone ?? '');
     return phone.replaceAll(RegExp(r'[^0-9]'), '').contains(digits);
-  }).toList()..sort((a, b) => a.name.compareTo(b.name));
+  }).toList()..sort((a, b) => compareArabicNames(a.name, b.name));
 }
 
 /// «124 مدعو · 86 أكدوا · 20 ما ردّوا». A helper (D80) starts the plan's
@@ -278,6 +287,7 @@ class _FirstGuests extends StatelessWidget {
         if (onContacts case final contacts?) ...[
           JourneyChoiceCard(
             key: const ValueKey('guests-first-contacts'),
+            choosable: false,
             title: 'من جهات الاتصال',
             subtitle: context.say(
               'تختار مين تعزم، والمكرر نعلّمه لك',
@@ -290,6 +300,7 @@ class _FirstGuests extends StatelessWidget {
         ],
         JourneyChoiceCard(
           key: const ValueKey('guests-first-paste'),
+          choosable: false,
           title: context.say('الصق قائمة', 'الصقي قائمة'),
           subtitle: context.planWord(
             'اسم في كل سطر، ورقمه لو عندك',
@@ -301,6 +312,7 @@ class _FirstGuests extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyChoiceCard(
           key: const ValueKey('guests-first-one'),
+          choosable: false,
           title: context.planWord('ضيف واحد', 'ضيفة وحدة'),
           subtitle: context.planWord(
             'اسمه ورقمه وكم معه',

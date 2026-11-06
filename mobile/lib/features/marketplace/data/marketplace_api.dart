@@ -6,6 +6,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_portfolio.dart';
@@ -821,7 +822,9 @@ class MarketplaceApi {
         if (primaryCategory is Map) primaryCategory['nameAr'],
         if (serviceTitles is List) ...serviceTitles,
       ].whereType<Object>().join(' ').toLowerCase();
-      return haystack.contains(query);
+      // Folded the same way as the typed words, so «قاعه» finds «قاعة»
+      // and «الصنعاني» finds «الصنعانى».
+      return arabicSortKey(haystack).contains(arabicSortKey(query));
     }).toList();
   }
 }

@@ -37,6 +37,8 @@ class AarastDashboardView extends StatelessWidget {
     required this.onProfile,
     required this.onOpenPlan,
     required this.onOpenMoney,
+    this.onOpenBudget,
+    this.onOpenBudgetItem,
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
@@ -50,6 +52,8 @@ class AarastDashboardView extends StatelessWidget {
     this.onOpenPayment,
     this.afterWedding,
     this.funding,
+    this.moneyReadFailed = false,
+    this.onRetryMoney,
     this.mahr,
     this.onOpenMahr,
     this.onOpenReviews,
@@ -85,6 +89,12 @@ class AarastDashboardView extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onOpenPlan;
   final VoidCallback onOpenMoney;
+
+  /// The budget screen (w19) and the new-item form, so b01's «حدّد
+  /// الميزانية» and «أضف بند» open what they name instead of the money
+  /// tab's root. Null falls back to the money tab.
+  final VoidCallback? onOpenBudget;
+  final VoidCallback? onOpenBudgetItem;
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
@@ -105,6 +115,14 @@ class AarastDashboardView extends StatelessWidget {
   /// b02: the owner's money in hand, promised and short, once the money
   /// section is loaded.
   final DashboardHomeFunding? funding;
+
+  /// The money section was read for this plan and the read failed. Without
+  /// saying so, b02 loses its funding lines and b01 loses its mahr step with
+  /// nothing to tell the reader that a number is missing rather than zero.
+  final bool moneyReadFailed;
+
+  /// Reads the money section again.
+  final VoidCallback? onRetryMoney;
 
   /// The plan's mahr for b01's step and b02's card (a groom's or a bride's
   /// plan, the owner, once the money section is read); null leaves both out.
@@ -280,6 +298,13 @@ class AarastDashboardView extends StatelessWidget {
                       const SizedBox(height: AarastV3Space.x3),
                       _RateProvidersCard(onTap: onOpenReviews!),
                     ],
+                    // b07 keeps only the debt and the providers to rate;
+                    // the planning cards are done with, and
+                    // home_after_wedding_test holds that contract. A plan
+                    // kept on the phone has neither card (both are the
+                    // server's), so its home after the day is the greeting
+                    // and the moment box alone. That is the design's own
+                    // consequence, not a defect to patch here.
                   ] else ...[
                     const SizedBox(height: AarastV3Space.x3),
                     _JourneyNextStep(
@@ -313,6 +338,31 @@ class AarastDashboardView extends StatelessWidget {
                         onToggleAmounts: onToggleAmounts,
                         onTap: onOpenMoney,
                       ),
+                      if (moneyReadFailed) ...[
+                        const SizedBox(height: AarastV3Space.x2),
+                        const JourneyNote(
+                          key: ValueKey('aarast-home-money-unread'),
+                          icon: LucideIcons.cloudOff,
+                          color: AarastV3Color.brandAccentStrong,
+                          soft: AarastV3Color.brandAccentSoft,
+                          text:
+                              'ما قدرنا نقرأ «معك» و«الموعود» والمهر. '
+                              'الأرقام فوق من ملخص خطتك.',
+                        ),
+                        if (onRetryMoney case final retry?)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: JourneyTextAction(
+                              key: const ValueKey(
+                                'aarast-home-money-unread-retry',
+                              ),
+                              label: 'حاول مرة ثانية',
+                              icon: LucideIcons.refreshCw,
+                              color: AarastV3Color.brandAccentStrong,
+                              onPressed: retry,
+                            ),
+                          ),
+                      ],
                     ],
                     if (_homeSuggestions(summary) case final suggestions
                         when suggestions.isNotEmpty &&
@@ -374,6 +424,10 @@ class AarastDashboardView extends StatelessWidget {
         onOpenPlan();
       case AarastDashboardFocusTarget.money:
         onOpenMoney();
+      case AarastDashboardFocusTarget.budget:
+        (onOpenBudget ?? onOpenMoney)();
+      case AarastDashboardFocusTarget.budgetItem:
+        (onOpenBudgetItem ?? onOpenMoney)();
       case AarastDashboardFocusTarget.mahr:
         (onOpenMahr ?? onOpenMoney)();
       case AarastDashboardFocusTarget.tasks:

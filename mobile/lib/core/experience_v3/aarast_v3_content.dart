@@ -24,7 +24,9 @@ abstract final class AarastV3Copy {
       'حُفظ التغيير على هذا الجهاز وسنرسله عند توفر الاتصال.';
 
   static const calmEyebrow = 'اليوم هادئ';
-  static const calmPlanTitle = 'خطتك تحت السيطرة';
+  // «خطتك تحت السيطرة» was removed: the home's calm step says only what it
+  // can know («ما فيه شي مستعجل»), and no screen may claim a state the
+  // server never worked out.
 
   static const quietNotificationsTitle = 'خطتك هادئة الآن';
   static const quietNotificationsMessage =

@@ -160,6 +160,16 @@ void rememberPlanQuickAdd(String planId, PlanQuickAddKind kind) {
 /// because its own search is the way to a quote. The guests hide it while
 /// an account plan has no connection, since a new guest is sent at once
 /// (w29).
+///
+/// The providers tab stays without one on purpose, and not only for the
+/// reason above: `quote` resolves to onFindProviders, which goes to the
+/// providers tab, so a «+» there would send the reader to the screen they
+/// are already on.
+///
+/// [guestsWaitForConnection] has a test (w29) but no caller: neither shell
+/// passes it, so that behaviour does not happen today, and the shells cite
+/// D85 for the opposite («adding never waits for the server»). w29 against
+/// D85 is the owner's call, so nothing here decides it.
 bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
@@ -264,7 +274,15 @@ List<PlanQuickAction> planQuickAddActions({
 
 int _signalBoost(PlanQuickAddSignals signals, PlanQuickAddKind kind) {
   final state = switch (kind) {
-    PlanQuickAddKind.cost when signals.duePaymentSchedules > 0 => 110,
+    // A payment falling due asks for that payment to be recorded. On the
+    // money tab «تسجيل دفعة» is offered, and it has to beat «إضافة اتفاق»
+    // there: writing another agreement is not what a due date asks for.
+    // Its boost clears the one-step index penalty, so 130 against 100.
+    PlanQuickAddKind.payment when signals.duePaymentSchedules > 0 => 130,
+    // Elsewhere (the tasks, guests and home tabs) «تسجيل دفعة» is not on
+    // the sheet at all, so the agreement stays the money door that a due
+    // date points at.
+    PlanQuickAddKind.cost when signals.duePaymentSchedules > 0 => 100,
     PlanQuickAddKind.task when signals.overdueTasks > 0 => 100,
     PlanQuickAddKind.guest when signals.incompleteGuests > 0 => 90,
     PlanQuickAddKind.guest when signals.pendingGuests > 0 => 75,

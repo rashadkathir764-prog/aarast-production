@@ -19,15 +19,24 @@ List<String> _people(List<WeddingTask> tasks, String? userId) {
   return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
 }
 
-/// «باقي 3 هذا الأسبوع، وواحدة متأخرة» (d01), from the real counts (C6).
+/// «باقي 3 خلال أسبوع، وواحدة متأخرة» (d01), from the real counts (C6).
+///
+/// It is given the tasks the person filter is showing, not all of them: the
+/// «X من Y» beside the filter counts the same set, and the two lines used to
+/// describe different sets with nothing saying so.
 String _statusLine(
   List<WeddingTask> tasks,
   DateTime today,
-  JourneyProfile profile,
-) {
-  if (tasks.isEmpty) return profile.say('ابدأ بأول مهمة', 'ابدئي بأول مهمة');
+  JourneyProfile profile, {
+  bool filtered = false,
+}) {
+  if (tasks.isEmpty) {
+    return filtered
+        ? 'ما فيه مهام لهذا الاختيار'
+        : profile.say('ابدأ بأول مهمة', 'ابدئي بأول مهمة');
+  }
   final open = tasks
-      .where((task) => taskGroupOf(task, today) != TaskGroup.done)
+      .where((task) => isOpenTaskGroup(taskGroupOf(task, today)))
       .toList();
   if (open.isEmpty) return 'خلصت كل المهام';
   final overdue = open
@@ -49,7 +58,7 @@ String _statusLine(
     final left = 'باقي ${_taskCountLabel(open.length)}';
     return late == null ? left : '$left، منها $late';
   }
-  final thisWeek = 'باقي ${_taskCountLabel(week)} هذا الأسبوع';
+  final thisWeek = 'باقي ${_taskCountLabel(week)} خلال أسبوع';
   return late == null ? thisWeek : '$thisWeek، و$late';
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -79,10 +81,28 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   /// The tab chosen by hand; null lets the plan's state choose (D72).
   String? _tabLabel;
+
+  /// The tab the screen opened on, settled once the plan's requests have
+  /// been read. It used to be worked out on every build, and the requests
+  /// arrive after the first frame, so the tab moved from «استكشف» to
+  /// «طلباتي» on its own after the reader's eye had settled.
+  String? _settledOpening;
   bool _chatsLoaded = false;
 
-  /// x22 gives way to the tabs once a way to start was picked.
+  /// Whether this reader has an account, once asked. Null until the answer
+  /// is back. «no account» is an answer, not a wait: without it the tabs
+  /// that need one sat on a loading skeleton that could never end.
+  bool? _hasAccount;
+
+  /// x22 gives way to the tabs once a way to start was picked. Kept on the
+  /// phone, not in this State: the owner's shell rebuilds this screen on
+  /// every tab switch, so a State-only latch brought «نبدأ بالقاعة» back
+  /// each time the reader returned to the tab, until they actually booked.
   bool _firstVisitLeft = false;
+
+  /// The key under which [_firstVisitLeft] is remembered for this plan.
+  static String _firstVisitKey(String planId) =>
+      'aarast_providers_start_left:$planId';
 
   /// The confirmed bookings last checked for y09, so each change is
   /// looked at once.
@@ -110,6 +130,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       setState(() => _searchController.text = provider.search);
       final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
+      setState(() => _hasAccount = includeAccountData);
+      final startPlanId = _weddingLocationPlanId;
+      if (startPlanId != null) {
+        final preferences = await SharedPreferences.getInstance();
+        if (!mounted) return;
+        if (preferences.getBool(_firstVisitKey(startPlanId)) ?? false) {
+          setState(() => _firstVisitLeft = true);
+        }
+      }
       provider.configureCatalogAudience(
         await _catalogAudienceForSession(hasAccount: includeAccountData),
       );
@@ -129,6 +158,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       if (!mounted) return;
       await _loadRequestedQuote(provider, selectedPlanId: selectedPlanId);
       if (!mounted) return;
+      setState(
+        () => _settledOpening = _openingTab(
+          provider,
+          planMode: _weddingLocationPlanId != null,
+        ),
+      );
       await _loadWeddingLocationContext(
         hasAccount: includeAccountData,
         marketplace: provider,
@@ -203,124 +238,172 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AarastScreenFrame(
-      maxWidth: 520,
-      safeAreaBottom: false,
-      backgroundColor: AarastV3Color.canvas,
-      child: Consumer<ProviderMarketplaceProvider>(
-        builder: (context, provider, _) {
-          // «استكشف» comes first; it opens on «طلباتي» only when something
-          // there waits on the owner. Without a plan (or an account) the tab
-          // is the directory alone.
-          final planMode =
-              _weddingLocationPlanId != null && provider.includesAccountData;
-          final tabs = planMode
-              ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
-              : const ['استكشف'];
-          final board = planMode
-              ? _board(provider)
-              : const <ProviderBoardRow>[];
-          final selectedLabel =
-              _tabLabel ?? _openingTab(provider, planMode: planMode);
-          final tab = tabs.contains(selectedLabel)
-              ? tabs.indexOf(selectedLabel)
-              : 0;
-          if (planMode) _checkNewBookings(provider);
-          // x22: nothing asked, booked or saved yet, so the tab is where to
-          // start, not an empty board.
-          // Null while that is not known yet.
-          final bool? firstVisit = tabs[tab] == 'طلباتي'
-              ? _firstVisitOf(provider, board)
-              : false;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AarastV3Space.x4,
-                  widget.embedded ? AarastV3Space.x3 : AarastV3Space.x4,
-                  AarastV3Space.x4,
-                  0,
-                ),
-                child: JourneyTabHeader(
-                  title: 'المزودين',
-                  // Still reading (null) is not «nothing asked yet».
-                  status: firstVisit == null
-                      ? 'لحظة…'
-                      : firstVisit
-                      ? context.say('ما طلبت من أحد بعد', 'ما طلبتِ من أحد بعد')
-                      : planMode
-                      ? _boardStatus(board)
-                      : context.say(
-                          'دوّر على مزودين عرسك',
-                          'دوّري على مزودين عرسك',
-                        ),
-                  onStatusTap:
-                      planMode &&
-                          firstVisit == false &&
-                          board.any(
-                            (row) => row.quotes.any(
-                              (quote) => quote.booking != null,
-                            ),
-                          )
-                      ? () => _openBookings(provider, tabs, board)
-                      : null,
-                  statusTapLabel: 'الحجوزات',
-                  actions: [
-                    if (firstVisit == false)
-                      JourneyRoundButton(
-                        key: const ValueKey('providers-search'),
-                        icon: _searchShown && tabs[tab] == 'استكشف'
-                            ? LucideIcons.x
-                            : LucideIcons.search,
-                        tooltip: _searchShown && tabs[tab] == 'استكشف'
-                            ? context.say('سكّر البحث', 'سكّري البحث')
-                            : context.say('دوّر على مزود', 'دوّري على مزود'),
-                        onPressed: () => _toggleSearch(provider, tabs, tab),
-                      ),
-                  ],
-                ),
-              ),
-              if (tabs.length > 1 && firstVisit == false)
+    // The four tabs and the search box are states inside one route, the
+    // same as c01's tabs and e01's groups. Android back has to undo them
+    // before it leaves the providers, or picking «المحادثات» and pressing
+    // back throws the reader out of the tab altogether.
+    final nested = _searchOpen || _tabLabel != null;
+    return PopScope(
+      canPop: !nested,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !nested) return;
+        setState(() {
+          if (_searchOpen) {
+            _searchOpen = false;
+            _searchController.clear();
+            _searchFocusNode.unfocus();
+          } else {
+            // Back to the tab the screen opened on.
+            _tabLabel = null;
+          }
+        });
+      },
+      child: AarastScreenFrame(
+        maxWidth: 520,
+        safeAreaBottom: false,
+        backgroundColor: AarastV3Color.canvas,
+        child: Consumer<ProviderMarketplaceProvider>(
+          builder: (context, provider, _) {
+            // «استكشف» comes first; it opens on «طلباتي» only when something
+            // there waits on the owner. Without a plan (or an account) the tab
+            // is the directory alone.
+            //
+            // The tab row follows the plan, not the arrival of its data:
+            // includesAccountData is set after the first frame, so the screen
+            // used to draw one tab and then four, rearranging itself under the
+            // reader's finger on the first visit of a session. A plan in hand
+            // is enough to know the four tabs belong here; each one shows its
+            // own loading state until its data lands.
+            // Once the account answer is in: a plan gets the four tabs. Before
+          // it, the directory alone, so the row is drawn once and does not
+          // go from one tab to four under the reader's finger.
+          final planMode = _weddingLocationPlanId != null && _hasAccount != null;
+            final tabs = planMode
+                ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
+                : const ['استكشف'];
+            final board = planMode
+                ? _board(provider)
+                : const <ProviderBoardRow>[];
+            final selectedLabel =
+                _tabLabel ??
+                _settledOpening ??
+                _openingTab(provider, planMode: planMode);
+            final tab = tabs.contains(selectedLabel)
+                ? tabs.indexOf(selectedLabel)
+                : 0;
+            if (planMode) _checkNewBookings(provider);
+            // x22: nothing asked, booked or saved yet, so the tab is where to
+            // start, not an empty board.
+            // Null while that is not known yet.
+            final bool? firstVisit = tabs[tab] == 'طلباتي'
+                ? _firstVisitOf(provider, board)
+                : false;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
                     AarastV3Space.x4,
-                    AarastV3Space.x3,
+                    widget.embedded ? AarastV3Space.x3 : AarastV3Space.x4,
                     AarastV3Space.x4,
                     0,
                   ),
-                  child: JourneyTabSwitch(
-                    key: const ValueKey('providers-tabs'),
-                    labels: tabs,
-                    selected: tab,
-                    color: context.accent.primary,
-                    onSelected: (index) => _selectTab(tabs[index], tabs),
+                  child: JourneyTabHeader(
+                    title: 'المزودين',
+                    // Still reading (null) is not «nothing asked yet».
+                    status: firstVisit == null
+                        ? 'لحظة…'
+                        : firstVisit
+                        ? context.say(
+                            'ما طلبت من أحد بعد',
+                            'ما طلبتِ من أحد بعد',
+                          )
+                        : planMode
+                        ? _boardStatus(board)
+                        : context.say(
+                            'دوّر على مزودين عرسك',
+                            'دوّري على مزودين عرسك',
+                          ),
+                    onStatusTap:
+                        planMode &&
+                            firstVisit == false &&
+                            board.any(
+                              (row) => row.quotes.any(
+                                (quote) => quote.booking != null,
+                              ),
+                            )
+                        ? () => _openBookings(provider, tabs, board)
+                        : null,
+                    statusTapLabel: 'الحجوزات',
+                    actions: [
+                      // Only on «استكشف», the one tab that has a search. It
+                      // used to show everywhere and throw the reader from
+                      // «المحادثات» or «المفضلة» over to «استكشف»: a magnifier
+                      // that worked as a tab switch.
+                      if (firstVisit == false && tabs[tab] == 'استكشف')
+                        JourneyRoundButton(
+                          key: const ValueKey('providers-search'),
+                          icon: _searchShown
+                              ? LucideIcons.x
+                              : LucideIcons.search,
+                          tooltip: _searchShown
+                              ? context.say('سكّر البحث', 'سكّري البحث')
+                              : context.say('دوّر على مزود', 'دوّري على مزود'),
+                          onPressed: () => _toggleSearch(provider, tabs, tab),
+                        ),
+                    ],
                   ),
                 ),
-              Expanded(
-                child: switch (tabs[tab]) {
-                  'طلباتي' when firstVisit == true => _firstVisitView(
-                    provider,
-                    tabs,
+                if (tabs.length > 1 && firstVisit == false)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AarastV3Space.x4,
+                      AarastV3Space.x3,
+                      AarastV3Space.x4,
+                      0,
+                    ),
+                    child: JourneyTabSwitch(
+                      key: const ValueKey('providers-tabs'),
+                      labels: tabs,
+                      selected: tab,
+                      color: context.accent.primary,
+                      onSelected: (index) => _selectTab(tabs[index], tabs),
+                    ),
                   ),
-                  'طلباتي' when firstVisit == null => _firstVisitPending(),
-                  'طلباتي' => _boardTab(provider, board, tabs),
-                  'المحادثات' => const ConversationListView(
-                    embedded: true,
-                    iconFor: _conversationIcon,
-                  ),
-                  'المفضلة' => _favoritesTab(provider),
-                  _ => _exploreTab(provider),
-                },
-              ),
-            ],
-          );
-        },
+                Expanded(
+                  child: switch (tabs[tab]) {
+                    'طلباتي' when firstVisit == true => _firstVisitView(
+                      provider,
+                      tabs,
+                    ),
+                    'طلباتي' when firstVisit == null => _firstVisitPending(),
+                    'طلباتي' => _boardTab(provider, board, tabs),
+                    'المحادثات' => const ConversationListView(
+                      embedded: true,
+                      iconFor: _conversationIcon,
+                    ),
+                    'المفضلة' => _favoritesTab(provider),
+                    _ => _exploreTab(provider),
+                  },
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  void _leaveFirstVisit() => setState(() => _firstVisitLeft = true);
+  void _leaveFirstVisit() {
+    setState(() => _firstVisitLeft = true);
+    final planId = _weddingLocationPlanId;
+    if (planId == null) return;
+    unawaited(
+      SharedPreferences.getInstance().then(
+        (preferences) => preferences.setBool(_firstVisitKey(planId), true),
+      ),
+    );
+  }
 
   /// y09: once the plan's requests are loaded, a booking the provider
   /// confirmed since this phone last looked opens its moment. Several at

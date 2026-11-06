@@ -63,7 +63,11 @@ class TaskRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final late = isTaskLate(task);
-    final done = task.isDone || task.status == 'CANCELLED';
+    // A cancelled task is not a finished one. It still reads as inactive
+    // (muted, struck through), but it must not wear the green tick.
+    final done = task.isDone;
+    final cancelled = task.status == 'CANCELLED';
+    final inactive = done || cancelled;
     final responsible = task.responsibleLabel;
     final mine = task.isMineFor(selfUserId);
     final steps = task.checklist.isEmpty
@@ -87,7 +91,9 @@ class TaskRow extends StatelessWidget {
           ? null
           : {
               CustomSemanticsAction(
-                label: done ? context.say('أعد فتحها', 'أعيدي فتحها') : 'خلصت',
+                label: inactive
+                    ? context.say('أعد فتحها', 'أعيدي فتحها')
+                    : 'خلصت',
               ): onToggle!,
             },
       child: AarastPressable(
@@ -100,6 +106,7 @@ class TaskRow extends StatelessWidget {
               _DoneCircle(
                 key: ValueKey('task-toggle-${task.id}'),
                 done: done,
+                cancelled: cancelled,
                 late: late,
                 onTap: busy ? null : onToggle,
               ),
@@ -117,11 +124,11 @@ class TaskRow extends StatelessWidget {
                                 JourneyType.of(
                                   JourneyType.body,
                                   weight: JourneyType.bold,
-                                  color: done
+                                  color: inactive
                                       ? AarastV3Color.textMuted
                                       : AarastV3Color.ink,
                                 ).copyWith(
-                                  decoration: done
+                                  decoration: inactive
                                       ? TextDecoration.lineThrough
                                       : null,
                                   decorationColor: AarastV3Color.textMuted,
@@ -179,36 +186,46 @@ class TaskRow extends StatelessWidget {
 class _DoneCircle extends StatelessWidget {
   const _DoneCircle({
     required this.done,
+    required this.cancelled,
     required this.late,
     required this.onTap,
     super.key,
   });
 
   final bool done;
+
+  /// Cancelled, not finished: a grey circle with a cross, never the green
+  /// tick, so a cancelled task never reads as work completed.
+  final bool cancelled;
   final bool late;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final filled = done || cancelled;
     final circle = Container(
       width: 26,
       height: 26,
       margin: const EdgeInsets.only(top: AarastV3Space.half),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: done ? AarastV3Color.mint : null,
-        border: done
+        color: done
+            ? AarastV3Color.mint
+            : cancelled
+            ? AarastV3Color.line
+            : null,
+        border: filled
             ? null
             : Border.all(
                 color: late ? AarastV3Color.danger : AarastV3Color.lineStrong,
                 width: 2,
               ),
       ),
-      child: done
-          ? const Icon(
-              LucideIcons.check,
+      child: filled
+          ? Icon(
+              done ? LucideIcons.check : LucideIcons.x,
               size: 16,
-              color: AarastV3Color.onPrimary,
+              color: done ? AarastV3Color.onPrimary : AarastV3Color.textMuted,
             )
           : null,
     );

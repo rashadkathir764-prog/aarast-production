@@ -12,11 +12,9 @@ const _maxSuggestions = 3;
 /// «البداية»): no budget, no item, no task or no guest yet.
 bool _startingOut(DashboardSummary summary) {
   if (!summary.permissions.isOwner) return false;
-  final budget = double.tryParse(
-    (summary.totalBudgetForDisplay ?? '').replaceAll(',', '').trim(),
-  );
-  return budget == null ||
-      budget <= 0 ||
+  // The same reading of the budget as b01's first step
+  // (dashboardBudgetMissing), so the moment and the step never disagree.
+  return dashboardBudgetMissing(summary) ||
       summary.budgetItemsCount == 0 ||
       summary.totalTasks == 0 ||
       summary.guestCount == 0;

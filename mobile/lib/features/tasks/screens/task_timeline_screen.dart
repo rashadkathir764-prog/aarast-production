@@ -52,6 +52,10 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   String _person = _everyone;
   bool _showDone = false;
 
+  /// The cancelled tasks, collapsed like the finished ones. They need a way
+  /// in: the list is the only door to a task's details.
+  bool _showCancelled = false;
+
   /// w24: the list (false) or the months timeline (true).
   bool _byMonth = false;
   bool _didRequestMembers = false;
@@ -147,7 +151,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final entry in groups.entries)
-                  if (entry.key != TaskGroup.done) ...[
+                  if (isOpenTaskGroup(entry.key)) ...[
                     TaskGroupTitle(group: entry.key, count: entry.value.length),
                     _taskBox(provider, entry.value, person, selfLetter),
                   ],
@@ -170,7 +174,27 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   if (_showDone)
                     _taskBox(provider, finished, person, selfLetter),
                 ],
-                if (groups.keys.any((group) => group != TaskGroup.done)) ...[
+                if (groups[TaskGroup.cancelled] case final cancelled?) ...[
+                  const SizedBox(height: AarastV3Space.x1),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: JourneyTextAction(
+                      key: const ValueKey('tasks-toggle-cancelled'),
+                      label: _showCancelled
+                          ? 'خبّي الملغية'
+                          : 'الملغية · ${cancelled.length}',
+                      icon: _showCancelled
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      color: AarastV3Color.textMuted,
+                      onPressed: () =>
+                          setState(() => _showCancelled = !_showCancelled),
+                    ),
+                  ),
+                  if (_showCancelled)
+                    _taskBox(provider, cancelled, person, selfLetter),
+                ],
+                if (groups.keys.any(isOpenTaskGroup)) ...[
                   const SizedBox(height: AarastV3Space.x2),
                   Center(
                     child: Text(
@@ -207,7 +231,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           children: [
             JourneyTabHeader(
               title: 'المهام',
-              status: _statusLine(tasks, today, context.journeyProfile),
+              status: _statusLine(
+                visible,
+                today,
+                context.journeyProfile,
+                filtered: person != _everyone,
+              ),
               actions: [
                 if (tasks.isNotEmpty)
                   JourneyRoundButton(

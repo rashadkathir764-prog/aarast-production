@@ -133,8 +133,7 @@ AarastDashboardFocus resolveDashboardFocus(
 
   // The basics everyone needs, each only while it is missing: no fixed
   // steps hold the home (D72).
-  if (_amount(summary.totalBudgetForDisplay) == null &&
-      summary.permissions.canManageMoney) {
+  if (dashboardBudgetMissing(summary) && summary.permissions.canManageMoney) {
     return AarastDashboardFocus(
       eyebrow: say('ابدأ من الأساس', 'ابدئي من الأساس'),
       title: say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
@@ -152,7 +151,8 @@ AarastDashboardFocus resolveDashboardFocus(
   if (mahrMissing && summary.permissions.canManageMoney) {
     return AarastDashboardFocus(
       eyebrow: 'خطوتك الجاية',
-      title: say('اتفقتوا على المهر؟', 'اتفقتوا على المهر؟'),
+      // One wording for both readers: it speaks to the couple.
+      title: 'اتفقتوا على المهر؟',
       reason: 'نحسبه لحاله، برا ميزانية العرس.',
       actionLabel: say('سجّل المهر', 'سجّلي المهر'),
       icon: LucideIcons.heartHandshake,
@@ -280,12 +280,16 @@ AarastDashboardFocus resolveDashboardFocus(
     );
   }
 
+  // The end of every check above, so the one thing this may claim is that
+  // none of them matched. «خطتك تحت السيطرة» claimed more than that: the
+  // server works out no such state, and the line could show while the
+  // moment's path still read «البداية».
   return AarastDashboardFocus(
     eyebrow: AarastV3Copy.calmEyebrow,
-    title: AarastV3Copy.calmPlanTitle,
+    title: 'ما فيه شي مستعجل',
     reason: say(
-      'ما فيه شي مستعجل الحين. شوف خطتك أو كمّل اللي يناسبك.',
-      'ما فيه شي مستعجل الحين. شوفي خطتك أو كمّلي اللي يناسبك.',
+      'لا متأخر ولا موعد دفع قريب. تقدر تراجع خطتك أو تكمّل اللي يناسبك.',
+      'لا متأخر ولا موعد دفع قريب. تقدرين تراجعين خطتك أو تكمّلين اللي يناسبك.',
     ),
     actionLabel: say('شوف الخطة', 'شوفي الخطة'),
     icon: LucideIcons.checkCircle2,
@@ -295,6 +299,17 @@ AarastDashboardFocus resolveDashboardFocus(
 }
 
 double? dashboardAmount(String? raw) => _amount(raw);
+
+/// Whether the plan still has no budget worth the name: none recorded, or a
+/// zero. b01's first step and the moment's «البداية» must read this the same
+/// way. They did not: the step asked only whether the field parsed, so a
+/// budget of 0 was treated as set and the step never appeared, while the
+/// moment still said «البداية» — and the two parsed the field differently,
+/// so «3,000,000 ر.ي» read as no budget on one side and 3000000 on the other.
+bool dashboardBudgetMissing(DashboardSummary summary) {
+  final budget = _amount(summary.totalBudgetForDisplay);
+  return budget == null || budget <= 0;
+}
 
 String formatDashboardAmount(num value) {
   final rounded = value.round();

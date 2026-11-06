@@ -275,7 +275,12 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         ),
       ],
       // Field test Q03: an overspent category shows the moment money opens.
-      for (final exceeded in summary.exceededCategories) ...[
+      // At most three, like the home's suggestions: eight overspent items
+      // used to stack eight red notes and push the rest of the tab off the
+      // screen. The count of the ones left out is said after them.
+      for (final exceeded in summary.exceededCategories.take(
+        _maxExceededNotes,
+      )) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           key: ValueKey('money-category-exceeded-${exceeded.name}'),
@@ -285,6 +290,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           text: provider.amountsHidden || exceeded.overrun == null
               ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
               : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${keepCurrencyOnLine(formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency))}.',
+        ),
+      ],
+      if (summary.exceededCategories.length > _maxExceededNotes) ...[
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyNote(
+          key: const ValueKey('money-exceeded-more'),
+          icon: LucideIcons.alertTriangle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          text:
+              'و${arabicCount(summary.exceededCategories.length - _maxExceededNotes, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} '
+              'ثانية تجاوزت المخصص لها. تشوفها كلها في «البنود».',
         ),
       ],
       if (_nextSchedule(provider) case final schedule?) ...[
@@ -431,6 +448,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     return Future.wait(futures);
   }
 }
+
+/// At most this many overspent-item notes at once, so they warn and do not
+/// crowd (the home's suggestions use the same limit).
+const _maxExceededNotes = 3;
 
 /// No item, agreement or payment date in the plan yet.
 bool _isEmpty(FinanceProvider provider) =>

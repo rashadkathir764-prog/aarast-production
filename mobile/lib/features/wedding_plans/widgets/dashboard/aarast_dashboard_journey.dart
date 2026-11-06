@@ -22,7 +22,7 @@ class _JourneyHomeHeader extends StatelessWidget {
   /// b07: once the day has passed the greeting congratulates.
   final bool married;
 
-  /// b04/b05: «باقي يومين يا محمد», «مبروك يا عريس».
+  /// b05: «مبروك يا عريس» on the day; null otherwise (RA-MO-24).
   final String? greeting;
 
   @override

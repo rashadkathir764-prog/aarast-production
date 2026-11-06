@@ -521,6 +521,10 @@ void main() {
       ),
       h: 1000,
     );
+    // RA-MO-24: the hero says how many days are left («يومين على عرسك»);
+    // the greeting above it does not say it again.
+    expect(find.textContaining('يومين'), findsOneWidget);
+    expect(find.text('أهلًا محمد'), findsOneWidget);
   });
 
   testWidgets('home day', (tester) async {

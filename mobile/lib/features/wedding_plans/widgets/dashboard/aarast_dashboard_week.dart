@@ -10,18 +10,12 @@ const _weekDayLabelWidth = 84.0;
 // built from the plan's events (D65). Nothing here is guessed: the cash for
 // the nights and a decor banner have no source and are left out.
 
-/// The home's greeting in the week and on the day.
-String _weddingWindowGreeting(
-  BuildContext context, {
-  required int days,
-  required String name,
-}) {
-  if (days <= 0) {
-    return context.planWord('مبروك يا عريس', 'مبروك يا عروسة');
-  }
-  final left = days == 1 ? 'بكرة عرسك' : 'باقي ${arabicDays(days)}';
-  return name.isEmpty ? left : '$left يا $name';
-}
+/// The home's greeting on the wedding day (b05); null in the week before it,
+/// where the hero right under the greeting already says how many days are
+/// left (RA-MO-24: «باقي يومين يا محمد» sat over «يومين على عرسك», one count
+/// said twice), so the week greets as every other day does.
+String? _weddingDayGreeting(BuildContext context, {required int days}) =>
+    days <= 0 ? context.planWord('مبروك يا عريس', 'مبروك يا عروسة') : null;
 
 /// b04/b05's hero: the wedding lights over the plan's night, a strand lit
 /// for every night that has passed («كل ليلة تنوّر حبل · 5 من 7»), the

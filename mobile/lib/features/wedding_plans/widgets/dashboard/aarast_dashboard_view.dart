@@ -205,11 +205,7 @@ class AarastDashboardView extends StatelessWidget {
                     married: married,
                     greeting: window == null
                         ? null
-                        : _weddingWindowGreeting(
-                            context,
-                            days: window,
-                            name: userName.trim().split(RegExp(r'\s+')).first,
-                          ),
+                        : _weddingDayGreeting(context, days: window),
                   ),
                   if (notice != null) ...[
                     const SizedBox(height: AarastV3Space.x3),

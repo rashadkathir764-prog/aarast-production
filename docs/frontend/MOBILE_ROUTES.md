@@ -4,7 +4,6 @@
 - `/conversations/:id`
 - `/dashboard`
 - `/dev/guest-onboarding`
-- `/dev/user-navigation-shell`
 - `/home`
 - `/invites`
 - `/invites/:token`
@@ -92,4 +91,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 91 unique routes
+Total: 90 unique routes

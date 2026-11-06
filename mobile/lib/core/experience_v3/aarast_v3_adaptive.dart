@@ -398,8 +398,7 @@ abstract final class AarastV3ScreenCatalog {
     }
     if (normalized == '/more' ||
         normalized == '/settings' ||
-        normalized == '/support' ||
-        normalized == '/dev/user-navigation-shell') {
+        normalized == '/support') {
       return utility;
     }
     if (normalized == '/wedding-plans') return plans;

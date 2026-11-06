@@ -237,7 +237,6 @@ class AppRouter {
   static const deleteAccount = '/settings/delete-account';
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
-  static const userNavigationShellPreview = '/dev/user-navigation-shell';
 
   static String authenticatedEntry(String? resumeLocation) {
     final resume = resumeLocation?.trim();

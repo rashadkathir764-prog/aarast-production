@@ -11,15 +11,10 @@ import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_scr
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
-  });
-
   testWidgets('first launch without token opens onboarding', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final dependencies = await _authDependencies();

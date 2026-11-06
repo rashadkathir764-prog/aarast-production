@@ -23,7 +23,6 @@ void main() {
       '/more': 'utility',
       '/settings': 'utility',
       '/support': 'utility',
-      '/dev/user-navigation-shell': 'utility',
       '/wedding-plans': 'plans',
       '/wedding-plans/create': 'plan-form',
       '/wedding-plans/plan-1/dashboard': 'home',

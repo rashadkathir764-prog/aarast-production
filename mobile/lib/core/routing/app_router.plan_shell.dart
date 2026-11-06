@@ -214,7 +214,8 @@ List<RouteBase> _planShellRoutes() => [
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return participantPlanTab(context, id, 2) ??
-              TaskTimelineScreen(weddingPlanId: id);
+              // The plan shell floats «إضافة مهمة» over this tab.
+              TaskTimelineScreen(weddingPlanId: id, showHeaderAdd: false);
         },
       ),
       GoRoute(
@@ -240,7 +241,8 @@ List<RouteBase> _planShellRoutes() => [
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return participantPlanTab(context, id, 3) ??
-              GuestListScreen(weddingPlanId: id);
+              // The plan shell floats «إضافة ضيف» over this tab.
+              GuestListScreen(weddingPlanId: id, showHeaderAdd: false);
         },
       ),
       GoRoute(

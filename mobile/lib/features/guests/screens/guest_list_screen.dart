@@ -41,11 +41,19 @@ class GuestListScreen extends StatefulWidget {
     this.openAddOnStart = false,
     this.openAddRequest = 0,
     this.ownerWord,
+    this.showHeaderAdd = true,
     super.key,
   });
 
   final String weddingPlanId;
   final bool openAddOnStart;
+
+  /// Whether the header draws its own «+». False where a shell already
+  /// floats one over this tab: the two opened the same sheet, so the screen
+  /// showed two controls for one action. It stays true for the participant's
+  /// shell, which floats none, and for /guests/add, which has no chrome —
+  /// there the header's «+» is the only way in.
+  final bool showHeaderAdd;
 
   /// «العريس», «العروسة» when the reader helps on another's plan (D80):
   /// the list is the whole plan's, and the owner keeps the numbers and the
@@ -223,14 +231,15 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     ),
                   // D85: adding never waits for the server; a guest added
                   // without it is kept on the phone and sent later.
-                  JourneyRoundButton(
-                    key: const ValueKey('guests-add'),
-                    icon: LucideIcons.plus,
-                    tooltip: words.newGuest,
-                    onPressed: provider.isSubmitting
-                        ? null
-                        : () => _showGuestSheet(provider: provider),
-                  ),
+                  if (widget.showHeaderAdd)
+                    JourneyRoundButton(
+                      key: const ValueKey('guests-add'),
+                      icon: LucideIcons.plus,
+                      tooltip: words.newGuest,
+                      onPressed: provider.isSubmitting
+                          ? null
+                          : () => _showGuestSheet(provider: provider),
+                    ),
                 ],
               ),
               const SizedBox(height: AarastV3Space.x3),

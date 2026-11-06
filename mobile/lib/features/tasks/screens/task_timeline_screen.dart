@@ -40,9 +40,20 @@ part 'task_timeline_screen.starter.dart';
 /// whose task it is, with the done count. Swipe or tap the circle to finish
 /// a task; tap it for its details.
 class TaskTimelineScreen extends StatefulWidget {
-  const TaskTimelineScreen({required this.weddingPlanId, super.key});
+  const TaskTimelineScreen({
+    required this.weddingPlanId,
+    this.showHeaderAdd = true,
+    super.key,
+  });
 
   final String weddingPlanId;
+
+  /// Whether the header draws its own «+». False where a shell already
+  /// floats one over this tab: the two went to the same form, and with the
+  /// empty list's «أضف مهمة» that made three controls for one action on one
+  /// screen. It stays true on /wedding-plans/:id/timeline, which carries no
+  /// shell and so no floating button.
+  final bool showHeaderAdd;
 
   @override
   State<TaskTimelineScreen> createState() => _TaskTimelineScreenState();
@@ -256,16 +267,13 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     ),
                     onPressed: () => _share(tasks),
                   ),
-                // Kept, and not a duplicate of the shell's floating «+»:
-                // this screen is also the whole of /wedding-plans/:id/timeline,
-                // which carries no shell and so no floating button. There it
-                // is the only way to add a task.
-                JourneyRoundButton(
-                  key: const Key('tasks-add'),
-                  icon: LucideIcons.plus,
-                  tooltip: 'مهمة جديدة',
-                  onPressed: _add,
-                ),
+                if (widget.showHeaderAdd)
+                  JourneyRoundButton(
+                    key: const Key('tasks-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: 'مهمة جديدة',
+                    onPressed: _add,
+                  ),
               ],
             ),
             const SizedBox(height: AarastV3Space.x3),

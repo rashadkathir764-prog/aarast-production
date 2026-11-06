@@ -30,8 +30,10 @@ void main() {
     await walk.step('r02_guest_synced', 'الضيف وصل للخادم', () async {
       await walk.tab('الضيوف');
       await walk.settle(seconds: 3);
-      await walk.tapText('كل الضيوف', wait: 3);
-      walk.expectSee('ضيف بدون نت', why: 'الضيف المحفوظ بدون خادم صار عند الخادم');
+      // Found the way a person finds one name among a hundred: «دوّر».
+      if (!await walk.searchGuest('ضيف بدون نت')) {
+        walk.fail('ما يظهر «ضيف بدون نت» (الضيف المحفوظ بدون خادم صار عند الخادم)');
+      }
       if (find.byKey(const ValueKey('aarast-sync-status')).evaluate().isNotEmpty &&
           walk.sees('تنحفظ في جوالك')) {
         walk.fail('ما زال التطبيق يقول إن التغيير ينتظر بعد رجوع الخادم');

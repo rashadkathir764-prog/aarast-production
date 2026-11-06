@@ -493,9 +493,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       // screen under it) takes the tap and selects nothing.
       await walk.tapText('الغداء', last: true, wait: 1.5);
       await walk.tapKey('guest-form-save', wait: 4);
-      // The guests tab lists the families; the names are under «كل الضيوف».
-      await walk.tapText('كل ${p.guestsTab}', wait: 3);
-      if (!await walk.tapText('ضيف الغداء', wait: 3.5)) return;
+      // One name among a hundred is found the way a person finds it: «دوّر».
+      if (!await walk.openGuest('ضيف الغداء', wait: 3.5)) return;
       walk.expectSee('الغداء: ما ردّ', why: 'رد الضيف على الغداء في تفاصيله');
     });
     // The direct routes left the plan shell's own history; the provider

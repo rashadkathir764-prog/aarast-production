@@ -281,6 +281,42 @@ class JourneyWalk {
     return tapKey('aarast-quick-action', wait: wait);
   }
 
+  /// Finds a guest the way a person finds one among a hundred: «دوّر» and
+  /// the name (RA-MO-16: the list is one long list, not paged). True when
+  /// the name shows as a row, not only in the search box.
+  Future<bool> searchGuest(String name) async {
+    final box = find.descendant(
+      of: find.byKey(const ValueKey('guests-search-field')),
+      matching: find.byType(EditableText),
+    );
+    if (box.evaluate().isEmpty && !await tapKey('guests-search', wait: 1)) {
+      return false;
+    }
+    if (box.evaluate().isEmpty) {
+      fail('ما انفتح البحث في الضيوف');
+      return false;
+    }
+    await tester.enterText(box.first, name);
+    await settle(seconds: 1.5);
+    return _guestRowNamed(name).evaluate().isNotEmpty;
+  }
+
+  /// Opens the guest [name] from the search.
+  Future<bool> openGuest(String name, {double wait = 3}) async {
+    if (!await searchGuest(name)) {
+      fail('ما يظهر «$name» في البحث');
+      return false;
+    }
+    await tester.tap(_guestRowNamed(name).first, warnIfMissed: false);
+    await settle(seconds: wait);
+    return true;
+  }
+
+  /// The name as a row draws it: a Text, which the search box is not.
+  Finder _guestRowNamed(String name) => find.byWidgetPredicate(
+    (widget) => widget is Text && widget.data == name,
+  );
+
   /// Taps [label] inside the widget keyed [key] (a card, a header).
   Future<bool> tapWithin(
     String key,

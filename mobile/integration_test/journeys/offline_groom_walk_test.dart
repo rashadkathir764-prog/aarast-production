@@ -54,8 +54,10 @@ void main() {
       await walk.enterField('الاسم', 'ضيف بدون نت');
       await walk.tapKey('guest-form-save', wait: 4);
       walk.expectNotSee('ما قدرنا نحفظ', why: 'الحفظ على الجوال لا يفشل');
-      await walk.tapText('كل الضيوف', wait: 3);
-      walk.expectSee('ضيف بدون نت', why: 'الضيف محفوظ على الجوال وظاهر');
+      // Found the way a person finds one name among a hundred: «دوّر».
+      if (!await walk.searchGuest('ضيف بدون نت')) {
+        walk.fail('ما يظهر «ضيف بدون نت» (الضيف محفوظ على الجوال وظاهر)');
+      }
     });
     await walk.back();
 

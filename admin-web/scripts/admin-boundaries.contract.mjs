@@ -819,17 +819,21 @@ test('requires the exact Task 6 Moderation and Audit public surfaces', () => {
       // a12 (B-40): the bookings, read only.
       'AdminBooking',
       'AdminBookingQuery',
+      // RA-ST-04 (D95): the assistant answers reported to the team.
+      'AssistantAnswerReport',
       'ConversationReport',
       // n07 (B-16): portfolio photos and their decision.
       'PortfolioPhoto',
       'ProviderReview',
       'decidePortfolioPhoto',
+      'getAssistantReports',
       'getBooking',
       'getBookings',
       'getConversationReports',
       'getPortfolioPhotos',
       'getReviews',
       'hideReview',
+      'resolveAssistantReport',
       'updateConversationReportStatus',
       // B-09 (a10): hiding or showing the provider's reply.
       'updateReviewReplyStatus',

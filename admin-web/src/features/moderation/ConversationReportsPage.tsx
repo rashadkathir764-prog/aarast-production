@@ -1,4 +1,5 @@
-// a11 «البلاغات»: the open reports beside the one being read. The
+// a11 «البلاغات»: the open reports beside the one being read, the chats'
+// and, in their own tab, the assistant answers' (RA-ST-04, D95). The
 // reported message, «احذف الرسالة» and the history on the same party wait
 // for B-41; «نبّه المزود» and «اطلب إيقافه» wait for A-09. What stays is
 // closing the report: «ما فيه شيء» (dismissed) and «تمت المراجعة».
@@ -9,6 +10,7 @@ import {
   getConversationReports,
   updateConversationReportStatus,
 } from './api';
+import { AssistantReportsPanel } from './AssistantReportsPanel';
 import { getProvider } from '../providers/api';
 import { AdminPermission, Can, hasAdminPermission, useAuth } from '../auth/api';
 import {
@@ -50,7 +52,37 @@ type Page = {
   totalPages: number;
 };
 
+type Tab = 'CHATS' | 'ASSISTANT';
+
 export function ConversationReportsPage() {
+  const [tab, setTab] = useState<Tab>('CHATS');
+  return (
+    <section className="desk-fill-page">
+      <DeskHeader
+        title="البلاغات"
+        actions={(
+          [
+            ['CHATS', 'المحادثات'],
+            // RA-ST-04 (D95): the assistant answers reported by their readers.
+            ['ASSISTANT', 'إجابات المساعد'],
+          ] as const
+        ).map(([value, label]) => (
+          <DeskButton
+            key={value}
+            tone={tab === value ? 'teal' : 'soft'}
+            pressed={tab === value}
+            onClick={() => setTab(value)}
+          >
+            {label}
+          </DeskButton>
+        ))}
+      />
+      {tab === 'CHATS' ? <ChatReports /> : <AssistantReportsPanel />}
+    </section>
+  );
+}
+
+function ChatReports() {
   const { user } = useAuth();
   const canOpenUsers = hasAdminPermission(user, AdminPermission.USERS_READ);
   const [page, setPage] = useState(1);
@@ -117,8 +149,7 @@ export function ConversationReportsPage() {
   }
 
   return (
-    <section className="desk-fill-page">
-      <DeskHeader title="البلاغات" />
+    <>
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
       {result === null && !error ? <DeskNote>لحظة، نحمّل البلاغات…</DeskNote> : null}
       {result && result.items.length === 0 ? (
@@ -190,6 +221,6 @@ export function ConversationReportsPage() {
           </div>
         </div>
       ) : null}
-    </section>
+    </>
   );
 }

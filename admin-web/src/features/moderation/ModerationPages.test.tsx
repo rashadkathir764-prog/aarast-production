@@ -2,12 +2,15 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  getAssistantReports,
   getConversationReports,
   getReviews,
   hideReview,
+  resolveAssistantReport,
   updateConversationReportStatus,
   updateReviewReplyStatus,
   updateReviewStatus,
+  type AssistantAnswerReport,
   type ConversationReport,
   type ProviderReview,
 } from './api';
@@ -16,6 +19,8 @@ import { ConversationReportsPage } from './ConversationReportsPage';
 import { ReviewsPage } from './ReviewsPage';
 
 vi.mock('./api', () => ({
+  getAssistantReports: vi.fn(),
+  resolveAssistantReport: vi.fn(),
   getConversationReports: vi.fn(),
   updateConversationReportStatus: vi.fn(),
   getReviews: vi.fn(),
@@ -144,6 +149,61 @@ describe('ConversationReportsPage (a11)', () => {
     await waitFor(() =>
       expect(updateConversationReportStatus).toHaveBeenLastCalledWith('r1', 'REVIEWED'),
     );
+  });
+
+  // RA-ST-04 (D95): the assistant answers their readers reported.
+  const answerReport = (
+    id: string,
+    overrides: Partial<AssistantAnswerReport> = {},
+  ): AssistantAnswerReport => ({
+    id,
+    kind: 'FORGOTTEN',
+    question: null,
+    answer: 'نسيت تحجز القاعة\nوالفستان.',
+    reason: 'معلومة غلط أو تضر',
+    status: 'OPEN',
+    resolvedAt: null,
+    createdAt: '2026-10-23T10:00:00.000Z',
+    ...overrides,
+  });
+
+  it('reads a reported assistant answer: what was asked, the answer, why', async () => {
+    vi.mocked(getAssistantReports).mockResolvedValue(
+      page([
+        answerReport('a1'),
+        answerReport('a2', { kind: 'QUESTION', question: 'كم أخصص للتصوير؟', reason: 'كلام مسيء' }),
+      ]),
+    );
+    renderReports();
+    await screen.findByRole('row', { name: 'اقرأ بلاغ كلام غير لائق' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'إجابات المساعد' }));
+    const first = await screen.findByRole('row', { name: 'اقرأ بلاغ معلومة غلط أو تضر' });
+    expect(getAssistantReports).toHaveBeenCalledWith({ status: 'OPEN', page: 1, limit: 20 });
+    // A ready-made request reads as the app names it.
+    expect(first).toHaveTextContent('ايش نسيت؟ · أمس');
+    expect(screen.getByText('السؤال: ايش نسيت؟')).toBeVisible();
+    expect(screen.getByText(/نسيت تحجز القاعة/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('row', { name: 'اقرأ بلاغ كلام مسيء' }));
+    expect(screen.getByText('السؤال: كم أخصص للتصوير؟')).toBeVisible();
+  });
+
+  it('closes a reported answer with «تمت المراجعة», and says why when it fails', async () => {
+    vi.mocked(getAssistantReports).mockResolvedValue(page([answerReport('a1')]));
+    vi.mocked(resolveAssistantReport).mockRejectedValueOnce(new Error('تعذر التحديث الآن.'));
+    renderReports();
+    fireEvent.click(await screen.findByRole('button', { name: 'إجابات المساعد' }));
+    await screen.findByRole('heading', { name: 'معلومة غلط أو تضر' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'تمت المراجعة' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر التحديث الآن.');
+    expect(resolveAssistantReport).toHaveBeenCalledWith('a1');
+
+    vi.mocked(resolveAssistantReport).mockResolvedValue(answerReport('a1', { status: 'RESOLVED' }));
+    vi.mocked(getAssistantReports).mockResolvedValue(page([]));
+    fireEvent.click(screen.getByRole('button', { name: 'تمت المراجعة' }));
+    expect(await screen.findByText('ما فيه إجابة مبلّغ عنها.')).toBeVisible();
   });
 });
 

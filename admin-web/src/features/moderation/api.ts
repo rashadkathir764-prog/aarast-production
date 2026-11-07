@@ -25,6 +25,22 @@ export type ProviderReview = {
   updatedAt: string;
 };
 
+/**
+ * RA-ST-04 (D95): an assistant answer its reader reported: what was asked
+ * (`question`, or only the `kind` of a ready-made request), the answer, and
+ * why. The reporter stays unnamed.
+ */
+export type AssistantAnswerReport = {
+  id: string;
+  kind: string;
+  question: string | null;
+  answer: string;
+  reason: string;
+  status: 'OPEN' | 'RESOLVED';
+  resolvedAt: string | null;
+  createdAt: string;
+};
+
 export type ConversationReport = {
   id: string;
   conversationId: string;
@@ -156,6 +172,22 @@ export function getConversationReports(params: QueryParams = {}) {
   return apiRequest<Paginated<ConversationReport>>(
     `/admin/conversation-reports${toQuery(params)}`,
   );
+}
+
+/** RA-ST-04 (D95): the reported assistant answers, open or reviewed. */
+export function getAssistantReports(
+  params: { status?: AssistantAnswerReport['status']; page?: number; limit?: number } = {},
+) {
+  return apiRequest<Paginated<AssistantAnswerReport>>(
+    `/admin/assistant-reports${toQuery(params)}`,
+  );
+}
+
+/** RA-ST-04: «تمت المراجعة». */
+export function resolveAssistantReport(id: string) {
+  return apiRequest<AssistantAnswerReport>(`/admin/assistant-reports/${id}/resolve`, {
+    method: 'PATCH',
+  });
 }
 
 export function updateConversationReportStatus(

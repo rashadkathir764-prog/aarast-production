@@ -47,7 +47,10 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-28: users gained the n06 data requests (DataRequests,
   // PendingDeletion, DataExportRequest, getDataRequests,
   // restoreAccountDeletion; A-15, D63).
-  publicSurfaces: '1e2ce0dc1ddb1b722dd44114e8f873866980dba346239f7c70f6cb161c4d9259',
+  // Re-pinned 2026-11-07: moderation gained the reported assistant answers
+  // (AssistantAnswerReport, getAssistantReports, resolveAssistantReport;
+  // RA-ST-04, D95); no other surface changed.
+  publicSurfaces: '09fd2e9ba0aa00fd692bf8beab87614ae6b14e1270b854e1d8b807f6b57bf4a9',
   // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.

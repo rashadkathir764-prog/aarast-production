@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { AdminPermission, hasAdminPermission, type AdminUser } from '../features/auth/api';
 import { getStats } from '../features/dashboard/api';
-import { getConversationReports } from '../features/moderation/api';
+import { getAssistantReports, getConversationReports } from '../features/moderation/api';
 import type { AdminQueueCount } from './adminNavigation';
 
 export type QueueCounts = Partial<Record<AdminQueueCount, number>>;
 
 /**
  * The sizes the sidebar shows: pending applications and claims of a listing
- * (the dashboard stats, B-12), open conversation reports, and the inbox,
+ * (the dashboard stats, B-12), open reports (the chats' and the assistant
+ * answers'), and the inbox,
  * which holds the queues this admin can act on. A count the server does not
  * give stays hidden.
  */
@@ -27,9 +28,13 @@ export function useQueueCounts(
     const stats = canStats
       ? getStats().catch(() => undefined)
       : Promise.resolve(undefined);
+    // RA-ST-04 (D95): «البلاغات» holds the chats' and the assistant answers'.
     const open = canReports
-      ? getConversationReports({ status: 'OPEN', page: 1, limit: 1 })
-          .then((page) => page.total)
+      ? Promise.all([
+          getConversationReports({ status: 'OPEN', page: 1, limit: 1 }),
+          getAssistantReports({ status: 'OPEN', page: 1, limit: 1 }),
+        ])
+          .then(([chats, answers]) => chats.total + answers.total)
           .catch(() => undefined)
       : Promise.resolve(undefined);
     void Promise.all([stats, open]).then(([read, reports]) => {

@@ -184,14 +184,15 @@ export function noticeMessage(
       return shown
         ? {
             title: "ظهورك المميز ينتهي قريب",
-            body: `آخر يوم له ${until}. لو تبي تجدده كلّم فريق اعّرست.`,
+            // RA-BE-32 (D96): the day only; the app sells no placement.
+            body: `آخر يوم له ${until}.`,
           }
         : null;
     case "ended":
       return {
         title: "خلص ظهورك المميز",
         body: shown
-          ? "من اليوم ملفك يظهر عادي. لو تبي ترجع مميز كلّم فريق اعّرست."
+          ? "من اليوم ملفك يظهر عادي. لو عندك سؤال كلّم فريق اعّرست."
           : `آخر يوم له كان ${until}.`,
       };
   }

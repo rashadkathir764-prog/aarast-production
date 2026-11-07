@@ -532,10 +532,18 @@ test('what the hourly job says is true for where the provider stands', () => {
   assert.equal(started.title, 'بدأ ظهورك المميز');
   assert.ok(started.body.includes('يطلع مع المميزين أول'));
   assert.ok(noticeMessage('started', '2026-12-31', false)!.body.includes('مو ظاهر للعرسان'));
-  assert.ok(noticeMessage('ending', '2026-12-31', true)!.body.includes('تجدده'));
-  // Not in the customers' list: no «جدّده» to sell him.
+  // RA-BE-32 (D96): this asked the ending notice to say «لو تبي تجدده كلّم
+  // فريق اعّرست», a sale outside Google Play's billing, and the ended one
+  // «لو تبي ترجع مميز»; the phone and the admin's words had dropped both.
+  // The days are said, and nothing is sold.
+  const ending = noticeMessage('ending', '2026-12-31', true)!;
+  assert.ok(ending.body.includes('آخر يوم له'));
+  assert.equal(/تجدده|جدّده|ترجع مميز/.test(ending.body), false);
+  // Not in the customers' list: nothing to say.
   assert.equal(noticeMessage('ending', '2026-12-31', false), null);
-  assert.ok(noticeMessage('ended', '2026-12-31', true)!.body.includes('يظهر عادي'));
+  const endedShown = noticeMessage('ended', '2026-12-31', true)!;
+  assert.ok(endedShown.body.includes('يظهر عادي'));
+  assert.equal(/تجدده|جدّده|ترجع مميز/.test(endedShown.body), false);
   const endedHidden = noticeMessage('ended', '2026-12-31', false)!;
   assert.equal(endedHidden.body.includes('يظهر عادي'), false);
   assert.equal(endedHidden.body.includes('ترجع مميز'), false);

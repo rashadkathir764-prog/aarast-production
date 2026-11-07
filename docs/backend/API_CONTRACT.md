@@ -3497,6 +3497,8 @@ configuration, and smoke checks.
 
 | Method | Path | Controller.Handler | Auth |
 | --- | --- | --- | --- |
+| GET | `/admin/assistant-reports` | `admin.listAssistantAnswerReports` | 🔒 |
+| PATCH | `/admin/assistant-reports/:id/resolve` | `admin.resolveAssistantAnswerReport` | 🔒 |
 | GET | `/admin/audit-logs` | `admin-audit.list` | 🔒 |
 | GET | `/admin/bookings` | `admin.listBookings` | 🔒 |
 | GET | `/admin/bookings/:id` | `admin.getBooking` | 🔒 |
@@ -3770,6 +3772,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:planId/plan-view` | `dashboard.getPlanReadView` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/assistant` | `assistant.status` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/questions` | `assistant.ask` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/reports` | `assistant.report` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.create` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/contributions` | `contribution-history.list` | 🔒 |

@@ -44,6 +44,7 @@
 | `backend` | `npm run smoke:account-deletion` | `node scripts/smoke/run-isolated-smoke.js account-deletion-smoke.ts` |
 | `backend` | `npm run smoke:all` | `node scripts/smoke/run-isolated-smoke.js all-smoke.js` |
 | `backend` | `npm run smoke:assistant` | `node scripts/smoke/run-isolated-smoke.js assistant-smoke.js` |
+| `backend` | `npm run smoke:assistant-report` | `node scripts/smoke/run-isolated-smoke.js assistant-report-smoke.ts` |
 | `backend` | `npm run smoke:auth` | `node scripts/smoke/run-isolated-smoke.js auth-smoke.js` |
 | `backend` | `npm run smoke:auth-verification` | `node scripts/smoke/run-isolated-smoke.js auth-verification-smoke.js` |
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/run-isolated-smoke.js backend-completion-smoke.js` |

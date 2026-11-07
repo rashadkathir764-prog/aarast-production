@@ -206,6 +206,8 @@ assert.match(privacyHtml, /قفل التطبيق برمز/);
 // V1 checklist 4.12: what the assistant sends, to whom, and what it keeps.
 assert.match(privacyHtml, /المساعد الذكي/);
 assert.match(privacyHtml, /Claude من شركة Anthropic/);
+// RA-ST-04 (D95): a reported answer is the one thing the assistant keeps.
+assert.match(privacyHtml, /إذا بلّغت عن إجابة، نحفظ تلك الإجابة مع سؤالك وسبب البلاغ/);
 assert.match(privacyHtml, /لا نرسل أسماء ضيوفك ولا أرقام هواتف/);
 assert.match(privacyHtml, /لا نحفظ أسئلتك ولا الإجابات/);
 

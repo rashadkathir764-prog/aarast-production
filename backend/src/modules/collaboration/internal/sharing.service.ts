@@ -1774,6 +1774,18 @@ export class SharingService {
   private async findTargetUser(
     dto: CreateSharedMemberDto,
   ): Promise<AppIdentity> {
+    // RA-BE-20: a number never names its account here. «No registered user
+    // for this phone» against the account's name and number told anyone
+    // with a plan who holds any number, and added them with no invite.
+    // Whoever holds a number joins by accepting an invite (P5); every
+    // number is answered alike, before any lookup.
+    if (dto.phone !== undefined && dto.phone !== null) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "ADD_BY_INVITE",
+        message: "المشارك ينضم بدعوة يقبلها، لا بإضافة رقمه.",
+      });
+    }
     const userId = dto.userId?.trim();
     const phone = dto.phone
       ? PhoneNormalizer.normalizeRequired(dto.phone)
@@ -2788,6 +2800,11 @@ export class SharingService {
     presentedToken?: string,
   ): PlanInviteResponse {
     const status = this.inviteStatus(invite);
+    // RA-BE-20: the account behind an invite is named only once it accepted
+    // (a participant then, named in the members list too). Before, the reply
+    // told the inviter whose number it was; the name and number shown are
+    // the ones the inviter typed.
+    const accountShown = status === "ACCEPTED";
     return {
       id: invite.id,
       weddingPlanId: invite.weddingPlanId,
@@ -2797,7 +2814,7 @@ export class SharingService {
       phone: invite.phone,
       normalizedPhone: invite.normalizedPhone,
       email: invite.email,
-      inviteeUserId: invite.inviteeUserId,
+      inviteeUserId: accountShown ? invite.inviteeUserId : null,
       inviterUserId: invite.inviterUserId,
       role: invite.role,
       canViewMoney: invite.canViewMoney,
@@ -2832,9 +2849,10 @@ export class SharingService {
         : {}),
       ...(invite.invitee !== undefined
         ? {
-            invitee: invite.invitee
-              ? toApplicationUserContact(invite.invitee)
-              : null,
+            invitee:
+              accountShown && invite.invitee
+                ? toApplicationUserContact(invite.invitee)
+                : null,
           }
         : {}),
     };

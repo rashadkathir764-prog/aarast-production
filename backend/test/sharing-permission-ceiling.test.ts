@@ -514,7 +514,12 @@ test("invite creation returns one raw bearer while storage and lists expose no r
   assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(created.weddingPlan?.title, harness.db.plan.title);
   assert.equal(created.inviter?.id, harness.owner.id);
-  assert.equal(created.invitee?.id, harness.target.id);
+  // RA-BE-20: this read the invitee's account back to the inviter before any
+  // acceptance, so the name of whoever holds a number came with the reply.
+  // The invite still targets the account; the reply does not say who it is.
+  assert.equal(created.invitee ?? null, null);
+  assert.equal(created.inviteeUserId, null);
+  assert.equal(harness.db.invites[0].inviteeUserId, harness.target.id);
   assert.equal(harness.db.invites.length, 1);
   assert.equal(
     harness.db.invites[0].tokenHash,
@@ -690,12 +695,28 @@ test("invite target lookup prefers the exact canonical phone identity", async ()
   const canonical = sharingUser("canonical-target", "+967777000099");
   harness.db.users.push(legacy, canonical);
 
-  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+  await harness.service.createInvite(harness.owner, "plan-1", {
     phone: "777000099",
   });
 
-  assert.equal(created.invitee?.id, canonical.id);
-  assert.notEqual(created.invitee?.id, legacy.id);
+  // RA-BE-20: read from the stored invite, the reply no longer naming it.
+  assert.equal(harness.db.invites[0].inviteeUserId, canonical.id);
+  assert.notEqual(harness.db.invites[0].inviteeUserId, legacy.id);
+});
+
+test("RA-BE-20: adding a participant by number says the same of every number and adds no one", async () => {
+  const harness = inviteHarness();
+  for (const phone of [harness.target.phone!, "+967777555444"]) {
+    await assert.rejects(
+      () =>
+        harness.service.create(harness.owner, "plan-1", {
+          phone,
+          role: SharedMemberRole.VIEWER,
+        }),
+      refusal(400, "ADD_BY_INVITE"),
+    );
+  }
+  assert.equal(harness.db.invites.length, 0);
 });
 
 test("invite creation retries a serialization abort without duplicating its notification", async () => {

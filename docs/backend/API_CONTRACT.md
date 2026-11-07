@@ -245,13 +245,17 @@ expire after 30 days and are stored as hashes.
 - Phone change (V1 checklist 4.14), both authenticated:
   `POST /api/v1/auth/phone-change/request` `{ phone }` sends a `VERIFY_PHONE`
   OTP to the new number (same delivery, quota and response as
-  `otp/request`; throttled to 5 per minute); `409 PHONE_IN_USE` when any
-  account uses it (any spelling), `400 PHONE_UNCHANGED` for the account's own
-  number. `POST /api/v1/auth/phone-change/confirm` `{ phone, code }` claims the
-  OTP, moves the account (`phone`, `phoneVerifiedAt`) and revokes every
-  application session (`USER_SESSIONS_REVOKED`), returning
-  `{ changed: true, phone }`; a wrong code is the usual OTP failure and changes
-  nothing. The account signs in again with the new number and the same
+  `otp/request`; throttled to 5 per minute) whether or not an account uses it,
+  `400 PHONE_UNCHANGED` for the account's own number. `POST
+  /api/v1/auth/phone-change/confirm` `{ phone, code }` claims the OTP; only
+  then `409 PHONE_IN_USE` when any account uses the number (any spelling), so
+  the answer reaches whoever holds it (RA-BE-21); otherwise it moves the
+  account (`phone`, `phoneVerifiedAt`) and revokes every application session
+  (`USER_SESSIONS_REVOKED`), returning `{ changed: true, phone }`; a wrong
+  code is the usual OTP failure and changes nothing. An administrator's phone
+  is the admin account's second factor and recovery: both steps answer `403
+  ADMIN_PHONE_CHANGE_REFUSED`, and it changes with the admin provisioning only
+  (RA-BE-19). The account signs in again with the new number and the same
   password, which also covers a lost SIM (sign in with the old number and the
   password, then change).
 - Application rotation, logout, reset, disable, and deletion commit
@@ -359,7 +363,10 @@ Additional current auth/profile routes:
   /admin/data-requests/:id/restore` (`USERS_WRITE`): n06.
 - No route tells whether a phone number has an account (RA-BE-11): the old
   phone lookup was removed, since owning any plan was enough to ask it.
-  Participants are invited by phone (D81).
+  Participants are invited by phone (D81). Adding a member directly takes a
+  `userId` only; a `phone` is answered `400 ADD_BY_INVITE` before any lookup,
+  alike for every number, and an invite names its account (`inviteeUserId`,
+  `invitee`) only once accepted (RA-BE-20).
 - `GET /api/v1/users/me/settings`
 - `PATCH /api/v1/users/me/settings`
 - `GET /api/v1/me`

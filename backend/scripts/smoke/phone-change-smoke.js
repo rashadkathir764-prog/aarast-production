@@ -82,8 +82,22 @@ async function run() {
   let movedToken = await register('Phone mover', oldPhone);
   const otherToken = await register('Phone holder', takenPhone);
   try {
+    // RA-BE-21: the request said «PHONE_IN_USE» before any code, so a session
+    // learnt whether any number has an account for the price of a call. A
+    // taken number is now asked like any other; only whoever holds it (and
+    // reads its code) hears that it is taken, at the confirm.
     const taken = await request('POST', '/api/v1/auth/phone-change/request', { phone: takenPhone }, movedToken);
-    check('a number another account uses is refused', taken.status === 409 && taken.body?.code === 'PHONE_IN_USE');
+    const unknown = await request('POST', '/api/v1/auth/phone-change/request', { phone: phone(44) }, movedToken);
+    check(
+      'a taken number is asked like any other, its code sent',
+      taken.status === 200 && unknown.status === 200 && taken.body?.phone === takenPhone,
+    );
+    const takenCode = process.env.SMOKE_OTP_CODE ?? taken.body?.code;
+    const takenConfirm = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: takenPhone, code: takenCode }, movedToken);
+    check(
+      'its code then says the number is taken, and moves nothing',
+      takenConfirm.status === 409 && takenConfirm.body?.code === 'PHONE_IN_USE',
+    );
 
     const same = await request('POST', '/api/v1/auth/phone-change/request', { phone: oldPhone }, movedToken);
     check('the account\'s own number is refused', same.status === 400 && same.body?.code === 'PHONE_UNCHANGED');

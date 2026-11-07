@@ -1138,7 +1138,7 @@ export class AuthService implements IdentityAuthPort {
   ): Promise<OtpRequestResponse> {
     this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
-    await this.assertPhoneChangeAllowed(this.prisma, currentUser.id, phone);
+    await this.assertNotOwnPhone(this.prisma, currentUser.id, phone);
     const { otpId: _otpId, ...response } = await this.issueOtp(
       phone,
       OtpPurpose.VERIFY_PHONE,
@@ -1170,7 +1170,7 @@ export class AuthService implements IdentityAuthPort {
         if (!actor || actor.status !== UserStatus.ACTIVE) {
           throw new UnauthorizedException("User not found");
         }
-        await this.assertPhoneChangeAllowed(tx, currentUser.id, phone);
+        await this.assertNotOwnPhone(tx, currentUser.id, phone);
         const claim = await this.claimOtpCodeInTransaction(tx, {
           phone,
           purpose: OtpPurpose.VERIFY_PHONE,
@@ -1178,6 +1178,9 @@ export class AuthService implements IdentityAuthPort {
           now,
         });
         if (claim.outcome === "invalid") return "invalid" as const;
+        // RA-BE-21: only now, the number's code proven, may the answer say
+        // the number has an account; it reaches whoever holds that number.
+        await this.assertPhoneFree(tx, currentUser.id, phone);
         const changed = await this.users.changePhone(tx, currentUser.id, phone, now);
         if (changed.count !== 1) {
           throw new UnauthorizedException("User not found");
@@ -1228,7 +1231,8 @@ export class AuthService implements IdentityAuthPort {
     }
   }
 
-  private async assertPhoneChangeAllowed(
+  /** The account's own number: nothing to change, and nothing said of anyone else. */
+  private async assertNotOwnPhone(
     client: Prisma.TransactionClient,
     userId: string,
     phone: string,
@@ -1241,7 +1245,20 @@ export class AuthService implements IdentityAuthPort {
         message: "This is already the account's phone",
       });
     }
-    if (owner) throw this.phoneInUse();
+  }
+
+  /**
+   * RA-BE-21: «PHONE_IN_USE» before any code told every signed-in account
+   * whether any number has an account, for the price of a request. It is
+   * said only after the number's code was claimed, to whoever holds it.
+   */
+  private async assertPhoneFree(
+    client: Prisma.TransactionClient,
+    userId: string,
+    phone: string,
+  ): Promise<void> {
+    const owner = await this.findUserByCanonicalPhone(client, phone);
+    if (owner && owner.id !== userId) throw this.phoneInUse();
   }
 
   private phoneInUse() {

@@ -104,7 +104,6 @@ async function run() {
   let sharedByPhoneToken = null;
   let weddingPlanId = null;
   let sharedMemberId = null;
-  let sharedByPhoneMemberId = null;
   let taskId = null;
 
   {
@@ -166,22 +165,27 @@ async function run() {
     sharedMemberId = res.body?.id;
   }
 
+  // RA-BE-20: these checks used to add a member by number and read back the
+  // account's name: «No registered user found» against a name told anyone
+  // with a plan who holds a number, and added them with no invite. Whoever
+  // holds a number joins by accepting an invite (P5); a registered number
+  // and an unknown one are now answered alike, and nobody is added.
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
-      phone: SHARED_BY_PHONE,
-      role: 'VIEWER',
-      canViewMoney: false,
-      canManageTasks: false,
-      canManageMoney: false,
-    }, ownerToken);
-    check('owner adds shared member by phone - HTTP 201', res.status === 201);
-    check('phone-added shared member has id', typeof res.body?.id === 'string');
-    check('phone-added shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
-    check('phone-added shared member includes safe user name', res.body?.user?.name === 'Sharing Smoke Phone Member');
-    check('phone-added shared member includes safe user phone', res.body?.user?.phone === SHARED_BY_PHONE);
-    check('phone-added shared member user fields are safe', hasOnlySafeSharedUserFields(res.body));
-    check('phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
-    sharedByPhoneMemberId = res.body?.id;
+    const answers = [];
+    for (const phone of [SHARED_BY_PHONE, `+9677${String((Number(suffix) + 4321) % 100000000).padStart(8, '0')}`]) {
+      const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
+        phone,
+        role: 'VIEWER',
+        canViewMoney: false,
+        canManageTasks: false,
+        canManageMoney: false,
+      }, ownerToken);
+      answers.push(`${res.status}:${res.body?.code}`);
+    }
+    check(
+      'adding by number is refused alike for a registered and an unknown number',
+      answers.every((answer) => answer === '400:ADD_BY_INVITE'),
+    );
   }
 
   {
@@ -197,7 +201,7 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/members`, null, ownerToken);
     check('owner lists shared members - HTTP 200', res.status === 200);
     check('shared member list includes member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedMemberId));
-    check('shared member list includes phone-added member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedByPhoneMemberId));
+    check('nobody was added by number', Array.isArray(res.body) && !res.body.some((member) => member.user?.phone === SHARED_BY_PHONE));
     check('shared member list includes safe user display data', Array.isArray(res.body) && res.body.some((member) => member.user?.name === 'Sharing Smoke Member' && member.user?.phone === SHARED_PHONE));
     check('shared member list safe user fields only', Array.isArray(res.body) && res.body.every(hasOnlySafeSharedUserFields));
     check('shared member list does not expose passwordHash', !hasPasswordHash(res.body));
@@ -214,10 +218,11 @@ async function run() {
   }
 
   {
+    // RA-BE-20: the number's holder was never added, so the plan is not theirs to see.
     const res = await request('GET', '/api/v1/shared/wedding-plans', null, sharedByPhoneToken);
-    check('phone-added shared user lists shared wedding plans - HTTP 200', res.status === 200);
-    check('phone-added shared plan list includes plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === weddingPlanId));
-    check('phone-added shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
+    check('the number\'s holder lists shared wedding plans - HTTP 200', res.status === 200);
+    check('the number\'s holder was not put in the plan', Array.isArray(res.body) && !res.body.some((plan) => plan.id === weddingPlanId));
+    check('the number\'s holder plan list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
@@ -323,13 +328,6 @@ async function run() {
     check('owner removes shared member - HTTP 200', res.status === 200);
     check('removed shared member id returned', res.body?.id === sharedMemberId);
     check('remove shared member response does not expose passwordHash', !hasPasswordHash(res.body));
-  }
-
-  {
-    const res = await request('DELETE', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedByPhoneMemberId}`, null, ownerToken);
-    check('owner removes phone-added shared member - HTTP 200', res.status === 200);
-    check('removed phone-added shared member id returned', res.body?.id === sharedByPhoneMemberId);
-    check('remove phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {

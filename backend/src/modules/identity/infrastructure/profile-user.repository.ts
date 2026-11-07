@@ -1,6 +1,4 @@
 import { Prisma, WeddingPersona } from '@prisma/client';
-import { PrismaService } from '../../../platform/database/prisma.service';
-import { applicationNameFields } from '../../../shared-kernel/privacy/application-user-identity';
 
 export function findProfileForUpdate(tx: Prisma.TransactionClient, userId: string) {
   return tx.user.findUniqueOrThrow({
@@ -51,16 +49,6 @@ export function updateProfileUser(
       ...(values.locale !== undefined ? { locale: values.locale } : {}),
       ...(values.persona !== undefined ? { persona: values.persona } : {}),
     },
-  });
-}
-
-export function findApplicationUserByPhone(
-  prisma: PrismaService,
-  phoneVariants: readonly string[],
-) {
-  return prisma.user.findFirst({
-    where: { phone: { in: [...phoneVariants] } },
-    select: { id: true, phone: true, ...applicationNameFields },
   });
 }
 

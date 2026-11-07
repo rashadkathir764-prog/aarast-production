@@ -285,39 +285,37 @@ async function run() {
       managerMember.body?.canInviteMembers === true,
   );
 
-  const lookupQuery = new URLSearchParams({
-    weddingPlanId: plan.body.id,
-    phone: target.user.phone,
-  });
-  const ownerLookup = await request(
-    "GET",
-    `/api/v1/users/lookup?${lookupQuery}`,
-    null,
-    owner.token,
-  );
-  check("plan owner can confirm an invite target", ownerLookup.status === 200);
-
-  const managerLookup = await request(
-    "GET",
-    `/api/v1/users/lookup?${lookupQuery}`,
-    null,
-    manager.token,
-  );
-  check(
-    "delegated invite manager can confirm an invite target",
-    managerLookup.status === 200,
-  );
-
-  const outsiderLookup = await request(
-    "GET",
-    `/api/v1/users/lookup?${lookupQuery}`,
-    null,
+  // RA-BE-11: no account learns whether a phone number has an Aarast
+  // account, or its name. The plan guard of the old lookup proved nothing:
+  // anyone can make a plan of their own and ask through it. The app invites
+  // by phone (D81) and never asked; the lookup is gone.
+  const outsiderPlan = await request(
+    "POST",
+    "/api/v1/wedding-plans",
+    { title: "Outsider Own Plan" },
     outsider.token,
   );
-  check(
-    "unrelated account cannot enumerate users through another plan",
-    outsiderLookup.status === 404,
-  );
+  check("an outsider makes a plan of their own", outsiderPlan.status === 201);
+  for (const [label, token, planId] of [
+    ["an outsider through their own plan", outsider.token, outsiderPlan.body?.id],
+    ["the plan owner", owner.token, plan.body.id],
+    ["a delegated invite manager", manager.token, plan.body.id],
+  ]) {
+    const lookup = await request(
+      "GET",
+      `/api/v1/users/lookup?${new URLSearchParams({
+        weddingPlanId: planId,
+        phone: target.user.phone,
+      })}`,
+      null,
+      token,
+    );
+    check(
+      `${label} cannot learn an account by its phone`,
+      lookup.status === 404 &&
+        !JSON.stringify(lookup.body ?? {}).includes(target.user.id),
+    );
+  }
 
   const financeEscalation = await request(
     "POST",

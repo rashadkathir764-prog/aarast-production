@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { UserRole } from "@prisma/client";
 import {
@@ -69,27 +71,15 @@ test("Sentry receives a synthetic error without the original sensitive message",
   assert.equal(telemetry.stack?.includes("967777123456"), false);
 });
 
-test("user lookup checks invite authority before querying an account", async () => {
-  let userQueries = 0;
-  const service = usersService(
-    {
-      user: {
-        findFirst: async () => {
-          userQueries += 1;
-          return null;
-        },
-      },
-    } as any,
-    {
-      assertMemberManageable: async () => {
-        throw new Error("forbidden");
-      },
-    } as any,
-    {} as any,
+// RA-BE-11: no account learns whether a phone number has an account, or
+// its name. The old lookup's plan guard proved nothing (anyone can own a
+// plan), and no client used it; the route and its service are gone.
+test("no route looks an account up by its phone", () => {
+  const controller = readFileSync(
+    join(__dirname, "..", "src", "modules", "identity", "api", "users.controller.ts"),
+    "utf8",
   );
-
-  await assert.rejects(() =>
-    service.lookupByPhone({ id: "viewer-1" } as any, "plan-1", "+967777123456"),
-  );
-  assert.equal(userQueries, 0);
+  assert.doesNotMatch(controller, /@Get\(["']lookup["']\)/);
+  const service = usersService({} as any, {} as any, {} as any) as unknown as Record<string, unknown>;
+  assert.equal(typeof service.lookupByPhone, "undefined");
 });

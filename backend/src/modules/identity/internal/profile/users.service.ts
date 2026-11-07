@@ -18,7 +18,6 @@ import {
 import { AuthenticatedUser } from "../../public/identity-session.types";
 import { SafeUser } from "../../public/safe-user";
 import { toSafeUser } from "../safe-user.presenter";
-import { PhoneNormalizer } from "../../../../shared-kernel/phone/phone-normalizer";
 import { runRetryableTransaction } from "../../../../platform/database/serializable-transaction";
 import {
   MESSAGING_REALTIME_PORT,
@@ -77,15 +76,10 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
 } from "../../../collaboration/public/collaboration-permission.port";
-import {
-  applicationNameFields,
-  toApplicationUserContact,
-} from "../../../../shared-kernel/privacy/application-user-identity";
 import { UpdateProfileDto } from "../../api/user-dto/update-profile.dto";
 import { UpdateSettingsDto } from "../../api/user-dto/update-settings.dto";
 import { assertActiveMutationActorForUpdateInTransaction } from "../../public/user-lifecycle-lock";
 import {
-  findApplicationUserByPhone,
   findDuplicateProfileEmail,
   findProfileForUpdate,
   lockNotificationSettingsUser as lockNotificationSettingsUserRow,
@@ -151,16 +145,6 @@ const UNSUPPORTED_NOTIFICATION_CHANNELS = [
   ["whatsappEnabled", "whatsapp"],
   ["emailEnabled", "email"],
 ] as const;
-
-/// Deliberately minimal: lookup exists only so a plan owner can confirm a
-/// member before inviting. No avatar and no extra profile data — phone
-/// numbers must not become a directory of user photos (culturally
-/// sensitive, privacy-critical in Yemen).
-export interface UserLookupResponse {
-  id: string;
-  name: string;
-  phone: string | null;
-}
 
 /**
  * D63: what one purge attempt did: erased the account, found its request
@@ -647,28 +631,6 @@ export class UsersService {
     }
     await enqueueUserSessionsRevoked(tx, userId);
     await clearAdministratorApplicationIdentity(tx, userId);
-  }
-
-  async lookupByPhone(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-    phone: string,
-  ): Promise<UserLookupResponse> {
-    await this.permissionService.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
-    const normalizedPhone = PhoneNormalizer.normalizeRequired(phone);
-    const user = await findApplicationUserByPhone(
-      this.prisma,
-      PhoneNormalizer.lookupVariants(normalizedPhone),
-    );
-
-    if (!user) {
-      throw new NotFoundException("User not found for phone");
-    }
-
-    return toApplicationUserContact(user);
   }
 
   /** D63 (w40): the privacy choices kept on the server. */

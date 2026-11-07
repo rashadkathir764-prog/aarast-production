@@ -6,7 +6,6 @@ import {
   HttpStatus,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
@@ -15,7 +14,6 @@ import { CurrentUser } from "../public/current-user.decorator";
 import { JwtAuthGuard } from "../public/jwt-auth.guard";
 import { UpdateProfileDto } from "./user-dto/update-profile.dto";
 import { UpdateSettingsDto } from "./user-dto/update-settings.dto";
-import { UserLookupDto } from "./user-dto/user-lookup.dto";
 import { UpdatePrivacyDto } from "./user-dto/privacy.dto";
 import { UsersService } from "../internal/profile/users.service";
 import { DataExportService } from "../internal/profile/data-export.service";
@@ -55,19 +53,6 @@ export class UsersController {
     @Body() dto: UpdatePrivacyDto,
   ) {
     return this.usersService.updatePrivacy(currentUser, dto);
-  }
-
-  @Get("lookup")
-  @Throttle({ default: { limit: 15, ttl: 60_000 } })
-  lookupByPhone(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Query() query: UserLookupDto,
-  ) {
-    return this.usersService.lookupByPhone(
-      currentUser,
-      query.weddingPlanId,
-      query.phone,
-    );
   }
 
   @Get("me/settings")

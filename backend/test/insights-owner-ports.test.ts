@@ -12,7 +12,6 @@ import {
   ProviderStatus,
   QuoteRequestStatus,
   WeddingCostStatus,
-  WeddingPlanStatus,
   WeddingTaskStatus,
 } from '@prisma/client';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
@@ -48,17 +47,6 @@ function recorder(results: Record<string, unknown> = {}) {
 
 const open = { notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED] };
 const byDue = [{ dueDate: 'asc' }, { createdAt: 'asc' }];
-
-test('planning finds the owner\'s current planning plan by wedding date', async () => {
-  const { client, calls } = recorder({ 'weddingPlan.findFirst': { id: 'plan-1' } });
-  assert.deepEqual(await new PlanReadService().findCurrentPlanningPlan(client, 'owner-1'), { id: 'plan-1' });
-  assert.deepEqual(calls, [
-    ['weddingPlan.findFirst', {
-      where: { ownerUserId: 'owner-1', status: WeddingPlanStatus.PLANNING },
-      orderBy: [{ weddingDate: 'asc' }, { createdAt: 'desc' }],
-    }],
-  ]);
-});
 
 test('finance serves a plan\'s money picture and pending schedules, narrowed to a contributor\'s costs', async () => {
   const { client, calls } = recorder();

@@ -4,17 +4,8 @@ import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { DashboardService } from "./dashboard.service";
 
-@Controller("api/v1/dashboard")
-@UseGuards(JwtAuthGuard)
-export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
-
-  @Get("home")
-  getHome(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.dashboardService.getHome(currentUser);
-  }
-}
-
+// RA-BE-10: the old account home (`GET /api/v1/dashboard/home`) is gone; the
+// app reads each plan's dashboard summary below.
 @Controller("api/v1/wedding-plans/:planId")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanDashboardController {

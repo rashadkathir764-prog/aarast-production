@@ -70,16 +70,6 @@ export class PlanReadService implements PlanReadPort {
     return client.weddingPlan.findMany({ where: { ownerUserId } });
   }
 
-  async findCurrentPlanningPlan(
-    client: Prisma.TransactionClient,
-    ownerUserId: string,
-  ): Promise<WeddingPlan | null> {
-    return client.weddingPlan.findFirst({
-      where: { ownerUserId, status: WeddingPlanStatus.PLANNING },
-      orderBy: [{ weddingDate: 'asc' }, { createdAt: 'desc' }],
-    });
-  }
-
   async listPlansInStatus(
     client: Prisma.TransactionClient,
     status: WeddingPlanStatus | readonly WeddingPlanStatus[],

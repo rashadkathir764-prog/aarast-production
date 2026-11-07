@@ -86,9 +86,10 @@ test('Task 7 full modules preserve the exact controller ownership', () => {
       'CatalogsController', 'DistrictLocalitiesController',
     ]],
     ['modules/media/media.module.ts#MediaModule', ['MediaController']],
-    // The planning assistant (V1 checklist 4.12) adds its plan route.
+    // The planning assistant (V1 checklist 4.12) adds its plan route; the
+    // old account home's DashboardController left (RA-BE-10).
     ['modules/insights/insights.module.ts#InsightsModule', [
-      'DashboardController', 'TimelineController', 'WeddingPlanAssistantController',
+      'TimelineController', 'WeddingPlanAssistantController',
       'WeddingPlanDashboardController',
     ]],
     ['modules/backoffice/backoffice.module.ts#BackofficeModule', [

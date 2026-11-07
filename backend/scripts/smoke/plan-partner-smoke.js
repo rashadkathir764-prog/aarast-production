@@ -182,12 +182,6 @@ async function run() {
       'the owner dashboard does not count it',
       ownerDashboard.status === 200 && Number(findKey(ownerDashboard.body, 'confirmedCostTotal')) === 5000,
     );
-    const ownerHome = await request('GET', '/api/v1/dashboard/home', null, owner.token);
-    const homeConfirmed = findKey(ownerHome.body, 'confirmedCost');
-    check(
-      'the owner home summary does not count it',
-      ownerHome.status === 200 && Number(homeConfirmed) === 5000,
-    );
 
     const familyPrivate = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: familyCategory.body?.id, title: 'Family private', totalAmount: '10', isPrivate: true,

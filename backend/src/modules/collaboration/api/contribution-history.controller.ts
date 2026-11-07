@@ -10,15 +10,8 @@ import { ListContributionsDto } from "./dto/list-contributions.dto";
 export class ContributionHistoryController {
   constructor(private readonly history: ContributionHistoryService) {}
 
-  @Get("summary")
-  summary(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param("weddingPlanId") weddingPlanId: string,
-    @Query("contributorUserId") contributorUserId?: string,
-  ) {
-    return this.history.summary(currentUser, weddingPlanId, contributorUserId);
-  }
-
+  // RA-BE-10: the summary has no route of its own; the plan's dashboard
+  // reads it through the service.
   @Get()
   list(
     @CurrentUser() currentUser: AuthenticatedUser,

@@ -35,7 +35,6 @@ import {
   dashboardTaskReadScope,
   resolveDashboardContributorDataScope,
 } from "./dashboard-contributor-scope";
-import { loadDashboardHomeSections } from "./dashboard-home-queries";
 import { loadPlanReadView, type PlanReadViewResponse } from "./plan-read-view";
 import { readPlanBookedServices } from "../modules/marketplace/public/plan-booked-services";
 import {
@@ -49,7 +48,6 @@ import {
   resolveBudgetDecimal,
   toPaymentScheduleDueMoneyItem,
   toNotificationPreview,
-  toPlanResponse,
   toProviderPreviewResponse,
 } from "./dashboard-summary.presenter";
 
@@ -77,27 +75,6 @@ export class DashboardService {
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
-  async getHome(currentUser: AuthenticatedUser) {
-    const currentWeddingPlan = await this.owners.plans.findCurrentPlanningPlan(
-      this.prisma,
-      currentUser.id,
-    );
-
-    const sections = await loadDashboardHomeSections(
-      this.prisma,
-      this.owners,
-      this.permissions,
-      currentUser.id,
-      currentWeddingPlan,
-    );
-
-    return {
-      currentWeddingPlan: currentWeddingPlan
-        ? toPlanResponse(currentWeddingPlan)
-        : null,
-      ...sections,
-    };
-  }
 
   /**
    * D52: what every member of the plan reads, whatever their role: the

@@ -431,21 +431,6 @@ export function toNotificationPreview(
   };
 }
 
-export function toPlanResponse(plan: WeddingPlan) {
-  return {
-    id: plan.id,
-    ownerUserId: plan.ownerUserId,
-    title: plan.title,
-    city: plan.city,
-    weddingDate: plan.weddingDate,
-    estimatedBudget: plan.estimatedBudget?.toString() ?? null,
-    currency: plan.currency,
-    status: plan.status,
-    createdAt: plan.createdAt,
-    updatedAt: plan.updatedAt,
-  };
-}
-
 // Money is numeric(14,2) in the database and Prisma.Decimal in code. The
 // dashboard composes the same totals Finance reports, so it sums exactly:
 // a float accumulation loses cents once amounts reach the column's

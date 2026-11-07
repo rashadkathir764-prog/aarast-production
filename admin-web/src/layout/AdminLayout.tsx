@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/api';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { DeskRetry } from '../design_system/Desk';
 import '../styles/desk.css';
 
 export function AdminLayout() {
@@ -54,12 +55,21 @@ export function AdminLayout() {
     return undefined;
   }, [isSidebarOpen]);
 
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
   async function handleLogout() {
+    setLogoutError(null);
     try {
       await logout();
-    } finally {
-      navigate('/login', { replace: true });
+    } catch (error) {
+      // RA-AD-06: the session is still open on this browser; it is said, and
+      // the panel stays until a logout goes through.
+      const reason = error instanceof Error ? error.message : '';
+      setLogoutError(`ما سجّلنا خروجك، والجلسة ما زالت مفتوحة على هذا المتصفح. ${reason}`.trim());
+      closeSidebar();
+      return;
     }
+    navigate('/login', { replace: true });
   }
 
   return (
@@ -92,6 +102,9 @@ export function AdminLayout() {
           onMenuClick={() => (isSidebarOpen ? closeSidebar() : openSidebar())}
         />
         <div className="desk-content">
+          {logoutError ? (
+            <DeskRetry message={logoutError} onRetry={() => void handleLogout()} />
+          ) : null}
           <Outlet />
         </div>
       </main>

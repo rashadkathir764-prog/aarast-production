@@ -113,6 +113,119 @@ describe('apiRequest', () => {
     ).toBe('Bearer fresh');
   });
 
+  // RA-AD-05: only a refresh the server refused ends the session. A refresh
+  // that never got an answer, a server error or a busy limit leaves it: the
+  // refresh cookie is still good, and the open form must not be thrown away.
+  it('keeps the session when the refresh never reached the server', async () => {
+    setAdminAccessToken('expired');
+    const onExpired = vi.fn();
+    setAdminSessionExpiredHandler(onExpired);
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(apiRequest('/admin/users')).rejects.toThrow('تعذر الاتصال بالخادم');
+    expect(onExpired).not.toHaveBeenCalled();
+    expect(getAdminAccessToken()).toBe('expired');
+  });
+
+  for (const status of [429, 503]) {
+    it(`keeps the session when the refresh answers ${status}`, async () => {
+      setAdminAccessToken('expired');
+      const onExpired = vi.fn();
+      setAdminSessionExpiredHandler(onExpired);
+      fetchMock
+        .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+        .mockResolvedValueOnce(response(status, '{"message":"busy"}'));
+
+      await expect(apiRequest('/admin/users')).rejects.toMatchObject({ status });
+      expect(onExpired).not.toHaveBeenCalled();
+      expect(getAdminAccessToken()).toBe('expired');
+    });
+  }
+
+  // RA-AD-04: tabs of one browser share one cookie session. A refresh runs
+  // under a lock all of them share, and a tab that waited behind another
+  // tab's refresh uses the token that one got instead of spending the
+  // cookie again (the server treats a reused one as theft and ends all).
+  it('refreshes under the lock every tab of the browser shares', async () => {
+    const names: string[] = [];
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      locks: {
+        request: (name: string, work: () => Promise<unknown>) => {
+          names.push(name);
+          return work();
+        },
+      },
+    });
+    setAdminAccessToken('expired');
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(
+        response(200, JSON.stringify({ user: { id: 'a1', role: 'ADMIN' }, accessToken: 'fresh' })),
+      )
+      .mockResolvedValueOnce(response(200, '{"ok":true}'));
+
+    await apiRequest('/admin/users');
+    expect(names).toEqual(['aarast-admin-refresh']);
+  });
+
+  it('a tab that waited for the lock takes the token the other tab got', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      locks: {
+        request: async (_name: string, work: () => Promise<unknown>) => {
+          // Another tab held the lock and rotated the session meanwhile.
+          setAdminAccessToken('from-other-tab');
+          return work();
+        },
+      },
+    });
+    setAdminAccessToken('expired');
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(response(200, '{"ok":true}'));
+
+    await expect(apiRequest('/admin/users')).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.map(([url]) => url as string)).not.toContainEqual(
+      expect.stringContaining('/auth/admin/refresh'),
+    );
+    expect((fetchMock.mock.calls[1][1].headers as Record<string, string>).Authorization).toBe(
+      'Bearer from-other-tab',
+    );
+  });
+
+  it('tells the other tabs the token a refresh got, and takes theirs', async () => {
+    const otherTab = new BroadcastChannel('aarast-admin-session');
+    const heard = new Promise<unknown>((resolve) => {
+      otherTab.onmessage = (event) => resolve(event.data);
+    });
+    setAdminAccessToken('expired');
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(
+        response(200, JSON.stringify({ user: { id: 'a1', role: 'ADMIN' }, accessToken: 'fresh' })),
+      )
+      .mockResolvedValueOnce(response(200, '{"ok":true}'));
+
+    await apiRequest('/admin/users');
+    await expect(heard).resolves.toEqual({ type: 'token', accessToken: 'fresh' });
+
+    otherTab.postMessage({ type: 'token', accessToken: 'newer' });
+    await vi.waitFor(() => expect(getAdminAccessToken()).toBe('newer'));
+    otherTab.close();
+  });
+
+  it('a signed-out tab takes no token from another tab', async () => {
+    const otherTab = new BroadcastChannel('aarast-admin-session');
+    otherTab.postMessage({ type: 'token', accessToken: 'newer' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(getAdminAccessToken()).toBeNull();
+    otherTab.close();
+  });
+
   it('returns null for an empty body', async () => {
     fetchMock.mockResolvedValueOnce(response(200, ''));
     await expect(apiRequest('/x')).resolves.toBeNull();

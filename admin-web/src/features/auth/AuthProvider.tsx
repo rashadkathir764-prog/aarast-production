@@ -15,7 +15,7 @@ import {
   restoreAdminSession,
   startAdminLogin,
 } from './transport';
-import { setAdminSessionExpiredHandler } from '../../platform/api/client';
+import { ApiError, setAdminSessionExpiredHandler } from '../../platform/api/client';
 
 type AuthContextValue = {
   user: AdminUser | null;
@@ -55,8 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const currentUser = await restoreAdminSession();
         if (isMounted) setUser(currentUser);
-      } catch {
-        if (isMounted) setUser(null);
+      } catch (err) {
+        if (!isMounted) return;
+        setUser(null);
+        // RA-AD-05: no session is the normal way in, said with nothing; a
+        // server that could not be reached is said as such.
+        const refused = err instanceof ApiError && (err.status === 401 || err.status === 403);
+        if (!refused && err instanceof Error) setError(err.message);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -113,13 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await logoutAdmin();
-    } finally {
-      setUser(null);
-      setChallenge(null);
-      setError(null);
-    }
+    // RA-AD-06: signed out on screen only once the server signed it out; a
+    // failure throws and the panel stays, with its session, to say why.
+    await logoutAdmin();
+    setUser(null);
+    setChallenge(null);
+    setError(null);
   }, []);
 
   const value = useMemo(

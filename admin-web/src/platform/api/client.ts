@@ -61,11 +61,40 @@ export type AdminBrowserSession<TUser = unknown> = {
 
 let refreshPromise: Promise<AdminBrowserSession> | null = null;
 
+/**
+ * RA-AD-04: the tabs of one browser share one cookie session, and the server
+ * ends the whole session when a rotated refresh cookie comes back (theft). So
+ * a refresh runs under a lock every tab shares, and a refresh's new token is
+ * told to the other tabs, which take it: one rotation serves them all.
+ */
+const REFRESH_LOCK = 'aarast-admin-refresh';
+const sessionChannel: BroadcastChannel | null =
+  typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('aarast-admin-session');
+// Node (the tests) keeps a process alive for an open channel; a browser has no unref.
+(sessionChannel as { unref?: () => void } | null)?.unref?.();
+sessionChannel?.addEventListener('message', (event: MessageEvent) => {
+  const data = event.data as { type?: unknown; accessToken?: unknown } | null;
+  // A signed-out tab takes nothing: signing in is the person's own act.
+  if (data?.type === 'token' && typeof data.accessToken === 'string' && adminAccessToken) {
+    setAdminAccessToken(data.accessToken);
+  }
+});
+
+function withRefreshLock<T>(work: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as { locks?: LockManager } | undefined)?.locks;
+  return locks?.request ? (locks.request(REFRESH_LOCK, work) as Promise<T>) : work();
+}
+
+/** RA-AD-05: the server refused the session; anything else may pass. */
+function sessionRefused(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const hadAccessToken = Boolean(getAdminAccessToken());
+  const tokenUsed = getAdminAccessToken();
   const method = (options.method ?? 'GET').toUpperCase();
   const requestId = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
     ? globalThis.crypto.randomUUID()
@@ -74,12 +103,15 @@ export async function apiRequest<T>(
   if (
     response.status === 401 &&
     options.auth !== false &&
-    hadAccessToken
+    tokenUsed
   ) {
     try {
-      await refreshAdminAccessToken();
+      await refreshAdminAccessToken(tokenUsed);
     } catch (error) {
-      notifyAdminSessionExpired();
+      // RA-AD-05: only a refusal ends the session. No answer, a server error
+      // or a busy limit keeps it (the cookie is still good) and the page
+      // shows why the action did not go.
+      if (sessionRefused(error)) notifyAdminSessionExpired();
       throw error;
     }
     response = await send(path, options, requestId);
@@ -98,11 +130,21 @@ function notifyAdminSessionExpired(): void {
   sessionExpiredHandler?.();
 }
 
-export async function refreshAdminAccessToken<TUser = unknown>(): Promise<
-  AdminBrowserSession<TUser>
-> {
+/**
+ * [staleToken]: the token a request was refused with. When another tab
+ * replaced it while this one waited for the lock, that token is used and the
+ * cookie is not spent again. Without it (restoring a page) the cookie is
+ * always refreshed, since the caller needs the user it names.
+ */
+export async function refreshAdminAccessToken<TUser = unknown>(
+  staleToken?: string,
+): Promise<AdminBrowserSession<TUser>> {
   if (!refreshPromise) {
-    refreshPromise = (async () => {
+    refreshPromise = withRefreshLock(async () => {
+      const current = getAdminAccessToken();
+      if (staleToken && current && current !== staleToken) {
+        return { accessToken: current } as AdminBrowserSession;
+      }
       const response = await fetch(`${apiBaseUrl}/api/v1/auth/admin/refresh`, {
         method: 'POST',
         headers: {
@@ -110,17 +152,21 @@ export async function refreshAdminAccessToken<TUser = unknown>(): Promise<
           'Content-Type': 'application/json',
         },
         credentials: 'include',
+      }).catch(() => {
+        throw new Error(connectionError);
       });
       try {
         const session = await parseResponse<AdminBrowserSession>(response);
         if (!session.accessToken) throw new ApiError(fallbackError, 401);
         setAdminAccessToken(session.accessToken);
+        sessionChannel?.postMessage({ type: 'token', accessToken: session.accessToken });
         return session;
       } catch (error) {
-        clearAdminAccessToken();
+        // A refusal ends the token; a passing failure keeps it to try again.
+        if (sessionRefused(error)) clearAdminAccessToken();
         throw error;
       }
-    })().finally(() => {
+    }).finally(() => {
       refreshPromise = null;
     });
   }

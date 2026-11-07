@@ -197,12 +197,19 @@ export async function restoreAdminSession(): Promise<AdminUser> {
   return acceptAdminSession(response);
 }
 
+/**
+ * RA-AD-06: out only when the server says so. A logout it never got (no
+ * answer, a server error) leaves the refresh cookie and the session on this
+ * browser, so it fails and the panel stays signed in, saying why; a session
+ * the server no longer knows (401) is already out.
+ */
 export async function logoutAdmin(): Promise<void> {
   try {
     await apiRequest('/api/v1/auth/admin/logout', { method: 'POST', auth: false });
-  } finally {
-    clearAdminAccessToken();
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 401)) throw error;
   }
+  clearAdminAccessToken();
 }
 
 function acceptAdminSession(response: AdminSession): AdminUser {

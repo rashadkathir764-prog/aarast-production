@@ -159,6 +159,32 @@ describe('secure admin browser session', () => {
     expect(fetchMock.mock.calls[0][1].method).toBe('POST');
   });
 
+  // RA-AD-06: a logout the server never got leaves its cookie and session
+  // on this browser; saying «out» would hand the panel to the next person.
+  it('a logout that never reached the server fails and keeps the session', async () => {
+    setAdminAccessToken('active-token');
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(logoutAdmin()).rejects.toThrow('تعذر الاتصال بالخادم');
+    expect(getAdminAccessToken()).toBe('active-token');
+  });
+
+  it('a logout the server answers with an error fails and keeps the session', async () => {
+    setAdminAccessToken('active-token');
+    fetchMock.mockResolvedValueOnce(jsonResponse(503, { message: 'down' }));
+
+    await expect(logoutAdmin()).rejects.toMatchObject({ status: 503 });
+    expect(getAdminAccessToken()).toBe('active-token');
+  });
+
+  it('a session the server no longer knows is already out', async () => {
+    setAdminAccessToken('active-token');
+    fetchMock.mockResolvedValueOnce(jsonResponse(401, { message: 'Unauthorized' }));
+
+    await expect(logoutAdmin()).resolves.toBeUndefined();
+    expect(getAdminAccessToken()).toBeNull();
+  });
+
   it('maps rejected password login to a generic credentials message', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(401, { message: 'Unauthorized' }));
 

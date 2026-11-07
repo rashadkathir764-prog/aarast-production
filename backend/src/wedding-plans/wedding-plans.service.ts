@@ -236,8 +236,14 @@ export class WeddingPlansService {
       memberPlanIds,
     );
 
-    return Promise.all(
-      plans.map((plan) => this.toReadableResponse(plan, currentUser)),
+    // RA-BE-97: a plan closed to this reader (D63: its owner waits out the
+    // account's deletion) is left out, as the account's contexts leave it
+    // out; one such plan made the whole list a 404.
+    const readable = await Promise.all(
+      plans.map((plan) => this.readableResponseOrNull(plan, currentUser)),
+    );
+    return readable.filter(
+      (plan): plan is WeddingPlanResponse => plan !== null,
     );
   }
 
@@ -255,7 +261,9 @@ export class WeddingPlansService {
         activeWeddingPlanId,
       );
       if (activePlan) {
-        return this.toReadableResponse(activePlan, currentUser);
+        // RA-BE-97: closed to this reader (D63) reads as no open plan, not
+        // as a 404 the phone took for a missing item or an offline copy.
+        return this.readableResponseOrNull(activePlan, currentUser);
       }
     }
 
@@ -1062,6 +1070,18 @@ export class WeddingPlansService {
       currentUser.id,
       memberPlanIds,
     );
+  }
+
+  private async readableResponseOrNull(
+    plan: WeddingPlan,
+    currentUser: AuthenticatedUser,
+  ): Promise<WeddingPlanResponse | null> {
+    try {
+      return await this.toReadableResponse(plan, currentUser);
+    } catch (error) {
+      if (error instanceof NotFoundException) return null;
+      throw error;
+    }
   }
 
   private async toReadableResponse(

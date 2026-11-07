@@ -320,6 +320,21 @@ async function run() {
     check('unrelated user cannot read summary', res.status === 404);
   }
 
+  {
+    // RA-BE-97: while the owner waits out the account's deletion (D63) the
+    // plan is closed to its members. It is left out of the member's plans,
+    // and their open plan reads as none; one such plan made the list 404.
+    await request('POST', `/api/v1/wedding-plans/${planId}/set-active`, null, viewer.token);
+    const asked = await request('POST', '/api/v1/users/me/deletion', { confirmWord: 'حذف' }, owner.token);
+    check('the owner asks for the account\'s deletion', asked.status === 200 || asked.status === 201);
+    const plans = await request('GET', '/api/v1/wedding-plans', null, viewer.token);
+    check('the member\'s plans load without the closed plan',
+      plans.status === 200 && Array.isArray(plans.body) && !plans.body.some((plan) => plan.id === planId));
+    const active = await request('GET', '/api/v1/wedding-plans/active', null, viewer.token);
+    check('the member\'s open plan reads as none, not 404',
+      active.status === 200 && (active.body === null || active.body === ''));
+  }
+
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
 

@@ -226,6 +226,21 @@ describe('apiRequest', () => {
     otherTab.close();
   });
 
+  // RA-AD-13: a taken name or code is not stale data; refreshing never fixes it.
+  it('says a duplicate is a duplicate, not a change to refresh', async () => {
+    fetchMock.mockResolvedValueOnce(
+      response(
+        409,
+        JSON.stringify({ statusCode: 409, code: 'DUPLICATE_VALUE', message: 'Duplicate value for a unique field' }),
+      ),
+    );
+    await expect(apiRequest('/admin/cities', { method: 'POST', body: {} })).rejects.toMatchObject({
+      status: 409,
+      code: 'DUPLICATE_VALUE',
+      message: 'فيه واحد بنفس الاسم أو الرمز من قبل. غيّره ثم احفظ.',
+    });
+  });
+
   it('returns null for an empty body', async () => {
     fetchMock.mockResolvedValueOnce(response(200, ''));
     await expect(apiRequest('/x')).resolves.toBeNull();

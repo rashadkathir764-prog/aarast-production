@@ -414,6 +414,17 @@ async function run() {
     String(res.status),
   );
 
+  // RA-AD-13: the same key again is a duplicate, said with its own code.
+  res = await request("/admin/reference-catalogs/money.starter.categories/items", {
+    method: "POST",
+    body: { key: catalogKey, nameAr: `${initialCatalogName} ثاني` },
+  });
+  check(
+    "a taken catalog key is a 409 with the DUPLICATE_VALUE code",
+    res.status === 409 && res.body?.code === "DUPLICATE_VALUE",
+    String(res.status),
+  );
+
   res = await request("/api/v1/catalogs/bootstrap", { auth: false });
   check(
     "draft creation does not change the public catalog version",

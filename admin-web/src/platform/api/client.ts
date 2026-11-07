@@ -200,15 +200,18 @@ function send(
 }
 
 const connectionError = 'تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.';
+const duplicateMessage = 'فيه واحد بنفس الاسم أو الرمز من قبل. غيّره ثم احفظ.';
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await readJson(response);
   if (!response.ok) {
     const message = cleanMessage(payload);
+    const code = unknownRoute.test(message.trim()) ? serverOlderCode : extractErrorCode(payload);
     throw new ApiError(
-      arabicMessage(message, response.status),
+      // RA-AD-13: a taken name or code is said as such; refreshing never fixes it.
+      code === 'DUPLICATE_VALUE' ? duplicateMessage : arabicMessage(message, response.status),
       response.status,
-      unknownRoute.test(message.trim()) ? serverOlderCode : extractErrorCode(payload),
+      code,
     );
   }
 

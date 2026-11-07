@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -15,6 +14,7 @@ import { AuthenticatedUser } from '../modules/identity/public/identity-session.t
 import { AdminPermission } from '../modules/backoffice/public/admin-permission.port';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
+import { duplicateValueConflict } from '../platform/http/duplicate-value';
 import { ReferenceCatalogRepository } from '../modules/catalog/infrastructure/reference-catalog.repository';
 import {
   AdminCatalogItemDto,
@@ -179,7 +179,7 @@ export class ReferenceCatalogService {
           catalog.id,
           itemKey,
         );
-        if (existing) throw new ConflictException('Catalog item key exists');
+        if (existing) throw duplicateValueConflict('Catalog item key exists');
         await this.assertKnownProviderCategorySlugs(tx, dto.metadata);
         return this.repository.createItem(
           tx,

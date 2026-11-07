@@ -10,6 +10,7 @@ import {
 import { Prisma } from '@prisma/client';
 import * as Sentry from '@sentry/node';
 import { requestRouteTemplate } from '../observability/sanitize-request-target';
+import { DUPLICATE_VALUE } from './duplicate-value';
 
 interface ResponseLike {
   status(code: number): ResponseLike;
@@ -103,11 +104,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // Known data-layer failures become meaningful client errors instead
       // of opaque 500s.
       switch (exception.code) {
-        case 'P2002':
-          return this.simple(
-            HttpStatus.CONFLICT,
-            new ConflictException('Duplicate value for a unique field').message,
-          );
+        case 'P2002': {
+          // RA-AD-13: a taken value, said as such (not as stale data).
+          const message = new ConflictException('Duplicate value for a unique field').message;
+          return {
+            status: HttpStatus.CONFLICT,
+            message,
+            body: { statusCode: HttpStatus.CONFLICT, code: DUPLICATE_VALUE, message },
+          };
+        }
         case 'P2025':
           return this.simple(HttpStatus.NOT_FOUND, 'Record not found');
         case 'P2003':

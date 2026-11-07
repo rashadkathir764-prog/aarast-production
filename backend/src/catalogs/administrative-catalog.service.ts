@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -15,6 +14,7 @@ import { AuthenticatedUser } from '../modules/identity/public/identity-session.t
 import { AdminPermission } from '../modules/backoffice/public/admin-permission.port';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
+import { duplicateValueConflict } from '../platform/http/duplicate-value';
 import { AdministrativeCatalogRepository } from '../modules/catalog/infrastructure/administrative-catalog.repository';
 import {
   AdminDistrictDto,
@@ -306,7 +306,7 @@ export class AdministrativeCatalogService {
     code: string,
   ): Promise<void> {
     if (await this.repository.isAdministrativeCodeTaken(tx, code)) {
-      throw new ConflictException('Administrative code already exists');
+      throw duplicateValueConflict('Administrative code already exists');
     }
   }
 
@@ -367,7 +367,7 @@ export class AdministrativeCatalogService {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
     ) {
-      throw new ConflictException('Administrative entry already exists');
+      throw duplicateValueConflict('Administrative entry already exists');
     }
     throw error;
   }

@@ -354,6 +354,7 @@ export function AdministrativeAreasPage() {
                 الرمز الثابت (اختياري، ينعمل لحاله لو تركته)
                 <input
                   value={editor.code}
+                  maxLength={40}
                   onChange={(event) => setEditor({ ...editor, code: event.target.value })}
                   dir="ltr"
                 />
@@ -363,6 +364,7 @@ export function AdministrativeAreasPage() {
               الاسم العربي
               <input
                 value={editor.nameAr}
+                maxLength={160}
                 onChange={(event) => setEditor({ ...editor, nameAr: event.target.value })}
                 required
               />
@@ -371,6 +373,7 @@ export function AdministrativeAreasPage() {
               الاسم الإنجليزي (اختياري)
               <input
                 value={editor.nameEn}
+                maxLength={160}
                 onChange={(event) => setEditor({ ...editor, nameEn: event.target.value })}
                 dir="ltr"
               />
@@ -414,6 +417,10 @@ export function AdministrativeAreasPage() {
               الترتيب
               <input
                 type="number"
+                // RA-AD-16: the server's rule, a whole number within ±1,000,000.
+                step={1}
+                min={-1_000_000}
+                max={1_000_000}
                 value={editor.sortOrder}
                 onChange={(event) => setEditor({ ...editor, sortOrder: event.target.value })}
               />

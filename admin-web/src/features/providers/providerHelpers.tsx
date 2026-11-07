@@ -152,6 +152,7 @@ export function ProviderDecisions({
               : 'لما يصلّح ويرسل التعديل، يرجع لقائمة «أُعيد إرسالها».',
           ]}
           needsNote
+          noteMaxLength={2000} // AdminRequestChangesDto.note
           noteRequired={fieldNotes.length === 0}
           noteLabel="ملاحظة عامة (توصل المزود)"
           // While he fixes, the box opens with the note he reads now, so
@@ -199,6 +200,7 @@ export function ProviderDecisions({
           title={`رفض ${name}`}
           effects={['ما يظهر للعرسان.', 'السبب يوصله في تنبيه.']}
           needsNote
+          noteMaxLength={2000} // AdminReviewActionDto.reason
           noteLabel="السبب (يوصل المزود)"
           confirmLabel="ارفض"
           confirmTone="coral"
@@ -221,6 +223,7 @@ export function ProviderDecisions({
             'يوصله السبب، ويقدر يتواصل مع الدعم.',
           ]}
           needsNote
+          noteMaxLength={2000} // AdminReviewActionDto.reason
           noteLabel="السبب (يوصل المزود)"
           confirmLabel="أوقف"
           confirmTone="coral"

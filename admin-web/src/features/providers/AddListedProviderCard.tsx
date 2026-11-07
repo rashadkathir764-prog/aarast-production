@@ -73,7 +73,13 @@ export function AddListedProviderCard({
       </DeskNote>
       <label className="desk-field">
         اسم النشاط
-        <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} required />
+        {/* RA-AD-16: each box stops where AdminListedProviderDto does. */}
+        <input
+          value={businessName}
+          maxLength={160}
+          onChange={(event) => setBusinessName(event.target.value)}
+          required
+        />
       </label>
       <div className="desk-row">
         <label className="desk-field">
@@ -81,6 +87,7 @@ export function AddListedProviderCard({
           <input
             dir="ltr"
             inputMode="tel"
+            maxLength={32}
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             required
@@ -91,6 +98,7 @@ export function AddListedProviderCard({
           <input
             dir="ltr"
             inputMode="tel"
+            maxLength={32}
             value={whatsapp}
             onChange={(event) => setWhatsapp(event.target.value)}
           />
@@ -130,11 +138,16 @@ export function AddListedProviderCard({
       </div>
       <label className="desk-field">
         العنوان (اختياري)
-        <input value={address} onChange={(event) => setAddress(event.target.value)} />
+        <input value={address} maxLength={300} onChange={(event) => setAddress(event.target.value)} />
       </label>
       <label className="desk-field">
         نبذة (اختياري)
-        <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+        <textarea
+          rows={3}
+          value={description}
+          maxLength={4000}
+          onChange={(event) => setDescription(event.target.value)}
+        />
       </label>
       {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
       {created ? (

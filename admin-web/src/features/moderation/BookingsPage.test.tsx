@@ -97,4 +97,26 @@ describe('a12 bookings (B-40)', () => {
       ),
     );
   });
+
+  // RA-AD-16: «إلى يوم» before «من يوم» went to the server, which refuses
+  // it, and came back as «تعذّر الحفظ» with a retry that failed the same way.
+  it('says the days are the wrong way round instead of asking the server', async () => {
+    vi.mocked(getBookings).mockResolvedValue(page([booking()]));
+    render(
+      <MemoryRouter>
+        <BookingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText('محمد الحمدي');
+    fireEvent.change(screen.getByLabelText('إلى يوم'), { target: { value: '2027-01-10' } });
+    await waitFor(() =>
+      expect(getBookings).toHaveBeenLastCalledWith(expect.objectContaining({ to: '2027-01-10' })),
+    );
+    const asked = vi.mocked(getBookings).mock.calls.length;
+
+    fireEvent.change(screen.getByLabelText('من يوم'), { target: { value: '2027-02-01' } });
+    expect(await screen.findByText('«من يوم» بعد «إلى يوم»: بدّل واحد منهم.')).toBeVisible();
+    expect(screen.queryByText(/تعذّر الحفظ/)).toBeNull();
+    expect(getBookings).toHaveBeenCalledTimes(asked);
+  });
 });

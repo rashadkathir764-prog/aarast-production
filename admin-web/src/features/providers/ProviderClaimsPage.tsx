@@ -182,6 +182,7 @@ export function ProviderClaimsPage() {
                       title={`ما نقبل استلام «${claim.provider.businessName}»`}
                       effects={['الملف يبقى بلا حساب وما يستقبل طلبات.', 'السبب يوصل صاحب الطلب في تنبيه.']}
                       needsNote
+                      noteMaxLength={1000} // AdminClaimDecisionDto.note
                       noteLabel="السبب (يوصل صاحب الطلب)"
                       confirmLabel="ارفض"
                       confirmTone="coral"

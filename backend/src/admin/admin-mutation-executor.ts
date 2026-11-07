@@ -437,7 +437,11 @@ export class AdminMutationExecutor {
           ...(dto.nameEn !== undefined
             ? { nameEn: this.optionalText(dto.nameEn) }
             : {}),
-          ...(dto.slug !== undefined ? { slug: this.toSlug(dto.slug) } : {}),
+          // RA-AD-16: other catalogs link to a category by its slug (D73), so
+          // an emptied slug on an edit keeps the one it has.
+          ...(dto.slug !== undefined && dto.slug !== null && dto.slug.trim() !== ''
+            ? { slug: this.toSlug(dto.slug) }
+            : {}),
           ...(dto.icon !== undefined
             ? { icon: this.optionalText(dto.icon) }
             : {}),

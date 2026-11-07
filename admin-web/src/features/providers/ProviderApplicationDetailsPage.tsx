@@ -170,6 +170,7 @@ function Field({ label, value, field, current, draft, canNote, onDraft, children
           <textarea
             value={draft}
             rows={2}
+            maxLength={1000} // AdminFieldNoteDto.note
             onChange={(event) => onDraft(field, event.target.value)}
           />
         </label>

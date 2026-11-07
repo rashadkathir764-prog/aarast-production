@@ -242,6 +242,7 @@ export function FeaturedPlacementsPage() {
                           'التطبيق ما يرجّع فلوس. لو فيه شي يرجع له، رتّبوه معه برا التطبيق.',
                         ]}
                         needsNote
+                        noteMaxLength={500} // AdminEndFeaturedPeriodDto.note
                         noteRequired={false}
                         noteLabel="ملاحظة توصله (اختياري)"
                         confirmLabel={period.state === 'ACTIVE' ? 'وقّفه' : 'ألغه'}

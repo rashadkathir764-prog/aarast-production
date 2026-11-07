@@ -252,6 +252,7 @@ export function CategoriesPage() {
             الاسم العربي
             <input
               value={draft.nameAr}
+              maxLength={160}
               onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
               required
             />
@@ -261,6 +262,7 @@ export function CategoriesPage() {
               الاسم الإنجليزي
               <input
                 value={draft.nameEn}
+                maxLength={160}
                 onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
                 dir="ltr"
               />
@@ -269,6 +271,7 @@ export function CategoriesPage() {
               المعرّف
               <input
                 value={draft.slug}
+                maxLength={120}
                 onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
                 dir="ltr"
               />
@@ -279,6 +282,7 @@ export function CategoriesPage() {
               الأيقونة
               <input
                 value={draft.icon}
+                maxLength={80}
                 onChange={(event) => setDraft({ ...draft, icon: event.target.value })}
                 dir="ltr"
               />
@@ -287,6 +291,10 @@ export function CategoriesPage() {
               الترتيب
               <input
                 type="number"
+                // RA-AD-16: the server's rule, a whole number within ±1,000,000.
+                step={1}
+                min={-1_000_000}
+                max={1_000_000}
                 value={draft.sortOrder}
                 onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
               />

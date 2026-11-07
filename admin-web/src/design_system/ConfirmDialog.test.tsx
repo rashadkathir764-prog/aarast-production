@@ -82,6 +82,25 @@ describe('ConfirmDialog', () => {
     expect(trigger).toHaveFocus();
   });
 
+  // RA-AD-16: the box took any length, and a note past the server's limit
+  // came back as «راجع البيانات المدخلة» with the typed note still there.
+  it('holds the note to the length the server takes', () => {
+    render(
+      <ConfirmDialog
+        variant="desk"
+        title="شيل الصورة"
+        confirmLabel="شِل"
+        needsNote
+        noteLabel="السبب"
+        noteMaxLength={400}
+        trigger={<button type="button">Open</button>}
+        onConfirm={() => undefined}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByLabelText('السبب')).toHaveAttribute('maxlength', '400');
+  });
+
   it('renders a rejected mutation instead of leaking an unhandled promise', async () => {
     const onConfirm = vi.fn().mockRejectedValue(new Error('mutation failed'));
 

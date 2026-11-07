@@ -35,6 +35,7 @@ import {
   phoneSpaced,
 } from '../../design_system/Desk';
 import { DeskModal } from '../../design_system/DeskModal';
+import { moneyAmount } from '../../platform/i18n/numbers';
 
 type Page = {
   items: ProviderService[];
@@ -308,9 +309,11 @@ function AddServiceWindow({
     setProviderSearchQuery(providerSearch.trim());
   }
 
+  const basePrice = moneyAmount(draft.basePrice);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!provider || !draft.categoryId || !draft.title.trim()) return;
+    if (!provider || !draft.categoryId || !draft.title.trim() || basePrice === null) return;
     setSaving(true);
     setError(null);
     try {
@@ -318,7 +321,7 @@ function AddServiceWindow({
         providerId: provider.id,
         categoryId: draft.categoryId,
         title: draft.title.trim(),
-        basePrice: draft.basePrice.trim() || null,
+        basePrice: basePrice || null,
         currency: 'YER',
         isActive: true,
       });
@@ -357,6 +360,7 @@ function AddServiceWindow({
             اسم الخدمة
             <input
               value={draft.title}
+              maxLength={160}
               onChange={(event) => setDraft({ ...draft, title: event.target.value })}
               required
             />
@@ -370,9 +374,15 @@ function AddServiceWindow({
               onChange={(event) => setDraft({ ...draft, basePrice: event.target.value })}
             />
           </label>
+          {basePrice === null ? (
+            <DeskNote tone="coral">السعر أرقام فقط، وبعد الفاصلة خانتين بالكثير.</DeskNote>
+          ) : null}
           {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
           <div className="desk-dialog__actions">
-            <DeskButton type="submit" disabled={saving || !draft.categoryId || !draft.title.trim()}>
+            <DeskButton
+              type="submit"
+              disabled={saving || !draft.categoryId || !draft.title.trim() || basePrice === null}
+            >
               أضف الخدمة
             </DeskButton>
           </div>

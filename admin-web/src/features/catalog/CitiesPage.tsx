@@ -173,6 +173,7 @@ export function CitiesPage() {
             الاسم العربي
             <input
               value={draft.nameAr}
+              maxLength={160}
               onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
               required
             />
@@ -181,6 +182,7 @@ export function CitiesPage() {
             الاسم الإنجليزي
             <input
               value={draft.nameEn}
+              maxLength={160}
               onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
               dir="ltr"
             />
@@ -190,6 +192,7 @@ export function CitiesPage() {
               رمز الدولة
               <input
                 value={draft.countryCode}
+                maxLength={8}
                 onChange={(event) => setDraft({ ...draft, countryCode: event.target.value })}
                 dir="ltr"
               />
@@ -198,6 +201,10 @@ export function CitiesPage() {
               الترتيب
               <input
                 type="number"
+                // RA-AD-16: the server's rule, a whole number within ±1,000,000.
+                step={1}
+                min={-1_000_000}
+                max={1_000_000}
                 value={draft.sortOrder}
                 onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
               />

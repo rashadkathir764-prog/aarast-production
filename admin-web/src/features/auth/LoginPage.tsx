@@ -9,6 +9,7 @@ import {
 import { safeAdminReturnPath } from './admin-return-path';
 import { useAuth } from './AuthProvider';
 import { DeskButton, DeskNote } from '../../design_system/Desk';
+import { latinDigits } from '../../platform/i18n/numbers';
 import '../../styles/desk.css';
 
 /** A desk field: the label above its box (akit). */
@@ -34,8 +35,13 @@ function neutralRecoveryNotice(deliveryStatus: OtpDeliveryStatus): string {
 
 // The application rule: any letters or digits, 6 or more. Admin sign-in
 // always asks for a WhatsApp code as well.
-function isAcceptableAdminPassword(value: string): boolean {
-  return value.length >= 6 && new TextEncoder().encode(value).length <= 72;
+// The server's limit is 72 bytes (MaxUtf8Bytes): an Arabic letter takes two.
+function passwordProblem(value: string): string | null {
+  if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 خانات على الأقل.';
+  if (new TextEncoder().encode(value).length > 72) {
+    return 'كلمة المرور طويلة: 72 حرفًا إنجليزيًا أو 36 عربيًا بالكثير.';
+  }
+  return null;
 }
 
 export function LoginPage() {
@@ -160,8 +166,9 @@ export function LoginPage() {
 
   async function completeRecovery() {
     setRecoveryError(null);
-    if (!isAcceptableAdminPassword(newPassword)) {
-      setRecoveryError('كلمة المرور يجب أن تكون 6 خانات على الأقل.');
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      setRecoveryError(problem);
       return;
     }
     if (newPassword !== newPasswordConfirmation) {
@@ -280,7 +287,7 @@ export function LoginPage() {
                 label="رمز التحقق"
                 value={code}
                 onChange={(event) =>
-                  setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                  setCode(latinDigits(event.target.value).replace(/\D/g, '').slice(0, 6))
                 }
                 autoComplete="one-time-code"
                 inputMode="numeric"
@@ -312,6 +319,7 @@ export function LoginPage() {
               placeholder="7XXXXXXXX"
               autoComplete="username"
               inputMode="tel"
+              maxLength={40} // AdminPasswordResetRequestDto.phone
               required
               autoFocus
             />
@@ -320,7 +328,7 @@ export function LoginPage() {
               label="رمز الاستعادة"
               value={recoveryCode}
               onChange={(event) =>
-                setRecoveryCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                setRecoveryCode(latinDigits(event.target.value).replace(/\D/g, '').slice(0, 6))
               }
               autoComplete="one-time-code"
               inputMode="numeric"
@@ -366,6 +374,7 @@ export function LoginPage() {
                 placeholder="7XXXXXXXX"
                 autoComplete="username"
                 inputMode="tel"
+                maxLength={40} // LoginDto.phone
                 required
               />
               <Field

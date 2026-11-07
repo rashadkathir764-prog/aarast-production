@@ -129,6 +129,7 @@ export function PhotosPage() {
                         'المزود يوصله إنها انشالت والسبب اللي تكتبه.',
                       ]}
                       needsNote
+                      noteMaxLength={400} // AdminPortfolioDecisionDto.reason
                       noteLabel="ليش انشالت؟ (يقرأه المزود)"
                       confirmLabel="شِل"
                       confirmTone="coral"

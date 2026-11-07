@@ -19,12 +19,19 @@ type TriggerProps = {
   'aria-controls'?: string;
 };
 
-type ConfirmDialogProps = {
+/**
+ * A dialog that takes a note says how long the server lets it be (RA-AD-16):
+ * the `MaxLength` of the field in the request it sends.
+ */
+type NoteProps =
+  | { needsNote?: false; noteMaxLength?: never }
+  | { needsNote: true; noteMaxLength: number };
+
+type ConfirmDialogProps = NoteProps & {
   title: string;
   message?: string;
   confirmLabel: string;
   tone?: 'normal' | 'danger';
-  needsNote?: boolean;
   noteLabel?: string;
   trigger: ReactNode;
   onConfirm: (note: string) => Promise<void> | void;
@@ -49,6 +56,7 @@ export function ConfirmDialog({
   confirmLabel,
   tone = 'normal',
   needsNote = false,
+  noteMaxLength,
   noteLabel = 'الملاحظة',
   trigger,
   onConfirm,
@@ -238,6 +246,7 @@ export function ConfirmDialog({
                       <textarea
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
+                        maxLength={noteMaxLength}
                         rows={1}
                       />
                     </label>
@@ -304,6 +313,7 @@ export function ConfirmDialog({
                     <textarea
                       value={note}
                       onChange={(event) => setNote(event.target.value)}
+                      maxLength={noteMaxLength}
                       rows={4}
                     />
                   </label>

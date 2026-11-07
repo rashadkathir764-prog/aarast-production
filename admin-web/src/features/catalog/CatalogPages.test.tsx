@@ -113,6 +113,23 @@ describe('CategoriesPage (a08)', () => {
     ).toBeVisible();
   });
 
+  // RA-AD-16: the order went out as Number(x) || 0, so 1.5 or 2000000 reached
+  // the server (a whole number within ±1,000,000) and came back as a bare
+  // «راجع البيانات المدخلة». The field holds the server's rule, and the
+  // browser stops the save on it, naming the field.
+  it('holds the order to a whole number within the server’s bounds', async () => {
+    vi.mocked(getCategories).mockResolvedValue([]);
+    withRouter(<CategoriesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'قسم جديد' }));
+    const order = within(screen.getByRole('dialog', { name: 'قسم جديد' })).getByLabelText('الترتيب') as HTMLInputElement;
+    for (const value of ['1.5', '2000000', '-2000000']) {
+      fireEvent.change(order, { target: { value } });
+      expect(order.checkValidity()).toBe(false);
+    }
+    fireEvent.change(order, { target: { value: '12' } });
+    expect(order.checkValidity()).toBe(true);
+  });
+
   it('adds a section from «قسم جديد» and asks for one side at least', async () => {
     vi.mocked(getCategories).mockResolvedValue([]);
     vi.mocked(createCategory).mockResolvedValue(section('الكوش', true, true));

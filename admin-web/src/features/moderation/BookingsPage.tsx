@@ -78,8 +78,13 @@ export function BookingsPage() {
   const [open, setOpen] = useState<AdminBooking | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
 
+  // RA-AD-16: the server refuses «من يوم» after «إلى يوم»; the desk says so
+  // itself rather than asking. ISO days compare as text.
+  const backwards = filters.from !== '' && filters.to !== '' && filters.from > filters.to;
+
   const load = useCallback(async () => {
     setError(null);
+    if (filters.from !== '' && filters.to !== '' && filters.from > filters.to) return;
     try {
       setResult(
         await getBookings({
@@ -208,8 +213,9 @@ export function BookingsPage() {
           </DeskButton>
         </Panel>
       ) : null}
+      {backwards ? <DeskNote tone="coral">«من يوم» بعد «إلى يوم»: بدّل واحد منهم.</DeskNote> : null}
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
-      {result === null && !error ? <DeskNote>لحظة، نحمّل الحجوزات…</DeskNote> : null}
+      {result === null && !error && !backwards ? <DeskNote>لحظة، نحمّل الحجوزات…</DeskNote> : null}
       {result && result.items.length === 0 ? (
         <Panel>
           <DeskNote>ما فيه حجز بهذي الفلاتر.</DeskNote>

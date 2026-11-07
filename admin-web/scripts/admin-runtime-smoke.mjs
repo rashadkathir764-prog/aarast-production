@@ -355,6 +355,21 @@ async function run() {
     !hasPasswordHash(res.body),
   );
 
+  // RA-AD-16: a city's Arabic name is in a unique btree index, whose row
+  // stops near 2.7 KB; a longer name used to be the database's error, a 500.
+  // Random letters, so the index cannot compress it under the limit.
+  res = await request("/admin/cities", {
+    method: "POST",
+    body: {
+      nameAr: Array.from(randomBytes(3000), (byte) => String.fromCharCode(0x0627 + (byte % 35))).join(""),
+    },
+  });
+  check(
+    "a city name past the form's limit is refused by validation, not the database",
+    res.status === 400,
+    String(res.status),
+  );
+
   res = await request("/admin/provider-categories");
   check(
     "admin provider categories list returns array",
@@ -365,6 +380,28 @@ async function run() {
     "admin provider categories list does not expose passwordHash",
     !hasPasswordHash(res.body),
   );
+
+  // RA-AD-16: the form sends null for an emptied slug. A category's slug is
+  // what other catalogs link to (D73), so an edit that empties it keeps it.
+  const categorySuffix = randomBytes(4).toString("hex");
+  res = await request("/admin/provider-categories", {
+    method: "POST",
+    body: { nameAr: `قسم اختبار ${categorySuffix}`, slug: `smoke-${categorySuffix}` },
+  });
+  const smokeCategoryId = res.body?.id;
+  if (typeof smokeCategoryId === "string") {
+    res = await request(`/admin/provider-categories/${encodeURIComponent(smokeCategoryId)}`, {
+      method: "PATCH",
+      body: { nameAr: `قسم اختبار محدث ${categorySuffix}`, slug: null },
+    });
+    check(
+      "an emptied category slug on an edit keeps the slug",
+      res.status === 200 && res.body?.slug === `smoke-${categorySuffix}`,
+      `${res.status} ${res.body?.slug}`,
+    );
+  } else {
+    check("admin creates a provider category", false, String(res.status));
+  }
 
   const catalogSuffix = randomBytes(5).toString("hex");
   const catalogKey = `runtime-smoke-${catalogSuffix}`;
@@ -559,6 +596,20 @@ async function run() {
     res.status === 201 && typeof smokeGovernorateId === "string",
     String(res.status),
   );
+
+  // RA-AD-16: the form says the English name is optional, and an empty one
+  // on create takes the Arabic name; an edit that empties it does the same.
+  if (typeof smokeGovernorateId === "string") {
+    res = await request(`/admin/governorates/${encodeURIComponent(smokeGovernorateId)}`, {
+      method: "PATCH",
+      body: { nameEn: "" },
+    });
+    check(
+      "an emptied English name takes the Arabic one, as on create",
+      res.status === 200 && res.body?.nameEn === `محافظة اختبار ${geographySuffix}`,
+      `${res.status} ${res.body?.nameEn}`,
+    );
+  }
 
   let smokeDistrictId;
   if (typeof smokeGovernorateId === "string") {

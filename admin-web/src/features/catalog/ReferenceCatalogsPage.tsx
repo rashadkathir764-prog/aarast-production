@@ -398,6 +398,7 @@ export function ReferenceCatalogsPage() {
             {noun}
             <input
               value={draft.nameAr}
+              maxLength={160}
               onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
               required
             />
@@ -407,6 +408,7 @@ export function ReferenceCatalogsPage() {
               المجموعة
               <input
                 value={draft.groupNameAr}
+                maxLength={160}
                 onChange={(event) => setDraft({ ...draft, groupNameAr: event.target.value })}
               />
             </label>
@@ -414,6 +416,7 @@ export function ReferenceCatalogsPage() {
               معرّف المجموعة
               <input
                 value={draft.groupKey}
+                maxLength={120}
                 onChange={(event) => setDraft({ ...draft, groupKey: event.target.value })}
                 dir="ltr"
               />
@@ -462,6 +465,10 @@ export function ReferenceCatalogsPage() {
               الترتيب
               <input
                 type="number"
+                // RA-AD-16: the server's rule, a whole number within ±1,000,000.
+                step={1}
+                min={-1_000_000}
+                max={1_000_000}
                 value={draft.sortOrder}
                 onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
               />
@@ -497,6 +504,7 @@ export function ReferenceCatalogsPage() {
               المعرّف الثابت (اختياري)
               <input
                 value={draft.key}
+                maxLength={120}
                 onChange={(event) => setDraft({ ...draft, key: event.target.value })}
                 dir="ltr"
               />

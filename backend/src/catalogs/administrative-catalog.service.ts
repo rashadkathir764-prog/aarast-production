@@ -92,9 +92,7 @@ export class AdministrativeCatalogService {
           ...(dto.nameAr === undefined
             ? {}
             : { nameAr: this.requiredText(dto.nameAr, 'nameAr') }),
-          ...(dto.nameEn === undefined
-            ? {}
-            : { nameEn: this.requiredText(dto.nameEn, 'nameEn') }),
+          ...this.englishNameUpdate(dto, current.nameAr),
           ...(dto.latitude === undefined ? {} : { latitude: dto.latitude }),
           ...(dto.longitude === undefined ? {} : { longitude: dto.longitude }),
           ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
@@ -160,7 +158,7 @@ export class AdministrativeCatalogService {
         return await this.repository.updateDistrict(
           tx,
           id,
-          this.namedLocationUpdate(dto),
+          this.namedLocationUpdate(dto, current.nameAr),
         );
       } catch (error) {
         this.rethrowUnique(error);
@@ -226,7 +224,7 @@ export class AdministrativeCatalogService {
       }
       try {
         return await this.repository.updateLocality(tx, id, {
-          ...this.namedLocationUpdate(dto),
+          ...this.namedLocationUpdate(dto, current.nameAr),
           ...(dto.nameEn === undefined
             ? {}
             : { nameEn: this.optionalText(dto.nameEn) }),
@@ -260,14 +258,23 @@ export class AdministrativeCatalogService {
     );
   }
 
-  private namedLocationUpdate(dto: AdminGovernorateDto) {
+  /**
+   * RA-AD-16: the English name is optional (the form says so). An empty one
+   * takes the Arabic name, on an edit as on create, instead of a 400.
+   */
+  private englishNameUpdate(dto: AdminGovernorateDto, currentNameAr: string) {
+    if (dto.nameEn === undefined) return {};
+    const nameAr =
+      dto.nameAr === undefined ? currentNameAr : this.requiredText(dto.nameAr, 'nameAr');
+    return { nameEn: this.optionalText(dto.nameEn) ?? nameAr };
+  }
+
+  private namedLocationUpdate(dto: AdminGovernorateDto, currentNameAr: string) {
     return {
       ...(dto.nameAr === undefined
         ? {}
         : { nameAr: this.requiredText(dto.nameAr, 'nameAr') }),
-      ...(dto.nameEn === undefined
-        ? {}
-        : { nameEn: this.requiredText(dto.nameEn, 'nameEn') }),
+      ...this.englishNameUpdate(dto, currentNameAr),
       ...(dto.latitude === undefined ? {} : { latitude: dto.latitude }),
       ...(dto.longitude === undefined ? {} : { longitude: dto.longitude }),
       ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),

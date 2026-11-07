@@ -103,6 +103,27 @@ describe('remembering this computer (RA-AD-11, D97)', () => {
     fireEvent.submit(screen.getByLabelText('رمز التحقق').closest('form')!);
     await waitFor(() => expect(mocks.verifyMfa).toHaveBeenCalledWith('654321', true));
   });
+
+  // RA-AD-16: the field kept Latin digits only, so a code typed on an
+  // Arabic keyboard left it empty.
+  it('reads a code typed in Arabic digits', async () => {
+    renderPage();
+    fireEvent.change(screen.getByLabelText('رمز التحقق'), { target: { value: '١٢٣٤٥٦' } });
+    expect(screen.getByLabelText('رمز التحقق')).toHaveValue('123456');
+    fireEvent.submit(screen.getByLabelText('رمز التحقق').closest('form')!);
+    await waitFor(() => expect(mocks.verifyMfa).toHaveBeenCalledWith('123456', false));
+  });
+});
+
+describe('a recovery code typed in Arabic digits (RA-AD-16)', () => {
+  it('is read as the same code', async () => {
+    renderPage();
+    await openRecoveryCode();
+    fireEvent.change(screen.getByLabelText('رمز الاستعادة'), { target: { value: '٦٥٤٣٢١' } });
+    expect(screen.getByLabelText('رمز الاستعادة')).toHaveValue('654321');
+    fireEvent.click(screen.getByRole('button', { name: 'تحقق من الرمز' }));
+    await waitFor(() => expect(mocks.verifyReset).toHaveBeenCalledWith('a'.repeat(64), '654321'));
+  });
 });
 
 describe('admin login surface', () => {
@@ -246,6 +267,18 @@ describe('admin password recovery', () => {
     await waitFor(() =>
       expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), 'abcdef'),
     );
+  });
+
+  // RA-AD-16: the server stops a password at 72 bytes; a longer one was
+  // refused here with «6 خانات على الأقل», which it already had.
+  it('says a password past the server limit is too long, not too short', async () => {
+    renderPage();
+    await openRecoveryPassword();
+    choosePassword('كلمة'.repeat(10));
+    expect(
+      await screen.findByText('كلمة المرور طويلة: 72 حرفًا إنجليزيًا أو 36 عربيًا بالكثير.'),
+    ).toBeInTheDocument();
+    expect(mocks.confirmReset).not.toHaveBeenCalled();
   });
 
   it('clears the challenge, code and new passwords when recovery is cancelled', async () => {

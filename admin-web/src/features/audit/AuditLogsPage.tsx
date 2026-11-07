@@ -88,15 +88,6 @@ const RESULTS: Record<AdminAuditPhase, { label: string; Icon: typeof CheckCircle
   ATTEMPT: { label: 'بدون نتيجة', Icon: Clock, tone: 'desk-ink--muted' },
 };
 
-/**
- * Each action is recorded twice (an attempt, then its result); one line per
- * action keeps its result, or the attempt when no result came.
- */
-export function oneLinePerAction(logs: AdminAuditLog[]): AdminAuditLog[] {
-  const finals = new Set(logs.filter((log) => log.phase !== 'ATTEMPT').map((log) => log.eventId));
-  return logs.filter((log) => log.phase !== 'ATTEMPT' || !finals.has(log.eventId));
-}
-
 type AuditLogsPageProps = {
   /** Name lookups handed in by the app (users and providers own them). */
   getUserName: (id: string) => Promise<string>;
@@ -160,7 +151,10 @@ export function AuditLogsPage({ getUserName, getProviderName }: AuditLogsPagePro
     return kind;
   }
 
-  const rows = result ? oneLinePerAction(result.items) : [];
+  // Each action is recorded twice (an attempt, then its result). The server
+  // pages one line per action (RA-AD-09): its result, or its attempt while
+  // no result came; a page that merged the two here split across pages.
+  const rows = result ? result.items : [];
 
   return (
     <section>

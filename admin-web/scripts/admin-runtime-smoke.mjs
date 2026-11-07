@@ -776,6 +776,23 @@ async function run() {
   );
   check("admin audit log does not expose passwordHash", !hasPasswordHash(res.body));
 
+  // RA-AD-09: each action is two rows, its attempt and then its result. Read
+  // a page at a time, an action must not come back on the next page as its
+  // attempt alone («بدون نتيجة»): a page counts actions, not rows.
+  const auditEvents = [];
+  for (let auditPage = 1; auditPage <= 6; auditPage++) {
+    res = await request(`/admin/audit-logs?limit=1&page=${auditPage}`);
+    const row = res.body?.items?.[0];
+    if (res.status !== 200 || !row) break;
+    auditEvents.push(`${row.eventId}:${row.phase}`);
+  }
+  const auditIds = auditEvents.map((event) => event.split(":")[0]);
+  check(
+    "the audit log pages one line per action, never its attempt again",
+    auditEvents.length >= 4 && new Set(auditIds).size === auditIds.length,
+    auditEvents.join(" "),
+  );
+
   res = await request("/api/v1/auth/admin/refresh", {
     method: "POST",
     auth: false,

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAdminAuditLogs, type AdminAuditLog } from './api';
-import { AuditLogsPage, auditActionWords, oneLinePerAction } from './AuditLogsPage';
+import { AuditLogsPage, auditActionWords } from './AuditLogsPage';
 
 vi.mock('./api', () => ({ getAdminAuditLogs: vi.fn() }));
 
@@ -57,23 +57,15 @@ describe('audit words', () => {
       target: 'user',
     });
   });
-
-  it('keeps one line per action, its result over its attempt', () => {
-    const lines = oneLinePerAction([
-      log({ id: '1', eventId: 'e1', phase: 'SUCCEEDED' }),
-      log({ id: '2', eventId: 'e1', phase: 'ATTEMPT' }),
-      log({ id: '3', eventId: 'e2', phase: 'ATTEMPT' }),
-    ]);
-    expect(lines.map((line) => line.id)).toEqual(['1', '3']);
-  });
 });
 
 describe('AuditLogsPage (a15)', () => {
   it('reads who did what to whom, with names and the result', async () => {
+    // RA-AD-09: the server sends one line per action, so e1's attempt no
+    // longer comes with its result (this reply used to carry both).
     vi.mocked(getAdminAuditLogs).mockResolvedValue({
       items: [
         log({ id: '1', eventId: 'e1' }),
-        log({ id: '2', eventId: 'e1', phase: 'ATTEMPT' }),
         log({
           id: '3',
           eventId: 'e2',
@@ -87,7 +79,7 @@ describe('AuditLogsPage (a15)', () => {
       ],
       page: 1,
       limit: 40,
-      total: 3,
+      total: 2,
       totalPages: 1,
     });
     const names: Record<string, string> = { 'admin-rashad': 'رشاد', 'admin-sara': 'سارة' };

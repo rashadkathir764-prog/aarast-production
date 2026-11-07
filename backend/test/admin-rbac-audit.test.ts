@@ -55,8 +55,11 @@ test('audit read API is permission-gated and paginated', () => {
   assert.match(controller, /AdminPermission\.AUDIT_READ/);
   assert.match(controller, /@Get\(\)/);
   assert.match(service, /auditLog\.list/);
-  assert.match(repository, /adminAuditLog\.count/);
-  assert.match(repository, /adminAuditLog\.findMany/);
+  // RA-AD-09: the list pages actions in SQL (an attempt shows only while no
+  // result came), so count and page are $queryRaw, still in one transaction;
+  // this used to name the findMany/count calls they replaced.
+  assert.match(repository, /SELECT count\(\*\)::int AS total/);
+  assert.match(repository, /LIMIT \$\{limit\} OFFSET/);
   assert.match(repository, /prisma\.\$transaction/);
   assert.match(service, /totalPages/);
 });

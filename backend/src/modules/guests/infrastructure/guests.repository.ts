@@ -7,7 +7,13 @@ import {
 } from '@prisma/client';
 import { ListQueryDto, pageArgs } from '../../../platform/http/list-query.dto';
 import { PrismaService } from '../../../platform/database/prisma.service';
+import { PLAN_GUESTS_MAX } from '../public/guest-text-limits';
 
+/**
+ * D99 (RA-BE-62): without a page asked, the plan's whole list (it holds at
+ * most PLAN_GUESTS_MAX); the phone replaces its copy with what arrives. The
+ * id breaks a tie of the same instant, so pages neither skip nor repeat.
+ */
 export function listPlanGuests(
   tx: Prisma.TransactionClient,
   weddingPlanId: string,
@@ -19,9 +25,16 @@ export function listPlanGuests(
       weddingPlanId,
       ...(contributorIds ? { id: { in: [...contributorIds] } } : {}),
     },
-    orderBy: [{ createdAt: 'desc' }],
-    ...pageArgs(query),
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...pageArgs(query, PLAN_GUESTS_MAX),
   });
+}
+
+export function countPlanGuests(
+  client: PrismaService | Prisma.TransactionClient,
+  weddingPlanId: string,
+): Promise<number> {
+  return client.guest.count({ where: { weddingPlanId } });
 }
 
 export function findGuestById(client: PrismaService | Prisma.TransactionClient, id: string) {

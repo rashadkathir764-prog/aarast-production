@@ -6,6 +6,7 @@ import type {
   PlanGuestCounters,
   ReadableGuest,
 } from '../public/guests.port';
+import { countPlanGuests } from './guests.repository';
 
 @Injectable()
 export class GuestsPortService implements GuestsPort {
@@ -59,7 +60,7 @@ export class GuestsPortService implements GuestsPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<number> {
-    return client.guest.count({ where: { weddingPlanId } });
+    return countPlanGuests(client, weddingPlanId);
   }
 
   async deletePlanGuestsInTransaction(

@@ -130,7 +130,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         reason: refused
             ? isSyncQueueOwnershipQuarantineError(item.lastError)
                   ? 'ما قدرنا نتأكد إنه من خطتك، فما بنرسله'
-                  : 'السيرفر رفضه، راجعه وحاول مرة ثانية'
+                  : _refusalReason(item.lastError)
             // D86: a child of a change that has not gone yet waits for it.
             : _waitsForAnotherChange(item, everything)
             ? 'ينتظر تغييرًا قبله'
@@ -1188,6 +1188,17 @@ String _pendingChangeTitle(SyncQueueItem item) {
     if (grouped.isNotEmpty) return '$entity: $grouped';
   }
   return '${_syncOperationLabel(item.operation)} $entity';
+}
+
+/// A refused change says why when the server said it in Arabic (the reason
+/// [ApiException] kept, such as D99's «الخطة تشيل 5000 اسم بالكثير»): no
+/// review fixes a full plan, so «راجعه» alone sent the person in circles.
+/// Any other stored text (an English detail, a local error) stays unsaid.
+String _refusalReason(String? lastError) {
+  final reason = lastError?.trim() ?? '';
+  return ApiException.hasArabic(reason)
+      ? 'السيرفر رفضه: $reason'
+      : 'السيرفر رفضه، راجعه وحاول مرة ثانية';
 }
 
 String _syncEntityLabel(String entityType) {

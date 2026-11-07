@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 import {
   ContributionAction,
@@ -19,7 +20,8 @@ import {
   Prisma,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
+import { duplicateValueConflict } from "../platform/http/duplicate-value";
+import { ListQueryDto } from "../platform/http/list-query.dto";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import {
   runRetryableTransaction,
@@ -55,8 +57,10 @@ import {
   invitableEvents,
   planEventLabel,
 } from "../modules/guests/domain/invitation-card";
+import { PLAN_GUESTS_MAX } from "../modules/guests/public/guest-text-limits";
 import {
   countGuestGroupsForSummary,
+  countPlanGuests,
   createGuest,
   createGuestGroup,
   deleteGuest,
@@ -76,6 +80,15 @@ import {
   updateGuest,
   updateGuestGroup,
 } from '../modules/guests/infrastructure/guests.repository';
+
+/**
+ * RA-BE-82: the refusal of a name of only spaces, by what is named. Said to
+ * nobody in particular, so it holds for the groom, the bride and a helper.
+ */
+const NAME_REQUIRED = {
+  GUEST_NAME_REQUIRED: "الاسم ما ينفع يكون فاضي.",
+  GUEST_GROUP_NAME_REQUIRED: "اسم المجموعة ما ينفع يكون فاضي.",
+} as const;
 
 /** D83: the guest's reply to one event of the plan beyond the wedding. */
 export interface GuestEventReply {
@@ -269,6 +282,7 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
+        await this.assertPlanHoldsMore(tx, weddingPlanId, 1);
         const eventIds = await this.resolveEventIds(
           tx,
           weddingPlanId,
@@ -314,6 +328,7 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
+        await this.assertPlanHoldsMore(tx, weddingPlanId, dto.items.length);
         const guests: Array<{ guest: Guest; events: GuestEventReply[] }> = [];
         for (const item of dto.items) {
           const eventIds = await this.resolveEventIds(
@@ -390,7 +405,7 @@ export class GuestsService {
         );
         const name =
           dto.name !== undefined
-            ? this.requiredText(dto.name, "name")
+            ? this.requiredName(dto.name, "GUEST_NAME_REQUIRED")
             : current.name;
         const phone =
           dto.phone !== undefined
@@ -540,7 +555,7 @@ export class GuestsService {
         );
         const created = await createGuestGroup(tx, {
           weddingPlanId,
-          name: this.requiredText(dto.name, "name"),
+          name: this.requiredName(dto.name, "GUEST_GROUP_NAME_REQUIRED"),
           notes: this.optionalText(dto.notes),
           sortOrder: dto.sortOrder ?? 0,
         });
@@ -585,7 +600,9 @@ export class GuestsService {
           id,
           {
             ...(dto.name !== undefined
-              ? { name: this.requiredText(dto.name, "name") }
+              ? {
+                  name: this.requiredName(dto.name, "GUEST_GROUP_NAME_REQUIRED"),
+                }
               : {}),
             ...(dto.notes !== undefined
               ? { notes: this.optionalText(dto.notes) }
@@ -1016,7 +1033,7 @@ export class GuestsService {
       context,
       actorUserId,
     );
-    const name = this.requiredText(dto.name, "name");
+    const name = this.requiredName(dto.name, "GUEST_NAME_REQUIRED");
     const normalizedName = this.normalizeGuestName(name);
     const phone = PhoneNormalizer.normalizeOptional(dto.phone);
 
@@ -1093,10 +1110,39 @@ export class GuestsService {
     return group;
   }
 
-  private requiredText(value: string, field: string): string {
+  /**
+   * D99 (RA-BE-62): a plan holds PLAN_GUESTS_MAX guests. Counted after the
+   * plan's lock, in the SERIALIZABLE transaction that adds: two adds at once
+   * conflict there, and the one retried counts the other's guests. A 422,
+   * not a 409: an older phone reads any 409 on a guest save as «مضاف مسبقًا».
+   * The phone stops at the same number with the same words.
+   */
+  private async assertPlanHoldsMore(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    adding: number,
+  ): Promise<void> {
+    const count = await countPlanGuests(tx, weddingPlanId);
+    if (count + adding <= PLAN_GUESTS_MAX) return;
+    throw new UnprocessableEntityException({
+      statusCode: 422,
+      code: "PLAN_GUESTS_LIMIT",
+      message: `الخطة تشيل ${PLAN_GUESTS_MAX} اسم بالكثير، وفيها الحين ${count}.`,
+    });
+  }
+
+  /** RA-BE-82: a name of only spaces is refused in Arabic, with its code. */
+  private requiredName(
+    value: string,
+    code: keyof typeof NAME_REQUIRED,
+  ): string {
     const trimmed = value.trim();
     if (!trimmed) {
-      throw new BadRequestException(`${field} must not be empty`);
+      throw new BadRequestException({
+        statusCode: 400,
+        code,
+        message: NAME_REQUIRED[code],
+      });
     }
     return trimmed;
   }
@@ -1148,7 +1194,12 @@ export class GuestsService {
     if (!normalizedId) return;
 
     if (!(await lockGuestGroupForShare(tx, normalizedId, weddingPlanId))) {
-      throw new BadRequestException("groupId must belong to the wedding plan");
+      // RA-BE-82: in Arabic, with its code (a group removed meanwhile).
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "GUEST_GROUP_NOT_IN_PLAN",
+        message: "المجموعة مش من مجموعات الخطة.",
+      });
     }
   }
 
@@ -1207,7 +1258,8 @@ export class GuestsService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        throw new ConflictException("Guest group already exists");
+        // RA-BE-82: a taken name, said as such (a bare 409 reads «refresh»).
+        throw duplicateValueConflict("فيه مجموعة بنفس الاسم في الخطة.");
       }
       throw error;
     }

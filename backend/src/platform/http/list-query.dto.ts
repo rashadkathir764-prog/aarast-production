@@ -24,13 +24,20 @@ export class ListQueryDto {
 
 export const DEFAULT_LIST_CAP = 1000;
 
-/** Prisma findMany args fragment for an optional ListQueryDto. */
-export function pageArgs(query?: ListQueryDto): {
+/**
+ * Prisma findMany args fragment for an optional ListQueryDto. [cap] is the
+ * list's size when no page is asked: a list with a bound of its own (a plan's
+ * guests, D99) passes it, so a client reading it whole gets it whole.
+ */
+export function pageArgs(
+  query?: ListQueryDto,
+  cap = DEFAULT_LIST_CAP,
+): {
   take: number;
   skip?: number;
 } {
   return {
-    take: query?.take ?? DEFAULT_LIST_CAP,
+    take: query?.take ?? cap,
     ...(query?.skip ? { skip: query.skip } : {}),
   };
 }

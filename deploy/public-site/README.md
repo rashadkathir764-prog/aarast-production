@@ -55,7 +55,7 @@ been deployed or verified.
 ## Verify
 
 ```powershell
-node --test .\deploy\public-site\public-site.test.mjs
+node --test .\deploy\public-site\public-site.test.mjs .\deploy\public-site\rsvp-page.test.mjs
 docker build --tag aarast-public-site:verify .\deploy\public-site
 ```
 

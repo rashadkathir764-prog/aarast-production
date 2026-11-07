@@ -2193,8 +2193,10 @@ events (the lunch, the aqd, the samra...; `PlanEvent` rows whose type is not
 
 ### The invitation card (D83)
 
-One card per plan, kept in the account, for whoever manages the plan's guests
-(the owner, a partner with the guests right, a helper with it):
+One card per plan, kept in the account. Every member reads it (RA-BE-86: a
+read of the plan like its guest list, so an archived plan's card still
+opens); whoever manages the plan's guests (the owner, a partner with the
+guests right, a helper with it) writes it:
 
 - `GET .../guests/invitation-card` returns `{ weddingPlanId, hostLine,
   freeText, photoUrl, mapUrl, address, updatedAt }`; every field is `null`
@@ -2250,6 +2252,21 @@ guests right) and for the contributor's own rows, false otherwise. A guest or
 group outside that scope still answers `404` to `GET /api/v1/guests/:id`, update,
 delete and invitation links. A contributor without `canManageGuests` gets `[]`
 here and reads the names through the plan read view.
+
+D99 (RA-BE-62): a plan holds at most 5000 guests (`PLAN_GUESTS_MAX`). `GET
+.../guests` without `take` returns the whole list, newest first (`createdAt`,
+then `id`, both descending, so pages never skip or repeat a guest); `take`
+(≤200) and `skip` still page it. An add that would pass the limit (`POST
+.../guests`, or a `bulk` list, refused whole) answers `422 PLAN_GUESTS_LIMIT`
+with an Arabic message that says how many the plan has; it is counted after
+the plan's lock in the `SERIALIZABLE` transaction that adds, so two adds at
+once cannot both pass it. It is a 422, not a 409, because an older phone
+reads any 409 on a guest save as «مضاف مسبقًا».
+
+RA-BE-82: the guests' refusals say what happened in Arabic, with a code: a
+group name the plan already has `409 DUPLICATE_VALUE`, a guest or group name
+of only spaces `400 GUEST_NAME_REQUIRED` / `400 GUEST_GROUP_NAME_REQUIRED`, a
+`groupId` that is not one of the plan's groups `400 GUEST_GROUP_NOT_IN_PLAN`.
 
 Users with readable plan access can list guests. Guest mutations follow the live
 `PermissionService.canManageGuests` policy: owner access or the stored
@@ -3132,10 +3149,12 @@ without an account.
 - `POST /api/v1/public/rsvp/:token` (no auth, 10/min) `{ attendance:
   "CONFIRMED" | "DECLINED", companionsCount?, planEventId? }` (0–20; 0 when
   declining). Without `planEventId` it updates the guest's attendance, status
-  and companions (the wedding); with it, the reply to that one event (`404
-  RSVP_EVENT_NOT_INVITED` when the guest is not invited to it), leaving the
-  wedding reply as it is. Either way the plan owner is notified
-  (`GUEST_RESPONDED`, the event named in the title).
+  and companions (the wedding); with it, the reply to that one event (`409
+  RSVP_EVENT_NOT_INVITED` when the guest is not invited to it, RA-BE-74: the
+  link works and the page reloads the invitation as it is now), leaving the
+  wedding reply as it is. The plan owner is notified (`GUEST_RESPONDED`, the
+  event named in the title) when the reply changes the attendance or the
+  companions; the same reply sent again notifies nobody (RA-BE-87).
 
 An unknown or malformed token, or an archived plan, returns
 `404 RSVP_LINK_NOT_FOUND`. The public page `/rsvp/<token>` on the public site

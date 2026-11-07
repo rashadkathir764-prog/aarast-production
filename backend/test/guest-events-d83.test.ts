@@ -36,6 +36,8 @@ function database() {
       findUnique: async ({ where }: any) => guests.get(where.id) ?? null,
       findFirst: async () => null,
       findMany: async () => [...guests.values()],
+      // D99: an add counts the plan's guests first.
+      count: async () => guests.size,
       update: async ({ where, data }: any) => {
         const row = { ...guests.get(where.id), ...data, updatedAt: now };
         guests.set(where.id, row);

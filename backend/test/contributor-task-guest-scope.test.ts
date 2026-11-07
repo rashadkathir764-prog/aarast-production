@@ -530,6 +530,8 @@ test("guest create/update append frozen allowlisted snapshots and reject another
   const events: any[] = [];
   const prisma: any = {
     guest: {
+      // D99: an add counts the plan's guests first.
+      count: async () => 2,
       create: async () => own,
       findUnique: async ({ where }: any) =>
         where.id === own.id ? currentGuest : other,
@@ -591,6 +593,8 @@ test("contributor cannot link a new guest to an owner or another contributor gro
   const tx: any = {
     $queryRaw: async () => [{ id: foreignGroupId }],
     guest: {
+      // D99: an add counts the plan's guests first.
+      count: async () => 0,
       findFirst: async () => null,
       create: async ({ data }: any) => {
         created = true;

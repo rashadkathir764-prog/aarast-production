@@ -116,6 +116,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     String? notes,
     List<String>? eventIds,
   }) async {
+    if (_refusePastLimit(weddingPlanId, 1)) return false;
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
@@ -161,6 +162,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     String? groupId,
   }) async {
     if (people.isEmpty) return 0;
+    if (_refusePastLimit(weddingPlanId, people.length)) return 0;
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
@@ -322,6 +324,20 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _isSavingGroups = false;
       notifyListeners();
     }
+  }
+
+  /// D99 (RA-BE-62): an add (by hand, from the contacts, a pasted list, on
+  /// a plan kept on the phone) that would pass [planGuestsMax] stops here,
+  /// in the server's words. The phone's list is the plan's whole list.
+  bool _refusePastLimit(String weddingPlanId, int adding) {
+    final count = _guests
+        .where((guest) => guest.weddingPlanId == weddingPlanId)
+        .length;
+    if (count + adding <= planGuestsMax) return false;
+    _errorMessage = planGuestsFullMessage(count);
+    _noticeMessage = null;
+    notifyListeners();
+    return true;
   }
 
   void _replace(Guest updated) {

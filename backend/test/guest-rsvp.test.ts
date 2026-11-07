@@ -8,6 +8,7 @@ import {
   rsvpPublicOrigin,
   rsvpTokenHash,
 } from "../src/guests/guest-rsvp.service";
+import { assertWeddingPlanWritable } from "../src/modules/collaboration/public/collaboration-permission.port";
 
 // Personal invitation links and RSVP (V1 checklist 4.7).
 
@@ -136,11 +137,18 @@ function service(
   db: ReturnType<typeof fakeDatabase>,
   options: { contributorOwns?: string[]; planStatus?: string; persona?: string } = {},
 ) {
+  const context = (user: any) => ({
+    isOwner: user.id === "owner-1",
+    sharedMember: user.id === "owner-1" ? null : { userId: user.id },
+  });
   const permissions: any = {
-    assertGuestManageableInTransaction: async (_tx: unknown, _plan: string, user: any) => ({
-      isOwner: user.id === "owner-1",
-      sharedMember: user.id === "owner-1" ? null : { userId: user.id },
-    }),
+    // As the real ones: every member reads the plan; writing its guests
+    // needs a plan that is not archived (PLAN_ARCHIVED_READ_ONLY).
+    assertPlanReadableInTransaction: async (_tx: unknown, _plan: string, user: any) => context(user),
+    assertGuestManageableInTransaction: async (_tx: unknown, _plan: string, user: any) => {
+      assertWeddingPlanWritable({ status: (options.planStatus ?? "PLANNING") as any });
+      return context(user);
+    },
   };
   const scope: any = {
     qualifyingEntityIdsInTransaction: async () => options.contributorOwns ?? [],
@@ -298,6 +306,65 @@ test("the guest reads the events they are invited to and answers each one on its
   // An event the guest was not invited to cannot be answered.
   await assert.rejects(rsvp.respond(token, "CONFIRMED", 0, "event-aqd"), (error: any) =>
     error?.response?.code === "RSVP_EVENT_NOT_INVITED");
+});
+
+// RA-BE-74: the link still works when the hosts take an event out of the
+// invitation; only that reply is refused, as a change, not as a dead link.
+test("a reply to an event taken out of the invitation is a conflict the page can reload from", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  // The guest opened the page; then the hosts took them off the lunch.
+  db.eventInvites.length = 0;
+
+  await assert.rejects(rsvp.respond(token, "CONFIRMED", 1, "event-lunch"), (error: any) => {
+    assert.equal(error.getStatus(), 409);
+    assert.equal(error.response.code, "RSVP_EVENT_NOT_INVITED");
+    assert.match(error.response.message, /[؀-ۿ]/);
+    return true;
+  });
+  // The link itself still opens, with the invitation as it is now.
+  assert.deepEqual((await rsvp.getInvitation(token)).events, []);
+  // A link that does not exist stays a 404.
+  await assert.rejects(rsvp.respond("B".repeat(43), "CONFIRMED", 0, "event-lunch"), (error: any) =>
+    error.getStatus() === 404 && error.response.code === "RSVP_LINK_NOT_FOUND");
+});
+
+// RA-BE-87: the owner hears of a reply when it changed what the guest said.
+test("the owner is told once per change of reply, never for the same reply again", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+
+  await rsvp.respond(token, "CONFIRMED", 2);
+  await rsvp.respond(token, "CONFIRMED", 2);
+  assert.equal(db.notifications.length, 1, "the same reply again tells nothing new");
+  await rsvp.respond(token, "CONFIRMED", 3);
+  await rsvp.respond(token, "DECLINED", 0);
+  await rsvp.respond(token, "DECLINED", 4); // declining keeps no companions
+  assert.equal(db.notifications.length, 3);
+  assert.match(db.notifications[2].title.masculine, /اعتذر/);
+
+  await rsvp.respond(token, "DECLINED", 0, "event-lunch");
+  await rsvp.respond(token, "DECLINED", 0, "event-lunch");
+  assert.equal(db.notifications.length, 4);
+  await rsvp.respond(token, "CONFIRMED", 0, "event-lunch");
+  assert.equal(db.notifications.length, 5);
+  assert.match(db.notifications[4].title.masculine, /أكّد حضوره في الغداء/);
+});
+
+// RA-BE-86: reading the card is a read of the plan, like its guest list.
+test("the card of an archived plan still reads; only writing it is refused", async () => {
+  const db = fakeDatabase();
+  await service(db).setInvitationCard(owner, "plan-1", { hostLine: "أبو أحمد" });
+
+  const archived = service(db, { planStatus: "ARCHIVED" });
+  assert.equal((await archived.getInvitationCard(owner, "plan-1")).hostLine, "أبو أحمد");
+  assert.equal((await archived.getInvitationCard(member, "plan-1")).hostLine, "أبو أحمد");
+  await assert.rejects(
+    archived.setInvitationCard(owner, "plan-1", { hostLine: "غيره" }),
+    (error: any) => error?.response?.code === "PLAN_ARCHIVED_READ_ONLY",
+  );
 });
 
 // D83: one card per plan, kept in the account.

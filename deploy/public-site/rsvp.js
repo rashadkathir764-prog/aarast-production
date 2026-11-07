@@ -22,6 +22,11 @@
   const no = $("rsvp-no");
   const eventsSection = $("rsvp-events");
   const eventsList = $("rsvp-events-list");
+  const notice = $("rsvp-notice");
+
+  // RA-BE-74: the hosts took an event out of this invitation after the page
+  // opened. The link still works; the page shows the invitation as it is now.
+  const INVITATION_CHANGED = "تغيّرت دعوتك قبل ما يوصل ردك، وهذي هي الحين.";
 
   // «لحالي / +1 / +2 / +3»; a larger number the hosts set stays offered.
   const CHIP_LIMIT = 3;
@@ -244,22 +249,35 @@
     );
   }
 
-  function render(invitation) {
+  /** [message]: a line about why the page was drawn again; none clears it. */
+  function render(invitation, message) {
     renderCard(invitation);
     renderWeddingAnswer(invitation);
     renderEvents(invitation);
+    notice.textContent = message || "";
+    notice.hidden = !message;
   }
 
-  async function load() {
+  async function load(message) {
     try {
       const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
       if (response.status === 404) return showInvalid();
       if (!response.ok) throw new Error(String(response.status));
-      render(await response.json());
+      render(await response.json(), message);
     } catch {
       greeting.textContent = "";
       title.textContent = "ما قدرنا نفتح الدعوة";
       inviteLine.textContent = "تأكد من النت وافتح الرابط مرة ثانية.";
+    }
+  }
+
+  /** The code of a refusal (`{ code }`), or "" when the body has none. */
+  async function refusalCode(response) {
+    try {
+      const body = await response.json();
+      return body && typeof body.code === "string" ? body.code : "";
+    } catch {
+      return "";
     }
   }
 
@@ -284,6 +302,9 @@
         body: JSON.stringify(body),
       });
       if (response.status === 404) return showInvalid();
+      if (response.status === 409 && (await refusalCode(response)) === "RSVP_EVENT_NOT_INVITED") {
+        return load(INVITATION_CHANGED);
+      }
       if (response.status === 429) throw new Error("rate");
       if (!response.ok) throw new Error(String(response.status));
       render(await response.json());

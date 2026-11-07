@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -144,6 +145,21 @@ interface InvitationContext {
   events: ReadablePlanEvent[];
   invites: GuestEventInviteRow[];
   card: GuestInvitationCardRow | null;
+}
+
+/**
+ * RA-BE-87: whether a reply changes what the guest had answered (to the
+ * wedding or to one event). The owner is told of a change only: a guest who
+ * opens the page again and taps the same answer sends no new notice or push.
+ */
+function replyChanged(
+  before: { attendanceStatus: GuestAttendanceStatus; companionsCount: number },
+  after: { attendanceStatus: GuestAttendanceStatus; companionsCount: number },
+): boolean {
+  return (
+    before.attendanceStatus !== after.attendanceStatus ||
+    before.companionsCount !== after.companionsCount
+  );
 }
 
 export function rsvpTokenHash(token: string): string {
@@ -353,7 +369,11 @@ export class GuestRsvpService {
     );
   }
 
-  /** D83: the plan's invitation card, for whoever manages its guests. */
+  /**
+   * D83: the plan's invitation card. RA-BE-86: reading it is a read of the
+   * plan, as the guest list is (D52), so an archived plan's card still opens;
+   * writing it keeps the guests' write check.
+   */
   async getInvitationCard(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
@@ -361,7 +381,7 @@ export class GuestRsvpService {
     return runRetryableTransaction(
       this.prisma,
       async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        await this.permissions.assertPlanReadableInTransaction(
           tx,
           weddingPlanId,
           currentUser,
@@ -483,27 +503,29 @@ export class GuestRsvpService {
             ? GuestInvitationStatus.SENT
             : guest.invitationStatus,
       });
-      await this.notifications.createNotificationInTransaction(tx, {
-        userId: plan.ownerUserId,
-        weddingPlanId: plan.id,
-        type: NotificationType.GUEST_RESPONDED,
-        priority: NotificationPriority.NORMAL,
-        // The plan's guests are its own side's (a bride's plan: women), and
-        // its owner reads in that same form (D55), so the reader's form
-        // names the guest too.
-        title: confirmed
-          ? gendered(`${guest.name} أكّد حضوره`, `${guest.name} أكّدت حضورها`)
-          : gendered(`${guest.name} اعتذر عن الحضور`, `${guest.name} اعتذرت عن الحضور`),
-        body:
-          confirmed && companions > 0
-            ? gendered(`ومعه ${companions} من المرافقين.`, `ومعها ${companions} من المرافقات.`)
-            : "الرد وصل من رابط الدعوة.",
-        entityType: "guest",
-        entityId: guest.id,
-        routeTarget: noticeRoutes.guest(plan.id, guest.id),
-        data: { guestId: guest.id, weddingPlanId: plan.id, attendance },
-        dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${respondedAt.getTime()}`,
-      });
+      if (replyChanged(guest, updated)) {
+        await this.notifications.createNotificationInTransaction(tx, {
+          userId: plan.ownerUserId,
+          weddingPlanId: plan.id,
+          type: NotificationType.GUEST_RESPONDED,
+          priority: NotificationPriority.NORMAL,
+          // The plan's guests are its own side's (a bride's plan: women), and
+          // its owner reads in that same form (D55), so the reader's form
+          // names the guest too.
+          title: confirmed
+            ? gendered(`${guest.name} أكّد حضوره`, `${guest.name} أكّدت حضورها`)
+            : gendered(`${guest.name} اعتذر عن الحضور`, `${guest.name} اعتذرت عن الحضور`),
+          body:
+            confirmed && companions > 0
+              ? gendered(`ومعه ${companions} من المرافقين.`, `ومعها ${companions} من المرافقات.`)
+              : "الرد وصل من رابط الدعوة.",
+          entityType: "guest",
+          entityId: guest.id,
+          routeTarget: noticeRoutes.guest(plan.id, guest.id),
+          data: { guestId: guest.id, weddingPlanId: plan.id, attendance },
+          dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${respondedAt.getTime()}`,
+        });
+      }
       return this.publicView(
         updated,
         plan,
@@ -522,17 +544,24 @@ export class GuestRsvpService {
   ): Promise<PublicInvitation> {
     const invite = await findGuestEventInvite(tx, guest.id, planEventId);
     if (!invite) {
-      throw new NotFoundException({
-        statusCode: 404,
+      // RA-BE-74: the link works; the hosts took this event out of the
+      // invitation after the page opened. A 409, not the dead link's 404,
+      // so the page reloads the invitation as it is now.
+      throw new ConflictException({
+        statusCode: 409,
         code: "RSVP_EVENT_NOT_INVITED",
-        message: "This invitation does not include that event",
+        message: "هذي المناسبة ما عادت في دعوتك.",
       });
     }
-    await recordGuestEventAnswer(tx, guest.id, planEventId, {
+    const reply = {
       attendanceStatus: answer.confirmed
         ? GuestAttendanceStatus.CONFIRMED
         : GuestAttendanceStatus.DECLINED,
       companionsCount: answer.companions,
+    };
+    const changed = replyChanged(invite, reply);
+    await recordGuestEventAnswer(tx, guest.id, planEventId, {
+      ...reply,
       respondedAt: answer.respondedAt,
     });
     // Answering any event through the link means the invitation arrived.
@@ -544,40 +573,42 @@ export class GuestRsvpService {
       current = { ...guest, invitationStatus: GuestInvitationStatus.SENT };
     }
     const context = await this.invitationContext(tx, plan.id, guest.id);
-    const event = context.events.find((candidate) => candidate.id === planEventId);
-    const label = event ? planEventLabel(event) : "المناسبة";
-    await this.notifications.createNotificationInTransaction(tx, {
-      userId: plan.ownerUserId,
-      weddingPlanId: plan.id,
-      type: NotificationType.GUEST_RESPONDED,
-      priority: NotificationPriority.NORMAL,
-      title: answer.confirmed
-        ? gendered(
-            `${guest.name} أكّد حضوره في ${label}`,
-            `${guest.name} أكّدت حضورها في ${label}`,
-          )
-        : gendered(
-            `${guest.name} اعتذر عن ${label}`,
-            `${guest.name} اعتذرت عن ${label}`,
-          ),
-      body:
-        answer.confirmed && answer.companions > 0
-          ? gendered(
-              `ومعه ${answer.companions} من المرافقين.`,
-              `ومعها ${answer.companions} من المرافقات.`,
-            )
-          : "الرد وصل من رابط الدعوة.",
-      entityType: "guest",
-      entityId: guest.id,
-      routeTarget: noticeRoutes.guest(plan.id, guest.id),
-      data: {
-        guestId: guest.id,
+    if (changed) {
+      const event = context.events.find((candidate) => candidate.id === planEventId);
+      const label = event ? planEventLabel(event) : "المناسبة";
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId: plan.ownerUserId,
         weddingPlanId: plan.id,
-        planEventId,
-        attendance: answer.confirmed ? "CONFIRMED" : "DECLINED",
-      },
-      dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${planEventId}:${answer.respondedAt.getTime()}`,
-    });
+        type: NotificationType.GUEST_RESPONDED,
+        priority: NotificationPriority.NORMAL,
+        title: answer.confirmed
+          ? gendered(
+              `${guest.name} أكّد حضوره في ${label}`,
+              `${guest.name} أكّدت حضورها في ${label}`,
+            )
+          : gendered(
+              `${guest.name} اعتذر عن ${label}`,
+              `${guest.name} اعتذرت عن ${label}`,
+            ),
+        body:
+          answer.confirmed && answer.companions > 0
+            ? gendered(
+                `ومعه ${answer.companions} من المرافقين.`,
+                `ومعها ${answer.companions} من المرافقات.`,
+              )
+            : "الرد وصل من رابط الدعوة.",
+        entityType: "guest",
+        entityId: guest.id,
+        routeTarget: noticeRoutes.guest(plan.id, guest.id),
+        data: {
+          guestId: guest.id,
+          weddingPlanId: plan.id,
+          planEventId,
+          attendance: answer.confirmed ? "CONFIRMED" : "DECLINED",
+        },
+        dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${planEventId}:${answer.respondedAt.getTime()}`,
+      });
+    }
     return this.publicView(current, plan, context);
   }
 

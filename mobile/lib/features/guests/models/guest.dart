@@ -1,5 +1,15 @@
 import 'guest_invite_text.dart';
 
+/// D99 (RA-BE-62): how many guests one plan holds, the server's
+/// PLAN_GUESTS_MAX. The plan's list is read whole, so the phone stops an add
+/// past it itself instead of queueing one the server refuses.
+const planGuestsMax = 5000;
+
+/// Why an add past [planGuestsMax] is refused, in the server's own words
+/// (PLAN_GUESTS_LIMIT); [count] is how many guests the plan has now.
+String planGuestsFullMessage(int count) =>
+    'الخطة تشيل $planGuestsMax اسم بالكثير، وفيها الحين $count.';
+
 /// D83: the guest's reply to one of the plan's events beyond the wedding
 /// (the lunch, the aqd...). Their reply to the wedding itself is the guest's
 /// own `attendanceStatus`.

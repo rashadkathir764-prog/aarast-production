@@ -850,7 +850,7 @@ class ApiException implements Exception {
     // V1 checklist 5.4: the server's own Arabic messages reach the user; an
     // English framework or validation detail never does. It becomes an
     // Arabic message that says what happened and what to do.
-    if (serverMessage != null && _hasArabic(serverMessage)) {
+    if (serverMessage != null && hasArabic(serverMessage)) {
       return ApiException(
         serverMessage.trim(),
         statusCode: statusCode,
@@ -913,7 +913,9 @@ class ApiException implements Exception {
 
   static final _arabicLetter = RegExp(r'[؀-ۿ]');
 
-  static bool _hasArabic(String message) => _arabicLetter.hasMatch(message);
+  /// Whether [message] is words a person may read (V1 checklist 5.4): the
+  /// server's Arabic reaches the user, an English detail never does.
+  static bool hasArabic(String message) => _arabicLetter.hasMatch(message);
 
   /// An Arabic message with a clear next step, by what kind of failure it is.
   static String _arabicMessageForStatus(int? statusCode) {

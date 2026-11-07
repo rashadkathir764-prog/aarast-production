@@ -10,7 +10,7 @@
 | `admin-web` | `npm run smoke:honesty` | `node scripts/source-honesty-smoke.mjs` |
 | `admin-web` | `npm run smoke:routes` | `npm run build && node scripts/route-smoke.mjs` |
 | `admin-web` | `npm run test` | `vitest run` |
-| `admin-web` | `npm run test:architecture` | `node --test scripts/admin-boundaries.contract.mjs` |
+| `admin-web` | `npm run test:architecture` | `node --test scripts/admin-boundaries.contract.mjs scripts/audit-words.contract.mjs` |
 | `admin-web` | `npm run test:container-config` | `node --test scripts/runtime-config-guard.contract.mjs` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |

@@ -165,6 +165,30 @@ export function validateRuntimeEnvironment(
   if (otpMode === "openwa") {
     loadOpenWaOtpConfig(environment);
   }
+
+  validateProductionInviteOrigin(environment);
+}
+
+/**
+ * RA-OP-11: participant invites and the guests' RSVP links are built on
+ * INVITE_PUBLIC_ORIGIN. Without it the code fell back to a written domain
+ * that, until the domain moves, is an old server; production names it.
+ */
+function validateProductionInviteOrigin(environment: NodeJS.ProcessEnv): void {
+  if (environment.NODE_ENV !== "production") return;
+  const raw = environment.INVITE_PUBLIC_ORIGIN?.trim();
+  if (!raw) {
+    throw new Error("INVITE_PUBLIC_ORIGIN is required in production");
+  }
+  let origin: URL;
+  try {
+    origin = new URL(raw);
+  } catch {
+    throw new Error("INVITE_PUBLIC_ORIGIN must be a public HTTPS origin");
+  }
+  if (origin.protocol !== "https:" || origin.origin !== raw.replace(/\/$/, "")) {
+    throw new Error("INVITE_PUBLIC_ORIGIN must be a public HTTPS origin");
+  }
 }
 
 function validateProductionMediaEndpoints(

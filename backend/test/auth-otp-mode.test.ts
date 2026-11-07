@@ -810,6 +810,7 @@ test('a Staging deployment identity cannot boot against a Production database', 
     DATABASE_URL: 'postgresql://runtime:unused@postgres:5432/aarast_staging',
     POSTGRES_DB: 'aarast_staging',
     AARAST_DB_EXPECTED_ROLE: 'aarast_stage_runtime',
+    INVITE_PUBLIC_ORIGIN: 'https://staging.example.org',
   };
   assert.doesNotThrow(() => validateRuntimeEnvironment(base, getJwtSecret));
   assert.throws(
@@ -831,6 +832,7 @@ test('controlled cutover requires the unique Staging database alias and rejects 
     DATABASE_URL: 'postgresql://runtime:unused@aarast-staging-postgres:5432/aarast_staging',
     POSTGRES_DB: 'aarast_staging', AARAST_DB_EXPECTED_ROLE: 'aarast_stage_runtime',
     AUTH_OTP_MODE: 'disabled', PUSH_NOTIFICATIONS_ENABLED: 'false',
+    INVITE_PUBLIC_ORIGIN: 'https://staging.example.org',
   };
   assert.doesNotThrow(() => validateRuntimeEnvironment(base, getJwtSecret));
   for (const hostname of ['postgres', 'aarast-postgres-prod', 'production-db']) {

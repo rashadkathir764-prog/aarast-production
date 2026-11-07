@@ -216,7 +216,44 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
       WHATSAPP_ACCESS_TOKEN: config.accessToken,
       WHATSAPP_OTP_TEMPLATE_NAME: config.templateName,
       WHATSAPP_OTP_TEMPLATE_LANGUAGE: config.templateLanguage,
+      INVITE_PUBLIC_ORIGIN: 'https://site.example.test',
     }, getJwtSecret),
+  );
+});
+
+// RA-OP-11: production names the origin of the invite and RSVP links.
+test('production requires a public HTTPS invite origin', () => {
+  const production = {
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgresql://example',
+    JWT_SECRET: strongRuntimeJwtSecret,
+    AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
+    AUTH_OTP_MODE: 'disabled',
+  };
+  assert.throws(
+    () => validateRuntimeEnvironment(production, getJwtSecret),
+    /INVITE_PUBLIC_ORIGIN is required in production/,
+  );
+  for (const origin of [
+    'http://site.example.test',
+    'site.example.test',
+    'https://site.example.test/invites',
+  ]) {
+    assert.throws(
+      () => validateRuntimeEnvironment({ ...production, INVITE_PUBLIC_ORIGIN: origin }, getJwtSecret),
+      /INVITE_PUBLIC_ORIGIN must be a public HTTPS origin/,
+      origin,
+    );
+  }
+  assert.doesNotThrow(() =>
+    validateRuntimeEnvironment(
+      { ...production, INVITE_PUBLIC_ORIGIN: 'https://3-121-198-183.sslip.io' },
+      getJwtSecret,
+    ),
+  );
+  // Outside production the services keep their own fallback.
+  assert.doesNotThrow(() =>
+    validateRuntimeEnvironment({ ...production, NODE_ENV: 'development' }, getJwtSecret),
   );
 });
 

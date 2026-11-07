@@ -86,6 +86,7 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
       AARAST_MEDIA_SIGNED_ENDPOINT: "https://uploads.example.test",
       AARAST_MEDIA_BUCKET: "aarast-media",
       AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
+      INVITE_PUBLIC_ORIGIN: "https://site.example.test",
     }, getJwtSecret),
   );
 });

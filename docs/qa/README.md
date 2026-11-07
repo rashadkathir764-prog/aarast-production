@@ -17,6 +17,7 @@ node .\scripts\docs-sync.mjs --check
 node .\scripts\docs-verify.mjs
 node --test .\scripts\check-mobile-boundaries.test.mjs
 node .\scripts\check-mobile-boundaries.mjs --strict
+node --test .\deploy\staging\staging-contract.test.mjs .\deploy\staging\public-site\build.test.mjs .\admin-web\scripts\staging-build-origin.contract.mjs
 git diff --check
 
 # Admin web (from admin-web/)
@@ -25,6 +26,13 @@ npm run architecture
 npm test -- --run
 npm run typecheck
 npm run build
+npm run smoke:honesty
+npm run smoke:routes
+npm run test:container-config
+npm run smoke:admin-runtime     # a real backend and admin build, isolated like smoke:all
+
+# Dependencies (backend/ and admin-web/)
+npm audit --audit-level=high
 
 # Mobile (from mobile/)
 flutter analyze --no-pub
@@ -32,6 +40,10 @@ flutter test --no-pub
 ```
 
 Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails.
+
+CI (`.github/workflows/ci.yml`) is off while GitHub billing is stopped, so the
+list above is the whole gate: it carries every check CI ran (the staging
+contracts, the admin smokes, `npm audit`), and each is run here.
 
 On Windows, `npm test` skips the one test that needs POSIX file modes
 (`openwa-credential-file.test.ts`: the OpenWA credential file must refuse

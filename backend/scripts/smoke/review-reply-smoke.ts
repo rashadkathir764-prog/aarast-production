@@ -267,6 +267,22 @@ async function main(): Promise<void> {
       );
       console.log("PASS - a hidden review cannot be reported (404)");
 
+      // RA-BE-45: its author deleted the hidden review and wrote another,
+      // published at once, so what the team hid came back unmoderated.
+      await assert.rejects(
+        market.deleteReview(asUser(customerB), second.id),
+        (error: any) => error?.status === 409 && error?.response?.code === "REVIEW_HIDDEN",
+      );
+      assert.equal(
+        (await prisma.providerReview.findUnique({ where: { id: second.id } }))?.status,
+        ReviewStatus.HIDDEN,
+      );
+      await assert.rejects(
+        market.createReview(asUser(customerB), provider.id, { rating: 5 } as any),
+        (error: any) => error?.status === 409,
+      );
+      console.log("PASS - a hidden review stays hidden: its author can neither delete it nor write another");
+
       // A new report on a kept review opens it again.
       await market.reportReview(asUser(reporters[0]!), plain.id, { reason: "ما زال مسيء" } as any);
       const reopened = await admins.listReviews({ providerId: provider.id, reported: "true" } as any);

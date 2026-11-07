@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { isIPv4, isIPv6 } from 'node:net';
 import {
   HttpException,
   HttpStatus,
@@ -27,6 +28,32 @@ export const OTP_DISPATCH_NOW = Symbol('OTP_DISPATCH_NOW');
 const GLOBAL_SCOPE = 'GLOBAL_DAY';
 const GLOBAL_SUBJECT = 'aarast-otp';
 const GLOBAL_WINDOW_MS = 24 * 60 * 60_000;
+
+/**
+ * RA-BE-55: the sender the address limits count. An IPv6 subscriber holds a
+ * whole /64 and may use any address in it, so counting the full address let
+ * one sender rotate addresses past the limits and spend the app's day of
+ * codes for everyone. IPv6 counts by its /64; an IPv4 address written as IPv6
+ * (`::ffff:a.b.c.d`) is that IPv4 address; anything else is kept as given.
+ */
+export function otpIpSubject(rawIp?: string | null): string | null {
+  const ip = rawIp?.trim().toLowerCase().replace(/%.*$/u, '');
+  if (!ip) return null;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(ip);
+  if (mapped && isIPv4(mapped[1])) return mapped[1];
+  if (!isIPv6(ip)) return ip.slice(0, 128);
+  const [head, tail = ''] = ip.split('::');
+  const left = head ? head.split(':') : [];
+  const right = ip.includes('::') && tail ? tail.split(':') : [];
+  const groups = ip.includes('::')
+    ? [...left, ...Array(8 - left.length - right.length).fill('0'), ...right]
+    : left;
+  if (groups.length !== 8) return ip.slice(0, 128);
+  const network = groups
+    .slice(0, 4)
+    .map((group) => Number.parseInt(group || '0', 16).toString(16));
+  return `${network.join(':')}::/64`;
+}
 
 @Injectable()
 export class OtpDispatchQuotaService {
@@ -83,7 +110,7 @@ export class OtpDispatchQuotaService {
         windowMs: GLOBAL_WINDOW_MS,
       },
     ];
-    const ip = rawIp?.trim().toLowerCase().slice(0, 128);
+    const ip = otpIpSubject(rawIp);
     if (ip) {
       policies.push(
         { scope: 'IP_TEN_MIN', subject: ip, limit: 10, windowMs: 10 * 60_000 },

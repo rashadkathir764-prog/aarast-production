@@ -486,6 +486,10 @@ Every non-development OTP request consumes atomic PostgreSQL quotas before
 delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 `OTP_GLOBAL_DAILY_LIMIT` ceiling. Quota keys are HMAC digests made with
 `AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
+The IP windows count a sender (RA-BE-55): an IPv6 address by its /64 network,
+which one subscriber holds whole, and an IPv4 address written as IPv6
+(`::ffff:a.b.c.d`) as that IPv4 address, so rotating addresses inside one
+network does not spend the app's day of codes.
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
 
@@ -2443,6 +2447,11 @@ the same serializable transaction. Account deletion explicitly removes the
 user's reviews and refreshes every surviving provider under the same ordered
 locks; a successful response therefore cannot leave the public aggregate
 behind the review data.
+
+A review the moderation team hid is not deleted by its author:
+`DELETE /api/v1/reviews/:id` returns HTTP `409`, code `REVIEW_HIDDEN`
+(RA-BE-45). Deleting it let the author write another, published at once, so
+what was hidden came back unmoderated; a hidden review shows to nobody.
 
 Provider service `basePrice`, package `price`, and quote-offer `amount` use the
 same money boundary as the planning ledger: a present value must be

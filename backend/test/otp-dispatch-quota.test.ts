@@ -135,6 +135,55 @@ test('OTP quota hashes every phone and IP subject before persistence', async () 
   );
 });
 
+test('RA-BE-55: one IPv6 network is one sender: rotating addresses inside its /64 does not dodge the address limits', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
+    },
+    async () => {
+      const harness = createHarness();
+      // Ten codes in ten minutes from one address are the most it gets.
+      for (let index = 0; index < 10; index += 1) {
+        await harness.service.consume(`+96777712${String(index).padStart(4, '0')}`, {
+          ip: `2001:db8:abcd:12::${(index + 1).toString(16)}`,
+        });
+      }
+      // The eleventh, from another address of the same network, was let
+      // through as a new sender; the network counts as one.
+      await assert.rejects(
+        harness.service.consume('+967777129999', { ip: '2001:db8:abcd:12:ffff::99' }),
+        (error: unknown) => error instanceof HttpException && error.getStatus() === 429,
+      );
+      // Another network is another sender.
+      await harness.service.consume('+967777128888', { ip: '2001:db8:abcd:13::1' });
+    },
+  );
+});
+
+test('RA-BE-55: an IPv4 address written as IPv6 is the same address', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
+    },
+    async () => {
+      const harness = createHarness();
+      for (let index = 0; index < 10; index += 1) {
+        await harness.service.consume(`+96777713${String(index).padStart(4, '0')}`, {
+          ip: index % 2 === 0 ? '203.0.113.10' : '::ffff:203.0.113.10',
+        });
+      }
+      await assert.rejects(
+        harness.service.consume('+967777139999', { ip: '203.0.113.10' }),
+        (error: unknown) => error instanceof HttpException && error.getStatus() === 429,
+      );
+    },
+  );
+});
+
 test('OTP quota enforces the configured global daily safety ceiling', async () => {
   await withEnvironment(
     { NODE_ENV: 'test', OTP_GLOBAL_DAILY_LIMIT: '2' },

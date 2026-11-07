@@ -20,6 +20,7 @@ import {
   ProviderStatus,
   QuoteOffer,
   QuoteRequest,
+  ReviewStatus,
   WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -819,6 +820,16 @@ export class MarketplaceService {
         const current = await core.findReviewForUser(tx, id, currentUser.id);
         if (!current) {
           throw new NotFoundException("Review not found");
+        }
+        // RA-BE-45: a review the team hid stays as the team left it. Deleting
+        // it let its author write another, published at once, and what was
+        // hidden came back unmoderated; it shows to nobody as it is.
+        if (current.status === ReviewStatus.HIDDEN) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: "REVIEW_HIDDEN",
+            message: "تقييمك مخفي بقرار فريق اعّرست، فما ينحذف ولا يظهر لأحد.",
+          });
         }
         await core.deleteProviderReview(tx, id);
         return { id, deleted: true };

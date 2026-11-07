@@ -30,7 +30,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'collaboration', file: 'collaboration.prisma', models: ['SharedMember', 'ContributorHistoryScope', 'ContributorTenure', 'ContributionEvent', 'PlanInvite'], enums: ['SharedMemberRole', 'ContributionScopeStatus', 'ContributorTenureEndReason', 'ContributionSection', 'ContributionEntityType', 'ContributionAction', 'ContributionProvenance', 'ContributionPermission', 'PlanInviteDeliveryStatus'] },
   { owner: 'finance', file: 'finance.prisma', models: ['BudgetCategory', 'WeddingCost', 'CostPayment', 'CostReceipt', 'PaymentSchedule', 'FundingSource', 'LoanRepayment'], enums: ['WeddingCostStatus', 'CostPaymentType', 'PaymentScheduleStatus', 'FundingSourceKind', 'FundingSourceStatus', 'LoanRepaymentStatus', 'CostPayer', 'BudgetCategoryKind', 'BudgetItemSuggestion'] },
   { owner: 'guests', file: 'guests.prisma', models: ['Guest', 'GuestGroup', 'GuestInvitationCard', 'GuestEventInvite'], enums: ['GuestSide', 'GuestStatus', 'GuestInvitationStatus', 'GuestAttendanceStatus'] },
-  { owner: 'identity', file: 'identity.prisma', models: ['AccountDeletionReceipt', 'User', 'DataExport', 'AdminLoginChallenge', 'AdminPasswordResetChallenge', 'RefreshToken', 'LoginThrottle', 'OtpDispatchQuota', 'AssistantUsageDay', 'OtpCode'], enums: ['UserRole', 'AppRole', 'UserStatus', 'OtpPurpose', 'AuthSessionScope'] },
+  { owner: 'identity', file: 'identity.prisma', models: ['AccountDeletionReceipt', 'User', 'DataExport', 'AdminLoginChallenge', 'AdminPasswordResetChallenge', 'RefreshToken', 'LoginThrottle', 'OtpDispatchQuota', 'AssistantUsageDay', 'AssistantAnswerReport', 'OtpCode'], enums: ['UserRole', 'AppRole', 'UserStatus', 'OtpPurpose', 'AuthSessionScope'] },
   { owner: 'marketplace', file: 'marketplace.prisma', models: ['Provider', 'ProviderService', 'ProviderServiceImage', 'ProviderPackage', 'FavoriteProvider', 'ProviderReview', 'QuoteRequest', 'QuoteOffer', 'PlanProviderLink', 'Booking', 'BookingChange', 'ProviderBlockedDate', 'ProviderProfileViewDay', 'ProviderReviewEvent', 'ProviderReviewNote', 'ProviderClaimRequest', 'QuoteOfferVersion', 'ProviderFeaturedPeriod', 'PortfolioItem', 'ReviewReport'], enums: ['ProviderStatus', 'ReviewStatus', 'QuoteRequestStatus', 'QuoteOfferStatus', 'PlanProviderLinkStatus', 'BookingStatus', 'BookingParty', 'ProviderReviewEventKind', 'ProviderReviewField', 'ProviderClaimStatus', 'BookingChangeStatus', 'PortfolioItemStatus'] },
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
   { owner: 'messaging', file: 'messaging.prisma', models: ['Conversation', 'ConversationParticipant', 'ConversationEvent', 'ChatMessage', 'ChatAttachment', 'ConversationReport'], enums: ['ConversationScope', 'ConversationEventType', 'ConversationReportStatus'] },
@@ -95,13 +95,13 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   // D63: + DataExport. D65: + PlanEvent and its two enums.
   // D83: + GuestInvitationCard and GuestEventInvite (the guests' card and
   // their events beyond the wedding).
-  // RA-ST-05: + ReviewReport.
-  assert.equal(manifest.modelOrder.length, 71);
-  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 71);
+  // RA-ST-05: + ReviewReport. RA-ST-04: + AssistantAnswerReport.
+  assert.equal(manifest.modelOrder.length, 72);
+  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 72);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 56);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 71);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 72);
   assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 56);
 });
 
@@ -123,7 +123,7 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
-  assert.equal(manifest.modelOrder.length, 71);
+  assert.equal(manifest.modelOrder.length, 72);
   assert.equal(orderedDeclarations('enum').length, 56);
 });
 

@@ -12,6 +12,8 @@ import type {
   AdminAccountLock,
   AdminAccountPage,
   AdminAccountRow,
+  AdminAssistantAnswerReportPage,
+  AdminAssistantAnswerReportRow,
   CreatedAtRange,
   IdentityAdminPort,
 } from '../public/identity-admin.port';
@@ -185,7 +187,52 @@ export class IdentityAdminService implements IdentityAdminPort {
     ]);
     return { total, active, disabled, admins, providers };
   }
+
+  async listAssistantAnswerReports(
+    client: Prisma.TransactionClient,
+    resolved: boolean,
+    page: { skip: number; take: number },
+  ): Promise<AdminAssistantAnswerReportPage> {
+    const where = { resolvedAt: resolved ? { not: null } : null };
+    const total = await client.assistantAnswerReport.count({ where });
+    const items = await client.assistantAnswerReport.findMany({
+      where,
+      select: assistantAnswerReportSelect,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: page.skip,
+      take: page.take,
+    });
+    return { total, items };
+  }
+
+  async resolveAssistantAnswerReportInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    resolvedAt: Date,
+  ): Promise<AdminAssistantAnswerReportRow | null> {
+    // Conditional: two moderators at once resolve it once.
+    const marked = await tx.assistantAnswerReport.updateMany({
+      where: { id, resolvedAt: null },
+      data: { resolvedAt },
+    });
+    if (marked.count !== 1) return null;
+    return tx.assistantAnswerReport.findUnique({
+      where: { id },
+      select: assistantAnswerReportSelect,
+    });
+  }
 }
+
+/** RA-ST-04: the report as the team reads it; the reporter stays unnamed. */
+const assistantAnswerReportSelect = {
+  id: true,
+  kind: true,
+  question: true,
+  answer: true,
+  reason: true,
+  resolvedAt: true,
+  createdAt: true,
+} as const;
 
 /** RA-BE-09: the accounts whose name holds the search folded as the phone folds it. */
 async function namedAccountIds(

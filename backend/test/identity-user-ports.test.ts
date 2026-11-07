@@ -7,6 +7,7 @@ import { AppRole, OnboardingPath, UserRole, UserStatus, type Prisma } from '@pri
 import {
   ACTIVE_PLAN_IMPLEMENTATION,
   ASSISTANT_QUOTA_IMPLEMENTATION,
+  ASSISTANT_REPORT_IMPLEMENTATION,
   IDENTITY_ADMIN_IMPLEMENTATION,
   IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
   IdentityUserInternalModule,
@@ -17,6 +18,9 @@ import { AssistantQuotaService } from '../src/modules/identity/infrastructure/as
 import { IdentityAdminService } from '../src/modules/identity/infrastructure/identity-admin.service';
 import { AssistantQuotaPublicModule } from '../src/modules/identity/public/assistant-quota-public.module';
 import { ASSISTANT_QUOTA_PORT } from '../src/modules/identity/public/assistant-quota.port';
+import { AssistantReportService } from '../src/modules/identity/infrastructure/assistant-report.service';
+import { AssistantReportPublicModule } from '../src/modules/identity/public/assistant-report-public.module';
+import { ASSISTANT_REPORT_PORT } from '../src/modules/identity/public/assistant-report.port';
 import { IdentityRealtimeSessionService } from '../src/modules/identity/infrastructure/identity-realtime-session.service';
 import { IdentityUserPortService } from '../src/modules/identity/infrastructure/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
@@ -313,11 +317,17 @@ test('the identity user public modules expose only their port tokens bound to th
     { provide: ASSISTANT_QUOTA_PORT, useExisting: ASSISTANT_QUOTA_IMPLEMENTATION },
   ]);
   assert.deepEqual(metadata(AssistantQuotaPublicModule, MODULE_METADATA.EXPORTS), [ASSISTANT_QUOTA_PORT]);
+  // RA-ST-04 (D95): the assistant answers reported to the team.
+  assert.deepEqual(metadata(AssistantReportPublicModule, MODULE_METADATA.PROVIDERS), [
+    { provide: ASSISTANT_REPORT_PORT, useExisting: ASSISTANT_REPORT_IMPLEMENTATION },
+  ]);
+  assert.deepEqual(metadata(AssistantReportPublicModule, MODULE_METADATA.EXPORTS), [ASSISTANT_REPORT_PORT]);
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
     IdentityRealtimeSessionService,
     IdentityAdminService,
     AssistantQuotaService,
+    AssistantReportService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
@@ -325,5 +335,6 @@ test('the identity user public modules expose only their port tokens bound to th
     // The back office's account administration (identity-admin.port.ts).
     { provide: IDENTITY_ADMIN_IMPLEMENTATION, useExisting: IdentityAdminService },
     { provide: ASSISTANT_QUOTA_IMPLEMENTATION, useExisting: AssistantQuotaService },
+    { provide: ASSISTANT_REPORT_IMPLEMENTATION, useExisting: AssistantReportService },
   ]);
 });

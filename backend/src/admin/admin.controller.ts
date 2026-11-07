@@ -47,6 +47,7 @@ import {
   AdminConversationReportQueryDto,
   AdminConversationReportStatusDto,
 } from './dto/admin-conversation-report.dto';
+import { AdminAssistantReportQueryDto } from './dto/admin-assistant-report.dto';
 
 @Controller('admin')
 @UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)
@@ -359,6 +360,23 @@ export class AdminController {
       id,
       dto,
     );
+  }
+
+  // RA-ST-04 (D95): the assistant answers reported to the team, in the same
+  // reports inbox (a11) and under the same permissions as the chat reports.
+  @Get('assistant-reports')
+  @RequireAdminPermission(AdminPermission.CONVERSATION_REPORTS_READ)
+  listAssistantAnswerReports(@Query() query: AdminAssistantReportQueryDto) {
+    return this.adminService.listAssistantAnswerReports(query);
+  }
+
+  @Patch('assistant-reports/:id/resolve')
+  @RequireAdminPermission(AdminPermission.CONVERSATION_REPORTS_WRITE)
+  resolveAssistantAnswerReport(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.resolveAssistantAnswerReport(currentUser, id);
   }
 
   @Get('provider-categories')

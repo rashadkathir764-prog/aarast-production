@@ -17,6 +17,7 @@ import { QuoteReadPublicModule } from '../../marketplace/public/quote-read-publi
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
 import { AssistantQuotaPublicModule } from '../../identity/public/assistant-quota-public.module';
+import { AssistantReportPublicModule } from '../../identity/public/assistant-report-public.module';
 import { AssistantRuntime } from '../../../dashboard/assistant/assistant-runtime';
 import { AssistantService } from '../../../dashboard/assistant/assistant.service';
 
@@ -29,6 +30,7 @@ import { AssistantService } from '../../../dashboard/assistant/assistant.service
     NotificationsPublicModule,
     IdentityAuthPublicModule,
     AssistantQuotaPublicModule,
+    AssistantReportPublicModule,
     PlanReadPublicModule,
     TasksPublicModule,
     GuestsPublicModule,

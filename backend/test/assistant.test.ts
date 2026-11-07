@@ -137,12 +137,15 @@ function serviceFor(options: {
   reserve?: boolean;
   money?: unknown;
   sharedMember?: unknown;
+  /** RA-ST-04: false when the account's open reports are at their bound. */
+  reportRecorded?: boolean;
 } = {}) {
   const calls = {
     asked: [] as string[],
     released: 0,
     recorded: [] as bigint[],
     moneyQueries: [] as unknown[],
+    reports: [] as Array<{ userId: string; report: unknown }>,
   };
   const permissions = {
     assertPlanReadable: async () => ({
@@ -204,6 +207,13 @@ function serviceFor(options: {
       },
     },
   };
+  const reports = {
+    recordAnswerReport: async (userId: string, report: unknown) => {
+      if (options.reportRecorded === false) return false;
+      calls.reports.push({ userId, report });
+      return true;
+    },
+  };
   const prisma = { $transaction: async (operation: (tx: unknown) => unknown) => operation({}) };
   const service = new AssistantService(
     prisma as any,
@@ -211,6 +221,7 @@ function serviceFor(options: {
     ports as any,
     quota as any,
     runtime as any,
+    reports as any,
   );
   return { service, calls };
 }
@@ -324,6 +335,44 @@ test('the monthly cap, the daily limit and a failing model refuse clearly', asyn
   await rejectsWith(unavailable.service.ask(user, 'plan-1', ask), 503, 'ASSISTANT_UNAVAILABLE');
   assert.equal(unavailable.calls.released, 1, 'the question is given back');
   assert.equal(unavailable.calls.recorded.length, 0);
+});
+
+// RA-ST-04 (D95): «بلّغ عن الإجابة».
+const report = {
+  kind: 'QUESTION' as const,
+  question: '  وش نسيت؟  ',
+  answer: 'جواب فيه كلام مسيء',
+  reason: 'كلام مسيء',
+};
+
+test('RA-ST-04: the plan\'s owner or partner reports an answer to the team', async () => {
+  const { service, calls } = serviceFor({
+    isOwner: false,
+    sharedMember: { userId: 'user-1', role: 'BRIDE' },
+  });
+  assert.deepEqual(await service.reportAnswer(user, 'plan-1', report), { reported: true });
+  assert.deepEqual(calls.reports, [
+    {
+      userId: 'user-1',
+      report: { kind: 'QUESTION', question: 'وش نسيت؟', answer: 'جواب فيه كلام مسيء', reason: 'كلام مسيء' },
+    },
+  ]);
+  // The report never asks the model.
+  assert.equal(calls.asked.length, 0);
+});
+
+test('RA-ST-04: who may not ask may not report, and the open reports are bounded', async () => {
+  const helper = serviceFor({
+    isOwner: false,
+    sharedMember: { userId: 'user-1', role: 'HELPER' },
+  });
+  await rejectsWith(helper.service.reportAnswer(user, 'plan-1', report), 403, 'ASSISTANT_OWNER_OR_PARTNER_ONLY');
+  assert.equal(helper.calls.reports.length, 0);
+  await rejectsWith(
+    serviceFor({ reportRecorded: false }).service.reportAnswer(user, 'plan-1', report),
+    429,
+    'ASSISTANT_REPORT_LIMIT',
+  );
 });
 
 test('consent comes first, and a free question needs its text', async () => {

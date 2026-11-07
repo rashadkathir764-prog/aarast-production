@@ -24,6 +24,8 @@ const allowedDirectDatabaseClients = new Map([
   'backend/scripts/smoke/quote-offer-lifecycle-smoke.ts',
   'backend/scripts/smoke/featured-placement-smoke.ts',
   'backend/scripts/smoke/review-reply-smoke.ts',
+  // RA-ST-04 (D95): the reported assistant answers on a real database.
+  'backend/scripts/smoke/assistant-report-smoke.ts',
   'backend/scripts/smoke/portfolio-smoke.ts',
   'backend/scripts/smoke/events-smoke.ts',
   'backend/scripts/smoke/cost-receipts-smoke.js',
@@ -134,6 +136,7 @@ const managedCommandArguments = new Map([
   ['smoke:task-shift', 'task-shift-smoke.js'],
   ['smoke:plan-partner', 'plan-partner-smoke.js'],
   ['smoke:assistant', 'assistant-smoke.js'],
+  ['smoke:assistant-report', 'assistant-report-smoke.ts'],
   ['smoke:contributor-history-migration', '--contributor-history-migration'],
   ['smoke:guest-phone-migration', '--guest-phone-migration'],
   ['smoke:schema-equivalence', '--schema-equivalence'],

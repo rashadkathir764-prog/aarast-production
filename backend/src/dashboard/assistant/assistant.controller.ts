@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../../modules/identity/public/identity-s
 import { JwtAuthGuard } from '../../modules/identity/public/jwt-auth.guard';
 import { AssistantService } from './assistant.service';
 import { AskAssistantDto } from './dto/ask-assistant.dto';
+import { ReportAssistantAnswerDto } from './dto/report-assistant-answer.dto';
 
 @Controller('api/v1/wedding-plans/:weddingPlanId/assistant')
 @UseGuards(JwtAuthGuard)
@@ -33,6 +34,23 @@ export class WeddingPlanAssistantController {
       kind: dto.kind,
       question: dto.question ?? null,
       consent: dto.consent,
+    });
+  }
+
+  // RA-ST-04 (D95): «بلّغ عن الإجابة». The account's open reports are
+  // bounded in the service; this only stops floods.
+  @Post('reports')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  report(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+    @Body() dto: ReportAssistantAnswerDto,
+  ) {
+    return this.assistant.reportAnswer(currentUser, weddingPlanId, {
+      kind: dto.kind,
+      question: dto.question ?? null,
+      answer: dto.answer,
+      reason: dto.reason,
     });
   }
 }

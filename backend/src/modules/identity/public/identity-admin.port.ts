@@ -51,6 +51,25 @@ export interface CreatedAtRange {
 
 export type AccountSearchField = 'name' | 'phone';
 
+/**
+ * RA-ST-04 (D95): an assistant answer reported to the moderation team, as
+ * the team reads it. The reporter stays unnamed.
+ */
+export interface AdminAssistantAnswerReportRow {
+  id: string;
+  kind: string;
+  question: string | null;
+  answer: string;
+  reason: string;
+  resolvedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface AdminAssistantAnswerReportPage {
+  total: number;
+  items: AdminAssistantAnswerReportRow[];
+}
+
 // Identity owns `User` and `RefreshToken`. The back office manages accounts
 // through this port on the client it passes (its serializable transaction
 // or the shared Prisma service): the account row locks its mutation gate
@@ -109,4 +128,19 @@ export interface IdentityAdminPort {
     client: Prisma.TransactionClient,
     createdAt?: CreatedAtRange,
   ): Promise<AdminAccountCounts>;
+  /** RA-ST-04: the reported assistant answers, newest first: open, or reviewed. */
+  listAssistantAnswerReports(
+    client: Prisma.TransactionClient,
+    resolved: boolean,
+    page: { skip: number; take: number },
+  ): Promise<AdminAssistantAnswerReportPage>;
+  /**
+   * RA-ST-04: marks an open report reviewed at `resolvedAt`; null when no
+   * open report has that id (already reviewed, or none).
+   */
+  resolveAssistantAnswerReportInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    resolvedAt: Date,
+  ): Promise<AdminAssistantAnswerReportRow | null>;
 }

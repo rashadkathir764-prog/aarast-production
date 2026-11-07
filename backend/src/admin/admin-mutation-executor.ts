@@ -22,6 +22,7 @@ import { PrismaService } from '../platform/database/prisma.service';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { AdminOwners } from './admin-owners';
 import {
+  toAdminAssistantAnswerReport,
   toAdminReviewResponse,
   toAdminServiceResponse,
   toCategoryAdminResponse,
@@ -332,6 +333,31 @@ export class AdminMutationExecutor {
           id,
           status,
         );
+      },
+    );
+  }
+
+  /** RA-ST-04 (D95): «تمت المراجعة» on a reported assistant answer. */
+  async resolveAssistantAnswerReport(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ) {
+    return runAuthorizedAdminMutation(
+      this.prisma,
+      this.owners.accounts,
+      currentUser,
+      AdminPermission.CONVERSATION_REPORTS_WRITE,
+      async (tx) => {
+        const report =
+          await this.owners.accounts.resolveAssistantAnswerReportInTransaction(
+            tx,
+            id,
+            new Date(),
+          );
+        if (!report) {
+          throw new NotFoundException('Open assistant report not found');
+        }
+        return toAdminAssistantAnswerReport(report);
       },
     );
   }

@@ -29,6 +29,8 @@ const mutations = [
   ["updateReviewStatus", "REVIEWS_WRITE"],
   ["hideReview", "REVIEWS_WRITE"],
   ["updateConversationReportStatus", "CONVERSATION_REPORTS_WRITE"],
+  // RA-ST-04 (D95): «تمت المراجعة» on a reported assistant answer.
+  ["resolveAssistantAnswerReport", "CONVERSATION_REPORTS_WRITE"],
   // B-09 (a10): hiding or showing a provider's reply.
   ["updateReviewReplyStatus", "REVIEWS_WRITE"],
   ["createCategory", "CATALOG_WRITE"],

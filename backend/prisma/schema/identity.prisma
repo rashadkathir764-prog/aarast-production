@@ -105,6 +105,7 @@ model User {
   mediaUploadTickets           MediaUploadTicket[]
   contributorTenures           ContributorTenure[]           @relation("ContributorTenureActor")
   assistantUsageDays           AssistantUsageDay[]
+  assistantAnswerReports       AssistantAnswerReport[]       @relation("AssistantAnswerReporter")
 
   @@index([deletionScheduledFor])
 }
@@ -216,6 +217,26 @@ model AssistantUsageDay {
 
   @@id([userId, day])
   @@index([day])
+}
+
+// RA-ST-04 (D95): an answer of the planning assistant that its reader
+// reported to the moderation team (Play's AI-generated content policy).
+// The assistant keeps no question or answer; a report keeps the one its
+// reader sent with it, so the team can read what was reported. Open until
+// the team marks it reviewed (resolvedAt); it leaves with the account.
+model AssistantAnswerReport {
+  id             String    @id @default(uuid())
+  reporterUserId String
+  kind           String    @db.VarChar(32)
+  question       String?   @db.Text
+  answer         String    @db.Text
+  reason         String    @db.Text
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  reporter       User      @relation("AssistantAnswerReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
+  @@index([reporterUserId])
 }
 
 model OtpCode {

@@ -22,6 +22,10 @@ import {
   ASSISTANT_QUOTA_PORT,
   type AssistantQuotaPort,
 } from '../../modules/identity/public/assistant-quota.port';
+import {
+  ASSISTANT_REPORT_PORT,
+  type AssistantReportPort,
+} from '../../modules/identity/public/assistant-report.port';
 import type { AuthenticatedUser } from '../../modules/identity/public/identity-session.types';
 import { localDate, monthStart } from './assistant-config';
 import { AssistantModelError } from './assistant-model.client';
@@ -110,6 +114,7 @@ export class AssistantService {
     private readonly ports: InsightsReadPorts,
     @Inject(ASSISTANT_QUOTA_PORT) private readonly quota: AssistantQuotaPort,
     private readonly runtime: AssistantRuntime,
+    @Inject(ASSISTANT_REPORT_PORT) private readonly reports: AssistantReportPort,
   ) {}
 
   async status(
@@ -228,6 +233,40 @@ export class AssistantService {
       marketDataAvailable: facts.market.length > 0,
       remainingToday: Math.max(0, config.dailyLimit - used),
     };
+  }
+
+  /**
+   * RA-ST-04 (D95): the reader reports an answer to the moderation team
+   * (Play's AI-generated content policy). Whoever may ask may report; the
+   * answer is the one the reader sent, since the assistant keeps none.
+   */
+  async reportAnswer(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    report: { kind: AssistantKind; question: string | null; answer: string; reason: string },
+  ): Promise<{ reported: true }> {
+    const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    if (!seesWholePlan(context)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'ASSISTANT_OWNER_OR_PARTNER_ONLY',
+        message: 'The assistant serves the plan owner and partner',
+      });
+    }
+    const recorded = await this.reports.recordAnswerReport(currentUser.id, {
+      kind: report.kind,
+      question: report.question?.trim() || null,
+      answer: report.answer,
+      reason: report.reason,
+    });
+    if (!recorded) {
+      throw refusal(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'ASSISTANT_REPORT_LIMIT',
+        'Too many reports are waiting for review',
+      );
+    }
+    return { reported: true };
   }
 
   /** The plan as the reader sees it, read in one snapshot through the owners' ports. */

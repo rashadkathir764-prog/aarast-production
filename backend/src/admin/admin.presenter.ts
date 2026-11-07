@@ -27,6 +27,7 @@ import { toModeratedReviewIdentity } from '../shared-kernel/privacy/review-ident
 import { ownerReviewReply } from '../modules/marketplace/public/review-reply';
 import { providerCategoryBudgetItem } from '../modules/finance/public/provider-category-budget-item';
 import type { StarterBudgetItem } from '../modules/catalog/public/catalog-admin.port';
+import type { AdminAssistantAnswerReportRow } from '../modules/identity/public/identity-admin.port';
 
 export type SafeAdminUser = Pick<
   User,
@@ -516,6 +517,24 @@ export function toAdminServiceResponse(service: AdminServiceWithDetails) {
     })),
     createdAt: service.createdAt,
     updatedAt: service.updatedAt,
+  };
+}
+
+/**
+ * RA-ST-04 (D95): a reported assistant answer as the team reads it: what
+ * was asked, what the assistant said, why it was reported. The reporter
+ * stays unnamed.
+ */
+export function toAdminAssistantAnswerReport(report: AdminAssistantAnswerReportRow) {
+  return {
+    id: report.id,
+    kind: report.kind,
+    question: report.question,
+    answer: report.answer,
+    reason: report.reason,
+    status: report.resolvedAt ? 'RESOLVED' : 'OPEN',
+    resolvedAt: report.resolvedAt,
+    createdAt: report.createdAt,
   };
 }
 

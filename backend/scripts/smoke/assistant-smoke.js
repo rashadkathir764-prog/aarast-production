@@ -211,11 +211,32 @@ async function run() {
     check('a busy model is said plainly', busy.status === 503 && busy.body?.code === 'ASSISTANT_BUSY');
     const brideStatus = await request('GET', path, null, bride.token);
     check('the busy question is given back', brideStatus.body?.remainingToday === 1);
+
+    // RA-ST-04 (D95): «بلّغ عن الإجابة». Whoever may ask may report; the
+    // report reaches the team without asking the model again.
+    const reportBody = {
+      kind: 'QUESTION',
+      question: 'كم أخصص للتصوير؟',
+      answer: 'خطة تجريبية من المساعد',
+      reason: 'كلام مسيء',
+    };
+    const familyReport = await request('POST', `${path}/reports`, reportBody, family.token);
+    check('a relative cannot report an answer', familyReport.status === 403 && familyReport.body?.code === 'ASSISTANT_OWNER_OR_PARTNER_ONLY');
+    const noReason = await request('POST', `${path}/reports`, { ...reportBody, reason: '  ' }, owner.token);
+    check('a report needs its reason', noReason.status === 400);
+    const tooLong = await request('POST', `${path}/reports`, { ...reportBody, answer: 'ا'.repeat(20_001) }, owner.token);
+    check('a report carries at most 20,000 characters of the answer', tooLong.status === 400);
+    const callsBeforeReport = modelCalls.length;
+    const reported = await request('POST', `${path}/reports`, reportBody, owner.token);
+    check(
+      'the owner reports an answer to the team',
+      reported.status === 201 && reported.body?.reported === true && modelCalls.length === callsBeforeReport,
+    );
   } finally {
     for (const [label, account] of [['family', family], ['bride', bride], ['owner', owner]]) {
       if (!account.token) continue;
       check(
-        `${label} fixture account is cleaned (with its assistant usage)`,
+        `${label} fixture account is cleaned (with its assistant usage and reports)`,
         await eraseFixtureAccount(request, account.token),
       );
     }

@@ -66,6 +66,7 @@ import {
 } from './provider-admin-lifecycle';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import {
+  toAdminAssistantAnswerReport,
   toAdminClaimRequestResponse,
   toAdminQuoteReport,
   toAdminReportsOverviewResponse,
@@ -79,6 +80,7 @@ import {
   toProviderReviewHistoryResponse,
   toUserResponse,
 } from './admin.presenter';
+import { AdminAssistantReportQueryDto } from './dto/admin-assistant-report.dto';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
 import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dto';
@@ -454,6 +456,25 @@ export class AdminService {
       id,
       dto,
     );
+  }
+
+  /** RA-ST-04 (D95): the assistant answers reported to the team. */
+  async listAssistantAnswerReports(query: AdminAssistantReportQueryDto) {
+    const pagination = this.parsePagination(query.page, query.limit);
+    const listing = await this.owners.accounts.listAssistantAnswerReports(
+      this.prisma,
+      query.status === 'RESOLVED',
+      { skip: pagination.skip, take: pagination.limit },
+    );
+    return this.paginate(
+      listing.items.map((report) => toAdminAssistantAnswerReport(report)),
+      listing.total,
+      pagination,
+    );
+  }
+
+  async resolveAssistantAnswerReport(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.resolveAssistantAnswerReport(currentUser, id);
   }
 
   /**

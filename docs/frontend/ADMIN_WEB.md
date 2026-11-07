@@ -101,6 +101,11 @@ same day as dead code; the R10 manifest records them as deleted, and
 `Pagination`. The old rules in `globals.css` were pruned afterwards: only what
 `ConfirmDialog`, `Pagination`, the forms and tables, and the global base still use
 is left, and every admin route renders pixel-identical before and after.
+2026-11-07 (RA-AD-19): `ConfirmDialog` lost its older «classic» look, which no
+page called (all 24 used the desk one), with the `globals.css` rules only it
+read; its tests now test the desk dialog. Escape closes the window on top only
+(`isTopWindow` in `DeskModal.tsx`), so a confirm dialog over an edit window
+leaves the window and its draft.
 
 ## Rules
 

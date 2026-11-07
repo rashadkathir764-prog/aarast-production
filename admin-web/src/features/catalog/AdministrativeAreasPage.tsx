@@ -439,9 +439,7 @@ export function AdministrativeAreasPage() {
                 احفظ
               </DeskButton>
               {editor.id && editor.isActive ? (
-                <ConfirmDialog
-                  variant="desk"
-                  title={`إيقاف ${editor.nameAr}`}
+                <ConfirmDialog                  title={`إيقاف ${editor.nameAr}`}
                   effects={[
                     'تختفي من الاقتراحات الجديدة في الجوال.',
                     'ما تنحذف، والبيانات القديمة المرتبطة فيها تبقى.',

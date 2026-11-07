@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { isTopWindow } from './DeskModal';
 
 type TriggerProps = {
   onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -27,19 +28,17 @@ type NoteProps =
   | { needsNote?: false; noteMaxLength?: never }
   | { needsNote: true; noteMaxLength: number };
 
+/**
+ * The admin desk dialog (akit `confirm`): what will happen as dotted lines,
+ * the note in a teal box, the action first and «تراجع» after it. The only
+ * look the panel uses (RA-AD-19 removed an older one no page called).
+ */
 type ConfirmDialogProps = NoteProps & {
   title: string;
-  message?: string;
   confirmLabel: string;
-  tone?: 'normal' | 'danger';
   noteLabel?: string;
   trigger: ReactNode;
   onConfirm: (note: string) => Promise<void> | void;
-  /**
-   * The admin desk dialog (akit `confirm`): what will happen as dotted
-   * lines, the note in a teal box, the action first and «تراجع» after it.
-   */
-  variant?: 'classic' | 'desk';
   effects?: string[];
   confirmTone?: 'teal' | 'coral' | 'green' | 'saffron';
   cancelLabel?: string;
@@ -52,15 +51,12 @@ type ConfirmDialogProps = NoteProps & {
 
 export function ConfirmDialog({
   title,
-  message,
   confirmLabel,
-  tone = 'normal',
   needsNote = false,
   noteMaxLength,
   noteLabel = 'الملاحظة',
   trigger,
   onConfirm,
-  variant = 'classic',
   effects,
   confirmTone = 'teal',
   cancelLabel = 'تراجع',
@@ -75,7 +71,7 @@ export function ConfirmDialog({
   const reactId = useId();
   const dialogId = `confirm-dialog-${reactId.replace(/:/g, '')}`;
   const titleId = `${dialogId}-title`;
-  const messageId = `${dialogId}-message`;
+  const effectsId = `${dialogId}-effects`;
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -106,6 +102,7 @@ export function ConfirmDialog({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (!isTopWindow(activeDialog)) return;
         event.preventDefault();
         if (!isSubmittingRef.current) closeDialog();
         return;
@@ -206,139 +203,70 @@ export function ConfirmDialog({
         </span>
       );
 
-  if (variant === 'desk') {
-    return (
-      <>
-        {triggerElement}
-        {open
-          ? createPortal(
-              <div
-                className="desk-dialog-backdrop"
-                role="presentation"
-                onClick={closeDialog}
-              >
-                <div
-                  className="desk-dialog"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby={titleId}
-                  aria-describedby={messageId}
-                  id={dialogId}
-                  ref={dialogRef}
-                  tabIndex={-1}
-                  dir="rtl"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <h2 id={titleId}>{title}</h2>
-                  <div id={messageId}>
-                    {effects && effects.length > 0 ? (
-                      <ul className="desk-dialog__effects">
-                        {effects.map((effect) => (
-                          <li key={effect}>{effect}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {message ? <p className="desk-dialog__message">{message}</p> : null}
-                  </div>
-                  {needsNote ? (
-                    <label className="desk-dialog__note">
-                      <span>{noteLabel}</span>
-                      <textarea
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        maxLength={noteMaxLength}
-                        rows={1}
-                      />
-                    </label>
-                  ) : null}
-                  {error ? (
-                    <p className="desk-dialog__error" role="alert">
-                      {error}
-                    </p>
-                  ) : null}
-                  <div className="desk-dialog__actions">
-                    <button
-                      className={`desk-btn desk-btn--${confirmTone}`}
-                      type="button"
-                      onClick={submit}
-                      disabled={isSubmitting || noteMissing}
-                    >
-                      <span>{isSubmitting ? 'لحظة…' : confirmLabel}</span>
-                    </button>
-                    <button
-                      className="desk-btn desk-btn--soft"
-                      type="button"
-                      onClick={closeDialog}
-                      disabled={isSubmitting}
-                    >
-                      <span>{cancelLabel}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
-      </>
-    );
-  }
-
   return (
     <>
       {triggerElement}
       {open
         ? createPortal(
             <div
-              className="dialog-backdrop"
+              className="desk-dialog-backdrop"
               role="presentation"
               onClick={closeDialog}
             >
               <div
-                className="dialog"
+                className="desk-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                aria-describedby={messageId}
+                aria-describedby={effectsId}
                 id={dialogId}
                 ref={dialogRef}
                 tabIndex={-1}
+                dir="rtl"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className={`dialog__mark ${tone}`} aria-hidden="true" />
                 <h2 id={titleId}>{title}</h2>
-                <p id={messageId}>{message}</p>
+                <div id={effectsId}>
+                  {effects && effects.length > 0 ? (
+                    <ul className="desk-dialog__effects">
+                      {effects.map((effect) => (
+                        <li key={effect}>{effect}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
                 {needsNote ? (
-                  <label className="form-field">
+                  <label className="desk-dialog__note">
                     <span>{noteLabel}</span>
                     <textarea
                       value={note}
                       onChange={(event) => setNote(event.target.value)}
                       maxLength={noteMaxLength}
-                      rows={4}
+                      rows={1}
                     />
                   </label>
                 ) : null}
                 {error ? (
-                  <p className="inline-error" role="alert">
+                  <p className="desk-dialog__error" role="alert">
                     {error}
                   </p>
                 ) : null}
-                <div className="dialog-actions">
+                <div className="desk-dialog__actions">
                   <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={closeDialog}
-                    disabled={isSubmitting}
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    className={`button ${tone === 'danger' ? 'button--danger' : ''}`}
+                    className={`desk-btn desk-btn--${confirmTone}`}
                     type="button"
                     onClick={submit}
                     disabled={isSubmitting || noteMissing}
                   >
-                    {isSubmitting ? 'جاري التنفيذ...' : confirmLabel}
+                    <span>{isSubmitting ? 'لحظة…' : confirmLabel}</span>
+                  </button>
+                  <button
+                    className="desk-btn desk-btn--soft"
+                    type="button"
+                    onClick={closeDialog}
+                    disabled={isSubmitting}
+                  >
+                    <span>{cancelLabel}</span>
                   </button>
                 </div>
               </div>

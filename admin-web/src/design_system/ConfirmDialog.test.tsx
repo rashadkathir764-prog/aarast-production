@@ -8,12 +8,12 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { ConfirmDialog } from './ConfirmDialog';
 
+// RA-AD-19: these three tested a «classic» look no page used; every dialog
+// in the panel is the desk one, so they test that.
 describe('ConfirmDialog', () => {
   it('traps focus, closes with Escape, and restores the trigger focus', async () => {
     render(
-      <ConfirmDialog
-        title="Confirm"
-        message="Continue?"
+      <ConfirmDialog        title="Confirm"
         confirmLabel="Confirm"
         trigger={<button type="button">Open</button>}
         onConfirm={() => undefined}
@@ -23,17 +23,17 @@ describe('ConfirmDialog', () => {
     const trigger = screen.getByRole('button', { name: 'Open' });
     fireEvent.click(trigger);
 
-    const cancel = screen.getByRole('button', { name: 'إلغاء' });
     const confirm = screen.getByRole('button', { name: 'Confirm' });
-    await waitFor(() => expect(cancel).toHaveFocus());
-
-    confirm.focus();
-    fireEvent.keyDown(document, { key: 'Tab' });
-    expect(cancel).toHaveFocus();
+    const cancel = screen.getByRole('button', { name: 'تراجع' });
+    await waitFor(() => expect(confirm).toHaveFocus());
 
     cancel.focus();
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    fireEvent.keyDown(document, { key: 'Tab' });
     expect(confirm).toHaveFocus();
+
+    confirm.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(cancel).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() =>
@@ -52,9 +52,7 @@ describe('ConfirmDialog', () => {
     );
 
     render(
-      <ConfirmDialog
-        title="Confirm"
-        message="Continue?"
+      <ConfirmDialog        title="Confirm"
         confirmLabel="Confirm"
         trigger={<button type="button">Open</button>}
         onConfirm={onConfirm}
@@ -67,9 +65,9 @@ describe('ConfirmDialog', () => {
 
     const dialog = screen.getByRole('dialog');
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'جاري التنفيذ...' })).toBeDisabled(),
+      expect(screen.getByRole('button', { name: 'لحظة…' })).toBeDisabled(),
     );
-    expect(screen.getByRole('button', { name: 'إلغاء' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'تراجع' })).toBeDisabled();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.click(dialog.parentElement!);
@@ -86,9 +84,7 @@ describe('ConfirmDialog', () => {
   // came back as «راجع البيانات المدخلة» with the typed note still there.
   it('holds the note to the length the server takes', () => {
     render(
-      <ConfirmDialog
-        variant="desk"
-        title="شيل الصورة"
+      <ConfirmDialog        title="شيل الصورة"
         confirmLabel="شِل"
         needsNote
         noteLabel="السبب"
@@ -105,9 +101,7 @@ describe('ConfirmDialog', () => {
     const onConfirm = vi.fn().mockRejectedValue(new Error('mutation failed'));
 
     render(
-      <ConfirmDialog
-        title="Confirm"
-        message="Continue?"
+      <ConfirmDialog        title="Confirm"
         confirmLabel="Confirm"
         trigger={<button type="button">Open</button>}
         onConfirm={onConfirm}

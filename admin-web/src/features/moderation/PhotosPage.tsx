@@ -121,9 +121,7 @@ export function PhotosPage() {
                 </small>
                 <Can permission={AdminPermission.REVIEWS_WRITE}>
                   <span className="desk-actions">
-                    <ConfirmDialog
-                      variant="desk"
-                      title={`شيل صورة من معرض ${photo.provider.businessName}`}
+                    <ConfirmDialog                      title={`شيل صورة من معرض ${photo.provider.businessName}`}
                       effects={[
                         'الصورة ما تظهر لأحد، وتنحذف من التخزين.',
                         'المزود يوصله إنها انشالت والسبب اللي تكتبه.',
@@ -137,9 +135,7 @@ export function PhotosPage() {
                       onConfirm={(reason) => decide(photo, { decision: 'REJECT', reason })}
                     />
                     {photo.forWomen ? (
-                      <ConfirmDialog
-                        variant="desk"
-                        title="صورة من «حفلات النساء»"
+                      <ConfirmDialog                        title="صورة من «حفلات النساء»"
                         effects={[
                           'تأكدت إن ما فيها أي وجه، ولا انعكاس وجه.',
                           'تظهر للعرائس بس.',

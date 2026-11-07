@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DeskModal } from './DeskModal';
 
 // RA-AD-02: every catalog page keeps its draft in page state and passes an
@@ -64,6 +65,29 @@ describe('DeskModal', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClosed).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  // RA-AD-19: «عطّل المدينة» opens a confirm dialog over the edit window;
+  // Escape closed both, and the draft with them. It closes the one on top.
+  it('lets Escape close the dialog on top first, then the window', async () => {
+    const onClosed = vi.fn();
+    render(
+      <DeskModal title="عدّل مدينة" open onClose={onClosed}>
+        <ConfirmDialog          title="تعطيل عدن"
+          confirmLabel="عطّلها"
+          trigger={<button type="button">عطّل المدينة</button>}
+          onConfirm={() => undefined}
+        />
+      </DeskModal>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'عطّل المدينة' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'تعطيل عدن' })).not.toBeInTheDocument(),
+    );
+    expect(onClosed).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClosed).toHaveBeenCalledTimes(1);
   });
 
   it('gives the focus back to the opener when it closes', () => {

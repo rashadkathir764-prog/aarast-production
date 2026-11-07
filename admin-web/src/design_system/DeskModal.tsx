@@ -3,6 +3,16 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /**
+ * RA-AD-19: a confirm dialog opens over an edit window («عطّل المدينة»), and
+ * both listen for Escape on the page. Each window is portalled to the end of
+ * the body as it opens, so the last open one is on top, and only it closes.
+ */
+export function isTopWindow(element: Element | null): boolean {
+  const open = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+  return element !== null && open[open.length - 1] === element;
+}
+
+/**
  * A desk window for forms (add a listed provider, import a file, edit a
  * category): the confirm dialog's frame, closed by Escape, the backdrop or ×.
  */
@@ -39,7 +49,7 @@ export function DeskModal({
       ) ?? box?.querySelector<HTMLElement>('button:not([disabled])');
     (first ?? box)?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && isTopWindow(box)) {
         event.preventDefault();
         close.current();
       }

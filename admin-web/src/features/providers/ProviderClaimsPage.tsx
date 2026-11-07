@@ -160,9 +160,7 @@ export function ProviderClaimsPage() {
               claim.status === 'PENDING' ? (
                 <Can key="a" permission={AdminPermission.PROVIDERS_WRITE}>
                   <span className="desk-actions">
-                    <ConfirmDialog
-                      variant="desk"
-                      title={`سلّم «${claim.provider.businessName}» لصاحب الطلب`}
+                    <ConfirmDialog                      title={`سلّم «${claim.provider.businessName}» لصاحب الطلب`}
                       effects={[
                         `يصير الملف لحساب ${claim.claimant?.name ?? 'صاحب الطلب'} برقمه ${phoneSpaced(claim.claimant?.phone ?? '')}.`,
                         'يبدأ يستقبل طلبات العرسان.',
@@ -177,9 +175,7 @@ export function ProviderClaimsPage() {
                         await load();
                       }}
                     />
-                    <ConfirmDialog
-                      variant="desk"
-                      title={`ما نقبل استلام «${claim.provider.businessName}»`}
+                    <ConfirmDialog                      title={`ما نقبل استلام «${claim.provider.businessName}»`}
                       effects={['الملف يبقى بلا حساب وما يستقبل طلبات.', 'السبب يوصل صاحب الطلب في تنبيه.']}
                       needsNote
                       noteMaxLength={1000} // AdminClaimDecisionDto.note

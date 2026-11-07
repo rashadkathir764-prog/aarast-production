@@ -55,9 +55,7 @@ export function UserDetailsPage() {
   );
 
   const action = !canChange ? null : user.status === 'ACTIVE' ? (
-    <ConfirmDialog
-      variant="desk"
-      title={`تعطيل حساب ${user.name}`}
+    <ConfirmDialog      title={`تعطيل حساب ${user.name}`}
       effects={[
         'يطلع من كل أجهزته الآن.',
         'الدعوات اللي أرسلها للمشاركين تنلغي.',
@@ -73,9 +71,7 @@ export function UserDetailsPage() {
       }}
     />
   ) : (
-    <ConfirmDialog
-      variant="desk"
-      title={`تفعيل حساب ${user.name}`}
+    <ConfirmDialog      title={`تفعيل حساب ${user.name}`}
       effects={['يقدر يدخل من جديد برقمه.']}
       confirmLabel="فعّل"
       trigger={<DeskButton>تفعيل الحساب</DeskButton>}

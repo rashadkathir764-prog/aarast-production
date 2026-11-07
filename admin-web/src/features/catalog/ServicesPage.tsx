@@ -227,9 +227,7 @@ function ServiceState({ service, onChanged }: { service: ProviderService; onChan
     <span className="desk-actions">
       {running ? <Tag tone="green">شغّالة</Tag> : <Tag tone="muted">موقوفة</Tag>}
       <Can permission={AdminPermission.SERVICES_WRITE}>
-        <ConfirmDialog
-          variant="desk"
-          title={`${running ? 'إيقاف' : 'تشغيل'} «${service.title}»`}
+        <ConfirmDialog          title={`${running ? 'إيقاف' : 'تشغيل'} «${service.title}»`}
           effects={
             running
               ? [

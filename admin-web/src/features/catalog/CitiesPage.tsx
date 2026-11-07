@@ -145,9 +145,7 @@ export function CitiesPage() {
               <span key="s" className="desk-actions">
                 <Tag tone="muted">معطّلة</Tag>
                 <Can permission={AdminPermission.CATALOG_WRITE}>
-                  <ConfirmDialog
-                    variant="desk"
-                    title={`تفعيل ${city.nameAr}`}
+                  <ConfirmDialog                    title={`تفعيل ${city.nameAr}`}
                     effects={['ترجع في قوائم المدن، ويقدر العرسان والمزودين يختارونها.']}
                     confirmLabel="فعّلها"
                     trigger={<SoftAction>فعّلها</SoftAction>}
@@ -216,9 +214,7 @@ export function CitiesPage() {
               احفظ
             </DeskButton>
             {editing && editing !== 'new' && editing.isActive ? (
-              <ConfirmDialog
-                variant="desk"
-                title={`تعطيل ${editing.nameAr}`}
+              <ConfirmDialog                title={`تعطيل ${editing.nameAr}`}
                 effects={[
                   'تختفي من قوائم المدن عند العرسان والمزودين.',
                   'ما تنحذف، وتقدر ترجّعها بـ«فعّلها».',

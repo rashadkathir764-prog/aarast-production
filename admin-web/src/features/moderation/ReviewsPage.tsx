@@ -216,9 +216,7 @@ export function ReviewsPage() {
                     </SoftAction>
                   ) : null}
                   {review.status !== 'HIDDEN' ? (
-                    <ConfirmDialog
-                      variant="desk"
-                      title={`إخفاء تقييم ${review.user.name}`}
+                    <ConfirmDialog                      title={`إخفاء تقييم ${review.user.name}`}
                       effects={[
                         `ما يظهر في ملف ${review.provider?.businessName ?? 'المزود'} ولا يدخل في تقييمه.`,
                         'تقدر ترجّعه من «مخفية».',
@@ -238,9 +236,7 @@ export function ReviewsPage() {
                     </SoftAction>
                   ) : null}
                   {review.reply?.status === 'PUBLISHED' ? (
-                    <ConfirmDialog
-                      variant="desk"
-                      title={`إخفاء رد ${review.provider?.businessName ?? 'المزود'}`}
+                    <ConfirmDialog                      title={`إخفاء رد ${review.provider?.businessName ?? 'المزود'}`}
                       effects={[
                         'الرد ما يظهر للعرسان تحت التقييم، والتقييم يبقى كما هو.',
                         'المزود يشوف إن رده مخفي، وما يقدر يكتب رد ثاني.',

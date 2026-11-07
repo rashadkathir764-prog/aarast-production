@@ -224,9 +224,7 @@ export function CategoriesPage() {
               <span key="s" className="desk-actions">
                 <Tag tone="muted">معطّل</Tag>
                 <Can permission={AdminPermission.CATALOG_WRITE}>
-                  <ConfirmDialog
-                    variant="desk"
-                    title={`تفعيل ${category.nameAr}`}
+                  <ConfirmDialog                    title={`تفعيل ${category.nameAr}`}
                     effects={['يرجع يظهر في الأقسام للعرسان والمزودين حسب مساره.']}
                     confirmLabel="فعّله"
                     trigger={<SoftAction>فعّله</SoftAction>}
@@ -325,9 +323,7 @@ export function CategoriesPage() {
               احفظ
             </DeskButton>
             {editing && editing !== 'new' && editing.isActive ? (
-              <ConfirmDialog
-                variant="desk"
-                title={`تعطيل ${editing.nameAr}`}
+              <ConfirmDialog                title={`تعطيل ${editing.nameAr}`}
                 effects={['يختفي من الأقسام عند العرسان والمزودين.', 'ما ينحذف، وتقدر ترجّعه بـ«فعّله».']}
                 confirmLabel="عطّله"
                 confirmTone="coral"

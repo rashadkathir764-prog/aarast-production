@@ -227,9 +227,7 @@ export function FeaturedPlacementsPage() {
                       <SoftAction onClick={() => renew(period)}>جدّد</SoftAction>
                     ) : null}
                     {period.state === 'ACTIVE' || period.state === 'SCHEDULED' ? (
-                      <ConfirmDialog
-                        variant="desk"
-                        title={
+                      <ConfirmDialog                        title={
                           period.state === 'ACTIVE'
                             ? `نوقّف ظهور «${period.provider.businessName}» المميز؟`
                             : `نلغي ظهور «${period.provider.businessName}» اللي يبدأ ${dayLabel(period.startsOn)}؟`

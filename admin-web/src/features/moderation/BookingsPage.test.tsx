@@ -98,6 +98,57 @@ describe('a12 bookings (B-40)', () => {
     );
   });
 
+  // RA-AD-19: «كل الحجوزات» was shown while the filters were not the very
+  // object it resets to, so it stayed after it had cleared them.
+  it('hides «كل الحجوزات» once it has cleared the filters', async () => {
+    vi.mocked(getBookings).mockResolvedValue(page([booking()]));
+    render(
+      <MemoryRouter>
+        <BookingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText('محمد الحمدي');
+    expect(screen.queryByRole('button', { name: 'كل الحجوزات' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('الحالة'), { target: { value: 'EXPIRED' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'كل الحجوزات' }));
+    expect(screen.getByLabelText('الحالة')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'كل الحجوزات' })).toBeNull();
+  });
+
+  // RA-AD-18: the filter read the first 100 active providers, so the
+  // suspended one behind «انتهى مع إيقاف المزود» could not be picked, nor
+  // any active one past a hundred. An approved provider is active or
+  // suspended, which is what the list without a status returns.
+  it('offers every approved provider, the suspended ones marked', async () => {
+    vi.mocked(getBookings).mockResolvedValue(page([booking()]));
+    const active = Array.from({ length: 100 }, (_, index) => ({
+      id: `active-${index}`,
+      businessName: `مزود ${index}`,
+      status: 'ACTIVE',
+    }));
+    vi.mocked(getProviders).mockImplementation(async (params) =>
+      ({
+        items:
+          params?.page === 2
+            ? [{ id: 'suspended-1', businessName: 'قاعة الندى', status: 'SUSPENDED' }]
+            : active,
+        page: params?.page ?? 1,
+        limit: 100,
+        total: 101,
+        totalPages: 2,
+      }) as never,
+    );
+    render(
+      <MemoryRouter>
+        <BookingsPage />
+      </MemoryRouter>,
+    );
+    const filter = screen.getByLabelText('المزود');
+    expect(await within(filter).findByRole('option', { name: 'قاعة الندى (موقوف)' })).toBeInTheDocument();
+    expect(within(filter).getByRole('option', { name: 'مزود 99' })).toBeInTheDocument();
+    expect(getProviders).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'ACTIVE' }));
+  });
+
   // RA-AD-16: «إلى يوم» before «من يوم» went to the server, which refuses
   // it, and came back as «تعذّر الحفظ» with a retry that failed the same way.
   it('says the days are the wrong way round instead of asking the server', async () => {

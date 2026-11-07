@@ -17,6 +17,7 @@ import {
   Tag,
   TwoLine,
 } from '../../design_system/Desk';
+import { everyPage } from '../../platform/api/query';
 import { dayMonth } from '../../platform/i18n/deskTime';
 
 type Page = {
@@ -81,6 +82,8 @@ export function BookingsPage() {
   // RA-AD-16: the server refuses «من يوم» after «إلى يوم»; the desk says so
   // itself rather than asking. ISO days compare as text.
   const backwards = filters.from !== '' && filters.to !== '' && filters.from > filters.to;
+  // RA-AD-19: by value; the reset makes a new object equal to NO_FILTERS.
+  const filtered = Object.values(filters).some((value) => value !== '');
 
   const load = useCallback(async () => {
     setError(null);
@@ -105,9 +108,14 @@ export function BookingsPage() {
     void load();
   }, [load]);
 
+  // RA-AD-18: an approved provider is active or suspended, the list the
+  // server gives with no status; all of it, so the suspended one behind
+  // «انتهى مع إيقاف المزود» can be picked too.
   useEffect(() => {
-    getProviders({ status: 'ACTIVE', limit: 100 })
-      .then((list) => setProviders(list.items))
+    everyPage((page, limit) => getProviders({ page, limit }))
+      .then((list) =>
+        setProviders([...list.items].sort((a, b) => a.businessName.localeCompare(b.businessName, 'ar'))),
+      )
       .catch(() => setProviders([]));
   }, []);
 
@@ -133,11 +141,11 @@ export function BookingsPage() {
         title="الحجوزات"
         sub="اعّرست ما يمسك فلوس: نشوف الحجز ومين أنهاه وليش، بدون مبالغ"
         actions={
-          filters === NO_FILTERS ? null : (
+          filtered ? (
             <DeskButton tone="soft" onClick={() => filter(NO_FILTERS)}>
               كل الحجوزات
             </DeskButton>
-          )
+          ) : null
         }
       />
       <div className="desk-row" role="search" style={{ alignItems: 'flex-end' }}>
@@ -151,7 +159,7 @@ export function BookingsPage() {
             <option value="">كل المزودين</option>
             {providers.map((provider) => (
               <option key={provider.id} value={provider.id}>
-                {provider.businessName}
+                {provider.status === 'SUSPENDED' ? `${provider.businessName} (موقوف)` : provider.businessName}
               </option>
             ))}
           </select>

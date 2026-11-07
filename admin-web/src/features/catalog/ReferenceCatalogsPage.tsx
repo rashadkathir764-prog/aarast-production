@@ -543,9 +543,7 @@ export function ReferenceCatalogsPage() {
               احفظ مسودة
             </DeskButton>
             {catalog && editing && editing !== 'new' && editing.current.isActive ? (
-              <ConfirmDialog
-                variant="desk"
-                title={`إيقاف ${editing.current.nameAr}`}
+              <ConfirmDialog                title={`إيقاف ${editing.current.nameAr}`}
                 effects={['يختفي من الخطط الجديدة على طول بدون مسودة.', 'الخطط القائمة ما تتغير.']}
                 confirmLabel="أوقفه"
                 confirmTone="coral"
@@ -560,9 +558,7 @@ export function ReferenceCatalogsPage() {
             {/* RA-AD-14: the reverse of «أوقف», the same way: active and
                 published at once. */}
             {catalog && editing && editing !== 'new' && !editing.current.isActive ? (
-              <ConfirmDialog
-                variant="desk"
-                title={`تشغيل ${editing.current.nameAr}`}
+              <ConfirmDialog                title={`تشغيل ${editing.current.nameAr}`}
                 effects={[
                   'يرجع للخطط الجديدة على طول.',
                   'أي تعديل محفوظ مسودة ينزل معه.',

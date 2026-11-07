@@ -139,9 +139,7 @@ export function ProviderDecisions({
       key: 'changes',
       button: <DeskButton tone="saffron">اطلب تعديل</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`اطلب تعديل من ${name}`}
+        <ConfirmDialog          title={`اطلب تعديل من ${name}`}
           effects={[
             'يبقى مخفي عن العرسان لين يعدّل.',
             fieldNotes.length > 0
@@ -174,9 +172,7 @@ export function ProviderDecisions({
       key: 'approve',
       button: <DeskButton tone="green">اعتماد</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`اعتماد ${name}`}
+        <ConfirmDialog          title={`اعتماد ${name}`}
           effects={[
             'يظهر للعرسان في الدليل لما تكون عنده خدمة نشطة.',
             'يوصله تنبيه إن طلبه انقبل.',
@@ -195,9 +191,7 @@ export function ProviderDecisions({
       key: 'reject',
       button: <DeskButton tone="white-coral">رفض</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`رفض ${name}`}
+        <ConfirmDialog          title={`رفض ${name}`}
           effects={['ما يظهر للعرسان.', 'السبب يوصله في تنبيه.']}
           needsNote
           noteMaxLength={2000} // AdminReviewActionDto.reason
@@ -215,9 +209,7 @@ export function ProviderDecisions({
       key: 'suspend',
       button: <DeskButton tone="coral">إيقاف</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`إيقاف ${name}`}
+        <ConfirmDialog          title={`إيقاف ${name}`}
           effects={[
             'يختفي من الدليل وما توصله طلبات جديدة.',
             'يوصله السبب، ويقدر يتواصل مع الدعم.',
@@ -238,9 +230,7 @@ export function ProviderDecisions({
       key: 'activate',
       button: <DeskButton tone="teal">تفعيل</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`تفعيل ${name}`}
+        <ConfirmDialog          title={`تفعيل ${name}`}
           effects={['يرجع للدليل ويستقبل طلبات.', 'يوصله تنبيه إن حسابه رجع.']}
           confirmLabel="فعّله"
           trigger={trigger}
@@ -254,9 +244,7 @@ export function ProviderDecisions({
       key: 'verify',
       button: <DeskButton tone="soft">توثيق</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`توثيق ${name}`}
+        <ConfirmDialog          title={`توثيق ${name}`}
           effects={[
             'تأكد إنك راجعت السجل التجاري أو الهوية.',
             'تظهر علامة «موثّق» للعرسان.',
@@ -274,9 +262,7 @@ export function ProviderDecisions({
       key: 'unverify',
       button: <DeskButton tone="soft">إلغاء التوثيق</DeskButton>,
       dialog: (trigger) => (
-        <ConfirmDialog
-          variant="desk"
-          title={`إلغاء توثيق ${name}`}
+        <ConfirmDialog          title={`إلغاء توثيق ${name}`}
           effects={['تختفي علامة «موثّق» من ملفه.']}
           confirmLabel="ألغِ التوثيق"
           confirmTone="coral"

@@ -55,7 +55,10 @@ const EXACT = Object.freeze({
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.
   sourceFates: '5d8e15adf9eda24d5db4754d708a3382b41597d91ef4f6c9493212f9e15255d3',
-  createdTargets: 'c74d09c036596e387e9254d4c2c3f4be9281e76d04bc389eb484416dd9cfa600',
+  // Re-pinned 2026-11-07 (RA-AD-19): platform/i18n/formatDate.ts and its
+  // test left; no page read it since deskTime.ts dates in Sanaa time. No
+  // other created target changed.
+  createdTargets: 'c224962c0596968cc8486147551cbb9fd66e36343447e0eecb4803ceb71e234b',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',
   paginationStages: 'b48499f606f88062ff02c30e90038fc9a06cd19bec30d5201f62428bafb07e35',
   changedPathFence: '6f07c7232cd8712d693ab7a7ff5d4e12ba287fc15c1747031369ac3f7276a4bc',

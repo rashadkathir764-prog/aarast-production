@@ -433,6 +433,7 @@ class JourneyChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final fg = selected ? AarastV3Color.onPrimary : AarastV3Color.ink;
     final radius = large ? AarastV3Radius.pill : AarastV3Radius.surface;
+    final drawn = _drawn(context, fg, radius);
     return Semantics(
       button: onTap != null,
       selected: selected,
@@ -443,40 +444,49 @@ class JourneyChip extends StatelessWidget {
         onTap: onTap,
         selected: selected,
         borderRadius: BorderRadius.circular(radius),
-        child: Container(
-          constraints: BoxConstraints(
-            minHeight: large ? AarastV3Space.x12 : 36,
-          ),
-          padding: large
-              ? const EdgeInsets.symmetric(horizontal: AarastV3Space.x4)
-              : AarastV3Density.chipInsets,
-          decoration: BoxDecoration(
-            color: selected
-                ? selectedColor ?? context.accent.primary
-                : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(radius),
-            border: selected ? null : Border.all(color: AarastV3Color.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: fg),
-                const SizedBox(width: AarastV3Space.x1),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  style: JourneyType.of(
-                    fontSize,
-                    weight: JourneyType.bold,
-                    color: fg,
-                  ),
-                ),
+        // RA-MO-28 (D74): a chip that can be touched is touched in a 48
+        // band; its drawing stays about 36, as a round button stays 44.
+        child: onTap == null || large
+            ? drawn
+            : ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+                child: Align(widthFactor: 1, child: drawn),
               ),
-            ],
+      ),
+    );
+  }
+
+  Widget _drawn(BuildContext context, Color fg, double radius) {
+    return Container(
+      constraints: BoxConstraints(minHeight: large ? AarastV3Space.x12 : 36),
+      padding: large
+          ? const EdgeInsets.symmetric(horizontal: AarastV3Space.x4)
+          : AarastV3Density.chipInsets,
+      decoration: BoxDecoration(
+        color: selected
+            ? selectedColor ?? context.accent.primary
+            : AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(radius),
+        border: selected ? null : Border.all(color: AarastV3Color.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(width: AarastV3Space.x1),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              style: JourneyType.of(
+                fontSize,
+                weight: JourneyType.bold,
+                color: fg,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

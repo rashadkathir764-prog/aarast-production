@@ -79,7 +79,7 @@ void main() {
     expect(_size(tester, 'التالي'), 16);
   });
 
-  testWidgets('the tab switch is about 44 tall with 13 bold names', (
+  testWidgets('the tab switch is a 48 band of tabs with 13 bold names', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -91,11 +91,18 @@ void main() {
         ),
       ),
     );
-    // 4 + 8 + one 13 line (× 1.35) + 8 + 4, on the grid (D74).
+    // RA-MO-28 (D74): every tab is touched in 48; the selected fill keeps
+    // 8 + one 13 line (× 1.35) + 8, centred in it.
+    expect(tester.getSize(find.byType(JourneyTabSwitch)).height, 48);
     expect(
-      tester.getSize(find.byType(JourneyTabSwitch)).height,
-      closeTo(4 + 8 + 13 * 1.35 + 8 + 4, 0.5),
+      tester.getSize(find.byKey(const ValueKey('journey-tab-0'))).height,
+      closeTo(8 + 13 * 1.35 + 8, 0.5),
     );
+    final tab = find.ancestor(
+      of: find.byKey(const ValueKey('journey-tab-1')),
+      matching: find.byType(Semantics),
+    );
+    expect(tester.getSize(tab.first).height, 48);
     final name = tester.widget<Text>(find.text('الكل'));
     expect(name.style?.fontSize, 13);
     expect(name.style?.fontWeight, FontWeight.w700);
@@ -132,6 +139,14 @@ void main() {
       tester.getSize(outlined.first).height,
       closeTo(1 + 8 + 13.5 * 1.35 + 8 + 1, 0.5),
     );
+    // RA-MO-28 (D74): drawn about 36, touched in 48.
+    for (final label in ['صنعاء', 'عدن']) {
+      final target = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(JourneyChip),
+      );
+      expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
+    }
   });
 
   testWidgets('a section link is plain words and keeps the row height', (

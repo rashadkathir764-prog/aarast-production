@@ -83,4 +83,38 @@ void main() {
     expect(size.width, greaterThanOrEqualTo(48));
     expect(size.height, greaterThanOrEqualTo(48));
   });
+
+  // RA-MO-28 (D74): chips and tabs pass the platform's own target check.
+  testWidgets('chips and the tab switch meet the platform target check', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await _pump(
+      tester,
+      Padding(
+        padding: const EdgeInsets.all(AarastV3Space.x4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            JourneyTabSwitch(
+              labels: const ['الملخص', 'البنود', 'الدفعات'],
+              selected: 0,
+              onSelected: (_) {},
+            ),
+            const SizedBox(height: AarastV3Space.x3),
+            Wrap(
+              spacing: AarastV3Space.x2,
+              runSpacing: AarastV3Space.x2,
+              children: [
+                for (final label in const ['لحاله', '+1', '+2', 'أكثر'])
+                  JourneyChip(label: label, onTap: () {}),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    semantics.dispose();
+  });
 }

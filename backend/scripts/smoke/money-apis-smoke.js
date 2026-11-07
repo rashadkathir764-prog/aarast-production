@@ -338,6 +338,23 @@ async function run() {
         'the due list asks for what is left',
         due.body?.find?.((item) => item.id === reminder.body?.id)?.amountDue === '200',
       );
+      // A second reminder of the same agreement also asks for up to 200; each
+      // carries what the agreement owes, so the two together count 200, not
+      // 400, on the phone's «الدفعات» total.
+      const second = await request(
+        'POST',
+        `/api/v1/costs/${partlyId}/payment-schedules`,
+        { amount: '150', dueDate: dateOffsetIso(5) },
+        owner.token,
+      );
+      const dueBoth = await request('GET', `/api/v1/wedding-plans/${planId}/payment-schedules/due`, null, owner.token);
+      const ofAgreement = (dueBoth.body ?? []).filter?.((item) => item.costId === partlyId) ?? [];
+      check(
+        'each reminder of one agreement carries what the agreement still owes',
+        second.status === 201 && ofAgreement.length === 2
+          && ofAgreement.every((item) => item.costRemainingAmount === '200'),
+      );
+      await request('DELETE', `/api/v1/payment-schedules/${second.body?.id}`, null, owner.token);
       const paid = await request(
         'POST',
         `/api/v1/payment-schedules/${reminder.body?.id}/pay`,

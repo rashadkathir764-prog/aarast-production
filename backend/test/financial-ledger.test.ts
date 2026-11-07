@@ -180,9 +180,23 @@ test("the only payment due date belongs to PaymentSchedule", () => {
 
   const importService = read("src/wedding-plans/wedding-plans.service.ts");
   assert.doesNotMatch(importService, /cost\.dueDate|scheduledAmount/);
-  assert.match(
-    importService,
-    /paymentSchedules\[\$\{scheduleIndex\}\]\.amount exceeds the remaining cost/,
+  // RA-BE-63 (changed with its reason): this line pinned the import refusing
+  // a reminder above what is left, which refused a phone's plan for ever
+  // once a payment came after the reminder (a state the account itself
+  // keeps, RA-BE-53). The rule it guarded still holds where it belongs, in
+  // the database, at the reminder's write: the import writes an agreement as
+  // it happened (unpaid with its reminders, then its payments), and a
+  // reminder is never above the whole agreement nor kept on one paid in full.
+  assert.doesNotMatch(importService, /exceeds the remaining cost/);
+  assert.match(importService, /written\.gt\(totalAmount\) \? totalAmount : written/);
+  assert.match(importService, /\.filter\(\(\) => remainingAmount\.gt\(0\)\)/);
+  const financePort = read("src/modules/finance/infrastructure/finance-port.service.ts");
+  const importedCost =
+    financePort.match(/async createImportedCostInTransaction\([\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(
+    importedCost.indexOf("paymentSchedules:") >= 0 &&
+      importedCost.indexOf("paymentSchedules:") < importedCost.indexOf("costPayment.createMany"),
+    "an imported agreement's reminders are written before its payments",
   );
 });
 

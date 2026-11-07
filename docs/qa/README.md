@@ -2,7 +2,17 @@
 
 ## Gates
 
-Run the gates of the area you touched. Run all of them before a merge or a release.
+One command runs them, on Windows or Linux, and prints a PASS, FAIL or SKIP
+table (a skip names the missing tool; the exit code is 1 on any failure):
+
+```powershell
+node scripts/gates.mjs --quick                 # before a commit: static checks and unit tests
+node scripts/gates.mjs --quick --only mobile   # one area or more: backend, admin, mobile, root
+node scripts/gates.mjs --full --strict         # before a merge or a release: everything, no skip allowed
+```
+
+The list below is what it runs, command by command. Run the gates of the area
+you touched before a commit, and all of them before a merge or a release.
 
 ```powershell
 # Backend (from backend/)
@@ -48,6 +58,10 @@ Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails.
 CI (`.github/workflows/ci.yml`) is off while GitHub billing is stopped, so the
 list above is the whole gate: it carries every check CI ran (the staging
 contracts, the admin smokes, `npm audit`), and each is run here.
+`scripts/gates.mjs --full` adds the three CI checks that were missing from the
+list: `docker compose config`, the secrets scan (`gitleaks detect`, when
+gitleaks is installed) and the release Gradle guard. The image build and its
+Trivy scan stay in CI only.
 
 On Windows, `npm test` skips the one test that needs POSIX file modes
 (`openwa-credential-file.test.ts`: the OpenWA credential file must refuse

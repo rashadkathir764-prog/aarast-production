@@ -184,10 +184,122 @@ async function run() {
     check('onboarding without token returns 401', res.status === 401);
   }
 
+  await importLocalPlanChecks(accessToken);
+
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
 
   if (failed > 0) process.exit(1);
+}
+
+/**
+ * Saving a plan kept on the phone into the account (S9), on a real database:
+ * RA-BE-63 (a reminder above what is left), RA-BE-64 (a plan past the old
+ * caps and past the default body limit), RA-BE-65 (a retry with other content
+ * is refused, the same content in another order is the same save) and
+ * RA-BE-83 (two guests on one number are both kept).
+ */
+async function importLocalPlanChecks(accessToken) {
+  const migrationId = `guest-plan-smoke-${timestamp}`;
+  const guests = Array.from({ length: 1200 }, (_, index) => ({
+    name: `ضيف رقم ${index + 1} من أهل العريس`,
+    phone: `+96777${String(1000000 + index).slice(-7)}`,
+    side: 'GROOM',
+  }));
+  guests.push({ name: 'أبو محمد', phone: '+967771234500', side: 'FAMILY' });
+  guests.push({ name: 'أم محمد', phone: '+967771234500', side: 'FAMILY' });
+  const plan = {
+    clientMigrationId: migrationId,
+    path: 'USER',
+    persona: 'GROOM',
+    title: 'عرس الاستيراد',
+    city: 'صنعاء',
+    currency: 'YER',
+    selectedCategories: ['القاعة', 'التصوير'],
+    costs: [
+      {
+        // A reminder of 500,000 written first, then 800,000 paid straight on
+        // the agreement: 200,000 left, the reminder above it (RA-BE-63).
+        title: 'قاعة الفرح',
+        totalAmount: '1000000',
+        categoryName: 'القاعة',
+        payments: [{ amount: '800000', paidAt: '2026-11-01T09:00:00.000Z' }],
+        paymentSchedules: [{ amount: '500000', dueDate: '2026-12-01T00:00:00.000Z' }],
+      },
+      {
+        // Paid in full: the pending reminder does not survive it (R4).
+        title: 'المصور',
+        totalAmount: '300000',
+        categoryName: 'التصوير',
+        payments: [{ amount: '300000', paidAt: '2026-11-02T09:00:00.000Z' }],
+        paymentSchedules: [{ amount: '100000', dueDate: '2026-12-05T00:00:00.000Z' }],
+      },
+    ],
+    tasks: Array.from({ length: 350 }, (_, index) => ({ title: `مهمة ${index + 1}` })),
+    guests,
+  };
+  const bodyBytes = Buffer.byteLength(JSON.stringify(plan));
+  check(`import body is past the default 100kb (${bodyBytes} bytes)`, bodyBytes > 100 * 1024);
+
+  let importedPlanId = null;
+  {
+    const res = await request('POST', '/api/v1/onboarding/import-local', plan, accessToken);
+    check('POST /api/v1/onboarding/import-local (1202 guests, 350 tasks) - HTTP 201', res.status === 201);
+    check('import is not a replay the first time', res.body?.alreadyImported === false);
+    check('import takes every guest', res.body?.imported?.guests === 1202);
+    check('import takes every task', res.body?.imported?.tasks === 350);
+    check('import keeps only the reminder still owed', res.body?.imported?.paymentSchedules === 1);
+    importedPlanId = res.body?.activeWeddingPlan?.id;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${importedPlanId}/costs`, null, accessToken);
+    const costs = Array.isArray(res.body) ? res.body : res.body?.items ?? [];
+    const hall = costs.find((cost) => cost.title === 'قاعة الفرح');
+    const schedules = hall
+      ? await request('GET', `/api/v1/costs/${hall.id}/payment-schedules`, null, accessToken)
+      : null;
+    const scheduleList = Array.isArray(schedules?.body) ? schedules.body : schedules?.body?.items ?? [];
+    const schedule = scheduleList.find((item) => item.status === 'PENDING');
+    check('the hall reminder keeps the amount written (500,000)', Number(schedule?.amount) === 500000);
+    check('the hall reminder asks for what is left (200,000)', Number(schedule?.amountDue) === 200000);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${importedPlanId}/guests`, null, accessToken);
+    const list = Array.isArray(res.body) ? res.body : res.body?.items ?? [];
+    const father = list.find((guest) => guest.name === 'أبو محمد');
+    const mother = list.find((guest) => guest.name === 'أم محمد');
+    check('two guests on one number: the first keeps the number', father?.phone === '+967771234500');
+    check('two guests on one number: the second is kept, its number noted', mother !== undefined
+      && !mother.phone && String(mother.notes ?? '').includes('+967771234500'));
+  }
+
+  {
+    // The same save again, its lists read back in another order.
+    const replay = { ...plan, guests: [...plan.guests].reverse(), tasks: [...plan.tasks].reverse() };
+    const res = await request('POST', '/api/v1/onboarding/import-local', replay, accessToken);
+    check('the same plan again is a replay - HTTP 201', res.status === 201 && res.body?.alreadyImported === true);
+    check('the replay answers with the same plan', res.body?.activeWeddingPlan?.id === importedPlanId);
+  }
+
+  {
+    // The first answer was lost, then the plan changed on the phone.
+    const changed = { ...plan, guests: [...plan.guests, { name: 'ضيف أُضيف بعدين', side: 'FRIEND' }] };
+    const res = await request('POST', '/api/v1/onboarding/import-local', changed, accessToken);
+    check('the same id with other content - HTTP 409', res.status === 409);
+    check('the refusal carries LOCAL_PLAN_SAVED_BEFORE', res.body?.code === 'LOCAL_PLAN_SAVED_BEFORE');
+    check('the refusal is in Arabic', /[\u0600-\u06FF]/u.test(String(res.body?.message ?? '')));
+    const guestsAfter = await request('GET', `/api/v1/wedding-plans/${importedPlanId}/guests`, null, accessToken);
+    const listAfter = Array.isArray(guestsAfter.body) ? guestsAfter.body : guestsAfter.body?.items ?? [];
+    check('the refused save changed nothing in the account', listAfter.length === 1202);
+  }
+
+  {
+    // A large body without a session is read at the default limit only.
+    const res = await request('POST', '/api/v1/onboarding/import-local', plan);
+    check('a large anonymous body is refused before it is read (413)', res.status === 413);
+  }
 }
 
 run().catch((err) => {

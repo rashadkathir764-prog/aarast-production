@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/plan_day.dart';
@@ -18,9 +20,14 @@ class LocalPlanSnapshot {
     required this.tasks,
     required this.guests,
     required this.categoryNameById,
+    this.migrationId,
   });
 
   final GuestOnboardingDraft draft;
+
+  /// RA-BE-65: the id the account knows this save by; the plan's phone id
+  /// unless the person chose to keep it as a second plan.
+  final String? migrationId;
   final List<Map<String, dynamic>> costs;
   final List<Map<String, dynamic>> costPayments;
   final List<Map<String, dynamic>> paymentSchedules;
@@ -37,6 +44,16 @@ class LocalPlanSnapshot {
     final names = categoryNameById.values.toSet().toList();
     return names.isNotEmpty ? names : draft.selectedCategoryKeys;
   }
+}
+
+/// RA-BE-64: the plan is past what one save takes; said before sending.
+class LocalPlanTooLarge implements Exception {
+  const LocalPlanTooLarge(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 /// What the account's own open plan holds, for w09's «في حسابك» card.
@@ -102,6 +119,9 @@ class LocalPlanMigrationService {
 
     return LocalPlanSnapshot(
       draft: draft,
+      migrationId: planId == null
+          ? null
+          : await guestStorage.importMigrationId(planId),
       costs: await _rows(OfflineTables.cachedCosts, planId),
       costPayments: await _rows(OfflineTables.cachedCostPayments, planId),
       paymentSchedules: await _rows(
@@ -144,12 +164,46 @@ class LocalPlanMigrationService {
     );
   }
 
+  /// RA-BE-64: the most one save takes, the server's own bounds
+  /// (`backend/src/onboarding/dto/import-local-plan.dto.ts`: guests stop
+  /// where a plan stops, D99, the guests' own `planGuestsMax`; tasks,
+  /// agreements and the body are bounds no real wedding reaches). Keep them
+  /// equal; a test holds the guests' one to `planGuestsMax`.
+  static const maxImportGuests = 5000;
+  static const maxImportTasks = 2000;
+  static const maxImportCosts = 1000;
+  static const maxImportBytes = 8 * 1024 * 1024;
+
+  /// Why this plan cannot go in one save, in words for the person; null
+  /// when it fits.
+  static String? tooLargeReason(Map<String, dynamic> payload) {
+    int count(String key) => (payload[key] as List?)?.length ?? 0;
+    if (count('guests') > maxImportGuests) {
+      return 'خطتك فيها أكثر من $maxImportGuests ضيف، والحساب يشيل $maxImportGuests بالكثير.';
+    }
+    if (count('tasks') > maxImportTasks) {
+      return 'خطتك فيها أكثر من $maxImportTasks مهمة، والحساب ياخذ $maxImportTasks بالكثير مرة وحدة.';
+    }
+    if (count('costs') > maxImportCosts) {
+      return 'خطتك فيها أكثر من $maxImportCosts اتفاق، والحساب ياخذ $maxImportCosts بالكثير مرة وحدة.';
+    }
+    if (utf8.encode(jsonEncode(payload)).length > maxImportBytes) {
+      return 'خطتك أكبر من اللي ينحفظ مرة وحدة. خفّف الملاحظات الطويلة وجرّب.';
+    }
+    return null;
+  }
+
   /// Uploads the snapshot into the authenticated account in one idempotent
-  /// call. The stable local plan id doubles as the idempotency key, so a
-  /// retry after a timeout returns the already-imported plan instead of
-  /// duplicating it.
+  /// call. The save's id ([LocalPlanSnapshot.migrationId]) is the
+  /// idempotency key: a retry of the same plan after a timeout returns the
+  /// plan already saved instead of duplicating it, and a retry after the
+  /// plan changed on the phone is refused (LOCAL_PLAN_SAVED_BEFORE) instead
+  /// of answering with the old one.
   Future<OnboardingCompleteResponse> migrate(LocalPlanSnapshot snapshot) {
-    return weddingPlansApi.importLocalPlan(buildImportPayload(snapshot));
+    final payload = buildImportPayload(snapshot);
+    final reason = tooLargeReason(payload);
+    if (reason != null) throw LocalPlanTooLarge(reason);
+    return weddingPlansApi.importLocalPlan(payload);
   }
 
   /// Pure payload mapping — kept separate so the contract is testable
@@ -165,7 +219,7 @@ class LocalPlanMigrationService {
         ?_costPayload(row, snapshot, reversedPaymentIds),
     ];
     final payload = <String, dynamic>{
-      'clientMigrationId': draft.guestPlanId,
+      'clientMigrationId': snapshot.migrationId ?? draft.guestPlanId,
       'path': 'USER',
       'persona': switch (draft.persona) {
         GuestPersona.bride => 'BRIDE',

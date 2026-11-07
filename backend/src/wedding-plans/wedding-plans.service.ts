@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import {
   AppRole,
   BudgetCategory,
@@ -490,13 +492,14 @@ export class WeddingPlansService {
       "clientMigrationId",
     );
 
+    const payloadHash = localPlanImportHash(dto);
     const existing = await findImportedWeddingPlan(
       this.prisma,
       currentUser.id,
       migrationId,
     );
     if (existing) {
-      return this.buildImportResponse(existing, currentUser, true);
+      return this.replayImport(existing, currentUser, payloadHash);
     }
 
     const path = dto.path ?? OnboardingPath.USER;
@@ -556,24 +559,30 @@ export class WeddingPlansService {
               `costs[${costIndex}].paymentSchedules[${scheduleIndex}].dueDate is required`,
             );
           }
-          const amount = new Prisma.Decimal(
+          const written = new Prisma.Decimal(
             this.requiredPositiveAmount(
               schedule.amount,
               `costs[${costIndex}].paymentSchedules[${scheduleIndex}].amount`,
             ),
           );
-          if (amount.gt(remainingAmount)) {
-            throw new BadRequestException(
-              `costs[${costIndex}].paymentSchedules[${scheduleIndex}].amount exceeds the remaining cost`,
-            );
-          }
+          // A reminder never asks for more than the whole agreement; one
+          // above it (the agreement made smaller after) is taken at the
+          // agreement's total instead of refusing the plan for ever.
+          const amount = written.gt(totalAmount) ? totalAmount : written;
           return {
             amount,
             dueDate,
             note: this.optionalText(schedule.note ?? undefined),
           };
         },
-      );
+      )
+        // RA-BE-63: a reminder is capped by what is left only when it is
+        // written; a payment made straight on the agreement afterwards may
+        // leave it above what is left, and it asks for the lesser
+        // (scheduleAmountDue). The import takes the phone's plan in that
+        // state, as the account does. A fully paid agreement keeps no pending
+        // reminder (a full payment cancels them, R4).
+        .filter(() => remainingAmount.gt(0));
       return {
         title: this.requiredText(cost.title, `costs[${costIndex}].title`),
         totalAmount,
@@ -622,13 +631,31 @@ export class WeddingPlansService {
       priority: task.priority ?? WeddingTaskPriority.MEDIUM,
     }));
 
+    // RA-BE-83: a plan holds one guest per number. A second guest on a
+    // number already taken (the family's number for «أبو محمد» and «أم
+    // محمد») is kept by name, the number noted, instead of being dropped.
+    const nameByPhone = new Map<string, string>();
     const guests = (dto.guests ?? []).map((guest, index) => {
       const name = this.withinLength(
         this.requiredText(guest.name, `guests[${index}].name`),
         GUEST_NAME_MAX,
         `guests[${index}].name`,
       );
-      const phone = PhoneNormalizer.normalizeOptional(guest.phone);
+      const givenPhone = PhoneNormalizer.normalizeOptional(guest.phone);
+      const sharesWith = givenPhone ? nameByPhone.get(givenPhone) : undefined;
+      if (givenPhone && sharesWith === undefined) {
+        nameByPhone.set(givenPhone, name);
+      }
+      const phone = sharesWith === undefined ? givenPhone : null;
+      const notes = this.optionalText(guest.notes ?? undefined);
+      const sharedNote =
+        sharesWith === undefined
+          ? null
+          : `رقمه نفس رقم ${sharesWith}: ${givenPhone}`;
+      const keptNotes =
+        sharedNote === null
+          ? notes
+          : [notes, sharedNote].filter(Boolean).join("\n");
       return {
         name,
         normalizedName: name.replace(/\s+/g, " "),
@@ -642,8 +669,12 @@ export class WeddingPlansService {
           guest.attendanceStatus ?? GuestAttendanceStatus.PENDING,
         seatsCount: guest.seatsCount ?? 1,
         companionsCount: guest.companionsCount ?? 0,
+        // The noted number never pushes the person's own words past the
+        // limit: when there is no room for it, their words stay as written.
         notes: this.withinLength(
-          this.optionalText(guest.notes ?? undefined),
+          keptNotes !== null && !withinCharacters(keptNotes, GUEST_NOTES_MAX)
+            ? notes
+            : keptNotes,
           GUEST_NOTES_MAX,
           `guests[${index}].notes`,
         ),
@@ -685,6 +716,7 @@ export class WeddingPlansService {
             persona: dto.persona ?? null,
             onboardingCompletedAt: now,
             importMigrationId: migrationId,
+            importPayloadHash: payloadHash,
         });
 
         await this.contributionHistory.createHistoryScopeInTransaction(
@@ -783,11 +815,34 @@ export class WeddingPlansService {
           migrationId,
         );
         if (winner) {
-          return this.buildImportResponse(winner, currentUser, true);
+          return this.replayImport(winner, currentUser, payloadHash);
         }
       }
       throw error;
     }
+  }
+
+  /**
+   * RA-BE-65: the same save again answers with the plan it made. A save with
+   * the same id and other content means the first save reached the account
+   * and its answer was lost, then the plan changed on the phone: answering
+   * with the first plan would let the phone drop what changed since. It is
+   * refused with its code, and the phone keeps its plan and asks.
+   */
+  private async replayImport(
+    plan: WeddingPlan,
+    currentUser: AuthenticatedUser,
+    payloadHash: string,
+  ): Promise<LocalPlanImportResponse> {
+    if (plan.importPayloadHash !== null && plan.importPayloadHash !== payloadHash) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: "LOCAL_PLAN_SAVED_BEFORE",
+        message:
+          "خطتك انحفظت في حسابك من محاولة قبل، وتغيّرت على الجوال بعدها.",
+      });
+    }
+    return this.buildImportResponse(plan, currentUser, true);
   }
 
   private async buildImportResponse(
@@ -1051,4 +1106,31 @@ export class WeddingPlansService {
       updatedAt: category.updatedAt,
     };
   }
+}
+
+/**
+ * RA-BE-65: what a local plan's import holds, as one fingerprint. Keys are
+ * sorted and every list is compared as a set of its items, so the same plan
+ * read again in another order is the same save; the migration id itself is
+ * left out. Computed from the request as sent, before defaults (a payment's
+ * time defaults to now) are filled in.
+ */
+export function localPlanImportHash(dto: ImportLocalPlanDto): string {
+  const { clientMigrationId: _migrationId, ...content } = dto;
+  return createHash("sha256").update(canonicalJson(content)).digest("hex");
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).sort().join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }

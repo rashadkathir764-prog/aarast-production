@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
@@ -151,7 +152,7 @@ void main() {
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'تأكيد القاعة',
-      dueDate: DateTime.now(),
+      dueDate: sanaaToday(),
       taskCategory: 'VENUE',
       priority: 'HIGH',
       responsibleName: 'محمد',
@@ -216,14 +217,14 @@ void main() {
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'مراجعة عقد القاعة',
-      dueDate: DateTime.now().subtract(const Duration(days: 1)),
+      dueDate: sanaaToday().subtract(const Duration(days: 1)),
       taskCategory: 'VENUE',
       priority: 'HIGH',
     );
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'مهمة لاحقة',
-      dueDate: DateTime.now().add(const Duration(days: 10)),
+      dueDate: sanaaToday().add(const Duration(days: 10)),
     );
 
     await _pumpTasksScreen(tester, harness);
@@ -306,7 +307,7 @@ void main() {
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'حجز القاعة',
-      dueDate: DateTime.now().add(const Duration(days: 2)),
+      dueDate: sanaaToday().add(const Duration(days: 2)),
     );
 
     await _pumpTasksScreen(tester, harness);
@@ -331,7 +332,7 @@ void main() {
 
   testWidgets('the time view lists tasks by month (w24)', (tester) async {
     final harness = await _createHarness();
-    final now = DateTime.now();
+    final now = sanaaToday();
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'اختر المصور',
@@ -369,7 +370,7 @@ void main() {
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'تذوّق الضيافة',
-      dueDate: DateTime.now().subtract(const Duration(days: 3)),
+      dueDate: sanaaToday().subtract(const Duration(days: 3)),
       responsibleName: 'صالح',
       responsiblePhone: '+967777654321',
     );
@@ -677,7 +678,7 @@ void main() {
     await harness.api.createTask(
       weddingPlanId: localPlanId,
       title: 'مهمة طويلة لاختبار عرض الهاتف الصغير بدون أي تجاوز مرئي',
-      dueDate: DateTime.now(),
+      dueDate: sanaaToday(),
       taskCategory: 'DOCUMENTS',
       priority: 'HIGH',
     );

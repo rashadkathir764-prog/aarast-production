@@ -54,3 +54,41 @@ test("other server failures remain logged and reported", () => {
   assert.equal(shouldReportHttpException?.("GET /ready", 500), true);
   assert.equal(shouldReportHttpException?.("GET /api/v1/users/me", 503), true);
 });
+
+// A body the server cannot read (too large, not JSON) is the client's: it
+// was answered as a 500 with no reason, from any route.
+test("a body too large or not JSON keeps its 4xx status, an Arabic reason and a code", () => {
+  const { GlobalExceptionFilter } = exceptionFilter;
+  const answer = (exception: unknown) => {
+    let status = 0;
+    let body: any;
+    const host: any = {
+      switchToHttp: () => ({
+        getResponse: () => ({
+          status(code: number) {
+            status = code;
+            return this;
+          },
+          json(value: unknown) {
+            body = value;
+          },
+        }),
+        getRequest: () => ({ method: "POST", url: "/api/v1/onboarding/import-local" }),
+      }),
+    };
+    new GlobalExceptionFilter().catch(exception, host);
+    return { status, body };
+  };
+  const tooLarge = answer(Object.assign(new Error("request entity too large"), { status: 413, type: "entity.too.large" }));
+  assert.equal(tooLarge.status, 413);
+  assert.equal(tooLarge.body.code, "REQUEST_TOO_LARGE");
+  assert.match(tooLarge.body.message, /[؀-ۿ]/u);
+
+  const notJson = answer(Object.assign(new SyntaxError("Unexpected token"), { status: 400, type: "entity.parse.failed" }));
+  assert.equal(notJson.status, 400);
+  assert.equal(notJson.body.code, "REQUEST_BODY_INVALID");
+
+  // Anything else that only looks like it stays a 500.
+  assert.equal(answer(Object.assign(new Error("boom"), { status: 413 })).status, 500);
+  assert.equal(answer(Object.assign(new Error("boom"), { type: "entity.too.large" })).status, 500);
+});

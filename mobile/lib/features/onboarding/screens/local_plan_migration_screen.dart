@@ -77,9 +77,13 @@ const _markSize = 72.0;
 
 /// Why saving into the account did not happen, in words for the user.
 class _SaveFailure implements Exception {
-  const _SaveFailure(this.message);
+  const _SaveFailure(this.message, {this.savedBefore = false});
 
   final String message;
+
+  /// RA-BE-65: an earlier try reached the account and its answer was lost,
+  /// and the plan changed on the phone since. The phone keeps it and asks.
+  final bool savedBefore;
 }
 
 class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
@@ -88,6 +92,9 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   AccountPlanCounts? _account;
   bool _sheetOpen = false;
   bool _busy = false;
+
+  /// The failure shown is «خطتك انحفظت في حسابك من محاولة قبل» (RA-BE-65).
+  bool _savedBefore = false;
   late Future<void> Function() _retry = _start;
 
   /// The phone plan's owner: the colour and voice of this screen and its
@@ -220,6 +227,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     setState(() {
       _phase = _Phase.saving;
       _error = null;
+      _savedBefore = false;
     });
     try {
       final planId = await _save();
@@ -227,12 +235,30 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       widget.onFinished(planId);
     } on _SaveFailure catch (failure) {
       if (!mounted) return;
-      setState(() {
-        _phase = _Phase.failed;
-        _error = failure.message;
-        _retry = _saveDirectly;
-      });
+      _showFailure(failure);
     }
+  }
+
+  void _showFailure(_SaveFailure failure) {
+    setState(() {
+      _phase = _Phase.failed;
+      _error = failure.message;
+      _savedBefore = failure.savedBefore;
+      _retry = failure.savedBefore ? _saveAsSecondPlan : _saveDirectly;
+    });
+  }
+
+  /// RA-BE-65: the account holds the plan as it was at an earlier try; the
+  /// phone's plan, changed since, is saved next to it as a second plan, so
+  /// nothing done between the two tries is lost. A new save with its own id,
+  /// kept for every retry of it.
+  Future<void> _saveAsSecondPlan() async {
+    final guestPlanId = widget.snapshot.draft.guestPlanId;
+    if (guestPlanId != null && guestPlanId.trim().isNotEmpty) {
+      await widget.migrationService.guestStorage.startNewImport(guestPlanId);
+    }
+    if (!mounted) return;
+    await _saveDirectly();
   }
 
   Future<void> _openChoice() async {
@@ -242,34 +268,40 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       _phase = _Phase.choosing;
       _sheetOpen = true;
     });
-    final outcome = await showJourneySheet<({String? planId})>(
-      context: context,
-      profile: _owner,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (_) => _LocalPlanChoiceSheet(
-        local: _localTitle.isEmpty
-            ? _counts(
-                widget.snapshot.itemNames.length,
-                widget.snapshot.tasks.length,
-              )
-            : _localTitle,
-        account: account.title.isEmpty
-            ? _counts(account.items, account.tasks)
-            : account.title,
-        otherSide: _otherSide,
-        accountHasPlan:
-            account.items > 0 ||
-            account.tasks > 0 ||
-            account.title != _noAccountPlan,
-        save: _save,
-        confirmDrop: _confirmDrop,
-        drop: _drop,
-      ),
-    );
+    final outcome =
+        await showJourneySheet<({String? planId, bool savedBefore})>(
+          context: context,
+          profile: _owner,
+          isDismissible: false,
+          enableDrag: false,
+          builder: (_) => _LocalPlanChoiceSheet(
+            local: _localTitle.isEmpty
+                ? _counts(
+                    widget.snapshot.itemNames.length,
+                    widget.snapshot.tasks.length,
+                  )
+                : _localTitle,
+            account: account.title.isEmpty
+                ? _counts(account.items, account.tasks)
+                : account.title,
+            otherSide: _otherSide,
+            accountHasPlan:
+                account.items > 0 ||
+                account.tasks > 0 ||
+                account.title != _noAccountPlan,
+            save: _save,
+            confirmDrop: _confirmDrop,
+            drop: _drop,
+          ),
+        );
     if (!mounted) return;
     if (outcome == null) {
       setState(() => _sheetOpen = false);
+      return;
+    }
+    if (outcome.savedBefore) {
+      setState(() => _sheetOpen = false);
+      _showFailure(_SaveFailure(_savedBeforeMessage ?? '', savedBefore: true));
       return;
     }
     widget.onFinished(outcome.planId);
@@ -290,19 +322,35 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
         account != plan;
   }
 
+  /// The server's words for RA-BE-65, kept for the failure shown after the
+  /// choice sheet closes.
+  String? _savedBeforeMessage;
+
   /// Saves the plan into the account and only then clears it from this
   /// phone. Returns the account plan it became.
+  ///
+  /// The plan is read again from the phone first: it may have changed since
+  /// this screen opened (opened on the phone after a failure, D77), and
+  /// sending what was read then would save the old plan and clear the new.
   Future<String> _save() async {
     final authStorage = _read<AuthStorage>();
     final offlineSync = _read<OfflineSyncService>();
     try {
-      final response = await widget.migrationService.migrate(widget.snapshot);
+      final snapshot =
+          await widget.migrationService.loadSnapshot() ?? widget.snapshot;
+      final response = await widget.migrationService.migrate(snapshot);
       // The server confirmed: only now is it safe to clear the phone's plan.
       await authStorage?.saveActivePlanId(response.activePlanId);
       await _clearPhonePlan(offlineSync);
       return response.activePlanId;
+    } on LocalPlanTooLarge catch (error) {
+      throw _SaveFailure(error.message);
     } on ApiException catch (error) {
       if (error.isNetworkFailure) throw _SaveFailure(_offlineMessage);
+      if (error.serverCode == 'LOCAL_PLAN_SAVED_BEFORE') {
+        _savedBeforeMessage = error.message;
+        throw _SaveFailure(error.message, savedBefore: true);
+      }
       // J1-13: the server's checks (an English detail, so a generic line by
       // the time it is here) said no; trying again will not change that.
       final refused = error.statusCode == 400 || error.statusCode == 422;
@@ -411,7 +459,13 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     final saving = planName == null || planName.isEmpty ? 'خطتك' : planName;
     final failed = _phase == _Phase.failed;
     final retry = JourneyButton(
-      label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+      key: _savedBefore ? const ValueKey('local-plan-save-second') : null,
+      label: _savedBefore
+          ? context.say(
+              'احفظ اللي على الجوال كخطة ثانية',
+              'احفظي اللي على الجوال كخطة ثانية',
+            )
+          : context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
       expand: true,
       large: true,
       onPressed: _busy ? null : _retry,
@@ -474,10 +528,14 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   color: AarastV3Color.brandAccentStrong,
                 ),
               ),
-              title: 'ما قدرنا نحفظها في حسابك',
-              body:
-                  '${_error ?? context.say('تأكد من النت وجرّب مرة ثانية.', 'تأكدي من النت وجرّبي مرة ثانية.')}\n'
-                  'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
+              title: _savedBefore
+                  ? 'خطتك في حسابك من قبل'
+                  : 'ما قدرنا نحفظها في حسابك',
+              body: _savedBefore
+                  ? '${_error ?? ''}\n'
+                        'اللي تغيّر بعدها باقي على هذا الجوال، ما ينحذف إلا باختيارك.'
+                  : '${_error ?? context.say('تأكد من النت وجرّب مرة ثانية.', 'تأكدي من النت وجرّبي مرة ثانية.')}\n'
+                        'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
             )
           else
             _Outcome(
@@ -614,12 +672,12 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       });
       await widget.drop();
       if (!mounted) return;
-      Navigator.of(context).pop((planId: null));
+      Navigator.of(context).pop((planId: null, savedBefore: false));
       return;
     }
     if (_choice == null) return;
     if (_choice == _Choice.keepForOwner) {
-      Navigator.of(context).pop((planId: null));
+      Navigator.of(context).pop((planId: null, savedBefore: false));
       return;
     }
     setState(() {
@@ -629,9 +687,14 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
     try {
       final planId = await widget.save();
       if (!mounted) return;
-      Navigator.of(context).pop((planId: planId));
+      Navigator.of(context).pop((planId: planId, savedBefore: false));
     } on _SaveFailure catch (failure) {
       if (!mounted) return;
+      // RA-BE-65: the choice it needs is the page's, not this sheet's.
+      if (failure.savedBefore) {
+        Navigator.of(context).pop((planId: null, savedBefore: true));
+        return;
+      }
       setState(() {
         _busy = false;
         _error = failure.message;

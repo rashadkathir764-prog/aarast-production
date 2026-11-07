@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/network/api_client.dart' show ApiClient;
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
@@ -590,6 +592,20 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     return true;
   }
 
+  /// RA-BE-71: the key of the plan being made, with the request it was made
+  /// for. Every try of the same plan keeps it, so a retry after a lost answer
+  /// is the same plan; changed answers are a new plan, with a new key.
+  ({String body, String key})? _createKey;
+
+  String _createKeyFor(OnboardingCompleteRequest request) {
+    final body = jsonEncode(request.toJson());
+    final current = _createKey;
+    if (current != null && current.body == body) return current.key;
+    final key = ApiClient.newClientRequestId();
+    _createKey = (body: body, key: key);
+    return key;
+  }
+
   /// A signed-in person creating another plan gets it on the server at once.
   Future<void> _createAccountPlan() async {
     final plans = _maybeRead<WeddingPlansProvider>();
@@ -608,19 +624,21 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _saving = true;
       _error = null;
     });
+    final request = OnboardingCompleteRequest(
+      path: 'USER',
+      persona: _personaCode,
+      title: _planTitle,
+      city: _city,
+      location: _location.toJson(),
+      weddingDate: _dateUnknown ? null : _date?.toIso8601String(),
+      estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
+      currency: 'YER',
+      selectedCategories: _catalogs().items,
+      mahr: _mahr?.toRequestJson(),
+    );
     final response = await plans.completeOnboarding(
-      OnboardingCompleteRequest(
-        path: 'USER',
-        persona: _personaCode,
-        title: _planTitle,
-        city: _city,
-        location: _location.toJson(),
-        weddingDate: _dateUnknown ? null : _date?.toIso8601String(),
-        estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
-        currency: 'YER',
-        selectedCategories: _catalogs().items,
-        mahr: _mahr?.toRequestJson(),
-      ),
+      request,
+      clientRequestId: _createKeyFor(request),
     );
     if (!mounted) return;
     if (response == null) {

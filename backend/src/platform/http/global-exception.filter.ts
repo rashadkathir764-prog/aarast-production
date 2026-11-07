@@ -134,6 +134,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
 
+    const bodyFailure = requestBodyFailure(exception);
+    if (bodyFailure) return bodyFailure;
+
     return this.simple(
       HttpStatus.INTERNAL_SERVER_ERROR,
       'Internal server error',
@@ -144,4 +147,46 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     return { status, message, body: { statusCode: status, message } };
   }
 
+}
+
+/**
+ * A body the server could not read: too large, not JSON, or in an encoding it
+ * does not take. Express's body parser raises these before any route runs;
+ * they are the client's (4xx), and were answered as a 500 with no reason.
+ * Each keeps its status and says it in Arabic, with a stable code.
+ */
+const REQUEST_BODY_FAILURES: Record<number, { code: string; message: string }> = {
+  [HttpStatus.PAYLOAD_TOO_LARGE]: {
+    code: 'REQUEST_TOO_LARGE',
+    message: 'البيانات المرسلة أكبر من المسموح.',
+  },
+  [HttpStatus.BAD_REQUEST]: {
+    code: 'REQUEST_BODY_INVALID',
+    message: 'البيانات المرسلة ما انقرت. حدّث التطبيق وجرّب مرة ثانية.',
+  },
+  [HttpStatus.UNSUPPORTED_MEDIA_TYPE]: {
+    code: 'REQUEST_BODY_INVALID',
+    message: 'البيانات المرسلة ما انقرت. حدّث التطبيق وجرّب مرة ثانية.',
+  },
+};
+
+function requestBodyFailure(
+  exception: unknown,
+): { status: number; message: string; body: unknown } | null {
+  if (exception === null || typeof exception !== 'object') return null;
+  const { type, status } = exception as { type?: unknown; status?: unknown };
+  if (
+    typeof type !== 'string' ||
+    !/^(?:entity|request|encoding|charset|parameters|stream)\./u.test(type) ||
+    typeof status !== 'number'
+  ) {
+    return null;
+  }
+  const failure = REQUEST_BODY_FAILURES[status];
+  if (!failure) return null;
+  return {
+    status,
+    message: failure.message,
+    body: { statusCode: status, code: failure.code, message: failure.message },
+  };
 }

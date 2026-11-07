@@ -23,7 +23,7 @@ const _baseline = <String, int>{
   // reach another person and plan-side requests, each said so.
   'marketplace/data/marketplace_api.dart': 35,
   'tasks/data/task_timeline_api.dart': 6,
-  'wedding_plans/data/wedding_plans_api.dart': 11,
+  'wedding_plans/data/wedding_plans_api.dart': 10,
 };
 
 void main() {

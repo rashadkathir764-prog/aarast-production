@@ -9,10 +9,15 @@ import { getCorsOptions } from './platform/config/cors-options';
 import { validateRuntimeEnvironment } from './platform/config/runtime-environment';
 import { clientContractGate, minClientContract } from './platform/http/client-contract';
 import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
+import { largeJsonBody } from './platform/http/large-json-body';
 import { StripNulPipe } from './platform/http/strip-nul.pipe';
 import { requestObservability } from './platform/observability/request-observability.middleware';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
 import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';
+import {
+  LOCAL_PLAN_IMPORT_BODY_LIMIT,
+  LOCAL_PLAN_IMPORT_PATH,
+} from './onboarding/dto/import-local-plan.dto';
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the
@@ -70,6 +75,9 @@ async function bootstrap() {
   app.use(requestObservability);
   // RA-BE-01: an app older than MIN_CLIENT_CONTRACT is told to update.
   app.use(clientContractGate(minClientContract()));
+  // RA-BE-64: the phone's whole plan in one save; every other route keeps
+  // Nest's default body limit.
+  app.use(LOCAL_PLAN_IMPORT_PATH, largeJsonBody(LOCAL_PLAN_IMPORT_BODY_LIMIT));
 
   app.enableCors(getCorsOptions());
 

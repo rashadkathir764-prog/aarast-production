@@ -202,8 +202,15 @@ export class FinancePortService implements FinancePort {
     cost: ImportedCostInput,
   ): Promise<void> {
     // The import validated paid <= total before calling the port.
-    const status = deriveCostStatus(cost.totalAmount, cost.paidAmount);
-    await tx.weddingCost.create({
+    //
+    // RA-BE-63: the agreement is written as it happened. A reminder is
+    // checked against what is left when it is written (the database's
+    // `PaymentSchedule_amount_at_write_integrity`), and on the phone it was
+    // written before the payments that came after it. So the agreement is
+    // made unpaid with its reminders, then its payments are recorded and its
+    // paid total set; the ledger's own checks run at the end of the
+    // transaction, on the whole agreement.
+    const created = await tx.weddingCost.create({
       data: {
         weddingPlanId,
         budgetCategoryId: cost.budgetCategoryId,
@@ -211,18 +218,10 @@ export class FinancePortService implements FinancePort {
         partyName: cost.partyName,
         partyPhone: cost.partyPhone,
         totalAmount: cost.totalAmount,
-        paidAmount: cost.paidAmount,
+        paidAmount: new Prisma.Decimal(0),
         agreementDate: cost.agreementDate,
-        status,
+        status: deriveCostStatus(cost.totalAmount, new Prisma.Decimal(0)),
         note: cost.note,
-        payments: {
-          create: cost.payments.map((payment) => ({
-            amount: payment.amount,
-            paidAt: payment.paidAt,
-            method: payment.method,
-            note: payment.note,
-          })),
-        },
         paymentSchedules: {
           create: cost.paymentSchedules.map((schedule) => ({
             amount: schedule.amount,
@@ -230,6 +229,24 @@ export class FinancePortService implements FinancePort {
             note: schedule.note,
           })),
         },
+      },
+      select: { id: true },
+    });
+    if (cost.payments.length === 0) return;
+    await tx.costPayment.createMany({
+      data: cost.payments.map((payment) => ({
+        weddingCostId: created.id,
+        amount: payment.amount,
+        paidAt: payment.paidAt,
+        method: payment.method,
+        note: payment.note,
+      })),
+    });
+    await tx.weddingCost.update({
+      where: { id: created.id },
+      data: {
+        paidAmount: cost.paidAmount,
+        status: deriveCostStatus(cost.totalAmount, cost.paidAmount),
       },
     });
   }

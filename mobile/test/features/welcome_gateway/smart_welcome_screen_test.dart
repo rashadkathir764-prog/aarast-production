@@ -74,15 +74,18 @@ class _RecordingPlans extends WeddingPlansProvider {
 
   final bool succeed;
   OnboardingCompleteRequest? request;
+  final List<String> keys = [];
 
   @override
   String? get errorMessage => succeed ? null : 'تعذر إنشاء خطتك.';
 
   @override
   Future<OnboardingCompleteResponse?> completeOnboarding(
-    OnboardingCompleteRequest request,
-  ) async {
+    OnboardingCompleteRequest request, {
+    required String clientRequestId,
+  }) async {
     this.request = request;
+    keys.add(clientRequestId);
     if (!succeed) return null;
     return OnboardingCompleteResponse.fromJson({
       'activeWeddingPlan': {'id': 'plan-new', 'title': request.title},
@@ -796,6 +799,11 @@ void main() {
     await _tap(tester, 'افتح خطتي');
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
     expect(find.text('تعذر إنشاء خطتك.'), findsOneWidget);
+
+    // RA-BE-71: trying the same plan again is the same plan to the server.
+    await _tap(tester, 'افتح خطتي');
+    expect(plans.keys, hasLength(2));
+    expect(plans.keys.toSet(), hasLength(1));
   });
 
   // w11 «خطة جديدة» makes another plan with the designed steps, from

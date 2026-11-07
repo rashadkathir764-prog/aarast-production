@@ -526,7 +526,7 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `AssistantAnswerReport` | 9 | `id`, `reporterUserId`, `resolvedAt`, `createdAt` |
-| `WeddingPlan` | 33 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 34 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 12 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |

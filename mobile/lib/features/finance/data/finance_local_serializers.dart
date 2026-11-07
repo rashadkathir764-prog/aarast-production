@@ -46,6 +46,8 @@ Map<String, dynamic> paymentScheduleToLocalJson(PaymentSchedule schedule) => {
   'costId': schedule.costId,
   'amount': schedule.amount,
   if (schedule.amountDue != null) 'amountDue': schedule.amountDue,
+  if (schedule.costRemaining != null)
+    'costRemainingAmount': schedule.costRemaining,
   'dueDate': schedule.dueDate.toIso8601String(),
   'status': schedule.status,
   if (schedule.paidAt != null) 'paidAt': schedule.paidAt!.toIso8601String(),

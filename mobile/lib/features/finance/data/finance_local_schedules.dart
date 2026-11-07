@@ -17,10 +17,14 @@ extension _LocalSchedules on FinanceLocalDataSource {
       final due = PaymentSchedule.fromJson(
         schedule,
       ).withRemaining(remaining).amountDue;
-      if (due == schedule['amountDue']?.toString()) continue;
+      if (due == schedule['amountDue']?.toString() &&
+          remaining == schedule['costRemainingAmount']?.toString()) {
+        continue;
+      }
       await _save(OfflineTables.cachedPaymentSchedules, {
         ...schedule,
         'amountDue': due,
+        'costRemainingAmount': remaining,
       }, dirty: true);
     }
   }

@@ -5,6 +5,8 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/guests/models/guest.dart'
+    show planGuestsMax;
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
@@ -292,7 +294,8 @@ void main() {
     expect(sent, hasLength(LocalPlanMigrationService.maxStartingItems));
     // Every item still reaches the account: in the list or with its cost.
     final withCosts = [
-      for (final cost in payload['costs'] as List) (cost as Map)['categoryName'],
+      for (final cost in payload['costs'] as List)
+        (cost as Map)['categoryName'],
     ];
     expect({...sent, ...withCosts}, names.toSet());
     // The list keeps the plan's own order.
@@ -322,4 +325,96 @@ void main() {
 
     expect(await service.loadSnapshot(), isNull);
   });
+
+  test(
+    'RA-BE-65: a second save of the plan keeps its own id on every retry',
+    () async {
+      final service = await buildService();
+      final storage = service.guestStorage;
+
+      final first = await service.loadSnapshot();
+      expect(first!.migrationId, guestPlanId);
+      expect(
+        service.buildImportPayload(first)['clientMigrationId'],
+        guestPlanId,
+      );
+
+      await storage.startNewImport(guestPlanId);
+      final second = await service.loadSnapshot();
+      expect(second!.migrationId, '$guestPlanId~2');
+      expect(
+        service.buildImportPayload(second)['clientMigrationId'],
+        '$guestPlanId~2',
+      );
+      // Read again (a retry of the same save): the same id.
+      expect((await service.loadSnapshot())!.migrationId, '$guestPlanId~2');
+
+      await storage.startNewImport(guestPlanId);
+      expect((await service.loadSnapshot())!.migrationId, '$guestPlanId~3');
+
+      // The plan leaves the phone: the next plan starts from its own id.
+      await storage.clearDraft();
+      expect(await storage.importMigrationId(guestPlanId), guestPlanId);
+    },
+  );
+
+  test(
+    'RA-BE-64: a plan past what one save takes is said before it is sent',
+    () {
+      Map<String, dynamic> plan({
+        int guests = 0,
+        int tasks = 0,
+        int costs = 0,
+      }) => {
+        'guests': [
+          for (var i = 0; i < guests; i++) {'name': 'ضيف $i'},
+        ],
+        'tasks': [
+          for (var i = 0; i < tasks; i++) {'title': 'مهمة $i'},
+        ],
+        'costs': [
+          for (var i = 0; i < costs; i++) {'title': 'اتفاق $i'},
+        ],
+      };
+
+      // One save takes as many guests as a plan holds (D99).
+      expect(LocalPlanMigrationService.maxImportGuests, planGuestsMax);
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(guests: 5000)),
+        isNull,
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(guests: 5001)),
+        contains('5000 ضيف'),
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(tasks: 2000)),
+        isNull,
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(tasks: 2001)),
+        contains('2000 مهمة'),
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(costs: 1000)),
+        isNull,
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason(plan(costs: 1001)),
+        contains('1000 اتفاق'),
+      );
+      expect(
+        LocalPlanMigrationService.tooLargeReason({
+          'guests': [
+            {
+              'name': 'ضيف',
+              'notes':
+                  'ن' * (LocalPlanMigrationService.maxImportBytes ~/ 2 + 1),
+            },
+          ],
+        }),
+        contains('خفّف الملاحظات'),
+      );
+    },
+  );
 }

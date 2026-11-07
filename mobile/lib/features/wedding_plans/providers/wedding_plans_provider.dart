@@ -208,15 +208,19 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<OnboardingCompleteResponse?> completeOnboarding(
-    OnboardingCompleteRequest request,
-  ) async {
+    OnboardingCompleteRequest request, {
+    required String clientRequestId,
+  }) async {
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
     notifyListeners();
 
     try {
-      final response = await _api.completeOnboarding(request);
+      final response = await _api.completeOnboarding(
+        request,
+        clientRequestId: clientRequestId,
+      );
       _activePlan = response.activeWeddingPlan;
       final plan = response.activeWeddingPlan.toWeddingPlan();
       _selectedPlan = plan;

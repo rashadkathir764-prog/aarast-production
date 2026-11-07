@@ -118,8 +118,52 @@ class GuestOnboardingStorage {
   Future<void> clearDraft() async {
     await _sensitiveValueVault?.delete(draftKey);
     await _preferences.remove(draftKey);
+    await _preferences.remove(importKey);
     await clearProgress();
     _announce(null);
+  }
+
+  /// RA-BE-65: which save into the account the plan on this phone is on. The
+  /// first is the plan's own phone id; after «خطتك انحفظت في حسابك من محاولة
+  /// قبل» and the choice to keep the phone's plan as a second one, a new save
+  /// with its own id, the same one on every retry of it.
+  static const importKey = 'aarast.local_plan_import.v1';
+
+  /// The id the account knows this plan's save by.
+  Future<String> importMigrationId(String guestPlanId) async {
+    final stored = _storedImport();
+    return stored != null && stored.guestPlanId == guestPlanId
+        ? stored.migrationId
+        : guestPlanId;
+  }
+
+  /// A new save of the same phone plan, kept until the plan leaves the phone.
+  Future<String> startNewImport(String guestPlanId) async {
+    final current = await importMigrationId(guestPlanId);
+    final generation = current == guestPlanId
+        ? 2
+        : (int.tryParse(current.split('~').last) ?? 1) + 1;
+    final migrationId = '$guestPlanId~$generation';
+    await _preferences.setString(
+      importKey,
+      jsonEncode({'guestPlanId': guestPlanId, 'migrationId': migrationId}),
+    );
+    return migrationId;
+  }
+
+  ({String guestPlanId, String migrationId})? _storedImport() {
+    final raw = _preferences.getString(importKey);
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final guestPlanId = decoded['guestPlanId'];
+      final migrationId = decoded['migrationId'];
+      if (guestPlanId is! String || migrationId is! String) return null;
+      return (guestPlanId: guestPlanId, migrationId: migrationId);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<bool> hasDraft() async {

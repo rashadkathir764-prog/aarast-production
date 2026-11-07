@@ -25,12 +25,18 @@ class WeddingPlansApi {
   final OfflineSyncService? _offline;
   final AuthStorage? _authStorage;
 
+  /// RA-BE-71: a new plan is made once. Every try of the same plan sends the
+  /// same [clientRequestId], so a retry after a lost answer gets the plan the
+  /// first try made instead of a second one.
   Future<OnboardingCompleteResponse> completeOnboarding(
-    OnboardingCompleteRequest request,
-  ) async {
-    final json = await _apiClient.postJson(
+    OnboardingCompleteRequest request, {
+    required String clientRequestId,
+  }) async {
+    final json = await _apiClient.mutateJson(
       '/api/v1/onboarding/complete',
       request.toJson(),
+      method: 'POST',
+      clientRequestId: clientRequestId,
     );
     final response = OnboardingCompleteResponse.fromJson(json);
     await _cacheActivePlan(response.activeWeddingPlan);

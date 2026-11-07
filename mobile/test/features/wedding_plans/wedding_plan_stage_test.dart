@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.dart';
 
 void main() {
-  final now = DateTime(2026, 8, 9, 23, 45);
+  // 23:45 in Sana'a (UTC+3), the late-night edge of the day. Built as an
+  // instant so the test means the same on a machine in any time zone: the
+  // engine counts days from today in Sana'a (D11), whatever the phone's zone.
+  final now = DateTime.utc(2026, 8, 9, 20, 45);
 
   test('stage engine is deterministic at every product boundary', () {
     expect(

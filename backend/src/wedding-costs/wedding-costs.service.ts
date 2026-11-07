@@ -197,6 +197,12 @@ export interface PaymentScheduleResponse {
    * still owes; what paying it records. "0" once it is paid or cancelled.
    */
   amountDue: string;
+  /**
+   * RA-BE-53: what the schedule's agreement still owes now. Schedules are
+   * not reservations: two of one agreement each ask for up to this, so a
+   * list that adds them up counts each agreement's together at most this.
+   */
+  costRemainingAmount: string;
   dueDate: Date;
   paidAt: Date | null;
   status: PaymentScheduleStatus;
@@ -2114,6 +2120,10 @@ export class WeddingCostsService {
               schedule.weddingCost.paidAmount,
             ).toString()
           : "0",
+      costRemainingAmount: Prisma.Decimal.max(
+        schedule.weddingCost.totalAmount.minus(schedule.weddingCost.paidAmount),
+        0,
+      ).toString(),
       dueDate: schedule.dueDate,
       paidAt: schedule.paidAt,
       status: schedule.status,

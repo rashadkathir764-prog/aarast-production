@@ -184,6 +184,7 @@ class PaymentSchedule {
     required this.dueDate,
     required this.status,
     this.amountDue,
+    this.costRemaining,
     this.isOverdue = false,
     this.paidAt,
     this.note,
@@ -206,6 +207,7 @@ class PaymentSchedule {
           json['costId']?.toString() ?? json['weddingCostId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
       amountDue: stringOrNull(json['amountDue']),
+      costRemaining: stringOrNull(json['costRemainingAmount']),
       dueDate: dueDate,
       status: status,
       isOverdue:
@@ -243,6 +245,11 @@ class PaymentSchedule {
   /// RA-BE-53: what the server says this pending reminder asks for now, at
   /// most what its agreement still owes; null from an older server.
   final String? amountDue;
+
+  /// RA-BE-53: what this reminder's agreement still owes now, from the
+  /// server; null from an older server. Two reminders of one agreement each
+  /// ask for up to it, and together never for more ([dueSchedulesTotal]).
+  final String? costRemaining;
   final DateTime dueDate;
   final String status;
   final bool isOverdue;
@@ -278,6 +285,7 @@ class PaymentSchedule {
       costId: costId,
       amount: amount,
       amountDue: due,
+      costRemaining: remainingAmount,
       dueDate: dueDate,
       status: status,
       isOverdue: isOverdue,
@@ -338,4 +346,36 @@ bool _isPaymentScheduleOverdueAt(
     riyadhNow.day,
   ).subtract(const Duration(hours: 3));
   return dueDate.toUtc().isBefore(startOfTodayInRiyadh);
+}
+
+/// RA-BE-53: what [schedules] ask for together. Reminders are not
+/// reservations: each one of an agreement asks for up to what the agreement
+/// still owes, so two of them added up could ask for more than it owes. Each
+/// agreement's reminders count together for at most what it owes
+/// ([PaymentSchedule.costRemaining]); a reminder from an older server, without
+/// it, counts at what it asks for.
+double dueSchedulesTotal(Iterable<PaymentSchedule> schedules) {
+  final askedByCost = <String, double>{};
+  final owedByCost = <String, double>{};
+  var uncapped = 0.0;
+  for (final schedule in schedules) {
+    final asked = moneyValue(schedule.dueAmount).toDouble();
+    final owed = schedule.costRemaining;
+    if (owed == null || schedule.costId.isEmpty) {
+      uncapped += asked;
+      continue;
+    }
+    askedByCost.update(
+      schedule.costId,
+      (sum) => sum + asked,
+      ifAbsent: () => asked,
+    );
+    owedByCost[schedule.costId] = moneyValue(owed).toDouble();
+  }
+  var total = uncapped;
+  askedByCost.forEach((costId, asked) {
+    final owed = owedByCost[costId]!;
+    total += asked < owed ? asked : owed;
+  });
+  return total;
 }

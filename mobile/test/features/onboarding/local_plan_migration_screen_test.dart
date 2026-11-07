@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -273,36 +275,35 @@ void main() {
     expect(harness.finished, isEmpty);
   });
 
-  testWidgets('J1-01: offline, the account lookup says so too', (
-    tester,
-  ) async {
+  testWidgets('J1-01: offline, the account lookup says so too', (tester) async {
     await _Harness.create(tester, listFails: true, listError: _offline);
 
     expect(find.textContaining('ما فيه نت الحين'), findsOneWidget);
     expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
   });
 
-  testWidgets('J1-01: the plan opens on the phone with «ما انحفظت في حسابك بعد»', (
-    tester,
-  ) async {
-    final harness = await _Harness.create(
-      tester,
-      plans: const [],
-      onImport: () => Future.error(_offline),
-    );
+  testWidgets(
+    'J1-01: the plan opens on the phone with «ما انحفظت في حسابك بعد»',
+    (tester) async {
+      final harness = await _Harness.create(
+        tester,
+        plans: const [],
+        onImport: () => Future.error(_offline),
+      );
 
-    await tester.tap(find.text('افتح خطتك على الجوال الحين'));
-    await _settle(tester);
+      await tester.tap(find.text('افتح خطتك على الجوال الحين'));
+      await _settle(tester);
 
-    expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
-    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
-    expect(find.text('ما انحفظت في حسابك بعد'), findsOneWidget);
-    expect(find.text('احفظها الحين'), findsOneWidget);
-    // Remembered for this session, so the next home does not lock again.
-    expect(harness.openedLocally, 1);
-    expect(harness.finished, isEmpty);
-    expect(await harness.storage.loadGuestPlan(), isNotNull);
-  });
+      expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
+      expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+      expect(find.text('ما انحفظت في حسابك بعد'), findsOneWidget);
+      expect(find.text('احفظها الحين'), findsOneWidget);
+      // Remembered for this session, so the next home does not lock again.
+      expect(harness.openedLocally, 1);
+      expect(harness.finished, isEmpty);
+      expect(await harness.storage.loadGuestPlan(), isNotNull);
+    },
+  );
 
   testWidgets('J1-01: «احفظها الحين» tries the account again', (tester) async {
     final harness = await _Harness.create(
@@ -340,19 +341,20 @@ void main() {
     expect(await harness.storage.loadGuestPlan(), isNull);
   });
 
-  testWidgets('J1-01: opened on the phone before, it saves itself once online', (
-    tester,
-  ) async {
-    final harness = await _Harness.create(
-      tester,
-      plans: const [],
-      startLocally: true,
-    );
+  testWidgets(
+    'J1-01: opened on the phone before, it saves itself once online',
+    (tester) async {
+      final harness = await _Harness.create(
+        tester,
+        plans: const [],
+        startLocally: true,
+      );
 
-    expect(harness.plans.importCalls, 1);
-    expect(harness.finished, ['plan-new']);
-    expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
-  });
+      expect(harness.plans.importCalls, 1);
+      expect(harness.finished, ['plan-new']);
+      expect(find.text('ما قدرنا نحفظها في حسابك'), findsNothing);
+    },
+  );
 
   testWidgets('J1-01: opened on the phone before and still offline, it stays', (
     tester,
@@ -399,6 +401,76 @@ void main() {
     expect(find.textContaining('راجع البيانات المدخلة'), findsNothing);
     expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
   });
+
+  // RA-BE-65: the screen sends the plan as it is now, not as it was when
+  // the screen opened: opened on the phone after a failure (D77), the plan
+  // gets a new guest, and the save that follows carries it.
+  testWidgets('RA-BE-65: each save sends the plan as it is on the phone now', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      withDatabase: true,
+      onImport: () => Future.error(_offline),
+    );
+    await tester.tap(find.text('افتح خطتك على الجوال الحين'));
+    await _settle(tester);
+
+    await harness.database!.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: {
+        'id': 'local-guest-added-later',
+        'weddingPlanId': 'local-guest-1',
+        'name': 'خال العريس',
+      },
+      dirty: true,
+    );
+    harness.plans.onImport = () async => _response('plan-new');
+    await _tapStrip(tester);
+
+    final guests = harness.plans.lastPayload?['guests'] as List?;
+    expect(guests?.map((guest) => guest['name']), contains('خال العريس'));
+    expect(harness.finished, ['plan-new']);
+  });
+
+  testWidgets(
+    'RA-BE-65: saved before with other content, the phone keeps its plan and asks',
+    (tester) async {
+      final harness = await _Harness.create(
+        tester,
+        plans: const [],
+        onImport: () => Future.error(
+          const ApiException(
+            'خطتك انحفظت في حسابك من محاولة قبل، وتغيّرت على الجوال بعدها.',
+            statusCode: 409,
+            serverCode: 'LOCAL_PLAN_SAVED_BEFORE',
+          ),
+        ),
+      );
+
+      expect(find.text('خطتك في حسابك من قبل'), findsOneWidget);
+      expect(find.textContaining('من محاولة قبل'), findsOneWidget);
+      expect(find.textContaining('ما ينحذف إلا باختيارك'), findsOneWidget);
+      expect(find.text('احفظ اللي على الجوال كخطة ثانية'), findsOneWidget);
+      // Nothing left the phone, and nothing was decided for the person.
+      expect(harness.finished, isEmpty);
+      expect(await harness.storage.loadGuestPlan(), isNotNull);
+      expect(harness.plans.lastPayload?['clientMigrationId'], 'local-guest-1');
+
+      // Kept as a second plan: a new save, with its own id.
+      harness.plans.onImport = () async => _response('plan-second');
+      await tester.tap(find.byKey(const ValueKey('local-plan-save-second')));
+      await _settle(tester);
+
+      expect(
+        harness.plans.lastPayload?['clientMigrationId'],
+        'local-guest-1~2',
+      );
+      expect(harness.finished, ['plan-second']);
+      expect(await harness.storage.loadGuestPlan(), isNull);
+    },
+  );
 }
 
 const _offline = ApiException(
@@ -424,10 +496,13 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 class _Harness {
-  _Harness(this.storage, this.plans);
+  _Harness(this.storage, this.plans, this.database);
 
   final GuestOnboardingStorage storage;
   final _FakeWeddingPlansApi plans;
+
+  /// The phone's own records, when the test gives the service a database.
+  final JsonLocalDatabase? database;
   final List<String?> finished = [];
 
   /// How many times the plan was opened on the phone instead (D77).
@@ -443,11 +518,14 @@ class _Harness {
     String? accountPersona,
     Future<OnboardingCompleteResponse> Function()? onImport,
     bool startLocally = false,
+    bool withDatabase = false,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final storage = GuestOnboardingStorage(preferences);
     await storage.saveDraft(draft ?? _draft);
+    final database = withDatabase ? JsonLocalDatabase(preferences) : null;
+    await database?.initialize();
     final api = _FakeWeddingPlansApi(
       plans:
           plans ??
@@ -460,11 +538,12 @@ class _Harness {
     )..listFails = listFails;
     if (listError != null) api.listError = listError;
     if (onImport != null) api.onImport = onImport;
-    final harness = _Harness(storage, api);
+    final harness = _Harness(storage, api, database);
     final service = LocalPlanMigrationService(
       guestStorage: storage,
       weddingPlansApi: api,
       financeApi: _FakeFinanceApi(const {'plan-open': 14, 'plan-recent': 2}),
+      database: database,
     );
 
     tester.view.devicePixelRatio = 1;

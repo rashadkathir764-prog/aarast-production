@@ -42,9 +42,15 @@ void main() {
             currency: 'SAR',
             selectedCategories: ['القاعة', 'التصوير'],
           ),
+          clientRequestId: 'create-plan-1',
         );
 
         expect(capturedRequest.path, '/api/v1/onboarding/complete');
+        // RA-BE-71: the caller's key, so a retry is the same plan.
+        expect(
+          capturedRequest.headers[ApiClient.clientRequestIdHeader],
+          'create-plan-1',
+        );
         expect(capturedRequest.data['path'], 'USER');
         expect(capturedRequest.data['persona'], 'BRIDE');
         expect(capturedRequest.data['estimatedBudget'], '120000');

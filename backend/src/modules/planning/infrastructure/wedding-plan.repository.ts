@@ -32,6 +32,7 @@ export interface WeddingPlanCreateData {
   persona: WeddingPersona | null;
   onboardingCompletedAt?: Date;
   importMigrationId?: string;
+  importPayloadHash?: string;
 }
 
 export interface WeddingPlanUpdateData {

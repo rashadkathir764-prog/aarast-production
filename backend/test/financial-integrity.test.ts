@@ -182,8 +182,9 @@ test("money budget accepts an empty category list but still protects categories 
         throw new Error("Finance must not write WeddingPlan directly");
       },
     },
-    weddingCost: { count: async () => 0, findMany: async () => [] },
-    fundingSource: { findMany: async () => [] },
+    // RA-BE-23: the currency lock asks whether any agreement or source exists.
+    weddingCost: { count: async () => 0, findFirst: async () => null, findMany: async () => [] },
+    fundingSource: { findFirst: async () => null, findMany: async () => [] },
     costPayment: { findMany: async () => [] },
     paymentSchedule: { findMany: async () => [] },
     budgetCategory: {
@@ -284,8 +285,9 @@ test("money budget delegates the Planning write through the same serializable tr
         currency: "YER",
       }),
     },
-    weddingCost: { count: async () => 0, findMany: async () => [] },
-    fundingSource: { findMany: async () => [] },
+    // RA-BE-23: the currency lock asks whether any agreement or source exists.
+    weddingCost: { count: async () => 0, findFirst: async () => null, findMany: async () => [] },
+    fundingSource: { findFirst: async () => null, findMany: async () => [] },
     costPayment: { findMany: async () => [] },
     paymentSchedule: { findMany: async () => [] },
     budgetCategory: {
@@ -594,7 +596,8 @@ test("money summary uses cost totals and the net append-only ledger exactly once
         currency: "YER",
       }),
     },
-    fundingSource: { findMany: async () => [] },
+    // RA-BE-23: the currency lock asks whether any agreement or source exists.
+    fundingSource: { findFirst: async () => null, findMany: async () => [] },
     budgetCategory: {
       findMany: async () => [
         {
@@ -605,6 +608,7 @@ test("money summary uses cost totals and the net append-only ledger exactly once
       ],
     },
     weddingCost: {
+      findFirst: async () => ({ id: "cost-1" }),
       // V1 checklist 4.10: the private-cost pre-filter finds none.
       findMany: async ({ where }: any) =>
         where?.privateToUserId
@@ -683,9 +687,10 @@ test("payment schedule warnings expose counts without adding overlapping reminde
     weddingPlan: {
       findUnique: async () => ({ estimatedBudget: null, currency: "YER" }),
     },
-    fundingSource: { findMany: async () => [] },
+    // RA-BE-23: the currency lock asks whether any agreement or source exists.
+    fundingSource: { findFirst: async () => null, findMany: async () => [] },
     budgetCategory: { findMany: async () => [] },
-    weddingCost: { findMany: async () => [] },
+    weddingCost: { findFirst: async () => null, findMany: async () => [] },
     costPayment: { findMany: async () => [] },
     paymentSchedule: {
       findMany: async () => [

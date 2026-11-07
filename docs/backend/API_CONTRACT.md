@@ -1102,6 +1102,13 @@ Its body contains `totalBudget`, `currency`, and `categories`:
 
 `categories` may be an empty array so a user can save the general budget first
 and add categories later. Null `totalBudget` means the general budget is unset.
+A different `currency` is `409 FINANCE_CURRENCY_LOCKED` once the plan holds
+money: any agreement (any state) or any funding source, whose amounts (the
+bride's mahr and loans included) have no currency of their own and read in
+the plan's (RA-BE-23; it counted agreements alone). The money summary carries
+the same rule as `currencyLocked` for the owner (`null` for anyone else, as it
+would tell them the owner's private funding exists); the app reads it and
+falls back to counting agreements only before a server that sends it.
 The response contains the refreshed `summary`, canonical `categories`, and an
 `idMap` for client-generated category IDs. The backend and offline client must
 never replace null with the sum of category allocations.

@@ -164,7 +164,8 @@ const WORDING: Readonly<Record<string, Wording>> = {
   },
   'Currency cannot be changed after the first cost is created': {
     code: 'FINANCE_CURRENCY_LOCKED',
-    ar: 'ما تتغير عملة الخطة بعد أول اتفاق.',
+    // RA-BE-23: any money recorded fixes it (an agreement or a source).
+    ar: 'ما تتغير عملة الخطة بعد ما يتسجّل فيها مال.',
   },
   'Category names must be unique in the plan': {
     code: 'FINANCE_CATEGORY_NAME_TAKEN',

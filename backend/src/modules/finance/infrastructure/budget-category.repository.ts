@@ -114,8 +114,28 @@ export async function sumOtherBudgetCategoryAllocations(
   return result._sum.allocatedAmount;
 }
 
-export function countWeddingPlanCosts(tx: Prisma.TransactionClient, weddingPlanId: string) {
-  return tx.weddingCost.count({ where: { weddingPlanId } });
+/**
+ * RA-BE-23: a plan's currency is fixed once money is recorded in it: an
+ * agreement (any state), or a funding source, whose amounts (the bride's
+ * mahr and the loans' included) have no currency of their own and read in
+ * the plan's. Counting agreements alone let a bride with her mahr recorded
+ * relabel 2,000,000 riyals as another currency. The money summary publishes
+ * this one rule (`currencyLocked`), so the phone does not count it again.
+ */
+export async function isPlanCurrencyLocked(
+  client: Prisma.TransactionClient,
+  weddingPlanId: string,
+): Promise<boolean> {
+  const cost = await client.weddingCost.findFirst({
+    where: { weddingPlanId },
+    select: { id: true },
+  });
+  if (cost) return true;
+  const source = await client.fundingSource.findFirst({
+    where: { weddingPlanId },
+    select: { id: true },
+  });
+  return source !== null;
 }
 
 /**

@@ -609,6 +609,33 @@ void main() {
       expect(find.textContaining('•••• لعرسك'), findsOneWidget);
     });
 
+    // RA-BE-23: the phone opened the currency when no agreement was counted,
+    // so a bride with her mahr in (funding, no agreement) could relabel it.
+    // The server says when money fixes the currency; the phone reads that.
+    for (final locked in [true, false]) {
+      testWidgets(
+        'the currency follows the server\'s lock (${locked ? 'money recorded' : 'none yet'}), not an agreement count',
+        (tester) async {
+          final finance = FinanceProvider(
+            _NoAgreementApi(currencyLocked: locked),
+          );
+
+          await _pumpMoneyScreen(
+            tester,
+            const MoneyBudgetScreen(weddingPlanId: 'plan-1'),
+            provider: finance,
+          );
+          await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+          await tester.pumpAndSettle();
+
+          expect(
+            find.byKey(const ValueKey('money-budget-currency-locked')),
+            locked ? findsOneWidget : findsNothing,
+          );
+        },
+      );
+    }
+
     testWidgets('«أخفِ المبالغ» hides a promise and the cash it changes', (
       tester,
     ) async {
@@ -998,6 +1025,27 @@ Future<void> _pumpMoneyRouter(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// A plan with no agreement; its money is a funding source (the mahr).
+class _NoAgreementApi extends _MoneyDetailsApi {
+  _NoAgreementApi({required this.currencyLocked});
+
+  final bool currencyLocked;
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    return MoneySummary(
+      planId: planId,
+      currency: 'YER',
+      currencyLocked: currencyLocked,
+      budget: const MoneyBudgetSummary(total: '5000'),
+      permissions: const MoneyPermissions(
+        canViewMoney: true,
+        canManageMoney: true,
+      ),
+    );
+  }
 }
 
 class _MoneyDetailsApi extends FinanceApi {

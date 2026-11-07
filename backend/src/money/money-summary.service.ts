@@ -21,6 +21,7 @@ import {
   type CatalogReadPort,
 } from "../modules/catalog/public/catalog-read.port";
 import { listPlanItemsForProviderSearch } from "../modules/finance/infrastructure/budget-item-search.repository";
+import { isPlanCurrencyLocked } from "../modules/finance/infrastructure/budget-category.repository";
 import { budgetItemSearchCategories } from "../modules/finance/public/provider-category-budget-item";
 import {
   COLLABORATION_PERMISSION_PORT,
@@ -145,9 +146,16 @@ export async function buildMoneySummaryInTransaction(
     plan.persona,
     moneyCatalog,
   );
+  // RA-BE-23: the budget replace's own rule, for the one reader who may
+  // change the currency; anyone else reads null (it would tell them that
+  // the owner's private funding exists).
+  const currencyLocked = access.isOwner
+    ? await isPlanCurrencyLocked(tx, weddingPlanId)
+    : null;
   return {
     weddingPlanId,
     currency: plan.currency,
+    currencyLocked,
     ...picture,
     categories: picture.categories.map((category) => ({
       ...category,

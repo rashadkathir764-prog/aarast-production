@@ -228,8 +228,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
 
   /// «ميزانية عرسك» and its currency, in a sheet over the split.
   Future<void> _editTotal() {
-    final currencyLocked =
-        context.read<FinanceProvider>().summary.costs.count > 0;
+    final currencyLocked = context
+        .read<FinanceProvider>()
+        .summary
+        .currencyFixed;
     return showJourneySheet<void>(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
@@ -263,7 +265,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
               const SizedBox(height: AarastV3Space.x3),
               if (currencyLocked)
                 Text(
-                  'العملة ${currencySpokenLabelAr(_currency)}، ثابتة بعد أول اتفاق',
+                  // RA-BE-23: an agreement or a source (the mahr) fixes it.
+                  'العملة ${currencySpokenLabelAr(_currency)}، ثابتة بعد ما يتسجّل فيها مال',
                   key: const ValueKey('money-budget-currency-locked'),
                   style: JourneyType.of(
                     JourneyType.small,

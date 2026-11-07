@@ -5,6 +5,7 @@ class MoneySummary {
   const MoneySummary({
     required this.planId,
     this.currency = 'YER',
+    this.currencyLocked,
     this.budget = const MoneyBudgetSummary(),
     this.costs = const MoneyCostsSummary(),
     this.paymentSchedules = const MoneySchedulesSummary(),
@@ -25,6 +26,9 @@ class MoneySummary {
       planId:
           json['planId']?.toString() ?? json['weddingPlanId']?.toString() ?? '',
       currency: json['currency']?.toString() ?? 'YER',
+      currencyLocked: json['currencyLocked'] is bool
+          ? json['currencyLocked'] as bool
+          : null,
       budget: MoneyBudgetSummary.fromJson(_map(json['budget'])),
       costs: MoneyCostsSummary.fromJson(_map(json['costs'])),
       paymentSchedules: MoneySchedulesSummary.fromJson(
@@ -51,6 +55,17 @@ class MoneySummary {
 
   final String planId;
   final String currency;
+
+  /// RA-BE-23: the server's rule for when [currency] no longer changes (any
+  /// agreement or funding source, the mahr's included). Null from a server
+  /// before it, for a reader who is not the owner, or for a plan kept on the
+  /// phone; see [currencyFixed].
+  final bool? currencyLocked;
+
+  /// Whether the currency is fixed: the server's word, else (an older
+  /// server, a phone-only plan) whether an agreement exists.
+  bool get currencyFixed => currencyLocked ?? costs.count > 0;
+
   final MoneyBudgetSummary budget;
   final MoneyCostsSummary costs;
   final MoneySchedulesSummary paymentSchedules;

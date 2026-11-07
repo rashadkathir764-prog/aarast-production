@@ -204,6 +204,22 @@ async function run() {
       mahrSources.some((source) => source.status === 'PLEDGED' && source.amount === '1000000' &&
         typeof source.expectedAt === 'string' && source.expectedAt.startsWith(restDay)));
 
+    // RA-BE-23: her mahr has no currency of its own, it reads in the plan's.
+    // The lock counted agreements alone, so with none she could pick another
+    // currency and her 2,000,000 riyals became 2,000,000 of it.
+    const lockedSummary = await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, bride.token);
+    check('her plan reads its currency fixed once her mahr is in', lockedSummary.body?.currencyLocked === true);
+    const relabel = await request('PUT', `/api/v1/wedding-plans/${bridePlanId}/money-budget`, {
+      totalBudget: '7000000',
+      currency: 'SAR',
+      categories: [],
+    }, bride.token, randomUUID());
+    check('the currency does not change under her mahr',
+      relabel.status === 409 && relabel.body?.code === 'FINANCE_CURRENCY_LOCKED');
+    const still = await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, bride.token);
+    check('her mahr still reads in her currency',
+      still.body?.currency === 'YER' && still.body?.funding?.received === '2000000');
+
     const partnerMember = await request('POST', `/api/v1/wedding-plans/${bridePlanId}/members`, {
       userId: partner.userId,
       role: 'GROOM',
@@ -214,10 +230,14 @@ async function run() {
     const partnerMoney = await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, partner.token);
     check('her mahr stays hers: the partner reads money without it',
       partnerMoney.status === 200 && partnerMoney.body?.mahr === null && partnerMoney.body?.funding === null);
+    check('and is not told the plan holds private money (the lock is the owner\'s)',
+      partnerMoney.body?.currencyLocked === null);
 
     // A plan without a groom's or a bride's persona has no mahr side.
     const helperPlan = await onboard(helper.token, 'HELPER');
     const helperPlanId = helperPlan.body?.activeWeddingPlan?.id;
+    const helperMoney = await request('GET', `/api/v1/wedding-plans/${helperPlanId}/money-summary`, null, helper.token);
+    check('a plan with no money yet keeps its currency open', helperMoney.body?.currencyLocked === false);
     const helperMahr = await request('POST', `/api/v1/wedding-plans/${helperPlanId}/mahr`, { total: '1000000' }, helper.token);
     check('a helper\'s plan takes no mahr', helperMahr.status === 409 && helperMahr.body?.code === 'MAHR_NOT_FOR_PLAN');
 

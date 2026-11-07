@@ -231,6 +231,8 @@ test("the owner's money summary weighs funding against confirmed costs", async (
   Object.assign(tx, {
     budgetCategory: { findMany: async () => [] },
     weddingCost: {
+      // RA-BE-23: the currency lock asks whether any agreement exists.
+      findFirst: async () => ({ id: "cost-1" }),
       // V1 checklist 4.10: the private-cost pre-filter finds none.
       findMany: async ({ where }: any) =>
         where?.privateToUserId

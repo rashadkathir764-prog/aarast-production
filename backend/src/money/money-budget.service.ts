@@ -40,7 +40,7 @@ import {
   MoneySummaryResult,
 } from "./money-summary.service";
 import {
-  countWeddingPlanCosts,
+  isPlanCurrencyLocked,
   createReplacementBudgetCategory,
   deleteOmittedBudgetCategories,
   findBudgetCategoriesForReplacement,
@@ -105,10 +105,9 @@ export class MoneyBudgetService {
         if (!context.isOwner) {
           throw new NotFoundException("Wedding plan not found");
         }
-        const costsCount = await countWeddingPlanCosts(tx, weddingPlanId);
         if (
-          costsCount > 0 &&
-          currency !== context.plan.currency.toUpperCase()
+          currency !== context.plan.currency.toUpperCase() &&
+          (await isPlanCurrencyLocked(tx, weddingPlanId))
         ) {
           throw financeConflict("Currency cannot be changed after the first cost is created");
         }

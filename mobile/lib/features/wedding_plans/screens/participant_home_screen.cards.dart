@@ -113,7 +113,7 @@ class _Greeting extends StatelessWidget {
               onTap: onProfile,
               borderRadius: BorderRadius.circular(AarastV3Radius.card),
               child: JourneyAvatar(
-                letter: first.isEmpty ? 'ع' : first.characters.first,
+                letter: first.isEmpty ? '' : first.characters.first,
                 color: AarastV3Color.brandAccentStrong,
                 size: 40,
               ),

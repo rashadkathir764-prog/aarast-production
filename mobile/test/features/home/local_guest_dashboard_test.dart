@@ -178,6 +178,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
       }
       expect(syncAction, findsOneWidget);
+      // RA-MO-27: the pill is touched in a 48 band.
+      expect(tester.getSize(syncAction).height, greaterThanOrEqualTo(48));
       await tester.tap(syncAction, warnIfMissed: false);
       for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 80));

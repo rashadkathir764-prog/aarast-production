@@ -15,22 +15,25 @@ class AarastV3DraftStatusLine extends StatelessWidget {
     final (icon, label, color) = switch (status) {
       AarastFormDraftStatus.saving => (
         LucideIcons.loader2,
-        'جارٍ حفظ المسودة…',
+        'نحفظ المسودة على جوالك…',
         AarastV3Color.textMuted,
       ),
+      // RA-MO-27: the line speaks of a draft on the phone, never of the
+      // record itself, so it never reads as «no need to press save»; a
+      // failure is in the danger colour, not the bride's rose.
       AarastFormDraftStatus.saved => (
         LucideIcons.check,
-        'حُفظت المسودة تلقائيًا',
+        'المسودة محفوظة على جوالك',
         AarastV3Color.mint,
       ),
       AarastFormDraftStatus.failed => (
         LucideIcons.alertCircle,
-        'تعذر حفظ المسودة على الجهاز',
-        AarastV3Color.rose,
+        'ما قدرنا نحفظ المسودة على جوالك',
+        AarastV3Color.danger,
       ),
       AarastFormDraftStatus.idle => (
         LucideIcons.shieldCheck,
-        'ستُحفظ قيمك تلقائيًا',
+        'نحفظ المسودة على جوالك وأنت تكتب',
         AarastV3Color.textMuted,
       ),
     };

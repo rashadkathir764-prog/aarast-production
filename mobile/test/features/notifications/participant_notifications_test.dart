@@ -62,6 +62,18 @@ void main() {
       findsNothing,
     );
   });
+
+  // RA-MO-27: every notice is one labelled node (no bare «button»), and
+  // every tap target on the screen, the archive included, is 48.
+  testWidgets('the notices meet the platform label and target checks', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await _pump(tester, role: AccountContextRole.owner);
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    semantics.dispose();
+  });
 }
 
 Future<({_Api api})> _pump(

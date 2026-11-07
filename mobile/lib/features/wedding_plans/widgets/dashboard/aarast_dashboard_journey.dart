@@ -109,7 +109,7 @@ class _JourneyHomeHeader extends StatelessWidget {
               dimension: AarastV3Space.x12,
               child: Center(
                 child: JourneyAvatar(
-                  letter: name.isEmpty ? 'ع' : name.characters.first,
+                  letter: name.isEmpty ? '' : name.characters.first,
                   color: AarastV3Color.saffron,
                   size: 40,
                 ),

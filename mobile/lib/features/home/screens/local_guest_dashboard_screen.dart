@@ -107,7 +107,8 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,
           signedIn: widget.onSaveToAccount != null,
-          onSync: widget.onSaveToAccount ?? () => _requireAccountForSync(context),
+          onSync:
+              widget.onSaveToAccount ?? () => _requireAccountForSync(context),
         ),
         onNotifications: () => _openLocalNotifications(context, planId),
         onProfile: () => context.push(AppRouter.more),
@@ -345,57 +346,64 @@ class _LocalSyncNotice extends StatelessWidget {
               )
             : context.say('احفظ خطتك برقم جوالك', 'احفظي خطتك برقم جوالك'),
         onTap: onSync,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AarastV3Space.x4,
-            vertical: AarastV3Space.x2,
-          ),
-          // The plan's colour (D68), not the fixed teal.
-          decoration: BoxDecoration(
-            color: context.accent.primarySoft,
-            borderRadius: BorderRadius.circular(AppTheme.radiusControl),
-            border: Border.all(color: AarastSemanticTokens.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                LucideIcons.cloudOff,
-                color: context.accent.primary,
-                size: 16,
+        // RA-MO-27: the pill keeps its drawing, touched in a 48 band.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+          child: Align(
+            widthFactor: 1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AarastV3Space.x4,
+                vertical: AarastV3Space.x2,
               ),
-              const SizedBox(width: AarastV3Space.x2),
-              Flexible(
-                // In the words of the screen that made the plan (a08).
-                child: Text(
-                  signedIn ? 'ما انحفظت في حسابك بعد' : 'خطتك على جوالك بس',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.ink,
+              // The plan's colour (D68), not the fixed teal.
+              decoration: BoxDecoration(
+                color: context.accent.primarySoft,
+                borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+                border: Border.all(color: AarastSemanticTokens.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    LucideIcons.cloudOff,
+                    color: context.accent.primary,
+                    size: 16,
                   ),
-                ),
+                  const SizedBox(width: AarastV3Space.x2),
+                  Flexible(
+                    // In the words of the screen that made the plan (a08).
+                    child: Text(
+                      signedIn ? 'ما انحفظت في حسابك بعد' : 'خطتك على جوالك بس',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AarastV3Space.x2),
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.accent.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: AarastV3Space.x2),
+                  Text(
+                    action,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      weight: JourneyType.bold,
+                      color: context.accent.primary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AarastV3Space.x2),
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.accent.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x2),
-              Text(
-                action,
-                style: JourneyType.of(
-                  JourneyType.small,
-                  weight: JourneyType.bold,
-                  color: context.accent.primary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

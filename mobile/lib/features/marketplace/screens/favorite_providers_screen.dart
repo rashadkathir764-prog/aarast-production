@@ -174,9 +174,21 @@ class _CompareColumn extends StatelessWidget {
           AarastPressable(
             onTap: onOpen,
             semanticLabel: provider.businessName,
-            child: Text(
-              provider.businessName,
-              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            // RA-MO-27: the name is the only way into the provider from
+            // the compare column; a 48 target, its words unchanged.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                widthFactor: 1,
+                child: Text(
+                  provider.businessName,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: AarastV3Space.x2),

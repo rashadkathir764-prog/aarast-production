@@ -149,7 +149,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                   const JourneyWordmark(),
                   const SizedBox(height: AarastV3Space.x5),
                   JourneyAvatar(
-                    letter: name.isEmpty ? 'ا' : name.characters.first,
+                    letter: name.isEmpty ? '' : name.characters.first,
                     color: AarastV3Color.saffron,
                     size: 60,
                   ),

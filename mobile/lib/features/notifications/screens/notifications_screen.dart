@@ -538,7 +538,11 @@ class _NotificationRow extends StatelessWidget {
     );
     final urgent = notification.priority.toUpperCase() == 'URGENT';
     final when = notificationWhenLabel(notification.createdAt, now);
+    // RA-MO-27: one node for the whole notice, read with its words; the
+    // archive stays as its custom action.
     return Semantics(
+      container: true,
+      excludeSemantics: true,
       button: true,
       label: [
         if (notification.isUnread) 'جديد',
@@ -648,7 +652,6 @@ class _NotificationRow extends StatelessWidget {
                       icon: const Icon(LucideIcons.archive, size: 16),
                       tooltip: 'أرشفة التنبيه',
                       color: AarastV3Color.textFaint,
-                      visualDensity: VisualDensity.compact,
                       // Quiet: the unread dot is the row's only signal.
                       style: IconButton.styleFrom(
                         backgroundColor: AarastV3Color.paper,

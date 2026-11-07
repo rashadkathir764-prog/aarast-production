@@ -1570,23 +1570,48 @@ class JourneyAvatar extends StatelessWidget {
     AarastV3Color.cobalt,
   ][index % 4];
 
+  /// RA-MO-27: the letter in white or in ink, whichever reads more on the
+  /// fill (saffron takes ink: white on it is about 2:1).
+  static Color onFill(Color fill) {
+    final fillLuminance = fill.computeLuminance();
+    double contrast(Color other) {
+      final otherLuminance = other.computeLuminance();
+      final light = otherLuminance > fillLuminance
+          ? otherLuminance
+          : fillLuminance;
+      final dark = otherLuminance > fillLuminance
+          ? fillLuminance
+          : otherLuminance;
+      return (light + 0.05) / (dark + 0.05);
+    }
+
+    return contrast(AarastV3Color.onPrimary) >= contrast(AarastV3Color.ink)
+        ? AarastV3Color.onPrimary
+        : AarastV3Color.ink;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ink = onFill(color);
+    final shown = letter.trim();
     return ExcludeSemantics(
       child: Container(
         width: size,
         height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Text(
-          letter,
-          textScaler: TextScaler.noScaling,
-          style: JourneyType.of(
-            size * 0.45,
-            weight: JourneyType.bold,
-            color: AarastV3Color.onPrimary,
-          ),
-        ),
+        // RA-MO-27: no name, no made-up letter; a person instead.
+        child: shown.isEmpty
+            ? Icon(LucideIcons.user, size: size * 0.5, color: ink)
+            : Text(
+                shown,
+                textScaler: TextScaler.noScaling,
+                style: JourneyType.of(
+                  size * 0.45,
+                  weight: JourneyType.bold,
+                  color: ink,
+                ),
+              ),
       ),
     );
   }
@@ -1787,102 +1812,111 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: AarastV3Field.padding,
-          decoration: BoxDecoration(
-            color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(AarastV3Field.radius),
-            border: Border.all(color: borderColor, width: width),
-          ),
-          child: Row(
-            children: [
-              if (widget.icon != null) ...[
-                Icon(
-                  widget.icon,
-                  size: AarastV3Icon.md,
-                  color: AarastV3Color.textMuted,
-                ),
-                const SizedBox(width: AarastV3Field.iconGap),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: JourneyType.of(
-                        JourneyType.label,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                    TextField(
-                      controller: widget.controller,
-                      focusNode: _focus,
-                      autofocus: widget.autofocus,
-                      keyboardType: widget.keyboardType,
-                      textInputAction: widget.textInputAction,
-                      obscureText: widget.obscureText,
-                      minLines: widget.minLines,
-                      maxLines: widget.maxLines,
-                      maxLength: widget.maxLength,
-                      textDirection: widget.textDirection,
-                      textAlign: widget.textAlign,
-                      autofillHints: widget.autofillHints,
-                      inputFormatters: widget.inputFormatters,
-                      onChanged: widget.onChanged,
-                      onSubmitted: widget.onSubmitted,
-                      style: JourneyType.of(
-                        widget.large ? JourneyType.amount : JourneyType.lead,
-                        weight: JourneyType.bold,
-                      ),
-                      cursorColor: context.accent.primary,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        counterText: '',
-                        hintText: widget.hint,
-                        hintTextDirection: widget.textDirection,
-                        // The hint shows the answer as it will look typed.
-                        hintStyle: JourneyType.of(
-                          widget.large ? JourneyType.amount : JourneyType.lead,
-                          weight: JourneyType.bold,
-                          color: AarastV3Color.textFaint,
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding: const EdgeInsets.only(
-                          top: AarastV3Space.half,
-                          bottom: AarastV3Space.half,
-                        ),
-                      ),
-                    ),
-                    if (widget.helper != null && error == null)
-                      Text(
-                        widget.helper!,
-                        style: JourneyType.of(
-                          JourneyType.small,
-                          weight: JourneyType.bold,
-                          color: widget.helperColor ?? context.accent.primary,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (widget.suffix != null)
-                Text(
-                  widget.suffix!,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
+        // RA-MO-27: the whole frame, its label included, takes the tap and
+        // opens the keyboard, not only the text line inside it.
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: _focus.requestFocus,
+          child: Container(
+            padding: AarastV3Field.padding,
+            decoration: BoxDecoration(
+              color: AarastV3Color.paper,
+              borderRadius: BorderRadius.circular(AarastV3Field.radius),
+              border: Border.all(color: borderColor, width: width),
+            ),
+            child: Row(
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(
+                    widget.icon,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textMuted,
                   ),
+                  const SizedBox(width: AarastV3Field.iconGap),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.label,
+                        style: JourneyType.of(
+                          JourneyType.label,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                      TextField(
+                        controller: widget.controller,
+                        focusNode: _focus,
+                        autofocus: widget.autofocus,
+                        keyboardType: widget.keyboardType,
+                        textInputAction: widget.textInputAction,
+                        obscureText: widget.obscureText,
+                        minLines: widget.minLines,
+                        maxLines: widget.maxLines,
+                        maxLength: widget.maxLength,
+                        textDirection: widget.textDirection,
+                        textAlign: widget.textAlign,
+                        autofillHints: widget.autofillHints,
+                        inputFormatters: widget.inputFormatters,
+                        onChanged: widget.onChanged,
+                        onSubmitted: widget.onSubmitted,
+                        style: JourneyType.of(
+                          widget.large ? JourneyType.amount : JourneyType.lead,
+                          weight: JourneyType.bold,
+                        ),
+                        cursorColor: context.accent.primary,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          counterText: '',
+                          hintText: widget.hint,
+                          hintTextDirection: widget.textDirection,
+                          // RA-MO-27: an example in the regular weight, so it
+                          // never reads as a value already typed.
+                          hintStyle: JourneyType.of(
+                            widget.large
+                                ? JourneyType.amount
+                                : JourneyType.lead,
+                            color: AarastV3Color.textFaint,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                          contentPadding: const EdgeInsets.only(
+                            top: AarastV3Space.half,
+                            bottom: AarastV3Space.half,
+                          ),
+                        ),
+                      ),
+                      if (widget.helper != null && error == null)
+                        Text(
+                          widget.helper!,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            weight: JourneyType.bold,
+                            color: widget.helperColor ?? context.accent.primary,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              if (widget.trailing != null) ...[
-                const SizedBox(width: AarastV3Field.iconGap),
-                widget.trailing!,
+                if (widget.suffix != null)
+                  Text(
+                    widget.suffix!,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                if (widget.trailing != null) ...[
+                  const SizedBox(width: AarastV3Field.iconGap),
+                  widget.trailing!,
+                ],
               ],
-            ],
+            ),
           ),
         ),
         if (error != null)

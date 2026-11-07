@@ -177,7 +177,6 @@ class OfflineStatusBanner extends StatelessWidget {
                         tooltip: hasWaiting
                             ? 'شوف التغييرات اللي تنتظر'
                             : 'حاول ترسل مرة ثانية',
-                        visualDensity: VisualDensity.compact,
                         icon: Icon(
                           hasBlockedIssues
                               ? LucideIcons.alertCircle

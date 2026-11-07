@@ -462,7 +462,7 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final letter = name.trim().isEmpty ? 'ا' : name.trim().characters.first;
+    final letter = name.trim().isEmpty ? '' : name.trim().characters.first;
     final url = avatarUrl;
     // g02: a 54 avatar, 14 from a 19 bold name over a 14 muted phone.
     final Widget avatar = SizedBox.square(

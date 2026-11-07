@@ -297,7 +297,7 @@ class _PlanRow extends StatelessWidget {
         child: Row(
           children: [
             JourneyAvatar(
-              letter: source.isEmpty ? 'ع' : source.characters.first,
+              letter: source.isEmpty ? '' : source.characters.first,
               color: color,
               size: 40,
             ),

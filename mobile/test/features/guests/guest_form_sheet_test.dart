@@ -203,7 +203,8 @@ void main() {
     await tester.enterText(_name, 'سالم');
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.text('حُفظت المسودة تلقائيًا'), findsOneWidget);
+    // RA-MO-27: a draft on the phone, never «saved» for the guest itself.
+    expect(find.text('المسودة محفوظة على جوالك'), findsOneWidget);
   });
 
   // A name saved within the autosave's half second came back in the next

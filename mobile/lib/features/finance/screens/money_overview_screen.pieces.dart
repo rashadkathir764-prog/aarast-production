@@ -256,10 +256,10 @@ class _NextPaymentCard extends StatelessWidget {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyButton(
+                    // RA-MO-27: the plan's colour, as the same action on a
+                    // late row in the payments list; the red is the late
+                    // line's, not a destructive button's.
                     label: context.say('سجّل الدفعة', 'سجّلي الدفعة'),
-                    background: isOverdue
-                        ? AarastV3Color.danger
-                        : context.accent.primary,
                     onPressed: onPay,
                   ),
                 ),

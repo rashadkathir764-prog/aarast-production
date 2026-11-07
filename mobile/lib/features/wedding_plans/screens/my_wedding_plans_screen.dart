@@ -292,7 +292,7 @@ class _PlanCard extends StatelessWidget {
       child: Row(
         children: [
           JourneyAvatar(
-            letter: name.isEmpty ? 'ع' : _firstLetter(name),
+            letter: name.isEmpty ? '' : _firstLetter(name),
             color: color,
             size: 42,
           ),

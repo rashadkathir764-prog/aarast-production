@@ -136,7 +136,6 @@ class AuthObscureToggle extends StatelessWidget {
     return IconButton(
       tooltip: obscured ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
       onPressed: onPressed,
-      visualDensity: VisualDensity.compact,
       iconSize: 19,
       icon: Icon(
         obscured ? LucideIcons.eye : LucideIcons.eyeOff,
@@ -243,9 +242,10 @@ class AuthTextField extends StatelessWidget {
               hintText: hint,
               // A number's hint reads in the number's own direction.
               hintTextDirection: effectiveTextDirection,
+              // RA-MO-27: an example in the regular weight, never read as
+              // a value already typed.
               hintStyle: JourneyType.of(
                 valueSize,
-                weight: JourneyType.bold,
                 color: AarastV3Color.textFaint,
               ),
               errorStyle: JourneyType.of(

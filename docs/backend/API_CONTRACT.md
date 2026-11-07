@@ -859,8 +859,10 @@ is who the app speaks to (B5).
 
 Protected routes:
 
-- `GET /api/v1/dashboard/home`
 - `GET /api/v1/wedding-plans/:planId/dashboard-summary`
+
+The old account home (`dashboard/home`) was removed (RA-BE-10): no client
+read it.
 
 The dashboard summary powers the mobile Home / Today Center. Existing count and money fields remain stable, and the response may also include source-backed detail arrays:
 
@@ -899,9 +901,7 @@ Dashboard `remainingBudget` and the money-card usage ratio use confirmed cost:
 the sum of non-cancelled WeddingCost totals of the wedding's items (C1).
 D59: these figures and `moneySummary` (`confirmedCost`, `paid`, `outstanding`,
 `remainingBudget`) are finance's one money read, the same as
-`money-summary`'s `costs` and `budget.remaining`, as is
-`GET /api/v1/dashboard/home`'s `moneySummary` (which also carries
-`paidByOwner` and `paidByOthers`). The plan dashboard returns `paidByOwner` and
+`money-summary`'s `costs` and `budget.remaining`. The plan dashboard returns `paidByOwner` and
 `paidByOthers` at the top level, beside the closed `moneySummary` shape (R12B
 byte parity): of `paid`, what the owner's own money paid and what others paid
 for the owner; `null` without money rights. CostPayment rows change the
@@ -1707,7 +1707,6 @@ Protected routes:
 - `POST /api/v1/invites/:token/decline`
 - `GET /api/v1/wedding-plans/:weddingPlanId/permissions/me`
 - `GET /api/v1/wedding-plans/:weddingPlanId/contributions`
-- `GET /api/v1/wedding-plans/:weddingPlanId/contributions/summary`
 
 The permission booleans persisted on `SharedMember` and the permission snapshot
 persisted on `PlanInvite` are authoritative. `rolePermissionDefaults()` is used
@@ -2086,10 +2085,10 @@ frozen `snapshot`, `provenance`, `occurredAt`, and `capturedAt`. It deliberately
 does not expose the source `entityId`, a raw contributor user id, or a live
 entity projection.
 
-`GET /api/v1/wedding-plans/:weddingPlanId/contributions/summary` returns a
-distinct contributed-entity count for every contribution section. Owners may
-optionally pass `contributorUserId`; non-owners are always scoped to themselves.
-Both history routes require either plan ownership or a current membership. A
+The contribution summary (a distinct contributed-entity count for every
+section, scoped like the list) has no route of its own since RA-BE-10: the
+plan's dashboard reads it through the service. The history route requires
+either plan ownership or a current membership. A
 member whose section permission is revoked keeps access to their own frozen
 history while the live section is blocked. After self-leave or owner removal,
 the former contributor no longer has plan-route access; the append-only history
@@ -3622,7 +3621,6 @@ configuration, and smoke checks.
 | POST | `/api/v1/costs/:id/payment-schedules` | `wedding-costs.createSchedule` | 🔒 |
 | GET | `/api/v1/costs/:id/payments` | `wedding-costs.listPayments` | 🔒 |
 | POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
-| GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
 | GET | `/api/v1/data-exports/:token` | `data-exports.download` |  |
 | GET | `/api/v1/districts/:id/localities` | `catalogs.listLocalities` |  |
 | DELETE | `/api/v1/funding-sources/:id` | `funding-sources.remove` | 🔒 |
@@ -3776,7 +3774,6 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.create` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/contributions` | `contribution-history.list` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/contributions/summary` | `contribution-history.summary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/cost-payments` | `wedding-costs.list` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.list` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.create` | 🔒 |

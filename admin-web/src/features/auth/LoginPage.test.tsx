@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   login: vi.fn(),
   verifyMfa: vi.fn(),
   cancelMfa: vi.fn(),
+  challenge: null as null | { challengeToken: string; delivery: string },
 }));
 
 vi.mock('./transport', () => ({
@@ -24,7 +25,7 @@ vi.mock('./AuthProvider', () => ({
     login: mocks.login,
     verifyMfa: mocks.verifyMfa,
     cancelMfa: mocks.cancelMfa,
-    challenge: null,
+    challenge: mocks.challenge,
     isLoading: false,
     error: null,
   }),
@@ -68,6 +69,7 @@ function choosePassword(password: string, confirmation = password) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.challenge = null;
   mocks.requestReset.mockResolvedValue({
     accepted: true,
     challengeToken: 'a'.repeat(64),
@@ -77,6 +79,30 @@ beforeEach(() => {
   });
   mocks.verifyReset.mockResolvedValue(undefined);
   mocks.confirmReset.mockResolvedValue(undefined);
+});
+
+describe('remembering this computer (RA-AD-11, D97)', () => {
+  beforeEach(() => {
+    mocks.challenge = { challengeToken: 'a'.repeat(64), delivery: 'DELIVERED' };
+    mocks.verifyMfa.mockResolvedValue(undefined);
+  });
+
+  it('asks first, unchecked: the code is the second key on a shared computer', async () => {
+    renderPage();
+    const remember = screen.getByRole('checkbox', { name: /تذكّر هذا الجهاز/ });
+    expect(remember).not.toBeChecked();
+    fireEvent.change(screen.getByLabelText('رمز التحقق'), { target: { value: '123456' } });
+    fireEvent.submit(screen.getByLabelText('رمز التحقق').closest('form')!);
+    await waitFor(() => expect(mocks.verifyMfa).toHaveBeenCalledWith('123456', false));
+  });
+
+  it('remembers it when the admin ticks the box', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('checkbox', { name: /تذكّر هذا الجهاز/ }));
+    fireEvent.change(screen.getByLabelText('رمز التحقق'), { target: { value: '654321' } });
+    fireEvent.submit(screen.getByLabelText('رمز التحقق').closest('form')!);
+    await waitFor(() => expect(mocks.verifyMfa).toHaveBeenCalledWith('654321', true));
+  });
 });
 
 describe('admin login surface', () => {

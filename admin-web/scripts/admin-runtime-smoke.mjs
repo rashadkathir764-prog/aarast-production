@@ -37,6 +37,8 @@ const baseUrl = process.env.ADMIN_SMOKE_BASE_URL.replace(/\/$/, "");
 const checks = [];
 let token = "";
 let adminRefreshCookie = "";
+// RA-AD-11: the remembered-device cookie, kept and sent like a browser would.
+let adminDeviceCookie = "";
 let smokeCredentials = null;
 let cleanupSmokeAdmin = async () => {};
 let isSmokeAdminPhoneVerified = async () => false;
@@ -62,8 +64,8 @@ async function request(path, options = {}) {
       ...(options.auth === false || !token
         ? {}
         : { Authorization: `Bearer ${token}` }),
-      ...(path.startsWith("/api/v1/auth/admin") && adminRefreshCookie
-        ? { Cookie: adminRefreshCookie }
+      ...(path.startsWith("/api/v1/auth/admin") && (adminRefreshCookie || adminDeviceCookie)
+        ? { Cookie: [adminRefreshCookie, adminDeviceCookie].filter(Boolean).join("; ") }
         : {}),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
@@ -74,11 +76,12 @@ async function request(path, options = {}) {
       ? response.headers.getSetCookie()
       : [response.headers.get("set-cookie")].filter(Boolean);
   for (const value of setCookieValues) {
-    if (!value.startsWith("aarast_admin_refresh=")) continue;
-    adminRefreshCookie =
-      /(?:Max-Age=0|Expires=Thu, 01 Jan 1970)/i.test(value)
-        ? ""
-        : value.split(";", 1)[0];
+    const cleared = /(?:Max-Age=0|Expires=Thu, 01 Jan 1970)/i.test(value);
+    if (value.startsWith("aarast_admin_refresh=")) {
+      adminRefreshCookie = cleared ? "" : value.split(";", 1)[0];
+    } else if (value.startsWith("aarast_admin_device=")) {
+      adminDeviceCookie = cleared ? "" : value.split(";", 1)[0];
+    }
   }
 
   const text = await response.text();
@@ -231,6 +234,10 @@ async function run() {
     body: { challengeToken, code: otpCode },
   });
   check("admin MFA completion returns 200", res.status === 200, String(res.status));
+  check(
+    "a code sign-in does not remember the browser unless asked (RA-AD-11)",
+    adminDeviceCookie === "",
+  );
   check(
     "admin MFA completion returns SUPER_ADMIN permissions",
     res.body?.user?.role === "ADMIN" &&
@@ -846,6 +853,40 @@ async function run() {
     res.status === 200 && adminRefreshCookie === "",
     String(res.status),
   );
+
+  // RA-AD-11: an admin who asks is remembered on this browser for 30 days,
+  // and then signs in with the password alone; the logout keeps that.
+  res = await request("/api/v1/auth/admin/login", {
+    method: "POST",
+    auth: false,
+    body: { phone: smokeCredentials.phone, password: smokeCredentials.password },
+  });
+  const rememberChallengeToken = res.body?.challengeToken;
+  const rememberOtpCode = process.env.ADMIN_SMOKE_OTP_CODE || res.body?.code;
+  res = await request("/api/v1/auth/admin/login/complete", {
+    method: "POST",
+    auth: false,
+    body: { challengeToken: rememberChallengeToken, code: rememberOtpCode, rememberDevice: true },
+  });
+  check(
+    "a code sign-in that asks remembers the browser",
+    res.status === 200 && adminDeviceCookie.startsWith("aarast_admin_device="),
+    String(res.status),
+  );
+  res = await request("/api/v1/auth/admin/logout", { method: "POST", auth: false });
+  res = await request("/api/v1/auth/admin/login", {
+    method: "POST",
+    auth: false,
+    body: { phone: smokeCredentials.phone, password: smokeCredentials.password },
+  });
+  check(
+    "a remembered browser signs in with the password alone",
+    res.status === 200 &&
+      typeof res.body?.accessToken === "string" &&
+      res.body?.mfaRequired !== true,
+    String(res.status),
+  );
+  await request("/api/v1/auth/admin/logout", { method: "POST", auth: false });
 
   const failed = checks.filter((item) => !item.passed);
   console.log(`\nOverall Result: ${failed.length ? "FAIL" : "PASS"}`);

@@ -118,6 +118,36 @@ describe('secure admin browser session', () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  // RA-AD-11 (D97): the browser is remembered only when the admin asks.
+  it('completes the code step without asking to remember the browser', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
+        accessToken: 'memory-token',
+      }),
+    );
+    await completeAdminLogin('a'.repeat(64), '123456');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      challengeToken: 'a'.repeat(64),
+      code: '123456',
+    });
+  });
+
+  it('asks to remember the browser when the admin chose it', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
+        accessToken: 'memory-token',
+      }),
+    );
+    await completeAdminLogin('a'.repeat(64), '123456', true);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      challengeToken: 'a'.repeat(64),
+      code: '123456',
+      rememberDevice: true,
+    });
+  });
+
   it('rejects a completed session that is not ADMIN', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(200, {

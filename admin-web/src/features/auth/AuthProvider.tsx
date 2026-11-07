@@ -23,7 +23,7 @@ type AuthContextValue = {
   error: string | null;
   challenge: AdminLoginChallenge | null;
   login: (phone: string, password: string) => Promise<void>;
-  verifyMfa: (code: string) => Promise<void>;
+  verifyMfa: (code: string, rememberDevice?: boolean) => Promise<void>;
   cancelMfa: () => void;
   logout: () => Promise<void>;
 };
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const verifyMfa = useCallback(async (code: string) => {
+  const verifyMfa = useCallback(async (code: string, rememberDevice = false) => {
     if (!challenge) throw new Error('ابدأ تسجيل الدخول أولًا.');
     setIsLoading(true);
     setError(null);
@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const loggedInUser = await completeAdminLogin(
         challenge.challengeToken,
         code,
+        rememberDevice,
       );
       setUser(loggedInUser);
       setChallenge(null);

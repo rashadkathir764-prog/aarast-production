@@ -100,6 +100,7 @@ export class AuthController {
     const auth = await this.authService.completeAdminLogin(
       dto.challengeToken,
       dto.code,
+      dto.rememberDevice === true,
     );
     this.setAdminRefreshCookie(
       response,

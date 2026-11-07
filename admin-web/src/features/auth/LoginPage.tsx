@@ -51,6 +51,7 @@ export function LoginPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>(null);
   const [recoveryPhone, setRecoveryPhone] = useState('');
   const [recoveryChallengeToken, setRecoveryChallengeToken] = useState('');
@@ -100,7 +101,7 @@ export function LoginPage() {
     try {
       setLoginNotice(null);
       if (challenge) {
-        await verifyMfa(code);
+        await verifyMfa(code, rememberDevice);
         navigate(returnPath, { replace: true });
       } else {
         await login(phone.trim(), password);
@@ -292,6 +293,16 @@ export function LoginPage() {
               {challenge.delivery === 'LOCAL_DEV' && challenge.code ? (
                 <DeskNote>رمز التطوير المحلي: {challenge.code}</DeskNote>
               ) : null}
+              {/* RA-AD-11 (D97): off unless the admin asks; on a shared
+                  computer the WhatsApp code is the second key. */}
+              <label className="desk-check">
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={(event) => setRememberDevice(event.target.checked)}
+                />
+                تذكّر هذا الجهاز 30 يومًا: تدخل فيه بكلمة السر بلا رمز. على جهازك وحدك، لا على جهاز مشترك.
+              </label>
             </>
           ) : recoveryStep === 'phone' ? (
             <Field

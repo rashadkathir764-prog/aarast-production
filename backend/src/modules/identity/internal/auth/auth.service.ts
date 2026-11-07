@@ -554,6 +554,8 @@ export class AuthService implements IdentityAuthPort {
   async completeAdminLogin(
     challengeToken: string,
     code: string,
+    // RA-AD-11 (D97): the browser is remembered only when the admin asks.
+    rememberDevice = false,
   ): Promise<AuthResponse> {
     const now = new Date();
     const challengeSeed = await this.challenges.findAdminLoginSeed(
@@ -617,7 +619,9 @@ export class AuthService implements IdentityAuthPort {
           return {
             auth: {
               ...(await this.createAuthResponse(updatedUser, true, tx)),
-              adminTrustedDevice: issueAdminTrustedDevice(updatedUser, now),
+              ...(rememberDevice
+                ? { adminTrustedDevice: issueAdminTrustedDevice(updatedUser, now) }
+                : {}),
             },
           };
         },

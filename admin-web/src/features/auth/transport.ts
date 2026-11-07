@@ -95,13 +95,18 @@ export async function startAdminLogin(
   }
 }
 
-export async function completeAdminLogin(challengeToken: string, code: string) {
+/** RA-AD-11 (D97): the browser is remembered only when the admin asks. */
+export async function completeAdminLogin(
+  challengeToken: string,
+  code: string,
+  rememberDevice = false,
+) {
   let response: AdminSession;
   try {
     response = await apiRequest<AdminSession>('/api/v1/auth/admin/login/complete', {
       method: 'POST',
       auth: false,
-      body: { challengeToken, code },
+      body: { challengeToken, code, ...(rememberDevice ? { rememberDevice: true } : {}) },
     });
   } catch (error) {
     throw mapMfaError(error);

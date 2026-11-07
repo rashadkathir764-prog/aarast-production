@@ -7,8 +7,8 @@
 # Code only: the database stays as the newer release left it. An older
 # release's `prisma migrate deploy` accepts a database with newer migrations
 # applied (verified 2026-11-06), and the migrations only add, so the older code
-# runs on it. If a release ever needs its data put back too, restore the
-# pre-deploy dump that deploy.sh took (see docs/handover/OPERATIONS.md).
+# runs on it. If a release ever needs its data put back too, restore.sh puts
+# back the pre-deploy dump that deploy.sh took (docs/handover/OPERATIONS.md).
 set -euo pipefail
 ops_bucket=${1:?ops bucket}
 here=$(cd "$(dirname "$0")" && pwd)

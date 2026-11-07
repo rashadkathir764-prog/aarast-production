@@ -9,3 +9,10 @@
 export const GUEST_NAME_MAX = 120;
 export const GUEST_NOTES_MAX = 500;
 export const GUEST_GROUP_NAME_MAX = 120;
+
+/**
+ * D99 (RA-BE-62): how many guests one plan holds. Its list is always read
+ * whole, so the phone's copy is complete; adding beyond it, by hand, from the
+ * contacts or by the plan import, is refused with its reason.
+ */
+export const PLAN_GUESTS_MAX = 5000;

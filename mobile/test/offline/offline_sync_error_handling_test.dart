@@ -325,6 +325,98 @@ void main() {
     },
   );
 
+  // RA-MO-29: «not now» is not «no». A 408 or a 429 says nothing about the
+  // change, and neither does a 401 the session refresh could not cure (a
+  // weak network, or a 429 on the refresh itself). The change keeps waiting,
+  // the loop stops as for a network failure, and no retry budget is spent.
+  for (final code in [408, 429]) {
+    test('a $code keeps every change waiting and stops the loop', () async {
+      final database = await _freshDb();
+      for (final title in ['أ', 'ب']) {
+        await database.enqueueSync(
+          entityType: 'task',
+          operation: 'create',
+          endpoint: '/wedding-plans/plan-1/tasks',
+          method: 'POST',
+          payload: {'title': title},
+          planId: 'plan-1',
+        );
+      }
+      final adapter = _ScriptedAdapter([
+        (_) => _status(code, '{"statusCode":$code,"message":"later"}'),
+      ]);
+      final service = _service(database, adapter);
+      await service.ensureCacheOwner('user-A');
+
+      await service.syncPendingChanges();
+
+      expect(adapter.received, hasLength(1), reason: 'stops at the first');
+      expect(await database.pendingSyncCount(), 2);
+      expect(service.blockedCount, 0);
+      // As after a 5xx: waiting to be sent, never «the server refused».
+      expect(service.state, SyncState.hasPendingChanges);
+    });
+  }
+
+  test('a 401 the refresh could not cure keeps the change waiting', () async {
+    final database = await _freshDb();
+    await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/wedding-plans/plan-1/tasks',
+      method: 'POST',
+      payload: {'title': 'مهمة'},
+      planId: 'plan-1',
+    );
+    final adapter = _ScriptedAdapter([
+      (_) => _status(401, '{"statusCode":401,"message":"Unauthorized"}'),
+    ]);
+    final apiClient = ApiClient(tokenProvider: () async => 'expired');
+    apiClient.dio.httpClientAdapter = adapter;
+    var refreshes = 0;
+    // The refresh fails the way a weak network fails it.
+    apiClient.refreshSession = () async {
+      refreshes++;
+      throw Exception('refresh timed out');
+    };
+    final service = OfflineSyncService(
+      database: database,
+      apiClient: apiClient,
+    );
+    await service.ensureCacheOwner('user-A');
+
+    await service.syncPendingChanges();
+
+    expect(refreshes, 1);
+    expect(await database.pendingSyncCount(), 1);
+    expect(service.blockedCount, 0);
+  });
+
+  test('a 429 spends no retry budget, even at its edge', () async {
+    final database = await _freshDb();
+    final item = await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/wedding-plans/plan-1/tasks',
+      method: 'POST',
+      payload: {'title': 'مهمة'},
+      planId: 'plan-1',
+    );
+    for (var i = 0; i < SyncQueueItem.maxAutoRetries - 1; i++) {
+      await database.markSyncItemFailed(item.id, 'boom');
+    }
+    final adapter = _ScriptedAdapter([
+      (_) => _status(429, '{"statusCode":429,"message":"later"}'),
+    ]);
+    final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
+
+    await service.syncPendingChanges();
+
+    expect(await database.pendingSyncCount(), 1);
+    expect(service.blockedCount, 0);
+  });
+
   test('an item blocks after exhausting its automatic retry budget', () async {
     final database = await _freshDb();
     final item = await database.enqueueSync(

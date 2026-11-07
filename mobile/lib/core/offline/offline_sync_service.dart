@@ -552,7 +552,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           if (ApiClient.isAppUpdateRequired(error)) break;
           final apiError = ApiException.fromDio(error);
           blockedAny = await _handleSyncError(item, apiError) || blockedAny;
-          if (apiError.isNetworkFailure) stopForNetworkFailure = true;
+          if (apiError.isNetworkFailure || _isNotNow(apiError)) {
+            stopForNetworkFailure = true;
+          }
         } on Object catch (error) {
           if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
             sessionChanged = true;
@@ -642,6 +644,16 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// RA-MO-29: answers that say «not now» about the request, never «no» about
+  /// the change: a timeout (408), too many requests (429), and a 401 the
+  /// session refresh could not cure (a weak network, or a 429 on the refresh
+  /// itself; a refresh the server refused ends the session instead). Like a
+  /// network failure, they keep the change waiting and spend no retry budget.
+  static bool _isNotNow(Object error) =>
+      error is ApiException &&
+      !error.isNetworkFailure &&
+      const {401, 408, 429}.contains(error.statusCode);
+
   /// Returns true if the item was permanently blocked (not just failed for
   /// a later retry), so the caller can surface it instead of reporting a
   /// clean sync.
@@ -654,11 +666,13 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     final isPermanentRejection =
         error is ApiException &&
         !error.isNetworkFailure &&
+        !_isNotNow(error) &&
         (error.statusCode ?? 0) >= 400 &&
         (error.statusCode ?? 0) < 500;
     final exhaustedRetries =
         item.retryCount + 1 >= SyncQueueItem.maxAutoRetries &&
-        !(error is ApiException && error.isNetworkFailure);
+        !(error is ApiException && error.isNetworkFailure) &&
+        !_isNotNow(error);
 
     final blocked = isPermanentRejection || exhaustedRetries;
     if (blocked) {

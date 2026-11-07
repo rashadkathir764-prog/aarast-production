@@ -508,7 +508,10 @@ export class BudgetCategoriesService {
       (typeof value === "string" && value.trim() === "")
     )
       return null;
-    return new Prisma.Decimal(requiredMoneyAmount(value, "allocatedAmount"));
+    // RA-BE-29: «0» is no allocation, as in the budget replace; stored as a
+    // zero one it read the item over budget as soon as it held anything.
+    const amount = new Prisma.Decimal(requiredMoneyAmount(value, "allocatedAmount"));
+    return amount.isZero() ? null : amount;
   }
 
   private toResponse(category: CategoryWithCount): BudgetCategoryResponse {

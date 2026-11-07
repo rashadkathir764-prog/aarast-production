@@ -233,6 +233,26 @@ async function run() {
     check('and is not told the plan holds private money (the lock is the owner\'s)',
       partnerMoney.body?.currencyLocked === null);
 
+    // RA-BE-30: the budget replace answered every item's agreements count,
+    // the partner's private ones too (V1 4.10), so the owner learnt they
+    // exist. It counts what the owner reads.
+    const brideItems = ((await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, bride.token))
+      .body?.categories ?? []).filter((item) => item.kind !== 'MAHR');
+    const privateCost = await request('POST', `/api/v1/wedding-plans/${bridePlanId}/costs`, {
+      budgetCategoryId: brideItems[0]?.categoryId,
+      title: 'هدية خاصة',
+      totalAmount: '100000',
+      isPrivate: true,
+    }, partner.token, randomUUID());
+    const brideReplace = await request('PUT', `/api/v1/wedding-plans/${bridePlanId}/money-budget`, {
+      totalBudget: '7000000',
+      currency: 'YER',
+      categories: brideItems.map((item) => ({ id: item.categoryId, name: item.name, allocatedAmount: item.allocatedAmount })),
+    }, bride.token, randomUUID());
+    const countedItem = (brideReplace.body?.categories ?? []).find((item) => item.id === brideItems[0]?.categoryId);
+    check(`the partner's private agreement is not counted to the owner (read ${countedItem?.costsCount})`,
+      privateCost.status === 201 && brideReplace.status === 200 && countedItem?.costsCount === 0);
+
     // A plan without a groom's or a bride's persona has no mahr side.
     const helperPlan = await onboard(helper.token, 'HELPER');
     const helperPlanId = helperPlan.body?.activeWeddingPlan?.id;

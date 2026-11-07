@@ -384,6 +384,38 @@ async function run() {
 
     const noAuth = await request('GET', `/api/v1/wedding-plans/${planId}/costs`);
     check('costs require authentication', noAuth.status === 401);
+
+    // RA-BE-29: «0» meant no allocation in the budget replace and a zero one
+    // here, which read the item over budget as soon as it held anything.
+    const zeroItem = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
+      name: 'Zero allocation item',
+      allocatedAmount: '0',
+    }, owner.token);
+    check('an allocation of 0 is no allocation, as in the budget replace',
+      zeroItem.status === 201 && zeroItem.body?.allocatedAmount === null);
+
+    // RA-BE-28: an item the budget replace leaves out is deleted; its tasks
+    // kept waiting on it, never to finish by themselves again.
+    const dropItem = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
+      name: 'Item to drop',
+    }, owner.token);
+    const dropTask = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Book the dropped item',
+      linkedBudgetCategoryId: dropItem.body?.id,
+    }, owner.token);
+    const before = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
+    const kept = (before.body?.categories ?? [])
+      .filter((item) => item.kind !== 'MAHR' && item.categoryId !== dropItem.body?.id)
+      .map((item) => ({ id: item.categoryId, name: item.name, allocatedAmount: item.allocatedAmount }));
+    const replaced = await request('PUT', `/api/v1/wedding-plans/${planId}/money-budget`, {
+      totalBudget: '1000000',
+      currency: 'YER',
+      categories: kept,
+    }, owner.token);
+    const unlinkedTask = await request('GET', `/api/v1/tasks/${dropTask.body?.id}`, null, owner.token);
+    check('a task of an item the replace drops waits on nothing gone',
+      dropTask.status === 201 && replaced.status === 200 &&
+      unlinkedTask.status === 200 && unlinkedTask.body?.linkedBudgetCategoryId === null);
   } finally {
     for (const [label, token] of accounts) {
       try {

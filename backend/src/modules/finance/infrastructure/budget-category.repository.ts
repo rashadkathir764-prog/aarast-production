@@ -191,13 +191,26 @@ export function createReplacementBudgetCategory(
   });
 }
 
+/**
+ * RA-BE-30: each item's agreements are counted as its reader reads them:
+ * another account's private agreement (V1 4.10) is not theirs to count.
+ */
 export function listReplacedBudgetCategories(
   tx: Prisma.TransactionClient,
   weddingPlanId: string,
+  readerUserId: string,
 ) {
   return tx.budgetCategory.findMany({
     where: { weddingPlanId, kind: BudgetCategoryKind.WEDDING },
-    include: { _count: { select: { weddingCosts: true } } },
+    include: {
+      _count: {
+        select: {
+          weddingCosts: {
+            where: { OR: [{ privateToUserId: null }, { privateToUserId: readerUserId }] },
+          },
+        },
+      },
+    },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   });
 }

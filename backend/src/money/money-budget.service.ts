@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
+import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { budgetAllocationViolation } from "../modules/finance/domain/budget-allocation-policy";
 import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
@@ -77,6 +78,8 @@ export class MoneyBudgetService {
     private readonly plans: PlanReadPort,
     @Inject(CATALOG_READ_PORT)
     private readonly catalog: CatalogReadPort,
+    @Inject(TASKS_PORT)
+    private readonly tasks?: TasksPort,
   ) {}
 
   async replace(
@@ -134,6 +137,13 @@ export class MoneyBudgetService {
         }
         if (omitted.length > 0) {
           await deleteOmittedBudgetCategories(tx, omitted.map((item) => item.id));
+          // RA-BE-28: as deleting one item does (budget-categories.service),
+          // its tasks no longer wait on an item that is gone.
+          for (const item of omitted) {
+            await this.tasks?.unlinkTasks(tx, weddingPlanId, {
+              budgetCategoryId: item.id,
+            });
+          }
         }
 
         // Temporary unique keys allow atomic name swaps such as Hall <-> Dress.
@@ -167,7 +177,11 @@ export class MoneyBudgetService {
           estimatedBudget: totalBudget,
           currency,
         });
-        const savedCategories = await listReplacedBudgetCategories(tx, weddingPlanId);
+        const savedCategories = await listReplacedBudgetCategories(
+          tx,
+          weddingPlanId,
+          currentUser.id,
+        );
         const summary = await buildMoneySummaryInTransaction(
           tx,
           this.permissions,

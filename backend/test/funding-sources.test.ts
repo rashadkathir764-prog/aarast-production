@@ -195,6 +195,21 @@ test("a loan is paid back through planned repayments that never exceed it", asyn
     funding.update(owner, loan.id, { amount: "100000" }),
     (error: any) => error?.getStatus?.() === 400,
   );
+
+  // RA-BE-27: editing, cancelling or deleting the source all refuse a paid
+  // repayment («mark it unpaid first»); deleting it alone erased the paid
+  // record and raised what is owed with no trace.
+  await assert.rejects(
+    funding.removeRepayment(owner, paid.repayments[0].id),
+    (error: any) =>
+      error?.getStatus?.() === 409 &&
+      error.getResponse().code === "FINANCE_REPAYMENT_PAID_LOCKED",
+  );
+  const unpaid = await funding.updateRepayment(owner, paid.repayments[0].id, {
+    status: LoanRepaymentStatus.PLANNED,
+  });
+  const removed = await funding.removeRepayment(owner, unpaid.repayments[0].id);
+  assert.equal(removed.repayments.length, 0);
 });
 
 test("only a loan takes repayments", async () => {

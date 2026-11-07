@@ -20,6 +20,7 @@ import {
 import {
   fundingSourceChangeViolation,
   fundingSourceDeletionViolation,
+  repaymentDeletionViolation,
   repaymentEditViolation,
   repaymentKindViolation,
   repaymentTotalViolation,
@@ -304,9 +305,11 @@ export class FundingSourcesService {
       currentUser,
       repayment.fundingSourceId,
       async (tx, source) => {
-        if (!source.repayments.some((item) => item.id === repaymentId)) {
+        const current = source.repayments.find((item) => item.id === repaymentId);
+        if (!current) {
           throw new NotFoundException("Loan repayment not found");
         }
+        raiseFinanceViolation(repaymentDeletionViolation(current.status));
         await deleteLoanRepayment(tx, repaymentId);
         return lockFundingSource(tx, source.id);
       },

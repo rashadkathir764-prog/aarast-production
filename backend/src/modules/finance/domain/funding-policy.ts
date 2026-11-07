@@ -73,6 +73,18 @@ export function expectedFundingReminder(
 }
 
 /** A paid repayment is only reopened, never edited or cancelled directly. */
+/**
+ * RA-BE-27: a paid repayment is deleted as it is edited or cancelled: marked
+ * unpaid first, so a paid record never leaves with no trace.
+ */
+export function repaymentDeletionViolation(
+  status: LoanRepaymentStatus,
+): FinanceViolation | null {
+  return status === 'PAID'
+    ? conflict('A paid repayment cannot be deleted; mark it unpaid first')
+    : null;
+}
+
 export function repaymentEditViolation(
   status: LoanRepaymentStatus,
   change: { amountOrDueDate: boolean; nextStatus?: LoanRepaymentStatus },

@@ -102,6 +102,10 @@ const WORDING: Readonly<Record<string, Wording>> = {
     code: 'FINANCE_REPAYMENT_PAID_LOCKED',
     ar: 'الدفعة مسدّدة. رجّعها «غير مدفوعة» أول ثم عدّلها.',
   },
+  'A paid repayment cannot be deleted; mark it unpaid first': {
+    code: 'FINANCE_REPAYMENT_PAID_LOCKED',
+    ar: 'الدفعة مسدّدة. رجّعها «غير مدفوعة» أول ثم احذفها.',
+  },
   'A paid repayment cannot be cancelled; mark it unpaid first': {
     code: 'FINANCE_REPAYMENT_PAID_LOCKED',
     ar: 'الدفعة مسدّدة. رجّعها «غير مدفوعة» أول ثم ألغها.',

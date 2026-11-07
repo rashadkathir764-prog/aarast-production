@@ -1283,9 +1283,18 @@ row-locked outstanding cost. The check is per reminder: other pending schedules
 are not summed because they reserve nothing. Update accepts only `amount`,
 `dueDate`, and `note`; clients cannot submit status or paid-at fields.
 
+A payment made straight on the cost later can leave less than a pending
+reminder's amount. Every schedule response therefore carries `amountDue`
+(RA-BE-53): for a pending reminder the lesser of its `amount` and what the cost
+still owes, else `"0"`; `amount` stays as the person wrote it. The money
+summary's `paymentSchedules.next.amount`, the dashboard's next payment and due
+items, and the payment reminders all name `amountDue`.
+
 Paying accepts optional `paidAt`, `method`, and `note`, locks the schedule and
-cost, rejects a reminder whose amount now exceeds the current outstanding cost,
-creates one linked CostPayment, and makes concurrent retries idempotent. Any
+cost, and records `amountDue` (before RA-BE-53 a reminder above the remaining
+was refused and could never be paid). A paid schedule is the record of its
+payment, equal to it in the ledger, so a reminder paid for less takes the amount
+paid. It creates one linked CostPayment and makes concurrent retries idempotent. Any
 direct or scheduled payment that fully pays the cost cancels every remaining
 pending reminder. Reversing a schedule-linked payment reopens that schedule.
 Paid schedules and schedules with payment history cannot be hard-deleted.

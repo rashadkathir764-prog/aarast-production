@@ -6,6 +6,7 @@ import { HttpException, NotFoundException } from "@nestjs/common";
 import {
   NotificationPriority,
   NotificationType,
+  Prisma,
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
@@ -559,14 +560,17 @@ test("scheduler re-reads task and schedule lifecycle rows after locking", async 
               {
                 id: "schedule-stale",
                 weddingCostId: "cost-stale",
-                amount: { toString: () => "10" },
+                amount: new Prisma.Decimal("10"),
                 dueDate,
                 status: "PENDING",
+                // RA-BE-53: read against what the cost still owes.
                 weddingCost: {
                   weddingPlanId: planId,
                   title: "Cost",
                   partyName: null,
                   provider: null,
+                  totalAmount: new Prisma.Decimal("100"),
+                  paidAmount: new Prisma.Decimal("0"),
                 },
               },
             ]

@@ -192,7 +192,8 @@ class _NextPaymentCard extends StatelessWidget {
     final soft = isOverdue
         ? AarastV3Color.dangerSoft
         : AarastV3Color.brandAccentSoft;
-    final amount = _amount(context, schedule.amount, currency);
+    // RA-BE-53: what paying it records, not more than the agreement owes.
+    final amount = _amount(context, schedule.dueAmount, currency);
     return Semantics(
       button: true,
       label:

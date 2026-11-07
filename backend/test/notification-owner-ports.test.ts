@@ -6,7 +6,7 @@ import {
   ContributionAction,
   ContributionEntityType,
   PaymentScheduleStatus,
-  type Prisma,
+  Prisma,
   WeddingCostStatus,
   WeddingPlanStatus,
   WeddingTaskStatus,
@@ -51,7 +51,8 @@ function recorder() {
       ],
     }),
     weddingTask: delegate('weddingTask', { findMany: [{ id: 'task-1', weddingPlanId: 'plan-1' }], findUnique: { id: 'task-1', weddingPlanId: 'plan-1' }, findFirst: { id: 'task-1' } }),
-    paymentSchedule: delegate('paymentSchedule', { findMany: [{ id: 'schedule-1', weddingCost: { weddingPlanId: 'plan-1' } }], findFirst: { id: 'schedule-1' } }),
+    // RA-BE-53: a due schedule is read against what its cost still owes.
+    paymentSchedule: delegate('paymentSchedule', { findMany: [{ id: 'schedule-1', amount: new Prisma.Decimal('100'), weddingCost: { weddingPlanId: 'plan-1', totalAmount: new Prisma.Decimal('1000'), paidAmount: new Prisma.Decimal('0') } }], findFirst: { id: 'schedule-1' } }),
     provider: delegate('provider', { findUnique: { id: 'provider-1', userId: 'user-1' } }),
     conversation: delegate('conversation', { findUnique: { providerId: 'provider-1' } }),
   } as unknown as Prisma.TransactionClient;
@@ -175,8 +176,9 @@ test('finance serves the due schedules, the schedules of contributed costs, the 
     status: PaymentScheduleStatus.PENDING,
     weddingCost: { weddingPlanId: { in: ['plan-1'] }, status: { not: WeddingCostStatus.CANCELLED } },
   });
-  // V1 checklist 4.10: a private cost reminds only its account.
-  const include = { weddingCost: { select: { weddingPlanId: true, title: true, partyName: true, providerId: true, privateToUserId: true } } };
+  // V1 checklist 4.10: a private cost reminds only its account. RA-BE-53:
+  // the cost's total and paid come too, so a reminder names what is due.
+  const include = { weddingCost: { select: { weddingPlanId: true, title: true, partyName: true, providerId: true, privateToUserId: true, totalAmount: true, paidAmount: true } } };
   assert.deepEqual(calls, [
     ['paymentSchedule.findMany', { where: dueWhere(), include }],
     ['paymentSchedule.findMany', { where: dueWhere(['schedule-1']), include }],

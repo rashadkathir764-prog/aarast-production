@@ -98,15 +98,20 @@ test('finance serves a plan\'s money picture and pending schedules, narrowed to 
     2,
   );
   assert.equal(pictureCalls.some(([name]) => name.startsWith('fundingSource.')), false);
+  // RA-BE-53: a pending schedule leaves finance asking for what its cost still
+  // owes, so the read takes the cost's total and paid with its title.
+  const scheduleInclude = {
+    weddingCost: { select: { title: true, totalAmount: true, paidAmount: true } },
+  };
   assert.deepEqual(calls, [
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere() },
-      include: { weddingCost: { select: { title: true } } },
+      include: scheduleInclude,
       orderBy: byDue,
     }],
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere(['cost-1']) },
-      include: { weddingCost: { select: { title: true } } },
+      include: scheduleInclude,
       orderBy: byDue,
     }],
   ]);

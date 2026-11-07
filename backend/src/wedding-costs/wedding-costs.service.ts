@@ -88,6 +88,7 @@ import {
   totalAmountViolation,
 } from "../modules/finance/domain/wedding-cost-aggregate";
 import {
+  scheduleAmountDue,
   scheduleAmountViolation,
   scheduledPaymentViolation,
   schedulesToCancelOnStatus,
@@ -189,7 +190,13 @@ export interface PaymentScheduleResponse {
   providerId: string | null;
   providerName: string | null;
   costTitle: string;
+  /** The amount as the person wrote it. */
   amount: string;
+  /**
+   * RA-BE-53: what a pending schedule asks for now, at most what its cost
+   * still owes; what paying it records. "0" once it is paid or cancelled.
+   */
+  amountDue: string;
   dueDate: Date;
   paidAt: Date | null;
   status: PaymentScheduleStatus;
@@ -1421,19 +1428,32 @@ export class WeddingCostsService {
         throw financeConflict("Payment schedule already has an active payment");
       }
       this.assertCostPayable(cost.status);
-      raiseFinanceViolation(
-        scheduledPaymentViolation(
-          schedule.amount,
-          cost.totalAmount,
-          cost.paidAmount,
-        ),
+      // RA-BE-53: the reminder pays what it asks for now (its amount, or what
+      // the cost still owes if a straight payment left less); paying its
+      // whole amount over the remaining was refused and the reminder stuck.
+      const due = scheduleAmountDue(
+        schedule.amount,
+        cost.totalAmount,
+        cost.paidAmount,
       );
+      raiseFinanceViolation(
+        scheduledPaymentViolation(due, cost.totalAmount, cost.paidAmount),
+      );
+      // A paid schedule is the record of its payment: the ledger holds the
+      // two equal (`CostPayment_entry_integrity`), so a schedule paid for
+      // less than it asked takes the amount paid.
+      if (!due.equals(schedule.amount)) {
+        await updatePaymentSchedule(tx, {
+          where: { id },
+          data: { amount: due },
+        });
+      }
       const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
       const payment = await insertCostPayment(tx, {
         data: {
           weddingCostId: cost.id,
           paymentScheduleId: schedule.id,
-          amount: schedule.amount,
+          amount: due,
           paidAt,
           method: this.optionalText(dto.method),
           note: this.optionalText(dto.note) ?? schedule.note,
@@ -1451,7 +1471,7 @@ export class WeddingCostsService {
         { scheduleId: id },
         true,
       );
-      const paidAmount = cost.paidAmount.plus(schedule.amount);
+      const paidAmount = cost.paidAmount.plus(due);
       const status = deriveCostStatus(cost.totalAmount, paidAmount);
       await updateWeddingCost(tx, {
         where: { id: cost.id },
@@ -2086,6 +2106,14 @@ export class WeddingCostsService {
       providerName,
       costTitle: schedule.weddingCost.title,
       amount: schedule.amount.toString(),
+      amountDue:
+        schedule.status === PaymentScheduleStatus.PENDING
+          ? scheduleAmountDue(
+              schedule.amount,
+              schedule.weddingCost.totalAmount,
+              schedule.weddingCost.paidAmount,
+            ).toString()
+          : "0",
       dueDate: schedule.dueDate,
       paidAt: schedule.paidAt,
       status: schedule.status,

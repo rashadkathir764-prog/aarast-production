@@ -15,6 +15,7 @@ import {
   mahrSideOf,
 } from '../domain/mahr-policy';
 import { paidFromOwnerMoney } from '../domain/payer-policy';
+import { scheduleAmountDue } from '../domain/payment-schedule-policy';
 import { listOthersPrivateCostIds } from './cost-privacy.repository';
 import {
   type FundingSourceWithRepayments,
@@ -210,6 +211,13 @@ export async function readMoneyPicture(
   }
 
   const next = pendingSchedules[0] ?? null;
+  // RA-BE-53: «the next payment» asks for what its cost still owes, at most.
+  const costById = new Map(costs.map((cost) => [cost.id, cost]));
+  const nextCost = next ? costById.get(next.weddingCostId) : undefined;
+  const nextAmountDue =
+    next && nextCost
+      ? scheduleAmountDue(next.amount, nextCost.totalAmount, paidOf(nextCost))
+      : (next?.amount ?? null);
   const mahr = summarizeMahr({
     side: mahrSideOf(query.persona),
     costs: costs.filter((cost) => mahrCategoryIds.has(cost.budgetCategoryId)),
@@ -253,7 +261,7 @@ export async function readMoneyPicture(
         ? {
             id: next.id,
             weddingCostId: next.weddingCostId,
-            amount: next.amount.toString(),
+            amount: (nextAmountDue ?? next.amount).toString(),
             dueDate: next.dueDate,
             status: next.status,
             isOverdue: next.dueDate < today,

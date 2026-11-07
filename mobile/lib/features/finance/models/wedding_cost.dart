@@ -183,6 +183,7 @@ class PaymentSchedule {
     required this.amount,
     required this.dueDate,
     required this.status,
+    this.amountDue,
     this.isOverdue = false,
     this.paidAt,
     this.note,
@@ -204,6 +205,7 @@ class PaymentSchedule {
       costId:
           json['costId']?.toString() ?? json['weddingCostId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
+      amountDue: stringOrNull(json['amountDue']),
       dueDate: dueDate,
       status: status,
       isOverdue:
@@ -234,7 +236,13 @@ class PaymentSchedule {
 
   final String id;
   final String costId;
+
+  /// The amount as the person wrote it (what the reminder's form edits).
   final String amount;
+
+  /// RA-BE-53: what the server says this pending reminder asks for now, at
+  /// most what its agreement still owes; null from an older server.
+  final String? amountDue;
   final DateTime dueDate;
   final String status;
   final bool isOverdue;
@@ -252,6 +260,39 @@ class PaymentSchedule {
   bool get isPending => status == 'PENDING';
   bool get isPaid => status == 'PAID';
   bool get isCancelled => status == 'CANCELLED';
+
+  /// RA-BE-53: what paying this reminder records and what the money screens
+  /// show for it: the server's figure, else its own amount.
+  String get dueAmount => amountDue ?? amount;
+
+  /// This reminder asking for at most what its agreement still owes, as the
+  /// server reads it (`scheduleAmountDue`), for the copy kept on the phone.
+  PaymentSchedule withRemaining(String remainingAmount) {
+    final remaining = moneyValue(remainingAmount);
+    final own = moneyValue(amount);
+    final due = !isPending || remaining <= 0
+        ? '0'
+        : (own < remaining ? amount : remainingAmount);
+    return PaymentSchedule(
+      id: id,
+      costId: costId,
+      amount: amount,
+      amountDue: due,
+      dueDate: dueDate,
+      status: status,
+      isOverdue: isOverdue,
+      paidAt: paidAt,
+      note: note,
+      weddingPlanId: weddingPlanId,
+      costTitle: costTitle,
+      budgetCategoryId: budgetCategoryId,
+      categoryName: categoryName,
+      providerId: providerId,
+      providerName: providerName,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 
   /// Mirrors the backend rule: a pending reminder is overdue only when its
   /// due instant is before the start of the current calendar day in Riyadh.

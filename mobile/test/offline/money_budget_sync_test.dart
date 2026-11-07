@@ -566,6 +566,39 @@ void main() {
   );
 
   test(
+    'RA-BE-53: offline, a reminder above what is left pays what is left, as the server does',
+    () async {
+      final database = await _freshDatabase();
+      final client = _OfflineFinanceClient();
+      final offline = OfflineSyncService(database: database, apiClient: client);
+      await offline.initialize();
+      final api = FinanceApi(client, offline: offline);
+      // An agreement of 1000 with 800 paid straight on it: 200 is left.
+      final cost = _cost(id: 'cost-1', paidAmount: '800');
+      final schedule = PaymentSchedule(
+        id: 'schedule-1',
+        costId: cost.id,
+        amount: '500',
+        dueDate: DateTime(2026, 8, 1),
+        status: 'PENDING',
+        weddingPlanId: cost.weddingPlanId,
+      );
+      expect(schedule.withRemaining(cost.remainingAmount).dueAmount, '200');
+
+      // It was refused («مبلغ الموعد يتجاوز غير المدفوع») and stuck.
+      final payment = await api.paySchedule(schedule: schedule, cost: cost);
+
+      expect(moneyValue(payment.amount), 200);
+      final stored = await database.readCachedItem(
+        table: OfflineTables.cachedPaymentSchedules,
+        id: 'schedule-1',
+      );
+      expect(stored?['status'], 'PAID');
+      expect(moneyValue(stored?['amount']), 200);
+    },
+  );
+
+  test(
     'server-id reversal and schedule pay queue on network failure',
     () async {
       final database = await _freshDatabase();

@@ -11,6 +11,8 @@ import 'finance_local_serializers.dart';
 import 'finance_local_summary.dart';
 import 'finance_money_rules.dart';
 
+part 'finance_local_schedules.dart';
+
 int _lastLocalEntityMicros = 0;
 
 String _nextLocalEntityId(String prefix) {
@@ -364,6 +366,8 @@ class FinanceLocalDataSource {
       'updatedAt': DateTime.now().toIso8601String(),
     }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
+    // RA-BE-53: a new total changes what is left, so what each reminder asks.
+    await _refreshScheduleDues(cost.id, json['remainingAmount'].toString());
     return WeddingCost.fromJson(json);
   }
 
@@ -532,20 +536,22 @@ class FinanceLocalDataSource {
       throw const ApiException('هذا الموعد ما يندفع الحين.');
     }
     final currentCost = await _currentCost(cost);
-    if (FinanceMoneyRules.value(schedule.amount) >
-        FinanceMoneyRules.value(currentCost.remainingAmount)) {
-      throw const ApiException('مبلغ الموعد يتجاوز غير المدفوع على التكلفة.');
+    // RA-BE-53: as the server does, the reminder pays what its agreement
+    // still owes at most. Refusing its whole amount over the remaining left
+    // a reminder that could never be paid after a straight payment.
+    final due = schedule.withRemaining(currentCost.remainingAmount).dueAmount;
+    if (FinanceMoneyRules.value(due) <= 0) {
+      throw const ApiException('هذا الاتفاق مدفوع كله، فما فيه شي يندفع.');
     }
     final payment = await _createPaymentCache(
       cost: weddingCostToLocalJson(currentCost),
-      payload: {
-        ...payload,
-        'amount': schedule.amount,
-        'paymentScheduleId': schedule.id,
-      },
+      payload: {...payload, 'amount': due, 'paymentScheduleId': schedule.id},
     );
     await _save(OfflineTables.cachedPaymentSchedules, {
       ...paymentScheduleToLocalJson(schedule),
+      // As the server keeps it: a paid reminder records what was paid.
+      'amount': due,
+      'amountDue': '0',
       'status': 'PAID',
       'paidAt': payment.paidAt.toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
@@ -615,41 +621,9 @@ class FinanceLocalDataSource {
         cost.id,
         exceptScheduleId: exceptScheduleId,
       );
+    } else {
+      await _refreshScheduleDues(cost.id, json['remainingAmount'].toString());
     }
-  }
-
-  Future<void> _cancelPendingSchedules(
-    String costId, {
-    String? exceptScheduleId,
-  }) async {
-    final schedules = await _offline?.database.readCachedList(
-      table: OfflineTables.cachedPaymentSchedules,
-    );
-    for (final schedule in schedules ?? const <Map<String, dynamic>>[]) {
-      if (schedule['costId']?.toString() != costId ||
-          schedule['status']?.toString() != 'PENDING' ||
-          schedule['id']?.toString() == exceptScheduleId) {
-        continue;
-      }
-      await _save(OfflineTables.cachedPaymentSchedules, {
-        ...schedule,
-        'status': 'CANCELLED',
-        'updatedAt': DateTime.now().toIso8601String(),
-      }, dirty: true);
-    }
-  }
-
-  Future<void> _restoreScheduleAfterReversal(String? scheduleId) async {
-    final id = scheduleId?.trim();
-    if (id == null || id.isEmpty) return;
-    final cached = await _read(OfflineTables.cachedPaymentSchedules, id);
-    if (cached == null) return;
-    await _save(OfflineTables.cachedPaymentSchedules, {
-      ...cached,
-      'status': 'PENDING',
-      'paidAt': null,
-      'updatedAt': DateTime.now().toIso8601String(),
-    }, dirty: true);
   }
 
   Future<WeddingCost> _currentCost(WeddingCost fallback) async {

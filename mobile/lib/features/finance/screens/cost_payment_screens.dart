@@ -219,7 +219,8 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
           currency: currency,
           draftScope:
               'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
-          fixedAmount: schedule.amount,
+          // RA-BE-53: the payment records what the reminder asks for now.
+          fixedAmount: schedule.dueAmount,
           fixedLine: 'المتفق في موعد ${formatArabicDayMonth(schedule.dueDate)}',
           fixedAction: () => showPaymentScheduleSheet(
             context,

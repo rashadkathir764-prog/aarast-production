@@ -29,9 +29,11 @@ class _MoneyPaymentsTab extends StatelessWidget {
     final now = appNow();
     final schedules = [...provider.dueSchedules]
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    // RA-BE-53: each reminder at what it asks for now (at most what its
+    // agreement still owes), as the server reads it and pays it.
     final total = schedules.fold<double>(
       0,
-      (sum, schedule) => sum + moneyValue(schedule.amount),
+      (sum, schedule) => sum + moneyValue(schedule.dueAmount),
     );
     final canSwipe = provider.canManageMoney;
     final late = [

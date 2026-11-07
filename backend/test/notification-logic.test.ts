@@ -6,6 +6,7 @@ import {
   Notification,
   NotificationPriority,
   NotificationType,
+  Prisma,
   UserStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../src/modules/identity/public/identity-session.types";
@@ -445,14 +446,18 @@ test("scheduled reminders respect notification and financial permissions", async
         {
           id: "schedule-1",
           weddingCostId: "cost-1",
-          amount: { toString: () => "100" },
+          amount: new Prisma.Decimal("100"),
           dueDate,
           status: "PENDING",
+          // RA-BE-53: finance reads the schedule against what its cost still
+          // owes (nothing paid: it asks for its own amount).
           weddingCost: {
             weddingPlanId: plan.id,
             title: "Cost",
             partyName: "Private",
             provider: null,
+            totalAmount: new Prisma.Decimal("1000"),
+            paidAmount: new Prisma.Decimal("0"),
           },
         },
       ],

@@ -54,6 +54,17 @@ import {
   weddingCostResponseInclude,
   type WeddingCostWithDetails,
 } from '../public/wedding-cost.presenter';
+import { scheduleAmountDue } from '../domain/payment-schedule-policy';
+
+// RA-BE-53: a pending schedule leaves finance asking for what its cost still
+// owes, at most, so the dashboard, its money items and the reminders name the
+// payment that is actually due.
+function amountDueOf(
+  amount: Prisma.Decimal,
+  cost: { totalAmount: Prisma.Decimal; paidAmount: Prisma.Decimal },
+): Prisma.Decimal {
+  return scheduleAmountDue(amount, cost.totalAmount, cost.paidAmount);
+}
 
 @Injectable()
 export class FinancePortService implements FinancePort {
@@ -335,7 +346,7 @@ export class FinancePortService implements FinancePort {
     weddingPlanId: string,
     costIds?: readonly string[] | null,
   ): Promise<PendingPaymentSchedule[]> {
-    return client.paymentSchedule.findMany({
+    const schedules = await client.paymentSchedule.findMany({
       where: {
         status: PaymentScheduleStatus.PENDING,
         weddingCost: {
@@ -344,9 +355,18 @@ export class FinancePortService implements FinancePort {
           status: { not: WeddingCostStatus.CANCELLED },
         },
       },
-      include: { weddingCost: { select: { title: true } } },
+      include: {
+        weddingCost: {
+          select: { title: true, totalAmount: true, paidAmount: true },
+        },
+      },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
     });
+    return schedules.map(({ weddingCost, ...schedule }) => ({
+      ...schedule,
+      amount: amountDueOf(schedule.amount, weddingCost),
+      weddingCost: { title: weddingCost.title },
+    }));
   }
 
   async listDuePaymentSchedules(
@@ -356,7 +376,7 @@ export class FinancePortService implements FinancePort {
     if (query.weddingPlanIds.length === 0 || query.scheduleIds?.length === 0) {
       return [];
     }
-    return client.paymentSchedule.findMany({
+    const schedules = await client.paymentSchedule.findMany({
       where: {
         ...(query.scheduleIds ? { id: { in: [...query.scheduleIds] } } : {}),
         dueDate: { lte: query.dueBefore },
@@ -374,9 +394,19 @@ export class FinancePortService implements FinancePort {
             partyName: true,
             providerId: true,
             privateToUserId: true,
+            totalAmount: true,
+            paidAmount: true,
           },
         },
       },
+    });
+    return schedules.map(({ weddingCost, ...schedule }) => {
+      const { totalAmount, paidAmount, ...cost } = weddingCost;
+      return {
+        ...schedule,
+        amount: amountDueOf(schedule.amount, { totalAmount, paidAmount }),
+        weddingCost: cost,
+      };
     });
   }
 

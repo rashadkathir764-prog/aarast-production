@@ -13,6 +13,7 @@ import {
   GuestSide,
   GuestStatus,
   SharedMemberRole,
+  Prisma,
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
@@ -177,22 +178,29 @@ test("revoked task detail returns the stable Arabic 403 instead of hiding the pe
 });
 
 test("timeline never exposes another contributor financial schedule", async () => {
+  // RA-BE-53: finance reads each pending schedule against what its cost
+  // still owes, so the fake costs carry their totals (nothing paid yet: each
+  // schedule asks for its own amount).
+  const owes = {
+    totalAmount: new Prisma.Decimal("1000"),
+    paidAmount: new Prisma.Decimal("0"),
+  };
   const schedules = [
     {
       id: "schedule-a",
       weddingCostId: "cost-a",
-      amount: { toString: () => "100" },
+      amount: new Prisma.Decimal("100"),
       dueDate: now,
       status: "PENDING",
-      weddingCost: { title: "Own cost" },
+      weddingCost: { title: "Own cost", ...owes },
     },
     {
       id: "schedule-b",
       weddingCostId: "cost-b",
-      amount: { toString: () => "200" },
+      amount: new Prisma.Decimal("200"),
       dueDate: now,
       status: "PENDING",
-      weddingCost: { title: "Other cost" },
+      weddingCost: { title: "Other cost", ...owes },
     },
   ];
   const context = contributorContext({ canViewMoney: true });

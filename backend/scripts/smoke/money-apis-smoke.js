@@ -300,6 +300,62 @@ async function run() {
     );
     check('reminder-only smoke cost can be cancelled after reversal', cancelReminderOnlyCost.status === 201 && cancelReminderOnlyCost.body?.status === 'CANCELLED');
 
+    // RA-BE-53: a straight payment leaves less than a reminder's amount. The
+    // reminder read its whole amount as «the next payment» and paying it was
+    // refused as above the remaining; it asks for, and pays, what is left.
+    {
+      const partly = await request(
+        'POST',
+        `/api/v1/wedding-plans/${planId}/costs`,
+        { budgetCategoryId: categoryId, title: 'Reminder above what is left', totalAmount: '1000' },
+        owner.token,
+      );
+      const partlyId = partly.body?.id;
+      const reminder = await request(
+        'POST',
+        `/api/v1/costs/${partlyId}/payment-schedules`,
+        { amount: '500', dueDate: dateOffsetIso(3) },
+        owner.token,
+      );
+      const straight = await request(
+        'POST',
+        `/api/v1/costs/${partlyId}/payments`,
+        { amount: '800', paidAt: dateOffsetIso(0) },
+        owner.token,
+      );
+      check(
+        'a reminder and a straight payment leave 200 owed',
+        partly.status === 201 && reminder.status === 201 && straight.status === 201,
+      );
+      const listed = await request('GET', `/api/v1/costs/${partlyId}/payment-schedules`, null, owner.token);
+      const listedReminder = listed.body?.find?.((item) => item.id === reminder.body?.id);
+      check(
+        'the reminder keeps its own amount and asks for what is left',
+        listedReminder?.amount === '500' && listedReminder?.amountDue === '200',
+      );
+      const due = await request('GET', `/api/v1/wedding-plans/${planId}/payment-schedules/due`, null, owner.token);
+      check(
+        'the due list asks for what is left',
+        due.body?.find?.((item) => item.id === reminder.body?.id)?.amountDue === '200',
+      );
+      const paid = await request(
+        'POST',
+        `/api/v1/payment-schedules/${reminder.body?.id}/pay`,
+        { paidAt: dateOffsetIso(0) },
+        owner.token,
+      );
+      check(
+        'paying the reminder records what was left and settles the agreement',
+        paid.status === 201 && paid.body?.payment?.amount === '200' && paid.body?.schedule?.status === 'PAID',
+      );
+      const settled = await request('GET', `/api/v1/costs/${partlyId}`, null, owner.token);
+      check('the agreement is paid in full', settled.body?.status === 'PAID' && settled.body?.remainingAmount === '0');
+      for (const payment of [paid.body?.payment?.id, straight.body?.id]) {
+        await request('POST', `/api/v1/cost-payments/${payment}/reverse`, { reason: 'RA-BE-53 smoke cleanup' }, owner.token);
+      }
+      await request('POST', `/api/v1/costs/${partlyId}/cancel`, {}, owner.token);
+    }
+
     const schedule = await request(
       'POST',
       `/api/v1/costs/${costId}/payment-schedules`,

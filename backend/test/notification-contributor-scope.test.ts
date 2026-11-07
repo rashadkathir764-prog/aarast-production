@@ -6,9 +6,18 @@ import {
   ContributionEntityType,
   NotificationPriority,
   NotificationType,
+  Prisma,
   UserStatus,
 } from "@prisma/client";
 import { notificationsService } from "./support/owner-ports";
+
+// RA-BE-53: finance reads each pending schedule against what its cost still
+// owes, so a fake cost carries its totals (nothing paid: the schedule asks
+// for its own amount).
+const owes = {
+  totalAmount: new Prisma.Decimal("1000"),
+  paidAmount: new Prisma.Decimal("0"),
+};
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 
 const now = new Date("2026-08-02T00:00:00.000Z");
@@ -273,7 +282,7 @@ test("scheduled reminders target only each contributor's current task or qualify
     {
       id: "schedule-a",
       weddingCostId: "cost-a",
-      amount: { toString: () => "1" },
+      amount: new Prisma.Decimal("1"),
       dueDate,
       status: "PENDING",
       weddingCost: {
@@ -281,12 +290,13 @@ test("scheduled reminders target only each contributor's current task or qualify
         title: "Cost A",
         partyName: null,
         provider: null,
+        ...owes,
       },
     },
     {
       id: "schedule-c",
       weddingCostId: "cost-c",
-      amount: { toString: () => "1" },
+      amount: new Prisma.Decimal("1"),
       dueDate,
       status: "PENDING",
       weddingCost: {
@@ -294,6 +304,7 @@ test("scheduled reminders target only each contributor's current task or qualify
         title: "Cost C",
         partyName: null,
         provider: null,
+        ...owes,
       },
     },
   ];

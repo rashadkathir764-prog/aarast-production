@@ -381,14 +381,17 @@ function GrantDialog({
           </label>
           <ul className="desk-dialog__effects">
             <li>
-              من {dayLabel(from)} لين {dayLabel(endsOn)} يطلع مع المميزين أول، وعليه «مميز» عند العرسان.
+              {/* RA-AD-03: a cleared date is '', never a day to name. */}
+              {from && endsOn
+                ? `من ${dayLabel(from)} لين ${dayLabel(endsOn)} يطلع مع المميزين أول، وعليه «مميز» عند العرسان.`
+                : 'اختر الأيام: يطلع فيها مع المميزين أول، وعليه «مميز» عند العرسان.'}
             </li>
             <li>يوصله تنبيه الحين، وقبل النهاية بأسبوع، ولما تخلص.</li>
             <li>التطبيق ما يستلم فلوس، ولا يسجّل مبلغ.</li>
           </ul>
           {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
           <div className="desk-dialog__actions">
-            <DeskButton type="submit" disabled={saving || !endsOn}>
+            <DeskButton type="submit" disabled={saving || !endsOn || !from}>
               فعّل
             </DeskButton>
             {target === 'pick' ? (

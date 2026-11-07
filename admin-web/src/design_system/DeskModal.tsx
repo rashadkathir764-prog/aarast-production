@@ -22,19 +22,26 @@ export function DeskModal({
   const titleId = `desk-modal-${useId().replace(/:/g, '')}`;
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
+  // RA-AD-02: the pages pass a new onClose on every render (their draft is
+  // page state). The window reads the latest one and runs its focus work on
+  // opening and closing only, never on a keystroke.
+  const close = useRef(onClose);
+  close.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
     opener.current = document.activeElement;
     const box = ref.current;
-    const first = box?.querySelector<HTMLElement>(
-      'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
-    );
+    // The first field of the form, not the × that comes before it.
+    const first =
+      box?.querySelector<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ) ?? box?.querySelector<HTMLElement>('button:not([disabled])');
     (first ?? box)?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        close.current();
       }
     };
     document.addEventListener('keydown', onKey);
@@ -42,7 +49,7 @@ export function DeskModal({
       document.removeEventListener('keydown', onKey);
       if (opener.current instanceof HTMLElement) opener.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return createPortal(

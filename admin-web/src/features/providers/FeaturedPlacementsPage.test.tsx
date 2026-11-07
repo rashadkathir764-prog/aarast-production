@@ -202,6 +202,36 @@ describe('a17 featured placements', () => {
     );
   });
 
+  // RA-AD-03: clearing a date (Backspace on a segment) made it '' and the
+  // line below the dates built an Invalid Date: a RangeError took the whole
+  // panel down to the error screen and the form with it.
+  it('keeps the form when a date is cleared', async () => {
+    vi.mocked(getProviders).mockResolvedValue({
+      items: [{ ...listing, isFeatured: false } as unknown as ProviderApplication],
+      page: 1,
+      limit: 8,
+      total: 1,
+      totalPages: 1,
+    });
+    renderPage();
+    await screen.findByText('قاعة سبأ');
+    fireEvent.click(screen.getByRole('button', { name: 'فعّل باقة لمزود' }));
+    const dialog = screen.getByRole('dialog', { name: 'فعّل باقة «مميز»' });
+    fireEvent.change(within(dialog).getByPlaceholderText('ابحث باسم النشاط أو الرقم'), {
+      target: { value: 'سبأ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'ابحث' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'قاعة سبأ' }));
+    fireEvent.change(within(dialog).getByLabelText('آخر يوم'), { target: { value: '' } });
+    expect(screen.getByRole('dialog', { name: 'فعّل باقة «مميز»' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'فعّل' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByLabelText('يبدأ يوم ثاني'));
+    fireEvent.change(within(dialog).getByLabelText('آخر يوم'), { target: { value: '2026-12-31' } });
+    fireEvent.change(within(dialog).getByLabelText('أول يوم'), { target: { value: '' } });
+    expect(screen.getByRole('dialog', { name: 'فعّل باقة «مميز»' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'فعّل' })).toBeDisabled();
+  });
+
   it('renews after the current placement and reads a refusal in Arabic', async () => {
     vi.mocked(grantFeaturedPeriod).mockRejectedValue(
       new ApiError('overlap', 409, 'FEATURED_PERIOD_OVERLAP'),

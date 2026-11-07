@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpStatus,
   Inject,
   Injectable,
@@ -1135,6 +1136,7 @@ export class AuthService implements IdentityAuthPort {
     newPhoneInput: string,
     context: OtpDispatchContext = {},
   ): Promise<OtpRequestResponse> {
+    this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
     await this.assertPhoneChangeAllowed(this.prisma, currentUser.id, phone);
     const { otpId: _otpId, ...response } = await this.issueOtp(
@@ -1155,6 +1157,7 @@ export class AuthService implements IdentityAuthPort {
     newPhoneInput: string,
     codeInput: string,
   ): Promise<{ changed: true; phone: string }> {
+    this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
     const code = this.requiredText(codeInput, "code");
     const now = new Date();
@@ -1206,6 +1209,23 @@ export class AuthService implements IdentityAuthPort {
     if (outcome === "invalid") throw this.otpInvalid();
     this.realtime.disconnectUser(currentUser.id);
     return { changed: true, phone };
+  }
+
+  /**
+   * RA-BE-19: an administrator's phone is the admin account's second factor
+   * and its recovery. The application signs an administrator in with the
+   * app password alone, so its phone change, one factor deep, would hand
+   * both to another number. It changes with the admin provisioning only;
+   * the write refuses it too (`AuthUserRepository.changePhone`).
+   */
+  private assertNotAdministratorPhone(currentUser: AuthenticatedUser): void {
+    if (currentUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "ADMIN_PHONE_CHANGE_REFUSED",
+        message: "رقم حساب الإدارة يتغيّر عند فريق اعّرست، لا من التطبيق.",
+      });
+    }
   }
 
   private async assertPhoneChangeAllowed(

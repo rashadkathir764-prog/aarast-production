@@ -74,10 +74,14 @@ export class AuthUserRepository {
     });
   }
 
-  /** V1 checklist 4.14: the account moves to a phone it just proved by OTP. */
+  /**
+   * V1 checklist 4.14: the account moves to a phone it just proved by OTP.
+   * RA-BE-19: never an administrator's, whose phone is the admin account's
+   * second factor and recovery.
+   */
   changePhone(tx: Prisma.TransactionClient, userId: string, phone: string, at: Date) {
     return tx.user.updateMany({
-      where: { id: userId, status: 'ACTIVE' },
+      where: { id: userId, status: 'ACTIVE', role: { not: UserRole.ADMIN } },
       data: { phone, phoneVerifiedAt: at },
     });
   }

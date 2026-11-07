@@ -122,6 +122,70 @@ void main() {
     expect(guestDraftClearCalls, 0);
   });
 
+  // RA-MO-32: at start, every answer but «no network» ended the session the
+  // way a chosen sign-out does, wiping the unsent changes: a server restarting
+  // in a deploy (502/503), a busy one (429), or a refresh whose answer was
+  // lost (401) erased what was done offline. Only a refusal of the session
+  // ends it, and an end nobody chose keeps the unsent changes (C58).
+  for (final status in [500, 502, 503, 429, 408]) {
+    testWidgets(
+      'a server answering $status at start keeps the session and the unsent changes',
+      (tester) async {
+        final harness = await _Harness.create();
+        harness.repository.meFailure = ApiException(
+          'server unavailable',
+          statusCode: status,
+        );
+        var wiped = 0;
+        var keptUnsent = 0;
+        final controller = AuthController(
+          harness.repository,
+          sessionTeardownCoordinator: SessionTeardownCoordinator(
+            auth: harness.repository,
+            clearLocalAccountData: () async => wiped += 1,
+            clearLocalAccountDataKeepingUnsent: () async => keptUnsent += 1,
+            clearGuestDraft: () async {},
+          ),
+        );
+
+        await controller.restoreSession();
+
+        expect(controller.status, AuthStatus.authenticated);
+        expect(controller.user?.id, _SessionRepository.user.id);
+        expect(wiped, 0);
+        expect(keptUnsent, 0);
+      },
+    );
+  }
+
+  testWidgets(
+    'a refused session at start ends it and keeps the unsent changes',
+    (tester) async {
+      final harness = await _Harness.create();
+      harness.repository.meFailure = const ApiException(
+        'session rejected',
+        statusCode: 401,
+      );
+      var wiped = 0;
+      var keptUnsent = 0;
+      final controller = AuthController(
+        harness.repository,
+        sessionTeardownCoordinator: SessionTeardownCoordinator(
+          auth: harness.repository,
+          clearLocalAccountData: () async => wiped += 1,
+          clearLocalAccountDataKeepingUnsent: () async => keptUnsent += 1,
+          clearGuestDraft: () async {},
+        ),
+      );
+
+      await controller.restoreSession();
+
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(wiped, 0);
+      expect(keptUnsent, 1);
+    },
+  );
+
   testWidgets('local cleanup failure exposes a safe retry action', (
     tester,
   ) async {

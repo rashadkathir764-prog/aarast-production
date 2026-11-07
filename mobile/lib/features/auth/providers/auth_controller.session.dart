@@ -59,15 +59,24 @@ mixin _AuthSession on _AuthControllerCore {
       }
     } on ApiException catch (error) {
       if (!_isCurrentSessionOperation(operation)) return;
-      if (CachePolicy.shouldUseCache(error) && _user != null) {
+      // RA-MO-32: only the server refusing the session (401: the refresh
+      // could not renew it) ends it here. No network, a server restarting in
+      // a deploy (5xx), a busy one (429) or a slow one (408) says nothing of
+      // the session, which stays on the account read last, as offline. Before,
+      // each of them ended it like a chosen sign-out and wiped the unsent
+      // changes.
+      if (!error.isUnauthorized && _user != null) {
         _status = AuthStatus.authenticated;
         appLogEvent(
           'SESSION_RESTORED',
           category: AppLogCategory.session,
           level: AppLogLevel.warning,
           userId: _user?.id,
-          reason: 'offline_cached_account',
+          reason: CachePolicy.shouldUseCache(error)
+              ? 'offline_cached_account'
+              : 'server_unavailable_cached_account',
           source: 'AuthController.restoreSession',
+          attributes: {'httpStatus': ?error.statusCode},
         );
         await _offlineSyncService?.noteNetworkFailure(error.message);
       } else {
@@ -88,7 +97,9 @@ mixin _AuthSession on _AuthControllerCore {
         await _startSessionTermination(
           reason: 'server_session_rejected',
           requestLoginAfterCompletion: false,
-          markSessionExpired: false,
+          // C58, RA-MO-32: an end nobody chose keeps the unsent changes for
+          // the same account; signing in again sends them.
+          markSessionExpired: true,
           allowChecking: true,
         );
         return;

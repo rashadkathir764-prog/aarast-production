@@ -24,7 +24,9 @@ Resources:
   DailySnapshots:
     Type: AWS::DLM::LifecyclePolicy
     Properties:
-      Description: aarast-host daily snapshots, seven kept
+      # DLM takes letters, digits, spaces, `_` and `-` only here: the comma
+      # this first had made AWS refuse the policy (go-live, 2026-11-07).
+      Description: aarast-host daily snapshots - seven kept
       State: ENABLED
       ExecutionRoleArn: !GetAtt SnapshotRole.Arn
       PolicyDetails:

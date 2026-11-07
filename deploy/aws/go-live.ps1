@@ -119,6 +119,16 @@ foreach ($pair in @(@($opsBucket, $opsRules), @($mediaBucket, $mediaRules))) {
   Remove-Item $rulesFile
   if ($code -ne 0) { throw "ما انضبطت مدة الاحتفاظ في $($pair[0])" }
 }
+# A first creation that failed leaves the stack in ROLLBACK_COMPLETE, holding
+# nothing, and CloudFormation updates no stack in that state: it is removed
+# first, so a run after a failure goes through (go-live, 2026-11-07).
+$backupsStatus = & $aws cloudformation describe-stacks --region $Region --stack-name aarast-backups `
+  --query 'Stacks[0].StackStatus' --output text 2>$null
+if ($backupsStatus -eq 'ROLLBACK_COMPLETE') {
+  & $aws cloudformation delete-stack --region $Region --stack-name aarast-backups
+  & $aws cloudformation wait stack-delete-complete --region $Region --stack-name aarast-backups
+  if ($LASTEXITCODE -ne 0) { throw 'ما انحذفت محاولة لقطات القرص الفاشلة' }
+}
 & $aws cloudformation deploy --region $Region --stack-name aarast-backups `
   --template-file (Join-Path $PSScriptRoot 'backups.yaml') --capabilities CAPABILITY_IAM `
   --no-fail-on-empty-changeset

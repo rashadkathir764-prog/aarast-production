@@ -4,7 +4,6 @@ import {
   PlanProviderLinkStatus,
   ProviderCategory,
   ProviderService,
-  ProviderServiceImage,
   ProviderStatus,
   Prisma,
   QuoteOffer,
@@ -12,6 +11,13 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+
+/**
+ * RA-BE-12 (D62): a service's own photos are never reviewed, so no public
+ * read carries them; the reviewed photos are the portfolio's (B-16). The
+ * field stays, empty, for the apps that read it (D93).
+ */
+const NO_PUBLIC_SERVICE_IMAGES: readonly never[] = Object.freeze([]);
 import { quoteOfferVersionView } from "../modules/marketplace/public/quote-offer-versions";
 import { featuredNowConditions, featuredUntil, listedProviderConditions, notFeaturedNowCondition } from "../modules/marketplace/public/featured-placement";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
@@ -238,7 +244,6 @@ export class MarketplacePresenter {
       primaryCategory?: ProviderCategory | null;
       services?: (ProviderService & {
         category: ProviderCategory;
-        images: ProviderServiceImage[];
       })[];
     },
   ) {
@@ -285,9 +290,7 @@ export class MarketplacePresenter {
               currency: service.currency,
               priceUpdatedAt: service.priceUpdatedAt,
               category: this.toCategoryResponse(service.category),
-              images: service.images.map((image) =>
-                this.toImageResponse(image),
-              ),
+              images: NO_PUBLIC_SERVICE_IMAGES,
             })),
           }
         : {}),
@@ -380,7 +383,7 @@ export class MarketplacePresenter {
       cityId: service.cityId,
       city: service.city ? this.toCityResponse(service.city) : null,
       isActive: service.isActive,
-      images: service.images.map((image) => this.toImageResponse(image)),
+      images: NO_PUBLIC_SERVICE_IMAGES,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,
     };
@@ -400,17 +403,6 @@ export class MarketplacePresenter {
       primaryCategory: provider.primaryCategory
         ? this.toCategoryResponse(provider.primaryCategory)
         : null,
-    };
-  }
-
-  static toImageResponse(image: ProviderServiceImage) {
-    return {
-      id: image.id,
-      serviceId: image.serviceId,
-      imageUrl: image.imageUrl,
-      altText: image.altText,
-      sortOrder: image.sortOrder,
-      createdAt: image.createdAt,
     };
   }
 

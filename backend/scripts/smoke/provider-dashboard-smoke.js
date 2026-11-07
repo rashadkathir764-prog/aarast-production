@@ -320,6 +320,23 @@ async function run() {
       consumedTicket?.consumedAt instanceof Date,
     );
     imageId = res.body?.id;
+
+    // RA-BE-12 (D62): a service's own photos are never reviewed, so no
+    // public read carries them, though the provider attached one.
+    const imageUrl = media.verify?.body?.publicUrl;
+    for (const path of [
+      `/api/v1/services/${serviceId}`,
+      `/api/v1/providers/${providerId}/services`,
+      `/api/v1/providers/${providerId}`,
+      '/api/v1/services',
+    ]) {
+      const read = await request('GET', path);
+      const body = JSON.stringify(read.body ?? {});
+      check(
+        `public ${path.replace(/[0-9a-f-]{36}/g, ':id')} carries no unreviewed service photo`,
+        read.status === 200 && !!imageUrl && !body.includes(imageUrl) && !body.includes('"imageUrl"'),
+      );
+    }
   }
 
   if (imageId) {

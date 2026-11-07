@@ -103,9 +103,9 @@ export function findActiveProviderWithServices(client: Client, id: string, now: 
   return client.provider.findFirst({
     where: { id, status: ProviderStatus.ACTIVE },
     include: {
+      // RA-BE-12 (D62): a service's own photos are never public.
       services: {
         where: { isActive: true },
-        include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       },
       featuredPeriods: activeFeaturedPeriodInclude(now),
@@ -159,10 +159,7 @@ export async function providerResponseSample(
 export function listActiveProviderServices(client: Client, providerId: string) {
   return client.providerService.findMany({
     where: { providerId, isActive: true },
-    include: {
-      provider: true,
-      images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-    },
+    include: { provider: true },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
 }
@@ -174,10 +171,7 @@ export function countActiveServices(client: Client, where: ServiceSearchWhere) {
 export function searchActiveServices(client: Client, where: ServiceSearchWhere, pagination: MarketplacePagination) {
   return client.providerService.findMany({
       where,
-      include: {
-        provider: true,
-        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-      },
+      include: { provider: true },
       // Cheapest first, then newest; the id makes the order total, so a page
       // never skips or repeats a service.
       orderBy: [
@@ -193,10 +187,7 @@ export function searchActiveServices(client: Client, where: ServiceSearchWhere, 
 export function findActiveService(client: Client, id: string) {
   return client.providerService.findFirst({
     where: { id, isActive: true, provider: { status: ProviderStatus.ACTIVE } },
-    include: {
-      provider: true,
-      images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-    },
+    include: { provider: true },
   });
 }
 

@@ -9,7 +9,6 @@ import {
   ProviderPackage,
   ProviderReview,
   ProviderService,
-  ProviderServiceImage,
   ProviderStatus,
   QuoteOffer,
   QuoteRequest,
@@ -71,11 +70,11 @@ export type ProviderWithCity = Provider & {
   primaryCategory?: ProviderCategory | null;
 };
 
+// RA-BE-12 (D62): no public read carries a service's own photos.
 export type ServiceWithDetails = ProviderService & {
   provider: ProviderWithCity;
   category: ProviderCategory;
   city: City | null;
-  images: ProviderServiceImage[];
 };
 
 export type PackageWithService = ProviderPackage & {

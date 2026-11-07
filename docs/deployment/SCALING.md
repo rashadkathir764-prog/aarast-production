@@ -47,7 +47,7 @@ What limits it:
   `connection_limit`, so Prisma 6 takes physical cores × 2 + 1 = 3 on a
   `t3.small`. 3 connections (above), and 5 or 10 with Postgres apart, all gave
   about 100/s.
-- **The home summary** (`GET /wedding-plans/:id/dashboard-summary`) is the
+- **The home summary** (`GET /api/v1/wedding-plans/:planId/dashboard-summary`) is the
   heaviest route: p50 116 ms against 12–46 ms for the rest, a fifth of the
   requests and about half of the CPU time. It is the first thing to make
   cheaper when capacity is needed.

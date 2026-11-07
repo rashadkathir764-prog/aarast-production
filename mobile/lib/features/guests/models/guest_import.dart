@@ -1,4 +1,5 @@
 import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/utils/text_limits.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import 'guest.dart';
 
@@ -33,6 +34,14 @@ class GuestCandidate {
 
 final _phonePattern = RegExp(r'\+?\d[\d\s-]{5,}\d');
 
+/// RA-BE-15: a guest's name stops where the server's does (GUEST_NAME_MAX,
+/// counted as the phone counts). A contact or a pasted line longer than that
+/// was refused by the server and held the queued import as «السيرفر رفضه».
+const guestNameMaxCharacters = 120;
+
+String _withinGuestName(String name) =>
+    clipToCharacters(name.trim(), guestNameMaxCharacters);
+
 /// w28: a pasted list, one person per line, the number optional and in any
 /// place on the line. Lines without a name are skipped.
 List<({String name, String? phone})> parseGuestLines(String text) {
@@ -60,7 +69,8 @@ List<GuestCandidate> markGuestCandidates(
 ) {
   final seen = <String>{};
   final candidates = <GuestCandidate>[];
-  for (final person in people) {
+  for (final listed in people) {
+    final person = (name: _withinGuestName(listed.name), phone: listed.phone);
     final raw = person.phone?.trim() ?? '';
     final phone = PhoneNumberUtils.comparisonKey(raw);
     final clean = (name: person.name, phone: phone);

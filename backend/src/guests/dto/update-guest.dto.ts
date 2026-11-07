@@ -15,9 +15,17 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from '../../modules/guests/public/guest-text-limits';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class UpdateGuestDto {
+  /**
+   * RA-BE-15: as the phone's field (guest_form_sheet.dart) and its contacts
+   * import; a new guest's name is held to the same in GuestsService, its
+   * request being byte-pinned by the R12B parity proof.
+   */
   @IsString()
+  @MaxCharacters(GUEST_NAME_MAX)
   @IsOptional()
   name?: string;
 
@@ -59,6 +67,7 @@ export class UpdateGuestDto {
   companionsCount?: number;
 
   @IsString()
+  @MaxCharacters(GUEST_NOTES_MAX)
   @IsOptional()
   notes?: string | null;
 

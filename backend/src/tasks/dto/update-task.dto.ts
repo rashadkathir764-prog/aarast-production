@@ -1,29 +1,41 @@
 import { WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
-import { IsBoolean, IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import {
+  TASK_DESCRIPTION_MAX,
+  TASK_PERSON_NAME_MAX,
+  TASK_TITLE_MAX,
+} from '../../modules/tasks/public/task-text-limits';
 
 export class UpdateTaskDto {
   @IsString()
   @IsOptional()
+  @MaxCharacters(TASK_TITLE_MAX)
   title?: string;
 
   @IsString()
   @IsOptional()
+  @MaxCharacters(TASK_DESCRIPTION_MAX)
   description?: string | null;
 
   @IsString()
   @IsOptional()
+  @MaxLength(40)
   dueDate?: string | null;
 
   @IsString()
   @IsOptional()
+  @MaxLength(60)
   taskCategory?: string | null;
 
   @IsString()
   @IsOptional()
+  @MaxCharacters(TASK_PERSON_NAME_MAX)
   responsibleName?: string | null;
 
   @IsString()
   @IsOptional()
+  @MaxLength(40)
   responsiblePhone?: string | null;
 
   @IsString()
@@ -33,6 +45,7 @@ export class UpdateTaskDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(40)
   reminderAt?: string | null;
 
   @IsEnum(WeddingTaskStatus)

@@ -1,4 +1,5 @@
-import { IsBoolean, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsString, MinLength } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class ConversationToggleDto {
   @IsBoolean()
@@ -8,6 +9,6 @@ export class ConversationToggleDto {
 export class ReportConversationDto {
   @IsString()
   @MinLength(3)
-  @MaxLength(500)
+  @MaxCharacters(500)
   reason!: string;
 }

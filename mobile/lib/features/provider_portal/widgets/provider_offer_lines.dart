@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteOfferLine;
+import '../data/provider_text_limits.dart';
 
 /// B-07: «يشمل · ما يشمل · إضافة» lines of an offer, and its delivery days
 /// (B-23). The customer reads them under the price.
@@ -135,6 +136,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
                 key: const Key('provider-offer-line-label'),
                 label: 'مثل: ألبوم 40 صورة',
                 controller: _label,
+                maxLength: providerOfferLineMax,
                 errorText: _error,
               ),
             ),

@@ -11,10 +11,11 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { MaxCharacters } from "../../../../shared-kernel/text/text-length";
 
 export class CreatePlanInviteDto {
   @IsString()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   name?: string;
 

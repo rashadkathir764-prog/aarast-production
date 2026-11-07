@@ -142,6 +142,27 @@ void main() {
       ]);
     });
 
+    // RA-BE-15/16: a name the server would refuse held the queued import as
+    // «السيرفر رفضه»; it stops at the server's 120, counted as the phone and
+    // the server both count (a letter with its marks is one).
+    test(
+      'a name longer than the server takes is cut, counted by character',
+      () {
+        final long = 'مُحَمَّد ' * 30; // 30 names of 4 characters and a space.
+        final [candidate] = markGuestCandidates([
+          (name: long, phone: null),
+        ], []);
+        expect(candidate.name.characters.length, lessThanOrEqualTo(120));
+        expect(candidate.name.characters.length, greaterThan(110));
+        expect(candidate.name, startsWith('مُحَمَّد'));
+        // A name inside the limit is kept whole.
+        final [short] = markGuestCandidates([
+          (name: 'مُحَمَّد علي', phone: null),
+        ], []);
+        expect(short.name, 'مُحَمَّد علي');
+      },
+    );
+
     test('marks who the plan has and who repeats in the list', () {
       final candidates = markGuestCandidates(
         [

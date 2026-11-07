@@ -10,6 +10,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 /** B-16: one photo of «معرض الشغل», by its verified upload key. */
 export class PortfolioItemDto {
@@ -20,7 +21,7 @@ export class PortfolioItemDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(60)
+  @MaxCharacters(60)
   album?: string | null;
 
   @IsOptional()

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../marketplace/marketplace_api.dart'
     show ProviderDashboardProfile, ProviderMarketplaceProvider;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 
 class EditProviderProfileScreen extends StatefulWidget {
@@ -145,6 +147,9 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                   TextFormField(
                     controller: _businessNameController,
                     textInputAction: TextInputAction.next,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(providerTitleMax),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'اسم النشاط / اسم المزود',
                       prefixIcon: Icon(LucideIcons.badge),

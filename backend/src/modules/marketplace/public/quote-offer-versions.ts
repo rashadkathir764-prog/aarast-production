@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Prisma, QuoteOfferStatus } from "@prisma/client";
+import { withinCharacters } from "../../../shared-kernel/text/text-length";
 
 // B-06 (D41): before the customer accepts, every edit of an offer is a new
 // version, and the customer sees «ايش تغيّر». A change names the field and
@@ -58,7 +59,10 @@ export function parseQuoteOfferLines(input: unknown): QuoteOfferLine[] | null | 
     if (!entry || typeof entry !== "object") throw invalid("سطر غير صحيح في محتوى العرض.");
     const { label, kind, amount } = entry as Record<string, unknown>;
     const text = typeof label === "string" ? label.trim().replace(/\s+/g, " ") : "";
-    if (!text || text.length > 120) throw invalid("كل سطر يحتاج نص قصير (120 حرف أو أقل).");
+    // RA-BE-16: counted as the phone counts the field (text-length.ts).
+    if (!text || !withinCharacters(text, 120)) {
+      throw invalid("كل سطر يحتاج نص قصير (120 حرف أو أقل).");
+    }
     if (!LINE_KINDS.includes(kind as QuoteOfferLine["kind"])) {
       throw invalid("نوع السطر: يشمل أو ما يشمل أو إضافة.");
     }

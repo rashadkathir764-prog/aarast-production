@@ -9,7 +9,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { PlanEventTimeSlot, PlanEventType } from "@prisma/client";
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, Matches } from "class-validator";
+import { MaxCharacters } from "../shared-kernel/text/text-length";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -21,11 +22,16 @@ import {
 } from "../modules/planning/domain/plan-event-rules";
 import { PlanEventsService } from "./plan-events.service";
 
-/** b13's fields; an absent field keeps its value, `null` clears it. */
+/**
+ * b13's fields; an absent field keeps its value, `null` clears it. RA-BE-78
+ * (RA-BE-16): the text counts as the phone's fields count it (the same 60 and
+ * 120 in `plan_event_sheet.dart`), so a name with its marks is never refused
+ * after the phone took it.
+ */
 export class PlanEventFieldsDto {
   @IsOptional()
   @IsString()
-  @MaxLength(PLAN_EVENT_TITLE_MAX)
+  @MaxCharacters(PLAN_EVENT_TITLE_MAX)
   title?: string | null;
 
   @IsOptional()
@@ -44,17 +50,17 @@ export class PlanEventFieldsDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(PLAN_EVENT_PLACE_MAX)
+  @MaxCharacters(PLAN_EVENT_PLACE_MAX)
   placeLabel?: string | null;
 
   @IsOptional()
   @IsString()
-  @MaxLength(PLAN_EVENT_PERSON_MAX)
+  @MaxCharacters(PLAN_EVENT_PERSON_MAX)
   responsibleName?: string | null;
 
   @IsOptional()
   @IsString()
-  @MaxLength(PLAN_EVENT_NOTE_MAX)
+  @MaxCharacters(PLAN_EVENT_NOTE_MAX)
   note?: string | null;
 }
 

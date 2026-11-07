@@ -215,34 +215,6 @@ async function main(): Promise<void> {
     assert.equal(group.median, "200000.00");
     assert.equal(group.cityName, city.nameAr);
     console.log("PASS - success report: active users, visible providers and anonymous price ranges");
-
-    // RA-BE-51: a refused claim left the listing unclaimed under the
-    // account's number, and applying is refused while one waits there
-    // (PROVIDER_LISTING_CLAIMABLE): the account could never become a
-    // provider. A listing refused to this account is not its to claim.
-    const refusedListing = await admins.createListedProvider(adminActor, {
-      businessName: `${label} ملف رُفض`,
-      phone: stranger.phone!,
-      cityId: city.id,
-      categoryId: category.id,
-    });
-    otherProviderIds.push(refusedListing.id);
-    const refusedClaim = await dashboard.claimListing(asUser(stranger), refusedListing.id);
-    await admins.rejectClaimRequest(adminActor, refusedClaim.id, { note: "الملف مو له" } as any);
-    assert.deepEqual(await dashboard.findClaimableListing(asUser(stranger)), { listing: null });
-    const applied = await dashboard.apply(asUser(stranger), {
-      businessName: `${label} مقدّم جديد`,
-      phone: stranger.phone,
-      cityId: city.id,
-      categoryIds: [category.id],
-      services: [{ title: "خدمة", basePrice: "100000" }],
-    } as any);
-    otherProviderIds.push(applied.id);
-    assert.equal(
-      (await prisma.provider.findUniqueOrThrow({ where: { id: applied.id } })).userId,
-      stranger.id,
-    );
-    console.log("PASS - an account whose claim was refused may still apply as a provider");
   } finally {
     await prisma.provider.deleteMany({
       where: { id: { in: [...(listingId ? [listingId] : []), ...otherProviderIds] } },

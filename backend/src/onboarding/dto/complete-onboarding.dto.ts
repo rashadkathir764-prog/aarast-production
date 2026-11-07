@@ -12,6 +12,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 /**
  * J1-13: the items a new plan starts with. A phone plan carries every
@@ -44,12 +45,14 @@ export class CompleteOnboardingDto {
   @IsOptional()
   persona?: WeddingPersona;
 
+  /** RA-BE-15: «عرس» and the phone's name field (120). */
   @IsString()
+  @MaxCharacters(160)
   @IsOptional()
   title?: string;
 
   @IsString()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   city?: string;
 
@@ -58,13 +61,14 @@ export class CompleteOnboardingDto {
   location?: Record<string, unknown>;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   weddingDate?: string;
 
   @IsArray()
   @ArrayMaxSize(12)
   @IsString({ each: true })
-  @MaxLength(60, { each: true })
+  @MaxCharacters(60, { each: true })
   @IsOptional()
   priorities?: string[];
 
@@ -72,13 +76,14 @@ export class CompleteOnboardingDto {
   estimatedBudget?: string | number;
 
   @IsString()
+  @MaxLength(8)
   @IsOptional()
   currency?: string;
 
   @IsArray()
   @ArrayMaxSize(PLAN_STARTER_ITEMS_MAX)
   @IsString({ each: true })
-  @MaxLength(PLAN_ITEM_NAME_MAX_LENGTH, { each: true })
+  @MaxCharacters(PLAN_ITEM_NAME_MAX_LENGTH, { each: true })
   @IsOptional()
   selectedCategories?: string[];
 

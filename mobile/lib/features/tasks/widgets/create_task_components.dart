@@ -107,6 +107,8 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             icon: LucideIcons.user,
             textDirection: nameIsPhone ? TextDirection.ltr : null,
             errorText: otherNameError,
+            // RA-BE-15: the server's TASK_PERSON_NAME_MAX.
+            maxLength: 120,
           ),
           const SizedBox(height: AarastV3Space.x2),
           ContactPhoneField(

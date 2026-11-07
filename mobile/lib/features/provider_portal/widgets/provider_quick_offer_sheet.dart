@@ -7,6 +7,7 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart'
     show ProviderPackage, QuoteRequest;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_request_parts.dart';
 
@@ -99,6 +100,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
           controller: _message,
           minLines: 2,
           maxLines: 5,
+          maxLength: providerDescriptionMax,
           errorText: _error,
         ),
         const SizedBox(height: AarastV3Space.x3),

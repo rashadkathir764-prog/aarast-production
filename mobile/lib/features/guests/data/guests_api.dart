@@ -5,6 +5,7 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/text_limits.dart';
 import '../models/guest.dart';
 
 /// The plan's guests, groups and invitation card.
@@ -441,7 +442,9 @@ class GuestsApi {
     final normalizedAttendanceStatus = attendanceStatus?.trim();
     final normalizedNotes = notes?.trim();
     return {
-      'name': name.trim(),
+      // RA-BE-15: a name picked from the contacts is set from code and can
+      // pass the field's limit; it is cut to the server's GUEST_NAME_MAX.
+      'name': clipToCharacters(name.trim(), 120),
       'side': side,
       'status': status,
       'seatsCount': seatsCount,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
@@ -158,6 +159,8 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                 controller: _controller,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _create(),
+                // RA-BE-15: the server's GUEST_GROUP_NAME_MAX.
+                maxLength: 120,
               ),
             ),
             const SizedBox(width: AarastV3Space.x2),
@@ -224,6 +227,8 @@ class _GroupNameDialogState extends State<_GroupNameDialog> {
         controller: _controller,
         autofocus: true,
         textAlign: TextAlign.right,
+        // RA-BE-15: the server's GUEST_GROUP_NAME_MAX, counted as it counts.
+        inputFormatters: [LengthLimitingTextInputFormatter(120)],
         onSubmitted: (value) => Navigator.pop(context, value),
       ),
       actions: [

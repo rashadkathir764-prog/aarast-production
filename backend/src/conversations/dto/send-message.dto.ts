@@ -9,6 +9,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class ChatAttachmentDto {
   @IsString()
@@ -27,7 +28,7 @@ export class ChatAttachmentDto {
 
 export class SendMessageDto {
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   body!: string;
 
   @IsOptional()

@@ -1,5 +1,6 @@
 import { QuoteRequestStatus } from '@prisma/client';
-import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 /** B-05: why a provider declines a request. */
 export const QUOTE_DECLINE_REASONS = [
@@ -21,7 +22,7 @@ export class UpdateProviderQuoteStatusDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   declineMessage?: string;
 
   /** B-05: with BUSY_THAT_DAY on a dated request, close that day too. */

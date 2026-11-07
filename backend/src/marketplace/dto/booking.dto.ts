@@ -1,4 +1,5 @@
 import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import { BOOKING_NOT_HAPPENED_REASONS } from '../booking-aftercare';
 
 /** The customer asks the provider to reserve a day; the quote's date when omitted. */
@@ -10,7 +11,7 @@ export class RequestBookingDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   note?: string | null;
 }
 
@@ -18,7 +19,7 @@ export class RequestBookingDto {
 export class BookingDecisionDto {
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   note?: string | null;
 }
 
@@ -44,7 +45,7 @@ export class BookingDeliveryDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   note?: string | null;
 }
 
@@ -56,7 +57,7 @@ export class BookingChangeDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   note?: string | null;
 }
 
@@ -64,6 +65,6 @@ export class BookingChangeDto {
 export class BookingChangeDecisionDto {
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   reason?: string | null;
 }

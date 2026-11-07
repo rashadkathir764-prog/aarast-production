@@ -3,8 +3,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class CreateCostPaymentDto {
   @IsNotEmpty()
@@ -15,12 +15,12 @@ export class CreateCostPaymentDto {
   paidAt?: string | null;
 
   @IsString()
-  @MaxLength(80)
+  @MaxCharacters(80)
   @IsOptional()
   method?: string | null;
 
   @IsString()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   @IsOptional()
   note?: string | null;
 }

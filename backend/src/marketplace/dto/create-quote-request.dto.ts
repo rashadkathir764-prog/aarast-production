@@ -8,6 +8,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class CreateQuoteRequestDto {
   @IsString()
@@ -36,12 +37,14 @@ export class CreateQuoteRequestDto {
   @IsOptional()
   guestCount?: number;
 
+  // RA-BE-15: the provider reads it; above the phone's field (250 there).
   @IsString()
   @IsOptional()
+  @MaxCharacters(1000)
   message?: string | null;
 
   @IsString()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   contactName?: string | null;
 

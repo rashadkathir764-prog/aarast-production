@@ -11,12 +11,31 @@ import {
   isActiveConversationParticipant,
   normalizeMessageBody,
   normalizeMessagePageSize,
+  normalizeReportReason,
 } from '../src/conversations/conversation-policy';
 
 test('message body is trimmed and must contain 1 to 2000 characters', () => {
   assert.equal(normalizeMessageBody('  مرحبا  '), 'مرحبا');
   assert.throws(() => normalizeMessageBody('   '), BadRequestException);
   assert.throws(() => normalizeMessageBody('x'.repeat(2001)), BadRequestException);
+});
+
+test('RA-BE-77: a message and a report reason count as the phone counts them', () => {
+  // 2000 characters as read, 4000 code units: the phone's field and the
+  // request form take it, so the service must too.
+  const marked = 'مُ'.repeat(2000);
+  assert.equal(normalizeMessageBody(marked), marked);
+  assert.throws(
+    () => normalizeMessageBody(`${marked}ا`),
+    (error: unknown) =>
+      error instanceof BadRequestException &&
+      (error.getResponse() as { code?: string }).code === 'MESSAGE_LENGTH',
+  );
+  const reason = 'مُ'.repeat(500);
+  assert.equal(normalizeReportReason(reason), reason);
+  assert.equal(normalizeReportReason('  سبب  '), 'سبب');
+  assert.throws(() => normalizeReportReason('مُ'.repeat(501)), BadRequestException);
+  assert.throws(() => normalizeReportReason('سب'), BadRequestException);
 });
 
 test('message page size stays between 1 and 50', () => {

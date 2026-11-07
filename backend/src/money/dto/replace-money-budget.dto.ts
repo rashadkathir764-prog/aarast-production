@@ -9,6 +9,7 @@ import {
   MaxLength,
   ValidateNested,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class MoneyBudgetCategoryDto {
   @IsString()
@@ -19,9 +20,10 @@ export class MoneyBudgetCategoryDto {
   @IsOptional()
   clientId?: string;
 
+  /** The phone's field stops at 120 (budget_category_form_screen.dart). */
   @IsString()
   @IsNotEmpty()
-  @MaxLength(120)
+  @MaxCharacters(120)
   name!: string;
 
   @IsOptional()
@@ -34,6 +36,7 @@ export class ReplaceMoneyBudgetDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(8)
   currency!: string;
 
   @IsArray()

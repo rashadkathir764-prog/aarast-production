@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,7 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
     show ProviderMarketplaceProvider;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 
 class AddProviderServiceScreen extends StatefulWidget {
@@ -126,6 +128,9 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                       TextFormField(
                         controller: _titleController,
                         textInputAction: TextInputAction.next,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(providerTitleMax),
+                        ],
                         decoration: const InputDecoration(
                           labelText: 'اسم الخدمة',
                           prefixIcon: Icon(LucideIcons.wand),
@@ -217,6 +222,11 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         const SizedBox(height: AarastV3Space.x2),
                         TextFormField(
                           controller: _priceUnitController,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(
+                              providerPriceUnitMax,
+                            ),
+                          ],
                           decoration: const InputDecoration(
                             labelText: 'ملاحظة السعر أو المدة',
                             prefixIcon: Icon(LucideIcons.timer),

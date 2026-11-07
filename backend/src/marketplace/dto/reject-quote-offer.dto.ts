@@ -1,4 +1,5 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import { QUOTE_REJECT_REASONS } from '../../modules/marketplace/public/quote-offer-versions';
 
 /** B-11: why the customer turns an offer down; all optional. */
@@ -9,6 +10,6 @@ export class RejectQuoteOfferDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxCharacters(500)
   message?: string;
 }

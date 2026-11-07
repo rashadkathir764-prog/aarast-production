@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
+import { MaxCharacters } from "../../../../shared-kernel/text/text-length";
 import { MaxUtf8Bytes } from "../../../identity/public/max-utf8-bytes.decorator";
 
 export class VerifyInviteOtpDto {
@@ -24,7 +25,7 @@ export class VerifyInviteOtpDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @MaxLength(120)
+  @MaxCharacters(120)
   name?: string;
 
   @IsOptional()

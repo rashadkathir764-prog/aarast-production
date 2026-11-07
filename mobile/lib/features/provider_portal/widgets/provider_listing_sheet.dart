@@ -6,6 +6,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderPackage;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 
 /// p36's edit of one service or package, in a journey sheet: its name, its
@@ -61,6 +62,7 @@ class _ListingSheetState extends State<_ListingSheet> {
   bool _switching = false;
   String? _titleError;
   String? _priceError;
+  String? _itemsError;
   String? _error;
 
   bool get _isService => widget.service != null;
@@ -109,9 +111,12 @@ class _ListingSheetState extends State<_ListingSheet> {
     setState(() {
       _titleError = title.length < 2 ? 'اكتب الاسم.' : null;
       _priceError = providerListingPriceError(_price.text);
+      _itemsError = _isService ? null : providerPackageItemsError(_extra.text);
       _error = null;
     });
-    if (_titleError != null || _priceError != null) return;
+    if (_titleError != null || _priceError != null || _itemsError != null) {
+      return;
+    }
     setState(() => _saving = true);
     final dashboard = context.read<ProviderDashboardProvider>();
     final price = _price.text.trim().replaceAll(',', '');
@@ -130,11 +135,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             description: _includes.text,
             price: price,
             currency: _currency,
-            items: _extra.text
-                .split('\n')
-                .map((line) => line.trim())
-                .where((line) => line.isNotEmpty)
-                .toList(growable: false),
+            items: providerPackageItems(_extra.text),
           );
     if (!mounted) return;
     if (ok) {
@@ -167,6 +168,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             label: _isService ? 'اسم الخدمة' : 'اسم الباقة',
             controller: _title,
             errorText: _titleError,
+            maxLength: providerTitleMax,
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
@@ -184,6 +186,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             controller: _includes,
             minLines: 2,
             maxLines: 4,
+            maxLength: providerDescriptionMax,
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
@@ -192,6 +195,8 @@ class _ListingSheetState extends State<_ListingSheet> {
             controller: _extra,
             minLines: _isService ? 1 : 2,
             maxLines: _isService ? 1 : 5,
+            maxLength: _isService ? providerPriceUnitMax : null,
+            errorText: _itemsError,
           ),
           const SizedBox(height: AarastV3Space.x3),
           JourneyList(

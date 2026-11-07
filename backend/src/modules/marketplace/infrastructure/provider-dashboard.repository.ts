@@ -402,24 +402,9 @@ export function providerActivity(client: Client, providerId: string, from: Date,
  * An active listing the back office made under one of these phone spellings,
  * not yet claimed (V1 checklist 4.18), with the city and category p02 names.
  */
-/**
- * RA-BE-51: a listing whose claim by this account was refused is not this
- * account's, so it neither waits for it to claim nor holds back its own
- * application. Before, a refused claim left the account unable to apply as a
- * provider at all, since the listing stayed unclaimed under its number.
- */
-export function findUnclaimedListing(
-  client: Client,
-  phones: readonly string[],
-  userId: string,
-) {
+export function findUnclaimedListing(client: Client, phones: readonly string[]) {
   return client.provider.findFirst({
-    where: {
-      userId: null,
-      status: ProviderStatus.ACTIVE,
-      phone: { in: [...phones] },
-      claimRequests: { none: { userId, status: ProviderClaimStatus.REJECTED } },
-    },
+    where: { userId: null, status: ProviderStatus.ACTIVE, phone: { in: [...phones] } },
     select: { id: true, businessName: true, phone: true, cityId: true, primaryCategoryId: true },
     orderBy: { createdAt: 'asc' },
   });

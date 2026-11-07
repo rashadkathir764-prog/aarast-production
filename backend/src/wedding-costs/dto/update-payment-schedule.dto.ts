@@ -3,8 +3,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class UpdatePaymentScheduleDto {
   @IsNotEmpty()
@@ -17,7 +17,7 @@ export class UpdatePaymentScheduleDto {
   dueDate?: string;
 
   @IsString()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   @IsOptional()
   note?: string | null;
 }

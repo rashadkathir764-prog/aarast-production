@@ -1,4 +1,5 @@
 import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import { INVITATION_CARD_LIMITS } from '../../modules/guests/domain/invitation-card';
 
 /**
@@ -8,12 +9,12 @@ import { INVITATION_CARD_LIMITS } from '../../modules/guests/domain/invitation-c
  */
 export class SetInvitationCardDto {
   @IsString()
-  @MaxLength(INVITATION_CARD_LIMITS.hostLine)
+  @MaxCharacters(INVITATION_CARD_LIMITS.hostLine)
   @IsOptional()
   hostLine?: string | null;
 
   @IsString()
-  @MaxLength(INVITATION_CARD_LIMITS.freeText)
+  @MaxCharacters(INVITATION_CARD_LIMITS.freeText)
   @IsOptional()
   freeText?: string | null;
 
@@ -28,7 +29,7 @@ export class SetInvitationCardDto {
   mapUrl?: string | null;
 
   @IsString()
-  @MaxLength(INVITATION_CARD_LIMITS.address)
+  @MaxCharacters(INVITATION_CARD_LIMITS.address)
   @IsOptional()
   address?: string | null;
 }

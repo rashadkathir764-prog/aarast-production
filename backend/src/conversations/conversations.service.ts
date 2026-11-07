@@ -54,6 +54,7 @@ import {
   isActiveConversationParticipant,
   normalizeMessageBody,
   normalizeMessagePageSize,
+  normalizeReportReason,
 } from './conversation-policy';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -582,10 +583,7 @@ export class ConversationsService {
   }
 
   async report(currentUser: AuthenticatedUser, conversationId: string, reasonValue: string) {
-    const reason = reasonValue.trim();
-    if (reason.length < 3 || reason.length > 500) {
-      throw new BadRequestException('Report reason must contain 3 to 500 characters');
-    }
+    const reason = normalizeReportReason(reasonValue);
     return runSerializableTransaction(this.prisma, async (tx) => {
       await this.assertActiveAccessInTransaction(
         tx,

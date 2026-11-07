@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { MaxCharacters } from '../../../shared-kernel/text/text-length';
 import { ASSISTANT_KINDS, type AssistantKind } from '../assistant.prompt';
 
 const trimmed = ({ value }: { value: unknown }) =>
@@ -21,18 +22,18 @@ export class ReportAssistantAnswerDto {
   @Transform(trimmed)
   @IsString()
   @IsOptional()
-  @MaxLength(500)
+  @MaxCharacters(500)
   question?: string | null;
 
   @Transform(trimmed)
   @IsString()
   @MinLength(1)
-  @MaxLength(ASSISTANT_REPORT_ANSWER_MAX)
+  @MaxCharacters(ASSISTANT_REPORT_ANSWER_MAX)
   answer!: string;
 
   @Transform(trimmed)
   @IsString()
   @MinLength(1)
-  @MaxLength(500)
+  @MaxCharacters(500)
   reason!: string;
 }

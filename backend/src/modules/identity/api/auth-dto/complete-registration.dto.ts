@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { MaxCharacters } from '../../../../shared-kernel/text/text-length';
 import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 
 // Email is intentionally absent. A phone OTP proves phone ownership only and
@@ -14,7 +15,7 @@ import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 export class CompleteRegistrationDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(120)
+  @MaxCharacters(120)
   name!: string;
 
   @IsString()

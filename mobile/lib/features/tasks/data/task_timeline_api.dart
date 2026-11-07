@@ -6,6 +6,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
+import '../../../core/utils/text_limits.dart';
 import '../models/task_checklist_item.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
@@ -26,6 +27,10 @@ class TaskTimelineApi {
   static const _assignNeedsServer =
       'تعيين المسؤول يتأكد من عضويته في الخطة، فيحتاج الخادم.';
   static const _shiftNeedsServer = 'نقل كل المواعيد مرة وحدة يحتاج الخادم.';
+
+  /// RA-BE-15: the server's TASK_PERSON_NAME_MAX. A name picked from the
+  /// contacts is set from code and can pass the field's limit.
+  static const _personNameMax = 120;
 
   static int _localTaskSequence = 0;
 
@@ -694,7 +699,10 @@ class TaskTimelineApi {
       if (_hasValue(localJson['taskCategory']?.toString()))
         'taskCategory': localJson['taskCategory'].toString().trim(),
       if (_hasValue(localJson['responsibleName']?.toString()))
-        'responsibleName': localJson['responsibleName'].toString().trim(),
+        'responsibleName': clipToCharacters(
+          localJson['responsibleName'].toString().trim(),
+          _personNameMax,
+        ),
       if (_hasValue(localJson['responsiblePhone']?.toString()))
         'responsiblePhone': localJson['responsiblePhone'].toString().trim(),
       if (_hasValue(localJson['responsibleSource']?.toString()))
@@ -762,7 +770,10 @@ class TaskTimelineApi {
 
     return {
       if (_hasValue(responsibleName))
-        'responsibleName': responsibleName!.trim(),
+        'responsibleName': clipToCharacters(
+          responsibleName!.trim(),
+          _personNameMax,
+        ),
       if (_hasValue(responsiblePhone))
         'responsiblePhone': responsiblePhone!.trim(),
       if (_hasValue(responsibleSource))

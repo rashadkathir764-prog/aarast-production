@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show MarketplaceService;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 
 class AddProviderPackageScreen extends StatefulWidget {
@@ -123,6 +125,9 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                       TextFormField(
                         controller: _titleController,
                         textInputAction: TextInputAction.next,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(providerTitleMax),
+                        ],
                         decoration: const InputDecoration(
                           labelText: 'اسم الباقة',
                           prefixIcon: Icon(LucideIcons.package),
@@ -200,6 +205,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                             hintText: 'كل ميزة في سطر',
                             prefixIcon: Icon(LucideIcons.listChecks),
                           ),
+                          validator: (value) =>
+                              providerPackageItemsError(value ?? ''),
                         ),
                       ],
                     ),
@@ -247,11 +254,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final items = _itemsController.text
-        .split('\n')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
+    final items = providerPackageItems(_itemsController.text);
 
     final ok = await context.read<ProviderDashboardProvider>().createPackage(
       title: _titleController.text,

@@ -1,8 +1,11 @@
 import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { CHECKLIST_TITLE_MAX } from '../../modules/tasks/public/task-text-limits';
 
 export class UpdateChecklistItemDto {
   @IsString()
   @IsOptional()
+  @MaxCharacters(CHECKLIST_TITLE_MAX)
   title?: string;
 
   @IsBoolean()

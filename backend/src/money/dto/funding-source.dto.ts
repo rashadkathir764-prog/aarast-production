@@ -7,6 +7,7 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class CreateFundingSourceDto {
   @IsEnum(FundingSourceKind)
@@ -14,7 +15,7 @@ export class CreateFundingSourceDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(160)
+  @MaxCharacters(160)
   sourceName!: string;
 
   @IsString()
@@ -39,7 +40,7 @@ export class CreateFundingSourceDto {
   expectedAt?: string | null;
 
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
 }
@@ -51,7 +52,7 @@ export class UpdateFundingSourceDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   sourceName?: string;
 
@@ -77,7 +78,7 @@ export class UpdateFundingSourceDto {
   expectedAt?: string | null;
 
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
 }
@@ -91,7 +92,7 @@ export class CreateLoanRepaymentDto {
   dueDate?: string | null;
 
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
 }
@@ -114,7 +115,7 @@ export class UpdateLoanRepaymentDto {
   paidAt?: string | null;
 
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
 }

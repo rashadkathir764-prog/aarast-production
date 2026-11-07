@@ -1,9 +1,10 @@
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { MaxCharacters } from '../../../../shared-kernel/text/text-length';
 
 export class RegisterDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(120)
+  @MaxCharacters(120)
   name!: string;
 
   @IsString()

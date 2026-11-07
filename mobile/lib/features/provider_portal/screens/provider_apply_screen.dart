@@ -19,6 +19,7 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../marketplace/marketplace_api.dart'
     show ProviderMarketplaceProvider;
 import '../data/provider_approval_ledger.dart';
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart';
 import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
@@ -243,6 +244,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         label: 'اسم النشاط كما يعرفه الناس',
         controller: _nameController,
         textInputAction: TextInputAction.done,
+        maxLength: providerTitleMax,
         errorText: _attempted && name.length < 2 ? 'اكتب اسم نشاطك' : null,
         onChanged: (_) {
           if (_attempted) setState(() {});
@@ -285,6 +287,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         controller: _addressController,
         icon: LucideIcons.navigation,
         textInputAction: TextInputAction.done,
+        maxLength: providerAddressMax,
       ),
     ];
   }
@@ -311,6 +314,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         controller: _serviceController,
         icon: LucideIcons.package,
         textInputAction: TextInputAction.next,
+        maxLength: providerTitleMax,
         errorText: _attempted && title.length < 2 ? 'اكتب اسم خدمتك' : null,
         onChanged: (_) {
           if (_attempted) setState(() {});
@@ -339,6 +343,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         textInputAction: TextInputAction.done,
         minLines: 2,
         maxLines: 4,
+        maxLength: providerDescriptionMax,
       ),
       const SizedBox(height: AarastV3Space.x2),
       Text(

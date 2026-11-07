@@ -159,6 +159,8 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                       controller: _controller,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _add(),
+                      // RA-BE-15: the server's CHECKLIST_TITLE_MAX.
+                      maxLength: 200,
                     ),
                   ),
                   const SizedBox(width: AarastV3Space.x2),
@@ -220,6 +222,8 @@ class _RenameStepSheetState extends State<_RenameStepSheet> {
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.done,
+          // RA-BE-15: the server's CHECKLIST_TITLE_MAX.
+          maxLength: 200,
           onSubmitted: (value) => Navigator.pop(context, value),
         ),
         const SizedBox(height: AarastV3Space.x4),

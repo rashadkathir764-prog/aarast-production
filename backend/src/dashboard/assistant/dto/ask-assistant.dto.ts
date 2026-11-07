@@ -1,4 +1,5 @@
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { MaxCharacters } from '../../../shared-kernel/text/text-length';
 import { ASSISTANT_KINDS, type AssistantKind } from '../assistant.prompt';
 
 export class AskAssistantDto {
@@ -8,7 +9,7 @@ export class AskAssistantDto {
   /** The user's own question or addition (required for QUESTION). */
   @IsString()
   @IsOptional()
-  @MaxLength(500)
+  @MaxCharacters(500)
   question?: string | null;
 
   /** V1 checklist 4.12: the user agreed to send the plan's data to the assistant's model. */

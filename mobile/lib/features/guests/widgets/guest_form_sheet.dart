@@ -319,6 +319,8 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           autofocus: !_editing,
           errorText: _nameError,
           textInputAction: TextInputAction.next,
+          // RA-BE-15: the server's GUEST_NAME_MAX, counted the same way.
+          maxLength: 120,
         ),
         const SizedBox(height: AarastV3Space.x2),
         ContactPhoneField(
@@ -599,6 +601,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.done,
+          // RA-BE-15: the server's GUEST_GROUP_NAME_MAX.
+          maxLength: 120,
           onSubmitted: (value) => Navigator.pop(context, value),
         ),
         const SizedBox(height: AarastV3Space.x4),

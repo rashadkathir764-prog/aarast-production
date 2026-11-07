@@ -12,6 +12,7 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
     show ProviderPackage, QuoteOfferLine, QuoteRequest;
+import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_offer_lines.dart';
 import '../widgets/provider_request_parts.dart';
@@ -208,6 +209,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                   controller: _message,
                   minLines: 4,
                   maxLines: 8,
+                  maxLength: providerDescriptionMax,
                   errorText: _messageError,
                   onChanged: (_) {
                     if (_messageError != null) {

@@ -38,7 +38,13 @@ import {
   type FinancePort,
 } from "../modules/finance/public/finance.port";
 import { GUESTS_PORT, type GuestsPort } from "../modules/guests/public/guests.port";
+import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from "../modules/guests/public/guest-text-limits";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
+import {
+  TASK_DESCRIPTION_MAX,
+  TASK_TITLE_MAX,
+} from "../modules/tasks/public/task-text-limits";
+import { withinCharacters } from "../shared-kernel/text/text-length";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
@@ -579,13 +585,25 @@ export class WeddingPlansService {
     });
 
     const tasks = (dto.tasks ?? []).map((task, index) => ({
-      title: this.requiredText(task.title, `tasks[${index}].title`),
-      description: this.optionalText(task.description ?? undefined),
+      title: this.withinLength(
+        this.requiredText(task.title, `tasks[${index}].title`),
+        TASK_TITLE_MAX,
+        `tasks[${index}].title`,
+      ),
+      description: this.withinLength(
+        this.optionalText(task.description ?? undefined),
+        TASK_DESCRIPTION_MAX,
+        `tasks[${index}].description`,
+      ),
       dueDate: this.parseDateField(
         task.dueDate ?? undefined,
         `tasks[${index}].dueDate`,
       ),
-      taskCategory: this.optionalText(task.taskCategory ?? undefined),
+      taskCategory: this.withinLength(
+        this.optionalText(task.taskCategory ?? undefined),
+        60,
+        `tasks[${index}].taskCategory`,
+      ),
       reminderAt: this.parseDateField(
         task.reminderAt ?? undefined,
         `tasks[${index}].reminderAt`,
@@ -595,7 +613,11 @@ export class WeddingPlansService {
     }));
 
     const guests = (dto.guests ?? []).map((guest, index) => {
-      const name = this.requiredText(guest.name, `guests[${index}].name`);
+      const name = this.withinLength(
+        this.requiredText(guest.name, `guests[${index}].name`),
+        GUEST_NAME_MAX,
+        `guests[${index}].name`,
+      );
       const phone = PhoneNormalizer.normalizeOptional(guest.phone);
       return {
         name,
@@ -610,7 +632,11 @@ export class WeddingPlansService {
           guest.attendanceStatus ?? GuestAttendanceStatus.PENDING,
         seatsCount: guest.seatsCount ?? 1,
         companionsCount: guest.companionsCount ?? 0,
-        notes: this.optionalText(guest.notes ?? undefined),
+        notes: this.withinLength(
+          this.optionalText(guest.notes ?? undefined),
+          GUEST_NOTES_MAX,
+          `guests[${index}].notes`,
+        ),
       };
     });
 
@@ -829,6 +855,18 @@ export class WeddingPlansService {
     if (value === undefined) return null;
     const trimmed = value.trim();
     return trimmed || null;
+  }
+
+  /**
+   * RA-BE-15: the import's guests and tasks are held to the phone's lengths
+   * here, their requests (`ImportLocalGuestDto`, `ImportLocalTaskDto`) being
+   * byte-pinned by the R12B parity proof.
+   */
+  private withinLength<T extends string | null>(value: T, maximum: number, field: string): T {
+    if (value !== null && !withinCharacters(value, maximum)) {
+      throw new BadRequestException(`${field} must be at most ${maximum} characters`);
+    }
+    return value;
   }
 
   private optionalDate(value: string | undefined): Date | null {

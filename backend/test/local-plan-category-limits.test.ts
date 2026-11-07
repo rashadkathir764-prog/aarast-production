@@ -43,7 +43,9 @@ for (const Dto of [CompleteOnboardingDto, ImportLocalPlanDto]) {
       [],
     );
     const [tooLong] = await selectedCategoryErrors(Dto, ['ب'.repeat(121)]);
-    assert.ok(tooLong?.constraints?.maxLength, 'a 121-character name is refused');
+    // RA-BE-16: the rule is `maxCharacters` now, counted as the phone counts;
+    // the old `maxLength` counted marks and refused names the phone took.
+    assert.ok(tooLong?.constraints?.maxCharacters, 'a 121-character name is refused');
   });
 }
 

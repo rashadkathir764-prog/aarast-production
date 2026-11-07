@@ -9,12 +9,13 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 /** A service the provider joins with (B-10): its name and its price. */
 export class ApplyProviderServiceDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(160)
+  @MaxCharacters(160)
   title!: string;
 
   @IsString()
@@ -23,17 +24,21 @@ export class ApplyProviderServiceDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(8)
   currency?: string;
 
   @IsString()
   @IsOptional()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   description?: string | null;
 }
 
+// RA-BE-15: the name and the about are what every customer reads, bounded as
+// the profile is edited (update-provider-profile.dto.ts).
 export class ApplyProviderDto {
   @IsString()
   @IsNotEmpty()
+  @MaxCharacters(160)
   businessName!: string;
 
   @IsString()
@@ -48,11 +53,13 @@ export class ApplyProviderDto {
   /** The first is the profile's category, which the joining services take. */
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   categoryIds!: string[];
 
   @IsString()
   @IsOptional()
+  @MaxCharacters(2000)
   description?: string | null;
 
   /**

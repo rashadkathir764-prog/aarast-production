@@ -8,6 +8,7 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class UpdateWeddingCostDto {
   /** V1 checklist 4.10: false shares a private cost with the plan; a shared cost never becomes private. */
@@ -22,7 +23,7 @@ export class UpdateWeddingCostDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   title?: string;
 
@@ -38,7 +39,7 @@ export class UpdateWeddingCostDto {
   quoteOfferId?: string | null;
 
   @IsString()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   partyName?: string | null;
 
@@ -56,12 +57,12 @@ export class UpdateWeddingCostDto {
   payer?: CostPayer | null;
 
   @IsString()
-  @MaxLength(120)
+  @MaxCharacters(120)
   @IsOptional()
   payerName?: string | null;
 
   @IsString()
-  @MaxLength(2000)
+  @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
 }

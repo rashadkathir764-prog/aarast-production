@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../data/provider_text_limits.dart';
 
 /// What the provider wrote for the service he joins with.
 typedef ProviderJoiningServiceInput = ({
@@ -126,6 +127,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
           label: 'اسم الخدمة',
           controller: _title,
           textInputAction: TextInputAction.next,
+          maxLength: providerTitleMax,
           errorText: _attempted && _title.text.trim().length < 2
               ? 'اكتب اسم خدمتك'
               : null,
@@ -157,6 +159,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
           textInputAction: TextInputAction.done,
           minLines: 2,
           maxLines: 4,
+          maxLength: providerDescriptionMax,
         ),
         if (_error case final error?) ...[
           const SizedBox(height: AarastV3Space.x2),

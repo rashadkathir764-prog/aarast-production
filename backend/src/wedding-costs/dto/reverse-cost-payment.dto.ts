@@ -1,8 +1,9 @@
-import { IsNotEmpty, IsString, MaxLength } from "class-validator";
+import { IsNotEmpty, IsString } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class ReverseCostPaymentDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   reason!: string;
 }

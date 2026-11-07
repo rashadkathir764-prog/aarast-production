@@ -2665,6 +2665,22 @@ Provider dashboard routes:
   new review tells the provider (`REVIEW_RECEIVED`, «تقييم جديد · 4 نجوم من
   …», opening p27 in the app).
 
+Text bounds (RA-BE-15, RA-BE-16): every text field a request stores has a
+bound, counted as the phone counts it (a character as the reader sees it,
+`MaxCharacters` in `shared-kernel/text/text-length.ts`; a mark or a joined
+emoji is not counted extra). A service's, a package's or an offer's title and
+a business name take 160; a description, a provider's about and an offer's
+message 2000; a price note 120; an address and an image's description 300; a
+review's comment and a quote request's message 1000; a profile name 120. A
+package's `items` is a list of up to 50 strings of up to 200 characters; any
+other JSON is `400`. Longer text is `400`; the phone stops each field at the
+same count first, so a queued change is never refused for its length.
+A chat message takes 2000 the same way (`400 MESSAGE_LENGTH`), a
+conversation report's reason 500 (`400 REPORT_REASON_LENGTH`), and an
+event's name and responsible 60, its place and note 120.
+`test/dto-text-bounds.test.ts` fails on a new text field without a bound,
+in any file that declares a request form.
+
 Notifications (B-19, B-38): every notice carries `routeTarget`, the phone
 route of its own screen, written once in
 `backend/src/shared-kernel/routes/notification-routes.ts` (the table of
@@ -2720,9 +2736,10 @@ checklist 4.18):
   removes the account's claims. There is no claim token, link or WhatsApp
   message (D41).
 - `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
-  listing waits under the caller's phone. A listing whose claim by this
-  account was rejected is not its to claim (RA-BE-51): it is not offered to
-  it and does not hold back its own application.
+  listing waits under the caller's phone. A refused claim leaves the listing
+  offered to the same account, which may claim it again once it has fixed
+  what the team named (the reason shows on p02); a listing that is not its
+  own goes through support (B-13).
 
 Featured placement (B-43, D41, D51, D54): the provider pays the owner outside the
 app; an administrator records the days. No amount, payment or payment status

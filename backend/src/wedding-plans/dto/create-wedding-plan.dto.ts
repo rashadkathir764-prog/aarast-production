@@ -9,14 +9,17 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class CreateWeddingPlanDto {
+  /** RA-BE-15: as the onboarding title, «عرس» and a name of up to 120. */
   @IsString()
   @IsNotEmpty()
+  @MaxCharacters(160)
   title!: string;
 
   @IsString()
-  @MaxLength(160)
+  @MaxCharacters(160)
   @IsOptional()
   city?: string;
 
@@ -25,13 +28,14 @@ export class CreateWeddingPlanDto {
   location?: Record<string, unknown>;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   weddingDate?: string;
 
   @IsArray()
   @ArrayMaxSize(12)
   @IsString({ each: true })
-  @MaxLength(60, { each: true })
+  @MaxCharacters(60, { each: true })
   @IsOptional()
   priorities?: string[];
 
@@ -39,6 +43,7 @@ export class CreateWeddingPlanDto {
   estimatedBudget?: string | number;
 
   @IsString()
+  @MaxLength(8)
   @IsOptional()
   currency?: string;
 
@@ -53,7 +58,7 @@ export class CreateWeddingPlanDto {
   @IsArray()
   @ArrayMaxSize(25)
   @IsString({ each: true })
-  @MaxLength(80, { each: true })
+  @MaxCharacters(80, { each: true })
   @IsOptional()
   selectedCategories?: string[];
 }

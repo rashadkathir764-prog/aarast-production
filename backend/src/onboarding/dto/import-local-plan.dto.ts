@@ -9,6 +9,7 @@ import {
   MaxLength,
   ValidateNested,
 } from "class-validator";
+import { MaxCharacters } from "../../shared-kernel/text/text-length";
 import { ImportLocalGuestDto } from "./import-local-guest.dto";
 import { ImportLocalTaskDto } from "./import-local-task.dto";
 import { CompleteOnboardingDto } from "./complete-onboarding.dto";
@@ -22,12 +23,12 @@ export class ImportLocalCostPaymentDto {
   paidAt?: string | null;
 
   @IsString()
-  @MaxLength(80)
+  @MaxCharacters(80)
   @IsOptional()
   method?: string | null;
 
   @IsString()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   @IsOptional()
   note?: string | null;
 }
@@ -41,7 +42,7 @@ export class ImportLocalPaymentScheduleDto {
   dueDate!: string;
 
   @IsString()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   @IsOptional()
   note?: string | null;
 }
@@ -52,7 +53,7 @@ export class ImportLocalCostDto {
   // (create-wedding-cost.dto.ts), so an imported title can be edited later.
   @IsString()
   @IsNotEmpty()
-  @MaxLength(160)
+  @MaxCharacters(160)
   title!: string;
 
   @IsNotEmpty()
@@ -60,11 +61,11 @@ export class ImportLocalCostDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(120)
+  @MaxCharacters(120)
   categoryName!: string;
 
   @IsString()
-  @MaxLength(200)
+  @MaxCharacters(200)
   @IsOptional()
   partyName?: string | null;
 
@@ -78,7 +79,7 @@ export class ImportLocalCostDto {
   agreementDate?: string | null;
 
   @IsString()
-  @MaxLength(1000)
+  @MaxCharacters(1000)
   @IsOptional()
   note?: string | null;
 

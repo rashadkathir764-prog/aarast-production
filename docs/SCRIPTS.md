@@ -102,6 +102,7 @@
 | `backend` | `npm run smoke:quote-stability` | `node scripts/smoke/run-isolated-smoke.js quote-stability-smoke.js` |
 | `backend` | `npm run smoke:reference-catalog` | `node scripts/smoke/run-isolated-smoke.js reference-catalog-smoke.js` |
 | `backend` | `npm run smoke:review-reply` | `node scripts/smoke/run-isolated-smoke.js review-reply-smoke.ts` |
+| `backend` | `npm run smoke:route-guards` | `node scripts/smoke/run-isolated-smoke.js route-guards-smoke.js` |
 | `backend` | `npm run smoke:schema-equivalence` | `node scripts/smoke/run-isolated-smoke.js --schema-equivalence` |
 | `backend` | `npm run smoke:sharing` | `node scripts/smoke/run-isolated-smoke.js sharing-smoke.js` |
 | `backend` | `npm run smoke:sharing-roles` | `node scripts/smoke/run-isolated-smoke.js sharing-roles-smoke.js` |

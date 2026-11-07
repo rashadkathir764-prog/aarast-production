@@ -72,6 +72,36 @@ void main() {
     },
   );
 
+  // An item whose agreements were all cancelled is waiting again: it was
+  // gone from «البنود», reachable only through the folded cancelled ones.
+  testWidgets('an item whose agreements were cancelled is back as «ما انحجز»', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(_TwoCostsApi(allCancelled: true)),
+        child: const MaterialApp(
+          home: MoneyOverviewScreen(weddingPlanId: 'plan-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('البنود'));
+    await tester.pumpAndSettle();
+
+    final item = find.byKey(const ValueKey('money-item-category-category-1'));
+    expect(item, findsOneWidget);
+    expect(
+      find.descendant(of: item, matching: find.text('ما انحجز')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   // The old «كل التكاليف» page is gone: the next agreements load into
   // «البنود» itself.
   testWidgets('«باقي البنود» loads the next agreements into the list', (
@@ -111,8 +141,11 @@ void main() {
 }
 
 class _TwoCostsApi extends FinanceApi {
-  _TwoCostsApi({this.paged = false})
+  _TwoCostsApi({this.paged = false, this.allCancelled = false})
     : super(ApiClient(tokenProvider: () async => null));
+
+  /// Both agreements of the item cancelled.
+  final bool allCancelled;
 
   /// One agreement a page, so the second waits for «باقي البنود».
   final bool paged;
@@ -127,7 +160,7 @@ class _TwoCostsApi extends FinanceApi {
         'totalAmount': '1000',
         'paidAmount': '0',
         'remainingAmount': '1000',
-        'status': 'OPEN',
+        'status': allCancelled ? 'CANCELLED' : 'OPEN',
         'isPrivate': isPrivate,
       });
 
@@ -140,6 +173,18 @@ class _TwoCostsApi extends FinanceApi {
       outstanding: '2000',
       count: 2,
     ),
+    categories: const [
+      MoneyCategorySummary(
+        categoryId: 'category-1',
+        name: 'الفستان',
+        allocatedAmount: null,
+        confirmedCost: '0',
+        paid: '0',
+        outstanding: '0',
+        remainingAllocation: '0',
+        costsCount: 0,
+      ),
+    ],
   );
 
   @override

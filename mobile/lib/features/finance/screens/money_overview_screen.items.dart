@@ -55,8 +55,12 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
         if (cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId))
           cost,
     ];
+    // An item counts as booked by its live agreements only: one whose only
+    // agreement was cancelled is waiting again («ما انحجز»), not gone from
+    // the list (it was reachable only through the folded cancelled one).
     final withCosts = {
-      for (final cost in provider.costs) cost.budgetCategoryId,
+      for (final cost in provider.costs)
+        if (!cost.isCancelled) cost.budgetCategoryId,
     };
     final waiting = provider.categories
         .where(

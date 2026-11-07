@@ -1,9 +1,9 @@
 // a03 «طلبات الانضمام». The method column and the automatic checks in
 // «ملاحظة» have no field (D41, B-16, B-13, B-31), so the note column carries
 // the review's own state: a profile sent back after changes (B-01, B-02) or
-// the team's note. The server lists the newest first, so the page reads up
-// to 100 and puts the oldest first (A-06).
-import { useCallback, useEffect, useState } from 'react';
+// the team's note. The server lists the newest first, so the page reads the
+// whole queue (up to a thousand) and puts the oldest first (A-06, RA-AD-07).
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getProviderApplications,
@@ -23,6 +23,7 @@ import {
   phoneSpaced,
 } from '../../design_system/Desk';
 import { PROMISE, spanWords } from '../../platform/i18n/deskTime';
+import { everyPage } from '../../platform/api/query';
 
 type Queue = 'NEW' | 'RESUBMITTED' | 'NEEDS_CHANGES' | 'REJECTED';
 
@@ -79,30 +80,38 @@ export function ProviderApplicationsPage({ getStats }: ProviderApplicationsPageP
   const navigate = useNavigate();
   const [queue, setQueue] = useState<Queue>('NEW');
   const [page, setPage] = useState(1);
-  const [result, setResult] = useState<{
-    items: ProviderApplication[];
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  } | null>(null);
+  // RA-AD-07: the whole queue, oldest first; the pages are cut from it.
+  const [queueRows, setQueueRows] = useState<{ items: ProviderApplication[]; total: number } | null>(null);
   const [stats, setStats] = useState<ApplicationCounts | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const next = await getProviderApplications({ ...QUERIES[queue], page, limit: LIMIT });
+      // The server lists the newest first, and «الأقدم أول» also counts a
+      // profile from when it came back: only the whole queue sorts right.
+      const all = await everyPage((page, limit) =>
+        getProviderApplications({ ...QUERIES[queue], page, limit }),
+      );
       const since = (provider: ProviderApplication) =>
         new Date(provider.resubmittedAt ?? provider.createdAt).getTime();
-      setResult({
-        ...next,
-        items: [...next.items].sort((a, b) => since(a) - since(b)),
-      });
+      setQueueRows({ items: [...all.items].sort((a, b) => since(a) - since(b)), total: all.total });
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الطلبات.');
     }
-  }, [queue, page]);
+  }, [queue]);
+
+  const result = useMemo(() => {
+    if (!queueRows) return null;
+    const totalPages = Math.max(1, Math.ceil(queueRows.items.length / LIMIT));
+    return {
+      items: queueRows.items.slice((page - 1) * LIMIT, page * LIMIT),
+      page,
+      limit: LIMIT,
+      total: queueRows.total,
+      totalPages,
+    };
+  }, [queueRows, page]);
 
   useEffect(() => {
     void load();
@@ -115,7 +124,7 @@ export function ProviderApplicationsPage({ getStats }: ProviderApplicationsPageP
   function pick(next: Queue) {
     setQueue(next);
     setPage(1);
-    setResult(null);
+    setQueueRows(null);
   }
 
   const tabs: Array<{ queue: Queue; label: string; tone: 'teal' | 'soft' | 'sky' }> = [

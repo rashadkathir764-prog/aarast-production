@@ -16,6 +16,7 @@ import {
   TwoLine,
 } from '../../design_system/Desk';
 import { dayAgo } from '../../platform/i18n/deskTime';
+import { pageToShow } from '../../platform/api/query';
 
 /** The ready-made requests as the app names them (b11). */
 const KIND_LABELS: Record<string, string> = {
@@ -53,6 +54,12 @@ export function AssistantReportsPanel() {
     setError(null);
     try {
       const next = await getAssistantReports({ status: 'OPEN', page, limit: 20 });
+      // RA-AD-12: past the last page after its last report was closed.
+      const shown = pageToShow(page, next.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
       setResult(next);
       setSelectedId((current) =>
         next.items.some((report) => report.id === current) ? current : next.items[0]?.id ?? null,

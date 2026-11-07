@@ -29,22 +29,27 @@ export function useQueueCounts(
       ? getStats().catch(() => undefined)
       : Promise.resolve(undefined);
     // RA-ST-04 (D95): «البلاغات» holds the chats' and the assistant answers'.
-    const open = canReports
-      ? Promise.all([
-          getConversationReports({ status: 'OPEN', page: 1, limit: 1 }),
-          getAssistantReports({ status: 'OPEN', page: 1, limit: 1 }),
-        ])
-          .then(([chats, answers]) => chats.total + answers.total)
-          .catch(() => undefined)
+    // RA-AD-08: «الصندوق» lists the chats' reports only, so it counts those.
+    const total = (page: Promise<{ total: number }>) =>
+      page.then((value) => value.total).catch(() => undefined);
+    const chats = canReports
+      ? total(getConversationReports({ status: 'OPEN', page: 1, limit: 1 }))
       : Promise.resolve(undefined);
-    void Promise.all([stats, open]).then(([read, reports]) => {
+    const answers = canReports
+      ? total(getAssistantReports({ status: 'OPEN', page: 1, limit: 1 }))
+      : Promise.resolve(undefined);
+    void Promise.all([stats, chats, answers]).then(([read, chatReports, answerReports]) => {
       if (!alive) return;
       const applications = read?.pendingProviders;
       const claims = read?.pendingClaims;
+      const reports =
+        chatReports === undefined || answerReports === undefined
+          ? undefined
+          : chatReports + answerReports;
       const inboxParts = [
         actsOnApplications ? applications : 0,
         actsOnApplications ? claims : 0,
-        actsOnReports ? reports : 0,
+        actsOnReports ? chatReports : 0,
       ];
       const inbox = inboxParts.some((part) => part === undefined)
         ? undefined

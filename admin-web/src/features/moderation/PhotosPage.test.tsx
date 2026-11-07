@@ -61,6 +61,32 @@ describe('n07 photos waiting for review (B-16)', () => {
     await waitFor(() => expect(decidePortfolioPhoto).toHaveBeenCalledWith('photo-1', { decision: 'APPROVE' }));
   });
 
+  // RA-AD-12: the server answers a page past the end with no rows; deciding
+  // the last photo of page 2 said «ما فيه صور تنتظر المراجعة» while 24 waited.
+  it('goes back to the last page when the last photo of a later page is decided', async () => {
+    const firstPage = Array.from({ length: 24 }, (_, index) =>
+      photo({ id: `p${index}`, album: `ألبوم ${index}` }),
+    );
+    let lastOneDecided = false;
+    vi.mocked(getPortfolioPhotos).mockImplementation(async (params) => {
+      const asked = params?.page;
+      const total = lastOneDecided ? 24 : 25;
+      const items = asked === 1 ? firstPage : !lastOneDecided && asked === 2 ? [photo({ id: 'last', album: 'الأخيرة' })] : [];
+      return { items, page: asked ?? 1, limit: 24, total, totalPages: Math.ceil(total / 24) } as never;
+    });
+    vi.mocked(decidePortfolioPhoto).mockImplementation(async () => {
+      lastOneDecided = true;
+      return photo() as never;
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'الصفحة التالية' }));
+    const last = (await screen.findByText('استوديو ضوء صنعاء · الأخيرة')).closest('li')!;
+    fireEvent.click(within(last).getByRole('button', { name: 'سليمة' }));
+
+    expect(await screen.findByText('استوديو ضوء صنعاء · ألبوم 0')).toBeInTheDocument();
+    expect(screen.queryByText('ما فيه صور تنتظر المراجعة.')).not.toBeInTheDocument();
+  });
+
   it('approves a women\'s photo only after the no-faces check', async () => {
     vi.mocked(getPortfolioPhotos).mockResolvedValue(
       page([photo({ id: 'photo-2', album: 'حفلات النساء', forWomen: true, noFaces: true })]) as never,

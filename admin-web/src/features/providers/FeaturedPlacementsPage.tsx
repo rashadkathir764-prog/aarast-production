@@ -39,6 +39,7 @@ import {
 } from '../../design_system/Desk';
 import { AdminPermission, Can } from '../auth/api';
 import { dayMonth } from '../../platform/i18n/deskTime';
+import { pageToShow } from '../../platform/api/query';
 import { providerErrorMessage } from './providerHelpers';
 
 const LIMIT = 50;
@@ -117,6 +118,12 @@ export function FeaturedPlacementsPage() {
         getFeaturedPeriods({ state: view, page, limit: LIMIT }),
         getFeaturedSummary(),
       ]);
+      // RA-AD-12: past the last page after its last placement was ended.
+      const shown = pageToShow(page, list.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
       setResult(list);
       setSummary(counts);
     } catch (value) {

@@ -24,6 +24,7 @@ import {
   TwoLine,
 } from '../../design_system/Desk';
 import { agoWords, deadline, PROMISE } from '../../platform/i18n/deskTime';
+import { everyPage } from '../../platform/api/query';
 
 /** The slice of a conversation report the inbox reads. */
 export type InboxReport = {
@@ -65,7 +66,6 @@ const PROMISES: Record<Kind, { label: string; words: string; ms: number; tag: st
   claim: { label: 'استلام ملف', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'استلام', tone: 'sky' },
 };
 
-const LIMIT = 100;
 
 function joinItem(provider: ProviderApplication): InboxItem {
   const where = [provider.primaryCategory?.nameAr, provider.city?.nameAr]
@@ -128,6 +128,9 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
   const actsOnJoins = hasAdminPermission(user, AdminPermission.PROVIDERS_WRITE);
   const actsOnReports = hasAdminPermission(user, AdminPermission.CONVERSATION_REPORTS_WRITE);
   const [items, setItems] = useState<InboxItem[] | null>(null);
+  // The server's count of open items, which past a thousand per queue
+  // (everyPage's cap) exceeds the rows read.
+  const [open, setOpen] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
 
@@ -135,14 +138,15 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
     setError(null);
     try {
       const [joins, claims, reports] = await Promise.all([
+        // RA-AD-07: every page, so the most overdue are never left out.
         actsOnJoins
-          ? getProviderApplications({ status: 'PENDING', page: 1, limit: LIMIT })
+          ? everyPage((page, limit) => getProviderApplications({ status: 'PENDING', page, limit }))
           : Promise.resolve({ items: [] as ProviderApplication[], total: 0 }),
         actsOnJoins
-          ? getProviderClaims({ status: 'PENDING', page: 1, limit: LIMIT })
+          ? everyPage((page, limit) => getProviderClaims({ status: 'PENDING', page, limit }))
           : Promise.resolve({ items: [] as ProviderClaimRequest[], total: 0 }),
         actsOnReports
-          ? getOpenReports({ status: 'OPEN', page: 1, limit: LIMIT })
+          ? everyPage((page, limit) => getOpenReports({ status: 'OPEN', page, limit }))
           : Promise.resolve({ items: [] as InboxReport[], total: 0 }),
       ]);
       const providerIds = [...new Set(reports.items.map((report) => report.conversation.provider.id))];
@@ -167,6 +171,7 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
           deadline(b.start, PROMISES[b.kind].ms, current).remainingMs,
       );
       setNow(current);
+      setOpen(joins.total + claims.total + reports.total);
       setItems(next);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الصندوق.');
@@ -182,7 +187,8 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
   );
   const late = items?.filter((item) => deadline(item.start, PROMISES[item.kind].ms, now).overdue).length ?? 0;
   const sub = items
-    ? `كل شغل اللوحة في مكان واحد · ${items.length} مفتوح · ${late} تعدّت الوقت`
+    ? // Past the cap the late count is of the rows read: at least that.
+      `كل شغل اللوحة في مكان واحد · ${open} مفتوح · ${late}${open > items.length ? '+' : ''} تعدّت الوقت`
     : 'كل شغل اللوحة في مكان واحد';
 
   return (

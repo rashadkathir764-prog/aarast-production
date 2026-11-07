@@ -161,6 +161,32 @@ describe('a03 طلبات الانضمام', () => {
     expect(screen.getByText('الأقدم أول · نوعد المزود برد خلال يومين')).toBeVisible();
   });
 
+  // RA-AD-07: «الأقدم أول» was sorted inside one page while the server lists
+  // newest first, so past 100 the oldest sat on page 2.
+  it('puts the oldest of the whole queue first, past a hundred', async () => {
+    const newest = Array.from({ length: 100 }, (_, index) =>
+      provider({ id: `n${index}`, businessName: `جديد ${index}`, status: 'PENDING', createdAt: ago(2) }),
+    );
+    const oldest = Array.from({ length: 30 }, (_, index) =>
+      provider({ id: `o${index}`, businessName: `قديم ${index}`, status: 'PENDING', createdAt: ago(90) }),
+    );
+    vi.mocked(getProviderApplications).mockImplementation(async (params) => ({
+      items: params?.page === 1 ? newest : params?.page === 2 ? oldest : [],
+      page: params?.page ?? 1,
+      limit: 100,
+      total: 130,
+      totalPages: 2,
+    }));
+    renderAt('/a', '/a', <ProviderApplicationsPage getStats={getStats} />);
+    await screen.findByText('قديم 0');
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('قديم');
+    expect(rows).toHaveLength(100);
+    expect(getProviderApplications).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 2, limit: 100 }),
+    );
+  });
+
   it('lists the profiles sent back after changes, waiting from when they came back (B-01, B-02)', async () => {
     vi.mocked(getProviderApplications).mockResolvedValue(paged([], 100));
     renderAt('/a', '/a', <ProviderApplicationsPage getStats={getStats} />);

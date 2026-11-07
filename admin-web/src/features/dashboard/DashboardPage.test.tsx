@@ -123,6 +123,37 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(screen.queryByText('ضغط الفريق')).not.toBeInTheDocument();
   });
 
+  // RA-AD-07: the server lists newest first, 100 at a time. The inbox read
+  // one page and counted its rows, so past 100 the oldest (the most overdue)
+  // never showed and the count was 100.
+  it('holds every open item past a hundred, the oldest included', async () => {
+    authState.adminPermissions = [AdminPermission.PROVIDERS_WRITE];
+    const newest = Array.from({ length: 100 }, (_, index) =>
+      application(`p-new-${index}`, `جديد ${index}`, '2026-10-24T08:00:00.000Z'),
+    );
+    const oldest = Array.from({ length: 30 }, (_, index) =>
+      application(`p-old-${index}`, `قديم ${index}`, '2026-10-20T09:00:00.000Z'),
+    );
+    vi.mocked(getProviderApplications).mockImplementation(async (params) => ({
+      items: params?.page === 1 ? newest : params?.page === 2 ? oldest : [],
+      page: params?.page ?? 1,
+      limit: 100,
+      total: 130,
+      totalPages: 2,
+    }));
+
+    renderInbox();
+
+    const table = await screen.findByRole('table', { name: 'بنود الصندوق' });
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(130);
+    expect(rows[0]).toHaveTextContent('قديم');
+    expect(
+      screen.getByText('كل شغل اللوحة في مكان واحد · 130 مفتوح · 30 تعدّت الوقت'),
+    ).toBeVisible();
+    expect(getProviderApplications).toHaveBeenCalledWith({ status: 'PENDING', page: 2, limit: 100 });
+  });
+
   it('shows a profile sent back after changes from the time it came back, and a claim waiting for review (B-01, B-12)', async () => {
     authState.adminPermissions = [AdminPermission.PROVIDERS_WRITE];
     vi.mocked(getProviderApplications).mockResolvedValue({

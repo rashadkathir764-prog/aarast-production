@@ -29,6 +29,7 @@ import {
   stars,
 } from '../../design_system/Desk';
 import { dayMonth } from '../../platform/i18n/deskTime';
+import { pageToShow } from '../../platform/api/query';
 
 type Tab = 'ALL' | 'REPORTED' | 'HIDDEN';
 
@@ -56,14 +57,19 @@ export function ReviewsPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setResult(
-        await getReviews({
-          status: tab === 'HIDDEN' ? 'HIDDEN' : undefined,
-          reported: tab === 'REPORTED' ? 'true' : undefined,
-          page,
-          limit: 20,
-        }),
-      );
+      const next = await getReviews({
+        status: tab === 'HIDDEN' ? 'HIDDEN' : undefined,
+        reported: tab === 'REPORTED' ? 'true' : undefined,
+        page,
+        limit: 20,
+      });
+      // RA-AD-12: past the last page after its last review was decided.
+      const shown = pageToShow(page, next.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
+      setResult(next);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل التقييمات.');
     }

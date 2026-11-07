@@ -24,6 +24,7 @@ import {
   TwoLine,
 } from '../../design_system/Desk';
 import { dayAgo } from '../../platform/i18n/deskTime';
+import { pageToShow } from '../../platform/api/query';
 
 /**
  * The account that owns each reported provider: null when the provider has
@@ -97,6 +98,12 @@ function ChatReports() {
     setError(null);
     try {
       const next = await getConversationReports({ status: 'OPEN', page, limit: 20 });
+      // RA-AD-12: past the last page after its last report was closed.
+      const shown = pageToShow(page, next.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
       setOwners(await providerOwners(next.items));
       setResult(next);
       setSelectedId((current) =>

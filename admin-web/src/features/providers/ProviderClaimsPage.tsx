@@ -29,6 +29,7 @@ import {
 } from '../../design_system/Desk';
 import { AdminPermission, Can } from '../auth/api';
 import { agoWords, whenShort } from '../../platform/i18n/deskTime';
+import { pageToShow } from '../../platform/api/query';
 
 type Queue = ProviderClaimRequest['status'];
 
@@ -67,7 +68,14 @@ export function ProviderClaimsPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setResult(await getProviderClaims({ status: queue, page, limit: LIMIT }));
+      const next = await getProviderClaims({ status: queue, page, limit: LIMIT });
+      // RA-AD-12: past the last page after its last claim was decided.
+      const shown = pageToShow(page, next.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
+      setResult(next);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل طلبات الاستلام.');
     }

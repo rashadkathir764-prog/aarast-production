@@ -11,6 +11,7 @@ import { decidePortfolioPhoto, getPortfolioPhotos, type PortfolioPhoto } from '.
 import { AdminPermission, Can } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
 import { DeskHeader, DeskNote, DeskPager, DeskRetry, Panel, SoftAction } from '../../design_system/Desk';
+import { pageToShow } from '../../platform/api/query';
 
 type Page = {
   items: PortfolioPhoto[];
@@ -50,7 +51,14 @@ export function PhotosPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setResult(await getPortfolioPhotos({ status: 'PENDING', page, limit: 24 }));
+      const next = await getPortfolioPhotos({ status: 'PENDING', page, limit: 24 });
+      // RA-AD-12: past the last page after its last photo was decided.
+      const shown = pageToShow(page, next.totalPages);
+      if (shown !== page) {
+        setPage(shown);
+        return;
+      }
+      setResult(next);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الصور.');
     }

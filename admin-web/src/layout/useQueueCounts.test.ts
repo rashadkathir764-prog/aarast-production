@@ -32,7 +32,10 @@ describe('useQueueCounts', () => {
     const { result } = renderHook(() => useQueueCounts(moderator, 'k'));
 
     await waitFor(() => expect(result.current.reports).toBe(5));
-    expect(result.current.inbox).toBe(5);
+    // RA-AD-08: «الصندوق» counts what it lists (the chats' reports, joins and
+    // claims); the assistant answers wait in «البلاغات». This said 5, the
+    // defect itself.
+    expect(result.current.inbox).toBe(2);
     expect(getAssistantReports).toHaveBeenCalledWith({ status: 'OPEN', page: 1, limit: 1 });
     expect(getStats).not.toHaveBeenCalled();
   });
@@ -45,6 +48,7 @@ describe('useQueueCounts', () => {
     await waitFor(() => expect(getAssistantReports).toHaveBeenCalled());
     await waitFor(() => expect('reports' in result.current).toBe(true));
     expect(result.current.reports).toBeUndefined();
-    expect(result.current.inbox).toBeUndefined();
+    // The inbox does not hold the assistant answers, so it still reads whole.
+    expect(result.current.inbox).toBe(2);
   });
 });

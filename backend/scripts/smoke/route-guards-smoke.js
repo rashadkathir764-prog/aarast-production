@@ -18,7 +18,10 @@ const { eraseFixtureAccount } = require('./account-grace');
  * - an account outside a plan gets no 2xx from any route of that plan;
  * - an application account gets no 2xx from an admin route;
  * - no route answers a malformed id or token with a server error (5xx),
- *   since the phone's queue retries 5xx as if it were a passing fault.
+ *   since the phone's queue retries 5xx as if it were a passing fault; the
+ *   malformed value carries a NUL (`%00`), which PostgreSQL cannot store
+ *   (RA-BE-13);
+ * - a NUL inside the text of a write is removed, and the write is kept.
  * Routes without a parameter are only asked without a session: with one,
  * a route like account deletion would act on the fixture account itself.
  */
@@ -176,7 +179,7 @@ async function run() {
       }
       const malformed = await request(
         route.method,
-        fill(route.path, () => "not-an-id'%"),
+        fill(route.path, () => "not-an-id'%\u0000"),
         body,
         route.guarded ? outsider.token : null,
       );
@@ -192,6 +195,18 @@ async function run() {
     console.log(
       `Outsider refusals by status: ${[...outsiderStatuses].map(([status, count]) => `${status}×${count}`).join(', ')}`,
     );
+
+    // RA-BE-13: the owner's own writes, with a NUL inside the text a phone
+    // could carry (a pasted name, a contact). Each is kept, without it.
+    const guest = await request('POST', `/api/v1/wedding-plans/${planId}/guests`, { name: 'Ahmed\u0000 Ali', notes: 'x\u0000y' }, owner.token);
+    check(`a guest with a NUL in its name is kept (got ${guest.status})`, guest.status === 201);
+    check('the guest name is stored without the NUL', guest.body?.name === 'Ahmed Ali' && guest.body?.notes === 'xy');
+    const task = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, { title: 'مهمة\u0000 أولى' }, owner.token);
+    check(`a task with a NUL in its title is kept (got ${task.status})`, task.status === 201 && task.body?.title === 'مهمة أولى');
+    const renamed = await request('PATCH', `/api/v1/wedding-plans/${planId}`, { title: 'عرس\u0000 تجربة' }, owner.token);
+    check(`a plan title with a NUL is kept (got ${renamed.status})`, renamed.status === 200 && renamed.body?.title === 'عرس تجربة');
+    const search = await request('GET', `/api/v1/wedding-plans/${planId}/guests?search=${encodeURIComponent('Ahmed\u0000')}`, null, owner.token);
+    check(`a search with a NUL answers without a server error (got ${search.status})`, search.status > 0 && search.status < 500);
   } finally {
     for (const [label, account] of [['outsider', outsider], ['owner', owner]]) {
       if (!account.token) continue;

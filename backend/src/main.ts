@@ -9,6 +9,7 @@ import { getCorsOptions } from './platform/config/cors-options';
 import { validateRuntimeEnvironment } from './platform/config/runtime-environment';
 import { clientContractGate, minClientContract } from './platform/http/client-contract';
 import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
+import { StripNulPipe } from './platform/http/strip-nul.pipe';
 import { requestObservability } from './platform/observability/request-observability.middleware';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
 import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';
@@ -73,6 +74,8 @@ async function bootstrap() {
   app.enableCors(getCorsOptions());
 
   app.useGlobalPipes(
+    // RA-BE-13: no NUL reaches validation or the database.
+    new StripNulPipe(),
     // transform is required so @Type() conversions run on query-string
     // DTOs (pagination take/skip arrive as strings otherwise).
     new ValidationPipe({

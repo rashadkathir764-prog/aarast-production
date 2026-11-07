@@ -45,6 +45,14 @@ const MAX_STRING_BYTES = 2 * 1024;
 const MAX_ARRAY_ITEMS = 100;
 const MAX_OBJECT_KEYS = 50;
 const MAX_DEPTH = 6;
+/**
+ * RA-BE-31: the money keys carry an amount, the server's money rule
+ * (shared-kernel/money: 12 digits, 2 decimals). Tested as text, any whole
+ * amount of eight digits or more read as a phone number, and every money
+ * write that records history was refused from 10,000,000 up.
+ */
+const moneySnapshotKeys = new Set(["totalAmount", "paidAmount", "amount"]);
+const MONEY_AMOUNT = /^\d{1,12}(\.\d{1,2})?$/;
 const forbiddenValuePatterns = [
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
   /\bBearer\s+[A-Za-z0-9._~-]+/i,
@@ -213,6 +221,8 @@ function inspectSnapshot(value: unknown, key = "snapshot", depth = 0): void {
         "Contribution snapshot string exceeds size limit",
       );
     }
+    // An amount is a number, never contact data (RA-BE-31).
+    if (moneySnapshotKeys.has(key) && MONEY_AMOUNT.test(value)) return;
     const normalized = normalizeUnicodeDigits(value);
     if (forbiddenValuePatterns.some((pattern) => pattern.test(normalized))) {
       throw new BadRequestException("Sensitive contribution snapshot value");

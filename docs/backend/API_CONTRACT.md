@@ -357,8 +357,9 @@ Additional current auth/profile routes:
   show the first name only while on; default on).
 - `GET /admin/data-requests` (`USERS_READ`) and `POST
   /admin/data-requests/:id/restore` (`USERS_WRITE`): n06.
-- `GET /api/v1/users/lookup?weddingPlanId=<planId>&phone=<phone>`
-  - requires an authenticated owner/member with permission to invite members
+- No route tells whether a phone number has an account (RA-BE-11): the old
+  phone lookup was removed, since owning any plan was enough to ask it.
+  Participants are invited by phone (D81).
 - `GET /api/v1/users/me/settings`
 - `PATCH /api/v1/users/me/settings`
 - `GET /api/v1/me`
@@ -3746,7 +3747,6 @@ configuration, and smoke checks.
 | POST | `/api/v1/tasks/:id/checklist` | `tasks.createChecklistItem` | 🔒 |
 | DELETE | `/api/v1/tasks/:id/checklist/:itemId` | `tasks.removeChecklistItem` | 🔒 |
 | PATCH | `/api/v1/tasks/:id/checklist/:itemId` | `tasks.updateChecklistItem` | 🔒 |
-| GET | `/api/v1/users/lookup` | `users.lookupByPhone` | 🔒 |
 | PATCH | `/api/v1/users/me` | `users.updateMe` | 🔒 |
 | DELETE | `/api/v1/users/me/deletion` | `account-deletion-status.cancelDeletion` | 🔒 |
 | GET | `/api/v1/users/me/deletion` | `account-deletion-status.deletionStatus` | 🔒 |

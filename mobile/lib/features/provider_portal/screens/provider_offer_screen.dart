@@ -16,6 +16,7 @@ import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_offer_lines.dart';
 import '../widgets/provider_request_parts.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 
 /// How long an offer stays open, in days (p17: 10 by default, D35).
 const _offerValidityDays = [7, 10, 14];
@@ -185,6 +186,10 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        // «٥٠٠٠٠٠» from an Arabic keyboard is 500000.
+                        inputFormatters: const [
+                          LatinDigitsFormatter(decimals: 2),
+                        ],
                         errorText: _amountError,
                         onChanged: (_) {
                           if (_amountError != null) {

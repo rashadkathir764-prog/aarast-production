@@ -64,7 +64,12 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
   Widget build(BuildContext context) {
     final finance = context.watch<FinanceProvider>();
     final loaded = finance.loadedPlanId == widget.weddingPlanId;
-    final failed = loaded && finance.errorMessage != null && !finance.isLoading;
+    // The read failed with nothing to show: the error, not «ما فيه دفعات».
+    // A failed save elsewhere (its own message) is not this page's failure.
+    final failed =
+        !finance.isLoading &&
+        finance.loadErrorMessage != null &&
+        !(loaded && finance.hasLoadedMoney);
     final summary = finance.summary;
     final currency = summary.currency;
     final profile = context.journeyProfile;

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +23,7 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart';
 import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 import 'provider_claim_screen.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 
 part 'provider_apply_screen.steps.dart';
 
@@ -327,7 +327,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         controller: _priceController,
         suffix: 'ر.ي',
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: [LatinDigitsFormatter()],
         textInputAction: TextInputAction.next,
         errorText: _attempted && price <= 0 ? 'اكتب سعر خدمتك' : null,
         onChanged: (_) {

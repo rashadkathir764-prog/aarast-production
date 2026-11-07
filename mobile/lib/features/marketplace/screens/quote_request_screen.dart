@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +27,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _quoteStepperWidth = 64.0;
@@ -823,7 +823,7 @@ class _GuestsSheetState extends State<_GuestsSheet> {
           label: context.say('كم ضيف تقريبًا؟', 'كم ضيفة تقريبًا؟'),
           controller: _controller,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [LatinDigitsFormatter()],
           autofocus: true,
         ),
         const SizedBox(height: AarastV3Space.x3),

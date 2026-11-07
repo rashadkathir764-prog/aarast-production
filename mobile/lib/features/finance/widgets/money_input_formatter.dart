@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 
+import '../../../core/forms/latin_digits_formatter.dart' show latinDigitOf;
+
 class MoneyInputFormatter extends TextInputFormatter {
   const MoneyInputFormatter();
 
@@ -74,12 +76,7 @@ String _sanitize(String input) {
   return buffer.toString();
 }
 
-int? _normalizedDigit(int rune) {
-  if (rune >= 0x30 && rune <= 0x39) return rune;
-  if (rune >= 0x0660 && rune <= 0x0669) return 0x30 + (rune - 0x0660);
-  if (rune >= 0x06F0 && rune <= 0x06F9) return 0x30 + (rune - 0x06F0);
-  return null;
-}
+int? _normalizedDigit(int rune) => latinDigitOf(rune);
 
 bool _isMeaningful(int codeUnit) =>
     (codeUnit >= 0x30 && codeUnit <= 0x39) || codeUnit == 0x2E;

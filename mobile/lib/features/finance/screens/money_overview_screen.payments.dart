@@ -206,7 +206,9 @@ class _DueList extends StatelessWidget {
               ),
             _DueRow(
               schedule: schedules[index],
-              amount: _amount(context, schedules[index].amount, currency),
+              // RA-BE-53: what it asks for now, as the total above and the
+              // payment it records; its own written amount is for editing.
+              amount: _amount(context, schedules[index].dueAmount, currency),
               overdue: schedules[index].isOverdueAt(now),
               onOpen: () => context.push(
                 AppRouter.moneyCostDetails(planId, schedules[index].costId),

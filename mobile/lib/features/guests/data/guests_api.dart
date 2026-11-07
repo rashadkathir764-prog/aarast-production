@@ -142,13 +142,28 @@ class GuestsApi {
 
   /// e03 / w28: many guests in one go. Each is kept on the phone and sent
   /// on its own, so a list added without the server still lands whole.
-  Future<List<Guest>> createGuestsBulk({
+  ///
+  /// A guest the server refuses (its number already on the list, the plan
+  /// full) does not stop the others, nor make the ones already added look
+  /// lost: the import said «ما قدرنا نضيف الضيوف» over guests it had added,
+  /// and adding again added them twice. Each refused one is returned with the
+  /// reason, so only those are tried again.
+  Future<
+    ({
+      List<Guest> created,
+      List<({String name, String? phone})> refused,
+      String? reason,
+    })
+  >
+  createGuestsBulk({
     required String weddingPlanId,
     required List<({String name, String? phone})> people,
     String? groupId,
   }) async {
     final normalizedGroupId = groupId?.trim();
     final created = <Guest>[];
+    final refused = <({String name, String? phone})>[];
+    String? reason;
     for (final person in people) {
       final payload = {
         'name': person.name.trim(),
@@ -159,16 +174,21 @@ class GuestsApi {
           'groupId': normalizedGroupId,
         'phone': ?_normalizeOptionalPhone(person.phone),
       };
-      created.add(
-        _isLocalGuestPlanId(weddingPlanId)
-            ? await _createLocalGuest(
-                weddingPlanId: weddingPlanId,
-                payload: payload,
-              )
-            : await _queuedCreate(weddingPlanId, payload),
-      );
+      try {
+        created.add(
+          _isLocalGuestPlanId(weddingPlanId)
+              ? await _createLocalGuest(
+                  weddingPlanId: weddingPlanId,
+                  payload: payload,
+                )
+              : await _queuedCreate(weddingPlanId, payload),
+        );
+      } on ApiException catch (error) {
+        refused.add(person);
+        reason ??= error.message;
+      }
     }
-    return created;
+    return (created: created, refused: refused, reason: reason);
   }
 
   Future<Guest> updateGuest({

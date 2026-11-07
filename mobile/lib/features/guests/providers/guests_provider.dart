@@ -156,6 +156,12 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   /// e03 / w28: adds [people] to the plan, in [groupId] when given.
   /// Returns how many were added; none on a failure, which says why.
+  /// The guests the last [addGuests] could not add (each with the server's
+  /// reason in [errorMessage]); empty when all went.
+  List<({String name, String? phone})> get lastRefusedGuests =>
+      _lastRefusedGuests;
+  List<({String name, String? phone})> _lastRefusedGuests = const [];
+
   Future<int> addGuests({
     required String weddingPlanId,
     required List<({String name, String? phone})> people,
@@ -168,14 +174,22 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     _noticeMessage = null;
     notifyListeners();
     try {
-      final created = await _api.createGuestsBulk(
+      final result = await _api.createGuestsBulk(
         weddingPlanId: weddingPlanId,
         people: people,
         groupId: groupId,
       );
+      final created = result.created;
+      // What was added is on the list, whatever was refused after it.
       _guests = [...created, ..._guests];
       _refreshSummary(weddingPlanId);
-      if (_isLocalGuestPlanId(weddingPlanId)) {
+      _lastRefusedGuests = result.refused;
+      if (result.refused.isNotEmpty) {
+        _errorMessage = created.isEmpty
+            ? result.reason
+            : 'انضاف ${created.length}، وما انضاف ${result.refused.length}: '
+                  '${result.reason ?? 'جرّب مرة ثانية'}';
+      } else if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
       return created.length;

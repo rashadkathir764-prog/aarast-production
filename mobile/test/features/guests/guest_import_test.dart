@@ -38,6 +38,7 @@ class _Api extends GuestsApi {
   final List<GuestGroup> groups;
   final sent = <({String name, String? phone})>[];
   String? sentGroupId;
+  Set<String> refuseNames = const {};
 
   @override
   Future<List<Guest>> getGuests(String weddingPlanId) async => guests;
@@ -54,17 +55,36 @@ class _Api extends GuestsApi {
       GuestSummary.fromGuests(weddingPlanId: weddingPlanId, guests: guests);
 
   @override
-  Future<List<Guest>> createGuestsBulk({
+  Future<
+    ({
+      List<Guest> created,
+      List<({String name, String? phone})> refused,
+      String? reason,
+    })
+  >
+  createGuestsBulk({
     required String weddingPlanId,
     required List<({String name, String? phone})> people,
     String? groupId,
   }) async {
     sent.addAll(people);
     sentGroupId = groupId;
-    return [
-      for (var i = 0; i < people.length; i++)
-        _guest('new-$i', people[i].name, phone: people[i].phone),
+    // RA-MO-34: the server refuses the people named in [refuseNames].
+    final added = [
+      for (final person in people)
+        if (!refuseNames.contains(person.name)) person,
     ];
+    return (
+      created: [
+        for (var i = 0; i < added.length; i++)
+          _guest('new-$i', added[i].name, phone: added[i].phone),
+      ],
+      refused: [
+        for (final person in people)
+          if (refuseNames.contains(person.name)) person,
+      ],
+      reason: refuseNames.isEmpty ? null : 'هذا الضيف مضاف مسبقًا',
+    );
   }
 }
 
@@ -74,13 +94,14 @@ Future<_Api> _pump(
   List<Guest> guests = const [],
   List<GuestGroup> groups = const [],
   List<ContactPhoneDraft> contacts = const [],
+  Set<String> refuseNames = const {},
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(360, 1400);
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({'aarast_access_token': 'token'});
   final storage = AuthStorage(await SharedPreferences.getInstance());
-  final api = _Api(guests, groups: groups);
+  final api = _Api(guests, groups: groups)..refuseNames = refuseNames;
   final provider = GuestsProvider(api);
   await provider.loadGuests('plan-1');
   await tester.pumpWidget(
@@ -239,6 +260,34 @@ void main() {
     expect(api.sentGroupId, 'g-hara');
     expect(find.text('قائمة الضيوف'), findsOneWidget);
   });
+
+  // RA-MO-34: one refused line said «ما قدرنا نضيف الضيوف» over the guests it
+  // had added, and adding again added them twice. The added ones stay, the
+  // page says what did not go and why, and a retry sends only that one.
+  testWidgets(
+    'a line the server refuses keeps the others and is the only one retried',
+    (tester) async {
+      final api = await _pump(
+        tester,
+        source: GuestImportSource.paste,
+        refuseNames: {'يحيى السنيدار'},
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('import-paste')).hitTestable().first,
+        'عبدالله الحمدي 771234567\nيحيى السنيدار 772222222',
+      );
+      await tester.pumpAndSettle();
+      await _tapAdd(tester);
+
+      expect(find.textContaining('انضاف 1، وما انضاف 1'), findsOneWidget);
+      expect(find.text('قائمة الضيوف'), findsNothing);
+      expect(find.text('موجود من قبل · ما نضيفه مرتين'), findsOneWidget);
+
+      api.sent.clear();
+      await _tapAdd(tester);
+      expect(api.sent, [(name: 'يحيى السنيدار', phone: '+967772222222')]);
+    },
+  );
 
   testWidgets('e03 ticks contacts, a whole family at once, never a duplicate', (
     tester,

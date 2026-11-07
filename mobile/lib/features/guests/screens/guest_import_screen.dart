@@ -270,7 +270,8 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     final name = arabicSearchKey(query);
     bool matches(int i) =>
         query.isEmpty ||
-        (name.isNotEmpty && arabicSearchKey(candidates[i].name).contains(name)) ||
+        (name.isNotEmpty &&
+            arabicSearchKey(candidates[i].name).contains(name)) ||
         contacts[i].rawPhone.replaceAll(RegExp(r'\D'), '').contains(query);
     final sections = [
       for (final section in groupByFamily([
@@ -414,6 +415,16 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       weddingPlanId: widget.weddingPlanId,
       summary: provider.summary,
     );
+    // Some went and some were refused: the page stays with the reason. The
+    // ones added are on the list now and read «موجود من قبل», so trying
+    // again adds only the refused ones, never the others twice.
+    if (provider.lastRefusedGuests.isNotEmpty) {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما انضاف بعضهم. جرّب مرة ثانية.',
+      );
+      return;
+    }
     AarastToast.showSuccess(
       context,
       'انضاف ${GuestWords.of(context).count(added)}',

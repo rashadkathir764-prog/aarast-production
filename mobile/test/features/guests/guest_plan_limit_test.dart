@@ -79,13 +79,24 @@ class _Api extends GuestsApi {
   }
 
   @override
-  Future<List<Guest>> createGuestsBulk({
+  Future<
+    ({
+      List<Guest> created,
+      List<({String name, String? phone})> refused,
+      String? reason,
+    })
+  >
+  createGuestsBulk({
     required String weddingPlanId,
     required List<({String name, String? phone})> people,
     String? groupId,
   }) async {
     adds += people.length;
-    return _guests(weddingPlanId, people.length);
+    return (
+      created: _guests(weddingPlanId, people.length),
+      refused: const <({String name, String? phone})>[],
+      reason: null,
+    );
   }
 }
 

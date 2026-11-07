@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 
 /// g09 «تغيير رقم الجوال», a journey sheet from «حسابي»: the number now, the
 /// new one, and a code on WhatsApp to the new number. Confirming moves the
@@ -176,7 +177,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
             keyboardType: TextInputType.number,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [LatinDigitsFormatter()],
             errorText: _error,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _busy ? null : _confirm(),

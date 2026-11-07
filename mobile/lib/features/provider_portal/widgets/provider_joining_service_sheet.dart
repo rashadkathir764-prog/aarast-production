@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../data/provider_text_limits.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 
 /// What the provider wrote for the service he joins with.
 typedef ProviderJoiningServiceInput = ({
@@ -142,7 +142,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
           controller: _price,
           suffix: 'ر.ي',
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [LatinDigitsFormatter()],
           textInputAction: TextInputAction.next,
           errorText: _attempted && (int.tryParse(_price.text.trim()) ?? 0) <= 0
               ? 'اكتب سعر خدمتك'

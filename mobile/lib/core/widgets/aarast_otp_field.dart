@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../experience_v3/aarast_journey.dart' show JourneyType;
 import '../experience_v3/aarast_journey_profile.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
+import '../forms/latin_digits_formatter.dart';
 
 /// The hidden input under the code boxes only carries the digits.
 const _hiddenInputSize = 1.0;
@@ -309,7 +310,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.oneTimeCode],
                     inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
+                      LatinDigitsFormatter(),
                       LengthLimitingTextInputFormatter(widget.length),
                     ],
                     showCursor: false,

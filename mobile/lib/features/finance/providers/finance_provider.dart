@@ -966,6 +966,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
   }) async {
+    // The budget is replaced whole: every item not sent is removed on the
+    // server. Built from a plan whose money was never read (a weak network:
+    // the read failed and the save went on), it sent no item and the default
+    // currency, and the server deleted every item without an agreement.
+    if (!_hasLoadedMoney || _loadedPlanId != planId) {
+      throw const ApiException(
+        'ما قدرنا نقرأ ميزانيتك الحين، فما غيّرناها. تأكد من النت وجرّب مرة ثانية.',
+      );
+    }
     final result = await _api.replaceMoneyBudget(
       planId: planId,
       totalBudget: totalBudget,

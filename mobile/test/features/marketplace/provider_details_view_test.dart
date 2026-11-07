@@ -217,6 +217,62 @@ void main() {
     );
   });
 
+  testWidgets('RA-ST-05: another reader\'s review has a report flag, the '
+      'reader\'s own has none', (tester) async {
+    final reported = <String>[];
+    await _pumpView(
+      tester,
+      readerUserId: 'user-me',
+      onReportReview: (review) => reported.add(review.id),
+      reviews: const [
+        ProviderReview(
+          id: 'review-other',
+          rating: 1,
+          userId: 'user-other',
+          userName: 'خالد',
+          comment: 'كلام ما له أساس',
+        ),
+        ProviderReview(
+          id: 'review-mine',
+          rating: 5,
+          userId: 'user-me',
+          userName: 'أنا',
+        ),
+      ],
+    );
+    final flag = find.byKey(
+      const ValueKey('provider-details-review-report-review-other'),
+    );
+    await tester.scrollUntilVisible(flag, 300);
+    expect(
+      find.byKey(const ValueKey('provider-details-review-report-review-mine')),
+      findsNothing,
+    );
+    expect(tester.getSize(flag).height, greaterThanOrEqualTo(48));
+
+    await tester.tap(flag);
+    expect(reported, ['review-other']);
+  });
+
+  testWidgets('without a report action the reviews show no flag', (
+    tester,
+  ) async {
+    await _pumpView(
+      tester,
+      reviews: const [
+        ProviderReview(id: 'review-1', rating: 4, userName: 'سالم'),
+      ],
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('provider-details-review-review-1')),
+      300,
+    );
+    expect(
+      find.byKey(const ValueKey('provider-details-review-report-review-1')),
+      findsNothing,
+    );
+  });
+
   testWidgets('f03 stays readable at 320px and 1.3 text', (tester) async {
     await _pumpView(tester, width: 320, textScale: 1.3, withinBudget: true);
 
@@ -330,6 +386,8 @@ Future<void> _pumpView(
   bool dataSaver = false,
   List<ProviderReview> reviews = const [],
   PublicPortfolio? portfolio,
+  ValueChanged<ProviderReview>? onReportReview,
+  String? readerUserId,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -360,6 +418,8 @@ Future<void> _pumpView(
             dataSaver: dataSaver,
             reviews: reviews,
             portfolio: portfolio,
+            onReportReview: onReportReview,
+            readerUserId: readerUserId,
           ),
         ),
       ),

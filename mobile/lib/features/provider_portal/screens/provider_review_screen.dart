@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/marketplace_api.dart' show ProviderReview;
+import '../../marketplace/marketplace_api.dart'
+    show ProviderReview, reportProviderReview;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_profile_parts.dart'
     show ProviderReviewCard, ProviderReviewReplyBox;
@@ -14,8 +15,8 @@ import '../widgets/provider_profile_parts.dart'
 /// «تقييم جديد» (p42) and the reviews of «ملفي» open it. Before he replies:
 /// the box «ردك (مرة وحدة، يشوفه الكل)» and «انشر الرد». After: his reply as
 /// customers read it under the review, or that the team hid it. p27's
-/// «فيه كلام مسيء أو كذب؟ بلّغ عنه» waits for reports (B-28), so it is not
-/// offered. The design's occasion line and tags have no field (F15).
+/// «فيه كلام مسيء أو كذب؟ بلّغ عنه» reports a published review to the team
+/// (RA-ST-05, D94). The design's occasion line and tags have no field (F15).
 class ProviderReviewScreen extends StatefulWidget {
   const ProviderReviewScreen({required this.reviewId, super.key});
 
@@ -96,6 +97,18 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
             )
           else ...[
             ProviderReviewCard(review: review),
+            if (review.isPublished)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: JourneyTextAction(
+                  key: const Key('provider-review-report'),
+                  label: 'فيه كلام مسيء أو كذب؟ بلّغ عنه',
+                  icon: LucideIcons.flag,
+                  color: AarastV3Color.textMuted,
+                  // RA-ST-05 (D94): the review stays until the team decides.
+                  onPressed: () => reportProviderReview(context, review.id),
+                ),
+              ),
             const SizedBox(height: AarastV3Space.x3),
             if (reply != null)
               ProviderReviewReplyBox(reply: reply)

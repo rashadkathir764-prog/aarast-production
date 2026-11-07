@@ -33,8 +33,15 @@ class ProviderDetailsView extends StatelessWidget {
     this.dataSaver = false,
     this.reviews = const [],
     this.portfolio,
+    this.onReportReview,
+    this.readerUserId,
     super.key,
   });
+
+  /// RA-ST-05 (D94): «بلّغ عن التقييم» on a review; null where it cannot be
+  /// sent. Never offered on the reader's own review ([readerUserId]).
+  final ValueChanged<ProviderReview>? onReportReview;
+  final String? readerUserId;
 
   /// g02 «توفير البيانات»: the photos load only once opened.
   final bool dataSaver;
@@ -225,6 +232,12 @@ class ProviderDetailsView extends StatelessWidget {
                     _ReviewWithReply(
                       review: review,
                       providerName: provider.businessName,
+                      onReport:
+                          onReportReview == null ||
+                              (readerUserId != null &&
+                                  review.userId == readerUserId)
+                          ? null
+                          : () => onReportReview!(review),
                     ),
                     const SizedBox(height: AarastV3Space.x2),
                   ],
@@ -241,10 +254,17 @@ class ProviderDetailsView extends StatelessWidget {
 /// A review as customers read it: the name, the stars, the words, and the
 /// provider's published reply under them («رد استوديو ضوء صنعاء»).
 class _ReviewWithReply extends StatelessWidget {
-  const _ReviewWithReply({required this.review, required this.providerName});
+  const _ReviewWithReply({
+    required this.review,
+    required this.providerName,
+    this.onReport,
+  });
 
   final ProviderReview review;
   final String providerName;
+
+  /// RA-ST-05: «بلّغ عن التقييم»; null on the reader's own review.
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -261,34 +281,52 @@ class _ReviewWithReply extends StatelessWidget {
         children: [
           Row(
             children: [
-              Flexible(
-                child: Text(
-                  name,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x2),
-              Semantics(
-                label: '$rating من 5',
-                child: ExcludeSemantics(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var star = 1; star <= 5; star++)
-                        Icon(
-                          LucideIcons.star,
-                          size: 15,
-                          color: star <= rating
-                              ? AarastV3Color.saffron
-                              : AarastV3Color.line,
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: AarastV3Space.x2),
+                    Semantics(
+                      label: '$rating من 5',
+                      child: ExcludeSemantics(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var star = 1; star <= 5; star++)
+                              Icon(
+                                LucideIcons.star,
+                                size: 15,
+                                color: star <= rating
+                                    ? AarastV3Color.saffron
+                                    : AarastV3Color.line,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              // At the row's end; a 48 target (D74) makes the row taller.
+              if (onReport != null)
+                IconButton(
+                  key: ValueKey('provider-details-review-report-${review.id}'),
+                  tooltip: 'بلّغ عن التقييم',
+                  onPressed: onReport,
+                  icon: const Icon(
+                    LucideIcons.flag,
+                    size: 18,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
             ],
           ),
           if (comment.isNotEmpty) ...[

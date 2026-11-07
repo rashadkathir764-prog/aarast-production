@@ -118,6 +118,19 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     }
   }
 
+  /// RA-ST-05 (D94): reports a review to the moderation team. Null once it
+  /// is sent, or why not.
+  Future<String?> reportReview(String reviewId, String reason) async {
+    try {
+      await _api.reportReview(reviewId, reason);
+      return null;
+    } on ApiException catch (error) {
+      return marketplaceErrorMessage(error.message);
+    } catch (_) {
+      return 'ما قدرنا نرسل البلاغ. حاول مرة ثانية.';
+    }
+  }
+
   /// Saves or removes one heart. Null once saved, or why not. A failed
   /// heart is not a directory that could not be read, so it leaves the
   /// directory's error alone.

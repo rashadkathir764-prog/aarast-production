@@ -38,6 +38,17 @@ class MarketplaceApi {
       'طلب الحجز يوصل المزود فورًا، فيحتاج الخادم.';
   static const _reviewReachesProvider =
       'تقييمك ينشر عند المزود فورًا، فيحتاج الخادم.';
+  static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج الخادم.';
+
+  /// RA-ST-05 (D94): reports a published review to the moderation team.
+  Future<void> reportReview(String reviewId, String reason) async {
+    await _writes.serverOnly(
+      reason: _reportReachesTeam,
+      method: 'POST',
+      path: '/api/v1/reviews/$reviewId/report',
+      body: {'reason': reason},
+    );
+  }
 
   Future<List<MarketplaceCity>> getCities() async {
     try {

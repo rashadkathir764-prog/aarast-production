@@ -16,7 +16,7 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController;
-import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../data/provider_contact_links.dart';
 import '../models/marketplace_models.dart';
@@ -24,6 +24,7 @@ import '../models/provider_budget_match_intent.dart'
     show budgetItemForCategories;
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
+import '../widgets/review_report_sheet.dart' show reportProviderReview;
 
 part 'provider_details_screen.widgets.dart';
 
@@ -176,6 +177,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                 state.servicesErrorFor(widget.providerId) ??
                 state.packagesErrorFor(widget.providerId),
             onRetryDetails: detailsLoading ? null : retry,
+            onReportReview: _reportReview,
+            readerUserId: context.watch<AuthController?>()?.user?.id,
           );
         },
       ),
@@ -242,6 +245,18 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     if (contexts.any((item) => item.providerId == widget.providerId)) return;
     _countedViewProviderId = widget.providerId;
     marketplace.recordProviderView(widget.providerId);
+  }
+
+  /// RA-ST-05 (D94): a report is from an account, and reaches the team.
+  Future<void> _reportReview(ProviderReview review) async {
+    final allowed = await AuthActionGuard.requireAccount(
+      context,
+      reason: context.say(
+        'ادخل حسابك أول عشان تبلّغ عن التقييم.',
+        'ادخلي حسابك أول عشان تبلّغين عن التقييم.',
+      ),
+    );
+    if (allowed && mounted) await reportProviderReview(context, review.id);
   }
 
   Future<bool> _hasAccount() async {

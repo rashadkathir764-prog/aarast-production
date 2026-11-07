@@ -2041,6 +2041,8 @@ const trackedOwnerApiContracts = [
         show: ['latestPriceUpdate', 'providerRespondsLabel', 'providerRespondsLine'],
       },
       { uri: 'widgets/quote_status_chip.dart', show: ['QuoteStatusChip'] },
+      // RA-ST-05 (D94): the provider reports a review of him from p27.
+      { uri: 'widgets/review_report_sheet.dart', show: ['reportProviderReview'] },
     ],
   },
   {
@@ -2497,10 +2499,11 @@ const trackedCollaborationBatchContracts = [
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContext', 'AccountContextController'],
   },
+  // RA-ST-05 (D94): the reader's own review has no report flag.
   {
     source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard'],
+    show: ['AuthActionGuard', 'AuthController'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',

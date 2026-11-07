@@ -51,3 +51,4 @@ export 'widgets/provider_auth_gate.dart' show ProviderAuthGate;
 export 'widgets/provider_trust_signals.dart'
     show latestPriceUpdate, providerRespondsLabel, providerRespondsLine;
 export 'widgets/quote_status_chip.dart' show QuoteStatusChip;
+export 'widgets/review_report_sheet.dart' show reportProviderReview;

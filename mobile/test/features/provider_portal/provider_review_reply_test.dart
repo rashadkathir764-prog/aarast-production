@@ -1,5 +1,8 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_review_screen.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +39,21 @@ class _ReplyApi extends ProfileApi {
   }
 }
 
+/// RA-ST-05 (D94): what reached the team, or the server's refusal.
+class _ReportApi extends MarketplaceApi {
+  _ReportApi() : super(ApiClient(tokenProvider: () async => null));
+
+  final reports = <String>[];
+  ApiException? refuse;
+
+  @override
+  Future<void> reportReview(String reviewId, String reason) async {
+    final refusal = refuse;
+    if (refusal != null) throw refusal;
+    reports.add('$reviewId:$reason');
+  }
+}
+
 final _review = ProviderReview(
   id: 'review-1',
   rating: 4,
@@ -46,8 +64,9 @@ final _review = ProviderReview(
 
 Future<_ReplyApi> _pump(
   WidgetTester tester,
-  List<ProviderReview> reviews,
-) async {
+  List<ProviderReview> reviews, {
+  _ReportApi? reportApi,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1000);
   addTearDown(tester.view.reset);
@@ -55,8 +74,15 @@ Future<_ReplyApi> _pump(
   final dashboard = ProviderDashboardProvider(api);
   await dashboard.loadDashboard();
   await tester.pumpWidget(
-    ChangeNotifierProvider<ProviderDashboardProvider>.value(
-      value: dashboard,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ProviderDashboardProvider>.value(
+          value: dashboard,
+        ),
+        ChangeNotifierProvider<ProviderMarketplaceProvider>(
+          create: (_) => ProviderMarketplaceProvider(reportApi ?? _ReportApi()),
+        ),
+      ],
       child: MaterialApp(
         theme: AppTheme.light(),
         home: const Directionality(
@@ -82,8 +108,8 @@ void main() {
       findsOne,
     );
     expect(find.text('ردك (مرة وحدة، يشوفه الكل)'), findsOne);
-    // Reports wait for B-28: no «بلّغ عنه».
-    expect(find.textContaining('بلّغ'), findsNothing);
+    // RA-ST-05 (D94): p27's report line is offered on a published review.
+    expect(find.text('فيه كلام مسيء أو كذب؟ بلّغ عنه'), findsOne);
 
     // Nothing to publish before he writes.
     final publish = find.byKey(const Key('provider-review-reply-publish'));
@@ -103,6 +129,82 @@ void main() {
     expect(find.byKey(const Key('provider-review-reply-field')), findsNothing);
     expect(find.text('ردك · يشوفه الكل تحت التقييم'), findsOne);
     expect(find.text('شكرًا يا محمد، ونعتذر عن التأخير.'), findsOne);
+  });
+
+  testWidgets('RA-ST-05: «بلّغ عنه» sends the picked reason to the team', (
+    tester,
+  ) async {
+    final reportApi = _ReportApi();
+    await _pump(tester, [_review], reportApi: reportApi);
+
+    await tester.tap(find.byKey(const Key('provider-review-report')));
+    await tester.pumpAndSettle();
+    expect(find.text('بلّغ عن التقييم'), findsOne);
+    expect(
+      find.text('فريق اعّرست يراجعه. التقييم يبقى ظاهر لين يقرر.'),
+      findsOne,
+    );
+
+    // Nothing is sent before a reason is picked.
+    final send = find.byKey(const ValueKey('review-report-send'));
+    await tester.tap(send);
+    await tester.pump();
+    expect(reportApi.reports, isEmpty);
+
+    // «شي ثاني» asks for his own words before it sends.
+    await tester.tap(
+      find.byKey(const ValueKey('review-report-reason-شي ثاني')),
+    );
+    await tester.pump();
+    await tester.tap(send);
+    await tester.pump();
+    expect(reportApi.reports, isEmpty);
+    await tester.enterText(
+      find.byKey(const ValueKey('review-report-words')).last,
+      '  ما اشتغلنا معه أصلًا  ',
+    );
+    await tester.pump();
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+
+    expect(reportApi.reports, ['review-1:ما اشتغلنا معه أصلًا']);
+    expect(find.text('وصل بلاغك، وفريق اعّرست بيراجعه.'), findsOne);
+    expect(find.text('بلّغ عن التقييم'), findsNothing);
+  });
+
+  testWidgets('RA-ST-05: a refused report says why', (tester) async {
+    final reportApi = _ReportApi()
+      ..refuse = const ApiException('ما تقدر تبلّغ عن تقييمك.');
+    await _pump(tester, [_review], reportApi: reportApi);
+
+    await tester.tap(find.byKey(const Key('provider-review-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('review-report-reason-كلام كاذب')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('review-report-send')));
+    await tester.pumpAndSettle();
+
+    expect(reportApi.reports, isEmpty);
+    expect(find.text('وصل بلاغك، وفريق اعّرست بيراجعه.'), findsNothing);
+    expect(find.textContaining('ما تقدر تبلّغ'), findsOne);
+  });
+
+  testWidgets('RA-ST-05: a review the team hid has nothing to report', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      ProviderReview(
+        id: 'review-1',
+        rating: 1,
+        userName: 'فهد',
+        status: 'HIDDEN',
+        createdAt: DateTime(2026, 10, 10),
+      ),
+    ]);
+    expect(find.byKey(const Key('provider-review-hidden')), findsOne);
+    expect(find.byKey(const Key('provider-review-report')), findsNothing);
   });
 
   testWidgets('a reply the team hid says so and offers no second reply', (

@@ -553,18 +553,19 @@ test("direct member creation cannot reopen a tenure that ended with MEMBER_LEFT"
         userId: target.id,
         role: SharedMemberRole.CONTRIBUTOR,
       }),
+    // RA-BE-42: the direct add now refuses every request before any lookup
+    // (whoever joins accepts an invite, P5), so a former member is refused
+    // like anyone else and no transaction opens. This expected the re-entry
+    // refusal that sat behind the add, and the lock it took on the target.
     (error: unknown) => {
       assert.ok(error instanceof HttpException);
-      assert.equal(error.getStatus(), 409);
-      assert.equal(
-        (error.getResponse() as any).code,
-        "MEMBER_REENTRY_REQUIRES_INVITE",
-      );
+      assert.equal(error.getStatus(), 400);
+      assert.equal((error.getResponse() as any).code, "ADD_BY_INVITE");
       return true;
     },
   );
 
-  assert.deepEqual(additionalLifecycleIds, [target.id]);
+  assert.deepEqual(additionalLifecycleIds, []);
   assert.equal(memberCreates, 0);
   assert.equal(historyWrites, 0);
   assert.equal(notificationWrites, 0);

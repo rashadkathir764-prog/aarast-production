@@ -46,50 +46,36 @@ test("stored false contributor permissions override every role default at runtim
   assert.equal(permissions.canManageMoney(context), false);
 });
 
-test("direct member creation is fail-closed and never derives omitted permissions from role", () => {
+// RA-BE-42: this test pinned how the direct add filled permissions it was
+// not given. The direct add no longer grants anything: whoever joins
+// accepts an invite (P5), so every request is refused before any lookup and
+// no permission is ever derived on this path.
+test("direct member creation grants nothing: every request is refused before any lookup", async () => {
+  // An empty database: any read would throw a TypeError, not ADD_BY_INVITE.
   const service = sharingService(
     {} as any,
-    new PermissionService({} as any, new PlanReadService()),
+    {
+      assertMemberManageable: async () => ({
+        plan: { id: "plan-1", ownerUserId: "owner-1" },
+        isOwner: true,
+        sharedMember: null,
+      }),
+    } as any,
     {} as any,
     {} as any,
     {} as any,
   );
 
-  const omitted = (service as any).permissionDataForDirectMemberCreate({
-    role: SharedMemberRole.CONTRIBUTOR,
-  });
-  assert.deepEqual(omitted, {
-    canViewMoney: false,
-    canEditPlan: false,
-    canManageTasks: false,
-    canManageGuests: false,
-    canManageProviders: false,
-    canInviteMembers: false,
-    canManageMoney: false,
-    receiveNotifications: true,
-  });
-
-  const explicit = (service as any).permissionDataForDirectMemberCreate({
-    role: SharedMemberRole.VIEWER,
-    canManageTasks: true,
-    canManageMoney: true,
-    receiveNotifications: false,
-  });
-  assert.equal(explicit.canManageTasks, true);
-  assert.equal(explicit.canManageMoney, true);
-  assert.equal(explicit.canViewMoney, true);
-  assert.equal(explicit.receiveNotifications, false);
-
-  const source = readFileSync(
-    join(process.cwd(), "src/modules/collaboration/internal/sharing.service.ts"),
-    "utf8",
-  );
-  const directCreate = source.slice(
-    source.indexOf("async create("),
-    source.indexOf("async findSharedPlans("),
-  );
-  assert.match(directCreate, /permissionDataForDirectMemberCreate\(dto\)/);
-  assert.doesNotMatch(directCreate, /rolePermissionDefaults/);
+  for (const dto of [
+    { role: SharedMemberRole.CONTRIBUTOR, userId: "account-1" },
+    { role: SharedMemberRole.VIEWER, userId: "account-2", canManageMoney: true },
+    { role: SharedMemberRole.VIEWER, phone: "+967777000004" },
+  ]) {
+    await assert.rejects(
+      () => service.create({ id: "owner-1" } as any, "plan-1", dto as any),
+      (error: any) => error?.response?.code === "ADD_BY_INVITE",
+    );
+  }
 });
 
 test("a known contributor whose task permission was revoked receives the stable task denial", async () => {

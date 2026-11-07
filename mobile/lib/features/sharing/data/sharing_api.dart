@@ -55,33 +55,6 @@ class SharingApi {
     return rows.map(SharedMember.fromJson).toList();
   }
 
-  Future<SharedMember> createSharedMember({
-    required String weddingPlanId,
-    String? userId,
-    String? phone,
-    required String role,
-    required bool canViewMoney,
-    required bool canManageTasks,
-    required bool canManageMoney,
-  }) async {
-    final normalizedPhone = _normalizeOptionalPhone(phone);
-    final payload = {
-      if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
-      'role': role,
-      'canViewMoney': canViewMoney || canManageMoney,
-      'canManageTasks': canManageTasks,
-      'canManageMoney': canManageMoney,
-      'phone': ?normalizedPhone,
-    };
-    final json = await _writes.serverOnly(
-      reason: _reachesSomeone,
-      method: 'POST',
-      path: '/api/v1/wedding-plans/$weddingPlanId/members',
-      body: payload,
-    );
-    return SharedMember.fromJson(json);
-  }
-
   Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
     final items = await _reads.blobList(
       '/api/v1/wedding-plans/$weddingPlanId/invites',
@@ -318,14 +291,6 @@ class SharingApi {
   String _normalizePhone(String phone) {
     try {
       return normalizeYemeniPhone(phone);
-    } on FormatException {
-      throw const ApiException('رقم الهاتف غير صحيح');
-    }
-  }
-
-  String? _normalizeOptionalPhone(String? phone) {
-    try {
-      return normalizeOptionalYemeniPhone(phone);
     } on FormatException {
       throw const ApiException('رقم الهاتف غير صحيح');
     }

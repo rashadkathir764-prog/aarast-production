@@ -210,54 +210,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     return _findMember(id);
   }
 
-  Future<bool> createMember({
-    required String weddingPlanId,
-    String? userId,
-    String? phone,
-    required String role,
-    required bool canViewMoney,
-    required bool canManageTasks,
-    required bool canManageMoney,
-  }) async {
-    _isSubmitting = true;
-    _errorMessage = null;
-    _errorCode = null;
-    _authGateKind = null;
-    notifyListeners();
-
-    try {
-      final member = await _api.createSharedMember(
-        weddingPlanId: weddingPlanId,
-        userId: userId,
-        phone: phone,
-        role: role,
-        canViewMoney: canViewMoney,
-        canManageTasks: canManageTasks,
-        canManageMoney: canManageMoney,
-      );
-      _members = [member, ..._members.where((item) => item.id != member.id)];
-      _selectedMember = member;
-      return true;
-    } on ApiException catch (error) {
-      if (error.isUnauthorized) {
-        _handleApiError(error);
-        return false;
-      }
-      _errorMessage = _sharingErrorMessage(
-        error,
-        fallback: 'ما قدرنا نضيف المشارك.',
-      );
-      _errorCode = error.serverCode;
-      return false;
-    } catch (_) {
-      _errorMessage = 'ما قدرنا نضيف المشارك.';
-      return false;
-    } finally {
-      _isSubmitting = false;
-      notifyListeners();
-    }
-  }
-
   Future<PlanInvite?> createInvite({
     required String weddingPlanId,
     required String phone,

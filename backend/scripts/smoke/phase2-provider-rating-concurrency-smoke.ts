@@ -128,10 +128,13 @@ async function main(): Promise<void> {
       adminRole: AdminRole.MODERATOR,
     },
   });
+  // B-09: a new review tells the provider in the same transaction; this
+  // passed no notifications, so every review here threw once the notice
+  // came (the smoke had not run since: it did not compile, see deleteMe).
   const marketplace = marketplaceService(
     prisma,
     new PermissionService(prisma as any, ownerPorts.plans),
-    {},
+    { createNotificationInTransaction: async () => null },
     lifecycle,
   );
   const admin = adminService(prisma as any, {} as any, {
@@ -290,9 +293,11 @@ async function main(): Promise<void> {
     ]);
     await assertExactAggregate(deletionProvider.id);
 
+    // The erasure tells each plan's members (D63), so it needs the real
+    // permission service, as the account-deletion smoke builds it.
     const usersService = new UsersService(
       prisma as any,
-      {} as any,
+      new PermissionService(prisma as any, ownerPorts.plans),
       {
         lockAccountDeletionBoundary: async () => undefined,
         scheduleAllOwnedMediaDeletion: async () => [],
@@ -302,9 +307,19 @@ async function main(): Promise<void> {
       } as any,
       ...identityErasurePorts,
     );
-    await usersService.deleteMe(
-      deletionReviewer as any,
-      "smoke-delete-rating-reviewer",
+    // D63: an account is erased once its 30 days are up; `deleteMe`, which
+    // erased at once, is gone, so this smoke no longer compiled. The
+    // reviewer's request is made due, then erased as the purge job does.
+    await prisma.user.update({
+      where: { id: deletionReviewer.id },
+      data: {
+        deletionRequestedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000),
+        deletionScheduledFor: new Date(Date.now() - 60_000),
+      },
+    });
+    assert.equal(
+      await usersService.eraseDueAccount(deletionReviewer.id, new Date()),
+      "ERASED",
     );
     assert.equal(
       await prisma.providerReview.count({

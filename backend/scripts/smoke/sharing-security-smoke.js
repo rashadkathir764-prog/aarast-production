@@ -9,6 +9,7 @@ const { createHash } = require("node:crypto");
 const http = require("node:http");
 const { PrismaClient } = require("@prisma/client");
 const { registerVerified } = require("./verified-registration");
+const { inviteAndAccept } = require("./invite-member");
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3115";
 const suffix = Date.now().toString().slice(-7);
@@ -144,43 +145,32 @@ async function run() {
     },
   });
 
-  const staleTargetMemberCreate = await request(
-    "POST",
-    `/api/v1/wedding-plans/${plan.body.id}/members`,
-    {
+  // RA-BE-42: nobody joins without accepting an invite now, so the API can no
+  // longer make a membership while an older invite waits (the review's
+  // finding (13): not reachable). The guard behind it still matters: an
+  // older invite never overwrites a newer membership. That newer membership,
+  // and the provider participation its rights opened, are made here as rows
+  // (the direct add made them before); the downgrade below is the real API.
+  const staleTargetMember = await prisma.sharedMember.create({
+    data: {
+      weddingPlanId: plan.body.id,
       userId: staleInviteTarget.user.id,
       role: "MANAGER",
       canViewMoney: true,
       canManageMoney: true,
       canManageProviders: true,
     },
-    owner.token,
-  );
-  check(
-    "newer high-authority membership opens provider participation",
-    staleTargetMemberCreate.status === 201 &&
-      staleTargetMemberCreate.body?.canViewMoney === true &&
-      staleTargetMemberCreate.body?.canManageMoney === true &&
-      staleTargetMemberCreate.body?.canManageProviders === true,
-  );
-  const activeParticipation =
-    await prisma.conversationParticipant.findUnique({
-      where: {
-        conversationId_userId: {
-          conversationId: participationConversation.id,
-          userId: staleInviteTarget.user.id,
-        },
-      },
-    });
-  check(
-    "high-authority membership creates active provider participation",
-    typeof activeParticipation?.id === "string" &&
-      activeParticipation.revokedAt === null,
-  );
+  });
+  await prisma.conversationParticipant.create({
+    data: {
+      conversationId: participationConversation.id,
+      userId: staleInviteTarget.user.id,
+    },
+  });
 
   const staleTargetViewerUpdate = await request(
     "PATCH",
-    `/api/v1/wedding-plans/${plan.body.id}/members/${staleTargetMemberCreate.body.id}`,
+    `/api/v1/wedding-plans/${plan.body.id}/members/${staleTargetMember.id}`,
     {
       role: "VIEWER",
       canViewMoney: false,
@@ -198,7 +188,7 @@ async function run() {
       staleTargetViewerUpdate.body?.canManageProviders === false,
   );
   const viewerMemberBeforeStaleAccept = await prisma.sharedMember.findUnique({
-    where: { id: staleTargetMemberCreate.body.id },
+    where: { id: staleTargetMember.id },
   });
   const revokedParticipationBeforeStaleAccept =
     await prisma.conversationParticipant.findUnique({
@@ -226,7 +216,7 @@ async function run() {
     staleHighAuthorityAccept.status === 201,
   );
   const viewerMemberAfterStaleAccept = await prisma.sharedMember.findUnique({
-    where: { id: staleTargetMemberCreate.body.id },
+    where: { id: staleTargetMember.id },
   });
   check(
     "older invite does not overwrite the newer viewer membership",
@@ -264,19 +254,19 @@ async function run() {
         revokedParticipationBeforeStaleAccept?.revokedAt?.getTime(),
   );
 
-  const managerMember = await request(
-    "POST",
-    `/api/v1/wedding-plans/${plan.body.id}/members`,
-    {
-      userId: manager.user.id,
+  // RA-BE-42: the manager joins by accepting an invite (P5).
+  const managerMember = await inviteAndAccept(request, {
+    planId: plan.body.id,
+    inviterToken: owner.token,
+    member: { phone: manager.user.phone, token: manager.token },
+    access: {
       role: "MANAGER",
       canEditPlan: true,
       canManageTasks: true,
       canManageGuests: true,
       canInviteMembers: true,
     },
-    owner.token,
-  );
+  });
   check(
     "owner explicitly delegates invite management",
     managerMember.status === 201 &&

@@ -6,6 +6,7 @@ require("./smoke-isolation-hook");
 const http = require("node:http");
 const { randomUUID } = require("node:crypto");
 const { registerVerified } = require("./verified-registration");
+const { inviteAndAccept } = require("./invite-member");
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3115";
 const suffix = Date.now().toString().slice(-7);
@@ -159,29 +160,21 @@ async function run() {
   check("owner creates the isolated plan", plan.status === 201);
   const planId = plan.body.id;
 
-  const memberA = await request(
-    "POST",
-    `/api/v1/wedding-plans/${planId}/members`,
-    {
-      userId: contributorA.userId,
-      // D52 (J2-05): «يشوف بس» manages nothing, so explicit task grants
-      // ride on a role that may hold them; direct members start with none.
-      role: "HELPER",
-      canManageTasks: true,
-      canInviteMembers: true,
-    },
-    owner.token,
-  );
-  const memberB = await request(
-    "POST",
-    `/api/v1/wedding-plans/${planId}/members`,
-    {
-      userId: contributorB.userId,
-      role: "HELPER",
-      canManageTasks: true,
-    },
-    owner.token,
-  );
+  // RA-BE-42: participants join by accepting an invite (P5).
+  const memberA = await inviteAndAccept(request, {
+    planId,
+    inviterToken: owner.token,
+    member: contributorA,
+    // D52 (J2-05): «يشوف بس» manages nothing, so explicit task grants
+    // ride on a role that may hold them; every other right starts off.
+    access: { role: "HELPER", canManageTasks: true, canInviteMembers: true },
+  });
+  const memberB = await inviteAndAccept(request, {
+    planId,
+    inviterToken: owner.token,
+    member: contributorB,
+    access: { role: "HELPER", canManageTasks: true },
+  });
   check(
     "owner grants explicit stored permissions to contributor A",
     memberA.status === 201,
@@ -521,10 +514,11 @@ async function run() {
     },
     owner.token,
   );
+  // RA-BE-42: nobody is added directly any more, a departed contributor
+  // included; this expected the re-entry refusal that sat behind the add.
   check(
     "a departed contributor cannot be re-added directly without consent",
-    directReentry.status === 409 &&
-      directReentry.body.code === "MEMBER_REENTRY_REQUIRES_INVITE",
+    directReentry.status === 400 && directReentry.body.code === "ADD_BY_INVITE",
   );
 
   const loginAgain = await request("POST", "/api/v1/auth/login", {

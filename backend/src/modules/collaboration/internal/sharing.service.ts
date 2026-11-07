@@ -272,9 +272,6 @@ const inviteAuthorityRevokedMessage =
 const inviteAuthorityInactiveCode = "INVITE_AUTHORITY_INACTIVE";
 const inviteAuthorityInactiveMessage =
   "\u0644\u0627 \u064a\u0645\u0643\u0646 \u0642\u0628\u0648\u0644 \u0627\u0644\u062f\u0639\u0648\u0629 \u0644\u0623\u0646 \u062d\u0633\u0627\u0628 \u0635\u0627\u062d\u0628 \u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0629 \u0644\u0645 \u064a\u0639\u062f \u0646\u0634\u0637\u064b\u0627";
-const memberReentryRequiresInviteCode = "MEMBER_REENTRY_REQUIRES_INVITE";
-const memberReentryRequiresInviteMessage =
-  "إعادة المشاركة بعد المغادرة تتطلب دعوة جديدة";
 const ownerCannotLeaveCode = "PLAN_OWNER_CANNOT_LEAVE";
 const ownerCannotLeaveMessage = "لا يمكن لمالك الخطة مغادرة خطته";
 // J2-11: the refusals the owner's app tells apart by their stable code.
@@ -365,125 +362,19 @@ export class SharingService {
   async create(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-    dto: CreateSharedMemberDto,
+    _dto: CreateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    const access = await this.permissions.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
-    const plan = access.plan;
-    const user = await this.findTargetUser(dto);
-    const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
-    const requestedPermissions = this.permissionDataForDirectMemberCreate(dto);
-    this.assertPermissionCeiling(access, role, requestedPermissions);
-    const permissionData = this.viewerBoundPermissions(
-      role,
-      requestedPermissions,
-      dto,
-    );
-    const userId = user.id;
-
-    this.assertNotSelfOrOwner(userId, currentUser.id, plan.ownerUserId);
-
-    const existing = await this.repository.findMember(this.prisma, weddingPlanId, userId);
-    if (existing) {
-      throw this.alreadyAMember();
-    }
-
-    const member = await runSerializableTransaction(this.prisma, async (tx) => {
-      const transactionalAccess =
-        await this.permissions.assertMemberManageableInTransaction(
-          tx,
-          weddingPlanId,
-          currentUser,
-          [userId],
-        );
-      this.assertPermissionCeiling(transactionalAccess, role, permissionData);
-      const lockedTarget = await this.users.getAppIdentity(tx, userId);
-      if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
-        throw new BadRequestException("userId must reference an active user");
-      }
-      this.assertNotSelfOrOwner(
-        userId,
-        currentUser.id,
-        transactionalAccess.plan.ownerUserId,
-      );
-      const duplicate = await this.repository.findMember(tx, weddingPlanId, userId);
-      if (duplicate) {
-        throw this.alreadyAMember();
-      }
-      if (
-        await this.wasPreviouslyLeftInTransaction(tx, weddingPlanId, userId)
-      ) {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.CONFLICT,
-            code: memberReentryRequiresInviteCode,
-            message: memberReentryRequiresInviteMessage,
-          },
-          HttpStatus.CONFLICT,
-        );
-      }
-      const created = await this.withMemberUser(
-        tx,
-        await this.repository.createMember(tx, weddingPlanId, userId, role, permissionData),
-      );
-      await this.history.ensureTenureInTransaction(tx, created);
-      await this.history.recordForContextInTransaction(
-        tx,
-        transactionalAccess,
-        {
-          section: ContributionSection.MEMBERS,
-          entityType: ContributionEntityType.MEMBER_ITEM,
-          entityId: created.id,
-          action: ContributionAction.CREATED,
-          snapshot: buildContributionSnapshot(
-            ContributionEntityType.MEMBER_ITEM,
-            {
-              displayName: applicationDisplayName(
-                created.user ?? lockedTarget,
-              ),
-              role: created.role,
-              permissionLabels: this.permissionLabels(created),
-            },
-          ),
-          dedupeKey: `member-created:${created.id}`,
-          requiredPermission: ContributionPermission.MANAGE_MEMBERS,
-          occurredAt: created.createdAt,
-        },
-      );
-      if (created.canManageProviders) {
-        await this.participation.setPlanConversationParticipationInTransaction(
-          tx,
-          weddingPlanId,
-          userId,
-          true,
-        );
-      }
-      await this.notifications.createNotificationInTransaction(tx, {
-        userId,
-        weddingPlanId,
-        type: NotificationType.SHARING_INVITATION,
-        priority: NotificationPriority.HIGH,
-        title: `انضفت لخطة ${transactionalAccess.plan.title}`,
-        body: gendered(
-          "افتحها وشوف ايش عليك فيها.",
-          "افتحيها وشوفي ايش عليك فيها.",
-        ),
-        entityType: "shared_member",
-        entityId: created.id,
-        routeTarget: noticeRoutes.planHome(weddingPlanId),
-        data: {
-          sharedMemberId: created.id,
-          weddingPlanId,
-          role: created.role,
-        },
-        dedupeKey: `${userId}:sharing:${created.id}:invitation`,
-      });
-      return created;
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    // RA-BE-20, RA-BE-42: whoever joins a plan accepts an invite (P5). The
+    // direct add put any account in a plan without asking it, by number
+    // (closed in RA-BE-20) or by account id, and told it «انضفت لخطة …» under
+    // a title the adder chose; account ids are public in reviews. Every
+    // request is answered alike, before any lookup, and nobody is added.
+    throw new BadRequestException({
+      statusCode: 400,
+      code: "ADD_BY_INVITE",
+      message: "المشارك ينضم بدعوة يقبلها، لا بإضافته مباشرة.",
     });
-
-    return this.toMemberResponse(member);
   }
 
   async findSharedPlans(
@@ -1772,68 +1663,6 @@ export class SharingService {
     return this.toPermissionSummary(context, currentUser.id);
   }
 
-  private async findMemberForPlanOrThrow(
-    weddingPlanId: string,
-    memberId: string,
-  ): Promise<SharedMember> {
-    const member = await this.repository.findMemberById(this.prisma, weddingPlanId, memberId);
-    if (!member) {
-      throw new NotFoundException("Shared member not found");
-    }
-    return member;
-  }
-
-  private async findTargetUser(
-    dto: CreateSharedMemberDto,
-  ): Promise<AppIdentity> {
-    // RA-BE-20: a number never names its account here. «No registered user
-    // for this phone» against the account's name and number told anyone
-    // with a plan who holds any number, and added them with no invite.
-    // Whoever holds a number joins by accepting an invite (P5); every
-    // number is answered alike, before any lookup.
-    if (dto.phone !== undefined && dto.phone !== null) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: "ADD_BY_INVITE",
-        message: "المشارك ينضم بدعوة يقبلها، لا بإضافة رقمه.",
-      });
-    }
-    const userId = dto.userId?.trim();
-    const phone = dto.phone
-      ? PhoneNormalizer.normalizeRequired(dto.phone)
-      : null;
-
-    if (userId && phone) {
-      throw new BadRequestException("Provide either userId or phone, not both");
-    }
-
-    if (!userId && !phone) {
-      throw new BadRequestException("Provide either userId or phone");
-    }
-
-    let user: AppIdentity | null;
-    if (userId) {
-      user = await this.users.getAppIdentity(this.prisma, userId);
-    } else if (phone) {
-      user = await this.users.findAppIdentityByPhoneVariants(
-        this.prisma,
-        PhoneNormalizer.lookupVariants(phone),
-      );
-    } else {
-      user = null;
-    }
-
-    if (!user) {
-      throw new BadRequestException(
-        phone
-          ? "No registered user found for this phone"
-          : "userId must reference an existing user",
-      );
-    }
-
-    return user;
-  }
-
   private async findInviteTarget(dto: CreatePlanInviteDto): Promise<{
     user: AppIdentity | null;
     phone: string | null;
@@ -2617,22 +2446,6 @@ export class SharingService {
       canManageMoney,
       receiveNotifications:
         dto.receiveNotifications ?? defaults.receiveNotifications,
-    };
-  }
-
-  private permissionDataForDirectMemberCreate(
-    dto: CreateSharedMemberDto,
-  ): PermissionFlags {
-    const canManageMoney = dto.canManageMoney ?? false;
-    return {
-      canViewMoney: canManageMoney || (dto.canViewMoney ?? false),
-      canEditPlan: dto.canEditPlan ?? false,
-      canManageTasks: dto.canManageTasks ?? false,
-      canManageGuests: dto.canManageGuests ?? false,
-      canManageProviders: dto.canManageProviders ?? false,
-      canInviteMembers: dto.canInviteMembers ?? false,
-      canManageMoney,
-      receiveNotifications: dto.receiveNotifications ?? true,
     };
   }
 

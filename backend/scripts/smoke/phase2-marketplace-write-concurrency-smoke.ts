@@ -250,7 +250,10 @@ async function assertPermissionRevocationBlocksQuoteCreation(): Promise<void> {
         await waitForBlockedMutation(operation, "quote creation");
         await blocker.commit();
         const error = await settleRejected(operation, "quote creation");
-        assert.equal(exceptionStatus(error), 404);
+        // RA-BE-40: the member stays and is told why (403); the 404 expected
+        // here told a member their plan was gone.
+        assert.equal(exceptionStatus(error), 403);
+        assert.equal(exceptionCode(error), "SECTION_PERMISSION_MISSING");
         assert.equal(
           await prisma.quoteRequest.count({ where: quoteWhere }),
           quoteCountBefore,
@@ -437,7 +440,9 @@ async function assertPermissionRevocationBlocksRejection(): Promise<void> {
         await waitForBlockedMutation(operation, "offer rejection");
         await blocker.commit();
         const error = await settleRejected(operation, "offer rejection");
-        assert.equal(exceptionStatus(error), 404);
+        // RA-BE-40: refused with its reason, as above.
+        assert.equal(exceptionStatus(error), 403);
+        assert.equal(exceptionCode(error), "SECTION_PERMISSION_MISSING");
         const [offer, quote] = await prisma.$transaction([
           prisma.quoteOffer.findUniqueOrThrow({
             where: { id: fixture.offer.id },

@@ -998,6 +998,27 @@ test("RA-BE-20: adding a participant by number says the same of every number and
   assert.equal(harness.db.invites.length, 0);
 });
 
+test("RA-BE-42: nobody is added to a plan without accepting an invite, by account id either", async () => {
+  const harness = inviteHarness();
+  let writes = 0;
+  (harness.db as any).$transaction = async () => {
+    writes += 1;
+    throw new Error("the refused add must not open a transaction");
+  };
+  for (const userId of [harness.target.id, "unknown-account", harness.owner.id]) {
+    await assert.rejects(
+      () =>
+        harness.service.create(harness.owner, "plan-1", {
+          userId,
+          role: SharedMemberRole.HELPER,
+        }),
+      refusal(400, "ADD_BY_INVITE"),
+    );
+  }
+  assert.equal(writes, 0);
+  assert.equal(harness.notificationInputs.length, 0);
+});
+
 test("invite creation retries a serialization abort without duplicating its notification", async () => {
   const harness = inviteHarness();
   harness.db.serializationFailuresRemaining = 1;
@@ -2058,7 +2079,10 @@ test("invite create and reissue source contract stays transactional and authenti
   );
 });
 
-test("direct member creation persists its notification in the same transaction", () => {
+// RA-BE-42: this pinned the direct add's transaction and the «انضفت لخطة»
+// notice it wrote, which reached any account added without asking it. The
+// add now writes nothing and sends nothing: every request is refused.
+test("direct member creation writes nothing and notifies no one", () => {
   const serviceSource = readFileSync(
     join(process.cwd(), "src/modules/collaboration/internal/sharing.service.ts"),
     "utf8",
@@ -2068,12 +2092,10 @@ test("direct member creation persists its notification in the same transaction",
     serviceSource.indexOf("async findSharedPlans("),
   );
 
-  assert.match(createBlock, /runSerializableTransaction/);
-  assert.match(createBlock, /assertMemberManageableInTransaction/);
-  assert.match(createBlock, /createNotificationInTransaction\(tx/);
-  assert.match(createBlock, /recordForContextInTransaction\(\s*tx/);
-  assert.match(createBlock, /ContributionAction\.CREATED/);
-  assert.doesNotMatch(createBlock, /createNotification\(/);
+  assert.match(createBlock, /ADD_BY_INVITE/);
+  assert.doesNotMatch(createBlock, /runSerializableTransaction/);
+  assert.doesNotMatch(createBlock, /createNotification/);
+  assert.doesNotMatch(createBlock, /createMember|recordForContextInTransaction/);
 });
 
 test("invite delivery migration preserves unknown historical outcomes", () => {
@@ -2168,9 +2190,12 @@ test("J2-11: inviting yourself, a member, the owner or a pending invitee is refu
     () => self.service.createInvite(self.owner, "plan-1", { userId: self.owner.id }),
     refusal(400, "INVITE_BY_PHONE"),
   );
+  // RA-BE-42: the direct add refuses every request before any lookup
+  // (whoever joins accepts an invite), so adding yourself by id is refused
+  // the same way as adding anyone; this expected the self-check behind it.
   await assert.rejects(
     () => self.service.create(self.owner, "plan-1", { userId: self.owner.id }),
-    refusal(400, "CANNOT_INVITE_SELF"),
+    refusal(400, "ADD_BY_INVITE"),
   );
 
   const member = inviteHarness();

@@ -5,7 +5,6 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  NotFoundException,
 } from "@nestjs/common";
 import {
   Prisma,
@@ -94,6 +93,17 @@ function assertTaskPermissionRevoked(error: unknown): void {
     code: TASK_PERMISSION_REVOKED,
     message: TASK_PERMISSION_REVOKED_MESSAGE,
   });
+}
+
+// RA-BE-40: the guests answer a member the way tasks do: 403 with its reason.
+// These expected the plan-not-found refusal, which told a member their plan
+// was gone.
+function assertSectionPermissionMissing(error: unknown): void {
+  assert.ok(error instanceof ForbiddenException, String(error));
+  assert.equal(
+    (error.getResponse() as { code?: string }).code,
+    "SECTION_PERMISSION_MISSING",
+  );
 }
 
 async function holdUncommittedDomainPermissionRevocation(
@@ -344,7 +354,7 @@ async function assertGuestCreationFailsClosed(): Promise<void> {
         const [result] = await Promise.allSettled([creation]);
         assert.equal(result?.status, "rejected");
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertSectionPermissionMissing(result.reason);
         }
         assert.equal(
           await prisma.guest.count({
@@ -600,7 +610,7 @@ const guestRevocationScenarios: MutationScenario[] = [
 
 async function assertPermissionRevocationMatrix(
   scenarios: MutationScenario[],
-  expectedError: "TASK_PERMISSION_REVOKED" | "NOT_FOUND",
+  expectedError: "TASK_PERMISSION_REVOKED" | "SECTION_PERMISSION_MISSING",
 ): Promise<void> {
   for (const scenario of scenarios) {
     await withFixture(
@@ -628,7 +638,7 @@ async function assertPermissionRevocationMatrix(
             if (expectedError === "TASK_PERMISSION_REVOKED") {
               assertTaskPermissionRevoked(result.reason);
             } else {
-              assert.ok(result.reason instanceof NotFoundException);
+              assertSectionPermissionMissing(result.reason);
             }
           }
           await scenario.verifyUnchanged(fixture, state);
@@ -919,7 +929,7 @@ async function main(): Promise<void> {
     if (!requestedCase || requestedCase === "guest-matrix") {
       await assertPermissionRevocationMatrix(
         guestRevocationScenarios,
-        "NOT_FOUND",
+        "SECTION_PERMISSION_MISSING",
       );
     }
     if (!requestedCase || requestedCase === "archive-matrix") {

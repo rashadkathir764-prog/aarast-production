@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
 import {
@@ -234,6 +235,29 @@ const controllerMutations: ControllerMutation[] = [
     serviceFile: "src/money/money-budget.service.ts",
     gate: "assertMoneyManageableForUpdateInTransaction",
   },
+  // The suggestion on a budget item and the mahr (a06) were added after this
+  // guard and never listed, so the guard failed on main; both authorize the
+  // same way inside one serializable transaction.
+  {
+    file: "src/budget-categories/budget-categories.controller.ts",
+    controller: "BudgetCategoriesController",
+    handler: "setSuggestion",
+    receiver: "budgetCategoriesService",
+    service: "setSuggestion",
+    serviceClass: "BudgetCategoriesService",
+    serviceFile: "src/budget-categories/budget-categories.service.ts",
+    gate: "assertMoneyManageableForUpdateInTransaction",
+  },
+  {
+    file: "src/money/money-summary.controller.ts",
+    controller: "MoneySummaryController",
+    handler: "recordMahr",
+    receiver: "moneyBudgetService",
+    service: "recordMahr",
+    serviceClass: "MoneyBudgetService",
+    serviceFile: "src/money/money-budget.service.ts",
+    gate: "assertMoneyManageableForUpdateInTransaction",
+  },
 ];
 
 const backendRoot = resolve(__dirname, "../..");
@@ -320,8 +344,8 @@ function findMethod(
 function assertControllerAndTransactionalGateMap(): void {
   assert.equal(
     controllerMutations.length,
-    15,
-    "source guard must cover exactly 15 financial controller mutations",
+    17,
+    "source guard must cover exactly 17 financial controller mutations",
   );
 
   const expectedHandlers = controllerMutations
@@ -393,8 +417,8 @@ function assertControllerAndTransactionalGateMap(): void {
   }
   assert.equal(
     uniqueServiceMethods.size,
-    15,
-    "source guard must cover 15 distinct service mutations",
+    17,
+    "source guard must cover 17 distinct service mutations",
   );
 
   const parsedServices = new Map<string, ts.SourceFile>();
@@ -700,7 +724,10 @@ async function waitForBlockedMutation(
 
 function assertRejectedWith(
   result: PromiseSettledResult<unknown> | undefined,
-  expected: typeof NotFoundException | typeof BadRequestException,
+  expected:
+    | typeof NotFoundException
+    | typeof BadRequestException
+    | typeof ForbiddenException,
   label: string,
 ): void {
   assert.equal(result?.status, "rejected", `${label} must reject after commit`);
@@ -786,9 +813,11 @@ async function assertRevocationWinsBeforeCreatePayment(): Promise<void> {
       await waitForBlockedMutation(operation, "revoke vs createPayment");
       await held.commit();
       const [result] = await Promise.allSettled([operation]);
+      // RA-BE-40: the revocation leaves a member, who is told why (403); the
+      // not-found expected here told a member their plan was gone.
       assertRejectedWith(
         result,
-        NotFoundException,
+        ForbiddenException,
         "revoke vs createPayment",
       );
       assert.equal(
@@ -890,36 +919,46 @@ async function assertArchiveWinsBeforeBudgetReplace(): Promise<void> {
   });
 }
 
+// G15: an archived plan still settles money already agreed (a payment, a
+// reminder paid, a reversal: API_CONTRACT «An archived plan still accepts
+// settlement»). This scenario expected the archive to refuse the reminder's
+// payment, the rule before G15; the payment waits for the archive's lock and
+// then settles once, in one ledger row.
 async function assertArchiveWinsBeforeSchedulePayment(): Promise<void> {
   await withPermissionFixture(async (fixture, graph) => {
     const held = await holdUncommittedPlanArchive(fixture.plan.id);
     const operation = weddingCosts.paySchedule(
       authenticatedUser(fixture.member),
       graph.schedule.id,
-      { method: "must-not-be-recorded" },
+      { method: "settled after the archive" },
     );
     try {
       await waitForBlockedMutation(operation, "archive vs paySchedule");
       await held.commit();
       const [result] = await Promise.allSettled([operation]);
-      assertArchivedReadOnly(result, "archive vs paySchedule");
+      assert.equal(
+        result?.status,
+        "fulfilled",
+        "an archived plan still settles an agreed reminder (G15)",
+      );
       assert.equal(
         await prisma.costPayment.count({
           where: { weddingCostId: graph.cost.id },
         }),
-        0,
-        "archived paySchedule must not append a ledger row",
+        1,
+        "the settled reminder appends exactly one ledger row",
       );
-      const storedCost = await prisma.weddingCost.findUniqueOrThrow({
-        where: { id: graph.cost.id },
-      });
-      assert.equal(storedCost.paidAmount.toString(), "0");
-      assert.equal(storedCost.status, WeddingCostStatus.OPEN);
       const storedSchedule = await prisma.paymentSchedule.findUniqueOrThrow({
         where: { id: graph.schedule.id },
       });
-      assert.equal(storedSchedule.status, PaymentScheduleStatus.PENDING);
-      assert.equal(storedSchedule.paidAt, null);
+      assert.equal(storedSchedule.status, PaymentScheduleStatus.PAID);
+      const storedCost = await prisma.weddingCost.findUniqueOrThrow({
+        where: { id: graph.cost.id },
+      });
+      assert.equal(
+        storedCost.paidAmount.toString(),
+        storedSchedule.amount.toString(),
+      );
     } finally {
       await held.commit();
       await Promise.allSettled([operation]);
@@ -1011,7 +1050,7 @@ async function main(): Promise<void> {
     await assertProviderSuspensionWinsBeforeCostCreate();
     await assertProviderSuspensionWinsBeforeCostUpdate();
     console.log(
-      "PASS - Phase 2 financial authorization/lifecycle changes serialize before all 15 financial write handlers, and representative races reject without writes.",
+      "PASS - Phase 2 financial authorization/lifecycle changes serialize before all 17 financial write handlers, and representative races reject without writes (an archived plan still settles, G15).",
     );
   } finally {
     await prisma.$disconnect();

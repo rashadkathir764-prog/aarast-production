@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 const { eraseFixtureAccount } = require('./account-grace');
 
 /**
@@ -84,7 +85,7 @@ async function register(name, value) {
     password: TEST_PASSWORD,
   });
   check(`${name} registers`, response.status === 201);
-  return { token: response.body?.accessToken, userId: response.body?.user?.id };
+  return { token: response.body?.accessToken, userId: response.body?.user?.id, phone: value };
 }
 
 async function cleanupAccount(label, token) {
@@ -169,12 +170,13 @@ async function run() {
       (replace.body?.categories ?? []).every((item) => item.name !== 'المهر'));
 
     // Privacy: a member without money rights never reads the mahr.
-    const familyMember = await request('POST', `/api/v1/wedding-plans/${groomPlanId}/members`, {
-      userId: family.userId,
-      role: 'FAMILY',
-      canViewMoney: false,
-      canManageMoney: false,
-    }, groom.token);
+    // RA-BE-42: participants join by accepting an invite (P5).
+    const familyMember = await inviteAndAccept(request, {
+      planId: groomPlanId,
+      inviterToken: groom.token,
+      member: family,
+      access: { role: 'FAMILY' },
+    });
     check('the groom adds family without money rights', familyMember.status === 201);
     const familyMoney = await request('GET', `/api/v1/wedding-plans/${groomPlanId}/money-summary`, null, family.token);
     check('family without money rights cannot read the mahr', familyMoney.status !== 200 && !JSON.stringify(familyMoney.body ?? '').includes('3000000'));
@@ -220,12 +222,12 @@ async function run() {
     check('her mahr still reads in her currency',
       still.body?.currency === 'YER' && still.body?.funding?.received === '2000000');
 
-    const partnerMember = await request('POST', `/api/v1/wedding-plans/${bridePlanId}/members`, {
-      userId: partner.userId,
-      role: 'GROOM',
-      canViewMoney: true,
-      canManageMoney: true,
-    }, bride.token);
+    const partnerMember = await inviteAndAccept(request, {
+      planId: bridePlanId,
+      inviterToken: bride.token,
+      member: partner,
+      access: { role: 'GROOM', canViewMoney: true, canManageMoney: true },
+    });
     check('the bride adds her partner with money rights', partnerMember.status === 201);
     const partnerMoney = await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, partner.token);
     check('her mahr stays hers: the partner reads money without it',

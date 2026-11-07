@@ -363,30 +363,27 @@ Additional current auth/profile routes:
   /admin/data-requests/:id/restore` (`USERS_WRITE`): n06.
 - No route tells whether a phone number has an account (RA-BE-11): the old
   phone lookup was removed, since owning any plan was enough to ask it.
-  Participants are invited by phone (D81). Adding a member directly takes a
-  `userId` only; a `phone` is answered `400 ADD_BY_INVITE` before any lookup,
-  alike for every number, and an invite names its account (`inviteeUserId`,
-  `invitee`) only once accepted (RA-BE-20).
+  Participants are invited by phone (D81). Adding a member directly adds
+  nobody: by `phone` or by `userId` it is answered `400 ADD_BY_INVITE` before
+  any lookup (RA-BE-20, RA-BE-42), and an invite names its account
+  (`inviteeUserId`, `invitee`) only once accepted.
 - `GET /api/v1/users/me/settings`
 - `PATCH /api/v1/users/me/settings`
 - `GET /api/v1/me`
 
 OTP/profile routes are account and settings helpers. They do not add payment, booking, financing, AI, or chat behavior.
 
-Account-deletion retries must reuse the exact same client request id. The
-Backend hashes `userId + NUL + clientRequestId` and stores only that SHA-256
-digest in `AccountDeletionReceipt`, atomically with application-account
-erasure. For an ordinary account the User row is erased; for a dual
+Account deletion waits 30 days (D63). `POST /api/v1/users/me/deletion` asks
+for it, `GET /api/v1/users/me/deletion` reads the request and
+`DELETE /api/v1/users/me/deletion` takes it back; asking twice returns the same
+request. When the 30 days are up the purge job erases the account in one
+transaction and stores only the SHA-256 digest of
+`userId + NUL + "grace:" + deletionRequestedAt` in `AccountDeletionReceipt`, so
+a second job instance finds the account gone and erases nothing twice. For an
+ordinary account the User row is erased; for a dual
 administrator/application identity the administrator row remains with all
-application identity fields cleared. `DELETED` means the matching immutable
-receipt committed. `PENDING` means the
-matching DELETE idempotency reservation is still live. `NOT_STARTED` means
-neither a receipt nor a live matching reservation exists. A reservation older
-than 30 seconds may be reclaimed only after locking the still-live User and
-rechecking the receipt; the account-deletion transaction itself has a
-15-second timeout. A lost HTTP response must therefore be reconciled through
-the status route before the client restores a dashboard, clears its durable
-deletion marker, or retries with a different id.
+application identity fields cleared. (The earlier immediate deletion keyed by
+the client request id, with `DELETED`/`PENDING`/`NOT_STARTED`, is gone.)
 
 The settings response includes the persisted content preferences plus an
 additive `channelCapabilities` object:
@@ -1602,9 +1599,8 @@ returns `{ "id": "item-id", "deleted": true }`.
 
 Owners can manage tasks. For every non-owner, the stored
 `SharedMember.canManageTasks` boolean is the final live authority. A role may
-seed the boolean only when an invitation is created. Direct member creation is
-fail-closed: every omitted authorization flag is stored as `false`, regardless
-of role. The role is not a runtime permission fallback and changing it does not
+seed the boolean only when an invitation is created (members join only by
+accepting one, RA-BE-42). The role is not a runtime permission fallback and changing it does not
 restore a stored `false` value. The same stored-flag rule applies to guests,
 providers, money, plan editing, and member management.
 
@@ -1736,8 +1732,10 @@ Protected routes:
 
 The permission booleans persisted on `SharedMember` and the permission snapshot
 persisted on `PlanInvite` are authoritative. `rolePermissionDefaults()` is used
-only when a new invitation is created. Direct member creation stores explicit
-flags and fail-closed `false` values for omitted authorization fields. Member
+only when a new invitation is created. `POST /api/v1/wedding-plans/:weddingPlanId/members`
+adds nobody (RA-BE-20, RA-BE-42): whoever joins a plan accepts an invite (P5),
+so after the member-management check every request, by `userId` or `phone`,
+returns HTTP `400`, code `ADD_BY_INVITE`, before any lookup. Member
 updates and invitation reissues preserve every omitted stored boolean even if `role` changes. In
 particular, `CONTRIBUTOR` cannot implicitly re-grant a task, guest, provider, or
 money permission that was explicitly stored as `false`. A non-owner may still
@@ -1975,14 +1973,12 @@ and `BRIDE` read the whole plan in every section their flags open, where other
 members read their own work, so only the owner or a member holding a partner
 role may give one (RA-BE-36). Anyone else gets HTTP `400`
 `Cannot grant permission above inviter ceiling: partnerRole`.
-The owner cannot add themselves as a shared member, unknown phone numbers are
-rejected without auto-creating users, and duplicate members are rejected. A
-former tenure ended by `MEMBER_LEFT` cannot be reopened through direct member
-creation: the route returns HTTP `409`, code
-`MEMBER_REENTRY_REQUIRES_INVITE`; a new explicit invitation and acceptance are
-required.
+An invitation cannot target the inviter, the owner, a current member, or a
+person who already has a pending invitation. A former member, including one
+whose tenure ended with `MEMBER_LEFT`, returns only through a new explicit
+invitation and acceptance.
 
-Member creation, invitation creation/cancellation/reissue, member update, and
+Invitation creation/cancellation/reissue, member update, and
 member removal all recheck the actor inside a retryable `SERIALIZABLE`
 transaction. Lock order begins with `WeddingPlan FOR SHARE`, followed by the
 acting non-owner's `SharedMember FOR SHARE`. Member update/removal then lock the
@@ -3232,8 +3228,7 @@ joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is
 strong because it exposes the prior conversation history and allows sending as
 the plan; money fields still require money permissions. Role defaults populate
-the stored flag only when an invitation is created. Direct member creation
-stores an omitted provider-management flag as `false`, and later role changes
+the stored flag only when an invitation is created, and later role changes
 preserve it. An explicit stored `false` is authoritative for both provider APIs
 and conversations; a role name never silently restores the capability. Revoked
 participants are reactivated only by an explicit provider-management permission

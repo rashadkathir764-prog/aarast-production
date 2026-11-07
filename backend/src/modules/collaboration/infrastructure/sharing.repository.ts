@@ -20,12 +20,6 @@ export class SharingRepository {
     });
   }
 
-  createMember(tx: Prisma.TransactionClient, weddingPlanId: string, userId: string, role: SharedMemberRole, permissions: PlanPermissionFlags) {
-    return tx.sharedMember.create({
-      data: { weddingPlanId, userId, role, ...permissions },
-    });
-  }
-
   listSharedPlans(client: Client, userId: string) {
     return client.sharedMember.findMany({
       where: { userId }, orderBy: { createdAt: 'desc' },

@@ -4,6 +4,7 @@
 require('./smoke-isolation-hook');
 
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 
 /**
  * Tasks APIs Smoke Test
@@ -82,7 +83,7 @@ async function registerUser(name, phone) {
   check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
   check(`${name} register has user id`, typeof res.body?.user?.id === 'string');
   check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
-  return { token: res.body?.accessToken, userId: res.body?.user?.id };
+  return { token: res.body?.accessToken, userId: res.body?.user?.id, phone };
 }
 
 async function run() {
@@ -112,12 +113,14 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
-      userId: member.userId,
+    // RA-BE-42: the member joins by accepting an invite (P5).
+    const res = await inviteAndAccept(request, {
+      planId,
+      inviterToken: owner.token,
+      member,
       // D52 (J2-05): «يشوف بس» manages nothing; a task-capable member is a helper.
-      role: 'HELPER',
-      canManageTasks: true,
-    }, owner.token);
+      access: { role: 'HELPER', canManageTasks: true },
+    });
     check('owner adds task-capable member - HTTP 201', res.status === 201);
   }
 

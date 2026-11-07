@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
-import { HttpException, NotFoundException } from "@nestjs/common";
+import { HttpException } from "@nestjs/common";
 import {
   PlanInviteDeliveryStatus,
   PrismaClient,
@@ -187,6 +187,18 @@ async function createDelegatedMemberFixture(fixture: any) {
   return { actor, target };
 }
 
+// RA-BE-40: the revocation takes the delegate's `canInviteMembers`; they stay
+// a member, so the refusal says why (403 SECTION_PERMISSION_MISSING). These
+// expected the plan-not-found 404, which told a member their plan was gone.
+function assertMemberRefusal(reason: unknown): void {
+  assert.ok(reason instanceof HttpException, String(reason));
+  assert.equal(reason.getStatus(), 403);
+  assert.equal(
+    (reason.getResponse() as { code?: string }).code,
+    "SECTION_PERMISSION_MISSING",
+  );
+}
+
 async function grantDelegatedMemberAuthority(fixture: any) {
   return prisma.sharedMember.update({
     where: { id: fixture.sharedMember.id },
@@ -223,7 +235,7 @@ async function assertRevocationWinsBeforeMemberUpdate(): Promise<void> {
           "a committed delegation revocation must reject the waiting member update",
         );
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertMemberRefusal(result.reason);
         }
         const stored = await prisma.sharedMember.findUniqueOrThrow({
           where: { id: target.id },
@@ -268,7 +280,7 @@ async function assertRevocationWinsBeforeMemberRemoval(): Promise<void> {
           "a committed delegation revocation must reject the waiting member removal",
         );
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertMemberRefusal(result.reason);
         }
         assert.equal(
           await prisma.sharedMember.count({
@@ -285,46 +297,35 @@ async function assertRevocationWinsBeforeMemberRemoval(): Promise<void> {
   );
 }
 
-async function assertRevocationWinsBeforeMemberCreation(): Promise<void> {
+// RA-BE-42: this raced a delegation revocation against the direct add. The
+// direct add no longer adds anyone (whoever joins accepts an invite, P5): it
+// refuses every request before any transaction, so there is no race left;
+// what stays to prove is that a delegate's add creates no membership.
+async function assertDirectMemberCreationAddsNoOne(): Promise<void> {
   await withFixture(
     (environment) =>
       createPermissionRevocationFixture(prisma, environment),
     async (fixture) => {
-      const actor = await grantDelegatedMemberAuthority(fixture);
-      const revocation = await holdUncommittedDelegationRevocation(actor.id);
-      const creation = sharing.create(
-        authenticatedUser(fixture.member),
-        fixture.plan.id,
-        {
+      await grantDelegatedMemberAuthority(fixture);
+      await assert.rejects(
+        sharing.create(authenticatedUser(fixture.member), fixture.plan.id, {
           userId: fixture.providerUser.id,
           role: SharedMemberRole.VIEWER,
-        },
+        }),
+        (error: unknown) =>
+          error instanceof HttpException &&
+          error.getStatus() === 400 &&
+          (error.getResponse() as { code?: string }).code === "ADD_BY_INVITE",
       );
-
-      try {
-        await waitForBlockedMutation(
-          creation,
-          "member creation while delegation revocation is uncommitted",
-        );
-        await revocation.commit();
-        const [result] = await Promise.allSettled([creation]);
-        assert.equal(result?.status, "rejected");
-        if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
-        }
-        assert.equal(
-          await prisma.sharedMember.count({
-            where: {
-              weddingPlanId: fixture.plan.id,
-              userId: fixture.providerUser.id,
-            },
-          }),
-          0,
-        );
-      } finally {
-        await revocation.commit();
-        await Promise.allSettled([creation]);
-      }
+      assert.equal(
+        await prisma.sharedMember.count({
+          where: {
+            weddingPlanId: fixture.plan.id,
+            userId: fixture.providerUser.id,
+          },
+        }),
+        0,
+      );
     },
   );
 }
@@ -354,7 +355,7 @@ async function assertRevocationWinsBeforeInviteCreation(): Promise<void> {
         const [result] = await Promise.allSettled([creation]);
         assert.equal(result?.status, "rejected");
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertMemberRefusal(result.reason);
         }
         assert.equal(
           await prisma.planInvite.count({
@@ -408,7 +409,7 @@ async function assertRevocationWinsBeforeInviteCancellation(): Promise<void> {
         const [result] = await Promise.allSettled([cancellation]);
         assert.equal(result?.status, "rejected");
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertMemberRefusal(result.reason);
         }
         const stored = await prisma.planInvite.findUniqueOrThrow({
           where: { id: invite.id },
@@ -448,7 +449,7 @@ async function assertRevocationWinsBeforeInviteReissue(): Promise<void> {
         const [result] = await Promise.allSettled([reissue]);
         assert.equal(result?.status, "rejected");
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertMemberRefusal(result.reason);
         }
         const stored = await prisma.planInvite.findUniqueOrThrow({
           where: { id: invite.id },
@@ -682,7 +683,7 @@ async function main(): Promise<void> {
   try {
     await assertRevocationWinsBeforeMemberUpdate();
     await assertRevocationWinsBeforeMemberRemoval();
-    await assertRevocationWinsBeforeMemberCreation();
+    await assertDirectMemberCreationAddsNoOne();
     await assertRevocationWinsBeforeInviteCreation();
     await assertRevocationWinsBeforeInviteCancellation();
     await assertRevocationWinsBeforeInviteReissue();

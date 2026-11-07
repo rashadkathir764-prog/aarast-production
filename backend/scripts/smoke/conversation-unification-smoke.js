@@ -7,6 +7,7 @@ const path = require('path');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
 const { configureSmokeDatabaseUrl } = require('./smoke-utils');
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 
 const socketIoRoot = path.resolve(path.dirname(require.resolve('socket.io')), '..');
 const { io } = require(path.join(socketIoRoot, 'client-dist', 'socket.io.js'));
@@ -450,12 +451,14 @@ async function run() {
     fixture.serviceIds.push(body.id);
   }
 
-  const memberCreate = await request('POST', `/api/v1/wedding-plans/${planOneId}/members`, {
-    userId: member.user.id,
+  // RA-BE-42: the member joins by accepting an invite (P5).
+  const memberCreate = await inviteAndAccept(request, {
+    planId: planOneId,
+    inviterToken: owner.token,
+    member: { phone: member.user.phone, token: member.token },
     // D52 (J2-05): «يشوف بس» manages no providers; a helper may.
-    role: 'HELPER',
-    canManageProviders: true,
-  }, owner.token);
+    access: { role: 'HELPER', canManageProviders: true },
+  });
   const memberBody = await expectStatus('Grant member canManageProviders', memberCreate, 201);
   check('Shared member id exists', typeof memberBody?.id === 'string');
   fixture.memberIds.push(memberBody.id);

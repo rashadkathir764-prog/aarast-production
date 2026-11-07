@@ -356,7 +356,15 @@ async function run() {
     );
     check('participant invite phone normalization - HTTP 201', res.status === 201);
     check('participant invite stores canonical phone', res.body?.phone === INVITEE_PHONE);
-    check('participant invite links registered user', res.body?.inviteeUserId === invitee.user?.id);
+    // RA-BE-20: the inviter's reply names no account before it accepts (it
+    // told anyone with a plan whose number it was); this expected the
+    // account in the reply. The invite still reaches the registered user.
+    check('participant invite does not name the account to the inviter', (res.body?.inviteeUserId ?? null) === null);
+    const mine = await request('GET', '/api/v1/invites/mine', undefined, invitee.token);
+    check(
+      'participant invite links registered user',
+      mine.status === 200 && Array.isArray(mine.body) && mine.body.some((item) => item.id === res.body?.id),
+    );
   }
 
   {

@@ -4,6 +4,7 @@
 require('./smoke-isolation-hook');
 
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 const { riyadhDateOffsetIso } = require('./smoke-utils');
 
 /**
@@ -81,7 +82,7 @@ async function registerUser(name, phone) {
   check(`${name} register - HTTP 201`, res.status === 201);
   check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
   check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
-  return { token: res.body?.accessToken, userId: res.body?.user?.id };
+  return { token: res.body?.accessToken, userId: res.body?.user?.id, phone };
 }
 
 async function createOptionalQuote(planId, token) {
@@ -239,10 +240,13 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
-      userId: viewer.userId,
-      role: 'VIEWER',
-    }, owner.token);
+    // RA-BE-42: the viewer joins by accepting an invite (P5).
+    const res = await inviteAndAccept(request, {
+      planId,
+      inviterToken: owner.token,
+      member: viewer,
+      access: { role: 'VIEWER' },
+    });
     check('owner adds viewer member - HTTP 201', res.status === 201);
   }
 

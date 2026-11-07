@@ -4,6 +4,7 @@
 require('./smoke-isolation-hook');
 
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 
 /**
  * Sharing / Permissions Smoke Test
@@ -145,14 +146,33 @@ async function run() {
     weddingPlanId = res.body?.id;
   }
 
+  // RA-BE-42: nobody is added to a plan without accepting an invite (P5).
+  // Adding by account id put any account in a plan unasked and told it
+  // «انضفت لخطة …»; it is refused like adding by number, and adds no one.
   {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: sharedUserId,
       role: 'VIEWER',
-      canViewMoney: false,
-      canManageTasks: false,
-      canManageMoney: false,
     }, ownerToken);
+    check(
+      'adding an account by its id is refused and adds no one',
+      res.status === 400 && res.body?.code === 'ADD_BY_INVITE',
+    );
+    const before = await request('GET', `/api/v1/shared/wedding-plans`, null, sharedToken);
+    check(
+      'the account is in no plan it did not accept',
+      before.status === 200 && Array.isArray(before.body) &&
+        !before.body.some((plan) => plan.id === weddingPlanId),
+    );
+  }
+
+  {
+    const res = await inviteAndAccept(request, {
+      planId: weddingPlanId,
+      inviterToken: ownerToken,
+      member: { phone: SHARED_PHONE, token: sharedToken },
+      access: { role: 'VIEWER' },
+    });
     check('owner adds shared member - HTTP 201', res.status === 201);
     check('shared member has id', typeof res.body?.id === 'string');
     check('shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);

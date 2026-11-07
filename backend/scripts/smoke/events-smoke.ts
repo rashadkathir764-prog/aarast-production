@@ -144,9 +144,11 @@ async function main(): Promise<void> {
     );
     assert.equal(view.items[2].note, "القات عند صالح");
     assert.deepEqual(view.suggestions, ["AQD", "DINNER", "CUSTOM"]);
+    // RA-BE-40: a member who may not edit is told why (403); «not found»
+    // told a member their plan was gone. Someone outside still learns nothing.
     await rejectsWith(
       events.update(viewer as any, plan.id, samra.id!, { placeLabel: "البيت" }),
-      /not found/i,
+      /SECTION_PERMISSION_MISSING/,
     );
     await rejectsWith(events.list(stranger as any, plan.id), /not found/i);
     console.log("PASS - a member who only follows reads the week in order and changes nothing (D52)");

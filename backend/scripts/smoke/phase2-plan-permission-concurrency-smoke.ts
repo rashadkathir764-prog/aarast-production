@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
-import { NotFoundException } from "@nestjs/common";
+import { HttpException, NotFoundException } from "@nestjs/common";
 import {
   PrismaClient,
   SharedMemberRole,
@@ -63,6 +63,16 @@ function deferred(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+// RA-BE-40: a member refused a write is told why.
+function assertMemberRefusal(reason: unknown): void {
+  assert.ok(reason instanceof HttpException, String(reason));
+  assert.equal(reason.getStatus(), 403);
+  assert.equal(
+    (reason.getResponse() as { code?: string }).code,
+    "SECTION_PERMISSION_MISSING",
+  );
 }
 
 async function holdUncommittedPlanPermissionRevocation(
@@ -200,7 +210,9 @@ async function assertRevocationWinsBeforeArchive(): Promise<void> {
           "a committed permission revocation must reject the waiting archive",
         );
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          // RA-BE-40: the revocation leaves a member, who is told why (403);
+          // the not-found expected here told a member their plan was gone.
+          assertMemberRefusal(result.reason);
         }
         const plan = await prisma.weddingPlan.findUniqueOrThrow({
           where: { id: fixture.plan.id },
@@ -245,7 +257,8 @@ async function assertRevocationWinsBeforeUpdate(): Promise<void> {
           "a committed permission revocation must reject the waiting plan update",
         );
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          // RA-BE-40: refused with its reason, as above.
+          assertMemberRefusal(result.reason);
         }
         const plan = await prisma.weddingPlan.findUniqueOrThrow({
           where: { id: fixture.plan.id },

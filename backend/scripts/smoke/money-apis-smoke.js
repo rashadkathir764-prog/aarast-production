@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 const { eraseFixtureAccount } = require('./account-grace');
 
 /**
@@ -97,6 +98,7 @@ async function register(name, value) {
   return {
     token: response.body?.accessToken,
     userId: response.body?.user?.id,
+    phone: value,
   };
 }
 
@@ -418,12 +420,13 @@ async function run() {
     );
     check('cancelled cost no longer contributes to active money totals', summaryAfterCancel.status === 200 && summaryAfterCancel.body?.costs?.count === 0 && summaryAfterCancel.body?.costs?.total === '0');
 
-    const addViewer = await request(
-      'POST',
-      `/api/v1/wedding-plans/${planId}/members`,
-      { userId: viewer.userId, role: 'VIEWER', canViewMoney: false, canManageMoney: false },
-      owner.token,
-    );
+    // RA-BE-42: the member joins by accepting an invite (P5).
+    const addViewer = await inviteAndAccept(request, {
+      planId,
+      inviterToken: owner.token,
+      member: viewer,
+      access: { role: 'VIEWER' },
+    });
     check('owner adds a member without money permission', addViewer.status === 201);
 
     const hiddenSummary = await request(

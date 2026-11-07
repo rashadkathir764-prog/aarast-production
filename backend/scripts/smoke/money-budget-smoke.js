@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { inviteAndAccept } = require('./invite-member');
 const { eraseFixtureAccount } = require('./account-grace');
 
 /**
@@ -92,6 +93,7 @@ async function register(name, value) {
   return {
     token: response.body?.accessToken,
     userId: response.body?.user?.id,
+    phone: value,
   };
 }
 
@@ -129,31 +131,22 @@ async function run() {
     const planId = plan.body?.id;
     if (!planId) throw new Error(`plan setup failed with HTTP ${plan.status}`);
 
-    const viewerMember = await request(
-      'POST',
-      `/api/v1/wedding-plans/${planId}/members`,
-      {
-        userId: viewer.userId,
-        role: 'VIEWER',
-        canViewMoney: true,
-        canManageMoney: false,
-      },
-      owner.token,
-    );
+    // RA-BE-42: participants join by accepting an invite (P5).
+    const viewerMember = await inviteAndAccept(request, {
+      planId,
+      inviterToken: owner.token,
+      member: viewer,
+      access: { role: 'VIEWER', canViewMoney: true },
+    });
     check('owner grants unified money read permission', viewerMember.status === 201 && viewerMember.body?.canViewMoney === true);
 
-    const managerMember = await request(
-      'POST',
-      `/api/v1/wedding-plans/${planId}/members`,
-      {
-        userId: manager.userId,
-        // D52 (J2-05): «يشوف بس» manages no money; the money manager is one.
-        role: 'FINANCE_MANAGER',
-        canViewMoney: true,
-        canManageMoney: true,
-      },
-      owner.token,
-    );
+    const managerMember = await inviteAndAccept(request, {
+      planId,
+      inviterToken: owner.token,
+      member: manager,
+      // D52 (J2-05): «يشوف بس» manages no money; the money manager is one.
+      access: { role: 'FINANCE_MANAGER', canViewMoney: true, canManageMoney: true },
+    });
     check(
       'owner grants unified money management permission',
       managerMember.status === 201 &&

@@ -327,9 +327,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       return true;
     } on ApiException catch (error) {
       // G38: a text written with no network waits on the phone and goes
-      // when the network is back, with the same request id.
+      // when the network is back, with the same request id; so does one the
+      // server asks to wait (RA-BE-81: too many messages in a minute).
       if (attachments.isEmpty &&
-          error.isAmbiguousMutationFailure &&
+          (error.isAmbiguousMutationFailure || error.isNotNow) &&
           await _keep(
             ChatOutboxMessage(
               localId: pendingId,
@@ -426,7 +427,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
           }
           _applyMessageToConversation(sent);
         } on ApiException catch (error) {
-          if (error.isAmbiguousMutationFailure) break;
+          if (error.isAmbiguousMutationFailure || error.isNotNow) break;
           _removeTimelineMessage(item.conversationId, item.localId);
           _errorMessage = 'رسالة ما وصلت: ${error.message}';
         }

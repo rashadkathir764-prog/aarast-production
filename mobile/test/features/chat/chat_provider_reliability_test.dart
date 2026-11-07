@@ -53,6 +53,35 @@ void main() {
     },
   );
 
+  test(
+    'RA-BE-81: a text the server asks to wait (429) waits, then goes with the same request id',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final api = _OfflineChatApi()
+        ..online = true
+        ..rateLimited = true;
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+        outbox: ChatOutbox(preferences),
+      );
+      await chat.openConversation('conversation-1');
+
+      expect(await chat.send('conversation-1', 'السلام عليكم'), isTrue);
+      expect(chat.timelineFor('conversation-1').last.message!.queued, isTrue);
+      expect(chat.queuedMessages, hasLength(1));
+      // Still too many: it keeps waiting, not dropped.
+      await chat.flushOutbox();
+      expect(chat.queuedMessages, hasLength(1));
+
+      api.rateLimited = false;
+      await chat.flushOutbox();
+      expect(chat.queuedMessages, isEmpty);
+      expect(api.sentRequestIds.toSet(), hasLength(1));
+    },
+  );
+
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -1021,6 +1050,9 @@ class _OfflineChatApi extends _FakeChatApi {
     : super(conversations: [_conversation(id: 'conversation-1')]);
 
   bool online = false;
+
+  /// RA-BE-81: online, but the server asks to wait (too many in a minute).
+  bool rateLimited = false;
   final List<String?> sentRequestIds = [];
 
   @override
@@ -1031,6 +1063,12 @@ class _OfflineChatApi extends _FakeChatApi {
     String? clientRequestId,
   }) async {
     sentRequestIds.add(clientRequestId);
+    if (rateLimited) {
+      throw const ApiException(
+        'رسائل كثيرة في دقيقة وحدة. الرسالة تنرسل بعد شوي.',
+        statusCode: 429,
+      );
+    }
     if (!online) {
       throw const ApiException(
         aarastBackendConnectionErrorMessage,

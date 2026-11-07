@@ -1,10 +1,31 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { withinCharacters } from '../shared-kernel/text/text-length';
 
 /** The phone's message field and the request form stop here (RA-BE-77). */
 export const MESSAGE_MAX_CHARACTERS = 2000;
 /** The report form's reason (`conversation-action.dto.ts`). */
 export const REPORT_REASON_MAX_CHARACTERS = 500;
+
+/**
+ * RA-BE-81: how many messages one account sends in a minute. Each message is
+ * a notice and a push to the other side, so without it one account could
+ * flood a phone; the request limit counts by network address, and Yemeni
+ * mobile networks put many phones behind one, so the bound is the account's.
+ * Far above a person typing; the phone's queue waits out a 429 and sends.
+ */
+export const MESSAGES_PER_MINUTE = 30;
+
+export function messageRateLimited(): HttpException {
+  return new HttpException(
+    {
+      statusCode: HttpStatus.TOO_MANY_REQUESTS,
+      code: 'MESSAGE_RATE_LIMITED',
+      message: 'رسائل كثيرة في دقيقة وحدة. الرسالة تنرسل بعد شوي.',
+      retryAfterSeconds: 60,
+    },
+    HttpStatus.TOO_MANY_REQUESTS,
+  );
+}
 
 /**
  * RA-BE-77 (RA-BE-16): counted as the request form and the phone count it,

@@ -899,6 +899,15 @@ class ApiException implements Exception {
     return isNetworkFailure || (code != null && code >= 500 && code <= 599);
   }
 
+  /// RA-MO-29: an answer that says «not now» about the request, never «no»
+  /// about the change: a timeout (408), too many requests (429, also the
+  /// server's limit on messages, RA-BE-81), and a 401 the session refresh
+  /// could not cure (a weak network, or a 429 on the refresh itself; a
+  /// refresh the server refused ends the session instead). What waits on the
+  /// phone keeps waiting, as for a network failure.
+  bool get isNotNow =>
+      !isNetworkFailure && const {401, 408, 429}.contains(statusCode);
+
   @override
   String toString() => message;
 

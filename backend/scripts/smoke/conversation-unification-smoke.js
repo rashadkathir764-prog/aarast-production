@@ -603,6 +603,40 @@ async function run() {
     'PATCH', `/api/v1/conversations/${planConversationId}/mute`, { enabled: false }, member.token,
   ), 200);
 
+  // RA-BE-76 (D63, w06): while the owner waits out the account's deletion the
+  // plan is closed to everyone else, its conversations as every other section.
+  const deletionRequestedAt = new Date();
+  await prisma.user.update({
+    where: { id: owner.user.id },
+    data: {
+      deletionRequestedAt,
+      deletionScheduledFor: new Date(deletionRequestedAt.getTime() + 30 * 86_400_000),
+    },
+  });
+  try {
+    await expectStatus('Member cannot read the plan conversation while the owner waits for deletion', await request(
+      'GET', `/api/v1/conversations/${planConversationId}`, null, member.token,
+    ), 404);
+    await expectStatus('Member cannot send in it while the owner waits', await request(
+      'POST', `/api/v1/conversations/${planConversationId}/messages`, { body: 'مرحبا' }, member.token,
+    ), 404);
+    const waitingList = await expectStatus('Member lists conversations while the owner waits', await request(
+      'GET', '/api/v1/conversations', null, member.token,
+    ), 200);
+    check(
+      'The plan conversation is not listed to the member while the owner waits',
+      !(waitingList.items ?? []).some((item) => item.id === planConversationId),
+    );
+  } finally {
+    await prisma.user.update({
+      where: { id: owner.user.id },
+      data: { deletionRequestedAt: null, deletionScheduledFor: null },
+    });
+  }
+  await expectStatus('Member reads the conversation again once the owner stays', await request(
+    'GET', `/api/v1/conversations/${planConversationId}`, null, member.token,
+  ), 200);
+
   const probe = new SocketIoProbe(member.token);
   await probe.connect();
   const joinAck = await probe.emitWithAck('conversation:join', { conversationId: planConversationId });
@@ -867,6 +901,30 @@ async function run() {
   check('Exactly one WeddingCost is linked to offer', evidence.costs.length === 1);
   check('WeddingCost starts with paidAmount zero', evidence.costs[0]?.paidAmount?.toString() === '0');
   check('Offer acceptance did not duplicate PLAN conversation', evidence.conversations.length === 1 && evidence.conversations[0].id === planConversationId);
+
+  // RA-BE-81: one account sends at most 30 messages a minute, wherever; each
+  // is a notice and a push to the other side.
+  let limited = null;
+  for (let attempt = 0; attempt < 40 && !limited; attempt += 1) {
+    const sent = await request('POST', `/api/v1/conversations/${planConversationId}/messages`, {
+      body: `burst ${attempt}`,
+    }, owner.token);
+    if (sent.status === 429) {
+      limited = sent;
+    } else if (sent.status !== 201) {
+      check('A message under the per-minute limit is taken', false, `HTTP ${sent.status}; ${responseCode(sent)}`);
+      break;
+    }
+  }
+  check(
+    'An account past 30 messages a minute is answered 429 MESSAGE_RATE_LIMITED',
+    limited !== null && responseCode(limited) === 'MESSAGE_RATE_LIMITED',
+    limited ? responseCode(limited) : 'never limited',
+  );
+  const storedInMinute = await prisma.chatMessage.count({
+    where: { senderUserId: owner.user.id, createdAt: { gte: new Date(Date.now() - 60_000) } },
+  });
+  check('No more than 30 of its messages are stored in that minute', storedInMinute <= 30, `stored ${storedInMinute}`);
 
   await prisma.provider.update({
     where: { id: providerId },

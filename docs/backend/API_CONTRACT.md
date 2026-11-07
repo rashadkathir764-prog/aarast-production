@@ -2687,6 +2687,13 @@ review's comment and a quote request's message 1000; a profile name 120. A
 package's `items` is a list of up to 50 strings of up to 200 characters; any
 other JSON is `400`. Longer text is `400`; the phone stops each field at the
 same count first, so a queued change is never refused for its length.
+One account sends at most 30 chat messages a minute, in all its
+conversations (`429 MESSAGE_RATE_LIMITED` with `retryAfterSeconds`,
+RA-BE-81); the phone keeps such a message waiting and sends it with the
+same request id. A plan whose owner waits out the account's deletion (D63)
+is closed in chat to everyone else: its conversations are not listed, and
+reading or sending answers `404` (RA-BE-76); nobody waiting is told of a
+message.
 A chat message takes 2000 the same way (`400 MESSAGE_LENGTH`), a
 conversation report's reason 500 (`400 REPORT_REASON_LENGTH`), and an
 event's name and responsible 60, its place and note 120.

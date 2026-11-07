@@ -62,6 +62,11 @@ export class ConversationsRepository {
     });
   }
 
+  /** RA-BE-81: how many messages this account sent since then, everywhere. */
+  countMessagesSentSince(tx: Prisma.TransactionClient, senderUserId: string, since: Date) {
+    return tx.chatMessage.count({ where: { senderUserId, createdAt: { gte: since } } });
+  }
+
   createMessage(
     tx: Prisma.TransactionClient,
     conversationId: string,

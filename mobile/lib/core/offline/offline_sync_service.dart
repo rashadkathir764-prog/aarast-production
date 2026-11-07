@@ -663,15 +663,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// RA-MO-29: answers that say «not now» about the request, never «no» about
-  /// the change: a timeout (408), too many requests (429), and a 401 the
-  /// session refresh could not cure (a weak network, or a 429 on the refresh
-  /// itself; a refresh the server refused ends the session instead). Like a
-  /// network failure, they keep the change waiting and spend no retry budget.
+  /// RA-MO-29 (`ApiException.isNotNow`): like a network failure, a «not now»
+  /// answer keeps the change waiting and spends no retry budget.
   static bool _isNotNow(Object error) =>
-      error is ApiException &&
-      !error.isNetworkFailure &&
-      const {401, 408, 429}.contains(error.statusCode);
+      error is ApiException && error.isNotNow;
 
   /// Returns true if the item was permanently blocked (not just failed for
   /// a later retry), so the caller can surface it instead of reporting a

@@ -414,6 +414,8 @@ function createConversations(status: ProviderStatus) {
     },
     chatMessage: {
       create: async () => sentMessage,
+      // RA-BE-81: the send counts the sender's messages of the last minute.
+      count: async () => 0,
     },
     notificationPreference: {
       findMany: async () => [],

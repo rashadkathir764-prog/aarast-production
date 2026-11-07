@@ -9,7 +9,6 @@ import {
   ConversationScope,
   Prisma,
   ProviderStatus,
-  UserStatus,
 } from '@prisma/client';
 import {
   type ConversationRecord,
@@ -45,10 +44,16 @@ import {
   applicationDisplayName,
   toApplicationUserSummary,
 } from '../shared-kernel/privacy/application-user-identity';
-import { lockUserLifecycleRowsInTransaction } from '../modules/identity/public/user-lifecycle-lock';
+import {
+  isLiveAccount,
+  listDeletionPendingUserIds,
+  lockUserLifecycleRowsInTransaction,
+} from '../modules/identity/public/user-lifecycle-lock';
 import {
   hasJoinedProvider,
   isActiveConversationParticipant,
+  MESSAGES_PER_MINUTE,
+  messageRateLimited,
   normalizeMessageBody,
   normalizeMessagePageSize,
   normalizeReportReason,
@@ -384,6 +389,15 @@ export class ConversationsService {
         );
       this.assertConversationSendable(current);
       const now = new Date();
+      if (
+        (await this.repository.countMessagesSentSince(
+          tx,
+          currentUser.id,
+          new Date(now.getTime() - 60_000),
+        )) >= MESSAGES_PER_MINUTE
+      ) {
+        throw messageRateLimited();
+      }
       const recipientIds = this.messageRecipientIds(
         current,
         access.side,
@@ -651,7 +665,34 @@ export class ConversationsService {
         throw new NotFoundException('Conversation not found');
       }
     }
+    if (
+      conversation.scope === ConversationScope.PLAN &&
+      conversation.weddingPlan &&
+      (await this.plansOpenTo(currentUser.id, [conversation.weddingPlan])).length === 0
+    ) {
+      throw new NotFoundException('Conversation not found');
+    }
     return { conversation, access };
+  }
+
+  /**
+   * D63 (w06, RA-BE-76): the plans this account may enter: a plan whose owner
+   * waits out the account's deletion is closed to everyone but the owner, its
+   * conversations as every other section of it (`permission.service.ts`).
+   */
+  private async plansOpenTo<T extends { id: string; ownerUserId: string }>(
+    currentUserId: string,
+    plans: readonly T[],
+  ): Promise<T[]> {
+    const others = plans.filter((plan) => plan.ownerUserId !== currentUserId);
+    if (others.length === 0) return [...plans];
+    const waiting = await listDeletionPendingUserIds(
+      this.prisma,
+      others.map((plan) => plan.ownerUserId),
+    );
+    return plans.filter(
+      (plan) => plan.ownerUserId === currentUserId || !waiting.has(plan.ownerUserId),
+    );
   }
 
   private async assertActiveAccessInTransaction(
@@ -700,16 +741,30 @@ export class ConversationsService {
         lifecycleUserIds.add(userId);
       }
     }
+    const planOwnerUserId =
+      identity.scope === ConversationScope.PLAN
+        ? (identity.weddingPlan?.ownerUserId ?? null)
+        : null;
+    if (planOwnerUserId) lifecycleUserIds.add(planOwnerUserId);
     const lockedUsers = await lockUserLifecycleRowsInTransaction(
       tx,
       [...lifecycleUserIds],
     );
+    // D63 (RA-BE-76): live means active and not waiting out a deletion, the
+    // one rule every section reads; nobody waiting is told of a message.
     const activeLifecycleUserIds = new Set(
-      lockedUsers
-        .filter((user) => user.status === UserStatus.ACTIVE)
-        .map((user) => user.id),
+      lockedUsers.filter(isLiveAccount).map((user) => user.id),
     );
     if (!activeLifecycleUserIds.has(currentUser.id)) {
+      throw new NotFoundException('Conversation not found');
+    }
+    // D63 (w06): a plan whose owner waits out the deletion is closed to
+    // everyone else, its conversations as every other section of it.
+    if (
+      planOwnerUserId &&
+      planOwnerUserId !== currentUser.id &&
+      !activeLifecycleUserIds.has(planOwnerUserId)
+    ) {
       throw new NotFoundException('Conversation not found');
     }
 
@@ -910,11 +965,19 @@ export class ConversationsService {
       this.prisma,
       currentUserId,
     );
-    const managingPlanIds = (
+    const managedPlanIds = (
       await this.relations.permissions.listMemberships(this.prisma, currentUserId)
     )
       .filter((membership) => membership.canManageProviders)
       .map((membership) => membership.weddingPlanId);
+    const managingPlanIds = (
+      await this.plansOpenTo(
+        currentUserId,
+        managedPlanIds.length > 0
+          ? await this.relations.plans.getPlans(this.prisma, managedPlanIds)
+          : [],
+      )
+    ).map((plan) => plan.id);
     return {
       providerIds: provider && provider.status === ProviderStatus.ACTIVE ? [provider.id] : [],
       accountRequesterUserId: currentUserId,

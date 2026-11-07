@@ -17,7 +17,11 @@ node .\scripts\docs-sync.mjs --check
 node .\scripts\docs-verify.mjs
 node --test .\scripts\check-mobile-boundaries.test.mjs
 node .\scripts\check-mobile-boundaries.mjs --strict
-node --test .\deploy\staging\staging-contract.test.mjs .\deploy\staging\public-site\build.test.mjs .\admin-web\scripts\staging-build-origin.contract.mjs
+node --test (git ls-files 'deploy/**/*.test.mjs' scripts/check-deploy-encoding.test.mjs scripts/supply-chain-contract.test.mjs)
+node --test .\admin-web\scripts\staging-build-origin.contract.mjs
+# The real Gradle release guard; needs Java (Android Studio's: $env:JAVA_HOME =
+# 'C:\Program Files\Android\Android Studio\jbr'; $env:Path = "$env:JAVA_HOME\bin;$env:Path")
+node .\scripts\test-android-release-config.mjs
 git diff --check
 
 # Admin web (from admin-web/)

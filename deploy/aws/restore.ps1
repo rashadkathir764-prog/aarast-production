@@ -1,4 +1,4 @@
-# Puts a backup back into the Aarast database on the AWS host (RA-OP-14): runs
+﻿# Puts a backup back into the Aarast database on the AWS host (RA-OP-14): runs
 # deploy/aws/host/restore.sh there through SSM. Without -Backup it only lists
 # the backups on the host and changes nothing. With -Backup (a host path, as
 # the list shows it) it restores that one; the database as it is now is dumped

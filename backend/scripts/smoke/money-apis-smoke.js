@@ -484,6 +484,34 @@ async function run() {
     const reopenedByItem = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
     check('cancelling the agreement brings the task back', reopenedByItem.body?.status === 'TODO' && reopenedByItem.body?.autoClosedAt === null);
 
+    // RA-BE-24: deleting an agreement did neither: the item read booked, so
+    // «احجز القاعة» stayed done with nothing booked, and a task kept waiting
+    // on a payment reminder that no longer existed. It now does as cancelling.
+    const bookedAgain = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: linkItem.body?.id,
+      title: 'Outside agreement again',
+      totalAmount: '50',
+      partyName: 'Outside party',
+    }, owner.token);
+    const closedAgain = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('booking the item again finishes its task again', bookedAgain.status === 201 && closedAgain.body?.status === 'DONE');
+    const reminderOfDeleted = await request('POST', `/api/v1/costs/${bookedAgain.body?.id}/payment-schedules`, {
+      amount: '20',
+      dueDate: dateOffsetIso(5),
+    }, owner.token);
+    const reminderTask = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Pay the outside party',
+      linkedScheduleId: reminderOfDeleted.body?.id,
+    }, owner.token);
+    const deletedAgreement = await request('DELETE', `/api/v1/costs/${bookedAgain.body?.id}`, null, owner.token);
+    check('the agreement without payments is deleted', deletedAgreement.status === 200);
+    const reopenedByDelete = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('deleting the agreement brings the item\'s task back',
+      reopenedByDelete.body?.status === 'TODO' && reopenedByDelete.body?.autoClosedAt === null);
+    const unlinkedByDelete = await request('GET', `/api/v1/tasks/${reminderTask.body?.id}`, null, owner.token);
+    check('and its reminder\'s task waits on nothing gone',
+      reminderTask.status === 201 && unlinkedByDelete.status === 200 && unlinkedByDelete.body?.linkedScheduleId === null);
+
     const linkedCost = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: linkItem.body?.id,
       title: 'Paid agreement',

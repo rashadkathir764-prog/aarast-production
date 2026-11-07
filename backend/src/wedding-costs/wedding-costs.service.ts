@@ -652,7 +652,21 @@ export class WeddingCostsService {
           relevantDate: locked.agreementDate,
         },
       });
+      // RA-BE-24: its reminders go with it (cascade); their tasks wait on
+      // nothing now, and the item may no longer be booked (D71), as when
+      // an agreement is cancelled.
+      const reminders = await listPaymentSchedules(tx, {
+        where: { weddingCostId: id },
+      });
       await deleteWeddingCost(tx, { where: { id } });
+      for (const reminder of reminders) {
+        await this.tasks?.unlinkTasks(tx, locked.weddingPlanId, {
+          scheduleId: reminder.id,
+        });
+      }
+      await this.syncItemTasks(tx, locked.weddingPlanId, [
+        locked.budgetCategoryId,
+      ]);
     });
     return { deleted: true };
   }

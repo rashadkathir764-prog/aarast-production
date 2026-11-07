@@ -249,6 +249,7 @@ export class ProviderDashboardService {
         (await dashboardStore.findUnclaimedListing(
           tx,
           PhoneNormalizer.lookupVariants(currentUser.phone),
+          currentUser.id,
         ))
       ) {
         throw new ConflictException({
@@ -344,6 +345,7 @@ export class ProviderDashboardService {
     const found = await dashboardStore.findUnclaimedListing(
       this.prisma,
       PhoneNormalizer.lookupVariants(currentUser.phone),
+      currentUser.id,
     );
     if (!found) return { listing: null };
     // p02 names the listing's category and city («تصوير · صنعاء»).
@@ -379,7 +381,11 @@ export class ProviderDashboardService {
         throw new ConflictException('Provider profile already exists for this user');
       }
       const listing = await lockMarketplaceProvider(tx, providerId, 'UPDATE');
-      const claimable = await dashboardStore.findUnclaimedListing(tx, phones);
+      const claimable = await dashboardStore.findUnclaimedListing(
+        tx,
+        phones,
+        currentUser.id,
+      );
       // Not this account's to claim: reads as missing, revealing nothing.
       if (
         listing.userId !== null ||

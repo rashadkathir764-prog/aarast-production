@@ -73,6 +73,11 @@ test("D63: an account waiting out its deletion reaches only w06's routes", () =>
     AuthController.prototype.me,
     AuthController.prototype.logout,
     PushController.prototype.unregister,
+    // RA-BE-56: these two were refused, which is the defect: in the 30 days
+    // someone leaving wants their data most (the privacy page promises the
+    // download), and signing out everywhere is a sign-out as `logout` is.
+    UsersController.prototype.createExport,
+    AuthController.prototype.logoutAll,
   ];
   for (const handler of allowed) {
     assert.equal(guardFor(handler)(pending).id, "user-a", handler.name);
@@ -80,10 +85,8 @@ test("D63: an account waiting out its deletion reaches only w06's routes", () =>
   const refused = [
     AccountDeletionStatusController.prototype.requestDeletion,
     AccountDeletionStatusController.prototype.deletionImpact,
-    UsersController.prototype.createExport,
     UsersController.prototype.updateMe,
     UsersController.prototype.getSettings,
-    AuthController.prototype.logoutAll,
     PushController.prototype.register,
   ];
   for (const handler of refused) {

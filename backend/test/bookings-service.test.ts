@@ -144,6 +144,10 @@ function fakeDatabase() {
       findMany: async ({ where }: any) =>
         [...blocked.values()].filter((row) => row.providerId === where.providerId),
     },
+    // RA-BE-48: a booking asked again closes any change left waiting.
+    bookingChange: {
+      updateMany: async () => ({ count: 0 }),
+    },
   };
   const prisma: any = {
     ...tx,
@@ -208,6 +212,46 @@ test("someone outside the quote cannot book on it", async () => {
   const db = fakeDatabase();
   db.addQuote("quote-1");
   await assert.rejects(service(db).requestBooking(stranger, "quote-1", {}), /not found/i);
+});
+
+test("RA-BE-47: the provider cannot confirm a booking on a plan that was archived", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const first = await service(db).requestBooking(customer, "quote-1", {});
+  // The couple archived the plan after asking; the request still waited.
+  let planStatus = "ARCHIVED";
+  const plans: any = {
+    lockPlanRowForShareInTransaction: async () => [{ id: "plan-1" }],
+    getPlan: async () => ({ id: "plan-1", ownerUserId: "customer-1", status: planStatus }),
+  };
+  const permissions: any = {
+    assertPlanReadableInTransaction: async () => ({
+      plan: { id: "plan-1", ownerUserId: "customer-1", status: "PLANNING" },
+      isOwner: true,
+      sharedMember: null,
+    }),
+    canManageProviders: () => true,
+  };
+  const notifications: any = { createNotificationInTransaction: async () => null };
+  const bookings = new BookingsService(
+    db.prisma,
+    permissions,
+    notifications,
+    noAgreements,
+    undefined,
+    undefined,
+    plans,
+  );
+
+  await rejects(
+    bookings.decideAsProvider(providerUser, first.id, "CONFIRM", {}),
+    "BOOKING_PLAN_ARCHIVED",
+  );
+  assert.equal(db.bookings.get(first.id)?.status, "REQUESTED");
+  // Declining stays open, so the provider can answer the request.
+  planStatus = "ARCHIVED";
+  const declined = await bookings.decideAsProvider(providerUser, first.id, "DECLINE", { note: "انلغى" });
+  assert.equal(declined.status, "DECLINED");
 });
 
 test("the provider confirms, the customer is told, and the day is taken", async () => {

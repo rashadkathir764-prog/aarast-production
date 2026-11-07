@@ -208,6 +208,9 @@ export class AuthController {
   @Post("logout-all")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  // RA-BE-56: signing out everywhere is open while an account waits out its
+  // deletion, as signing out is.
+  @AllowedWhileDeletionPending()
   logoutAll(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.logoutAll(user.id);
   }

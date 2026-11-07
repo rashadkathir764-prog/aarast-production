@@ -218,6 +218,40 @@ void _pendingScreenTests() {
       findsOneWidget,
     );
   });
+
+  // RA-BE-56: the 30 days before erasure are when someone leaving wants
+  // their data; the wait screen had no way to it and the server refused it.
+  testWidgets('w06 downloads the account\'s data during the wait', (
+    tester,
+  ) async {
+    _tallPhone(tester);
+    pinAppClock(DateTime(2026, 10, 22, 10));
+    final world = await _World.create(
+      pending: (
+        requestedAt: DateTime(2026, 10, 19, 9),
+        scheduledFor: DateTime(2026, 11, 18, 9),
+      ),
+    );
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      world.app(
+        DeletionPendingScreen(
+          openDownload: (link) async {
+            opened.add(link);
+            return true;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('deletion-pending-download')));
+    await tester.pumpAndSettle();
+
+    expect(opened, [
+      Uri.parse('https://api.example.test/api/v1/data-exports/token'),
+    ]);
+  });
 }
 
 /// The whole screen in one frame, so every row is built.

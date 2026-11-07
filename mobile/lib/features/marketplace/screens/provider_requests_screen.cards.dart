@@ -329,6 +329,12 @@ class _ChosenCard extends StatelessWidget {
       ),
     };
     final detail = switch (booking?.status) {
+      // RA-BE-46: their own absence leaves the review open.
+      _ when notHappened && booking!.notHappenedReason == 'WE_DID_NOT_ATTEND' =>
+        context.say(
+          'قالوا إنهم ما حضروا. قيّمهم يستفيد غيرك.',
+          'قالوا إنهم ما حضروا. قيّميهم يستفيد غيرك.',
+        ),
       _ when notHappened => 'سجّلوا إن الحجز ما تم. لو عندك ملاحظة كلّم الدعم.',
       // B-23: the delivery, then its confirmation.
       _ when completed && booking!.canConfirmDelivery =>

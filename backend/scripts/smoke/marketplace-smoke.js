@@ -703,6 +703,29 @@ async function run() {
     const now = new Date();
     const pastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 2 - dayOffset));
     await prisma.booking.update({ where: { id: bookingId }, data: { eventDate: pastDay } });
+
+    // RA-BE-46: «ما صار» closed the review for every reason, «ما حضرنا» too,
+    // so a provider who did not come shut out the review of not coming. The
+    // reason the provider gave decides: the customer's absence closes it,
+    // the provider's own absence leaves it open. Set as rows: the outcome is
+    // recorded once, and «تم» is already on this booking.
+    const saved = await prisma.booking.findUnique({ where: { id: bookingId } });
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { completedAt: null, notHappenedAt: new Date(), notHappenedReason: 'CUSTOMER_NO_SHOW' },
+    });
+    await expectReviewRefused('review after «ما صار» because the customer did not come');
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { notHappenedReason: 'WE_DID_NOT_ATTEND' },
+    });
+    const notCome = await request('POST', `/api/v1/providers/${fixture.provider.id}/reviews`, { rating: 1 }, token);
+    check('RA-BE-46 the provider who did not come can be reviewed - HTTP 201', notCome.status === 201);
+    await request('DELETE', `/api/v1/reviews/${notCome.body?.id}`, null, token);
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { completedAt: saved?.completedAt ?? null, notHappenedAt: null, notHappenedReason: null },
+    });
   }
 
   {

@@ -11,6 +11,7 @@ import {
   BookingStatus,
   Prisma,
   QuoteRequestStatus,
+  WeddingPlanStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import {
@@ -36,6 +37,10 @@ import {
   type ProviderReadPort,
 } from "../modules/marketplace/public/provider-read.port";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../modules/planning/public/plan-read.port";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
@@ -141,6 +146,8 @@ export class BookingsService {
     private readonly providers?: ProviderReadPort,
     @Inject(TASKS_PORT)
     private readonly tasks?: TasksPort,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans?: PlanReadPort,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────
@@ -188,6 +195,8 @@ export class BookingsService {
         requestedByUserId: currentUser.id,
         note: optionalNote(dto.note),
       });
+      // RA-BE-48: nothing waits from the booking this row held before.
+      await bookings.cancelPendingBookingChanges(tx, booking.id, new Date());
       if (provider.userId) {
         await this.notifications.createNotificationInTransaction(
           tx,
@@ -373,6 +382,7 @@ export class BookingsService {
         const provider = await lockMarketplaceProvider(tx, owned.id, "UPDATE");
         if (action === "CONFIRM") {
           assertProviderOperational(provider);
+          await this.assertPlanNotArchived(tx, booking.quoteRequest.weddingPlanId);
           await this.assertDayAvailable(tx, provider.id, booking.eventDate, booking.id);
         }
         const updated = await this.transition(
@@ -788,6 +798,27 @@ export class BookingsService {
     return context;
   }
 
+  /**
+   * RA-BE-47: a plan its couple archived takes no new booking. Archiving
+   * revokes the plan's invitations but leaves a booking request waiting, and
+   * confirming it wrote tasks into the archived plan and took the provider's
+   * day for a wedding that ended. The plan row is read under its share lock,
+   * so an archive that commits first is the one this sees. Declining stays
+   * open, so the provider can still answer the request.
+   */
+  private async assertPlanNotArchived(tx: Tx, weddingPlanId: string | null) {
+    if (!weddingPlanId || !this.plans) return;
+    await this.plans.lockPlanRowForShareInTransaction(tx, weddingPlanId);
+    const plan = await this.plans.getPlan(tx, weddingPlanId);
+    if (plan?.status === WeddingPlanStatus.ARCHIVED) {
+      bookingError(
+        "CONFLICT",
+        "BOOKING_PLAN_ARCHIVED",
+        "خطة هذا العرس انأرشفت، فما ينفع تأكيد الحجز. اعتذر عن الطلب.",
+      );
+    }
+  }
+
   private async ownedProvider(
     client: Tx | PrismaService,
     currentUser: AuthenticatedUser,
@@ -838,6 +869,12 @@ export class BookingsService {
         "BOOKING_NOT_ALLOWED",
         "This booking cannot change that way now",
       );
+    }
+    // RA-BE-48: «تم» and «ما صار» are said from the day itself, while a
+    // cancel is still open that day; a booking cancelled after its outcome
+    // came back, asked again, carrying it.
+    if (action === "CANCEL" && (booking.completedAt || booking.notHappenedAt)) {
+      bookingError("CONFLICT", "BOOKING_OUTCOME_ALREADY_DECIDED", aftercareWords.ALREADY_DECIDED);
     }
     const now = new Date();
     const note = optionalNote(dto.note);

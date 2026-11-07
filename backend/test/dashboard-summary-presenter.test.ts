@@ -395,6 +395,15 @@ test('dashboard numeric and date helpers keep exact behavior', () => {
   assert.equal(dashboardPresenter.progressPercentage(0, 0), 0);
 });
 
+test('RA-BE-44: a provider card never falls back to a service photo nobody reviewed', () => {
+  // D62: a service's own photos are not reviewed, so they are not shown;
+  // RA-BE-12 stopped them in every public read but this card's fallback.
+  const link = providerLink() as any;
+  link.provider.coverUrl = null;
+  link.provider.logoUrl = null;
+  assert.equal(dashboardPresenter.toProviderPreviewResponse(link).imageUrl, null);
+});
+
 function providerLink() {
   return {
     id: 'link-1',

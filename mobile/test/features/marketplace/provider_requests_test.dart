@@ -416,6 +416,36 @@ void main() {
     expect(find.byKey(const ValueKey('requests-waiting-q7')), findsNothing);
   });
 
+  testWidgets(
+    'RA-BE-46: «ما حضرنا» from the provider asks for a review, other reasons send to support',
+    (tester) async {
+      MarketplaceBooking notHappened(String reason) =>
+          MarketplaceBooking.fromJson({
+            'id': 'booking-1',
+            'quoteRequestId': 'q1',
+            'providerId': 'provider-q1',
+            'eventDate': '2027-01-21',
+            'status': 'CONFIRMED',
+            'lifecycleStatus': 'NOT_HAPPENED',
+            'notHappenedReason': reason,
+          });
+
+      await _pump(tester, [
+        _accepted(booking: notHappened('WE_DID_NOT_ATTEND')),
+      ]);
+      expect(find.textContaining('قالوا إنهم ما حضروا'), findsOneWidget);
+      expect(find.textContaining('كلّم الدعم'), findsNothing);
+
+      await _pump(tester, [
+        _accepted(booking: notHappened('CUSTOMER_NO_SHOW')),
+      ]);
+      expect(
+        find.text('سجّلوا إن الحجز ما تم. لو عندك ملاحظة كلّم الدعم.'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('the chosen provider: book, see the cost in money', (
     tester,
   ) async {

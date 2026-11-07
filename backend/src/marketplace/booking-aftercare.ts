@@ -97,12 +97,20 @@ export function deliveryConfirmViolation(booking: {
 
 /** B-24: the customer moves a confirmed booking before its day, one change at a time. */
 export function changeViolation(
-  booking: { status: BookingStatus; eventDate: Date },
+  booking: {
+    status: BookingStatus;
+    eventDate: Date;
+    completedAt?: Date | null;
+    notHappenedAt?: Date | null;
+  },
   toDay: Date,
   hasPendingChange: boolean,
   now: Date = new Date(),
 ): AftercareViolation | null {
   if (booking.status !== BookingStatus.CONFIRMED) return "NOT_CONFIRMED";
+  // RA-BE-48: a booking whose outcome is said (from its day on) keeps its
+  // day; moved, it carried «تم» or «ما صار» to a day that has not come.
+  if (booking.completedAt || booking.notHappenedAt) return "ALREADY_DECIDED";
   const today = bookingToday(now).getTime();
   if (bookingDay(booking.eventDate).getTime() < today) return "DAY_PASSED";
   if (bookingDay(toDay).getTime() === bookingDay(booking.eventDate).getTime()) {
@@ -117,11 +125,18 @@ export function changeViolation(
  * waiting past either can only be declined.
  */
 export function changeAcceptViolation(
-  booking: { status: BookingStatus; eventDate: Date },
+  booking: {
+    status: BookingStatus;
+    eventDate: Date;
+    completedAt?: Date | null;
+    notHappenedAt?: Date | null;
+  },
   toDay: Date,
   now: Date = new Date(),
 ): AftercareViolation | null {
   if (booking.status !== BookingStatus.CONFIRMED) return "NOT_CONFIRMED";
+  // RA-BE-48: as above, a booking whose outcome is said keeps its day.
+  if (booking.completedAt || booking.notHappenedAt) return "ALREADY_DECIDED";
   const today = bookingToday(now).getTime();
   if (bookingDay(booking.eventDate).getTime() < today) return "DAY_PASSED";
   return bookingDay(toDay).getTime() < today ? "NEW_DAY_PASSED" : null;

@@ -151,6 +151,8 @@ export function upsertBookingRequest(
     note: string | null;
   },
 ) {
+  // RA-BE-48: a booking asked again is the same row; it starts clean, with
+  // nothing of the booking before it (its outcome, its delivery).
   const reopened = {
     quoteOfferId: input.quoteOfferId,
     eventDate: input.eventDate,
@@ -161,6 +163,15 @@ export function upsertBookingRequest(
     confirmedAt: null,
     declinedAt: null,
     cancelledAt: null,
+    expiredAt: null,
+    completedAt: null,
+    notHappenedAt: null,
+    notHappenedReason: null,
+    deliveryDueAt: null,
+    deliveredAt: null,
+    deliveryLink: null,
+    deliveryNote: null,
+    deliveryConfirmedAt: null,
   };
   return tx.booking.upsert({
     where: { quoteRequestId: input.quoteRequestId },
@@ -270,6 +281,17 @@ export function createBookingChange(
   data: { bookingId: string; fromDate: Date; toDate: Date; requestedByUserId: string; note: string | null },
 ) {
   return tx.bookingChange.create({ data });
+}
+
+/**
+ * RA-BE-48: a booking asked again starts with no change waiting. One left
+ * from the booking before was accepted onto the new one and moved its day.
+ */
+export function cancelPendingBookingChanges(tx: Tx, bookingId: string, at: Date) {
+  return tx.bookingChange.updateMany({
+    where: { bookingId, status: 'PENDING' },
+    data: { status: 'CANCELLED', decidedAt: at },
+  });
 }
 
 /** Decides a change only while it is still pending (compare-and-set). */
@@ -387,8 +409,13 @@ export async function hasCompletedBookingWith(
       providerId,
       status: BookingStatus.CONFIRMED,
       eventDate: { lt: today },
-      // B-22: a wedding the provider reported «ما صار» is not reviewed.
-      notHappenedAt: null,
+      // B-22: a wedding the provider reported «ما صار» is not reviewed,
+      // unless the provider's reason is its own absence (RA-BE-46): «ما
+      // حضرنا» closed the review of exactly that.
+      OR: [
+        { notHappenedAt: null },
+        { notHappenedReason: 'WE_DID_NOT_ATTEND' },
+      ],
       quoteRequestId: { in: quotes.map((quote) => quote.id) },
     },
   });

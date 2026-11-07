@@ -353,7 +353,8 @@ Additional current auth/profile routes:
     an administrator's row keeps its admin identity as before). A failure
     (B-33 again, or any error) is recorded for n06 and retried next hour.
 - `POST /api/v1/users/me/exports` → `201 { id, downloadPath, expiresAt }`
-  (15 minutes, 5 a day: `429 EXPORT_RATE_LIMITED`); `GET
+  (15 minutes, 5 a day: `429 EXPORT_RATE_LIMITED`), also while the account
+  waits out its deletion (RA-BE-56), as `POST /api/v1/auth/logout-all` is; `GET
   /api/v1/data-exports/:token` (no session; the token is the credential)
   returns the account's own data as a JSON attachment once, then `404
   EXPORT_LINK_INVALID`.
@@ -2719,7 +2720,9 @@ checklist 4.18):
   removes the account's claims. There is no claim token, link or WhatsApp
   message (D41).
 - `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
-  listing waits under the caller's phone.
+  listing waits under the caller's phone. A listing whose claim by this
+  account was rejected is not its to claim (RA-BE-51): it is not offered to
+  it and does not hold back its own application.
 
 Featured placement (B-43, D41, D51, D54): the provider pays the owner outside the
 app; an administrator records the days. No amount, payment or payment status
@@ -3035,6 +3038,18 @@ asked change: `id`, `fromDate`, `toDate`, `status`, `note`, `declineReason`).
   (`409 BOOKING_CHANGE_DAY_PASSED`, `_NEW_DAY_PASSED`, `_NOT_CONFIRMED`).
 - `POST /api/v1/provider/me/booking-changes/:id/decline` `{ reason? }` — the
   booking keeps its day.
+- RA-BE-48: «تم» and «ما صار» are said from the booking's day on, and that
+  day a cancel and a move are still open, so once an outcome is said the
+  booking is neither cancelled (`409 BOOKING_OUTCOME_ALREADY_DECIDED`) nor
+  moved (`409 BOOKING_CHANGE_ALREADY_DECIDED`, asking and accepting alike). A
+  booking asked again after a cancel or decline reuses its row and starts
+  clean: no outcome, no delivery, and any change still waiting is closed
+  (`CANCELLED`), so it can never be accepted onto the new booking.
+- RA-BE-47: a provider cannot confirm a booking whose plan was archived
+  (`409 BOOKING_PLAN_ARCHIVED`); declining stays open.
+- RA-BE-46: a review needs a past confirmed booking that happened; «ما صار»
+  closes it unless the provider's own reason is `WE_DID_NOT_ATTEND`, which
+  leaves the review of not coming open.
 
 ### Offer Contents And Reasons (G24, 2026-10-27)
 

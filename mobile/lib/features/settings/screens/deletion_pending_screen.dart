@@ -8,6 +8,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart' show AarastScreenFrame;
 import '../../auth/auth_api.dart' show AuthController;
+import '../widgets/account_data_download.dart';
 
 /// w06 «الحذف بعد 30 يوم» (D63, a01): an account waiting out its deletion
 /// sees only this, from the moment it asks or signs in, on any phone. It
@@ -16,7 +17,10 @@ import '../../auth/auth_api.dart' show AuthController;
 /// (`ACCOUNT_DELETION_PENDING`), its plans are closed to their members and
 /// nobody is reminded of anything.
 class DeletionPendingScreen extends StatefulWidget {
-  const DeletionPendingScreen({super.key});
+  const DeletionPendingScreen({super.key, this.openDownload});
+
+  /// Opens the data download link; the phone's browser unless a test says.
+  final DownloadLinkOpener? openDownload;
 
   @override
   State<DeletionPendingScreen> createState() => _DeletionPendingScreenState();
@@ -102,6 +106,24 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
             large: true,
             loading: auth.isSubmitting,
             onPressed: auth.isSubmitting ? null : _restore,
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          // RA-BE-56: these days are when someone leaving wants their data;
+          // the server took the download back only with the deletion.
+          JourneyButton(
+            key: const Key('deletion-pending-download'),
+            label: context.say('نزّل بياناتك', 'نزّلي بياناتك'),
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.text,
+            expand: true,
+            onPressed: auth.isSubmitting
+                ? null
+                : () => widget.openDownload == null
+                      ? downloadAccountData(context)
+                      : downloadAccountData(
+                          context,
+                          open: widget.openDownload!,
+                        ),
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton(

@@ -346,14 +346,15 @@ export function toProviderPreviewResponse(
   link: DashboardPlanProviderLinkRecord,
 ): DashboardProviderPreviewResponse {
   const service = link.provider.services[0];
-  const image = service?.images[0]?.imageUrl ?? null;
   return {
     id: link.id,
     providerId: link.providerId,
     businessName: link.provider.businessName,
     categoryName: link.provider.primaryCategory?.nameAr ?? null,
     serviceTitle: service?.title ?? null,
-    imageUrl: link.provider.coverUrl ?? link.provider.logoUrl ?? image,
+    // RA-BE-44 (D62): the provider's own cover or logo, never a service
+    // photo, which nobody reviews (RA-BE-12 kept them out of public reads).
+    imageUrl: link.provider.coverUrl ?? link.provider.logoUrl ?? null,
     ratingAverage: link.provider.ratingAverage.toString(),
     ratingCount: link.provider.ratingCount,
     status: link.status,

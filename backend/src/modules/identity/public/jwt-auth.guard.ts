@@ -12,7 +12,8 @@ const ALLOWED_WHILE_DELETION_PENDING = 'aarast:allowed-while-deletion-pending';
 
 /**
  * D63: the few application routes an account waiting out its deletion may
- * call (w06): read itself, read or take back the request, and sign out.
+ * call (w06): read itself, read or take back the request, download its own
+ * data, and sign out here or everywhere (RA-BE-56).
  * Every other application route answers `403 ACCOUNT_DELETION_PENDING`.
  */
 export const AllowedWhileDeletionPending = () =>

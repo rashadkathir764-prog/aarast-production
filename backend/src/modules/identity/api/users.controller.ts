@@ -11,7 +11,7 @@ import {
 import { Throttle } from "@nestjs/throttler";
 import { AuthenticatedUser } from "../public/identity-session.types";
 import { CurrentUser } from "../public/current-user.decorator";
-import { JwtAuthGuard } from "../public/jwt-auth.guard";
+import { AllowedWhileDeletionPending, JwtAuthGuard } from "../public/jwt-auth.guard";
 import { UpdateProfileDto } from "./user-dto/update-profile.dto";
 import { UpdateSettingsDto } from "./user-dto/update-settings.dto";
 import { UpdatePrivacyDto } from "./user-dto/privacy.dto";
@@ -34,10 +34,14 @@ export class UsersController {
     return this.usersService.updateMe(currentUser, dto);
   }
 
-  // D63 (w40): a one-time link to the account's own data.
+  // D63 (w40): a one-time link to the account's own data. RA-BE-56: also in
+  // the 30 days before erasure, when someone leaving wants it most; it was
+  // refused then, and the only way was to take the deletion back, download
+  // and ask again, which started the 30 days over.
   @Post("me/exports")
   @HttpCode(HttpStatus.CREATED)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @AllowedWhileDeletionPending()
   createExport(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.dataExports.create(currentUser);
   }

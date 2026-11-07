@@ -10,6 +10,7 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { BookingsService } from "../../src/marketplace/bookings.service";
+import { bookingToday } from "../../src/marketplace/booking-policy";
 import { MarketplaceAdminService } from "../../src/modules/marketplace/internal/marketplace-admin.service";
 import * as core from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import * as dashboardStore from "../../src/modules/marketplace/infrastructure/provider-dashboard.repository";
@@ -258,6 +259,43 @@ async function main(): Promise<void> {
     assert.equal(planBookings[0].eventDate, "2027-04-10");
     await assert.rejects(bookings.listForPlan(customerB as any, plan.id));
     console.log("PASS - a plan lists its bookings with the provider's name, to its people only");
+
+    // RA-BE-48: a booking asked again is the same row. A day change left
+    // waiting on the booking before was accepted onto the new one and moved
+    // its day; and «تم» said on the day, while a cancel and a move were still
+    // open, travelled with the booking to another day.
+    const moveQuote = await acceptedQuote(customerA.id, "2027-05-05");
+    const moving = await bookings.requestBooking(customerA as any, moveQuote.id, {});
+    await bookings.decideAsProvider(providerUser as any, moving.id, "CONFIRM", {});
+    await bookings.requestChangeAsCustomer(customerA as any, moving.id, { eventDate: "2027-05-12" });
+    await bookings.cancelAsCustomer(customerA as any, moving.id, {});
+    const askedAgain = await bookings.requestBooking(customerA as any, moveQuote.id, {});
+    assert.equal(askedAgain.id, moving.id);
+    await bookings.decideAsProvider(providerUser as any, askedAgain.id, "CONFIRM", {});
+    const stale = await prisma.bookingChange.findFirst({ where: { bookingId: moving.id } });
+    assert.equal(stale?.status, "CANCELLED");
+    await assert.rejects(
+      bookings.decideChangeAsProvider(providerUser as any, stale!.id, true, {}),
+      (error: any) => error?.response?.code === "BOOKING_CHANGE_DECIDED",
+    );
+    const kept = await prisma.booking.findUniqueOrThrow({ where: { id: askedAgain.id } });
+    assert.equal(kept.eventDate.toISOString().slice(0, 10), "2027-05-05");
+    console.log("PASS - a booking asked again carries no change left waiting from before");
+
+    await prisma.booking.update({
+      where: { id: askedAgain.id },
+      data: { eventDate: bookingToday() },
+    });
+    await bookings.recordOutcomeAsProvider(providerUser as any, askedAgain.id, { happened: true });
+    await assert.rejects(
+      bookings.cancelAsCustomer(customerA as any, askedAgain.id, {}),
+      (error: any) => error?.response?.code === "BOOKING_OUTCOME_ALREADY_DECIDED",
+    );
+    await assert.rejects(
+      bookings.requestChangeAsCustomer(customerA as any, askedAgain.id, { eventDate: "2027-06-01" }),
+      (error: any) => error?.response?.code === "BOOKING_CHANGE_ALREADY_DECIDED",
+    );
+    console.log("PASS - once «تم» is said on the day, the booking is neither cancelled nor moved");
 
     // B-20: three customers race for a day of a provider who takes two.
     await prisma.provider.update({

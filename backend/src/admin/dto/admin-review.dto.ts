@@ -13,6 +13,11 @@ export class AdminReviewQueryDto {
   @IsOptional()
   search?: string;
 
+  /** RA-ST-05: 'true' lists only the reviews with an open report. */
+  @IsString()
+  @IsOptional()
+  reported?: string;
+
   @IsString()
   @IsOptional()
   page?: string;

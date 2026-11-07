@@ -21,6 +21,7 @@ import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
+import { ReportProviderReviewDto } from "./dto/report-provider-review.dto";
 import { MarketplaceService } from "./marketplace.service";
 import { RejectQuoteOfferDto } from "./dto/reject-quote-offer.dto";
 
@@ -214,6 +215,16 @@ export class ReviewsController {
     @Param("id") id: string,
   ) {
     return this.marketplaceService.deleteReview(currentUser, id);
+  }
+
+  /** RA-ST-05: «بلّغ عن التقييم», by a reader or the reviewed provider. */
+  @Post(":id/report")
+  reportReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: ReportProviderReviewDto,
+  ) {
+    return this.marketplaceService.reportReview(currentUser, id, dto);
   }
 }
 

@@ -100,6 +100,7 @@ model User {
   conversationParticipants     ConversationParticipant[]
   chatMessages                 ChatMessage[]                 @relation("ChatMessageSender")
   conversationReports          ConversationReport[]          @relation("ConversationReporter")
+  reviewReports                ReviewReport[]                @relation("ReviewReporter")
   conversationEvents           ConversationEvent[]           @relation("ConversationEventActor")
   mediaUploadTickets           MediaUploadTicket[]
   contributorTenures           ContributorTenure[]           @relation("ContributorTenureActor")

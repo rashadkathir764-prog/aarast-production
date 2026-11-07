@@ -104,13 +104,14 @@ test('the base file contains only generator and datasource while owner declarati
   // D63: + DataExport (the one-time download of an account's data).
   // D65: + PlanEvent, + PlanEventType and PlanEventTimeSlot.
   // D83: + GuestInvitationCard and GuestEventInvite.
-  assert.equal(actualModels.length, 70);
-  assert.equal(new Set(actualModels).size, 70);
+  // RA-ST-05: + ReviewReport (a review reported as offensive or false).
+  assert.equal(actualModels.length, 71);
+  assert.equal(new Set(actualModels).size, 71);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   assert.equal(actualEnums.length, 56);
   assert.equal(new Set(actualEnums).size, 56);
-  assert.equal(manifest.modelOrder.length, 70);
+  assert.equal(manifest.modelOrder.length, 71);
   assert.deepEqual([...manifest.modelOrder].sort(), [...actualModels].sort());
   assert.deepEqual(
     Object.keys(registry.owners).filter((owner) => registry.owners[owner].length > 0).sort(),
@@ -148,7 +149,7 @@ test('the canonical loader agrees with the exact manifest and combined current s
 
   assert.deepEqual(loaded.files.map((entry) => entry.file), [manifest.baseFile, ...manifest.owners.map((entry) => entry.file)]);
   assert.deepEqual(loaded.modelOrder, manifest.modelOrder);
-  assert.equal(declarations(loaded.combinedText, 'model').length, 70);
+  assert.equal(declarations(loaded.combinedText, 'model').length, 71);
   assert.equal(declarations(loaded.combinedText, 'enum').length, 56);
 });
 

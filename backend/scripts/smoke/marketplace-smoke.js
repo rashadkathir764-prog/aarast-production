@@ -730,10 +730,26 @@ async function run() {
     check('public reviews hide every reviewer phone', Array.isArray(res.body) && res.body.every((review) => !Object.hasOwn(review.user ?? {}, 'phone')));
   }
 
+  // RA-ST-05: anyone but its author reports a review (here the provider it
+  // reviews), once; an empty reason is refused; it goes with its review.
+  {
+    const own = await request('POST', `/api/v1/reviews/${reviewId}/report`, { reason: 'كلام مسيء' }, token);
+    check('RA-ST-05 the author cannot report their own review - HTTP 400', own.status === 400);
+    const empty = await request('POST', `/api/v1/reviews/${reviewId}/report`, { reason: '  ' }, ownerToken);
+    check('RA-ST-05 an empty reason is refused - HTTP 400', empty.status === 400);
+    const first = await request('POST', `/api/v1/reviews/${reviewId}/report`, { reason: 'ما حجز عندي أصلًا' }, ownerToken);
+    check('RA-ST-05 the provider reports the review - HTTP 201', first.status === 201 && first.body?.reported === true);
+    const again = await request('POST', `/api/v1/reviews/${reviewId}/report`, { reason: 'كلام كاذب' }, ownerToken);
+    check('RA-ST-05 a second report by the same account - HTTP 201', again.status === 201);
+    const reports = await prisma.reviewReport.findMany({ where: { reviewId } });
+    check('RA-ST-05 one open report per reporter, with the latest reason', reports.length === 1 && reports[0].reason === 'كلام كاذب' && reports[0].resolvedAt === null);
+  }
+
   {
     const res = await request('DELETE', `/api/v1/reviews/${reviewId}`, null, token);
     check('DELETE /api/v1/reviews/:id - HTTP 200', res.status === 200);
     check('review delete response', res.body?.deleted === true);
+    check('RA-ST-05 the reports go with their review', (await prisma.reviewReport.count({ where: { reviewId } })) === 0);
   }
 
   // B-05: the provider declines a request with its reason; the customer

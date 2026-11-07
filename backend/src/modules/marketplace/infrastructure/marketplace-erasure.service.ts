@@ -168,6 +168,9 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void> {
+    // RA-ST-05: the reports this account made are its words too; reports
+    // on its own reviews go with them (cascade).
+    await tx.reviewReport.deleteMany({ where: { reporterUserId: userId } });
     await tx.providerReview.deleteMany({ where: { userId } });
   }
 

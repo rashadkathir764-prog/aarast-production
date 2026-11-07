@@ -75,7 +75,18 @@ export type AdminServiceRow = ProviderService & {
   images: ProviderServiceImage[];
 };
 
-export type AdminReviewRow = ProviderReview & { provider: Provider };
+/** RA-ST-05: a review's open reports, newest first, as the moderators read them. */
+export interface AdminOpenReviewReport {
+  reason: string;
+  createdAt: Date;
+}
+
+export type AdminReviewRow = ProviderReview & {
+  provider: Provider;
+  /** The latest five open reports; `_count.reports` counts them all. */
+  reports?: AdminOpenReviewReport[];
+  _count?: { reports: number };
+};
 
 export interface AdminPage {
   skip: number;
@@ -132,6 +143,8 @@ export interface AdminReviewFilter {
   status?: ReviewStatus;
   providerId?: string;
   search?: AdminTextSearch;
+  /** RA-ST-05: only the reviews with an open report. */
+  reported?: boolean;
 }
 
 export interface AdminServiceFields {

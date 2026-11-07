@@ -207,6 +207,10 @@ export type AdminReviewWithDetails = ProviderReview & {
     city?: City | null;
     primaryCategory?: ProviderCategory | null;
   };
+  /** RA-ST-05: its latest five open reports, as the listing reads them. */
+  reports?: Array<{ reason: string; createdAt: Date }>;
+  /** RA-ST-05: how many reports are open, all of them. */
+  _count?: { reports: number };
 };
 
 export interface AdminUserReport {
@@ -527,6 +531,13 @@ export function toAdminReviewResponse(review: AdminReviewWithDetails) {
     status: review.status,
     // B-09: the provider's reply and whether it shows (a10).
     reply: ownerReviewReply(review),
+    // RA-ST-05: its latest open reports, newest first (the reporters stay
+    // unnamed), and how many are open in all.
+    openReports: (review.reports ?? []).map((report) => ({
+      reason: report.reason,
+      createdAt: report.createdAt,
+    })),
+    openReportCount: review._count?.reports ?? review.reports?.length ?? 0,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };

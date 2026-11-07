@@ -293,6 +293,24 @@ export function deleteProviderReview(client: Client, id: string) {
   return client.providerReview.delete({ where: { id } });
 }
 
+/** RA-ST-05: a published review as a report reads it: its author. */
+export function findPublishedReviewForReport(client: Client, id: string) {
+  return client.providerReview.findFirst({
+    where: { id, status: ReviewStatus.PUBLISHED },
+    select: { id: true, userId: true },
+  });
+}
+
+/** RA-ST-05: one report per reporter and review; again, the reason is updated and it reopens. */
+export function saveReviewReport(client: Client, reviewId: string, reporterUserId: string, reason: string) {
+  return client.reviewReport.upsert({
+    where: { reviewId_reporterUserId: { reviewId, reporterUserId } },
+    create: { reviewId, reporterUserId, reason },
+    update: { reason, resolvedAt: null },
+    select: { id: true },
+  });
+}
+
 export function findActiveProvider(client: Client, id: string) {
   return client.provider.findFirst({ where: { id, status: ProviderStatus.ACTIVE } });
 }

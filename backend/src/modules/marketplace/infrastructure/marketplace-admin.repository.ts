@@ -123,6 +123,7 @@ type ServiceAdminCondition =
 type ReviewAdminCondition =
   | { status: ReviewStatus }
   | { providerId: string }
+  | { reports: { some: { resolvedAt: null } } }
   | {
       OR: Array<FoldedMatch | AccountMatch>;
     };
@@ -755,11 +756,22 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
         ],
       });
     }
+    // RA-ST-05: the reviews someone reported and nobody has decided yet.
+    if (filter.reported) and.push({ reports: { some: { resolvedAt: null } } });
     const where = { AND: and };
     const total = await client.providerReview.count({ where });
     const items = await client.providerReview.findMany({
       where,
-      include: { provider: true },
+      include: {
+        provider: true,
+        reports: {
+          where: { resolvedAt: null },
+          select: { reason: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+        _count: { select: { reports: { where: { resolvedAt: null } } } },
+      },
       orderBy: { createdAt: 'desc' },
       skip: page.skip,
       take: page.take,
@@ -800,6 +812,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     reviewId: string,
     status: ReviewStatus,
   ): Promise<AdminReviewRow> {
+    // RA-ST-05: a decision on the review, to hide or to keep it, answers
+    // its open reports.
+    await tx.reviewReport.updateMany({
+      where: { reviewId, resolvedAt: null },
+      data: { resolvedAt: new Date() },
+    });
     return tx.providerReview.update({
       where: { id: reviewId },
       data: { status },

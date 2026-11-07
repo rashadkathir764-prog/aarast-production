@@ -40,6 +40,7 @@ import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
+import { ReportProviderReviewDto } from "./dto/report-provider-review.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
 import {
@@ -813,6 +814,22 @@ export class MarketplaceService {
         return { id, deleted: true };
       },
     );
+  }
+
+  /**
+   * RA-ST-05: any account but its author may report a published review as
+   * offensive or false; the moderation team sees it among the reported ones.
+   * Once per reporter: a second report updates the reason and reopens it.
+   */
+  async reportReview(currentUser: AuthenticatedUser, id: string, dto: ReportProviderReviewDto) {
+    MarketplaceQuery.assertUuid(id, "reviewId");
+    const review = await core.findPublishedReviewForReport(this.prisma, id);
+    if (!review) throw new NotFoundException("Review not found");
+    if (review.userId === currentUser.id) {
+      throw new BadRequestException("You cannot report your own review");
+    }
+    await core.saveReviewReport(this.prisma, id, currentUser.id, dto.reason);
+    return { id, reported: true };
   }
 
   private async findActiveProviderOrThrow(

@@ -387,6 +387,8 @@ export class AdminService {
           ...(status ? { status } : {}),
           ...(query.providerId ? { providerId: query.providerId } : {}),
           ...(search ? { search } : {}),
+          // RA-ST-05: «مُبلّغ عنها».
+          ...(query.reported === 'true' ? { reported: true } : {}),
         },
         { skip: pagination.skip, take: pagination.limit },
       );

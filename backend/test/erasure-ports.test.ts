@@ -49,6 +49,7 @@ function recorder() {
     weddingPlan: delegate('weddingPlan'),
     provider: delegate('provider', [{ id: 'provider-1' }]),
     providerReview: delegate('providerReview', [{ providerId: 'provider-1' }]),
+    reviewReport: delegate('reviewReport'),
     quoteRequest: delegate('quoteRequest'),
     planProviderLink: delegate('planProviderLink'),
     favoriteProvider: delegate('favoriteProvider'),
@@ -115,6 +116,8 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
   assert.deepEqual(calls, [
     ['provider.findMany', { where: { userId: 'user-1' }, orderBy: { id: 'asc' }, select: { id: true } }],
     ['providerReview.findMany', { where: { userId: 'user-1' }, distinct: ['providerId'], orderBy: { providerId: 'asc' }, select: { providerId: true } }],
+    // RA-ST-05: the reports this account made go with it.
+    ['reviewReport.deleteMany', { where: { reporterUserId: 'user-1' } }],
     ['providerReview.deleteMany', { where: { userId: 'user-1' } }],
     ['$queryRaw', ['user-1', ['plan-1'], [], ['conversation-1']]],
     ['quoteRequest.deleteMany', { where: { id: { in: ['quote-1'] } } }],

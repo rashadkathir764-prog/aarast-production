@@ -171,6 +171,13 @@ function recordingTx(
         return { count: graph.reviewedProviderIds?.length ?? 0 };
       },
     },
+    // RA-ST-05: the reports the account made go with it.
+    reviewReport: {
+      deleteMany: async () => {
+        calls.push("reviewReport");
+        return { count: 0 };
+      },
+    },
     notification: {
       findMany: async () => [{ id: "notification-u1" }],
       deleteMany: async () => {

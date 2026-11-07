@@ -232,6 +232,7 @@ model ProviderReview {
   replyStatus ReviewStatus?
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider   Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  reports    ReviewReport[]
 
   @@unique([userId, providerId])
   @@index([providerId, status])
@@ -579,4 +580,23 @@ model PortfolioItem {
 
   @@index([providerId, sortOrder])
   @@index([status, createdAt])
+}
+
+// RA-ST-05: a report that a published review is offensive or false, from a
+// reader or from the provider it reviews (Google Play: user content must be
+// reportable in the app). One per reporter and review; open until the
+// moderation team hides or keeps the review (resolvedAt).
+model ReviewReport {
+  id             String         @id @default(uuid())
+  reviewId       String
+  reporterUserId String
+  reason         String         @db.Text
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  review         ProviderReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter       User           @relation("ReviewReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, reporterUserId])
+  @@index([resolvedAt, createdAt])
 }

@@ -257,15 +257,20 @@ test('marketplace locks a review only under its provider and sets its moderation
   assert.equal(await service.lockReviewForUpdateInTransaction(client, 'review-1', 'provider-1'), true);
   await service.setReviewStatusInTransaction(client, 'review-1', ReviewStatus.HIDDEN);
 
+  // RA-ST-05: the decision answers the review's open reports first.
   assert.deepEqual(calls.map(([name]) => name), [
     'providerReview.findUnique',
     '$queryRaw',
+    'reviewReport.updateMany',
     'providerReview.update',
   ]);
   const lock = calls[1]?.[1] as any;
   assert.match(lock.sql, /FROM "ProviderReview"[\s\S]*"providerId" = \?[\s\S]*FOR UPDATE/);
   assert.deepEqual(lock.values, ['review-1', 'provider-1']);
-  assert.deepEqual(calls[2]?.[1], {
+  const resolved = calls[2]?.[1] as any;
+  assert.deepEqual(resolved.where, { reviewId: 'review-1', resolvedAt: null });
+  assert.ok(resolved.data.resolvedAt instanceof Date);
+  assert.deepEqual(calls[3]?.[1], {
     where: { id: 'review-1' },
     data: { status: ReviewStatus.HIDDEN },
     include: { provider: true },

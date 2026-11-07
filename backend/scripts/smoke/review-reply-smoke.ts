@@ -210,6 +210,72 @@ async function main(): Promise<void> {
       (error: any) => code(error) === "REVIEW_REPLY_NOT_FOUND",
     );
     console.log("PASS - a review without a reply has no reply to hide");
+
+    // RA-ST-05 (D94): «مبلّغ عنها» lists the reviews with an open report, the
+    // latest five reasons and the count of all; hiding or keeping the review
+    // answers its reports.
+    const reporters = await Promise.all(
+      Array.from({ length: 6 }, (_, index) =>
+        prisma.user.create({
+          data: {
+            name: `${label} reporter ${index}`,
+            passwordHash: passwordHash(`reporter-${index}`),
+            role: UserRole.USER,
+            status: UserStatus.ACTIVE,
+          },
+        }),
+      ),
+    );
+    try {
+      for (const [index, reporter] of reporters.entries()) {
+        await market.reportReview(asUser(reporter), plain.id, { reason: `سبب ${index}` } as any);
+      }
+      await market.reportReview(asUser(customerA), second.id, { reason: "كلام مسيء" } as any);
+      const reported = await admins.listReviews({ providerId: provider.id, reported: "true" } as any);
+      assert.deepEqual(
+        reported.items.map((item: any) => item.id).sort(),
+        [plain.id, second.id].sort(),
+      );
+      const plainRow = reported.items.find((item: any) => item.id === plain.id) as any;
+      assert.equal(plainRow.openReportCount, 6);
+      assert.equal(plainRow.openReports.length, 5);
+      assert.ok(plainRow.openReports.every((report: any) => /^سبب \d$/u.test(report.reason)));
+      assert.ok(plainRow.openReports.every((report: any) => !("reporterUserId" in report)));
+      console.log("PASS - «مبلّغ عنها» lists the reported reviews, five reasons, and counts all six");
+
+      // «خلّه»: the review stays published and leaves the list.
+      const kept = await admins.updateReviewStatus(asAdmin, plain.id, { status: "PUBLISHED" });
+      assert.equal(kept.status, ReviewStatus.PUBLISHED);
+      assert.equal(
+        await prisma.reviewReport.count({ where: { reviewId: plain.id, resolvedAt: null } }),
+        0,
+      );
+      // «أخفِ»: hidden, and its report answered too.
+      await admins.hideReview(asAdmin, second.id);
+      assert.equal(
+        await prisma.reviewReport.count({ where: { reviewId: second.id, resolvedAt: null } }),
+        0,
+      );
+      const after = await admins.listReviews({ providerId: provider.id, reported: "true" } as any);
+      assert.equal(after.total, 0);
+      console.log("PASS - «خلّه» and «أخفِ» both answer the reports; the list empties");
+
+      // A hidden review is not public, so there is nothing to report.
+      await assert.rejects(
+        market.reportReview(asUser(reporters[1]!), second.id, { reason: "كلام مسيء" } as any),
+        (error: any) => error?.status === 404,
+      );
+      console.log("PASS - a hidden review cannot be reported (404)");
+
+      // A new report on a kept review opens it again.
+      await market.reportReview(asUser(reporters[0]!), plain.id, { reason: "ما زال مسيء" } as any);
+      const reopened = await admins.listReviews({ providerId: provider.id, reported: "true" } as any);
+      assert.deepEqual(reopened.items.map((item: any) => item.id), [plain.id]);
+      assert.equal((reopened.items[0] as any).openReportCount, 1);
+      console.log("PASS - a later report brings a kept review back to «مبلّغ عنها»");
+    } finally {
+      await prisma.user.deleteMany({ where: { id: { in: reporters.map((user) => user.id) } } });
+    }
   } finally {
     await prisma.notification.deleteMany({
       where: { userId: { in: [providerUser.id, otherProviderUser.id, customerA.id, customerB.id] } },

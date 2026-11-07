@@ -752,10 +752,13 @@ export class TasksService {
       }
     }
 
+    // A cancelled task is neither done nor one of the plan's tasks, as the
+    // home and the tasks list count them.
+    const countedTasks = tasks.length - byStatus[WeddingTaskStatus.CANCELLED];
     return {
       weddingPlanId,
-      totalTasks: tasks.length,
-      total: tasks.length,
+      totalTasks: countedTasks,
+      total: countedTasks,
       completedTasks,
       completed: completedTasks,
       openTasks: tasks.filter(

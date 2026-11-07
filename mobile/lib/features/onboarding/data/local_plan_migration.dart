@@ -101,6 +101,8 @@ class LocalPlanMigrationService {
   static const _taskPriorities = {'LOW', 'MEDIUM', 'HIGH', 'URGENT'};
   static const _guestSides = {'GROOM', 'BRIDE', 'FAMILY', 'FRIEND', 'OTHER'};
   static const _guestStatuses = {'INVITED', 'CONFIRMED', 'DECLINED', 'PENDING'};
+  static const _guestReplies = {'PENDING', 'CONFIRMED', 'DECLINED'};
+  static const _guestInvitations = {'NOT_SENT', 'SENT', 'DELIVERED'};
 
   /// The complete guest plan waiting to be migrated, if any.
   Future<GuestOnboardingDraft?> pendingGuestPlan() {
@@ -370,11 +372,17 @@ class LocalPlanMigrationService {
   Map<String, dynamic> _guestPayload(Map<String, dynamic> row) {
     final side = _enumOrNull(row['side'], _guestSides);
     final status = _enumOrNull(row['status'], _guestStatuses);
+    // The guest's reply and invitation as the phone holds them, not only
+    // the old `status`: the account read a phone «confirmed» as no reply.
+    final reply = _enumOrNull(row['attendanceStatus'], _guestReplies);
+    final invitation = _enumOrNull(row['invitationStatus'], _guestInvitations);
     return {
       'name': _text(row['name']) ?? 'ضيف',
       'phone': ?_text(row['phone']),
       'side': ?side,
       'status': ?status,
+      'attendanceStatus': ?reply,
+      'invitationStatus': ?invitation,
       'notes': ?_text(row['notes']),
     };
   }

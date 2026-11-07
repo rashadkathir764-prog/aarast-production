@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import { startOfRiyadhDay } from '../src/shared-kernel/time/business-day';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -587,4 +588,18 @@ test('dashboard next step: an unknown or inapplicable money fact asks for nothin
     ),
     ['ADD_GUESTS', 'REQUEST_QUOTE'],
   );
+});
+
+// The wedding as a day in Sana'a (D11), as the countdown notice and the
+// assistant count it. The app sends «2026-11-20T00:00:00.000» and a server
+// in UTC keeps 2026-11-20T00:00Z; on 7 November in Sana'a the home said 14
+// where the notice said 13, 1 on the wedding day and 0 the day after.
+test('days to the wedding are Sana\'a days, the same as the countdown notice', () => {
+  const today = startOfRiyadhDay(new Date('2026-11-07T09:00:00.000Z'));
+  assert.equal(dashboardPresenter.daysRemaining(new Date('2026-11-20T00:00:00.000Z'), today), 13);
+  assert.equal(dashboardPresenter.daysRemaining(new Date('2026-11-07T00:00:00.000Z'), today), 0);
+  assert.equal(dashboardPresenter.daysRemaining(new Date('2026-11-06T00:00:00.000Z'), today), -1);
+  // Late at night in Sana'a (still 7 November in UTC) is already the 8th.
+  const lateNight = startOfRiyadhDay(new Date('2026-11-07T21:30:00.000Z'));
+  assert.equal(dashboardPresenter.daysRemaining(new Date('2026-11-20T00:00:00.000Z'), lateNight), 12);
 });

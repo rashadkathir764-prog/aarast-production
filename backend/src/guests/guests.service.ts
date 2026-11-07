@@ -59,6 +59,10 @@ import {
 } from "../modules/guests/domain/invitation-card";
 import { PLAN_GUESTS_MAX } from "../modules/guests/public/guest-text-limits";
 import {
+  attendanceFromStatus,
+  statusFromAttendance,
+} from "../modules/guests/public/guest-reply";
+import {
   countGuestGroupsForSummary,
   countPlanGuests,
   createGuest,
@@ -433,7 +437,19 @@ export class GuestsService {
               : {}),
             ...(dto.groupId !== undefined ? { groupId } : {}),
             ...(dto.side !== undefined ? { side: dto.side } : {}),
-            ...(dto.status !== undefined ? { status: dto.status } : {}),
+            // A guest's reply is one fact in two columns: the owner's form
+            // writes `status`, the guest's reply page `attendanceStatus`. A
+            // write of either keeps the other with it, as a new guest does;
+            // a form save that wrote only `status` left the reply behind, and
+            // the guest list and the home read different answers.
+            ...(dto.status !== undefined
+              ? {
+                  status: dto.status,
+                  ...(dto.attendanceStatus === undefined
+                    ? { attendanceStatus: this.attendanceFromStatus(dto.status) }
+                    : {}),
+                }
+              : {}),
             ...(dto.invitationStatus !== undefined
               ? { invitationStatus: dto.invitationStatus }
               : {}),
@@ -1286,20 +1302,13 @@ export class GuestsService {
   private attendanceFromStatus(
     status: GuestStatus | undefined,
   ): GuestAttendanceStatus {
-    if (status === GuestStatus.CONFIRMED)
-      return GuestAttendanceStatus.CONFIRMED;
-    if (status === GuestStatus.DECLINED) return GuestAttendanceStatus.DECLINED;
-    return GuestAttendanceStatus.PENDING;
+    return attendanceFromStatus(status);
   }
 
   private statusFromAttendance(
     status: GuestAttendanceStatus | undefined,
   ): GuestStatus | null {
-    if (status === GuestAttendanceStatus.CONFIRMED)
-      return GuestStatus.CONFIRMED;
-    if (status === GuestAttendanceStatus.DECLINED) return GuestStatus.DECLINED;
-    if (status === GuestAttendanceStatus.PENDING) return GuestStatus.PENDING;
-    return null;
+    return statusFromAttendance(status);
   }
 
   /**

@@ -461,17 +461,19 @@ export function moneyOrNull(
   return value === null ? null : value.toFixed(2);
 }
 
+/**
+ * Whole days from today to the wedding, both read as days in Sana'a (D11),
+ * as the countdown notice and the assistant count them. It read the wedding
+ * day in the server's own zone and rounded up against Sana'a's midnight, so
+ * on a server in UTC it said one day more, 1 on the wedding day and 0 the
+ * day after (the member's home showed the wedding day a day late).
+ */
 export function daysRemaining(
   weddingDate: Date | null,
   today: Date,
 ): number | null {
   if (!weddingDate) return null;
-  const weddingDay = new Date(
-    weddingDate.getFullYear(),
-    weddingDate.getMonth(),
-    weddingDate.getDate(),
-  );
-  return Math.ceil((weddingDay.getTime() - today.getTime()) / 86_400_000);
+  return daysBetween(today, weddingDate);
 }
 
 export function progressPercentage(

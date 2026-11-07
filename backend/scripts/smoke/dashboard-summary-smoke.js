@@ -239,6 +239,33 @@ async function run() {
     check('summary owner can view and manage money', res.body?.permissions?.canViewMoney === true && res.body?.permissions?.canManageMoney === true);
   }
 
+  // The home's numbers agree with the lists they sum up (2026-11-08): a
+  // cancelled task is not one of the plan's tasks, a guest's reply is the
+  // one the guest list reads, and the wedding is counted in Sana'a days.
+  {
+    await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Cancelled task',
+      dueDate: riyadhDateOffsetIso(3),
+      status: 'CANCELLED',
+      priority: 'LOW',
+    }, owner.token);
+    const guests = await request('GET', `/api/v1/wedding-plans/${planId}/guests`, null, owner.token);
+    const list = Array.isArray(guests.body) ? guests.body : guests.body?.items ?? [];
+    const pendingGuest = list.find((guest) => guest.name === 'Pending Guest');
+    // The owner's form marks a guest confirmed by `status`.
+    const marked = await request('PATCH', `/api/v1/guests/${pendingGuest?.id}`, { status: 'CONFIRMED' }, owner.token);
+    check('owner marks a guest confirmed from the form - HTTP 200', marked.status === 200);
+    check('the form\'s answer is the guest\'s reply', marked.body?.attendanceStatus === 'CONFIRMED');
+
+    const home = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, owner.token);
+    const guestSummary = await request('GET', `/api/v1/wedding-plans/${planId}/guests/summary`, null, owner.token);
+    check('a cancelled task is not counted in the home\'s tasks', home.body?.totalTasks === 3);
+    check('the home\'s progress leaves the cancelled task out', home.body?.progressPercentage === 33);
+    check('the home counts the confirmed guests the guest list counts',
+      home.body?.confirmedGuests === 2 && guestSummary.body?.confirmed === 2);
+    check('the home counts the wedding in Sana\'a days', home.body?.daysRemaining === 45);
+  }
+
   {
     // RA-BE-42: the viewer joins by accepting an invite (P5).
     const res = await inviteAndAccept(request, {

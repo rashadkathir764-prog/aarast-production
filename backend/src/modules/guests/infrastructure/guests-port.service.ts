@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GuestStatus, type Prisma } from '@prisma/client';
+import { GuestAttendanceStatus, type Prisma } from '@prisma/client';
 import type {
   GuestsPort,
   ImportedGuestInput,
@@ -30,13 +30,15 @@ export class GuestsPortService implements GuestsPort {
       weddingPlanId,
       ...(guestIds ? { id: { in: [...guestIds] } } : {}),
     };
+    // A guest's reply is `attendanceStatus`, the column the guest list, its
+    // summary and the guest's own reply page write and read; the old
+    // `status` could say something else (an imported «confirmed» with no
+    // reply), and the home counted it.
     const [total, confirmed, pending, declined, incomplete] = await Promise.all([
       client.guest.count({ where: base }),
-      client.guest.count({ where: { ...base, status: GuestStatus.CONFIRMED } }),
-      client.guest.count({
-        where: { ...base, status: { in: [GuestStatus.PENDING, GuestStatus.INVITED] } },
-      }),
-      client.guest.count({ where: { ...base, status: GuestStatus.DECLINED } }),
+      client.guest.count({ where: { ...base, attendanceStatus: GuestAttendanceStatus.CONFIRMED } }),
+      client.guest.count({ where: { ...base, attendanceStatus: GuestAttendanceStatus.PENDING } }),
+      client.guest.count({ where: { ...base, attendanceStatus: GuestAttendanceStatus.DECLINED } }),
       client.guest.count({
         where: { ...base, OR: [{ phone: null }, { phone: '' }, { name: '' }] },
       }),

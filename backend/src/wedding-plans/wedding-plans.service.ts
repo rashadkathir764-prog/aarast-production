@@ -42,6 +42,10 @@ import {
 } from "../modules/finance/public/finance.port";
 import { GUESTS_PORT, type GuestsPort } from "../modules/guests/public/guests.port";
 import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from "../modules/guests/public/guest-text-limits";
+import {
+  attendanceFromStatus,
+  statusFromAttendance,
+} from "../modules/guests/public/guest-reply";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import {
   TASK_DESCRIPTION_MAX,
@@ -662,11 +666,17 @@ export class WeddingPlansService {
         phone,
         normalizedPhone: phone,
         side: guest.side ?? GuestSide.OTHER,
-        status: guest.status ?? GuestStatus.INVITED,
+        // One reply in two columns (guest-reply.ts), as a guest added in
+        // the account: a phone's «confirmed» sent as `status` only was kept
+        // with no reply, and the list and the home disagreed on it.
+        status:
+          guest.status ??
+          statusFromAttendance(guest.attendanceStatus) ??
+          GuestStatus.INVITED,
         invitationStatus:
           guest.invitationStatus ?? GuestInvitationStatus.NOT_SENT,
         attendanceStatus:
-          guest.attendanceStatus ?? GuestAttendanceStatus.PENDING,
+          guest.attendanceStatus ?? attendanceFromStatus(guest.status),
         seatsCount: guest.seatsCount ?? 1,
         companionsCount: guest.companionsCount ?? 0,
         // The noted number never pushes the person's own words past the

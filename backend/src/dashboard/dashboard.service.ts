@@ -103,7 +103,7 @@ export class DashboardService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<DashboardSummaryWithSetupResponse> {
-    return runRetryableTransaction(
+    const { summary, readsContributions } = await runRetryableTransaction(
       this.prisma,
       (tx) =>
         this.getWeddingPlanDashboardSummaryInTransaction(
@@ -113,13 +113,29 @@ export class DashboardService {
         ),
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+    // A member's own contributions are read after the summary's transaction
+    // has given its connection back: read inside it, every member's home held
+    // one connection and waited for a second (the history opens its own
+    // transaction), so as many members as the pool has connections opening
+    // the app at once waited on each other until the pool timed out.
+    if (!readsContributions) return summary;
+    return {
+      ...summary,
+      contributionHistory: await this.requiredContributionHistory().summary(
+        currentUser,
+        weddingPlanId,
+      ),
+    };
   }
 
   private async getWeddingPlanDashboardSummaryInTransaction(
     tx: Prisma.TransactionClient,
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-  ): Promise<DashboardSummaryWithSetupResponse> {
+  ): Promise<{
+    summary: DashboardSummaryWithSetupResponse;
+    readsContributions: boolean;
+  }> {
     const context = await this.permissions.assertPlanReadableInTransaction(
       tx,
       weddingPlanId,
@@ -403,15 +419,10 @@ export class DashboardService {
     const notificationPreviews = latestNotifications.map((notification) =>
       toNotificationPreview(notification),
     );
-    const contributionHistory: ContributionHistorySummaryResponse | null =
-      context.isOwner
-        ? null
-        : await this.requiredContributionHistory().summary(
-            currentUser,
-            weddingPlanId,
-          );
+    // Filled after the transaction, for a member (see the caller).
+    const contributionHistory: ContributionHistorySummaryResponse | null = null;
 
-    return {
+    const summary: DashboardSummaryWithSetupResponse = {
       dataScope: "ACCOUNT_BACKED",
       accountBacked: true,
       planId: context.plan.id,
@@ -547,6 +558,7 @@ export class DashboardService {
       permissions: this.permissionSummary(context),
       contributionHistory,
     };
+    return { summary, readsContributions: !context.isOwner };
   }
 
   private requiredContributorScope(): ContributorScopeService {

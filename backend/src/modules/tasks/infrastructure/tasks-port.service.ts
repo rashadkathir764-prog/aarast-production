@@ -105,7 +105,11 @@ export class TasksPortService implements TasksPort {
           where: { ...base, status: openStatuses() },
           orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
         }),
-        client.weddingTask.count({ where: base }),
+        // A cancelled task is neither done nor one of the plan's tasks: the
+        // home's «2 من 4» counted it and the tasks list did not.
+        client.weddingTask.count({
+          where: { ...base, status: { not: WeddingTaskStatus.CANCELLED } },
+        }),
         client.weddingTask.count({ where: { ...base, status: WeddingTaskStatus.DONE } }),
         client.weddingTask.count({
           where: { ...base, status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] } },

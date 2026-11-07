@@ -417,4 +417,35 @@ void main() {
       );
     },
   );
+
+  // A guest marked «أكد» on the phone reaches the account as a reply, the
+  // column the guest list and the home read, not only as the old `status`.
+  test('the import carries each guest\'s reply and invitation', () async {
+    final service = await buildService();
+    final snapshot = (await service.loadSnapshot())!;
+    final withReplies = LocalPlanSnapshot(
+      draft: snapshot.draft,
+      costs: const [],
+      costPayments: const [],
+      paymentSchedules: const [],
+      tasks: const [],
+      guests: const [
+        {
+          'id': 'g1',
+          'name': 'أبو محمد',
+          'status': 'CONFIRMED',
+          'attendanceStatus': 'CONFIRMED',
+          'invitationStatus': 'SENT',
+        },
+        {'id': 'g2', 'name': 'خالد', 'attendanceStatus': 'MAYBE'},
+      ],
+      categoryNameById: const {},
+    );
+
+    final guests = service.buildImportPayload(withReplies)['guests'] as List;
+    expect(guests[0]['attendanceStatus'], 'CONFIRMED');
+    expect(guests[0]['invitationStatus'], 'SENT');
+    // A value the server does not take is left out, not sent to be refused.
+    expect((guests[1] as Map).containsKey('attendanceStatus'), isFalse);
+  });
 }

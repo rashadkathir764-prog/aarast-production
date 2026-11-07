@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { registerVerified } = require('./verified-registration');
 const { eraseFixtureAccount } = require('./account-grace');
+const { inviteAndAccept } = require('./invite-member');
 
 /**
  * Task date shift smoke (V1 checklist 4.13), through the HTTP stack on
@@ -87,6 +88,7 @@ async function run() {
 
   const ownerToken = await register('Shift owner', phone(51));
   const strangerToken = await register('Shift stranger', phone(52));
+  const editorToken = await register('Shift editor', phone(53));
   try {
     const plan = await request('POST', '/api/v1/wedding-plans', { title: 'Shift plan', city: 'Sanaa' }, ownerToken);
     const planId = plan.body?.id;
@@ -125,8 +127,33 @@ async function run() {
     const back = await request('POST', shiftPath, { days: -10 }, ownerToken);
     const openBack = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
     check('an earlier wedding moves them back', back.status === 200 && day(openBack.body?.dueDate) === '2027-03-21');
+
+    // RA-BE-69: an editor who may move the wedding's date moves its tasks
+    // with it; only the owner and the partner could, in English.
+    const joined = await inviteAndAccept(request, {
+      planId,
+      inviterToken: ownerToken,
+      member: { phone: phone(53), token: editorToken },
+      access: { role: 'MANAGER', canEditPlan: true, canManageTasks: true },
+    });
+    check('an editor joins the plan', joined.status === 201);
+    const byEditor = await request('POST', shiftPath, { days: 5 }, editorToken);
+    const openByEditor = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
+    check('an editor who may move the date moves the tasks',
+      byEditor.status === 200 && day(openByEditor.body?.dueDate) === '2027-03-26');
+
+    // RA-BE-72: the wedding moved, its dated events move with it.
+    await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: '2027-04-10T00:00:00.000Z' }, ownerToken);
+    const samra = await request('POST', `/api/v1/wedding-plans/${planId}/events`, { type: 'SAMRA', date: '2027-04-08' }, ownerToken);
+    check('the plan has a dated samra', samra.status === 201);
+    const moved = await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: '2027-04-24T00:00:00.000Z' }, ownerToken);
+    const events = await request('GET', `/api/v1/wedding-plans/${planId}/events`, null, ownerToken);
+    const list = Array.isArray(events.body) ? events.body : events.body?.items ?? [];
+    const samraAfter = list.find((event) => event.type === 'SAMRA');
+    check('postponing the wedding two weeks moves the samra with it',
+      moved.status === 200 && day(samraAfter?.date) === '2027-04-22');
   } finally {
-    for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken]]) {
+    for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken], ['editor', editorToken]]) {
       if (!token) continue;
       check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
     }

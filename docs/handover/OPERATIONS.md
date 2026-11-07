@@ -204,15 +204,17 @@ curl https://api.<الدومين>/ready
 
 ## بناء تطبيق Android
 
-الأوامر الكاملة والتوقيع في `docs/deployment/STORE_RELEASE.md`. مختصرًا:
+أمر واحد يبني حزمة المتجر ويفحصها: يقرأ القيم من `mobile\android\.env.release`
+(خارج git، سطر `KEY=VALUE` لكل قيمة، والقائمة في رأس السكربت)، ويرفض الناقص
+باسمه قبل أن يبدأ، ويطبع بصمة الموقّع ومسار الحزمة:
 
 ```powershell
-cd mobile
-flutter build appbundle --release `
-  --dart-define=AARAST_API_BASE_URL=https://api.<الدومين> `
-  --dart-define=AARAST_INVITE_HOST=<الدومين> `
-  --dart-define=AARAST_FIREBASE_API_KEY=... (والقيم الثلاث الأخرى لـ Firebase)
+powershell -ExecutionPolicy Bypass -File scripts\build-android-release.ps1
 ```
+
+الوصفة كاملة والتوقيع في `docs/deployment/STORE_RELEASE.md`. (الوصفة المختصرة
+التي كانت هنا تنقصها قيم Sentry و`AARAST_ENVIRONMENT`، فكانت تفشل في
+`build.gradle.kts`.)
 
 مفتاح توقيع التطبيق (`.jks`) وكلمات مروره **أهم ملف في المشروع**: بدونه لا
 يمكن تحديث التطبيق على Google Play. احفظه في مكانين آمنين خارج الجهاز.

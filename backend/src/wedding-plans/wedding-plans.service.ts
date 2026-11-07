@@ -52,6 +52,8 @@ import {
   TASK_TITLE_MAX,
 } from "../modules/tasks/public/task-text-limits";
 import { withinCharacters } from "../shared-kernel/text/text-length";
+import { daysBetween } from "../shared-kernel/voice/day-words";
+import { shiftPlanEventDates } from "../modules/planning/infrastructure/plan-events.repository";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
@@ -304,6 +306,7 @@ export class WeddingPlansService {
             ? (cityFromWeddingLocation(location) ?? context.plan.city)
             : undefined;
 
+      const previousWeddingDate = context.plan.weddingDate;
       const plan = await updateWeddingPlan(tx, id, {
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, "title") }
@@ -323,6 +326,13 @@ export class WeddingPlansService {
             : {}),
           ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
       });
+      // RA-BE-72: a wedding moved from one day to another takes its dated
+      // events with it («نرتب كل شيء على الموعد الجديد»); they stayed on
+      // the old days in the wedding week, the reply page and the invite.
+      if (previousWeddingDate && plan.weddingDate) {
+        const days = daysBetween(previousWeddingDate, plan.weddingDate);
+        if (days !== 0) await shiftPlanEventDates(tx, id, days);
+      }
       await this.recordPlanContribution(
         tx,
         context,

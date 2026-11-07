@@ -89,6 +89,21 @@ export async function deletePlanEventRow(tx: Client, eventId: string): Promise<v
   await tx.planEvent.delete({ where: { id: eventId } });
 }
 
+/**
+ * RA-BE-72: the wedding moved by [days]; its dated events (السمرة، الغداء،
+ * the day itself) move with it, as its tasks do. Returns how many moved.
+ */
+export function shiftPlanEventDates(
+  tx: Client,
+  weddingPlanId: string,
+  days: number,
+): Promise<number> {
+  return tx.$executeRaw`
+    UPDATE "PlanEvent"
+    SET "date" = "date" + ${days}::int, "updatedAt" = NOW()
+    WHERE "weddingPlanId" = ${weddingPlanId} AND "date" IS NOT NULL`;
+}
+
 /** Account erasure: the erased plans' events go before the plans. */
 export async function deletePlanEventRowsOfPlans(
   tx: Client,

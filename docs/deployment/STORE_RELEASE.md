@@ -77,6 +77,10 @@ or shell history. `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are
 CI/plugin environment values only; never pass the auth token through a Dart
 define.
 
+`scripts/build-android-release.ps1` runs exactly this, with every value from
+`mobile/android/.env.release` (git-ignored) checked first, and prints the
+signer's SHA-256 and the bundle's path. The steps it runs:
+
 ```powershell
 cd mobile
 $releaseSha = git rev-parse HEAD

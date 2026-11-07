@@ -33,6 +33,7 @@ HTTPS in the release environment.
 | Personal info | Phone number | Yes | No | Account, OTP sign-in | Required |
 | Personal info | Email address | Yes | No | Account | Optional |
 | Personal info | Other (guest names/phones you add) | Yes | No | App functionality (guest list) | Optional |
+| Contacts | Contacts (only the contacts the user picks to add as guests: name and number) | Yes | No | App functionality (guest list) | Optional |
 | Financial info | Other (self-entered budgets, wedding costs, and payment schedules) | Yes | No | App functionality | Optional |
 | Photos | Photos | Yes | No | App functionality (profile/provider media) | Optional |
 | App activity | Other (wedding plan content) | Yes | No | App functionality | Required |
@@ -49,10 +50,15 @@ Notes for the reviewer form:
   wedding costs, recorded payments, and payment schedules). The app does **not** collect payment-card or bank
   numbers and processes **no** in-app payments — do not tick "Payment
   info".
-- **Contacts**: the `READ_CONTACTS` permission is used only to let the
-  user pick a single contact's name/number when adding a guest. The
-  full address book is not read or uploaded. On the form, this maps to
-  the guest name/phone you enter, not to a "Contacts" upload.
+- **Contacts** (corrected 2026-11-08 from the code): with `READ_CONTACTS`,
+  «من جهات الاتصال» reads the device's address book **on the device** to
+  list it for picking (`contact_picker_service.dart` `loadAll`, used by the
+  guest import), and the add-guest field opens a single-contact picker. The
+  address book itself is never uploaded; only the contacts the user ticks
+  are sent, as guests (name and number). On the form tick **Contacts →
+  Collected** (not shared, app functionality, optional), as well as the
+  guest name/phone under Personal info. Saying the address book is not
+  read was not true and would not survive a review.
 - **Location**: not collected. No location permissions are requested.
 - **Advertising / tracking**: none. No ad IDs, no cross-app tracking.
 - **Push identifier**: the configured Android Production build initializes
@@ -91,7 +97,9 @@ Notes for the reviewer form:
 ## Permissions declared in the manifest
 
 - `INTERNET` — API communication.
-- `READ_CONTACTS` — single-contact picker for the guest list (see above).
+- `READ_CONTACTS` — the guest list's single-contact picker and «من جهات
+  الاتصال», which lists the address book on the device so the user picks
+  whom to add (see above).
 - `POST_NOTIFICATIONS` — Android notification permission for Firebase Push;
   denial keeps Push registration disabled and does not disable the in-app
   notification inbox.

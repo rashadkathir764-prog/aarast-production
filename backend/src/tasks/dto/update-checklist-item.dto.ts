@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class UpdateChecklistItemDto {
   @IsString()
@@ -11,6 +11,7 @@ export class UpdateChecklistItemDto {
 
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }

@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class AdminCategoryDto {
   @IsString()
@@ -28,7 +28,9 @@ export class AdminCategoryDto {
   @IsOptional()
   showForBride?: boolean;
 
-  @IsNumber()
+  @IsInt()
+  @Min(-1_000_000)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }
@@ -49,7 +51,9 @@ export class AdminCityDto {
   @IsOptional()
   isActive?: boolean;
 
-  @IsNumber()
+  @IsInt()
+  @Min(-1_000_000)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }

@@ -5,6 +5,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -32,6 +33,7 @@ export class CreatePlanQuoteRequestDto {
 
   @IsInt()
   @Min(1)
+  @Max(100_000)
   @IsOptional()
   guestCount?: number;
 

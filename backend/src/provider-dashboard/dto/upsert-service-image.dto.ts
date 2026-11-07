@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateServiceImageDto {
   @IsString()
@@ -11,6 +11,7 @@ export class CreateServiceImageDto {
 
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }
@@ -26,6 +27,7 @@ export class UpdateServiceImageDto {
 
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }

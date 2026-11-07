@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateGuestGroupDto {
   @IsString()
@@ -11,6 +11,7 @@ export class CreateGuestGroupDto {
 
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }

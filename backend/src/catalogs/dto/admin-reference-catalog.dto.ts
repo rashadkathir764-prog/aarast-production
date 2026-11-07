@@ -6,6 +6,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -53,6 +54,8 @@ export class AdminCatalogItemDto {
   icon?: string | null;
 
   @IsInt()
+  @Min(-1_000_000)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 
@@ -91,6 +94,7 @@ export class AdminCatalogItemDto {
 export class PublishCatalogItemDto {
   @IsInt()
   @Min(1)
+  @Max(1_000_000)
   @IsOptional()
   revision?: number;
 }
@@ -112,10 +116,14 @@ export class AdminGovernorateDto {
   nameEn?: string;
 
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   @IsOptional()
   latitude?: number | null;
 
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   @IsOptional()
   longitude?: number | null;
 
@@ -124,6 +132,8 @@ export class AdminGovernorateDto {
   isActive?: boolean;
 
   @IsInt()
+  @Min(-1_000_000)
+  @Max(1_000_000)
   @IsOptional()
   sortOrder?: number;
 }

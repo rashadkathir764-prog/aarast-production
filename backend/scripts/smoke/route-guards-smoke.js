@@ -207,6 +207,17 @@ async function run() {
     check(`a plan title with a NUL is kept (got ${renamed.status})`, renamed.status === 200 && renamed.body?.title === 'عرس تجربة');
     const search = await request('GET', `/api/v1/wedding-plans/${planId}/guests?search=${encodeURIComponent('Ahmed\u0000')}`, null, owner.token);
     check(`a search with a NUL answers without a server error (got ${search.status})`, search.status > 0 && search.status < 500);
+
+    // RA-BE-14: a number past the database column's range is refused by
+    // validation (400), not by the database (500).
+    const group = await request('POST', `/api/v1/wedding-plans/${planId}/guest-groups`, { name: 'مجموعة', sortOrder: 3000000000 }, owner.token);
+    check(`an oversized group order is a 400 (got ${group.status})`, group.status === 400);
+    const deepPage = await request('GET', `/api/v1/wedding-plans/${planId}/guests?skip=100000000000000000000`, null, owner.token);
+    check(`an oversized page offset is a 400 (got ${deepPage.status})`, deepPage.status === 400);
+    const step = task.body?.id
+      ? await request('POST', `/api/v1/tasks/${task.body.id}/checklist`, { title: 'خطوة', sortOrder: 3000000000 }, owner.token)
+      : { status: 0 };
+    check(`an oversized step order is a 400 (got ${step.status})`, step.status === 400);
   } finally {
     for (const [label, account] of [['outsider', outsider], ['owner', owner]]) {
       if (!account.token) continue;

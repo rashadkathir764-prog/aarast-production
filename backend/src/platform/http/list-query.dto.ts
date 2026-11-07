@@ -18,6 +18,7 @@ export class ListQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   skip?: number;
 }
 

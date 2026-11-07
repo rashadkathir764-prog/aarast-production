@@ -83,9 +83,13 @@ class TaskSummary {
       if (due == today) dueToday++;
     }
 
+    // A cancelled task is neither done nor one of the plan's tasks, as the
+    // server counts them (RA-BE-93): the phone's own summary, after a read
+    // that failed, said «من 4» where the server said «من 2».
+    final cancelled = tasks.where((task) => task.status == 'CANCELLED').length;
     return TaskSummary(
       weddingPlanId: weddingPlanId,
-      total: tasks.length,
+      total: tasks.length - cancelled,
       completed: completed,
       pendingInProgress: pendingInProgress,
       overdue: overdue,

@@ -297,6 +297,9 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       }
       return null;
     }
+    // A read that failed (or is still on its way) is no figure: its empty
+    // summary read «nothing left» and the debt's hero vanished in silence.
+    if (!finance.hasLoadedMoney) return null;
     final money = finance.summary;
     final funding = money.funding;
     final total = value(money.costs.total) + value(funding?.loanTotal);

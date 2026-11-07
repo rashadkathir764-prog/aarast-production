@@ -280,6 +280,26 @@ class AarastDashboardView extends StatelessWidget {
                       ),
                     ],
                   ] else if (married) ...[
+                    // After the wedding the debt is the home's figure: when
+                    // the money could not be read it says so, as before it.
+                    if (moneyReadFailed) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      const JourneyNote(
+                        key: ValueKey('aarast-home-money-unread-married'),
+                        icon: LucideIcons.cloudOff,
+                        color: AarastV3Color.brandAccentStrong,
+                        soft: AarastV3Color.brandAccentSoft,
+                        text: 'ما قدرنا نقرأ فلوسك الحين، فما نعرف كم باقي عليك.',
+                      ),
+                      if (onRetryMoney case final retry?)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: JourneyTextAction(
+                            label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+                            onPressed: retry,
+                          ),
+                        ),
+                    ],
                     if (payment != null) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _JourneyNextStep(

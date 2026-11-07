@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -80,7 +81,8 @@ class _BudgetCategoryDetailsScreenState
         emptyIcon: LucideIcons.tag,
         emptyTitle: 'هذا البند ما عاد موجود',
         emptyAction: context.say('ارجع', 'ارجعي'),
-        onEmptyAction: () => context.pop(),
+        onEmptyAction: () =>
+            context.popOrGo(AppRouter.money(widget.weddingPlanId)),
         onRetry: _load,
       );
     } else {
@@ -203,7 +205,8 @@ class _BudgetCategoryDetailsScreenState
                       few: 'اتفاقات',
                       many: 'اتفاق',
                     ),
-              onBack: () => context.pop(),
+              onBack: () =>
+                  context.popOrGo(AppRouter.money(widget.weddingPlanId)),
               trailing: category != null && provider.canManageBudget
                   ? _CategoryMenu(
                       onEdit: () => _edit(category),

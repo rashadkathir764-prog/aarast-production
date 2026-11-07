@@ -104,6 +104,17 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// The unread count after an action: a read, not part of the action. A
+  /// failure here kept the count as it was and reported the action, which
+  /// had happened, as failed («تعذر أرشفة التنبيه»).
+  Future<void> _refreshUnreadCount() async {
+    try {
+      _unreadCount = await _api.getUnreadCount();
+    } on Object {
+      // The count is read again with the next list.
+    }
+  }
+
   Future<bool> markRead(AarastNotification notification) async {
     if (!notification.isUnread) return true;
 
@@ -114,7 +125,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
     try {
       final updated = await _api.markRead(notification.id);
       _replace(updated);
-      _unreadCount = await _api.getUnreadCount();
+      await _refreshUnreadCount();
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -140,7 +151,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
         for (final item in _notifications)
           item.isUnread ? item.copyWith(readAt: now) : item,
       ];
-      _unreadCount = await _api.getUnreadCount();
+      await _refreshUnreadCount();
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -164,7 +175,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _notifications = _notifications
           .where((item) => item.id != notification.id)
           .toList();
-      _unreadCount = await _api.getUnreadCount();
+      await _refreshUnreadCount();
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -188,7 +199,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _notifications = _notifications
           .where((item) => item.id != notification.id)
           .toList();
-      _unreadCount = await _api.getUnreadCount();
+      await _refreshUnreadCount();
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;

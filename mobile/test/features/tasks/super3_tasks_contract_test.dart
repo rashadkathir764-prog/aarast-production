@@ -81,6 +81,23 @@ void main() {
     expect(payload['responsibleSource'], 'manual');
   });
 
+  // RA-BE-93 from the phone's side: its own summary (after a read that
+  // failed) counted cancelled tasks in «من 4» where the server said «من 2».
+  test('the phone\'s summary leaves cancelled tasks out of the total', () {
+    final summary = TaskSummary.fromTasks(
+      weddingPlanId: localPlanId,
+      now: DateTime(2026, 6, 28, 10),
+      tasks: [
+        _task(id: 'a', title: 'القاعة', status: 'DONE'),
+        _task(id: 'b', title: 'المصور', status: 'DONE'),
+        _task(id: 'c', title: 'الكوشة', status: 'CANCELLED'),
+        _task(id: 'd', title: 'الزفة', status: 'CANCELLED'),
+      ],
+    );
+    expect(summary.total, 2);
+    expect(summary.completed, 2);
+  });
+
   test('local task summary updates total completed overdue and progress', () {
     final now = DateTime(2026, 6, 28, 10);
     final summary = TaskSummary.fromTasks(

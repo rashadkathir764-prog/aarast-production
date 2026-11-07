@@ -152,8 +152,10 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
           ),
           Expanded(
             child: _fromContacts
-                ? _contactsBody(candidates, provider.groups)
-                : _pasteBody(candidates, provider.groups),
+                // D80: the groups this reader may put guests in, as the add
+                // sheet offers; an owner's group refused a helper's import.
+                ? _contactsBody(candidates, provider.editableGroups)
+                : _pasteBody(candidates, provider.editableGroups),
           ),
           Padding(
             padding: AarastV3Density.actionInsets,

@@ -51,6 +51,16 @@ String mahrHomeWords(double amount) {
 String mahrHomeNumber(double amount) =>
     compactMoneyParts(amount, currencyCode: 'YER').number;
 
+/// What was handed over, as [mahrHomeNumber] says it, unless that reads as
+/// the whole while some is left: 2,960,000 of 3 million read «سلّمت 3 من 3
+/// مليون», as if done. Then it is rounded down, never up: «2.9».
+String mahrSettledNumber(double settled, double total) {
+  final short = mahrHomeNumber(settled);
+  if (settled >= total || short != mahrHomeNumber(total)) return short;
+  final step = total >= 1000000 ? 100000 : 1000;
+  return mahrHomeNumber((settled / step).floor() * step.toDouble());
+}
+
 /// b02 «الاتفاق مع أهل العروسة · سلّمت 2 من 3 مليون · الباقي 15 نوفمبر»,
 /// or the bride's «الاتفاق مع العريس · استلمتِ 2 من 3 مليون».
 class _MahrAgreementCard extends StatelessWidget {
@@ -65,7 +75,7 @@ class _MahrAgreementCard extends StatelessWidget {
     final due = mahr.nextDueAt;
     final line = [
       '${pays ? context.say('سلّمت', 'سلّمتِ') : context.say('استلمت', 'استلمتِ')} '
-          '${mahrHomeNumber(mahr.settled)} من ${mahrHomeWords(mahr.total)}',
+          '${mahrSettledNumber(mahr.settled, mahr.total)} من ${mahrHomeWords(mahr.total)}',
       if (due != null) 'الباقي ${formatArabicDayMonth(due)}',
     ].join(' · ');
     final label = pays ? 'الاتفاق مع أهل العروسة' : 'الاتفاق مع العريس';

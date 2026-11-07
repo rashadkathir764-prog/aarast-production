@@ -13,6 +13,7 @@ Future<int Function()> _pump(
   DateTime? weddingDate,
   DashboardAfterWedding? debt,
   bool showHijri = true,
+  bool moneyReadFailed = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1100);
@@ -31,6 +32,8 @@ Future<int Function()> _pump(
             now: _now,
             afterWedding: debt,
             showHijri: showHijri,
+            moneyReadFailed: moneyReadFailed,
+            onRetryMoney: () {},
             onOpenReviews: () => reviews += 1,
             onNotifications: () {},
             onProfile: () {},
@@ -90,6 +93,24 @@ void main() {
 
     await tester.tap(find.text('قيّم'));
     expect(reviews(), 1);
+  });
+
+  // After the wedding the debt is the home's figure. A money read that
+  // failed showed no hero and no word, so a plan still owing read settled.
+  testWidgets('after the day, money that could not be read is said so', (
+    tester,
+  ) async {
+    await _pump(tester, moneyReadFailed: true);
+
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-after-hero')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-home-money-unread-married')),
+      findsOneWidget,
+    );
+    expect(find.text('جرّب مرة ثانية'), findsOneWidget);
   });
 
   testWidgets('after the day with nothing owed, the hero congratulates', (

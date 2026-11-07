@@ -726,7 +726,15 @@ test('R6 Task 2 adapter sends once, maps only known transport errors, and preser
     'src/modules/identity/public/identity-transient-delivery.port',
   ));
   const { IdentityTransientDeliveryAdapter } = require(adapterPath);
-  const adapter = new IdentityTransientDeliveryAdapter();
+  // RA-BE-34: the adapter counts each message against a daily budget in the
+  // database before it sends. This test is about the send and its errors, so
+  // the fake budget always has room (the refusal is proven in
+  // invite-delivery.test.ts).
+  const budgetWithRoom = {
+    $transaction: async (work: (tx: unknown) => Promise<void>) =>
+      work({ $queryRawUnsafe: async () => [{ count: 1 }] }),
+  };
+  const adapter = new IdentityTransientDeliveryAdapter(budgetWithRoom);
   const originalSender = transport.sendOpenWaTransientText;
   const input = { phone: '967700000001', text: 'دعوة اختبار' };
 
@@ -884,17 +892,32 @@ test('R6 Task 2 binds one adapter singleton and exports only the public token', 
     1,
   );
 
-  const context = await NestFactory.createApplicationContext(
-    publicBoundary.IdentityTransientDeliveryPublicModule,
-    { logger: false },
-  );
+  // RA-BE-34: the adapter now takes the database for its message budget; the
+  // binding is checked without opening a connection.
+  const { PrismaService } = require(path.join(
+    backendRoot,
+    'src/platform/database/prisma.service',
+  ));
+  const originalInit = PrismaService.prototype.onModuleInit;
+  const originalDestroy = PrismaService.prototype.onModuleDestroy;
+  PrismaService.prototype.onModuleInit = async () => undefined;
+  PrismaService.prototype.onModuleDestroy = async () => undefined;
   try {
-    assert.equal(
-      context.get(contract.IDENTITY_TRANSIENT_DELIVERY_PORT),
-      context.get(adapter.IdentityTransientDeliveryAdapter),
+    const context = await NestFactory.createApplicationContext(
+      publicBoundary.IdentityTransientDeliveryPublicModule,
+      { logger: false },
     );
+    try {
+      assert.equal(
+        context.get(contract.IDENTITY_TRANSIENT_DELIVERY_PORT),
+        context.get(adapter.IdentityTransientDeliveryAdapter),
+      );
+    } finally {
+      await context.close();
+    }
   } finally {
-    await context.close();
+    PrismaService.prototype.onModuleInit = originalInit;
+    PrismaService.prototype.onModuleDestroy = originalDestroy;
   }
 });
 

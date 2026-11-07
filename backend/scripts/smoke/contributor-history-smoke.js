@@ -267,7 +267,8 @@ async function run() {
     "POST",
     `/api/v1/wedding-plans/${planId}/invites`,
     {
-      userId: contributorC.userId,
+      // RA-BE-33: an invite goes by number.
+      phone: contributorC.phone,
       role: "HELPER",
       canManageTasks: true,
       canManageGuests: false,
@@ -540,7 +541,8 @@ async function run() {
     "POST",
     `/api/v1/wedding-plans/${planId}/invites`,
     {
-      userId: contributorA.userId,
+      // RA-BE-33: an invite goes by number.
+      phone: contributorA.phone,
       role: "HELPER",
       canManageTasks: true,
       canManageGuests: false,

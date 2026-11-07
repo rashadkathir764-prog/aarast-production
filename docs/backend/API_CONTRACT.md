@@ -1819,6 +1819,13 @@ failures, and missing/unknown acknowledgements map to `UNCERTAIN`; explicit
 `NOT_ATTEMPTED`/`REJECTED` outcomes map to `UNAVAILABLE`. Neither outcome
 deletes the pending invite or falsely reports that WhatsApp succeeded.
 
+Invite messages leave from the number that sends the sign-in codes, so they
+have daily budgets of their own (RA-BE-34), apart from the codes' budget: one
+phone number receives at most 3 a day, the app sends at most 300 a day, and one
+sender or one plan sends at most 20 a day (create and reissue alike). Past a
+budget nothing is sent and `delivery.status` is `UNAVAILABLE`; the invite and
+its link stand, for the inviter to copy.
+
 Every invite response contains a durable delivery snapshot:
 
 ```json

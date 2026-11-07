@@ -341,6 +341,19 @@ export class SharingRepository {
     });
   }
 
+  // RA-BE-34: the invite messages tried since `since` by one sender or in one
+  // plan, the current attempt included (its time is stamped before it is sent).
+  countInviteMessagesSince(
+    client: Client, inviterUserId: string, weddingPlanId: string, since: Date,
+  ) {
+    return client.planInvite.count({
+      where: {
+        deliveryAttemptedAt: { gte: since },
+        OR: [{ inviterUserId }, { weddingPlanId }],
+      },
+    });
+  }
+
   persistInviteDelivery(
     tx: Prisma.TransactionClient,
     attempt: { inviteId: string; weddingPlanId: string; tokenHash: string; attemptedAt: Date },

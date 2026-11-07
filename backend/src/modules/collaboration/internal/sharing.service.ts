@@ -256,6 +256,12 @@ const defaultInviteLifetimeDays = 14;
 // The longest an invite may be given (CreatePlanInviteDto.expiresInDays).
 const maxInviteLifetimeDays = 30;
 const inviteReissueCooldownMs = 60_000;
+// RA-BE-34: one sender, or one plan, gets this many invite messages a day.
+// The app's own daily budget (identity) is shared by everyone, so without
+// this one account could use it all up with invites to strangers' numbers.
+// A real plan invites a handful of people; past the cap the invite still
+// stands and its link is copied by hand.
+export const INVITE_MESSAGES_PER_DAY = 20;
 const inviteReissueCooldownCode = "INVITE_REISSUE_COOLDOWN";
 const inviteDeliverySupersededCode = "INVITE_DELIVERY_ATTEMPT_SUPERSEDED";
 const inviteAuthorityRevokedCode = "INVITE_AUTHORITY_REVOKED";
@@ -665,9 +671,8 @@ export class SharingService {
             weddingPlanId,
             inviterUserId: currentUser.id,
             inviteeUserId: target.user?.id ?? null,
-            name:
-              this.optionalText(dto.name) ??
-              (target.user ? applicationDisplayName(target.user) : null),
+            // RA-BE-33: the name the inviter typed, never the account's.
+            name: this.optionalText(dto.name),
             phone: target.phone,
             normalizedPhone: target.normalizedPhone,
             email: target.email,
@@ -725,7 +730,9 @@ export class SharingService {
       }),
     );
 
-    const delivery = await this.invitationDelivery.deliver(
+    const delivery = await this.deliverInviteMessage(
+      currentUser.id,
+      weddingPlanId,
       created.invite.normalizedPhone,
       created.token,
     );
@@ -968,7 +975,9 @@ export class SharingService {
       }),
     );
 
-    const delivery = await this.invitationDelivery.deliver(
+    const delivery = await this.deliverInviteMessage(
+      currentUser.id,
+      weddingPlanId,
       reissued.invite.normalizedPhone,
       reissued.token,
     );
@@ -1851,21 +1860,19 @@ export class SharingService {
       );
     }
 
+    // RA-BE-33: an invite goes by number (D81), and tells its inviter only
+    // what the inviter typed. One by account id copied the account's number
+    // and name into the reply, and ids are public (the providers' reviews),
+    // so it is refused before any lookup.
     if (userId) {
-      const user = await this.users.getAppIdentity(this.prisma, userId);
-      if (!user) {
-        throw new BadRequestException("userId must reference an existing user");
-      }
-      const normalizedPhone = PhoneNormalizer.normalizeOptional(user.phone);
-      return {
-        user,
-        phone: user.phone,
-        normalizedPhone,
-        email: null,
-      };
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "INVITE_BY_PHONE",
+        message: "الدعوة تنرسل برقم الجوال.",
+      });
     }
 
-    const user = phone
+    const found = phone
       ? await this.users.findAppIdentityByPhone(
           this.prisma,
           phone,
@@ -1874,6 +1881,9 @@ export class SharingService {
           ),
         )
       : null;
+    // A number whose account is not active is invited like any number, not
+    // refused apart (that told the inviter an account is behind it).
+    const user = found?.status === UserStatus.ACTIVE ? found : null;
     return {
       user,
       phone: phone ?? user?.phone ?? null,
@@ -1946,6 +1956,26 @@ export class SharingService {
       }
       return finalized;
     });
+  }
+
+  // RA-BE-34: past the sender's or the plan's daily cap the message is not
+  // sent, and the invite reads as «not sent: copy the link».
+  private async deliverInviteMessage(
+    senderUserId: string,
+    weddingPlanId: string,
+    phone: string | null,
+    token: string,
+  ): Promise<InvitationDeliveryResult> {
+    const attempts = await this.repository.countInviteMessagesSince(
+      this.prisma,
+      senderUserId,
+      weddingPlanId,
+      new Date(Date.now() - dayMs),
+    );
+    if (attempts > INVITE_MESSAGES_PER_DAY) {
+      return { channel: "WHATSAPP", status: "UNAVAILABLE" };
+    }
+    return this.invitationDelivery.deliver(phone, token);
   }
 
   private async finalizeInviteDelivery(

@@ -5,9 +5,13 @@ import { createHash } from "node:crypto";
 import { afterEach, test } from "node:test";
 import { HttpException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { IdentityTransientDeliveryAdapter } from "../src/modules/identity/internal/identity-transient-delivery.adapter";
+import {
+  IdentityTransientDeliveryAdapter,
+  TRANSIENT_PER_PHONE_DAILY_LIMIT,
+} from "../src/modules/identity/internal/identity-transient-delivery.adapter";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
 import { IdentityTransientDeliveryPort } from "../src/modules/identity/public/identity-transient-delivery.port";
+import type { PrismaService } from "../src/platform/database/prisma.service";
 import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
 import { inviteAccessService } from "./support/owner-ports";
 import {
@@ -26,9 +30,20 @@ async function invitationDeliveryMetricValue(outcome: string): Promise<number> {
   );
 }
 
+// RA-BE-34: the adapter counts each message against a daily budget kept in
+// the database. A fake answers the counter's one statement with the day's
+// count so far; these tests are about the transport, so by default the
+// budget has room.
+function quotaDatabase(count = 1): PrismaService {
+  return {
+    $transaction: async (work: (tx: unknown) => Promise<void>) =>
+      work({ $queryRawUnsafe: async () => [{ count }] }),
+  } as unknown as PrismaService;
+}
+
 function createInvitationDeliveryService(
   deliveryPort: IdentityTransientDeliveryPort =
-    new IdentityTransientDeliveryAdapter(),
+    new IdentityTransientDeliveryAdapter(quotaDatabase()),
 ): InvitationDeliveryService {
   const Service = InvitationDeliveryService as unknown as new (
     port: IdentityTransientDeliveryPort,
@@ -199,6 +214,45 @@ test("invite delivery records a bounded not-attempted outcome without private la
   for (const value of metric.values) {
     assert.deepEqual(Object.keys(value.labels), ["outcome"]);
   }
+});
+
+test("an invite past the day's message budget is not sent and reads as not sent (RA-BE-34)", async () => {
+  process.env.AUTH_OTP_MODE = "openwa";
+  process.env.OPENWA_BASE_URL = "http://openwa:2785";
+  process.env.OPENWA_SESSION_ID = "aarast-otp";
+  process.env.OPENWA_API_KEY = "a-secure-openwa-api-key-for-tests-only";
+  let requests = 0;
+  globalThis.fetch = (async () => {
+    requests += 1;
+    return new Response(
+      JSON.stringify({
+        messageId: "wa-message-3",
+        timestamp: 1706868000,
+        deliveryStatus: "DELIVERED",
+      }),
+      { status: 201, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+  const rejectedBefore = await invitationDeliveryMetricValue("rejected");
+
+  const lastAllowed = await createInvitationDeliveryService(
+    new IdentityTransientDeliveryAdapter(
+      quotaDatabase(TRANSIENT_PER_PHONE_DAILY_LIMIT),
+    ),
+  ).deliver("+967777123456", TEST_INVITE_TOKEN);
+  const pastBudget = await createInvitationDeliveryService(
+    new IdentityTransientDeliveryAdapter(
+      quotaDatabase(TRANSIENT_PER_PHONE_DAILY_LIMIT + 1),
+    ),
+  ).deliver("+967777123456", TEST_INVITE_TOKEN);
+
+  assert.deepEqual(lastAllowed, { channel: "WHATSAPP", status: "DELIVERED" });
+  assert.deepEqual(pastBudget, { channel: "WHATSAPP", status: "UNAVAILABLE" });
+  assert.equal(requests, 1, "the refused message never reaches OpenWA");
+  assert.equal(
+    await invitationDeliveryMetricValue("rejected"),
+    rejectedBefore + 1,
+  );
 });
 
 test("invite delivery delegates the exact phone and message to the Identity port", async () => {

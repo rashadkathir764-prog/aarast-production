@@ -19,6 +19,7 @@ import {
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
+import { INVITE_MESSAGES_PER_DAY } from "../src/modules/collaboration/internal/sharing.service";
 import { sharingService } from "./support/owner-ports";
 
 const permissions = new PermissionService({} as any, new PlanReadService());
@@ -193,6 +194,19 @@ class MemorySharingPrisma {
     findFirst: async ({ where }: any) => this.findFirstInvite(where),
     updateMany: async ({ where, data }: any) =>
       this.updatePlanInvites(where, data),
+    // RA-BE-34: the daily invite-message cap counts the attempts since a time
+    // by one sender or in one plan.
+    count: async ({ where }: any) =>
+      this.invites.filter(
+        (invite: any) =>
+          invite.deliveryAttemptedAt instanceof Date &&
+          invite.deliveryAttemptedAt >= where.deliveryAttemptedAt.gte &&
+          where.OR.some((match: Record<string, unknown>) =>
+            Object.entries(match).every(
+              ([key, value]) => invite[key] === value,
+            ),
+          ),
+      ).length,
   };
 
   $transaction = async (
@@ -702,6 +716,76 @@ test("invite target lookup prefers the exact canonical phone identity", async ()
   // RA-BE-20: read from the stored invite, the reply no longer naming it.
   assert.equal(harness.db.invites[0].inviteeUserId, canonical.id);
   assert.notEqual(harness.db.invites[0].inviteeUserId, legacy.id);
+});
+
+// RA-BE-33: what RA-BE-20 left. An invite by number without a name took the
+// account's own name, so the reply named whoever holds the number; one by
+// account id copied the account's number and name (ids are public, in the
+// providers' reviews); and a disabled account's number answered apart.
+test("RA-BE-33: an invite tells the inviter only what the inviter typed", async () => {
+  const harness = inviteHarness();
+  const named = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  assert.equal(named.name, null);
+  assert.equal(named.phone, harness.target.phone);
+  assert.equal(harness.db.invites[0].inviteeUserId, harness.target.id);
+
+  await assert.rejects(
+    () =>
+      harness.service.createInvite(harness.owner, "plan-1", {
+        userId: harness.target.id,
+        role: SharedMemberRole.VIEWER,
+      }),
+    refusal(400, "INVITE_BY_PHONE"),
+  );
+
+  const disabled = sharingUser("disabled-target", "+967777000077", "حساب معطّل");
+  (disabled as { status: string }).status = "DISABLED";
+  harness.db.users.push(disabled);
+  const toDisabled = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: disabled.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  assert.equal(toDisabled.name, null);
+  assert.equal(harness.db.invites[harness.db.invites.length - 1]?.inviteeUserId, null);
+});
+
+test("RA-BE-34: one sender gets a day's cap of invite messages; past it the invite stands with its link and nothing is sent", async () => {
+  const sent: Array<string | null> = [];
+  const harness = inviteHarness({
+    delivery: async (phone) => {
+      sent.push(phone);
+      return { channel: "WHATSAPP", status: "DELIVERED" };
+    },
+  });
+  const created = [];
+  for (let index = 0; index <= INVITE_MESSAGES_PER_DAY; index += 1) {
+    created.push(
+      await harness.service.createInvite(harness.owner, "plan-1", {
+        phone: `+9677771${String(index).padStart(5, "0")}`,
+        role: SharedMemberRole.VIEWER,
+      }),
+    );
+  }
+
+  assert.equal(sent.length, INVITE_MESSAGES_PER_DAY);
+  assert.equal(harness.db.invites.length, INVITE_MESSAGES_PER_DAY + 1);
+  const pastCap = created[created.length - 1];
+  assert.equal(pastCap.delivery.status, PlanInviteDeliveryStatus.UNAVAILABLE);
+  assert.match(pastCap.token, /^[A-Za-z0-9_-]{43}$/);
+
+  // A reminder of an earlier invite is a message too: it is not sent either.
+  const earlier = harness.db.invites[0];
+  earlier.deliveryAttemptedAt = new Date(Date.now() - 120_000);
+  const reminded = await harness.service.reissueInvite(
+    harness.owner,
+    "plan-1",
+    earlier.id,
+  );
+  assert.equal(sent.length, INVITE_MESSAGES_PER_DAY);
+  assert.equal(reminded.delivery.status, PlanInviteDeliveryStatus.UNAVAILABLE);
 });
 
 test("RA-BE-20: adding a participant by number says the same of every number and adds no one", async () => {
@@ -1886,9 +1970,11 @@ test("J2-11: inviting yourself, a member, the owner or a pending invitee is refu
       }),
     refusal(400, "CANNOT_INVITE_SELF"),
   );
+  // RA-BE-33: an invite goes by number; one by account id is refused before
+  // any lookup (it copied the account's number and name into the reply).
   await assert.rejects(
     () => self.service.createInvite(self.owner, "plan-1", { userId: self.owner.id }),
-    refusal(400, "CANNOT_INVITE_SELF"),
+    refusal(400, "INVITE_BY_PHONE"),
   );
   await assert.rejects(
     () => self.service.create(self.owner, "plan-1", { userId: self.owner.id }),

@@ -100,7 +100,8 @@ async function run() {
     "POST",
     `/api/v1/wedding-plans/${plan.body.id}/invites`,
     {
-      userId: staleInviteTarget.user.id,
+      // RA-BE-33: an invite goes by number.
+      phone: staleInviteTarget.user.phone,
       role: "MANAGER",
       canViewMoney: true,
       canManageMoney: true,
@@ -320,7 +321,7 @@ async function run() {
   const financeEscalation = await request(
     "POST",
     `/api/v1/wedding-plans/${plan.body.id}/invites`,
-    { userId: target.user.id, role: "FINANCE_MANAGER" },
+    { phone: target.user.phone, role: "FINANCE_MANAGER" },
     manager.token,
   );
   check(
@@ -342,7 +343,7 @@ async function run() {
   const inviteResponse = await request(
     "POST",
     `/api/v1/wedding-plans/${plan.body.id}/invites`,
-    { userId: target.user.id, role: "EDITOR" },
+    { phone: target.user.phone, role: "EDITOR" },
     manager.token,
   );
   check(
@@ -530,7 +531,8 @@ async function run() {
   const financeInvite = await request(
     "POST",
     `/api/v1/wedding-plans/${plan.body.id}/invites`,
-    { userId: outsider.user.id, role: "FINANCE_MANAGER" },
+    // RA-BE-33: an invite goes by number.
+    { phone: outsider.user.phone, role: "FINANCE_MANAGER" },
     owner.token,
   );
   const financeAccepted = await request(

@@ -111,7 +111,7 @@ function startModelStandIn() {
 async function register(name, value) {
   const response = await registerVerified(request, { name, phone: value, password: TEST_PASSWORD });
   check(`${name} registration succeeds`, response.status === 201);
-  return { token: response.body?.accessToken, userId: response.body?.user?.id };
+  return { token: response.body?.accessToken, userId: response.body?.user?.id, phone: value };
 }
 
 const ALL_PERMISSIONS = {
@@ -124,7 +124,8 @@ const ALL_PERMISSIONS = {
 
 async function join(planId, owner, member, role) {
   const invite = await request('POST', `/api/v1/wedding-plans/${planId}/invites`, {
-    userId: member.userId, role, expiresInDays: 7, ...ALL_PERMISSIONS,
+    // RA-BE-33: an invite goes by number.
+    phone: member.phone, role, expiresInDays: 7, ...ALL_PERMISSIONS,
   }, owner.token);
   const accepted = await request('POST', `/api/v1/invites/${invite.body?.token}/accept`, null, member.token);
   check(`${role} joins the plan`, accepted.status === 201);

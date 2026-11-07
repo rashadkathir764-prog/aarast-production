@@ -124,7 +124,8 @@ async function run() {
 
   {
     const res = await request('POST', `/api/v1/wedding-plans/${planId}/invites`, {
-      userId: editor.user.id,
+      // RA-BE-33: an invite goes by number.
+      phone: editor.user.phone,
       role: 'EDITOR',
       expiresInDays: 7,
     }, owner.token);

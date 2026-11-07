@@ -163,7 +163,8 @@ async function run() {
 
   {
     const res = await request('POST', `/api/v1/wedding-plans/${ownerPlanId}/invites`, {
-      userId: invitee.user.id,
+      // RA-BE-33: an invite goes by number.
+      phone: invitee.user.phone,
       role: 'HELPER',
     }, owner.token);
     check('owner creates invite - HTTP 201', res.status === 201);

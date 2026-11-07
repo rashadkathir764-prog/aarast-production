@@ -351,21 +351,16 @@ class TaskTimelineApi {
         json: localJson,
         dirty: true,
       );
-      await _offline.database.enqueueSync(
-        entityType: 'task',
+      await _queueTaskEdit(
+        id: id,
         operation: 'update',
         endpoint: '/api/v1/tasks/$id',
-        method: 'PATCH',
         payload: await _mergedQueuedTaskPayload(
           id: id,
           operation: 'update',
           data: data,
         ),
         planId: _taskPlanId(localJson),
-        localEntityId: id,
-        replacePendingForEntity: true,
-        clientRequestId: await _queuedTaskRequestId(id, 'update'),
-        queueCreatedAt: await _queuedTaskCreatedAt(id, 'update'),
       );
       await _offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
@@ -373,15 +368,42 @@ class TaskTimelineApi {
   }
 
   Future<void> deleteTask(String id) async {
-    if (id.startsWith('local-task-')) {
-      await _offline?.database.discardLocalEntity(
+    final offline = _offline;
+    if (id.startsWith('local-task-') && offline != null) {
+      // RA-MO-30: dropped on the phone only while its create was never
+      // sent; otherwise the server may have it, and a delete goes after it.
+      if (!await offline.database.discardUnsentLocalEntity(
         table: OfflineTables.cachedTasks,
         entityType: 'task',
         entityId: id,
-      );
-      await _offline?.refreshStatus();
+      )) {
+        final cached = await offline.database.readCachedItem(
+          table: OfflineTables.cachedTasks,
+          id: id,
+        );
+        if (cached != null) {
+          await offline.database.saveCachedItem(
+            table: OfflineTables.cachedTasks,
+            json: cached,
+            dirty: true,
+            deletedLocally: true,
+          );
+        }
+        await offline.database.enqueueSync(
+          entityType: 'task',
+          operation: 'delete',
+          endpoint: '/api/v1/tasks/$id',
+          method: 'DELETE',
+          payload: const {},
+          planId: cached == null ? null : _taskPlanId(cached),
+          localEntityId: id,
+          replacePendingForEntity: true,
+        );
+      }
+      await offline.refreshStatus();
       return;
     }
+    if (id.startsWith('local-task-')) return;
     try {
       await _apiClient.deleteJson('/api/v1/tasks/$id');
       await _offline?.syncPendingChanges();
@@ -548,36 +570,79 @@ class TaskTimelineApi {
     if (database == null) return;
     final create = await _queuedTaskItem(id, 'create');
     if (create == null) return;
-    await database.enqueueSync(
+    final planId = _taskPlanId(localJson);
+    final isAssignment = data.containsKey('assigneeUserId');
+    // RA-MO-30: the create carries the edit only while it was never sent.
+    // Once sent, the server may have it, and the same request id with
+    // another body is a 409: the edit goes after it as its own.
+    final createRewritten = await database.rewriteUnsentSyncItem(
       entityType: 'task',
       operation: 'create',
-      endpoint: create.endpoint,
-      method: create.method,
-      payload: _taskCreatePayloadFromLocal(localJson),
-      planId: _taskPlanId(localJson),
       localEntityId: id,
-      replacePendingForEntity: true,
-      clientRequestId: create.id,
-      queueCreatedAt: create.createdAt,
+      planId: planId,
+      endpoint: create.endpoint,
+      payload: _taskCreatePayloadFromLocal(localJson),
     );
+    if (!createRewritten && !isAssignment) {
+      await _queueTaskEdit(
+        id: id,
+        operation: 'update',
+        endpoint: '/api/v1/tasks/$id',
+        payload: await _mergedQueuedTaskPayload(
+          id: id,
+          operation: 'update',
+          data: data,
+        ),
+        planId: planId,
+      );
+    }
 
-    if (data.containsKey('assigneeUserId')) {
-      final existingAssign = await _queuedTaskItem(id, 'assign');
-      await database.enqueueSync(
-        entityType: 'task',
+    if (isAssignment) {
+      await _queueTaskEdit(
+        id: id,
         operation: 'assign',
         endpoint: '/api/v1/tasks/$id/assign',
-        method: 'PATCH',
         payload: {
           'assigneeUserId': _trimmedOrNull(data['assigneeUserId']?.toString()),
         },
-        planId: _taskPlanId(localJson),
-        localEntityId: id,
-        replacePendingForEntity: true,
-        clientRequestId: existingAssign?.id,
-        queueCreatedAt: existingAssign?.createdAt,
+        planId: planId,
       );
     }
+  }
+
+  /// RA-MO-30: an edit of a task rewrites its waiting edit in place (same
+  /// request id and place) while that was never sent; otherwise it is a new
+  /// change with a new request id, carrying the waiting fields: the waiting
+  /// one may be on the server already, and an edit applies twice safely.
+  Future<void> _queueTaskEdit({
+    required String id,
+    required String operation,
+    required String endpoint,
+    required Map<String, dynamic> payload,
+    required String? planId,
+  }) async {
+    final database = _offline?.database;
+    if (database == null) return;
+    if (await database.rewriteUnsentSyncItem(
+      entityType: 'task',
+      operation: operation,
+      localEntityId: id,
+      planId: planId,
+      endpoint: endpoint,
+      payload: payload,
+    )) {
+      return;
+    }
+    await database.enqueueSync(
+      entityType: 'task',
+      operation: operation,
+      endpoint: endpoint,
+      method: 'PATCH',
+      payload: payload,
+      planId: planId,
+      localEntityId: id,
+      replacePendingForEntity: true,
+    );
   }
 
   Future<Map<String, dynamic>> _mergedQueuedTaskPayload({
@@ -587,14 +652,6 @@ class TaskTimelineApi {
   }) async {
     final items = await _queuedTaskItems(id, operation);
     return {for (final item in items) ...item.payload, ...data};
-  }
-
-  Future<String?> _queuedTaskRequestId(String id, String operation) async {
-    return (await _queuedTaskItem(id, operation))?.id;
-  }
-
-  Future<DateTime?> _queuedTaskCreatedAt(String id, String operation) async {
-    return (await _queuedTaskItem(id, operation))?.createdAt;
   }
 
   Future<SyncQueueItem?> _queuedTaskItem(String id, String operation) async {

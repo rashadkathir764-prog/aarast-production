@@ -425,6 +425,90 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<bool> markSyncItemSending(String id) async {
+    final changed = await _db.update(
+      OfflineTables.syncQueue,
+      {
+        'status': SyncQueueItem.sent,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ? AND status IN (?, ?)',
+      whereArgs: [id, SyncQueueItem.queued, SyncQueueItem.failed],
+    );
+    return changed > 0;
+  }
+
+  // RA-MO-30: the SQL of SyncQueueItem.mayBeOnServer being false, for a row
+  // still waiting: never sent, or refused on its only attempt.
+  static const _unsentWhere = '(status = ? OR (status = ? AND retryCount = 0))';
+  static const _unsentArgs = [SyncQueueItem.queued, SyncQueueItem.blocked];
+
+  @override
+  Future<bool> rewriteUnsentSyncItem({
+    required String entityType,
+    required String operation,
+    required String localEntityId,
+    required String? planId,
+    required String endpoint,
+    required Map<String, dynamic> payload,
+  }) async {
+    final normalizedPlanId = normalizeSyncQueuePlanId(
+      entityType: entityType,
+      planId: planId,
+    );
+    final changed = await _db.update(
+      OfflineTables.syncQueue,
+      {
+        'endpoint': endpoint,
+        'payloadJson': jsonEncode(payload),
+        'status': SyncQueueItem.queued,
+        'retryCount': 0,
+        'lastError': null,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where:
+          'entityType = ? AND operation = ? AND localEntityId = ? AND '
+          'planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'} AND '
+          '$_unsentWhere',
+      whereArgs: [
+        entityType,
+        operation,
+        localEntityId,
+        ?normalizedPlanId,
+        ..._unsentArgs,
+      ],
+    );
+    return changed > 0;
+  }
+
+  @override
+  Future<bool> discardUnsentLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  }) {
+    return _db.transaction((txn) async {
+      final mayBeOnServer = await txn.query(
+        OfflineTables.syncQueue,
+        columns: ['id'],
+        where:
+            "entityType = ? AND localEntityId = ? AND operation = 'create' AND "
+            'status != ? AND NOT $_unsentWhere',
+        whereArgs: [entityType, entityId, SyncQueueItem.synced, ..._unsentArgs],
+        limit: 1,
+      );
+      if (mayBeOnServer.isNotEmpty) return false;
+      await txn.delete(table, where: 'id = ?', whereArgs: [entityId]);
+      await txn.delete(
+        OfflineTables.syncQueue,
+        where: 'entityType = ? AND localEntityId = ? AND status != ?',
+        whereArgs: [entityType, entityId, SyncQueueItem.synced],
+      );
+      return true;
+    });
+  }
+
+  @override
   Future<void> markSyncItemBlocked(String id, String error) async {
     await _db.update(
       OfflineTables.syncQueue,
@@ -440,23 +524,34 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   @override
   Future<int> requeueBlockedSyncItems() {
-    return _db.update(
-      OfflineTables.syncQueue,
-      {
-        'status': SyncQueueItem.queued,
-        'retryCount': 0,
-        'lastError': null,
-        'updatedAt': DateTime.now().toIso8601String(),
-      },
-      where:
-          'status = ? AND '
-          '(lastError IS NULL OR lastError NOT IN (?, ?))',
-      whereArgs: [
-        SyncQueueItem.blocked,
-        unknownSyncQueuePlanOwnershipError,
-        invalidSyncQueuePlanScopeError,
-      ],
-    );
+    return _db.transaction((txn) async {
+      var count = 0;
+      // RA-MO-30: a refusal after earlier failures may be on the server, and
+      // stays marked so (failed); a refusal on the only attempt is queued.
+      for (final (status, attempts) in [
+        (SyncQueueItem.failed, 'retryCount > 0'),
+        (SyncQueueItem.queued, 'retryCount = 0'),
+      ]) {
+        count += await txn.update(
+          OfflineTables.syncQueue,
+          {
+            'status': status,
+            'retryCount': 0,
+            'lastError': null,
+            'updatedAt': DateTime.now().toIso8601String(),
+          },
+          where:
+              'status = ? AND $attempts AND '
+              '(lastError IS NULL OR lastError NOT IN (?, ?))',
+          whereArgs: [
+            SyncQueueItem.blocked,
+            unknownSyncQueuePlanOwnershipError,
+            invalidSyncQueuePlanScopeError,
+          ],
+        );
+      }
+      return count;
+    });
   }
 
   @override

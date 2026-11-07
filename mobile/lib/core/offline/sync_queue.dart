@@ -64,6 +64,11 @@ class SyncQueueItem {
   static const failed = 'failed';
   static const synced = 'synced';
 
+  /// RA-MO-30: on the wire, or sent with no answer yet. Written just before
+  /// the request goes out, so from then on the server may have the change.
+  /// Still waiting: every reader of the queue counts it as pending.
+  static const sent = 'sent';
+
   /// Permanently rejected by the server (validation error) or exhausted its
   /// retry budget — excluded from automatic replay so the app never spins
   /// forever on an unfixable item. Manual retry can re-queue it.
@@ -85,6 +90,16 @@ class SyncQueueItem {
   final String? localEntityId;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// RA-MO-30: the server may already have this change, so its body must
+  /// not change under its request id (a 409) and a create must not be
+  /// dropped or re-sent under a new one (a second copy). Sent, or failed
+  /// after a send; a refusal after earlier failures too. A refusal on the
+  /// only attempt (4xx) left nothing on the server.
+  bool get mayBeOnServer =>
+      status == sent ||
+      status == failed ||
+      (status == blocked && retryCount > 0);
 
   Map<String, dynamic> get payload {
     final decoded = jsonDecode(payloadJson);

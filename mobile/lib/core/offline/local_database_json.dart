@@ -369,6 +369,82 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<bool> markSyncItemSending(String id) async {
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    for (final row in rows) {
+      if (row['id'] != id) continue;
+      final status = row['status'];
+      if (status != SyncQueueItem.queued && status != SyncQueueItem.failed) {
+        return false;
+      }
+      row['status'] = SyncQueueItem.sent;
+      row['updatedAt'] = DateTime.now().toIso8601String();
+      await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<bool> rewriteUnsentSyncItem({
+    required String entityType,
+    required String operation,
+    required String localEntityId,
+    required String? planId,
+    required String endpoint,
+    required Map<String, dynamic> payload,
+  }) async {
+    final normalizedPlanId = normalizeSyncQueuePlanId(
+      entityType: entityType,
+      planId: planId,
+    );
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    for (final row in rows) {
+      if (row['entityType'] != entityType ||
+          row['operation'] != operation ||
+          row['localEntityId'] != localEntityId ||
+          _nonEmpty(row['planId']) != normalizedPlanId ||
+          row['status'] == SyncQueueItem.synced) {
+        continue;
+      }
+      if (SyncQueueItem.fromRow(row).mayBeOnServer) return false;
+      row['endpoint'] = endpoint;
+      row['payloadJson'] = jsonEncode(payload);
+      row['status'] = SyncQueueItem.queued;
+      row['retryCount'] = 0;
+      row['lastError'] = null;
+      row['updatedAt'] = DateTime.now().toIso8601String();
+      await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<bool> discardUnsentLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  }) async {
+    final queueRows = _readList(_tableKey(OfflineTables.syncQueue));
+    final createMayBeOnServer = queueRows.any(
+      (row) =>
+          row['entityType'] == entityType &&
+          row['localEntityId'] == entityId &&
+          row['operation'] == 'create' &&
+          row['status'] != SyncQueueItem.synced &&
+          SyncQueueItem.fromRow(row).mayBeOnServer,
+    );
+    if (createMayBeOnServer) return false;
+    await discardLocalEntity(
+      table: table,
+      entityType: entityType,
+      entityId: entityId,
+    );
+    return true;
+  }
+
+  @override
   Future<void> markSyncItemBlocked(String id, String error) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     final now = DateTime.now().toIso8601String();
@@ -390,7 +466,10 @@ class JsonLocalDatabase implements LocalDatabase {
     for (final row in rows) {
       if (row['status'] != SyncQueueItem.blocked) continue;
       if (isSyncQueueOwnershipQuarantineError(row['lastError'])) continue;
-      row['status'] = SyncQueueItem.queued;
+      // RA-MO-30: what may be on the server stays marked so.
+      row['status'] = SyncQueueItem.fromRow(row).mayBeOnServer
+          ? SyncQueueItem.failed
+          : SyncQueueItem.queued;
       row['retryCount'] = 0;
       row['lastError'] = null;
       row['updatedAt'] = now;

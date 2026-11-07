@@ -71,11 +71,42 @@ abstract class LocalDatabase {
 
   Future<void> markSyncItemFailed(String id, String error);
 
+  /// RA-MO-30: the item is about to go on the wire. Marks it
+  /// [SyncQueueItem.sent] and answers false, changing nothing, when it is
+  /// gone or no longer waiting (rewritten or dropped meanwhile), so the
+  /// caller skips it. One statement.
+  Future<bool> markSyncItemSending(String id);
+
+  /// RA-MO-30: rewrites the waiting [operation] item of [localEntityId] in
+  /// place (same request id, same place in the queue) only when the server
+  /// cannot have it (`!mayBeOnServer`): never sent, or refused on its only
+  /// attempt (then requeued). Answers false, changing nothing, otherwise:
+  /// the caller queues a separate change after it. One statement.
+  Future<bool> rewriteUnsentSyncItem({
+    required String entityType,
+    required String operation,
+    required String localEntityId,
+    required String? planId,
+    required String endpoint,
+    required Map<String, dynamic> payload,
+  });
+
+  /// RA-MO-30: [discardLocalEntity], only when the entity's create cannot be
+  /// on the server. Answers false, changing nothing, when it may be: the
+  /// caller queues a delete after it. One transaction.
+  Future<bool> discardUnsentLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  });
+
   /// Marks an item as permanently rejected so it is never auto-replayed.
   Future<void> markSyncItemBlocked(String id, String error);
 
   /// Explicitly requeues permanently blocked work after the user requests a
-  /// retry. Automatic sync must never replay blocked items.
+  /// retry. Automatic sync must never replay blocked items. An item that
+  /// may be on the server stays marked so (RA-MO-30): it comes back
+  /// [SyncQueueItem.failed], the rest [SyncQueueItem.queued].
   Future<int> requeueBlockedSyncItems();
 
   /// Removes a local-only entity and every unsynced operation for it. Mobile

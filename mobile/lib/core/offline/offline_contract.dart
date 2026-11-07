@@ -252,33 +252,58 @@ class OfflineWrites {
     assert(table != null || metaKey != null, 'a table or a meta key');
     final database = _offline?.database;
     final id = localJson['id']?.toString() ?? '';
-    // A row the server has not named yet only changes on the phone: its
-    // queued create carries the latest shape when it is sent, and deleting
-    // it drops that create.
+    // A row the server has not named yet only changes on the phone while
+    // its create was never sent: the create carries the latest shape, and
+    // deleting the row drops it. Once the create was sent the server may
+    // have the row (its answer lost, or still on the wire), so the change
+    // goes after the create as its own (RA-MO-30): never a second create
+    // under a new request id, never a dropped create left on the server.
     if (database != null && id.isNotEmpty && isLocalId(id)) {
       if (operation == 'delete') {
-        await database.discardLocalEntity(
+        if (await database.discardUnsentLocalEntity(
           table: table ?? '',
           entityType: entityType,
           entityId: id,
-        );
-        await _offline?.refreshStatus();
-        return localJson;
-      }
-      if (operation != 'create') {
+        )) {
+          await _offline?.refreshStatus();
+          return localJson;
+        }
+      } else if (operation != 'create') {
         final create = pendingCreate;
         if (create == null) {
           throw StateError(
             '$entityType $operation on a queued row needs pendingCreate',
           );
         }
+        if (await database.rewriteUnsentSyncItem(
+          entityType: entityType,
+          operation: 'create',
+          localEntityId: id,
+          planId: planId,
+          endpoint: create.endpoint,
+          payload: create.payload,
+        )) {
+          if (table != null) {
+            await database.saveCachedItem(
+              table: table,
+              json: localJson,
+              dirty: true,
+            );
+          } else if (metaKey != null) {
+            await database.setMeta(metaKey, jsonEncode(localJson));
+          }
+          await _offline?.refreshStatus();
+          return localJson;
+        }
+      }
+      if (operation != 'create') {
         return _keepOnPhone(
           database: database,
           entityType: entityType,
-          operation: 'create',
-          method: 'POST',
-          endpoint: create.endpoint,
-          payload: create.payload,
+          operation: operation,
+          method: method,
+          endpoint: endpoint,
+          payload: payload,
           table: table,
           metaKey: metaKey,
           localJson: localJson,
@@ -357,12 +382,29 @@ class OfflineWrites {
     } else if (metaKey != null) {
       await database.setMeta(metaKey, jsonEncode(localJson));
     }
+    // RA-MO-31: an edit replaces the waiting edit of the same row, so it
+    // carries that edit's fields too (the newest value wins); a second,
+    // partial edit (an answer) never drops the first one (a name). Under a
+    // new request id: the waiting one may be on the server already.
+    final sentPayload = method == 'PATCH' && replacePendingForEntity
+        ? <String, dynamic>{
+            for (final waiting in [
+              ...await database.pendingSyncItems(),
+              ...await database.blockedSyncItems(),
+            ])
+              if (waiting.entityType == entityType &&
+                  waiting.operation == operation &&
+                  waiting.localEntityId == localEntityId)
+                ...waiting.payload,
+            ...payload,
+          }
+        : payload;
     await database.enqueueSync(
       entityType: entityType,
       operation: operation,
       endpoint: endpoint,
       method: method,
-      payload: payload,
+      payload: sentPayload,
       planId: planId,
       localEntityId: localEntityId,
       replacePendingForEntity: replacePendingForEntity,

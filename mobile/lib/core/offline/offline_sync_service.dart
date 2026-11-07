@@ -285,6 +285,20 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     SyncQueueItem item,
     Iterable<SyncQueueItem> others,
   ) {
+    // RA-MO-30: an edit or a delete of a row whose create still waits goes
+    // after that create (its local id is rewritten when the create lands).
+    final localEntityId = item.localEntityId;
+    if (item.operation != 'create' &&
+        localEntityId != null &&
+        others.any(
+          (other) =>
+              other.id != item.id &&
+              other.operation == 'create' &&
+              other.entityType == item.entityType &&
+              other.localEntityId == localEntityId,
+        )) {
+      return true;
+    }
     final references = {
       for (final match in _localIdPattern.allMatches(item.endpoint))
         match.group(0)!,
@@ -509,7 +523,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             ...refreshedItems,
             ...await database.blockedSyncItems(),
           ])) {
-            processedItemIds.add(candidate.id);
+            // Not marked processed: once its parent lands in this pass, it
+            // goes in this pass too. A pass ends when nothing is eligible.
             continue;
           }
           item = candidate;
@@ -521,6 +536,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           sessionChanged = true;
           break;
         }
+        // RA-MO-30: from here the server may have it, so a change made on
+        // the phone meanwhile goes after it instead of rewriting it. Gone or
+        // rewritten since it was read: skip it.
+        if (!await database.markSyncItemSending(item.id)) continue;
         try {
           final response = await apiClient.dio.request<Object?>(
             item.endpoint,
@@ -713,11 +732,38 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     }
 
     if (item.localEntityId != null && json['id'] != item.localEntityId) {
+      final followUps =
+          [
+            ...await database.pendingSyncItems(),
+            ...await database.blockedSyncItems(),
+          ].where(
+            (other) =>
+                other.id != item.id &&
+                other.entityType == item.entityType &&
+                other.localEntityId == item.localEntityId,
+          );
       await database.replaceCachedItemId(
         table: table,
         localId: item.localEntityId!,
         remoteJson: json,
       );
+      // RA-MO-30: the server's copy keeps showing what still waits after the
+      // create: an edit stays applied, a delete keeps the row hidden.
+      if (followUps.isNotEmpty) {
+        await database.saveCachedItem(
+          table: table,
+          json: {
+            ...json,
+            for (final change in followUps)
+              if (change.operation != 'delete') ...change.payload,
+            'id': json['id'],
+          },
+          dirty: true,
+          deletedLocally: followUps.any(
+            (change) => change.operation == 'delete',
+          ),
+        );
+      }
       // Dependent queued writes (e.g. a cost created offline against a local
       // category id) must now point at the real server id.
       final remoteId = json['id']?.toString();

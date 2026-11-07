@@ -1443,7 +1443,9 @@ summary built in the same transaction.
   agreement «المهر» with «أهل العروسة» (`payer: GROOM`), the handed-over part
   as a payment and the rest as a payment schedule on its day. An item the
   plan already named «المهر» becomes that item with the agreements already in
-  it (its allocation dropped; D59, no longer refused). A budget
+  it (its allocation dropped; D59, no longer refused); when it holds a live
+  agreement, that agreement is the mahr and no second one is added (RA-BE-18:
+  3,000,000 read 6,000,000); its amount changes through the money. A budget
   replacement (`PUT /api/v1/wedding-plans/:planId/money-budget`) never
   touches the mahr item. An agreement never moves between a wedding item and
   the MAHR item: `PATCH /api/v1/costs/:id` with such a `budgetCategoryId` is
@@ -1514,10 +1516,13 @@ Privacy: funding is the plan owner's private money picture. A member, even
 with money rights, gets an empty list from `GET` and `404` from every write.
 The owner's `money-summary` adds `funding` (`total`, `received`, `pledged`,
 `spent` = what the owner's own money paid (`costs.paidByOwner`, c05 «صرفت»),
-`availableCash` = received − spent («معك»: a payment someone else made for
-the owner never leaves the owner's hands, D59), `shortfall` = every agreement
-less what others paid for the owner less every source (null once covered;
-paid + in hand + promised + shortfall make up every agreement), loan totals,
+`availableCash` = received − spent, never below 0 («معك»: a payment someone
+else made for the owner never leaves the owner's hands, D59; an owner who
+paid more than he recorded as received holds nothing, RA-BE-17),
+`shortfall` = what is left to pay less what is in hand less what is promised
+(the same, while he holds money, as every agreement less what others paid
+for the owner less every source; null once covered; paid + in hand +
+promised + shortfall make up every agreement), loan totals,
 `overdueLoanRepayments`, `overduePledges` (promises past their day),
 `nextLoanRepayment`) and
 the warnings `FUNDING_SHORTFALL` and `LOAN_REPAYMENT_OVERDUE`; a member's

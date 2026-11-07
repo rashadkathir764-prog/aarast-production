@@ -116,7 +116,7 @@ export async function recordMahrInTransaction(
     ? null
     : await tx.budgetCategory.findUnique({
         where: { weddingPlanId_normalizedName: { weddingPlanId, normalizedName } },
-        select: { id: true },
+        select: { id: true, ...liveAgreements },
       });
   // An item the plan already named «المهر» becomes the MAHR item with the
   // agreements already in it: they were the mahr, outside the wedding
@@ -138,6 +138,10 @@ export async function recordMahrInTransaction(
         },
         select: { id: true },
       });
+  // RA-BE-18: those agreements were the mahr, so it is recorded now. Adding
+  // the one just typed as well counted it twice (3,000,000 read 6,000,000);
+  // changing its amount is the money's (MAHR_ALREADY_RECORDED's words).
+  if (named && named._count.weddingCosts > 0) return;
   await tx.weddingCost.create({
     data: {
       weddingPlanId,

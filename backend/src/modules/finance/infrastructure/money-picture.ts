@@ -463,14 +463,23 @@ export function summarizeFunding(
     }
   }
   const total = received.plus(pledged);
-  const uncovered = spent.confirmedCost.minus(spent.paidByOthers).minus(total);
+  // RA-BE-17: an owner may pay more than he recorded as received (money from
+  // outside the app, never entered). Then nothing is in hand, not a negative
+  // sum, and he lacks what is left to pay less what is promised; while he
+  // holds money this is the same as every agreement less what others paid
+  // less every source. Paid + in hand + promised + short still make up every
+  // agreement (D59).
+  const unspent = received.minus(spent.paidByOwner);
+  const inHand = unspent.gt(0) ? unspent : zero();
+  const left = spent.confirmedCost.minus(spent.paidByOwner).minus(spent.paidByOthers);
+  const uncovered = left.minus(inHand).minus(pledged);
   return {
     total: total.toString(),
     received: received.toString(),
     pledged: pledged.toString(),
     /** What the owner's own money paid («صرفت»): received = spent + in hand. */
     spent: spent.paidByOwner.toString(),
-    availableCash: received.minus(spent.paidByOwner).toString(),
+    availableCash: inHand.toString(),
     shortfall:
       sources.length > 0 && uncovered.gt(0) ? uncovered.toString() : null,
     loanTotal: loanTotal.toString(),

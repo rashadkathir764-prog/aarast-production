@@ -326,6 +326,36 @@ async function run() {
     check('and records it again in the same item',
       reRecord.status === 201 && reRecord.body?.mahr?.total === '2500000' &&
       reItems.length === 1 && reItems[0].categoryId === secondMahrItem?.categoryId);
+
+    // RA-BE-18: a groom who made an item «المهر» and put his agreement in it
+    // is still asked «اتفقتوا على المهر؟» (no MAHR item yet). Recording it
+    // turned his item into the mahr with his agreement and then added a
+    // second agreement: 3,000,000 read as 6,000,000.
+    const third = await register('Mahr groom with his own item', phone(17));
+    accounts.unshift(['third groom', third.token]);
+    const thirdPlan = await onboard(third.token, 'GROOM');
+    const thirdPlanId = thirdPlan.body?.activeWeddingPlan?.id;
+    const ownItem = await request('POST', `/api/v1/wedding-plans/${thirdPlanId}/budget-categories`, {
+      name: 'المهر',
+    }, third.token);
+    const ownAgreement = await request('POST', `/api/v1/wedding-plans/${thirdPlanId}/costs`, {
+      budgetCategoryId: ownItem.body?.id,
+      title: 'مهر العروسة',
+      totalAmount: '3000000',
+    }, third.token, randomUUID());
+    check('the third groom keeps his mahr in an item he named',
+      ownItem.status === 201 && ownAgreement.status === 201);
+    const asked = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/money-summary`, null, third.token);
+    check('and is still asked to record the mahr', asked.status === 200 && asked.body?.mahr === null);
+    const recorded = await request('POST', `/api/v1/wedding-plans/${thirdPlanId}/mahr`, { total: '3000000' }, third.token);
+    const after = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/money-summary`, null, third.token);
+    const thirdCosts = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/costs`, null, third.token);
+    const agreements = thirdCosts.body?.items ?? thirdCosts.body ?? [];
+    check(`recording it counts his agreement once: the mahr is 3,000,000, not 6,000,000 (read ${after.body?.mahr?.total}, ${agreements.length} agreements)`,
+      recorded.status === 201 && after.body?.mahr?.total === '3000000' &&
+      after.body?.costs?.total === '3000000' && agreements.length === 1);
+    check('his item is the mahr item now, outside the budget (C1)',
+      (after.body?.categories ?? []).some((item) => item.kind === 'MAHR' && item.categoryId === ownItem.body?.id));
   } catch (error) {
     check(`mahr smoke completes without error: ${error.message}`, false);
   } finally {

@@ -174,8 +174,12 @@ test('D59: the shortfall leaves out what others paid; paid, in hand, promised an
     groomPlanTx([source('SAVINGS', 3_000_000, 'RECEIVED'), source('OTHER', 500_000, 'PLEDGED')]),
     groomQuery,
   );
-  // 7.9 agreed - 1.3 the father paid - 3.5 in and promised.
-  assert.equal(picture.funding?.shortfall, '3100000');
+  // RA-BE-17: the groom's own money paid 3,300,000 (mahr 2.0, suit 0.2,
+  // hosp 1.1) of the 3,000,000 he recorded as received, so this read «معك
+  // −300,000» and «ناقصك 3,100,000» (7.9 − 1.3 − 3.5). Nothing is in hand;
+  // he lacks what is left (7.9 − 3.3 − 1.3 = 3.3) less the 0.5 promised.
+  assert.equal(picture.funding?.availableCash, '0');
+  assert.equal(picture.funding?.shortfall, '2800000');
   const parts = [
     picture.costs.paid,
     picture.funding?.availableCash,
@@ -222,7 +226,7 @@ test('D59: mahr funding is the bride plan\'s only, and a source keeps its side o
 /** The groom's money tables as the mahr recording reads and writes them. */
 function mahrTx(state: {
   mahrItem: { id: string; live: number } | null;
-  named: { id: string } | null;
+  named: { id: string; live: number } | null;
 }) {
   const writes: Array<[string, unknown]> = [];
   const tx = {
@@ -231,7 +235,10 @@ function mahrTx(state: {
         state.mahrItem
           ? { id: state.mahrItem.id, _count: { weddingCosts: state.mahrItem.live } }
           : null,
-      findUnique: async () => state.named,
+      findUnique: async () =>
+        state.named
+          ? { id: state.named.id, _count: { weddingCosts: state.named.live } }
+          : null,
       update: async (args: any) => {
         writes.push(['budgetCategory.update', args]);
         return { id: args.where.id };
@@ -280,9 +287,12 @@ test('D59: a live mahr agreement is still recorded once', async () => {
   assert.deepEqual(writes, []);
 });
 
-test('D59: the plan\'s own «المهر» item becomes the MAHR item with its agreements', async () => {
-  // Before D59 an item named «المهر» with an agreement refused the mahr.
-  const { tx, writes } = mahrTx({ mahrItem: null, named: { id: 'user-item' } });
+// RA-BE-18: this test gave the named item no agreement count and expected
+// the typed mahr added to it, though its own words say the item held an
+// agreement: the double count (3,000,000 read 6,000,000) on a real server.
+// It is two cases now: an empty item named «المهر», and one holding one.
+test('D59: the plan\'s own empty «المهر» item becomes the MAHR item and takes the mahr', async () => {
+  const { tx, writes } = mahrTx({ mahrItem: null, named: { id: 'user-item', live: 0 } });
   await recordMahrInTransaction(tx, 'plan-1', 'PAYS', agreement, day('2026-10-25'));
   assert.deepEqual(writes[0], [
     'budgetCategory.update',
@@ -294,6 +304,22 @@ test('D59: the plan\'s own «المهر» item becomes the MAHR item with its ag
   ]);
   assert.equal(writes[1][0], 'weddingCost.create');
   assert.equal((writes[1][1] as any).data.budgetCategoryId, 'user-item');
+});
+
+test('RA-BE-18: a «المهر» item holding an agreement becomes the MAHR item, its agreement the mahr', async () => {
+  // Before D59 an item named «المهر» with an agreement refused the mahr.
+  const { tx, writes } = mahrTx({ mahrItem: null, named: { id: 'user-item', live: 1 } });
+  await recordMahrInTransaction(tx, 'plan-1', 'PAYS', agreement, day('2026-10-25'));
+  assert.deepEqual(writes, [
+    [
+      'budgetCategory.update',
+      {
+        where: { id: 'user-item' },
+        data: { kind: 'MAHR', allocatedAmount: null },
+        select: { id: true },
+      },
+    ],
+  ]);
 });
 
 test('D59: promised money is reminded the day before and on its day, Sana\'a time', () => {

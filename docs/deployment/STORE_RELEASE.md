@@ -93,6 +93,7 @@ flutter build appbundle --release `
   --build-name=$buildName `
   --build-number=$buildNumber `
   --dart-define=AARAST_API_BASE_URL=https://aarast-api.shadowgardn.com `
+  --dart-define=AARAST_INVITE_HOST=aarast.shadowgardn.com `
   --dart-define=AARAST_FIREBASE_API_KEY=$env:AARAST_FIREBASE_API_KEY `
   --dart-define=AARAST_FIREBASE_APP_ID=$env:AARAST_FIREBASE_APP_ID `
   --dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$env:AARAST_FIREBASE_MESSAGING_SENDER_ID `
@@ -102,6 +103,13 @@ flutter build appbundle --release `
   --dart-define=AARAST_SENTRY_TRACES_SAMPLE_RATE=0.1 `
   --dart-define=SENTRY_RELEASE=$releaseId
 ```
+
+Every Android release names `AARAST_INVITE_HOST` (RA-MO-01): the public site
+host that serves the invite links, `assetlinks.json` and the privacy, terms and
+support pages. It must be the host of the server's `INVITE_PUBLIC_ORIGIN`
+(`AARAST_SITE_HOST` on AWS: `3-121-198-183.sslip.io` until the domain moves,
+then `aarast.shadowgardn.com`). Without it the build fails; it used to fall
+back to `aarast.shadowgardn.com`, which today is the old server on rk-server.
 
 Release also rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`. The API URL must be
 an explicit public HTTPS host without credentials, query, fragment, localhost,
@@ -123,6 +131,7 @@ $env:AARAST_ANDROID_APPLICATION_ID = 'com.aarast.aarast_mobile.qa'
 $env:AARAST_ANDROID_APP_LABEL = 'اعّرست QA'
 flutter build apk --release `
   --dart-define=AARAST_API_BASE_URL=https://your-staging-api.example `
+  --dart-define=AARAST_INVITE_HOST=your-staging-site.example `
   --dart-define=AARAST_FIREBASE_API_KEY=$env:AARAST_FIREBASE_API_KEY `
   --dart-define=AARAST_FIREBASE_APP_ID=$env:AARAST_FIREBASE_APP_ID `
   --dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$env:AARAST_FIREBASE_MESSAGING_SENDER_ID `

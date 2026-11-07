@@ -133,6 +133,23 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
         }
     }
 
+    // RA-MO-01: the participant invite links («انسخ الرابط»), the App Links
+    // filter and the public pages (privacy, terms, support) all open on this
+    // host. A release that guessed it sent them to another server than the
+    // one it talks to, so every release names it, as the server's
+    // INVITE_PUBLIC_ORIGIN does.
+    val releaseInviteHost = defines["AARAST_INVITE_HOST"]?.trim().orEmpty()
+    if (releaseInviteHost.isEmpty() ||
+        !releaseInviteHost.matches(Regex("^[a-zA-Z0-9.-]+$")) ||
+        isLocalOrPrivateHost(releaseInviteHost)
+    ) {
+        throw GradleException(
+            "Release builds require AARAST_INVITE_HOST: the public site host " +
+                "that serves the invite links and assetlinks.json (the host of " +
+                "the server's INVITE_PUBLIC_ORIGIN).",
+        )
+    }
+
     val bypassLoginGates = defines["AARAST_DEV_BYPASS_LOGIN_GATES"]?.trim()
     if (
         bypassLoginGates.equals("true", ignoreCase = true) ||
@@ -300,6 +317,8 @@ android {
         val defines = decodedDartDefines()
         applicationId = releaseApplicationId
         manifestPlaceholders["aarastAppLabel"] = releaseAppLabel
+        // A release always names it (RA-MO-01, validated above); this
+        // fallback serves debug builds only.
         manifestPlaceholders["aarastInviteHost"] =
             defines["AARAST_INVITE_HOST"]?.trim()?.takeIf(String::isNotEmpty)
                 ?: "aarast.shadowgardn.com"

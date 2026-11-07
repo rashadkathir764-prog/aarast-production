@@ -100,6 +100,25 @@ test('cutover still requires QA signing and forbids login bypass', () => {
   assert.notEqual(run({}, { AARAST_ANDROID_SIGNING_PROFILE: '' }).status, 0);
   assert.notEqual(run({ AARAST_DEV_BYPASS_LOGIN_GATES: 'true' }).status, 0);
 });
+// RA-MO-01: a production release that does not name its invite host would
+// build its invite links and public pages on a guessed, old domain.
+test('a production release names a public invite host', () => {
+  const production = { AARAST_ENVIRONMENT: 'production',
+    AARAST_STAGING_ROUTE_PROFILE: null, AARAST_FIREBASE_PROJECT_ID: 'aarast-d62e9' };
+  const productionIdentity = {
+    AARAST_ANDROID_APPLICATION_ID: 'com.aarast.aarast_mobile',
+    AARAST_ANDROID_SIGNING_PROFILE: '',
+  };
+  const missing = run({ ...production, AARAST_INVITE_HOST: null }, productionIdentity);
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.output, /Release builds require AARAST_INVITE_HOST/);
+  assert.notEqual(run({ ...production, AARAST_INVITE_HOST: 'localhost' }, productionIdentity).status, 0);
+  assert.notEqual(run({ ...production, AARAST_INVITE_HOST: '10.0.2.2' }, productionIdentity).status, 0);
+  assert.notEqual(run({ ...production, AARAST_INVITE_HOST: 'https://x.example.org' }, productionIdentity).status, 0);
+  const named = run({ ...production, AARAST_API_BASE_URL: 'https://3.121.198.183',
+    AARAST_INVITE_HOST: '3-121-198-183.sslip.io' }, productionIdentity);
+  assert.equal(named.status, 0, named.output);
+});
 test('isolated staging still accepts distinct HTTPS API/invite hosts', () => {
   const result = run({ AARAST_STAGING_ROUTE_PROFILE: 'isolated',
     AARAST_API_BASE_URL: 'https://api.test.example.org', AARAST_INVITE_HOST: 'invite.test.example.org' });

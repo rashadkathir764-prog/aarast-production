@@ -167,7 +167,55 @@ describe('ReviewsPage (a10)', () => {
     expect(row).toHaveTextContent('عادل · 20 يناير');
     expect(row).toHaveTextContent('فرقة الأفراح');
     expect(screen.getByText('تنشر على طول · المخالف ينخفي')).toBeVisible();
-    expect(screen.queryByText(/مبلّغ عنها/)).not.toBeInTheDocument();
+    // RA-ST-05: the reported ones have their own tab; a review nobody
+    // reported has no «خلّه».
+    expect(screen.getByRole('button', { name: 'مبلّغ عنها' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'خلّه' })).not.toBeInTheDocument();
+  });
+
+  // RA-ST-05: a reported review shows its reports; «خلّه» keeps it, which
+  // answers them.
+  it('lists the reported ones with their reports and keeps one', async () => {
+    vi.mocked(getReviews).mockResolvedValue(
+      page([
+        {
+          ...review('PUBLISHED'),
+          openReports: [
+            { reason: 'كلام مسيء', createdAt: '2027-01-21T10:00:00.000Z' },
+            { reason: 'ما حجز عندهم أصلًا', createdAt: '2027-01-20T10:00:00.000Z' },
+          ],
+        },
+      ]),
+    );
+    vi.mocked(updateReviewStatus).mockResolvedValue(review('PUBLISHED'));
+    renderReviews();
+    await screen.findByText(/ما جوا أصلًا/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'مبلّغ عنها' }));
+    await waitFor(() =>
+      expect(getReviews).toHaveBeenLastCalledWith({ reported: 'true', page: 1, limit: 20 }),
+    );
+    const row = (await screen.findByText(/ما جوا أصلًا/)).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('بلاغات (2): «كلام مسيء»، «ما حجز عندهم أصلًا»');
+
+    fireEvent.click(within(row).getByRole('button', { name: 'خلّه' }));
+    await waitFor(() => expect(updateReviewStatus).toHaveBeenCalledWith('review-1', 'PUBLISHED'));
+  });
+
+  // RA-ST-05: the server lists five reasons at most; the count is all of them.
+  it('counts every open report, not only the reasons it lists', async () => {
+    vi.mocked(getReviews).mockResolvedValue(
+      page([
+        {
+          ...review('PUBLISHED'),
+          openReports: [{ reason: 'كلام مسيء', createdAt: '2027-01-21T10:00:00.000Z' }],
+          openReportCount: 7,
+        },
+      ]),
+    );
+    renderReviews();
+    const row = (await screen.findByText(/ما جوا أصلًا/)).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('بلاغات (7): «كلام مسيء»');
   });
 
   it('asks before hiding a review', async () => {

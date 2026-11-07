@@ -16,6 +16,11 @@ export type ProviderReview = {
   status: string;
   /** B-09: the provider's one reply and whether customers read it. */
   reply?: { body: string; repliedAt: string; status: 'PUBLISHED' | 'HIDDEN' } | null;
+  /** RA-ST-05: the latest open reports (five at most), newest first; the
+   * reporters stay unnamed. */
+  openReports?: { reason: string; createdAt: string }[];
+  /** RA-ST-05: how many reports are open, all of them. */
+  openReportCount?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -113,6 +118,8 @@ type QueryParams = {
   status?: string;
   providerId?: string;
   search?: string;
+  /** RA-ST-05: 'true' for the reviews with an open report. */
+  reported?: string;
   page?: number;
   limit?: number;
 };

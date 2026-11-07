@@ -1,5 +1,7 @@
-// a10 «التقييمات». «مبلّغ عنها», the report column and «خلّه» wait for B-28
-// and «شوف الحجز» for B-40. The provider's reply (B-09) reads under the
+// a10 «التقييمات». «مبلّغ عنها» lists the reviews someone reported (RA-ST-05),
+// their reports read under them, and «خلّه» keeps a review the team finds
+// fair; hiding or keeping answers its reports. «شوف الحجز» waits for B-40.
+// The provider's reply (B-09) reads under the
 // review as drawn («رد المزود: «…»»); the team hides it like a review with
 // «أخفِ الرد» and brings it back with «أظهر الرد» (undrawn: needed to moderate
 // it). Hiding takes no reason and tells no one yet (A-08), so the page does
@@ -28,7 +30,7 @@ import {
 } from '../../design_system/Desk';
 import { dayMonth } from '../../platform/i18n/deskTime';
 
-type Tab = 'ALL' | 'HIDDEN';
+type Tab = 'ALL' | 'REPORTED' | 'HIDDEN';
 
 type Page = {
   items: ProviderReview[];
@@ -37,6 +39,11 @@ type Page = {
   total: number;
   totalPages: number;
 };
+
+/** RA-ST-05: every open report, not only the reasons listed. */
+function openReportCount(review: ProviderReview): number {
+  return review.openReportCount ?? review.openReports?.length ?? 0;
+}
 
 export function ReviewsPage() {
   const [tab, setTab] = useState<Tab>('ALL');
@@ -50,7 +57,12 @@ export function ReviewsPage() {
     setError(null);
     try {
       setResult(
-        await getReviews({ status: tab === 'HIDDEN' ? 'HIDDEN' : undefined, page, limit: 20 }),
+        await getReviews({
+          status: tab === 'HIDDEN' ? 'HIDDEN' : undefined,
+          reported: tab === 'REPORTED' ? 'true' : undefined,
+          page,
+          limit: 20,
+        }),
       );
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل التقييمات.');
@@ -108,6 +120,7 @@ export function ReviewsPage() {
         actions={(
           [
             ['ALL', 'الكل'],
+            ['REPORTED', 'مبلّغ عنها'],
             ['HIDDEN', 'مخفية'],
           ] as const
         ).map(([value, label]) => (
@@ -126,7 +139,13 @@ export function ReviewsPage() {
       {result === null && !error ? <DeskNote>لحظة، نحمّل التقييمات…</DeskNote> : null}
       {result && result.items.length === 0 ? (
         <Panel>
-          <DeskNote>{tab === 'HIDDEN' ? 'ما فيه تقييم مخفي.' : 'ما فيه تقييمات بعد.'}</DeskNote>
+          <DeskNote>
+            {tab === 'HIDDEN'
+              ? 'ما فيه تقييم مخفي.'
+              : tab === 'REPORTED'
+                ? 'ما فيه تقييم مبلّغ عنه ينتظر.'
+                : 'ما فيه تقييمات بعد.'}
+          </DeskNote>
         </Panel>
       ) : null}
       {result && result.items.length > 0 ? (
@@ -159,6 +178,13 @@ export function ReviewsPage() {
                         `${review.reply.status === 'HIDDEN' ? 'رد المزود (مخفي)' : 'رد المزود'}: «${review.reply.body}»`,
                       ]
                     : []),
+                  ...(openReportCount(review)
+                    ? [
+                        `بلاغات (${openReportCount(review)}): ${(review.openReports ?? [])
+                          .map((report) => `«${report.reason}»`)
+                          .join('، ')}`,
+                      ]
+                    : []),
                 ].join(' · ')}
               />,
               review.provider?.businessName ?? '—',
@@ -167,6 +193,11 @@ export function ReviewsPage() {
                   {review.status === 'HIDDEN' || review.status === 'PENDING' ? (
                     <SoftAction disabled={busyId === review.id} onClick={() => void publish(review)}>
                       {review.status === 'HIDDEN' ? 'أظهره' : 'انشره'}
+                    </SoftAction>
+                  ) : null}
+                  {review.status === 'PUBLISHED' && openReportCount(review) ? (
+                    <SoftAction disabled={busyId === review.id} onClick={() => void publish(review)}>
+                      خلّه
                     </SoftAction>
                   ) : null}
                   {review.status !== 'HIDDEN' ? (

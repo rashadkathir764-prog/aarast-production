@@ -43,6 +43,16 @@ docker run --rm -v "D:\projects\aarast\backend:/app:ro" -w /app node:24-alpine `
   node --test -r ts-node/register test/openwa-credential-file.test.ts
 ```
 
+The phone keeps its offline queue in encrypted SQLite (`sqflite_sqlcipher`);
+Windows and the unit tests use the JSON store. So the queue's own statements
+run on an Android device or emulator before a release (RA-MO-30). It wipes the
+app's local data on that device:
+
+```powershell
+cd mobile
+flutter test integration_test/offline_queue_sqlite_android_test.dart -d emulator-5554
+```
+
 `npm run smoke:all` runs in isolated databases. If a run is killed, delete the Redis DB 15 lock `aarast:managed-smoke:lock` from `aarast-redis`.
 
 ## Rules

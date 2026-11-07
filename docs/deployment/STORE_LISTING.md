@@ -49,7 +49,8 @@ local tests are not evidence that a production release or public domain is live.
 عند عودة الاتصال. تختلف الإتاحة دون إنترنت حسب الميزة، وتحتاج وظائف الخادم
 والتواصل والمزامنة إلى الشبكة.
 
-خصوصيتك أولاً: لا نبيع بياناتك، ولا نعرض إعلانات، ولا نعالج مدفوعات أو نخزّن
+خصوصيتك أولاً: لا نبيع بياناتك، ولا نعرض إعلانات من شبكات إعلانية (المزود الذي
+يدفع ليظهر أولًا يحمل علامة «مميز» واضحة)، ولا نعالج مدفوعات أو نخزّن
 بيانات بطاقات بنكية. بيانات التخطيط المالي التي تدخلها خاصة افتراضياً وتخضع
 للصلاحيات التي تختارها.
 ```
@@ -65,6 +66,19 @@ local tests are not evidence that a production release or public domain is live.
 - Expected IARC result: **Everyone / 3+**, subject to the answers entered in
   the current console questionnaire. Do not publish a predicted rating as an
   approved rating.
+
+## Ads and payments declarations (D96)
+
+- **Contains ads: No.** No ad network or SDK. A provider may pay the team to
+  come up first; that is paid placement, which Google's ads declaration
+  excludes ("isn't meant to cover … paid product placement"), and the app
+  labels it for the couples («مميز» → «هذا المزود دفع عشان يطلع أول. مو ترشيح
+  من اعّرست.»). The listing text says so rather than "no ads" alone.
+- **In-app purchases: none.** The placement is sold by the team directly to
+  the business, outside the app. The app never invites paying for it (Play
+  payments policy, section 4: an app may not lead users to a payment method
+  other than Google Play billing); the provider's «الظهور المميز» row only
+  shows a placement the team already recorded, and leads nowhere.
 
 ## Contact and policy
 

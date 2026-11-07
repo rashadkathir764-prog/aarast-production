@@ -33,6 +33,16 @@ flutter test --no-pub
 
 Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails.
 
+On Windows, `npm test` skips the one test that needs POSIX file modes
+(`openwa-credential-file.test.ts`: the OpenWA credential file must refuse
+broad permissions and symbolic links). While CI is off it runs nowhere else,
+so run it in a Linux container before a release (RA-TS-02):
+
+```powershell
+docker run --rm -v "D:\projects\aarast\backend:/app:ro" -w /app node:24-alpine `
+  node --test -r ts-node/register test/openwa-credential-file.test.ts
+```
+
 `npm run smoke:all` runs in isolated databases. If a run is killed, delete the Redis DB 15 lock `aarast:managed-smoke:lock` from `aarast-redis`.
 
 ## Rules

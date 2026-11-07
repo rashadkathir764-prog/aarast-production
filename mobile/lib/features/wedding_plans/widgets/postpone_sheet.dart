@@ -58,6 +58,11 @@ class _PostponeSheetState extends State<_PostponeSheet> {
 
   /// The date moved but the tasks did not: the retry moves only the tasks.
   bool _dateSaved = false;
+
+  /// RA-BE-71: one move of the tasks, the same for every retry of it (the
+  /// day is locked once the date is saved), so a retry after a lost answer
+  /// gets the first answer instead of moving the tasks again.
+  String? _shiftRequestId;
   String? _error;
 
   @override
@@ -137,7 +142,11 @@ class _PostponeSheetState extends State<_PostponeSheet> {
     }
     if ((_openDatedTasks ?? 1) > 0) {
       try {
-        await tasksApi.shiftOpenDueDates(widget.planId, days);
+        await tasksApi.shiftOpenDueDates(
+          widget.planId,
+          days,
+          clientRequestId: _shiftRequestId ??= ApiClient.newClientRequestId(),
+        );
       } on Object {
         if (!mounted) return;
         setState(() {

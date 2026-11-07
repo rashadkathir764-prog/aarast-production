@@ -279,7 +279,7 @@ class ApiClient {
     final requestId =
         _safeRequestId(options.extra[_requestClientIdKey]?.toString()) ??
         _safeRequestId(_requestHeader(options, clientRequestIdHeader)) ??
-        _newClientRequestId();
+        newClientRequestId();
     final attempt = (options.extra[_requestAttemptKey] as int? ?? 0) + 1;
 
     options.headers.removeWhere(
@@ -442,7 +442,10 @@ class ApiClient {
     return normalized;
   }
 
-  static String _newClientRequestId() {
+  /// A fresh `X-Client-Request-Id`. A one-off action the person may retry by
+  /// hand (RA-BE-71) keeps one for every try, so the server answers a retry
+  /// of a request that already happened with its first answer.
+  static String newClientRequestId() {
     final buffer = StringBuffer();
     for (var index = 0; index < 16; index += 1) {
       buffer.write(

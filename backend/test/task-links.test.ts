@@ -6,6 +6,7 @@ import { BookingsService } from "../src/marketplace/bookings.service";
 import { TasksPortService } from "../src/modules/tasks/infrastructure/tasks-port.service";
 import { isPlanItemBooked } from "../src/modules/marketplace/public/plan-booked-services";
 import { starterTaskService } from "../src/tasks/task-starter-services";
+import { manualStatusPatch } from "../src/tasks/task-status-patch";
 import { TasksService } from "../src/tasks/tasks.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
 
@@ -26,6 +27,15 @@ function fakeTasks() {
     } as any,
   };
 }
+
+test("RA-BE-67: an edit that sends the same status keeps the mark that a link closed the task", () => {
+  // The phone sends the status with every edit (a fixed typo in the title).
+  assert.deepEqual(manualStatusPatch("DONE", "DONE"), {});
+  assert.deepEqual(manualStatusPatch("DONE", undefined), {});
+  // A status changed by hand is the person's: no link undoes it later.
+  assert.deepEqual(manualStatusPatch("DONE", "TODO"), { status: "TODO", autoClosedAt: null });
+  assert.deepEqual(manualStatusPatch("TODO", "DONE"), { status: "DONE", autoClosedAt: null });
+});
 
 test("a settled link closes its open tasks and marks them closed by the link", async () => {
   const { calls, tx } = fakeTasks();

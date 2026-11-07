@@ -173,10 +173,12 @@ type ProviderPackageRecord = ProviderPackage & {
 type ProviderQuoteRecord = QuoteRequest & {
   user: Pick<User, 'id' | 'name' | 'appName' | 'phone' | 'role'>;
   service?: (ProviderService & { category: ProviderCategory }) | null;
-  weddingPlan?: Pick<
-    WeddingPlan,
-    'id' | 'title' | 'city' | 'weddingDate' | 'currency'
-  > | null;
+  // D75 (RA-BE-80): never the plan's title on the provider's side.
+  weddingPlan?:
+    | (Pick<WeddingPlan, 'id' | 'city' | 'weddingDate' | 'currency'> & {
+        title: null;
+      })
+    | null;
   offers?: QuoteOffer[];
   booking?: Booking | null;
   bookingMoney?: ProviderBookingMoney | null;

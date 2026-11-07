@@ -135,12 +135,21 @@ class TaskTimelineApi {
   /// The wedding moved (V1 checklist 4.13): the owner moves the plan's open
   /// dated tasks by [days]. Online only: it is a one-off decision the owner
   /// takes right after changing the date. Returns how many tasks moved.
-  Future<int> shiftOpenDueDates(String weddingPlanId, int days) async {
+  ///
+  /// RA-BE-71: the move is relative, so a retry after a lost answer moved
+  /// every task twice. Every try of one move sends the same [clientRequestId],
+  /// and the server answers a repeat with the first answer.
+  Future<int> shiftOpenDueDates(
+    String weddingPlanId,
+    int days, {
+    required String clientRequestId,
+  }) async {
     final json = await _writes.serverOnly(
       reason: _shiftNeedsServer,
       method: 'POST',
       path: '/api/v1/wedding-plans/$weddingPlanId/tasks/shift-due-dates',
       body: {'days': days},
+      clientRequestId: clientRequestId,
     );
     final shifted = json['shifted'];
     return shifted is num ? shifted.toInt() : 0;

@@ -139,7 +139,12 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
   assert.equal("priorities" in (recorded?.snapshot ?? {}), false);
 });
 
-test("a contributor archive records the frozen PLAN event and archives its history scope atomically", async () => {
+// RA-BE-70: archiving is the owner's alone; this test had a contributor
+// archive the plan, which is the defect itself. It checks the history the
+// archive records, which is the same when the owner archives.
+test("the owner's archive records the frozen PLAN event and archives its history scope atomically", async () => {
+  const context = { plan: planningPlan, isOwner: true, sharedMember: null };
+  const actor = { id: ownerUserId } as any;
   const operations: string[] = [];
   const archivedAt = new Date("2026-08-02T11:00:00.000Z");
   const archivedPlan = {

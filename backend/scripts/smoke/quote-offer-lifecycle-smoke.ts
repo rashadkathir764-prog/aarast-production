@@ -200,6 +200,8 @@ async function main(): Promise<void> {
   const listedPrivate = providerList.find((item: any) => item.id === privateQuote.id);
   assert.equal(listedPrivate.budgetMin, null);
   assert.equal(listedPrivate.user.phone, null);
+  // D75 (RA-BE-80): his request list carries the wedding's day, not its title.
+  assert.ok(!JSON.stringify(providerList).includes("عرس محمد"), "no plan title in the provider's requests");
   pass("the provider reads the customer's budget and phone only on the request that shared them");
 
   // ---------------------------------------------------------------- B-14
@@ -211,17 +213,21 @@ async function main(): Promise<void> {
   const items = conversations.items ?? conversations;
   const planChat = items.find((item: any) => item.weddingPlan?.id === plan.id);
   assert.ok(planChat, "the plan's conversation is listed");
+  // D75 (RA-BE-80): this expected the plan's title («عرس محمد») for the
+  // provider, which D75 keeps from him; the label stays as a null field.
   assert.deepEqual(planChat.counterpart, {
     firstName: "محمد",
-    weddingLabel: "عرس محمد",
+    weddingLabel: null,
     eventDate: planChat.latestQuoteRequest.eventDate,
   });
+  assert.equal(planChat.weddingPlan.title, null);
+  assert.ok(!JSON.stringify(conversations).includes("عرس محمد"), "no plan title reaches the provider");
   const chatQuote = planChat.latestQuoteRequest;
   if (chatQuote.id === privateQuote.id) {
     assert.equal(chatQuote.budgetMin, undefined);
     assert.equal(chatQuote.contactPhone, undefined);
   }
-  pass("in a plan's conversation the provider reads the customer's first name, the wedding and its day, and no phone");
+  pass("in a plan's conversation the provider reads the customer's first name and the wedding's day, no plan title and no phone");
 
   // ---------------------------------------------------------------- B-04 window
   const created = await prisma.quoteRequest.findUniqueOrThrow({ where: { id: privateQuote.id } });

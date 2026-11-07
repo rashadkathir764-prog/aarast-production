@@ -59,6 +59,7 @@ import {
   type ProviderReadPort,
 } from "../modules/marketplace/public/provider-read.port";
 import { starterTaskService } from "./task-starter-services";
+import { manualStatusPatch } from "./task-status-patch";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
@@ -396,10 +397,7 @@ export class TasksService {
           ...(dto.reminderAt !== undefined
             ? { reminderAt: this.optionalDate(dto.reminderAt, "reminderAt") }
             : {}),
-          // R4: a status set by hand stays set: no link undoes it later.
-          ...(dto.status !== undefined
-            ? { status: dto.status, autoClosedAt: null }
-            : {}),
+          ...manualStatusPatch(current.status, dto.status),
           ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
           ...(link
             ? {

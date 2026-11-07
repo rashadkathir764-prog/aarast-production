@@ -136,7 +136,9 @@ export class MarketplaceRelationsService {
       T & {
         user: AppIdentity;
         service: (ProviderService & { category: ProviderCategory }) | null;
-        weddingPlan: Pick<WeddingPlan, "id" | "title" | "city" | "weddingDate" | "currency"> | null;
+        weddingPlan:
+          | (Pick<WeddingPlan, "id" | "city" | "weddingDate" | "currency"> & { title: null })
+          | null;
         bookingMoney: ProviderBookingMoney | null;
       }
     >
@@ -177,10 +179,12 @@ export class MarketplaceRelationsService {
               category: this.required(categories.get(quote.service.categoryId), "Provider category"),
             }
           : null,
+        // D75 (RA-BE-80): the provider reads the wedding's city, day and
+        // currency, never the plan's title; the field stays (D93).
         weddingPlan: plan
           ? {
               id: plan.id,
-              title: plan.title,
+              title: null,
               city: plan.city,
               weddingDate: plan.weddingDate,
               currency: plan.currency,

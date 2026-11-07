@@ -38,6 +38,58 @@ test("finance role cannot restore a stored money permission in conversations", (
   assert.equal(access?.canManageMoney, false);
 });
 
+test("RA-BE-73: a conversation's offer carries no extra's price to a reader without money", () => {
+  const service = conversationsService({} as any, {} as any, {} as any, {} as any, {} as any);
+  const offer = {
+    id: "offer",
+    amount: "500000",
+    currentVersionNo: 2,
+    versionChanges: [{ field: "amount", from: "400000", to: "500000" }],
+    revisionNoticeAt: null,
+    lines: [
+      { label: "تصوير", kind: "INCLUDED", amount: null },
+      { label: "درون", kind: "EXTRA", amount: "80000" },
+    ],
+    deliveryDays: 30,
+    revisedAt: null,
+    withdrawnAt: null,
+    withdrawnReason: null,
+  };
+  const quote = {
+    id: "quote",
+    user: { id: "owner", name: "عبدالله", appName: null, avatarUrl: null, appAvatarUrl: null },
+    offers: [offer],
+    budgetMin: null,
+    budgetMax: null,
+    contactName: null,
+    contactPhone: null,
+    contactNormalizedPhone: null,
+    shareBudget: false,
+    shareContact: false,
+  };
+  const read = (canViewMoney: boolean) =>
+    (service as any).toQuoteRequestResponse(quote, {
+      side: "CUSTOMER",
+      canViewMoney,
+      canViewContact: false,
+    }).offers[0];
+
+  const helper = read(false);
+  assert.equal(helper.amount, undefined);
+  assert.deepEqual(
+    helper.lines.map((line: { amount: string | null }) => line.amount),
+    [null, null],
+  );
+  assert.deepEqual(helper.changes, []);
+  const owner = read(true);
+  assert.equal(owner.amount, "500000");
+  assert.deepEqual(
+    owner.lines.map((line: { amount: string | null }) => line.amount),
+    [null, "80000"],
+  );
+  assert.equal(owner.versionNo, 2);
+});
+
 // The money visibility used to be a join on the membership row's flags; the
 // plans a reader may see money in are derived from the membership rows
 // (canViewMoney or canManageMoney) when the predicate is built, never from

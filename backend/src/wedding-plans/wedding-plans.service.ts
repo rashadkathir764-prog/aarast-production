@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -332,6 +333,15 @@ export class WeddingPlansService {
           id,
           currentUser,
         );
+      // RA-BE-70: archiving has no way back and revokes every invite, so it
+      // is the owner's, as the app offers it; editing the plan is not enough.
+      if (!context.isOwner) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: "PLAN_ARCHIVE_OWNER_ONLY",
+          message: "أرشفة الخطة لصاحبها بس.",
+        });
+      }
       const archivedAt = new Date();
       const plan = await archiveWeddingPlan(tx, id);
       // The permission assertion above holds the plan's UPDATE lock. Invite

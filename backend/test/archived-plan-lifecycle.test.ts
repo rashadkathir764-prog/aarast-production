@@ -12,7 +12,7 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import {
   AppRole,
   ConversationScope,
@@ -192,6 +192,42 @@ test('archiving a plan revokes every live pending invitation in the same transac
     expiresAt: { gt: inviteMutation.data.revokedAt },
   });
   assert.ok(inviteMutation.data.revokedAt instanceof Date);
+});
+
+test('RA-BE-70: only the owner archives the plan; a member who manages it is refused', async () => {
+  // Archiving cannot be undone and revokes every invite; the app offers it
+  // to the owner alone, and editing the plan does not make it a member's.
+  const writes: string[] = [];
+  const tx = {
+    weddingPlan: { update: async () => writes.push('plan:archived') },
+    planInvite: { updateMany: async () => writes.push('invites:revoked') },
+  };
+  const service = new WeddingPlansService(
+    {
+      $transaction: async (operation: (client: any) => Promise<unknown>) =>
+        operation(tx),
+    } as any,
+    collaborationPermissions({
+      assertPlanManageableForUpdateInTransaction: async () => ({
+        plan: { ...archivedPlan, status: WeddingPlanStatus.PLANNING },
+        isOwner: false,
+        sharedMember: { userId: 'manager', role: SharedMemberRole.MANAGER },
+      }),
+      canViewMoney: () => true,
+    }) as any,
+    collaborationHistory({
+      recordForContextInTransaction: async () => null,
+    }) as any,
+    ...planningOwnerPorts,
+  );
+
+  await assert.rejects(
+    () => service.archive({ ...requester, id: 'manager' }, weddingPlanId),
+    (error: unknown) =>
+      error instanceof ForbiddenException &&
+      (error.getResponse() as { code?: string }).code === 'PLAN_ARCHIVE_OWNER_ONLY',
+  );
+  assert.deepEqual(writes, []);
 });
 
 test('an archived plan cannot be selected as active under the stable lifecycle contract', async () => {

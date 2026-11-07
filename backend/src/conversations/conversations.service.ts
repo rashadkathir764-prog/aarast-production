@@ -35,10 +35,7 @@ import {
   isProviderOperational,
 } from '../modules/marketplace/public/provider-access-policy';
 import { chatMessageNotification } from './chat-notifications';
-import {
-  readQuoteOfferChanges,
-  visibleQuoteOfferChanges,
-} from '../modules/marketplace/public/quote-offer-versions';
+import { quoteOfferVersionView } from '../modules/marketplace/public/quote-offer-versions';
 import {
   assertWeddingPlanWritable,
   isWeddingPlanWritable,
@@ -112,17 +109,16 @@ function customerSummaryForProvider(user: ApplicationAvatarSource & { id: string
 
 /**
  * B-14: who the provider talks to in a plan's conversation: the customer's
- * first name, the wedding and its day. No phone, no picture, no surname.
+ * first name and the wedding's day. No phone, no picture, no surname, and
+ * not the plan's title (D75, RA-BE-80): `weddingLabel` stays for older
+ * phones (D93) and is always null.
  */
-function planCustomerForProvider(
-  quote: QuoteRequestWithRequester,
-  plan: { title: string } | null,
-) {
+function planCustomerForProvider(quote: QuoteRequestWithRequester) {
   const firstName =
     applicationDisplayName(quote.user).trim().split(/\s+/u)[0] || null;
   return {
     firstName,
-    weddingLabel: plan?.title ?? null,
+    weddingLabel: null,
     eventDate: quote.eventDate,
   };
 }
@@ -1005,13 +1001,18 @@ export class ConversationsService {
               appRole: conversation.accountRequester.appRole,
             }
           : conversation.scope === ConversationScope.PLAN && latestQuote
-            ? planCustomerForProvider(latestQuote, conversation.weddingPlan)
+            ? planCustomerForProvider(latestQuote)
             : null;
     return {
       id: conversation.id,
       scope: conversation.scope,
+      // D75 (RA-BE-80): the plan's title («عرس سلمى») is for the people she
+      // chose; the provider reads the plan's id only. The field stays (D93).
       weddingPlan: conversation.weddingPlan
-        ? { id: conversation.weddingPlan.id, title: conversation.weddingPlan.title }
+        ? {
+            id: conversation.weddingPlan.id,
+            title: access.side === 'CUSTOMER' ? conversation.weddingPlan.title : null,
+          }
         : null,
       provider: {
         id: conversation.provider.id,
@@ -1064,12 +1065,12 @@ export class ConversationsService {
   private toQuoteRequestResponse<
     T extends {
       user: ApplicationAvatarSource & { id: string };
-      offers: Array<{
-        amount: Prisma.Decimal | null;
-        currentVersionNo: number;
-        versionChanges: Prisma.JsonValue | null;
-        revisionNoticeAt?: Date | null;
-      }>;
+      offers: Array<
+        Parameters<typeof quoteOfferVersionView>[0] & {
+          amount: Prisma.Decimal | null;
+          revisionNoticeAt?: Date | null;
+        }
+      >;
       budgetMin: Prisma.Decimal | null;
       budgetMax: Prisma.Decimal | null;
       contactName: string | null;
@@ -1098,24 +1099,25 @@ export class ConversationsService {
       ...safe,
       // B-14: his name as drawn, never his picture.
       user: provider ? customerSummaryForProvider(user) : toApplicationUserSummary(user),
-      offers: offers.map(
-        ({
+      offers: offers.map((source) => {
+        const {
           amount,
-          currentVersionNo,
-          versionChanges,
+          currentVersionNo: _currentVersionNo,
+          versionChanges: _versionChanges,
           revisionNoticeAt: _revisionNoticeAt,
+          lines: _lines,
           ...offer
-        }) => ({
-        ...offer,
-        ...(access.canViewMoney ? { amount } : {}),
-        // B-06: the version and «ايش تغيّر», named as the quote APIs name
-        // them, without amounts for a viewer who sees no money.
-        versionNo: currentVersionNo,
-        changes: visibleQuoteOfferChanges(
-          readQuoteOfferChanges(versionChanges),
-          access.canViewMoney,
-        ),
-      })),
+        } = source;
+        return {
+          ...offer,
+          ...(access.canViewMoney ? { amount } : {}),
+          // B-06, B-07: the version, «ايش تغيّر» and what the price covers,
+          // read the one way every offer response reads them, without
+          // amounts for a viewer who sees no money (RA-BE-73: the lines
+          // went out as stored, an extra's price included).
+          ...quoteOfferVersionView(source, access.canViewMoney),
+        };
+      }),
       ...(showBudget ? { budgetMin, budgetMax } : {}),
       ...(access.canViewContact ? { contactName } : {}),
       ...(showPhone ? { contactPhone } : {}),

@@ -190,6 +190,9 @@ test('active executable and documentation readers contain no retired single-file
   for (const absolute of listFiles(repoRoot)) {
     const relative = path.relative(repoRoot, absolute).replaceAll('\\', '/');
     if (relative.startsWith('.git/') || relative.startsWith('.superpowers/') || relative.startsWith('node_modules/')) continue;
+    // Other checkouts of this repository (git worktrees an agent works in,
+    // not tracked here): each is the same files, scanned in its own checkout.
+    if (relative.startsWith('.claude/worktrees/')) continue;
     const extension = path.extname(relative).toLowerCase();
     if (!executableExtensions.has(extension) && extension !== '.md') continue;
     if (relative.includes('/node_modules/') || relative.includes('/dist/')) continue;

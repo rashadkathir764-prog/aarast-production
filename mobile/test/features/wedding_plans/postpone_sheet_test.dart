@@ -31,6 +31,7 @@ class _Tasks extends TaskTimelineApi {
   _Tasks(super.apiClient);
 
   final shifted = <int>[];
+  final requestIds = <String>[];
   bool failShift = false;
 
   @override
@@ -42,7 +43,12 @@ class _Tasks extends TaskTimelineApi {
   ];
 
   @override
-  Future<int> shiftOpenDueDates(String weddingPlanId, int days) async {
+  Future<int> shiftOpenDueDates(
+    String weddingPlanId,
+    int days, {
+    required String clientRequestId,
+  }) async {
+    requestIds.add(clientRequestId);
     if (failShift) throw Exception('offline');
     shifted.add(days);
     return 2;
@@ -200,5 +206,9 @@ void main() {
 
     expect(plans.saved, hasLength(1));
     expect(tasks.shifted, [84]);
+    // RA-BE-71: the move is relative; a retry after a lost answer is the
+    // same request, so the server answers it once and the tasks move once.
+    expect(tasks.requestIds, hasLength(2));
+    expect(tasks.requestIds.toSet(), hasLength(1));
   });
 }

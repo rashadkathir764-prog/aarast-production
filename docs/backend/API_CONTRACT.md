@@ -758,7 +758,10 @@ Protected routes:
 - `POST /api/v1/wedding-plans/:id/set-active`
 - `GET /api/v1/wedding-plans/:id`
 - `PATCH /api/v1/wedding-plans/:id`
-- `PATCH /api/v1/wedding-plans/:id/archive`
+- `PATCH /api/v1/wedding-plans/:id/archive`: the owner's alone (RA-BE-70).
+  Archiving has no way back and revokes every live invite, so a member who
+  may edit the plan gets `403 PLAN_ARCHIVE_OWNER_ONLY`
+  («أرشفة الخطة لصاحبها بس.»), as the app offers it to the owner only.
 
 These are the only live wedding-plan routes.
 
@@ -1573,12 +1576,15 @@ Protected routes:
 - `PATCH /api/v1/tasks/:id`
 - `DELETE /api/v1/tasks/:id`
 - `POST /api/v1/wedding-plans/:weddingPlanId/tasks/shift-due-dates` `{ days }`
-  (V1 checklist 4.13, plan owner only, `-730..730`, not `0`): the wedding
+  (V1 checklist 4.13, the plan's owner or partner, who see every task,
+  `-730..730`, not `0`): the wedding
   moved, so the plan's `TODO`/`IN_PROGRESS` tasks with a due date move by
   `days` (due date and reminder together, one statement); done, cancelled
   and undated tasks keep theirs. Returns `{ shifted }`. The app offers it
   right after the owner changes the wedding date; payment schedules and
-  bookings never move on their own.
+  bookings never move on their own. The move is relative, so the app sends
+  one `X-Client-Request-Id` for every try of one move, and a retry after a
+  lost answer is answered with the first answer (RA-BE-71).
 
 Create request:
 
@@ -2569,8 +2575,14 @@ B-08, B-14, G19; D50):
   conversation's latest quote follows the same rule on the provider side.
 - **Who the provider talks to (B-14, D53).** In a plan's conversation the
   provider side's `counterpart` is `{ firstName, weddingLabel, eventDate }`:
-  the requester's first name, the plan's title and the request's day, with no
-  phone and no picture. Wherever else the provider side reads a customer-side
+  the requester's first name and the request's day, with no phone and no
+  picture. `weddingLabel` is always `null` and the conversation's
+  `weddingPlan.title` is `null` on the provider side, as his request reads'
+  `weddingPlan.title` are: D75 keeps the plan's title («عرس سلمى») for the
+  people she chose (RA-BE-80); the fields stay for older phones (D93). An
+  offer in a conversation carries the same version fields and `lines` as
+  every offer response (`quoteOfferVersionView`): an extra's price only for
+  a reader who sees the money (RA-BE-73). Wherever else the provider side reads a customer-side
   person (the conversation's `latestQuoteRequest.user`, an account-scoped
   conversation's `counterpart`, a message `sender`), it is
   `{ id, name, avatarUrl: null }`: the full name as p16 and p19 draw it

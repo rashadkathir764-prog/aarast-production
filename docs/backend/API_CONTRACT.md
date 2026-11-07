@@ -1619,6 +1619,13 @@ response from task mutations instead of the misleading plan-not-found error:
 }
 ```
 
+The other sections answer a current member the same way (RA-BE-40): a write
+refused in guests, money, providers, member management, or plan editing
+returns HTTP `403`, code `SECTION_PERMISSION_MISSING`, message
+«ما عندك صلاحية تعدّل في هذا القسم. صاحب الخطة يقدر يفتحها لك.». Someone
+outside the plan still receives the plan-not-found `404`, and reads keep
+their own rules (a member without `canViewMoney` reading money gets `404`).
+
 The task list and task detail routes are contributor-scoped in the Backend. A
 non-owner needs a current membership and current `canManageTasks = true`, and
 then receives only tasks currently assigned to that user or tasks evidenced as
@@ -1772,7 +1779,8 @@ acceptance creates membership only when none exists. This prevents a stale
 invite from restoring revoked provider or financial permissions and prevents
 acceptance after an archive that commits first.
 The locked plan owner and the delegated inviter, when present, must both still
-have `User.status = ACTIVE`. Otherwise acceptance returns HTTP `409`, code
+have `User.status = ACTIVE` and must not be waiting out an account deletion
+(D63, RA-BE-37). Otherwise acceptance returns HTTP `409`, code
 `INVITE_AUTHORITY_INACTIVE`, and creates no membership, contribution event, or
 notification. Disabling an account transactionally revokes its issued pending
 invitations before its sessions are revoked.
@@ -1797,6 +1805,11 @@ historical `ACCEPTED` and retains `acceptedAt`, but `contextKey` is omitted.
 Clients must treat `ACCEPTED` without `contextKey` as an ended membership and
 must not synthesize or open a contributor route from `weddingPlanId`. Other
 invite-list responses do not expose a contributor context key.
+
+`GET /api/v1/invites/mine` lists the invitations tied to the caller's account,
+and by phone number only the invitations tied to no account (RA-BE-35). An
+invitation tied to an account stays with that account after it changes its
+number; whoever holds the old number next does not see it.
 
 Creating an invitation runs the live-pending duplicate check, invite insert,
 and optional registered-user notification/outbox write inside one retryable
@@ -1957,7 +1970,11 @@ The `user` object is safe display data only. It must not include `passwordHash`,
 The owner, or a member explicitly holding `canInviteMembers`, can manage shared
 members. A non-owner cannot grant any effective role or permission above their
 own current stored-permission ceiling; the role label itself grants no runtime
-permission in that comparison.
+permission in that comparison, with one exception: the partner roles `GROOM`
+and `BRIDE` read the whole plan in every section their flags open, where other
+members read their own work, so only the owner or a member holding a partner
+role may give one (RA-BE-36). Anyone else gets HTTP `400`
+`Cannot grant permission above inviter ceiling: partnerRole`.
 The owner cannot add themselves as a shared member, unknown phone numbers are
 rejected without auto-creating users, and duplicate members are rejected. A
 former tenure ended by `MEMBER_LEFT` cannot be reopened through direct member

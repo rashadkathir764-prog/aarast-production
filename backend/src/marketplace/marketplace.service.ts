@@ -1,6 +1,8 @@
 import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
 import { hasCompletedBookingWith } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
 import { bookingToday } from "./booking-policy";
+import { applicationDisplayName } from "../shared-kernel/privacy/application-user-identity";
+import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import {
   BadRequestException,
@@ -429,8 +431,14 @@ export class MarketplaceService {
         : storedPlanLocation,
       plan?.city ?? city?.nameAr ?? null,
     );
+    // RA-BE-41: the default contact is the account as the app shows it.
     const contactName =
-      MarketplaceQuery.optionalText(dto.contactName) ?? currentUser.name.trim();
+      MarketplaceQuery.optionalText(dto.contactName) ??
+      applicationDisplayName({
+        name: currentUser.name,
+        appName: currentUser.appName ?? null,
+        role: currentUser.role,
+      }).trim();
     const contactPhone =
       MarketplaceQuery.optionalText(dto.contactPhone) ?? currentUser.phone;
     const contactNormalizedPhone = PhoneNormalizer.normalizeOptional(
@@ -755,7 +763,9 @@ export class MarketplaceService {
               providerId,
               reviewId: review.id,
               rating: review.rating,
-              reviewerName: currentUser.name ?? null,
+              // RA-BE-41: named as the review itself shows its writer (an
+              // admin's app name, never the back-office one).
+              reviewerName: toReviewIdentity(review.user).name,
             }),
           );
         }

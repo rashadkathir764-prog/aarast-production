@@ -137,10 +137,15 @@ test("history page and total are read from one repeatable-read authorization sna
   assert.equal(result.total, result.events.length);
   assert.equal(observedWhere.length, 2);
   assert.deepEqual(observedWhere[0], observedWhere[1]);
+  // RA-BE-39: this member holds no `canViewMoney`, so the money section is
+  // left out of both reads. The expectation had no section filter, which is
+  // how a member whose money access was taken away still read their own
+  // recorded amounts.
   assert.deepEqual(observedWhere[0], {
     historyScope: { id: "scope-1" },
     contributorTenure: {
       actorReference: contributorActorReference("contributor-1"),
     },
+    section: { notIn: [ContributionSection.MONEY] },
   });
 });

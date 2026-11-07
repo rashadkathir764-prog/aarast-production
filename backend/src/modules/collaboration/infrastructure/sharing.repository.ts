@@ -109,12 +109,17 @@ export class SharingRepository {
     });
   }
 
+  // RA-BE-35: an invite tied to an account is that account's, wherever its
+  // number went; by number alone come only the invites tied to no account
+  // (the rule `assertInviteBelongsToCurrentUser` acts on). Before, whoever
+  // took a number next read the old account's invites: the plan, the
+  // inviter's contact and, once accepted, the old account's new number.
   listCurrentUserInvites(client: Client, userId: string, normalizedPhone: string | null) {
     return client.planInvite.findMany({
       where: {
         OR: [
           { inviteeUserId: userId },
-          ...(normalizedPhone ? [{ normalizedPhone }] : []),
+          ...(normalizedPhone ? [{ inviteeUserId: null, normalizedPhone }] : []),
         ],
       },
       orderBy: { createdAt: 'desc' },

@@ -434,16 +434,21 @@ async function run() {
     );
     check('member without money permission cannot discover the summary', hiddenSummary.status === 404);
 
-    for (const [label, method, path, body] of [
-      ['cost detail', 'GET', `/api/v1/costs/${costId}`, null],
-      ['payment detail', 'GET', `/api/v1/cost-payments/${paymentId}`, null],
-      ['schedule detail', 'GET', `/api/v1/payment-schedules/${scheduleId}`, null],
-      ['cost payment write', 'POST', `/api/v1/costs/${costId}/payments`, { amount: '1' }],
-      ['schedule payment write', 'POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}],
-      ['payment reversal write', 'POST', `/api/v1/cost-payments/${paymentId}/reverse`, { reason: 'Denied smoke' }],
+    // RA-BE-40: a read stays 404 (money is not shown to this member), and a
+    // write is refused 403 SECTION_PERMISSION_MISSING with its reason: the
+    // writes expected 404, «the plan was not found», told a member their
+    // plan was gone.
+    for (const [label, method, path, body, refusal] of [
+      ['cost detail', 'GET', `/api/v1/costs/${costId}`, null, '404'],
+      ['payment detail', 'GET', `/api/v1/cost-payments/${paymentId}`, null, '404'],
+      ['schedule detail', 'GET', `/api/v1/payment-schedules/${scheduleId}`, null, '404'],
+      ['cost payment write', 'POST', `/api/v1/costs/${costId}/payments`, { amount: '1' }, '403:SECTION_PERMISSION_MISSING'],
+      ['schedule payment write', 'POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}, '403:SECTION_PERMISSION_MISSING'],
+      ['payment reversal write', 'POST', `/api/v1/cost-payments/${paymentId}/reverse`, { reason: 'Denied smoke' }, '403:SECTION_PERMISSION_MISSING'],
     ]) {
       const denied = await request(method, path, body, viewer.token);
-      check(`member without money permission cannot access ${label}`, denied.status === 404);
+      const answer = refusal === '404' ? `${denied.status}` : `${denied.status}:${denied.body?.code}`;
+      check(`member without money permission cannot access ${label}`, answer === refusal);
     }
 
     for (const [label, path] of [

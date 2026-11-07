@@ -788,6 +788,201 @@ test("RA-BE-34: one sender gets a day's cap of invite messages; past it the invi
   assert.equal(reminded.delivery.status, PlanInviteDeliveryStatus.UNAVAILABLE);
 });
 
+test("RA-BE-35: a number's next holder sees the invites made to the number, never those of the account that had it", async () => {
+  const harness = inviteHarness();
+  await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+    role: SharedMemberRole.VIEWER,
+  });
+  assert.equal(harness.db.invites[0].inviteeUserId, harness.target.id);
+  assert.equal(harness.db.invites[1].inviteeUserId, null);
+
+  // The account moves to another number and someone else signs up with the
+  // old one: the old account's invites stay with the old account.
+  const nextHolder = sharingUser("next-holder", harness.target.phone!, "جديد");
+  assert.deepEqual(
+    await harness.service.findInvitesForCurrentUser(nextHolder),
+    [],
+  );
+  const moved = { ...harness.target, phone: "+967777000088" };
+  assert.deepEqual(
+    (await harness.service.findInvitesForCurrentUser(moved)).map(
+      (invite) => invite.id,
+    ),
+    [harness.db.invites[0].id],
+  );
+
+  // An invite made to a number no account held reaches whoever signs up with it.
+  const numberHolder = sharingUser("number-holder", "+967777000099", "صاحب الرقم");
+  assert.deepEqual(
+    (await harness.service.findInvitesForCurrentUser(numberHolder)).map(
+      (invite) => invite.id,
+    ),
+    [harness.db.invites[1].id],
+  );
+});
+
+test("RA-BE-36: only a partner passes the partner role on; a helper who may invite makes no bride or groom", () => {
+  const helper = memberContext(SharedMemberRole.HELPER, {
+    canInviteMembers: true,
+  });
+  // The flags asked for sit inside the helper's own: the role alone is more,
+  // because a partner sees the whole plan where a helper sees their own work.
+  for (const role of [SharedMemberRole.BRIDE, SharedMemberRole.GROOM]) {
+    assert.throws(
+      () =>
+        assertCeiling(helper, role, {
+          canViewMoney: false,
+          canEditPlan: false,
+          canManageMoney: false,
+          canInviteMembers: false,
+        }),
+      /partner/,
+    );
+  }
+  assert.doesNotThrow(() =>
+    assertCeiling(
+      memberContext(SharedMemberRole.BRIDE, { canInviteMembers: true }),
+      SharedMemberRole.GROOM,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    assertCeiling(
+      { plan: { id: "plan-1", ownerUserId: "owner-1" } as any, isOwner: true, sharedMember: null },
+      SharedMemberRole.BRIDE,
+    ),
+  );
+});
+
+test("RA-BE-37: an invite is not accepted while the plan's owner waits out the account's deletion", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  let memberships = 0;
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+  ) =>
+    operation({
+      __transaction: true,
+      $queryRaw: async (query: any) => {
+        const sql = Array.isArray(query?.strings)
+          ? query.strings.join(" ")
+          : String(query);
+        if (sql.includes('FROM "User"')) {
+          return [harness.owner, harness.target].map(({ id, status }) => ({
+            id,
+            status,
+            deletionPending: id === harness.owner.id,
+          }));
+        }
+        if (sql.includes('FROM "PlanInvite"')) {
+          return [{ id: harness.db.invites[0].id }];
+        }
+        return [{ id: "plan-1" }];
+      },
+      weddingPlan: { findUnique: async () => harness.db.plan },
+      planInvite: {
+        findFirst: harness.db.planInvite.findFirst,
+        findUnique: harness.db.planInvite.findUnique,
+        updateMany: harness.db.planInvite.updateMany,
+      },
+      sharedMember: {
+        findUnique: async () => null,
+        upsert: async () => {
+          memberships += 1;
+          return {};
+        },
+      },
+    });
+
+  await assert.rejects(
+    () => harness.service.acceptInvite(harness.target, created.id),
+    refusal(409, "INVITE_AUTHORITY_INACTIVE"),
+  );
+  assert.equal(memberships, 0);
+  assert.equal(harness.db.invites[0].acceptedAt ?? null, null);
+});
+
+test("RA-BE-41: the accept notice names the account as the app shows it, never a back-office name", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  // An administrator also has an app identity; the back-office name is theirs alone.
+  const admin = {
+    ...harness.target,
+    name: "اسم الإدارة",
+    appName: "سالم",
+    role: "ADMIN",
+  } as AuthenticatedUser;
+  let membership: Record<string, unknown> | null = null;
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+  ) =>
+    operation({
+      __transaction: true,
+      $queryRaw: async (query: any) => {
+        const sql = Array.isArray(query?.strings)
+          ? query.strings.join(" ")
+          : String(query);
+        if (sql.includes('FROM "User"')) {
+          return [harness.owner, harness.target].map(({ id, status }) => ({
+            id,
+            status,
+            deletionPending: false,
+          }));
+        }
+        if (sql.includes('FROM "PlanInvite"')) {
+          return [{ id: harness.db.invites[0].id }];
+        }
+        return [{ id: "plan-1" }];
+      },
+      weddingPlan: { findUnique: async () => harness.db.plan },
+      planInvite: {
+        findFirst: harness.db.planInvite.findFirst,
+        findUnique: harness.db.planInvite.findUnique,
+        updateMany: async ({ where, data }: any) =>
+          harness.db.planInvite.updateMany({
+            where: { weddingPlanId: "plan-1", ...where },
+            data,
+          }),
+      },
+      sharedMember: {
+        findUnique: async () => membership,
+        upsert: async ({ create }: any) => {
+          membership = {
+            id: "member-admin",
+            ...create,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            user: admin,
+          };
+          return membership;
+        },
+      },
+      conversation: { findMany: async () => [] },
+      conversationParticipant: {
+        updateMany: async () => ({ count: 0 }),
+        createMany: async () => ({ count: 0 }),
+      },
+    });
+
+  await harness.service.acceptInvite(admin, created.id);
+  const notice = harness.notificationInputs.find(
+    (input) => input.type === "SHARING_INVITE_ACCEPTED",
+  );
+  assert.ok(notice);
+  assert.match(notice.body, /سالم/);
+  assert.doesNotMatch(notice.body, /اسم الإدارة/);
+});
+
 test("RA-BE-20: adding a participant by number says the same of every number and adds no one", async () => {
   const harness = inviteHarness();
   for (const phone of [harness.target.phone!, "+967777555444"]) {
@@ -1055,15 +1250,12 @@ test("cancelling during external delivery supersedes finalization and never re-p
     channel: "WHATSAPP",
     status: "DELIVERED",
   });
-  await assert.rejects(creating, (error: unknown) => {
-    assert.ok(error instanceof HttpException);
-    assert.equal(error.getStatus(), 409);
-    assert.equal(
-      (error.getResponse() as Record<string, unknown>).code,
-      "INVITE_DELIVERY_ATTEMPT_SUPERSEDED",
-    );
-    return true;
-  });
+  // RA-BE-38: the refusal says in Arabic what happened (the phone shows a
+  // server message only when it is Arabic, else a generic line).
+  await assert.rejects(
+    creating,
+    refusal(409, "INVITE_DELIVERY_ATTEMPT_SUPERSEDED"),
+  );
 
   assert.equal(deliveryCalls, 1);
   assert.match(deliveredToken ?? "", /^[A-Za-z0-9_-]{43}$/);

@@ -133,7 +133,7 @@ export class PermissionService implements CollaborationPermissionPort {
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (!this.canManagePlan(context)) {
-      throw new NotFoundException("Wedding plan not found");
+      throw sectionWriteRefused(context);
     }
     assertWeddingPlanWritable(context.plan);
     return context;
@@ -150,7 +150,7 @@ export class PermissionService implements CollaborationPermissionPort {
       currentUser,
     );
     if (!this.canManagePlan(context)) {
-      throw new NotFoundException("Wedding plan not found");
+      throw sectionWriteRefused(context);
     }
     assertWeddingPlanWritable(context.plan);
     return context;
@@ -203,7 +203,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertGuestManageableInTransaction(
@@ -220,7 +220,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertMoneyReadable(
@@ -262,7 +262,7 @@ export class PermissionService implements CollaborationPermissionPort {
       return context;
     }
 
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertMoneyManageableInTransaction(
@@ -280,7 +280,7 @@ export class PermissionService implements CollaborationPermissionPort {
       if (!options?.settlement) assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertMoneyManageableForUpdateInTransaction(
@@ -297,7 +297,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertProviderManageable(
@@ -309,7 +309,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertProviderManageableInTransaction(
@@ -326,7 +326,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertProviderAndMoneyManageableInTransaction(
@@ -343,7 +343,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertMemberManageable(
@@ -355,7 +355,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   async assertMemberManageableInTransaction(
@@ -374,7 +374,7 @@ export class PermissionService implements CollaborationPermissionPort {
       assertWeddingPlanWritable(context.plan);
       return context;
     }
-    throw new NotFoundException("Wedding plan not found");
+    throw sectionWriteRefused(context);
   }
 
   canViewMoney(context: PlanAccessContext): boolean {
@@ -702,5 +702,26 @@ function taskPermissionRevoked(): ForbiddenException {
     statusCode: 403,
     code: TASK_PERMISSION_REVOKED,
     message: TASK_PERMISSION_REVOKED_MESSAGE,
+  });
+}
+
+const SECTION_PERMISSION_MISSING = "SECTION_PERMISSION_MISSING";
+const SECTION_PERMISSION_MISSING_MESSAGE =
+  "ما عندك صلاحية تعدّل في هذا القسم. صاحب الخطة يقدر يفتحها لك.";
+
+/**
+ * RA-BE-40: a write refused in a section the reader may not edit. A member
+ * knows the plan, so the refusal says why, as tasks do; «Wedding plan not
+ * found» told them their plan was gone. Someone outside the plan still gets
+ * the not-found answer and learns nothing of it.
+ */
+function sectionWriteRefused(context: PlanAccessContext): Error {
+  if (!context.sharedMember) {
+    return new NotFoundException("Wedding plan not found");
+  }
+  return new ForbiddenException({
+    statusCode: 403,
+    code: SECTION_PERMISSION_MISSING,
+    message: SECTION_PERMISSION_MISSING_MESSAGE,
   });
 }

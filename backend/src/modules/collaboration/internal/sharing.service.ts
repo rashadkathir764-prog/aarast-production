@@ -72,6 +72,7 @@ import {
   toApplicationUserContact,
 } from "../../../shared-kernel/privacy/application-user-identity";
 import {
+  isLiveAccount,
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
 } from "../../identity/public/user-lifecycle-lock";
@@ -85,6 +86,7 @@ import {
 } from "./invitation-delivery.service";
 import {
   assertWeddingPlanWritable,
+  isPlanPartnerRole,
   PlanAccessContext,
 } from "../public/collaboration-permission.port";
 import { PermissionService } from "./permission.service";
@@ -1031,10 +1033,9 @@ export class SharingService {
       ) {
         throw new NotFoundException("Invite not found");
       }
-      if (
-        inviterLifecycle.status !== UserStatus.ACTIVE ||
-        ownerLifecycle.status !== UserStatus.ACTIVE
-      ) {
+      // RA-BE-37: an account waiting out its deletion is not live either
+      // (D63): its plan is closed to everyone else (w06), so nobody joins it.
+      if (!isLiveAccount(inviterLifecycle) || !isLiveAccount(ownerLifecycle)) {
         throw this.inviteAuthorityInactive();
       }
       const lockedPlan = await this.plans.lockPlanRowForShareInTransaction(
@@ -1149,7 +1150,8 @@ export class SharingService {
         type: NotificationType.SHARING_INVITE_ACCEPTED,
         priority: NotificationPriority.HIGH,
         title: "الدعوة انقبلت",
-        body: `${currentUser.name} معك في الخطة الحين.`,
+        // RA-BE-41: named as the app shows the account (an admin's app name).
+        body: `${this.actorVoice(currentUser).name} معك في الخطة الحين.`,
         entityType: "plan_invite",
         entityId: invite.id,
         routeTarget: noticeRoutes.sharing(invite.weddingPlanId),
@@ -1263,7 +1265,8 @@ export class SharingService {
           weddingPlanId: currentInvite.weddingPlanId,
           type: NotificationType.SHARING_INVITE_DECLINED,
           title: "الدعوة ما انقبلت",
-          body: `دعوتك لـ${currentUser.name} انرفضت.`,
+          // RA-BE-41: named as the app shows the account.
+          body: `دعوتك لـ${this.actorVoice(currentUser).name} انرفضت.`,
           entityType: "plan_invite",
           entityId: currentInvite.id,
           routeTarget: noticeRoutes.sharing(currentInvite.weddingPlanId),
@@ -1944,7 +1947,10 @@ export class SharingService {
           {
             statusCode: HttpStatus.CONFLICT,
             code: inviteDeliverySupersededCode,
-            message: "Invite delivery attempt was superseded.",
+            // RA-BE-38: the invite was made; someone acted on it while its
+            // message went. Said in Arabic, so the phone shows it as is.
+            message:
+              "الدعوة تغيّرت وهي تنرسل: انقبلت أو انلغت أو انرسل لها تذكير. حالتها الحالية في قائمة الدعوات.",
           },
           HttpStatus.CONFLICT,
         );
@@ -2656,6 +2662,22 @@ export class SharingService {
     targetStoredPermissions: PermissionFlags,
   ): void {
     if (inviterContext.isOwner) return;
+
+    // RA-BE-36: the partner role reaches further than its flags: a partner
+    // sees the whole plan in every section the flags open, where the other
+    // members see their own work (V1 4.10). So it is above any member who
+    // does not hold it, whatever flags come with it.
+    if (
+      isPlanPartnerRole(targetRole) &&
+      !(
+        inviterContext.sharedMember &&
+        isPlanPartnerRole(inviterContext.sharedMember.role)
+      )
+    ) {
+      throw new BadRequestException(
+        "Cannot grant permission above inviter ceiling: partnerRole",
+      );
+    }
 
     const ceiling = this.effectivePermissions(inviterContext);
     const targetContext: PlanAccessContext = {

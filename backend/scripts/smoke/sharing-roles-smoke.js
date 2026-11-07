@@ -202,7 +202,12 @@ async function run() {
       name: 'Role Only Must Stay Denied',
       allocatedAmount: '100000.00',
     }, editor.token);
-    check('role-only finance update cannot create a budget category', res.status === 404);
+    // RA-BE-40: a member's refused write says why (403); 404 «the plan was
+    // not found» told a member their plan was gone.
+    check(
+      'role-only finance update cannot create a budget category',
+      res.status === 403 && res.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
   }
 
   {
@@ -260,7 +265,11 @@ async function run() {
     const res = await request('PATCH', `/api/v1/wedding-plans/${planId}`, {
       title: 'Helper Should Not Rename',
     }, helper.token);
-    check('helper cannot update plan', res.status === 404);
+    // RA-BE-40: refused with its reason, as above.
+    check(
+      'helper cannot update plan',
+      res.status === 403 && res.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
   }
 
   {

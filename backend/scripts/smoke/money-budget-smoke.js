@@ -221,7 +221,12 @@ async function run() {
       },
       viewer.token,
     );
-    check('read-only money viewer cannot replace the budget', viewerBudgetWrite.status === 404);
+    // RA-BE-40: a member's refused write says why (403); 404 «the plan was
+    // not found» told a member their plan was gone.
+    check(
+      'read-only money viewer cannot replace the budget',
+      viewerBudgetWrite.status === 403 && viewerBudgetWrite.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
 
     const managerBudget = await request(
       'PUT',
@@ -283,7 +288,11 @@ async function run() {
       { title: 'Forbidden viewer update' },
       viewer.token,
     );
-    check('read-only money viewer cannot edit a cost', viewerCostWrite.status === 404);
+    // RA-BE-40: refused with its reason, as above.
+    check(
+      'read-only money viewer cannot edit a cost',
+      viewerCostWrite.status === 403 && viewerCostWrite.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
 
     const managerCategory = await request(
       'POST',

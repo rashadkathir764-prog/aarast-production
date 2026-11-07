@@ -200,6 +200,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
 
         const [events, total] = await this.repository.listPageEvents(
           tx, scope.id, contributorReference, query, liveFilter,
+          this.hiddenSections(access),
         );
 
         return {
@@ -246,6 +247,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
         );
         return this.repository.summaryEvents(
           tx, weddingPlanId, contributorReference, liveFilter,
+          this.hiddenSections(access),
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -259,6 +261,15 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     return Object.fromEntries(
       Object.entries(sets).map(([section, ids]) => [section, ids.size]),
     ) as ContributionHistorySummaryResponse;
+  }
+
+  // RA-BE-39: money in the history is money too (D52): a member who does not
+  // read money now reads no money events, their own included. The member row
+  // is the one read in this request, so a revoked access counts at once.
+  private hiddenSections(access: PlanAccessContext): ContributionSection[] {
+    return this.permissions.canViewMoney(access)
+      ? []
+      : [ContributionSection.MONEY];
   }
 
   private async historyAccess(

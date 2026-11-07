@@ -237,12 +237,20 @@ async function run() {
     const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}`, {
       title: 'Shared user should not update',
     }, sharedToken);
-    check('shared VIEWER cannot update plan', res.status === 404);
+    // RA-BE-40: a member's refused write says why (403); 404 «the plan was
+    // not found» told a member their plan was gone.
+    check(
+      'shared VIEWER cannot update plan',
+      res.status === 403 && res.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
   }
 
   {
     const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}/archive`, null, sharedToken);
-    check('shared VIEWER cannot archive plan', res.status === 404);
+    check(
+      'shared VIEWER cannot archive plan',
+      res.status === 403 && res.body?.code === 'SECTION_PERMISSION_MISSING',
+    );
   }
 
   {

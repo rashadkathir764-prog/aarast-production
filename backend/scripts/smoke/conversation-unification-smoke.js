@@ -638,7 +638,10 @@ async function run() {
   );
   check(
     'Revoked HELPER also loses provider-management API authority',
-    revokedProviderMutation.status === 404,
+    // RA-BE-40: a member's refused write says why (403); 404 «the plan was
+    // not found» told a member their plan was gone.
+    revokedProviderMutation.status === 403 &&
+      revokedProviderMutation.body?.code === 'SECTION_PERMISSION_MISSING',
     `HTTP ${revokedProviderMutation.status}`,
   );
   const revokedParticipant = await prisma.conversationParticipant.findUnique({

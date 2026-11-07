@@ -15,6 +15,20 @@ import { PrismaService } from '../../../platform/database/prisma.service';
 
 type Client = Prisma.TransactionClient;
 
+// RA-BE-39: the `section` filter. The sections a reader may not see are left
+// out, the one they asked for included (it then matches nothing). Only the
+// field's value is computed, so the query shape stays literal for the
+// ownership scan.
+function sectionFilter(
+  requested: ContributionSection | undefined,
+  hidden: readonly ContributionSection[],
+): ContributionSection | Prisma.EnumContributionSectionFilter | undefined {
+  if (requested) {
+    return hidden.includes(requested) ? { in: [] } : requested;
+  }
+  return hidden.length > 0 ? { notIn: [...hidden] } : undefined;
+}
+
 export class ContributionHistoryRepository {
   getHistoryScopeId(tx: Client, weddingPlanId: string) {
     return tx.contributorHistoryScope.findUnique({
@@ -170,13 +184,15 @@ export class ContributionHistoryRepository {
     contributorReference: string | undefined,
     query: Partial<ListContributionsDto>,
     liveFilter: LiveAuthorizationFilter,
+    hiddenSections: readonly ContributionSection[] = [],
   ) {
+    const section = sectionFilter(query.section, hiddenSections);
     const where = {
       historyScope: { id: historyScopeId },
       ...(contributorReference
         ? { contributorTenure: { actorReference: contributorReference } }
         : {}),
-      ...(query.section ? { section: query.section } : {}),
+      ...(section !== undefined ? { section } : {}),
       ...(liveFilter.id ? { id: { in: liveFilter.id.in } } : {}),
     } satisfies Prisma.ContributionEventWhereInput;
     return Promise.all([
@@ -196,13 +212,16 @@ export class ContributionHistoryRepository {
     weddingPlanId: string,
     contributorReference: string | undefined,
     liveFilter: LiveAuthorizationFilter,
+    hiddenSections: readonly ContributionSection[] = [],
   ) {
+    const section = sectionFilter(undefined, hiddenSections);
     return tx.contributionEvent.findMany({
       where: {
         historyScope: { weddingPlanId },
         ...(contributorReference
           ? { contributorTenure: { actorReference: contributorReference } }
           : {}),
+        ...(section !== undefined ? { section } : {}),
         entityId: { not: null },
         ...(liveFilter.id ? { id: { in: liveFilter.id.in } } : {}),
       },

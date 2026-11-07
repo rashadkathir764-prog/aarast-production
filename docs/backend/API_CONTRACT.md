@@ -3733,6 +3733,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/quote-requests/:quoteRequestId/conversation` | `conversations.getForQuote` | 🔒 |
 | DELETE | `/api/v1/reviews/:id` | `marketplace.deleteReview` | 🔒 |
 | PATCH | `/api/v1/reviews/:id` | `marketplace.updateReview` | 🔒 |
+| POST | `/api/v1/reviews/:id/report` | `marketplace.reportReview` | 🔒 |
 | GET | `/api/v1/services` | `marketplace.findServices` |  |
 | GET | `/api/v1/services/:id` | `marketplace.findService` |  |
 | GET | `/api/v1/shared/wedding-plans` | `sharing.findSharedPlans` | 🔒 |

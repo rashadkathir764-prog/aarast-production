@@ -277,21 +277,24 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                 ),
               ),
             ),
-            // B-43: the placement the team records after he pays them
-            // outside the app; not drawn on p35 (handoff design differences).
-            JourneyListRow(
-              key: const Key('provider-me-featured'),
-              icon: LucideIcons.crown,
-              color: AarastV3Color.primary,
-              soft: AarastV3Color.primarySoft,
-              title: 'الظهور المميز',
-              subtitle: providerFeaturedLine(
-                startsAt: profile.featuredStartsAt,
-                endsAt: profile.featuredEndsAt,
-                now: widget.now,
+            // B-43: the placement the team recorded, and until when; not
+            // drawn on p35 (handoff design differences). Shown only while one
+            // is recorded, and it leads nowhere: the app never invites paying
+            // for it outside the store (D96, Play's payments policy).
+            if (providerFeaturedLine(
+                  startsAt: profile.featuredStartsAt,
+                  endsAt: profile.featuredEndsAt,
+                  now: widget.now,
+                )
+                case final featured?)
+              JourneyListRow(
+                key: const Key('provider-me-featured'),
+                icon: LucideIcons.crown,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'الظهور المميز',
+                subtitle: featured,
               ),
-              onTap: () => context.push(AppRouter.support),
-            ),
             JourneyListRow(
               key: const Key('provider-me-share'),
               icon: LucideIcons.share2,

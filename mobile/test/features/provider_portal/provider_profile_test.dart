@@ -438,10 +438,10 @@ void main() {
       expect(find.byKey(const Key('provider-me-settings')), findsOneWidget);
     });
 
-    // B-43: the placement the team records after he pays them outside the
-    // app; asking for it or renewing it goes to the team.
-    testWidgets('his featured placement and until when, or how to ask for '
-        'it', (tester) async {
+    // B-43: the placement the team records, and until when. D96: it leads
+    // nowhere; the app never invites paying for it outside the store.
+    testWidgets('his recorded placement and until when, with no way to pay '
+        'from the app', (tester) async {
       final pumped = await _pump(
         tester,
         ProfileApi(
@@ -453,17 +453,27 @@ void main() {
       );
       expect(find.text('الظهور المميز'), findsOneWidget);
       expect(find.text('مميز لين 31 ديسمبر'), findsOneWidget);
+      final opened = pumped.opened.length;
       await tester.tap(find.byKey(const Key('provider-me-featured')));
       await tester.pumpAndSettle();
-      expect(pumped.opened.last, '/support');
+      expect(pumped.opened.length, opened);
+    });
+
+    testWidgets('D96: without a placement there is no row and no invitation '
+        'to pay', (tester) async {
+      await _pump(
+        tester,
+        ProfileApi(),
+        () => ProviderProfileTab(now: DateTime.utc(2026, 10, 25, 9)),
+      );
+      expect(find.byKey(const Key('provider-me-featured')), findsNothing);
+      expect(find.textContaining('تطلع أول'), findsNothing);
+      expect(find.textContaining('كلّم فريق'), findsNothing);
     });
 
     test('the featured line reads the days in Sana\'a', () {
       final now = DateTime.utc(2026, 10, 25, 9);
-      expect(
-        providerFeaturedLine(now: now),
-        'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست',
-      );
+      expect(providerFeaturedLine(now: now), isNull);
       expect(
         providerFeaturedLine(
           startsAt: DateTime.utc(2026, 12, 31, 21),
@@ -488,7 +498,7 @@ void main() {
           endsAt: DateTime.utc(2026, 10, 31, 21),
           now: DateTime.utc(2026, 10, 31, 21),
         ),
-        'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست',
+        isNull,
       );
     });
   });

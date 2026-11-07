@@ -49,18 +49,20 @@ String providerAgoLabel(DateTime then, {DateTime? now}) {
 
 /// p35's «الظهور المميز» line (B-43): «مميز لين 31 ديسمبر» while the team's
 /// recorded placement runs, «يبدأ 1 يناير · لين 31 مارس» for one booked
-/// later, or how to ask for it. `endsAt` starts the day after the last one
-/// covered, in Sana'a time, and is the end of his run of renewals (the
-/// server joins back-to-back ones). It is read against the clock when shown:
-/// a profile loaded before the end does not keep saying «مميز» after it.
-String providerFeaturedLine({
+/// later, and null with none: the app never invites paying for it outside
+/// the store (D96, Play's payments policy). `endsAt` starts the day after
+/// the last one covered, in Sana'a time, and is the end of his run of
+/// renewals (the server joins back-to-back ones). It is read against the
+/// clock when shown: a profile loaded before the end does not keep saying
+/// «مميز» after it.
+String? providerFeaturedLine({
   DateTime? startsAt,
   DateTime? endsAt,
   DateTime? now,
 }) {
   final clock = now ?? appNow();
   if (startsAt == null || endsAt == null || !endsAt.isAfter(clock)) {
-    return 'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست';
+    return null;
   }
   final lastDay = formatArabicDayMonth(
     _sanaaDay(endsAt.subtract(const Duration(milliseconds: 1))),

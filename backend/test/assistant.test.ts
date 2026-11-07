@@ -139,6 +139,8 @@ function serviceFor(options: {
   sharedMember?: unknown;
   /** RA-ST-04: false when the account's open reports are at their bound. */
   reportRecorded?: boolean;
+  /** RA-BE-103: the plan's quote offers. */
+  offers?: unknown[];
 } = {}) {
   const calls = {
     asked: [] as string[],
@@ -168,7 +170,7 @@ function serviceFor(options: {
         return options.money ?? emptyMoney;
       },
     },
-    quotes: { listPlanQuoteOffers: async () => [] },
+    quotes: { listPlanQuoteOffers: async () => options.offers ?? [] },
     providers: {
       getProviders: async () => [],
       listMarketPriceGroups: async () => [
@@ -380,4 +382,36 @@ test('consent comes first, and a free question needs its text', async () => {
   await rejectsWith(service.ask(user, 'plan-1', { ...ask, consent: false }), 400, 'ASSISTANT_CONSENT_REQUIRED');
   await assert.rejects(service.ask(user, 'plan-1', { kind: 'QUESTION', question: '  ', consent: true }));
   assert.equal(calls.asked.length, 0);
+});
+
+// RA-BE-103: a partner who manages providers without the money right
+// («المال لا») asked to compare offers; the offers' prices went to the
+// model and back in the answer. The price is money: it goes only to a reader
+// who may see money, and the model is told it is hidden, not missing.
+test('quote prices reach the model only for a reader who may see money', async () => {
+  const offer = {
+    providerId: 'provider-1',
+    serviceTitle: 'تصوير العرس',
+    title: 'تصوير',
+    serviceCategoryId: null,
+    amount: new Prisma.Decimal('800000'),
+    currency: 'YER',
+    status: 'SENT',
+    validUntil: null,
+  };
+  const compare = { kind: 'COMPARE_QUOTES' as const, question: null, consent: true };
+
+  const hidden = serviceFor({
+    canViewMoney: false,
+    isOwner: false,
+    sharedMember: { userId: 'user-1', role: 'BRIDE' },
+    offers: [offer],
+  });
+  await hidden.service.ask(user, 'plan-1', compare);
+  assert.doesNotMatch(hidden.calls.asked[0], /800000/u);
+  assert.match(hidden.calls.asked[0], /السعر يشوفه من له صلاحية المال/u);
+
+  const shown = serviceFor({ canViewMoney: true, offers: [offer] });
+  await shown.service.ask(user, 'plan-1', compare);
+  assert.match(shown.calls.asked[0], /800000/u);
 });

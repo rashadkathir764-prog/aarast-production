@@ -356,12 +356,40 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// RA-BE-95: the words of the messages refused in this chat after they
+  /// waited on the phone, joined in the order written, with the last reason;
+  /// taken off the phone as they are handed back. Null when there are none.
+  Future<({String text, String reason})?> takeRefused(
+    String conversationId,
+  ) async {
+    final userId = currentUserId;
+    final outbox = _outbox;
+    if (userId == null || outbox == null) return null;
+    final all = outbox.read(userId);
+    final refused = [
+      for (final item in all)
+        if (item.isRefused && item.conversationId == conversationId) item,
+    ];
+    if (refused.isEmpty) return null;
+    await outbox.write(userId, [
+      for (final item in all)
+        if (!refused.contains(item)) item,
+    ]);
+    return (
+      text: refused.map((item) => item.body).join('\n'),
+      reason: refused.last.refusedReason!,
+    );
+  }
+
   /// G38: the messages waiting on this phone, in the order written.
   List<ChatOutboxMessage> get queuedMessages {
     final userId = currentUserId;
     final outbox = _outbox;
     if (userId == null || outbox == null) return const [];
-    return outbox.read(userId);
+    return [
+      for (final item in outbox.read(userId))
+        if (!item.isRefused) item,
+    ];
   }
 
   Iterable<ChatTimelineItem> _queuedItems(String conversationId) => [
@@ -407,8 +435,9 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   /// G38: sends the waiting messages in order; stops at the first one that
-  /// still finds no network. A message the server refuses is dropped (it
-  /// would never go) and said once.
+  /// still finds no network. A message the server refuses is not sent again
+  /// and leaves the timeline, but its words are kept (RA-BE-95): they go back
+  /// to the chat's box with the reason ([takeRefused]).
   Future<void> flushOutbox() async {
     final userId = currentUserId;
     final outbox = _outbox;
@@ -416,6 +445,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _flushing = true;
     try {
       for (final item in outbox.read(userId)) {
+        if (item.isRefused) continue;
         try {
           final sent = await _api.send(
             item.conversationId,
@@ -430,6 +460,11 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
           if (error.isAmbiguousMutationFailure || error.isNotNow) break;
           _removeTimelineMessage(item.conversationId, item.localId);
           _errorMessage = 'رسالة ما وصلت: ${error.message}';
+          await outbox.write(userId, [
+            for (final left in outbox.read(userId))
+              left.localId == item.localId ? left.refused(error.message) : left,
+          ]);
+          continue;
         }
         await outbox.write(userId, [
           for (final left in outbox.read(userId))

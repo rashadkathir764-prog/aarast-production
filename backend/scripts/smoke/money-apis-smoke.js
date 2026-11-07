@@ -355,6 +355,15 @@ async function run() {
           && ofAgreement.every((item) => item.costRemainingAmount === '200'),
       );
       await request('DELETE', `/api/v1/payment-schedules/${second.body?.id}`, null, owner.token);
+      // RA-BE-108: «الإيصالات» asks for every paid agreement's receipts at
+      // once, and each request held its connection while waiting for a
+      // second; on the live server's pool of 3 they all got 500 after 10 s.
+      const receipts = await Promise.all(
+        Array.from({ length: 9 }, () =>
+          request('GET', `/api/v1/costs/${partlyId}/receipts`, null, owner.token),
+        ),
+      );
+      check('nine receipt lists at once all open', receipts.every((res) => res.status === 200));
       const paid = await request(
         'POST',
         `/api/v1/payment-schedules/${reminder.body?.id}/pay`,

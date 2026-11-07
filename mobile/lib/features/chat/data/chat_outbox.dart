@@ -13,6 +13,7 @@ class ChatOutboxMessage {
     required this.body,
     required this.clientRequestId,
     required this.createdAt,
+    this.refusedReason,
   });
 
   factory ChatOutboxMessage.fromJson(Map<String, dynamic> json) =>
@@ -24,6 +25,7 @@ class ChatOutboxMessage {
         createdAt:
             DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
+        refusedReason: json['refusedReason']?.toString(),
       );
 
   final String localId;
@@ -32,12 +34,31 @@ class ChatOutboxMessage {
   final String clientRequestId;
   final DateTime createdAt;
 
+  /// RA-BE-95: the server refused this message for good (the chat was
+  /// closed or blocked, the provider stopped) after it waited on the phone.
+  /// It is not sent again; its words go back to the chat's box, with this
+  /// reason, the next time the chat opens, as a refused message typed online
+  /// stays in the box.
+  final String? refusedReason;
+
+  bool get isRefused => refusedReason != null;
+
+  ChatOutboxMessage refused(String reason) => ChatOutboxMessage(
+    localId: localId,
+    conversationId: conversationId,
+    body: body,
+    clientRequestId: clientRequestId,
+    createdAt: createdAt,
+    refusedReason: reason,
+  );
+
   Map<String, dynamic> toJson() => {
     'localId': localId,
     'conversationId': conversationId,
     'body': body,
     'clientRequestId': clientRequestId,
     'createdAt': createdAt.toUtc().toIso8601String(),
+    'refusedReason': ?refusedReason,
   };
 }
 

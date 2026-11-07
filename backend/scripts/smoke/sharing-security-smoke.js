@@ -276,6 +276,36 @@ async function run() {
       managerMember.body?.canInviteMembers === true,
   );
 
+  // RA-BE-96: whose wedding the plan is (groom or bride) is the owner's to
+  // say: it sets the mahr's side and «معك». An editor's request carrying it
+  // is refused; the owner's goes through.
+  {
+    const byEditor = await request(
+      "PATCH",
+      `/api/v1/wedding-plans/${plan.body.id}`,
+      { persona: "BRIDE" },
+      manager.token,
+    );
+    check(
+      "an editor cannot change whose wedding the plan is",
+      byEditor.status === 403 && byEditor.body?.code === "PLAN_PERSONA_OWNER_ONLY",
+    );
+    const byEditorTitle = await request(
+      "PATCH",
+      `/api/v1/wedding-plans/${plan.body.id}`,
+      { title: "Renamed by editor" },
+      manager.token,
+    );
+    check("an editor still edits the plan itself", byEditorTitle.status === 200);
+    const byOwner = await request(
+      "PATCH",
+      `/api/v1/wedding-plans/${plan.body.id}`,
+      { persona: "GROOM" },
+      owner.token,
+    );
+    check("the owner says whose wedding it is", byOwner.status === 200 && byOwner.body?.persona === "GROOM");
+  }
+
   // RA-BE-11: no account learns whether a phone number has an Aarast
   // account, or its name. The plan guard of the old lookup proved nothing:
   // anyone can make a plan of their own and ask through it. The app invites

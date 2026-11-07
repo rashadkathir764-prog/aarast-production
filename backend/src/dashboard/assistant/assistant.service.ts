@@ -294,7 +294,7 @@ export class AssistantService {
         ]);
         const [moneyFacts, quotes, market] = await Promise.all([
           canViewMoney ? this.moneyFacts(tx, context, readerUserId) : null,
-          canSeeQuotes ? this.quoteFacts(tx, plan.id) : null,
+          canSeeQuotes ? this.quoteFacts(tx, plan.id, canViewMoney) : null,
           this.marketFacts(tx, plan.city),
         ]);
         const weddingDay = plan.weddingDate ? startOfRiyadhDay(plan.weddingDate) : null;
@@ -385,9 +385,16 @@ export class AssistantService {
     };
   }
 
+  /**
+   * RA-BE-103: the offers as the reader may see them. Their prices are money:
+   * a reader who manages providers without the money right (a partner set
+   * «المال لا») gets the offers without their prices, as every other offer
+   * read does (RA-BE-73).
+   */
   private async quoteFacts(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
+    showPrices: boolean,
   ): Promise<NonNullable<AssistantPlanFacts['quotes']>> {
     const offers = await this.ports.quotes.listPlanQuoteOffers(tx, weddingPlanId, QUOTES_SHOWN);
     const [providers, categories] = await Promise.all([
@@ -402,7 +409,8 @@ export class AssistantService {
       provider: providerNames.get(offer.providerId) ?? 'مزود',
       service: offer.serviceTitle ?? offer.title,
       category: offer.serviceCategoryId ? categoryNames.get(offer.serviceCategoryId) ?? null : null,
-      amount: money(offer.amount),
+      amount: showPrices ? money(offer.amount) : null,
+      priceHidden: !showPrices,
       currency: offer.currency,
       status: offer.status,
       validUntil: offer.validUntil ? localDate(offer.validUntil) : null,

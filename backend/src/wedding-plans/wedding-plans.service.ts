@@ -280,6 +280,16 @@ export class WeddingPlansService {
           id,
           currentUser,
         );
+      // RA-BE-96: whose wedding the plan is (groom or bride) sets the mahr's
+      // side and what «معك» counts; only its owner says it. An editor's
+      // request that carries it is refused, not quietly applied.
+      if (dto.persona !== undefined && !context.isOwner) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: "PLAN_PERSONA_OWNER_ONLY",
+          message: "صاحب الخطة بس يغيّر هذا.",
+        });
+      }
       const location =
         dto.location !== undefined
           ? normalizeWeddingLocationInput(

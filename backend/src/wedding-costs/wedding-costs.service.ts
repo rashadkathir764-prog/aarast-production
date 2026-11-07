@@ -1744,7 +1744,10 @@ export class WeddingCostsService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<void> {
-    const identity = await this.costIdentityOrThrow(id);
+    // Read on the caller's transaction: a read from the pool here held the
+    // transaction's connection while waiting for a second one, and the
+    // receipts screen asks for every paid agreement's receipts at once.
+    const identity = await this.costIdentityOrThrow(id, tx);
     const access = await this.permissions.assertMoneyReadableInTransaction(
       tx,
       identity.weddingPlanId,
@@ -1776,7 +1779,7 @@ export class WeddingCostsService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<void> {
-    const current = await this.costOrThrow(id);
+    const current = await this.costOrThrow(id, tx);
     const context = await this.permissions.assertMoneyManageableInTransaction(
       tx,
       current.weddingPlanId,
@@ -1910,8 +1913,8 @@ export class WeddingCostsService {
     return this.contributorScope;
   }
 
-  private async costOrThrow(id: string) {
-    const cost = await findWeddingCost(this.prisma, {
+  private async costOrThrow(id: string, client: Tx = this.prisma) {
+    const cost = await findWeddingCost(client, {
       where: { id },
       include: weddingCostResponseInclude,
     });
@@ -1919,8 +1922,8 @@ export class WeddingCostsService {
     return cost;
   }
 
-  private async costIdentityOrThrow(id: string) {
-    const cost = await findWeddingCost(this.prisma, {
+  private async costIdentityOrThrow(id: string, client: Tx = this.prisma) {
+    const cost = await findWeddingCost(client, {
       where: { id },
       select: { weddingPlanId: true },
     });

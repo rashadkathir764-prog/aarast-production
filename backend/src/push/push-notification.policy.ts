@@ -30,6 +30,12 @@ function isRevisedOfferNotice(data: unknown): boolean {
   return typeof versionNo === "number" && versionNo > 1;
 }
 
+/** A WEDDING_COUNTDOWN notice for the wedding day itself (`daysUntil` 0). */
+function isWeddingDayNotice(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  return (data as Record<string, unknown>).daysUntil === 0;
+}
+
 /**
  * The words on the lock screen: generic, never a name or an amount. `data`
  * is the notification's own data, read only to tell a revised offer from a
@@ -51,21 +57,27 @@ export function pushNotificationCopy(
         body: "عندك مهمة جديدة، وتفاصيلها في اعّرست.",
       };
     case NotificationType.TASK_DUE_SOON:
-    case NotificationType.TASK_OVERDUE:
       return {
         title: "تذكير بمهمة",
         body: "عندك مهمة موعدها قريب، وتفاصيلها في اعّرست.",
+      };
+    // RA-BE-99: a task whose day passed is late, not coming; the notice in
+    // the app says «مهمة متأخرة», and the lock screen says the same.
+    case NotificationType.TASK_OVERDUE:
+      return {
+        title: "مهمة متأخرة",
+        body: "عندك مهمة فات موعدها، وتفاصيلها في اعّرست.",
       };
     case NotificationType.CHAT_MESSAGE_RECEIVED:
       return {
         title: "رسالة جديدة",
         body: "وصلتك رسالة في اعّرست.",
       };
+    // RA-BE-99: on the day itself the lock screen does not say it is near.
     case NotificationType.WEDDING_COUNTDOWN:
-      return {
-        title: "العرس يقرب",
-        body: "اللي باقي قبله في اعّرست.",
-      };
+      return isWeddingDayNotice(data)
+        ? { title: "اليوم يوم العرس", body: "ألف مبروك، واللي باقي لليوم في اعّرست." }
+        : { title: "العرس يقرب", body: "اللي باقي قبله في اعّرست." };
     case NotificationType.QUOTE_OFFER_RECEIVED:
       return isRevisedOfferNotice(data)
         ? {

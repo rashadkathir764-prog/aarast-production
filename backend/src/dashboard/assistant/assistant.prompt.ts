@@ -26,6 +26,8 @@ export interface AssistantQuoteFacts {
   service: string | null;
   category: string | null;
   amount: string | null;
+  /** RA-BE-103: the reader may not see money, so the price is not given. */
+  priceHidden: boolean;
   currency: string;
   status: string;
   validUntil: string | null;
@@ -185,7 +187,11 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
         `المزود ${data(quote.provider)}`,
         quote.service ? `الخدمة ${data(quote.service)}` : null,
         quote.category ? `الفئة ${data(quote.category)}` : null,
-        quote.amount ? `السعر ${quote.amount} ${quote.currency}` : 'بدون سعر',
+        quote.priceHidden
+          ? 'السعر يشوفه من له صلاحية المال'
+          : quote.amount
+            ? `السعر ${quote.amount} ${quote.currency}`
+            : 'بدون سعر',
         `الحالة ${quote.status}`,
         quote.validUntil ? `صالح حتى ${quote.validUntil}` : null,
       ].filter(Boolean);

@@ -313,3 +313,21 @@ test("delivery disables push when every registered installation is permanently i
 
   assert.deepEqual(disabledUsers, ["user-2"]);
 });
+
+// RA-BE-99: the lock screen says what the notice says: a late task is late,
+// not coming, and the wedding day is the day, not near.
+test("an overdue task and the wedding day have their own lock-screen words", () => {
+  const overdue = pushNotificationCopy(NotificationType.TASK_OVERDUE);
+  assert.equal(overdue.title, "مهمة متأخرة");
+  assert.doesNotMatch(overdue.body, /قريب/u);
+  assert.equal(pushNotificationCopy(NotificationType.TASK_DUE_SOON).title, "تذكير بمهمة");
+
+  const day = pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN, { daysUntil: 0 });
+  assert.equal(day.title, "اليوم يوم العرس");
+  assert.equal(
+    pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN, { daysUntil: 3 }).title,
+    "العرس يقرب",
+  );
+  // Never a name or an amount on the lock screen.
+  for (const copy of [overdue, day]) assert.doesNotMatch(copy.body, /\d/u);
+});

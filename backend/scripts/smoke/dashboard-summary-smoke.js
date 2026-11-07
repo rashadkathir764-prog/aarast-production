@@ -299,6 +299,18 @@ async function run() {
   }
 
   {
+    // RA-BE-91: a member's home held its connection while waiting for a
+    // second; the pool is the live server's 3 (run-isolated-smoke.js), so a
+    // few members opening the app together all got 500 after 10 s.
+    const burst = await Promise.all(
+      Array.from({ length: 9 }, () =>
+        request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, viewer.token),
+      ),
+    );
+    check('nine member homes at once all open', burst.every((res) => res.status === 200));
+  }
+
+  {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`);
     check('summary without token returns 401', res.status === 401);
   }

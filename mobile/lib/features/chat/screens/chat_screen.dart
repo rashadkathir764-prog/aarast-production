@@ -126,6 +126,18 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted || !identical(chat, _chatProvider)) return;
     setState(() => _firstLoadDone = true);
     _scrollToEnd();
+    await _restoreRefused(chat);
+  }
+
+  /// RA-BE-95: words written with no network that the server refused when
+  /// they went come back to the box, with the reason, as a refused message
+  /// typed online stays in it; nothing the person wrote is lost.
+  Future<void> _restoreRefused(ChatProvider chat) async {
+    final refused = await chat.takeRefused(widget.conversationId);
+    if (!mounted || refused == null) return;
+    final typed = _controller.text.trim();
+    _controller.text = typed.isEmpty ? refused.text : '$typed\n${refused.text}';
+    _showError('رسالة ما وصلت ورجعت لك: ${refused.reason}');
   }
 
   @override

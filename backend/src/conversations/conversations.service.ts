@@ -882,8 +882,13 @@ export class ConversationsService {
     if (conversation.weddingPlan) {
       assertWeddingPlanWritable(conversation.weddingPlan);
     }
+    // RA-BE-95: each refusal with its code and in Arabic: the phone hands a
+    // waiting message back to its box with this reason.
     if (conversation.closedAt) {
-      throw new ConflictException('Conversation is closed');
+      throw new ConflictException({
+        code: 'CONVERSATION_CLOSED',
+        message: 'هذي المحادثة انقفلت، ما تستقبل رسائل.',
+      });
     }
     if (
       !allowProviderSelfJoin &&
@@ -898,7 +903,10 @@ export class ConversationsService {
       });
     }
     if (this.isBlocked(conversation)) {
-      throw new ConflictException('Conversation is blocked');
+      throw new ConflictException({
+        code: 'CONVERSATION_BLOCKED',
+        message: 'المراسلة في هذي المحادثة موقوفة.',
+      });
     }
   }
 

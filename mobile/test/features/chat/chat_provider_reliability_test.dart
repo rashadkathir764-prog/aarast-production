@@ -82,6 +82,43 @@ void main() {
     },
   );
 
+  test(
+    'RA-BE-95: a waiting text the server refuses is kept and handed back with its reason',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final api = _OfflineChatApi();
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+        outbox: ChatOutbox(preferences),
+      );
+      await chat.openConversation('conversation-1');
+      expect(await chat.send('conversation-1', 'نبغى نعدل الموعد'), isTrue);
+
+      // Back online, the chat was closed meanwhile.
+      api
+        ..online = true
+        ..refusal = const ApiException(
+          'هذي المحادثة انقفلت، ما تستقبل رسائل.',
+          statusCode: 409,
+          serverCode: 'CONVERSATION_CLOSED',
+        );
+      await chat.flushOutbox();
+      // Not waiting any more, and not sent again on the next try.
+      expect(chat.queuedMessages, isEmpty);
+      final tries = api.sentRequestIds.length;
+      await chat.flushOutbox();
+      expect(api.sentRequestIds, hasLength(tries));
+
+      // The words come back once, with the reason; nothing is lost.
+      final back = await chat.takeRefused('conversation-1');
+      expect(back?.text, 'نبغى نعدل الموعد');
+      expect(back?.reason, contains('انقفلت'));
+      expect(await chat.takeRefused('conversation-1'), isNull);
+    },
+  );
+
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -1053,6 +1090,9 @@ class _OfflineChatApi extends _FakeChatApi {
 
   /// RA-BE-81: online, but the server asks to wait (too many in a minute).
   bool rateLimited = false;
+
+  /// RA-BE-95: online, and the server refuses the message for good.
+  ApiException? refusal;
   final List<String?> sentRequestIds = [];
 
   @override
@@ -1075,6 +1115,7 @@ class _OfflineChatApi extends _FakeChatApi {
         isNetworkFailure: true,
       );
     }
+    if (refusal != null) throw refusal!;
     return _message(senderUserId: 'user-1', body: body);
   }
 }

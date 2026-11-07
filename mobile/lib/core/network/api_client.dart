@@ -1008,6 +1008,10 @@ class ApiException implements Exception {
         'عندك حجوزات مؤكدة جاية. الغها أو سلّمها قبل ما تحذف حسابك.',
       // D63: the 30 days before an account is erased, and its data download.
       'ACCOUNT_DELETION_PENDING' => 'حسابك ينتظر الحذف. تراجع عنه عشان تكمل.',
+      // RA-BE-95: said for what it is, not as a missing permission.
+      'PROVIDER_NOT_ACTIVE' => 'المزود موقوف الحين، ما يستقبل رسائل ولا طلبات.',
+      'CONVERSATION_CLOSED' => 'هذي المحادثة انقفلت، ما تستقبل رسائل.',
+      'CONVERSATION_BLOCKED' => 'المراسلة في هذي المحادثة موقوفة.',
       'CONFIRM_WORD_MISMATCH' => 'اكتب «حذف» كما هي للتأكيد.',
       'DELETION_NOT_PENDING' => 'حسابك ما ينتظر الحذف.',
       'EXPORT_RATE_LIMITED' => 'نزّلت بياناتك كثير اليوم. جرّب بكرة.',

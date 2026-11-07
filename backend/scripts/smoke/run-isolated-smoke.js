@@ -256,6 +256,11 @@ function postgresUrl(discovery, databaseName) {
   url.port = discovery.postgresPort;
   url.pathname = `/${databaseName}`;
   url.searchParams.set('schema', 'public');
+  // The live server's pool: Prisma's default on its one core is 3 (the
+  // number of cores x 2 + 1). A request that holds one connection and waits
+  // for a second deadlocks there under a few requests at once (RA-BE-91,
+  // RA-BE-108); smokes that send requests together see it here too.
+  url.searchParams.set('connection_limit', '3');
   return url.toString();
 }
 

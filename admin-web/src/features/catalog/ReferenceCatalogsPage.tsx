@@ -549,6 +549,27 @@ export function ReferenceCatalogsPage() {
                 }}
               />
             ) : null}
+            {/* RA-AD-14: the reverse of «أوقف», the same way: active and
+                published at once. */}
+            {catalog && editing && editing !== 'new' && !editing.current.isActive ? (
+              <ConfirmDialog
+                variant="desk"
+                title={`تشغيل ${editing.current.nameAr}`}
+                effects={[
+                  'يرجع للخطط الجديدة على طول.',
+                  'أي تعديل محفوظ مسودة ينزل معه.',
+                  'الخطط القائمة ما تتغير.',
+                ]}
+                confirmLabel="شغّله"
+                trigger={<DeskButton tone="soft">شغّل</DeskButton>}
+                onConfirm={async () => {
+                  await updateReferenceCatalogItem(catalog.key, editing.id, { isActive: true });
+                  await publishReferenceCatalogItem(catalog.key, editing.id);
+                  setEditing(null);
+                  await open(catalog.key);
+                }}
+              />
+            ) : null}
           </div>
         </form>
       </DeskModal>

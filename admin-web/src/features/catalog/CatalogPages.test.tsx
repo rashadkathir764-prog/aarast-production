@@ -219,6 +219,30 @@ describe('ReferenceCatalogsPage (a09)', () => {
     expect(screen.getByText('النشر يوصل الخطط الجديدة بس، والخطط القائمة ما تتغير.')).toBeVisible();
   });
 
+  // RA-AD-14: «أوقف» stops an item at once (a revision published inactive);
+  // nothing turned it back on: the page never sent isActive and offered no
+  // way to. «شغّل» does the reverse the same way: active, and published.
+  it('turns a stopped item back on, at once like stopping it', async () => {
+    const stopped = revision({ revision: 3, nameAr: 'تذكرة الفستان', isActive: false });
+    vi.mocked(getReferenceCatalogs).mockResolvedValue([
+      { id: 'c1', key: 'tasks.starter', nameAr: 'x', description: null, version: 3, isActive: true, itemsCount: 1, publishedCount: 1, pendingCount: 0, updatedAt: '' },
+    ]);
+    vi.mocked(getReferenceCatalog).mockResolvedValue({ ...tasks, items: [item('dress', stopped, stopped)] });
+    vi.mocked(updateReferenceCatalogItem).mockResolvedValue(item('dress', { ...stopped, revision: 4, isActive: true }, stopped));
+    vi.mocked(publishReferenceCatalogItem).mockResolvedValue(item('dress', { ...stopped, revision: 4, isActive: true }, { ...stopped, revision: 4, isActive: true }));
+    withRouter(<ReferenceCatalogsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'عدّل' }));
+    const form = screen.getByRole('dialog', { name: 'تعديل تذكرة الفستان' });
+    expect(within(form).queryByRole('button', { name: 'أوقف' })).not.toBeInTheDocument();
+    fireEvent.click(within(form).getByRole('button', { name: 'شغّل' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'شغّله' }));
+    await waitFor(() =>
+      expect(updateReferenceCatalogItem).toHaveBeenCalledWith('tasks.starter', 'dress', { isActive: true }),
+    );
+    await waitFor(() => expect(publishReferenceCatalogItem).toHaveBeenCalledWith('tasks.starter', 'dress'));
+  });
+
   it('publishes the draft', async () => {
     vi.mocked(publishReferenceCatalogItem).mockResolvedValue(item('papers', papersDraft, papersDraft));
     renderCatalogs();

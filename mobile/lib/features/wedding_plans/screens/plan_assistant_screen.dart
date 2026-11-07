@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
+import '../../../core/widgets/report_reason_sheet.dart';
 import '../../../core/widgets/aarast_ui.dart'
     show AarastInlineSpinner, AarastPressable, AarastScreenFrame;
 import '../../auth/auth_api.dart' show AuthController;
@@ -43,11 +44,25 @@ class PlanAssistantScreen extends StatefulWidget {
 
 /// One question and what came back for it.
 class _Exchange {
-  _Exchange({required this.question, required this.askedAt});
+  _Exchange({
+    required this.kind,
+    required this.question,
+    required this.typed,
+    required this.askedAt,
+  });
 
+  final PlanAssistantKind kind;
+
+  /// What the bubble shows: the typed question or the request's name.
   final String question;
+
+  /// The reader's own words, for «سؤال آخر» only.
+  final String? typed;
   final DateTime askedAt;
   PlanAssistantAnswer? answer;
+
+  /// RA-ST-04: this answer was reported; it is not offered again.
+  bool reported = false;
 }
 
 /// Why no answer came (w37).
@@ -135,7 +150,9 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     if (!await _ensureConsent(status.dailyLimit) || !mounted) return;
     FocusScope.of(context).unfocus();
     final exchange = _Exchange(
+      kind: kind,
       question: kind == PlanAssistantKind.question ? typed : kind.label,
+      typed: kind == PlanAssistantKind.question ? typed : null,
       askedAt: DateTime.now(),
     );
     setState(() {
@@ -181,6 +198,44 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       });
     } finally {
       if (mounted) setState(() => _asking = false);
+    }
+  }
+
+  /// RA-ST-04 (D95): «بلّغ عن الإجابة»: why, then the answer to the team.
+  Future<void> _report(_Exchange exchange) async {
+    final answer = exchange.answer;
+    if (answer == null || exchange.reported) return;
+    final reason = await showReportReasonSheet(
+      context,
+      title: 'بلّغ عن الإجابة',
+      note: 'فريق اعّرست يقرأ الإجابة وسببك، ويحسّن المساعد.',
+      reasons: const ['كلام مسيء', 'معلومة غلط أو تضر'],
+      keyPrefix: 'assistant-report',
+    );
+    if (reason == null || !mounted) return;
+    try {
+      await _api.reportAnswer(
+        widget.weddingPlanId,
+        kind: exchange.kind,
+        question: exchange.typed,
+        answer: answer.answer,
+        reason: reason,
+      );
+      if (!mounted) return;
+      setState(() => exchange.reported = true);
+      AarastToast.showSuccess(context, 'وصل بلاغك، وفريق اعّرست بيراجعه.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AarastToast.showError(
+        context,
+        error.serverCode == 'ASSISTANT_REPORT_LIMIT'
+            ? 'عندك بلاغات كثير ما راجعها الفريق بعد. جرّب بعدين.'
+            : error.message,
+      );
+    } catch (_) {
+      if (mounted) {
+        AarastToast.showError(context, 'ما قدرنا نرسل البلاغ. حاول مرة ثانية.');
+      }
     }
   }
 
@@ -297,7 +352,11 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
         _QuestionBubble(exchange: exchange),
         const SizedBox(height: AarastV3Space.x2),
         if (exchange.answer case final answer?) ...[
-          _AnswerCard(answer: answer),
+          _AnswerCard(
+            answer: answer,
+            reported: exchange.reported,
+            onReport: () => _report(exchange),
+          ),
           const SizedBox(height: AarastV3Space.x2),
         ],
       ],
@@ -438,11 +497,18 @@ class _QuestionBubble extends StatelessWidget {
   }
 }
 
-/// «من خطتك»: the answer, and the reminder that it is a suggestion.
+/// «من خطتك»: the answer, and the reminder that it is a suggestion. An
+/// answer the model gave (not its refusal) can be reported (RA-ST-04).
 class _AnswerCard extends StatelessWidget {
-  const _AnswerCard({required this.answer});
+  const _AnswerCard({
+    required this.answer,
+    required this.reported,
+    required this.onReport,
+  });
 
   final PlanAssistantAnswer answer;
+  final bool reported;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -494,6 +560,29 @@ class _AnswerCard extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
+          if (!answer.declined)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: reported
+                  ? Padding(
+                      key: const ValueKey('assistant-reported'),
+                      padding: const EdgeInsets.only(top: AarastV3Space.x2),
+                      child: Text(
+                        'بلّغت عنها، والفريق بيراجعها.',
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                    )
+                  : JourneyTextAction(
+                      key: const ValueKey('assistant-report'),
+                      label: 'بلّغ عن الإجابة',
+                      icon: LucideIcons.flag,
+                      color: AarastV3Color.textMuted,
+                      onPressed: onReport,
+                    ),
+            ),
         ],
       ),
     );

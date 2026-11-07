@@ -135,6 +135,155 @@ void main() {
     expect(api.questions, ['كم أخصص للتصوير؟']);
   });
 
+  // RA-ST-04 (D95): «بلّغ عن الإجابة».
+  Future<_FakeAssistantApi> askedOnce(
+    WidgetTester tester, {
+    _FakeAssistantApi? api,
+    String? typed,
+  }) async {
+    SharedPreferences.setMockInitialValues({
+      'aarast.assistant.consent.v1.device': true,
+    });
+    final fake = api ?? _FakeAssistantApi();
+    await tester.pumpWidget(
+      app(
+        ScaffoldMessenger(
+          child: Scaffold(
+            body: PlanAssistantScreen(weddingPlanId: 'plan-1', api: fake),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    if (typed != null) {
+      await tester.enterText(
+        find.byKey(const ValueKey('assistant-question')),
+        typed,
+      );
+      await tester.tap(find.byKey(const ValueKey('assistant-send')));
+    } else {
+      await tester.tap(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')));
+    }
+    await tester.pumpAndSettle();
+    return fake;
+  }
+
+  testWidgets('RA-ST-04: an answer is reported with what was asked and why', (
+    tester,
+  ) async {
+    final api = await askedOnce(tester, typed: 'كم أخصص للتصوير؟');
+    await tester.ensureVisible(find.byKey(const ValueKey('assistant-report')));
+    await tester.tap(find.byKey(const ValueKey('assistant-report')));
+    await tester.pumpAndSettle();
+    expect(find.text('بلّغ عن الإجابة'), findsWidgets);
+    expect(
+      find.text('فريق اعّرست يقرأ الإجابة وسببك، ويحسّن المساعد.'),
+      findsOneWidget,
+    );
+
+    // Nothing goes before a reason is picked.
+    final send = find.byKey(const ValueKey('assistant-report-send'));
+    await tester.tap(send);
+    await tester.pump();
+    expect(api.reports, isEmpty);
+
+    await tester.tap(
+      find.byKey(const ValueKey('assistant-report-reason-معلومة غلط أو تضر')),
+    );
+    await tester.pump();
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+    expect(api.reports, [
+      ['QUESTION', 'كم أخصص للتصوير؟', 'وزّع 40% للقاعة', 'معلومة غلط أو تضر'],
+    ]);
+    expect(find.text('وصل بلاغك، وفريق اعّرست بيراجعه.'), findsOneWidget);
+    // Once per answer: the action becomes the fact.
+    expect(find.byKey(const ValueKey('assistant-report')), findsNothing);
+    expect(find.byKey(const ValueKey('assistant-reported')), findsOneWidget);
+  });
+
+  testWidgets('RA-ST-04: a ready-made request is reported without a question, '
+      'and «شي ثاني» sends the reader\'s words', (tester) async {
+    final api = await askedOnce(tester);
+    await tester.ensureVisible(find.byKey(const ValueKey('assistant-report')));
+    await tester.tap(find.byKey(const ValueKey('assistant-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('assistant-report-reason-شي ثاني')),
+    );
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('assistant-report-words')).last,
+      '  يقول أشياء ما تناسب  ',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('assistant-report-send')));
+    await tester.pumpAndSettle();
+    expect(api.reports, [
+      ['FORGOTTEN', null, 'وزّع 40% للقاعة', 'يقول أشياء ما تناسب'],
+    ]);
+  });
+
+  testWidgets('RA-ST-04: too many open reports say why, and the action stays', (
+    tester,
+  ) async {
+    final api = await askedOnce(
+      tester,
+      api: _FakeAssistantApi(
+        reportFailure: const ApiException(
+          'Too many reports are waiting for review',
+          statusCode: 429,
+          serverCode: 'ASSISTANT_REPORT_LIMIT',
+        ),
+      ),
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('assistant-report')));
+    await tester.tap(find.byKey(const ValueKey('assistant-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('assistant-report-reason-كلام مسيء')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('assistant-report-send')));
+    await tester.pumpAndSettle();
+    expect(api.reports, isEmpty);
+    expect(
+      find.text('عندك بلاغات كثير ما راجعها الفريق بعد. جرّب بعدين.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('assistant-report')), findsOneWidget);
+  });
+
+  testWidgets('RA-ST-04: the assistant\'s own refusal has nothing to report', (
+    tester,
+  ) async {
+    await askedOnce(tester, api: _FakeAssistantApi(declined: true));
+    expect(find.byKey(const ValueKey('assistant-answer')), findsOneWidget);
+    expect(find.byKey(const ValueKey('assistant-report')), findsNothing);
+  });
+
+  test('RA-ST-04: the report carries the kind, the own question, the answer '
+      'cut to the server\'s bound, and the reason', () async {
+    final client = _RecordingClient();
+    final long = 'ا' * (PlanAssistantApi.reportAnswerMax + 50);
+    await PlanAssistantApi(client).reportAnswer(
+      'plan-1',
+      kind: PlanAssistantKind.cheaper,
+      question: '  ',
+      answer: long,
+      reason: 'كلام مسيء',
+    );
+    expect(
+      client.posts.single.$1,
+      '/api/v1/wedding-plans/plan-1/assistant/reports',
+    );
+    final body = client.posts.single.$2;
+    expect(body['kind'], 'CHEAPER');
+    expect(body.containsKey('question'), isFalse);
+    expect((body['answer'] as String).length, PlanAssistantApi.reportAnswerMax);
+    expect(body['reason'], 'كلام مسيء');
+  });
+
   testWidgets('a refusal from the server is shown in Arabic', (tester) async {
     SharedPreferences.setMockInitialValues({
       'aarast.assistant.consent.v1.device': true,
@@ -262,14 +411,37 @@ void main() {
 }
 
 class _FakeAssistantApi extends PlanAssistantApi {
-  _FakeAssistantApi({this.enabled = true, this.allowed = true, this.failure})
-    : super(ApiClient(tokenProvider: () async => null));
+  _FakeAssistantApi({
+    this.enabled = true,
+    this.allowed = true,
+    this.failure,
+    this.declined = false,
+    this.reportFailure,
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   final bool enabled;
   final bool allowed;
   final ApiException? failure;
+  final bool declined;
+  final ApiException? reportFailure;
   final List<PlanAssistantKind> asked = [];
   final List<String?> questions = [];
+
+  /// RA-ST-04: kind, question, answer and reason of each report sent.
+  final List<List<String?>> reports = [];
+
+  @override
+  Future<void> reportAnswer(
+    String weddingPlanId, {
+    required PlanAssistantKind kind,
+    required String? question,
+    required String answer,
+    required String reason,
+  }) async {
+    if (reportFailure != null) throw reportFailure!;
+    reports.add([kind.apiValue, question, answer, reason]);
+  }
+
   int _remaining = 2;
 
   @override
@@ -293,9 +465,25 @@ class _FakeAssistantApi extends PlanAssistantApi {
     _remaining -= 1;
     return PlanAssistantAnswer(
       answer: 'وزّع 40% للقاعة',
-      declined: false,
+      declined: declined,
       marketDataAvailable: false,
       remainingToday: _remaining,
     );
+  }
+}
+
+/// RA-ST-04: the path and body the report sends to the server.
+class _RecordingClient extends ApiClient {
+  _RecordingClient() : super(tokenProvider: () async => null);
+
+  final List<(String, Map<String, dynamic>)> posts = [];
+
+  @override
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    posts.add((path, data));
+    return {'reported': true};
   }
 }

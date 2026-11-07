@@ -551,7 +551,9 @@ describe('a05 دليل المزودين', () => {
       <ProvidersPage
         getCities={vi.fn().mockResolvedValue([])}
         getCategories={vi.fn().mockResolvedValue([])}
-        getStats={vi.fn().mockResolvedValue({ totalProviders: 412, approvedProviders: 388 })}
+        getStats={vi
+          .fn()
+          .mockResolvedValue({ totalProviders: 412, approvedProviders: 388, suspendedProviders: 6 })}
       />,
     );
 
@@ -561,7 +563,9 @@ describe('a05 دليل المزودين', () => {
     expect(saba).toHaveTextContent('4.8 · 63');
     expect(screen.getByRole('row', { name: 'افتح مصور الحارة' })).toHaveTextContent('بلا حساب');
     expect(screen.getByRole('row', { name: 'افتح مصور س' })).toHaveTextContent('موقوف');
-    expect(await screen.findByText('412 مزود · 388 نشط')).toBeVisible();
+    // RA-AD-15: the directory lists the active and the suspended, so it
+    // counts those (388 + 6); «412» counted every status, the defect itself.
+    expect(await screen.findByText('394 مزود · 388 نشط')).toBeVisible();
     expect(screen.queryByText('الحجوزات')).not.toBeInTheDocument();
     expect(getProviders).toHaveBeenCalledWith({ page: 1, limit: 20 });
   });
@@ -700,6 +704,32 @@ describe('a07 ملفات بلا حساب (B-12)', () => {
     renderAt('/l', '/l', <ProviderClaimsPage />);
     await screen.findByText('مصور الحارة');
     expect(screen.queryByRole('button', { name: 'اقبل' })).not.toBeInTheDocument();
+  });
+});
+
+describe('a06 تفاصيل مزود · ملاحظات الحقول (RA-AD-17)', () => {
+  // The server keeps the newest decision's notes only. This page did not
+  // hand its field notes on, so «اطلب تعديل» sent [] and wiped them.
+  it('keeps the provider’s field notes when changes are asked again from his page', async () => {
+    const fieldNotes: ProviderApplication['fieldNotes'] = [{ field: 'SERVICE', note: 'حدد سعر الليلة' }];
+    vi.mocked(getProvider).mockResolvedValue(
+      provider({
+        id: 'nc',
+        businessName: 'قاعة سبأ',
+        status: 'NEEDS_CHANGES',
+        reviewNote: 'كمّل الملف',
+        fieldNotes,
+      }),
+    );
+    vi.mocked(requestProviderChanges).mockResolvedValue(provider({ id: 'nc', businessName: 'قاعة سبأ' }));
+    renderAt('/d/nc', '/d/:id', <ProviderDetailsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'اطلب تعديل' }));
+    const dialog = screen.getByRole('dialog', { name: 'اطلب تعديل من قاعة سبأ' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'أرسل الملاحظات' }));
+    await waitFor(() =>
+      expect(requestProviderChanges).toHaveBeenCalledWith('nc', { note: 'كمّل الملف', fieldNotes }),
+    );
   });
 });
 

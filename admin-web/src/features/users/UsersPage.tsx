@@ -50,6 +50,8 @@ export function UsersPage() {
 
   useEffect(() => {
     setDraft(search);
+    // RA-AD-10: a new term never shows the previous term's rows or count.
+    setResult(null);
   }, [search]);
 
   useEffect(() => {

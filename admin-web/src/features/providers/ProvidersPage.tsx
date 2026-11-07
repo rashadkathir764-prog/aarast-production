@@ -28,7 +28,9 @@ import {
 } from '../../design_system/Desk';
 import { DeskModal } from '../../design_system/DeskModal';
 
-type DirectoryCounts = { totalProviders: number; approvedProviders: number };
+// RA-AD-15: the directory lists the active and the suspended, so its count
+// is theirs, not every status (pending and refused profiles live elsewhere).
+type DirectoryCounts = { approvedProviders: number; suspendedProviders?: number };
 
 type ProvidersPageProps = {
   getCities: () => Promise<CityProjection[]>;
@@ -100,7 +102,11 @@ export function ProvidersPage({ getCities, getCategories, getStats }: ProvidersP
     <section>
       <DeskHeader
         title="دليل المزودين"
-        sub={counts ? `${counts.totalProviders} مزود · ${counts.approvedProviders} نشط` : undefined}
+        sub={
+          counts
+            ? `${counts.approvedProviders + (counts.suspendedProviders ?? 0)} مزود · ${counts.approvedProviders} نشط`
+            : undefined
+        }
         actions={
           <Can permission={AdminPermission.PROVIDERS_WRITE}>
             <DeskButton tone="soft" icon={Plus} onClick={() => void open('add')}>

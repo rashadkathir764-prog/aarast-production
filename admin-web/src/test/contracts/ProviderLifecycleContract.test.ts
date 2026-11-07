@@ -66,8 +66,11 @@ describe('provider administration lifecycle', () => {
   });
 
   it('shows directory totals from the server, never page-local sums', () => {
-    expect(providersSource).toContain('counts.totalProviders');
+    // RA-AD-15: the server's own counts of what the directory lists (active
+    // and suspended); totalProviders counted every status.
     expect(providersSource).toContain('counts.approvedProviders');
+    expect(providersSource).toContain('counts.suspendedProviders');
+    expect(providersSource).not.toContain('counts.totalProviders');
     expect(providersSource).not.toContain('في الصفحة');
     expect(applicationsSource).not.toContain('في الصفحة');
     // a10 and a11 draw no page counts at all.

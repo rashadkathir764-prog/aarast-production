@@ -87,6 +87,21 @@ describe('n07 photos waiting for review (B-16)', () => {
     expect(screen.queryByText('ما فيه صور تنتظر المراجعة.')).not.toBeInTheDocument();
   });
 
+  // RA-AD-18: «حاول مرة ثانية» after a failed decision reloaded the list and
+  // left the red line of the failure.
+  it('clears a failed decision’s error when the list is tried again', async () => {
+    vi.mocked(getPortfolioPhotos).mockResolvedValue(page([photo()]) as never);
+    vi.mocked(decidePortfolioPhoto).mockRejectedValueOnce(new Error('حدث خطأ في الخادم. حاول بعد قليل.'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'سليمة' }));
+    expect(await screen.findByText('حدث خطأ في الخادم. حاول بعد قليل.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'حاول مرة ثانية' }));
+    await waitFor(() =>
+      expect(screen.queryByText('حدث خطأ في الخادم. حاول بعد قليل.')).not.toBeInTheDocument(),
+    );
+  });
+
   it('approves a women\'s photo only after the no-faces check', async () => {
     vi.mocked(getPortfolioPhotos).mockResolvedValue(
       page([photo({ id: 'photo-2', album: 'حفلات النساء', forWomen: true, noFaces: true })]) as never,

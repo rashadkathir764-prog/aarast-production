@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AdminPermission } from '../auth/api';
 import {
   getDataRequests,
   restoreAccountDeletion,
@@ -10,6 +11,15 @@ import {
 import { DataRequestsPage } from './DataRequestsPage';
 
 vi.mock('./api', () => ({ getDataRequests: vi.fn(), restoreAccountDeletion: vi.fn() }));
+
+const authState = vi.hoisted(() => ({
+  user: { id: 'admin-1', name: 'نادية', adminPermissions: [] as string[] },
+}));
+vi.mock('../auth/AuthProvider', () => ({ useAuth: () => authState }));
+
+beforeEach(() => {
+  authState.user.adminPermissions = [AdminPermission.USERS_READ, AdminPermission.USERS_WRITE];
+});
 
 const deletion = (overrides: Partial<PendingDeletion> = {}): PendingDeletion => ({
   userId: 'user-1',
@@ -89,6 +99,24 @@ describe('n06 data requests (A-15, D63)', () => {
     await waitFor(() =>
       expect(vi.mocked(getDataRequests).mock.calls.length).toBe(readsBefore + 1),
     );
+  });
+
+  // RA-AD-10: support reads the requests (USERS_READ) but cannot take a
+  // deletion back (USERS_WRITE): the button it would press only to be refused
+  // is not shown.
+  it('shows the take-back only to a role that may use it', async () => {
+    authState.user.adminPermissions = [AdminPermission.USERS_READ];
+    vi.mocked(getDataRequests).mockResolvedValue(requests);
+    render(
+      <MemoryRouter>
+        <DataRequestsPage />
+      </MemoryRouter>,
+    );
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('مهلة: باقي 27 يوم')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'رجّع حساب سلمان المنصور بطلبه' }),
+    ).not.toBeInTheDocument();
   });
 
   it('says plainly when nothing waits', async () => {

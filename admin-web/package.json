@@ -11,7 +11,7 @@
     "smoke:admin-runtime": "node ../backend/scripts/smoke/run-isolated-smoke.js --admin-runtime",
     "smoke:routes": "npm run build && node scripts/route-smoke.mjs",
     "smoke:honesty": "node scripts/source-honesty-smoke.mjs",
-    "test:architecture": "node --test scripts/admin-boundaries.contract.mjs",
+    "test:architecture": "node --test scripts/admin-boundaries.contract.mjs scripts/audit-words.contract.mjs",
     "test:container-config": "node --test scripts/runtime-config-guard.contract.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

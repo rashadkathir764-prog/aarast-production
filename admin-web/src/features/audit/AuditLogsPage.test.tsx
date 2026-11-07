@@ -47,6 +47,17 @@ describe('audit words', () => {
     expect(auditActionWords('PUT', '/admin/unknown').label).toBe('إجراء آخر');
   });
 
+  // RA-AD-09: the words of the writes added since; every admin write route of
+  // the server's table is checked by scripts/audit-words.contract.mjs.
+  it('names the ownership claims, the featured periods and the take-back', () => {
+    expect(auditActionWords('POST', '/admin/provider-claims/:id/approve').label).toBe('قبل استلام ملف');
+    expect(auditActionWords('POST', '/admin/providers/:id/featured-periods').target).toBe('provider');
+    expect(auditActionWords('POST', '/admin/data-requests/:id/restore')).toEqual({
+      label: 'رجّع حساب بطلبه',
+      target: 'user',
+    });
+  });
+
   it('keeps one line per action, its result over its attempt', () => {
     const lines = oneLinePerAction([
       log({ id: '1', eventId: 'e1', phase: 'SUCCEEDED' }),

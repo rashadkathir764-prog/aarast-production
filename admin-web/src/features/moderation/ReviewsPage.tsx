@@ -141,7 +141,16 @@ export function ReviewsPage() {
         ))}
       />
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
-      {actionError ? <DeskRetry message={actionError} onRetry={() => void load()} /> : null}
+      {actionError ? (
+        // RA-AD-18: trying again starts clean.
+        <DeskRetry
+          message={actionError}
+          onRetry={() => {
+            setActionError(null);
+            void load();
+          }}
+        />
+      ) : null}
       {result === null && !error ? <DeskNote>لحظة، نحمّل التقييمات…</DeskNote> : null}
       {result && result.items.length === 0 ? (
         <Panel>

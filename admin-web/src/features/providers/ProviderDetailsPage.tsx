@@ -52,7 +52,11 @@ export function ProviderDetailsPage() {
       <DeskHeader
         title={provider.businessName}
         sub={sub}
-        actions={<ProviderDecisions provider={provider} onChanged={load} />}
+        // RA-AD-17: the server keeps the newest decision's notes only, so a
+        // new «اطلب تعديل» carries the field notes he reads now.
+        actions={
+          <ProviderDecisions provider={provider} fieldNotes={provider.fieldNotes ?? []} onChanged={load} />
+        }
       />
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
       <StatRow>

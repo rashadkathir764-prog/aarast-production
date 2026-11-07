@@ -91,7 +91,16 @@ export function PhotosPage() {
     <section>
       <DeskHeader title="صور تحتاج مراجعة" sub="كل صورة جديدة في معارض المزودين · الأقدم أول" />
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
-      {actionError ? <DeskRetry message={actionError} onRetry={() => void load()} /> : null}
+      {actionError ? (
+        // RA-AD-18: trying again starts clean.
+        <DeskRetry
+          message={actionError}
+          onRetry={() => {
+            setActionError(null);
+            void load();
+          }}
+        />
+      ) : null}
       {result === null && !error ? <DeskNote>لحظة، نحمّل الصور…</DeskNote> : null}
       {result && result.items.length === 0 ? (
         <Panel>

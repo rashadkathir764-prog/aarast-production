@@ -24,6 +24,7 @@ import {
   phoneSpaced,
 } from '../../design_system/Desk';
 import { countUnit, dayAgo, dayMonth } from '../../platform/i18n/deskTime';
+import { AdminPermission, Can } from '../auth/api';
 
 type Row =
   | { kind: 'export'; key: string; item: DataExportRequest }
@@ -147,17 +148,19 @@ export function DataRequestsPage() {
               <Tag key="s" tone={state.tone}>
                 {state.label}
               </Tag>,
-              <SoftAction
-                key="a"
-                disabled={restoring !== null}
-                aria-label={`رجّع حساب ${row.item.name} بطلبه`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void restore(row.item);
-                }}
-              >
-                {restoring === row.item.userId ? 'لحظة…' : 'رجّعه بطلبه'}
-              </SoftAction>,
+              // RA-AD-10: taking a deletion back needs USERS_WRITE (support reads only).
+              <Can key="a" permission={AdminPermission.USERS_WRITE}>
+                <SoftAction
+                  disabled={restoring !== null}
+                  aria-label={`رجّع حساب ${row.item.name} بطلبه`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void restore(row.item);
+                  }}
+                >
+                  {restoring === row.item.userId ? 'لحظة…' : 'رجّعه بطلبه'}
+                </SoftAction>
+              </Can>,
             ];
           }}
         />

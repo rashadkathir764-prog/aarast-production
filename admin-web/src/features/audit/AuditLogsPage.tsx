@@ -59,6 +59,15 @@ const ACTIONS: Array<[string, RegExp, ActionWords]> = [
   ['POST', /^\/admin\/districts\/:id\/localities$/, { label: 'أضاف منطقة', target: 'مديرية' }],
   ['PATCH', /^\/admin\/localities\/:id$/, { label: 'عدّل منطقة', target: 'منطقة' }],
   ['DELETE', /^\/admin\/localities\/:id$/, { label: 'عطّل منطقة', target: 'منطقة' }],
+  // RA-AD-09: the writes added since, which read «إجراء آخر».
+  ['POST', /^\/admin\/provider-claims\/:id\/approve$/, { label: 'قبل استلام ملف', target: 'طلب استلام' }],
+  ['POST', /^\/admin\/provider-claims\/:id\/reject$/, { label: 'رفض استلام ملف', target: 'طلب استلام' }],
+  ['POST', /^\/admin\/providers\/:id\/featured-periods$/, { label: 'فعّل باقة مميز', target: 'provider' }],
+  ['POST', /^\/admin\/featured-periods\/:id\/end$/, { label: 'أنهى باقة مميز', target: 'باقة مميز' }],
+  ['PATCH', /^\/admin\/portfolio-items\/:id\/decision$/, { label: 'قرّر في صورة معرض', target: 'صورة معرض' }],
+  ['PATCH', /^\/admin\/reviews\/:id\/reply-status$/, { label: 'غيّر حالة رد على تقييم', target: 'تقييم' }],
+  ['PATCH', /^\/admin\/assistant-reports\/:id\/resolve$/, { label: 'قفل بلاغ إجابة المساعد', target: 'بلاغ' }],
+  ['POST', /^\/admin\/data-requests\/:id\/restore$/, { label: 'رجّع حساب بطلبه', target: 'user' }],
 ];
 
 export function auditActionWords(method: string, route: string): ActionWords {

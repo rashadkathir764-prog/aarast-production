@@ -80,6 +80,22 @@ describe('UsersPage', () => {
     expect(screen.getByLabelText('ابحث بالاسم أو الرقم')).toHaveValue('777');
   });
 
+  // RA-AD-10: a new search that failed showed the retry box above the
+  // previous search's rows, headed by the new term with the old count.
+  it('never shows the previous search’s rows under a new term', async () => {
+    renderAt('/users');
+    expect(await screen.findByText('علي الشامي')).toBeVisible();
+    vi.mocked(getUsers).mockRejectedValueOnce(
+      new Error('تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.'),
+    );
+    fireEvent.change(screen.getByLabelText('ابحث بالاسم أو الرقم'), { target: { value: '777' } });
+    fireEvent.submit(screen.getByRole('search'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر الاتصال بالخادم');
+    expect(screen.queryByText('علي الشامي')).not.toBeInTheDocument();
+    expect(screen.queryByText(/حساب يطابق «777»/)).not.toBeInTheDocument();
+  });
+
   it('says in Arabic when the list cannot load and tries again', async () => {
     vi.mocked(getUsers).mockRejectedValueOnce(
       new Error('تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.'),

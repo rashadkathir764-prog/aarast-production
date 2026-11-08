@@ -17,9 +17,11 @@ Guest _guest({
   String status = 'INVITED',
   String attendanceStatus = 'PENDING',
   String? phone = '+967777000111',
+  bool editable = true,
 }) {
   final now = DateTime.utc(2026, 10, 15);
   return Guest(
+    editable: editable,
     id: id,
     weddingPlanId: planId,
     name: 'ليلى سالم',
@@ -115,6 +117,25 @@ Future<_FakeGuestsApi> _pump(WidgetTester tester, Guest guest) async {
 }
 
 void main() {
+  // D80 (RA-MO-38): a helper reads every guest of the plan and edits only
+  // those he added; the server refuses the rest, so the page offers nothing
+  // it would refuse.
+  testWidgets(
+    'a guest the reader may not edit offers no edit, reply or invite',
+    (tester) async {
+      final api = await _pump(tester, _guest(phone: null, editable: false));
+
+      expect(find.text('ليلى سالم'), findsOneWidget);
+      expect(find.byKey(const ValueKey('guest-menu')), findsNothing);
+      expect(find.byKey(const ValueKey('guest-send-invitation')), findsNothing);
+      expect(find.textContaining('عشان توصله'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('guest-reply-CONFIRMED')));
+      await tester.pumpAndSettle();
+      expect(api.updates, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a guest who has not answered can be marked by hand', (
     tester,
   ) async {

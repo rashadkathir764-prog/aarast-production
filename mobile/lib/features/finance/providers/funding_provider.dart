@@ -42,12 +42,18 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isStale = false;
   bool get isStale => _isStale;
 
+  /// Sources saved for [_loadedPlanId] while its list was being read: the
+  /// read was sent before them, so its answer does not hold them (RA-MO-38).
+  final List<FundingSource> _savedDuringRead = [];
+
   /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> load(String weddingPlanId) async {
     if (_loadedPlanId != weddingPlanId) {
       _loadedPlanId = weddingPlanId;
       _sources = const [];
     }
+    // What was saved before this read is in its answer.
+    _savedDuringRead.clear();
     bool current() => _loadedPlanId == weddingPlanId;
     await readCachedFirst<List<FundingSource>>(
       cached: () async {
@@ -56,7 +62,12 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
       },
       remote: () => _api.getFundingSources(weddingPlanId),
       apply: (sources) {
-        if (current()) _sources = sources;
+        if (!current()) return;
+        _sources = [
+          ...sources,
+          for (final saved in _savedDuringRead)
+            if (!sources.any((source) => source.id == saved.id)) saved,
+        ];
       },
       state: ({required loading, required stale, error}) {
         if (!current()) return;
@@ -92,7 +103,11 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
         note: note,
         expectedAt: expectedAt,
       );
+      // Another plan's list (or none yet) is not this one: the next read of
+      // this plan brings it.
+      if (_loadedPlanId != weddingPlanId) return;
       _sources = [..._sources, created];
+      if (_isLoading) _savedDuringRead.add(created);
     });
   }
 
@@ -176,7 +191,10 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
     try {
       await change();
-      return _loadedPlanId == weddingPlanId;
+      // RA-MO-38: saved is saved, whichever list the screen shows. The sheet
+      // can save before this plan's list was read (the money is read first);
+      // «ما قدرنا نحفظ» then made the person save the same source twice.
+      return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
       return false;

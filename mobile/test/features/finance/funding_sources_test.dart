@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -129,6 +130,67 @@ void main() {
       expect(provider.sourceById(loan.id)!.repayments.single.isPaid, isTrue);
       expect(provider.errorMessage, isNull);
     });
+
+    test(
+      'RA-MO-38: a source saved before its list was read is saved, once',
+      () async {
+        final api = _FakeFundingApi();
+        final provider = FundingProvider(api);
+        // The screen reads the money first; the sheet saves meanwhile.
+        final ok = await provider.create(
+          weddingPlanId: 'plan-1',
+          kind: FundingKind.gift,
+          sourceName: 'نقوط',
+          amount: '1000',
+          status: FundingStatus.received,
+        );
+
+        expect(ok, isTrue, reason: 'said failed, it was saved again');
+        expect(provider.errorMessage, isNull);
+        await provider.load('plan-1');
+        expect(
+          provider.sources.where((source) => source.sourceName == 'نقوط'),
+          hasLength(1),
+        );
+        expect(api.created, hasLength(1));
+      },
+    );
+
+    test(
+      'RA-MO-38: a source saved while the list is read stays after its answer',
+      () async {
+        final api = _FakeFundingApi();
+        final provider = FundingProvider(api);
+        await provider.load('plan-1');
+        final answer = Completer<void>();
+        api.holdNextRead = answer;
+        final reading = provider.load('plan-1');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          await provider.create(
+            weddingPlanId: 'plan-1',
+            kind: FundingKind.gift,
+            sourceName: 'نقوط',
+            amount: '1000',
+            status: FundingStatus.received,
+          ),
+          isTrue,
+        );
+        answer.complete();
+        await reading;
+
+        expect(
+          provider.sources.map((source) => source.sourceName),
+          contains('نقوط'),
+        );
+        await provider.load('plan-1');
+        expect(
+          provider.sources.where((source) => source.sourceName == 'نقوط'),
+          hasLength(1),
+        );
+      },
+    );
 
     test('a rejected change keeps the list and says why', () async {
       final api = _FakeFundingApi()..reject = true;
@@ -570,9 +632,18 @@ class _FakeFundingApi extends FundingApi {
     if (reject) throw const ApiException('تعذر الحفظ.', statusCode: 400);
   }
 
+  /// Holds the next read's answer; the answer is what was saved when the
+  /// read was sent.
+  Completer<void>? holdNextRead;
+
   @override
-  Future<List<FundingSource>> getFundingSources(String weddingPlanId) async =>
-      List.of(_sources);
+  Future<List<FundingSource>> getFundingSources(String weddingPlanId) async {
+    final answer = List.of(_sources);
+    final hold = holdNextRead;
+    holdNextRead = null;
+    if (hold != null) await hold.future;
+    return answer;
+  }
 
   @override
   Future<FundingSource> createFundingSource({

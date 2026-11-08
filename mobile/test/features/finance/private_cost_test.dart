@@ -102,15 +102,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  // The old «كل التكاليف» page is gone: the next agreements load into
-  // «البنود» itself.
-  testWidgets('«باقي البنود» loads the next agreements into the list', (
+  // RA-MO-38: every money screen reads the plan's agreements whole (the
+  // items, an item's page, the payment picker, the mahr), so the pages after
+  // the first arrive with the money, not on a tap.
+  testWidgets('the next agreements arrive with the money, without a tap', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final api = _TwoCostsApi(paged: true);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(api),
+        child: const MaterialApp(
+          home: MoneyOverviewScreen(weddingPlanId: 'plan-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('البنود'));
+    await tester.pumpAndSettle();
+
+    expect(api.pages, [1, 2]);
+    expect(find.byKey(const ValueKey('money-item-private')), findsOneWidget);
+    expect(find.byKey(const ValueKey('money-item-shared')), findsOneWidget);
+    expect(find.byKey(const ValueKey('money-items-more')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // The old «كل التكاليف» page is gone: when a later page could not be read
+  // with the money, «باقي البنود» reads it into «البنود» itself.
+  testWidgets('«باقي البنود» loads the next agreements into the list', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final api = _TwoCostsApi(paged: true, failSecondPageOnce: true);
 
     await tester.pumpWidget(
       ChangeNotifierProvider<FinanceProvider>(
@@ -132,7 +162,7 @@ void main() {
     await tester.tap(more);
     await tester.pumpAndSettle();
 
-    expect(api.pages, [1, 2]);
+    expect(api.pages, [1, 2, 2]);
     expect(find.byKey(const ValueKey('money-item-private')), findsOneWidget);
     expect(find.byKey(const ValueKey('money-item-shared')), findsOneWidget);
     expect(more, findsNothing);
@@ -141,8 +171,14 @@ void main() {
 }
 
 class _TwoCostsApi extends FinanceApi {
-  _TwoCostsApi({this.paged = false, this.allCancelled = false})
-    : super(ApiClient(tokenProvider: () async => null));
+  _TwoCostsApi({
+    this.paged = false,
+    this.allCancelled = false,
+    this.failSecondPageOnce = false,
+  }) : super(ApiClient(tokenProvider: () async => null));
+
+  /// The second page cannot be read the first time it is asked for.
+  bool failSecondPageOnce;
 
   /// Both agreements of the item cancelled.
   final bool allCancelled;
@@ -203,6 +239,10 @@ class _TwoCostsApi extends FinanceApi {
     String? payer,
   }) async {
     pages.add(page);
+    if (page == 2 && failSecondPageOnce) {
+      failSecondPageOnce = false;
+      throw const ApiException('الخادم تأخر في الرد.', isNetworkFailure: true);
+    }
     final all = [
       _cost('private', 'فستان', isPrivate: true),
       _cost('shared', 'القاعة', isPrivate: false),

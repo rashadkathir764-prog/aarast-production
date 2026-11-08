@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/finance/data/cost_receipts_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
@@ -160,6 +161,21 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('متابعة'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    // RA-MO-38 (D85): the dates are the phone's copy; the page says so, as
+    // every money screen does, instead of showing them as the server's.
+    testWidgets('an agreement read from the phone\'s copy says it is old', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        api: _CopyOfDatesApi(),
+      );
+
+      expect(find.byType(JourneyListNotice), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -954,6 +970,19 @@ class _RefusedPaymentApi extends _MoneyDetailsApi {
     String? note,
   }) async {
     throw const ApiException(refusal);
+  }
+}
+
+/// The server is out of reach: the agreement's dates come from the phone's
+/// copy, served without an error (D87), as `FinanceApi` does.
+class _CopyOfDatesApi extends _MoneyDetailsApi {
+  @override
+  Future<List<PaymentSchedule>> getCostSchedules(
+    String costId, {
+    String? planId,
+  }) async {
+    OfflineReads.noteCopyServed();
+    return super.getCostSchedules(costId, planId: planId);
   }
 }
 

@@ -113,7 +113,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             child: JourneySubHeader(
               title: '',
               onBack: _back,
-              trailing: guest == null
+              // D80 (RA-MO-38): a helper edits only the guests he added; the
+              // server refuses the rest, so they offer no edit and no delete.
+              trailing: guest == null || !guest.editable
                   ? null
                   : PopupMenuButton<bool>(
                       key: const ValueKey('guest-menu'),
@@ -259,7 +261,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                 label: label,
                 selected: status == value,
                 selectedColor: context.accent.primary,
-                onTap: provider.isSubmitting || status == value
+                onTap:
+                    !guest.editable || provider.isSubmitting || status == value
                     ? null
                     : () => _setReply(provider, guest, value),
               ),
@@ -318,7 +321,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                     ),
                   ),
                 ),
-                if (guest.hasPhone)
+                if (guest.hasPhone && guest.editable)
                   JourneyButton(
                     key: const ValueKey('guest-send-invitation'),
                     label: guest.invitationStatus == 'NOT_SENT'
@@ -331,7 +334,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
               ],
             ),
           ),
-          if (!guest.hasPhone)
+          if (!guest.hasPhone && guest.editable)
             Padding(
               padding: const EdgeInsets.only(top: AarastV3Space.x1),
               child: Text(

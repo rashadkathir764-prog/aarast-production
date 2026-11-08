@@ -269,6 +269,11 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         if (provider.loadErrorMessage != null) ...[
           JourneyListNotice(offline: false, onRetry: _load),
           const SizedBox(height: AarastV3Space.x3),
+        ] else if (provider.isStale) ...[
+          // RA-MO-38 (D85): the phone's copy, said so, as on every money
+          // screen; the dates under it may be older than the server's.
+          JourneyListNotice(offline: true, onRetry: _load),
+          const SizedBox(height: AarastV3Space.x3),
         ],
         _CostAgreementCard(cost: cost, currency: currency),
         // V1 checklist 4.10: a private cost can join the shared plan.

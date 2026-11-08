@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
+import '../../../core/offline/offline_contract.dart' show OfflineReads;
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../sharing/sharing_api.dart' show PlanAccessPermissions, SharingApi;
@@ -294,6 +295,18 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       },
     );
     await _refreshPendingMoney(planId);
+    // RA-MO-38: every money screen reads the plan's agreements from here
+    // (the items, an item's page, the payment picker, the mahr), so they are
+    // all of them, not the first page of 30. A copy served without the
+    // server has no next page to ask for.
+    while (_isCurrent(generation) &&
+        !_isStale &&
+        hasMoreCosts &&
+        !_isLoadingMoreCosts) {
+      final before = _costsPage;
+      await loadMoreCosts();
+      if (_costsPage == before) break;
+    }
   }
 
   /// D85: the copy stays because the server did not answer.
@@ -333,6 +346,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     final generation = _loadGeneration;
     final planId = _loadedPlanId;
     if (planId == null) return;
+    // D87: a read the server did not answer serves the phone's copy without
+    // an error; the count of copies served is how it is told (RA-MO-38).
+    final served = OfflineReads.copiesServed;
     var cost = costById(costId);
     try {
       if (cost == null) {
@@ -367,7 +383,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         _schedulesByCost[costId] ??= const [];
       }
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;
-      if (stale) _isStale = true;
+      if (stale || OfflineReads.copiesServed > served) _isStale = true;
       notifyListeners();
     } on ApiException catch (error) {
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;

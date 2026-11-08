@@ -84,8 +84,12 @@ void main() {
   });
 
   group('c01 the mahr beside the wedding', () {
-    testWidgets('the groom: where the money goes, his agreement and his '
-        'wedding', (tester) async {
+    // RA-MO-40 (Rashad, 2026-11-08): c01 no longer repeats the mahr in a
+    // card of its own; it is in the total («مع المهر», D79), on the home,
+    // and its own section in «البنود» (c02 below). The budget is one card.
+    testWidgets('the groom: the mahr in his total, the budget on its own', (
+      tester,
+    ) async {
       await _pumpMoney(
         tester,
         profile: JourneyProfile.groom,
@@ -93,63 +97,48 @@ void main() {
         mahr: _groomMahr,
       );
 
-      expect(
-        find.byKey(const ValueKey('money-mahr-and-wedding')),
-        findsOneWidget,
-      );
-      expect(find.text('وين تروح الفلوس'), findsOneWidget);
-      expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      // RA-MO-40: the wedding card is what was agreed for it, not its
-      // budget under the same name.
-      expect(find.text('اتفاقات عرسك'), findsOneWidget);
-      final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
-      expect(
-        find.descendant(of: mahrCard, matching: find.textContaining('سلّمت ')),
-        findsOneWidget,
-      );
-      expect(find.textContaining('سلّمتِ'), findsNothing);
+      expect(find.text('وين تروح الفلوس'), findsNothing);
+      expect(find.byKey(const ValueKey('money-mahr-card')), findsNothing);
+      expect(find.textContaining('، مع المهر'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the bride: the mahr reaching her and her wedding', (
-      tester,
-    ) async {
-      await _pumpMoney(
-        tester,
-        profile: JourneyProfile.bride,
-        persona: 'BRIDE',
-        mahr: _brideMahr,
-      );
+    testWidgets(
+      'the bride: her mahr is not a card in c01, and the payment is her father',
+      (tester) async {
+        await _pumpMoney(
+          tester,
+          profile: JourneyProfile.bride,
+          persona: 'BRIDE',
+          mahr: _brideMahr,
+        );
 
-      expect(find.text('المهر وعرسك'), findsOneWidget);
-      expect(find.text('المهر يوصلك'), findsOneWidget);
-      final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
-      expect(
-        find.descendant(of: mahrCard, matching: find.textContaining('وصلك ')),
-        findsOneWidget,
-      );
-      // D59: the hall was paid by her father, so it is not «دفعتِ».
-      final paidLine = find.byKey(const ValueKey('money-paid-line'));
-      expect(
-        find.descendant(
-          of: paidLine,
-          matchRoot: true,
-          matching: find.textContaining('دفع عنك'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: paidLine,
-          matchRoot: true,
-          matching: find.textContaining('1.2 مليون'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('باقي عليك تدفعين'), findsOneWidget);
-      expect(find.text('الاتفاق مع أهل العروسة'), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
+        expect(find.text('المهر وعرسك'), findsNothing);
+        expect(find.byKey(const ValueKey('money-mahr-card')), findsNothing);
+        // D59: the hall was paid by her father, so it is not «دفعتِ».
+        final paidLine = find.byKey(const ValueKey('money-paid-line'));
+        expect(
+          find.descendant(
+            of: paidLine,
+            matchRoot: true,
+            matching: find.textContaining('دفع عنك'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: paidLine,
+            matchRoot: true,
+            matching: find.textContaining('1.2 مليون'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('باقي عليك تدفعين'), findsOneWidget);
+        expect(find.text('الاتفاق مع أهل العروسة'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('D59: the groom reads what he paid and what his father paid '
         'for him', (tester) async {
@@ -198,14 +187,7 @@ void main() {
       expect(find.text('باقي على العريس'), findsOneWidget);
       expect(find.textContaining('دفعتِ'), findsNothing);
       expect(find.textContaining('سلّمتِ'), findsNothing);
-      final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
-      expect(
-        find.descendant(
-          of: mahrCard,
-          matching: find.textContaining('العريس سلّم 2 مليون'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.textContaining('العريس دفع'), findsOneWidget);
       expect(find.textContaining('دفع عنه الوالد'), findsOneWidget);
       expect(find.textContaining('باقي عليك'), findsNothing);
       // Only the owner records the mahr.

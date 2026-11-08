@@ -329,22 +329,17 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectNotSee('في حدود الميزانية', why: 'الحكم مرة وحدة في الملخص');
   });
 
-  await walk.step('c01_money_mahr', 'المال: المهر وعرسك', () async {
-    // B5 (C1): the mahr beside the wedding, each from the server.
-    if (!walk.sees(p.mahr.moneyTitle)) await walk.scroll(pixels: 400);
-    walk.expectSee(p.mahr.moneyTitle, why: 'قسمين c01: المهر والعرس');
-    walk.expectSee(p.mahr.moneyCard);
+  await walk.step('c01_money_mahr', 'المال: الميزانية', () async {
+    // RA-MO-40: the budget in one card under the next payment; the mahr is
+    // outside it (C1) and has its own section in «البنود» (c02 below).
+    if (!walk.sees('الميزانية 7 مليون')) await walk.scroll(pixels: 400);
+    walk.expectSee('الميزانية 7 مليون');
+    walk.expectSee('باقي 2.1 مليون', why: 'المتاح من الميزانية بدون المهر');
     walk.expectSee(
-      p.say('سلّمت 2 مليون', 'وصلك 2 مليون'),
-      why: 'المسلّم أو الواصل من المهر',
+      p.say('اتفقت على 4.9 مليون', 'اتفقتِ على 4.9 مليون'),
+      why: 'اتفاقات العرس بدون المهر',
     );
-    // RA-MO-40: the wedding is what was agreed for it, against its budget
-    // (the mahr is outside it, C1), and what is left of the budget.
-    walk.expectSee('اتفاقات عرسك');
-    walk.expectSee('4.9 مليون', why: 'اتفاقات العرس بدون المهر');
-    walk.expectSee('من ميزانية 7 مليون');
-    walk.expectSee('باقي منها 2.1 مليون', why: 'المتاح من الميزانية');
-    walk.expectNotSee('المتاح من الميزانية', why: 'الميزانية تنقال مرة');
+    walk.expectNotSee('وين تروح الفلوس', why: 'المهر له مكانه في البنود');
     await walk.scroll(pixels: -1500);
   });
 

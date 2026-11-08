@@ -61,11 +61,11 @@ void main() {
       expect(find.byType(MoneyOverviewScreen), findsOneWidget);
       // The budget sits under the summary and the next payment.
       await tester.scrollUntilVisible(
-        find.text('المتاح من الميزانية'),
+        find.byKey(const ValueKey('money-budget-card')),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('المتاح من الميزانية'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 2000));
       await tester.pumpAndSettle();
       expect(

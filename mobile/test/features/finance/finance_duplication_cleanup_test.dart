@@ -95,7 +95,7 @@ void main() {
       expect(find.text('باقي عليك تدفع'), findsOneWidget);
       expect(find.byKey(const ValueKey('money-left-to-pay')), findsOneWidget);
       expect(find.byKey(const ValueKey('money-paid-line')), findsOneWidget);
-      expect(find.text('المتاح من الميزانية'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
       expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
         find.byKey(const ValueKey('money-destination-budget')),
@@ -482,7 +482,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('المتاح من الميزانية'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

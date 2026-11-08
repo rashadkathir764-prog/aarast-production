@@ -54,38 +54,13 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   return 'في حدود الميزانية';
 }
 
-/// D59: what was paid, said by whose money paid it: the owner's own part
-/// («دفعت 1.3»), then what others paid for the owner («دفع عنك 1.3»).
-String _paidSplitLine(
-  BuildContext context, {
-  required String byOwner,
-  required String byOthers,
-  required String currency,
-}) {
-  final profile = context.journeyProfile;
-  final ownerPaid = profile.ownerDid(
-    'دفعت',
-    'دفعتِ',
-    groom: 'العريس دفع',
-    bride: 'العروسة دفعت',
-  );
-  final others = moneyValue(byOthers) > 0;
-  return [
-    if (moneyValue(byOwner) > 0 || !others)
-      '$ownerPaid ${_amount(context, byOwner, currency)}',
-    if (others)
-      'دفع ${profile.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} '
-          '${_amount(context, byOthers, currency)}',
-  ].join(' · ');
-}
-
-/// c01 (RA-MO-40): one answer first. The reader opens money to learn what is
-/// still to pay and whether the money covers it, so the card leads with
-/// that one figure, says right under it whether the money in hand and
-/// promised covers it (the server's shortfall, C2), then one bar of what
-/// was paid of everything agreed, and who paid it (D59). It replaces a
-/// sentence of six figures at one weight and a four-colour bar that put
-/// what was spent beside what is in hand.
+/// c01 (RA-MO-40): the balance card, the money tab's one answer, on the
+/// plan's colour like the loan's «باقي عليك» (c13). What is still to pay
+/// as one figure; whether the money in hand and promised covers it (the
+/// server's shortfall, C2), in a pill that reads on the colour; one bar of
+/// what was paid of everything agreed, who paid it (D59) and the total with
+/// the mahr (D79). Rashad chose it (2026-11-08) over the white report
+/// whose six figures had no lead.
 class _MoneySummaryCard extends StatelessWidget {
   const _MoneySummaryCard({required this.summary});
 
@@ -96,12 +71,16 @@ class _MoneySummaryCard extends StatelessWidget {
     final currency = summary.currency;
     final funding = summary.funding;
     final profile = context.journeyProfile;
+    final onColour = AarastV3Color.onPrimary;
+    final soft = context.accent.onPrimaryMuted;
     String onLine(Object? value) =>
         keepCurrencyOnLine(_amount(context, value, currency));
 
     if (summary.costs.count == 0) {
       return JourneyBox(
         key: const ValueKey('money-dashboard-hero'),
+        color: context.accent.primary,
+        radius: AarastV3Radius.feature,
         padding: const EdgeInsets.all(AarastV3Space.x4),
         child: Text(
           context.say(
@@ -110,11 +89,7 @@ class _MoneySummaryCard extends StatelessWidget {
             'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، '
                 'سجّليه ونحسب لك المدفوع والباقي.',
           ),
-          style: JourneyType.of(
-            JourneyType.lead,
-            color: AarastV3Color.textMuted,
-            height: 1.7,
-          ),
+          style: JourneyType.of(JourneyType.lead, color: onColour, height: 1.7),
         ),
       );
     }
@@ -154,16 +129,15 @@ class _MoneySummaryCard extends StatelessWidget {
         'الاتفاقات كلها ${onLine(summary.costs.total)}'
         // D79: the groom's mahr is inside that total; say so.
         '${summary.agreedIncludesMahr ? '، مع المهر' : ''}';
-    final muted = JourneyType.of(
-      JourneyType.small,
-      color: AarastV3Color.textMuted,
-    );
+    final small = JourneyType.of(JourneyType.small, color: soft);
 
     return JourneyBox(
       key: const ValueKey('money-dashboard-hero'),
+      color: context.accent.primary,
+      radius: AarastV3Radius.feature,
       padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (left > 0) ...[
             Text(
@@ -176,7 +150,7 @@ class _MoneySummaryCard extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.bodySmall,
                 weight: JourneyType.bold,
-                color: AarastV3Color.textMuted,
+                color: soft,
               ),
             ),
             FittedBox(
@@ -188,49 +162,82 @@ class _MoneySummaryCard extends StatelessWidget {
                 style: JourneyType.of(
                   JourneyType.count,
                   weight: JourneyType.bold,
+                  color: onColour,
                   height: 1.25,
                 ),
               ),
             ),
             if (funding != null) ...[
-              const SizedBox(height: AarastV3Space.x1),
+              const SizedBox(height: AarastV3Space.x2),
               _CoverLine(funding: funding, currency: currency),
             ],
           ] else
-            Row(
+            _CoverPill(
               key: const ValueKey('money-all-paid'),
-              children: [
-                const Icon(LucideIcons.checkCircle2, color: AarastV3Color.mint),
-                const SizedBox(width: AarastV3Space.x2),
-                Expanded(
-                  child: Text(
-                    profile.ownerDid(
-                      'دفعت كل اتفاقاتك',
-                      'دفعتِ كل اتفاقاتك',
-                      groom: 'اتفاقات العريس كلها مدفوعة',
-                      bride: 'اتفاقات العروسة كلها مدفوعة',
-                    ),
-                    style: JourneyType.of(
-                      JourneyType.title,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.mint,
-                    ),
-                  ),
-                ),
-              ],
+              icon: LucideIcons.checkCircle2,
+              color: AarastV3Color.mint,
+              text: profile.ownerDid(
+                'دفعت كل اتفاقاتك',
+                'دفعتِ كل اتفاقاتك',
+                groom: 'اتفاقات العريس كلها مدفوعة',
+                bride: 'اتفاقات العروسة كلها مدفوعة',
+              ),
             ),
-          const SizedBox(height: AarastV3Space.x3),
+          const SizedBox(height: AarastV3Space.x4),
           JourneyBar(
             key: const ValueKey('money-paid-bar'),
             value: paidRatio,
-            color: context.accent.primary,
+            color: onColour,
+            track: soft.withValues(alpha: 0.3),
           ),
           const SizedBox(height: AarastV3Space.x2),
-          Text(paidLine, key: const ValueKey('money-paid-line'), style: muted),
+          Text(paidLine, key: const ValueKey('money-paid-line'), style: small),
           Text(
             agreedLine,
             key: const ValueKey('money-agreed-line'),
-            style: muted,
+            style: small,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A verdict on the plan's colour: white, so its green or red reads.
+class _CoverPill extends StatelessWidget {
+  const _CoverPill({
+    required this.icon,
+    required this.color,
+    required this.text,
+    super.key,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: AarastV3Density.tagInsets,
+      decoration: BoxDecoration(
+        color: AarastV3Color.onPrimary,
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AarastV3Space.x1),
+          Flexible(
+            child: Text(
+              text,
+              style: JourneyType.of(
+                JourneyType.body,
+                weight: JourneyType.bold,
+                color: color,
+              ),
+            ),
           ),
         ],
       ),
@@ -272,192 +279,11 @@ class _RecordMahrEntry extends StatelessWidget {
   }
 }
 
-/// c01 «وين تروح الفلوس» (the groom) / «المهر وعرسك» (the bride): the
-/// mahr beside the wedding, each from the server (C1, C2). The groom's mahr
-/// is his agreement with the bride's family, handed over bit by bit; the
-/// bride's is money coming to her. The wedding is what was agreed for it
-/// against its budget, and what is left of the budget (RA-MO-40: «عرسك 7
-/// مليون» read as 7 agreed when it was the budget, and the budget card
-/// under it said the same budget again). Before a budget, what was paid.
-class _MahrAndWeddingCards extends StatelessWidget {
-  const _MahrAndWeddingCards({
-    required this.summary,
-    required this.mahr,
-    required this.onMahr,
-    required this.onWedding,
-  });
-
-  final MoneySummary summary;
-  final MoneyMahrSummary mahr;
-  final VoidCallback onMahr;
-  final VoidCallback onWedding;
-
-  @override
-  Widget build(BuildContext context) {
-    final currency = summary.currency;
-    final pays = mahr.side == MahrSide.pays;
-    double ratio(String part, String? whole) {
-      final total = moneyValue(whole);
-      return total <= 0 ? 0 : (moneyValue(part) / total).clamp(0.0, 1.0);
-    }
-
-    final budget = summary.budget;
-    final left = moneyValue(budget.remaining);
-    final over = summary.hasBudget && left < 0;
-    final weddingLine = !summary.hasBudget
-        ? _paidSplitLine(
-            context,
-            byOwner: budget.paidByOwner,
-            byOthers: budget.paidByOthers,
-            currency: currency,
-          )
-        : over
-        ? 'فوق ميزانية ${_amount(context, budget.total, currency)} '
-              'بـ ${_amount(context, left.abs(), currency)}'
-        : 'من ميزانية ${_amount(context, budget.total, currency)} · '
-              'باقي منها ${_amount(context, left, currency)}';
-
-    return Column(
-      key: const ValueKey('money-mahr-and-wedding'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        JourneySectionTitle(pays ? 'وين تروح الفلوس' : 'المهر وعرسك'),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _SplitCard(
-                  key: const ValueKey('money-mahr-card'),
-                  icon: LucideIcons.heartHandshake,
-                  label: pays ? 'الاتفاق مع أهل العروسة' : 'المهر يوصلك',
-                  amount: _amount(context, mahr.total, currency),
-                  line: pays
-                      ? '${context.ownerDid('سلّمت', 'سلّمتِ', groom: 'العريس سلّم', bride: 'العروسة سلّمت')} ${_amount(context, mahr.settled, currency)}'
-                      : 'وصلك ${_amount(context, mahr.settled, currency)}',
-                  ratio: ratio(mahr.settled, mahr.total),
-                  onTap: onMahr,
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x2),
-              Expanded(
-                child: _SplitCard(
-                  key: const ValueKey('money-wedding-card'),
-                  icon: LucideIcons.building2,
-                  label: 'اتفاقات عرسك',
-                  amount: _amount(context, budget.confirmedCost, currency),
-                  line: weddingLine,
-                  lineColor: over ? AarastV3Color.danger : null,
-                  ratio: summary.hasBudget
-                      ? ratio(budget.confirmedCost, budget.total)
-                      : ratio(budget.paid, budget.confirmedCost),
-                  barColor: over ? AarastV3Color.danger : null,
-                  onTap: onWedding,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SplitCard extends StatelessWidget {
-  const _SplitCard({
-    required this.icon,
-    required this.label,
-    required this.amount,
-    required this.line,
-    required this.ratio,
-    required this.onTap,
-    this.lineColor,
-    this.barColor,
-    super.key,
-  });
-
-  final IconData icon;
-  final String label;
-  final String amount;
-  final String line;
-  final double ratio;
-  final VoidCallback onTap;
-
-  /// Red when the line says something is over (the wedding over budget).
-  final Color? lineColor;
-  final Color? barColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '$label، $amount، $line',
-      onTap: onTap,
-      excludeSemantics: true,
-      child: AarastPressable(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        child: JourneyBox(
-          padding: const EdgeInsets.all(AarastV3Space.x4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(icon, size: 18, color: context.accent.primary),
-                  const SizedBox(width: AarastV3Space.x1),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AarastV3Space.x2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  amount,
-                  style: JourneyType.of(
-                    JourneyType.title,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-              ),
-              Text(
-                line,
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: lineColor ?? AarastV3Color.textMuted,
-                ),
-              ),
-              const Spacer(),
-              const SizedBox(height: AarastV3Space.x2),
-              JourneyBar(
-                value: ratio,
-                color: barColor ?? context.accent.primary,
-                height: 5,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Right under «باقي عليك تدفع»: does the money cover it? The server's
-/// shortfall already counts what was promised (C2), so it is said once,
-/// with what is in hand and promised beside it. The server leaves the
-/// shortfall empty both when the sources cover the agreements and before
-/// any source exists; only the first is coverage.
+/// shortfall already counts what was promised (C2), so it is said once, in
+/// a pill, with what is in hand and promised small under it. The server
+/// leaves the shortfall empty both when the sources cover the agreements
+/// and before any source exists; only the first is coverage.
 class _CoverLine extends StatelessWidget {
   const _CoverLine({required this.funding, required this.currency});
 
@@ -469,6 +295,7 @@ class _CoverLine extends StatelessWidget {
     // Read in this widget's own build: «أخفِ المبالغ» is selected here.
     String onLine(Object? value) =>
         keepCurrencyOnLine(_amount(context, value, currency));
+    final soft = context.accent.onPrimaryMuted;
     if (funding.sourcesCount == 0 && funding.shortfall == null) {
       return Text(
         context.say(
@@ -476,78 +303,43 @@ class _CoverLine extends StatelessWidget {
           'ما سجلتِ من وين فلوسك بعد، فما نعرف إذا تكفي.',
         ),
         key: const ValueKey('money-funding-unknown'),
-        style: JourneyType.of(
-          JourneyType.bodySmall,
-          color: AarastV3Color.textMuted,
-        ),
+        style: JourneyType.of(JourneyType.bodySmall, color: soft),
       );
     }
     final inHand = moneyValue(funding.availableCash) > 0;
     final promised = moneyValue(funding.pledged) > 0;
     final shortfall = funding.shortfall;
-    // What is in hand and promised, small under the verdict in both cases:
-    // the verdict stays one short line (RA-MO-40: the figures inside it
-    // made «يغطونه» fall alone onto a second line).
+    final covered = shortfall == null || moneyValue(shortfall) <= 0;
     final means = [
       if (inHand) 'معك ${onLine(funding.availableCash)}',
       if (promised) 'موعود لك ${onLine(funding.pledged)}',
     ].join(' · ');
-    final meansStyle = JourneyType.of(
-      JourneyType.small,
-      color: AarastV3Color.textMuted,
-    );
-    if (shortfall == null || moneyValue(shortfall) <= 0) {
-      return Row(
-        key: const ValueKey('money-covered'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            LucideIcons.checkCircle2,
-            size: 20,
-            color: AarastV3Color.mint,
-          ),
-          const SizedBox(width: AarastV3Space.x2),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  promised ? 'فلوسك والموعود يغطونه' : 'فلوسك تغطيه',
-                  style: JourneyType.of(
-                    JourneyType.bodyLarge,
-                    weight: JourneyType.bold,
-                    color: AarastV3Color.mint,
-                  ),
-                ),
-                if (means.isNotEmpty) Text(means, style: meansStyle),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
     return Column(
-      key: const ValueKey('money-short'),
+      key: ValueKey(covered ? 'money-covered' : 'money-short'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          promised
+        _CoverPill(
+          icon: covered ? LucideIcons.checkCircle2 : LucideIcons.alertCircle,
+          color: covered ? AarastV3Color.mint : AarastV3Color.danger,
+          text: covered
+              ? (promised ? 'فلوسك والموعود يغطونه' : 'فلوسك تغطيه')
+              : promised
               ? 'ناقصك ${onLine(shortfall)} حتى مع الموعود'
               : 'ناقصك ${onLine(shortfall)}',
-          style: JourneyType.of(
-            JourneyType.bodyLarge,
-            weight: JourneyType.bold,
-            color: AarastV3Color.danger,
-          ),
         ),
-        if (means.isNotEmpty) Text(means, style: meansStyle),
+        if (means.isNotEmpty) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          Text(means, style: JourneyType.of(JourneyType.small, color: soft)),
+        ],
       ],
     );
   }
 }
 
-/// The budget: how much is left of it, how much is spoken for, and the
-/// first step when there is none (x03).
+/// The budget in one card (RA-MO-40): what was agreed for the wedding out
+/// of it and what is left, on one bar; the first step when there is none
+/// (x03). The mahr is outside it (C1); it has its own place on the home
+/// and in «البنود».
 class _MoneyBudgetCard extends StatelessWidget {
   const _MoneyBudgetCard({
     required this.summary,
@@ -603,47 +395,49 @@ class _MoneyBudgetCard extends StatelessWidget {
     final remaining = moneyValue(summary.budget.remaining);
     final over = remaining < 0;
     final ratio = summary.confirmedRatio.clamp(0.0, 1.0).toDouble();
-    final hidden = context.select<FinanceProvider?, bool>(
-      (provider) => provider?.amountsHidden ?? false,
-    );
+    final budgetTotal = _amount(context, summary.budget.total, currency);
     return JourneyBox(
+      key: const ValueKey('money-budget-card'),
       padding: const EdgeInsets.all(AarastV3Space.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            over ? 'فوق الميزانية' : 'المتاح من الميزانية',
-            style: JourneyType.of(
-              JourneyType.small,
-              weight: JourneyType.bold,
-              color: over ? AarastV3Color.danger : AarastV3Color.textMuted,
-            ),
-          ),
-          Text(
-            _amount(context, remaining.abs(), currency),
-            style: JourneyType.of(
-              JourneyType.display,
-              weight: JourneyType.bold,
-              color: over ? AarastV3Color.danger : AarastV3Color.ink,
-            ),
+          // A Wrap, not a Row: at 320 and large text «باقي» drops under
+          // the budget instead of overflowing.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: AarastV3Space.x2,
+            runSpacing: AarastV3Space.x1,
+            children: [
+              Text(
+                'الميزانية $budgetTotal',
+                style: JourneyType.of(
+                  JourneyType.bodyLarge,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              Text(
+                over
+                    ? 'فوقها ${_amount(context, remaining.abs(), currency)}'
+                    : 'باقي ${_amount(context, remaining, currency)}',
+                style: JourneyType.of(
+                  JourneyType.bodyLarge,
+                  weight: JourneyType.bold,
+                  color: over ? AarastV3Color.danger : context.accent.primary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyBar(
             value: ratio,
             color: over ? AarastV3Color.danger : context.accent.primary,
           ),
-          const SizedBox(height: AarastV3Space.x2),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
-            // The share is drawn by the bar above, so repeating it as a
-            // percentage says one thing twice. It is kept only when the
-            // agreements are over the budget: there the bar is pinned full
-            // and the percentage is the only place that says how far over.
-            hidden
-                ? 'الميزانية مخفية'
-                : over
-                ? 'من ميزانية ${_amount(context, summary.budget.total, currency)} · '
-                      'الاتفاقات ${(summary.confirmedRatio * 100).round()}% منها'
-                : 'من ميزانية ${_amount(context, summary.budget.total, currency)}',
+            '${context.ownerDid('اتفقت', 'اتفقتِ', groom: 'اتفق العريس', bride: 'اتفقت العروسة')} '
+            'على ${_amount(context, summary.budget.confirmedCost, currency)} منها'
+            '${over ? ' · الاتفاقات ${(summary.confirmedRatio * 100).round()}% منها' : ''}',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

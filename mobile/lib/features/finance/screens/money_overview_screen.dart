@@ -286,7 +286,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
 
   List<Widget> _summaryTab(FinanceProvider provider) {
     final summary = provider.summary;
-    final mahr = summary.mahr;
     return [
       _MoneySummaryCard(summary: summary),
       if (_mahrToRecord(context, provider)) ...[
@@ -305,28 +304,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           onPay: _canPay(provider, schedule)
               ? () => _paySchedule(schedule)
               : null,
-        ),
-      ],
-      if (mahr != null) ...[
-        const SizedBox(height: AarastV3Space.x3),
-        _MahrAndWeddingCards(
-          summary: summary,
-          mahr: mahr,
-          // The groom's mahr is his agreement (c07); the bride's is in «من
-          // وين» (c05).
-          onMahr: mahr.side == MahrSide.pays
-              ? () {
-                  final cost = _mahrCost(provider);
-                  if (cost != null) {
-                    context.push(
-                      AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
-                    );
-                  } else {
-                    setState(() => _tab = 1);
-                  }
-                }
-              : () => setState(() => _tab = _fundingTab(provider)),
-          onWedding: () => setState(() => _tab = 1),
         ),
       ],
       // Field test Q03: an overspent category shows the moment money opens.
@@ -363,18 +340,16 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               'كلها في «البنود».',
         ),
       ],
-      // With the mahr's cards, «اتفاقات عرسك» says the budget and what is
-      // left of it (RA-MO-40); the card stays where nothing else says it,
-      // and to set a budget where there is none.
-      if (mahr == null || !summary.hasBudget) ...[
-        const SizedBox(height: AarastV3Space.x3),
-        _MoneyBudgetCard(
-          summary: summary,
-          canManage: provider.canManageBudget,
-          onBudget: () =>
-              context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-        ),
-      ],
+      // RA-MO-40: the budget in one compact card. The mahr is outside it
+      // (C1) and has its own place on the home and in «البنود», so c01 no
+      // longer repeats it in a card of its own (Rashad, 2026-11-08).
+      const SizedBox(height: AarastV3Space.x3),
+      _MoneyBudgetCard(
+        summary: summary,
+        canManage: provider.canManageBudget,
+        onBudget: () =>
+            context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+      ),
     ];
   }
 
@@ -391,13 +366,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         : 'عند ${context.planWord('العريس', 'العروسة')}';
     return 'المال هنا للقراءة. التسجيل والتعديل $who.';
   }
-
-  /// Where the bride's mahr card goes. «من وين» (c05) is in the tab list
-  /// only while the plan has funding, so a bare index 3 was clamped down to
-  /// «الدفعات» whenever it was absent — a silent wrong destination. Without
-  /// it the mahr belongs in «البنود», where its row is.
-  int _fundingTab(FinanceProvider provider) =>
-      provider.summary.funding != null ? 3 : 1;
 
   MoneyStarterPersona _starterPersona(BuildContext context) {
     final explicit = widget.personaCode;
@@ -449,15 +417,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   Future<void> _openMahr() async {
     await context.push(AppRouter.moneyMahr(widget.weddingPlanId));
     if (mounted) await _load();
-  }
-
-  /// The groom's mahr agreement (C1), the live one first.
-  WeddingCost? _mahrCost(FinanceProvider provider) {
-    final item = provider.categories.where((item) => item.isMahr).firstOrNull;
-    if (item == null) return null;
-    return provider.costs
-        .where((cost) => cost.budgetCategoryId == item.id && !cost.isCancelled)
-        .firstOrNull;
   }
 
   PaymentSchedule? _nextSchedule(FinanceProvider provider) {

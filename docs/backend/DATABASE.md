@@ -528,12 +528,12 @@ rewrite as permission to restore a removed live model.
 | `AssistantAnswerReport` | 9 | `id`, `reporterUserId`, `resolvedAt`, `createdAt` |
 | `WeddingPlan` | 34 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 12 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
-| `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
+| `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
+| `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
-| `PaymentSchedule` | 12 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `createdAt`, `updatedAt` |
-| `FundingSource` | 14 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
+| `PaymentSchedule` | 15 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `remindAt`, `createdAt`, `updatedAt` |
+| `FundingSource` | 15 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 24 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |

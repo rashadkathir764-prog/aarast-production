@@ -3,7 +3,10 @@ part of 'finance_local_money_plan.dart';
 /// D108: a person's name as it is matched: trimmed, spaces folded, case
 /// folded (backend `contributorKey`).
 String? _contributorKey(String? name) {
-  final folded = (name ?? '').trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  final folded = (name ?? '')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .toLowerCase();
   return folded.isEmpty ? null : folded;
 }
 
@@ -32,7 +35,10 @@ extension _Family on _Plan {
     }
 
     for (final source in sources) {
-      if (source.kind == 'LOAN' || _contributorKey(source.contributor) == null) continue;
+      if (source.kind == 'LOAN' ||
+          _contributorKey(source.contributor) == null) {
+        continue;
+      }
       final person = personOf(source.contributor, null);
       final field = source.received ? 'gave' : 'promised';
       person[field] = (person[field] as int) + source.amount;
@@ -53,7 +59,9 @@ extension _Family on _Plan {
             ((b['gave'] as int) + (b['paid'] as int)) -
             ((a['gave'] as int) + (a['paid'] as int));
         if (byDone != 0) return byDone;
-        return (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? '');
+        return (a['name'] as String? ?? '').compareTo(
+          b['name'] as String? ?? '',
+        );
       });
     return [
       for (final person in list)

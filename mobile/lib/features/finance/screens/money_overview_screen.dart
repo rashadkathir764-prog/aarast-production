@@ -36,6 +36,7 @@ import '../providers/funding_provider.dart';
 import '../widgets/funding_widgets.dart' show fundingStateTag;
 import '../widgets/money_widgets.dart';
 
+part 'money_overview_screen.answer.dart';
 part 'money_overview_screen.funding.dart';
 part 'money_overview_screen.items.dart';
 part 'money_overview_screen.payments.dart';
@@ -78,10 +79,19 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   /// first item moved the reader to «الملخص» by itself.
   int? _opening;
 
+  /// The one list every tab is drawn in.
+  final _list = ScrollController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _list.dispose();
+    super.dispose();
   }
 
   @override
@@ -130,6 +140,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         onRefresh: _load,
         child: ListView(
           key: const PageStorageKey('money-overview-list'),
+          controller: _list,
           physics: const AlwaysScrollableScrollPhysics(),
           // The plan's «+» floats over money for whoever manages it (D33).
           padding: EdgeInsets.fromLTRB(
@@ -286,70 +297,224 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
 
   List<Widget> _summaryTab(FinanceProvider provider) {
     final summary = provider.summary;
+    final currency = summary.currency;
+    final profile = context.journeyProfile;
+    final owner = profile.readerIsOwner;
+    final manage = provider.canManageMoney;
+    final dues = _weddingDues(summary);
+    final late = [
+      for (final line in dues)
+        if (line.isOverdue) line,
+    ];
+    final coming = [
+      for (final line in dues)
+        if (!line.isOverdue) line,
+    ];
+    final estimated = summary.categories.any(
+      (category) => category.estimate != null,
+    );
+    final sourced = (summary.funding?.sourcesCount ?? 0) > 0;
+    final agreed = summary.costs.count > 0;
+    final firstSteps =
+        owner &&
+        manage &&
+        (!agreed || !sourced) &&
+        !(estimated && sourced && agreed);
     return [
-      _MoneySummaryCard(summary: summary),
+      // 1. Late: the one loud card, above everything (D102).
+      if (late.isNotEmpty && manage) ...[
+        _LateDueCard(
+          line: late.first,
+          others: late.length - 1,
+          currency: currency,
+          onPay: () => _payDue(late.first),
+          onMove: () => _openDue(late.first),
+        ),
+        const SizedBox(height: AarastV3Space.x3),
+      ],
+      // 2. What is on the owner, and whether the money covers it in time.
+      _ShareHero(
+        summary: summary,
+        onHowCounted: () => _showHowCounted(summary),
+        // «من وين» is a tab once a source exists; before, its own page.
+        onSources: summary.funding == null
+            ? () => context.push(AppRouter.moneyFunding(widget.weddingPlanId))
+            : () => _openTab(3),
+      ),
       if (_mahrToRecord(context, provider)) ...[
         const SizedBox(height: AarastV3Space.x3),
         _RecordMahrEntry(onTap: _openMahr),
       ],
-      // RA-MO-40: the one thing to do here comes right after the answer.
-      if (_nextSchedule(provider) case final schedule?) ...[
-        const SizedBox(height: AarastV3Space.x3),
-        _NextPaymentCard(
-          schedule: schedule,
-          currency: summary.currency,
-          onTap: () => context.push(
-            AppRouter.moneyCostDetails(widget.weddingPlanId, schedule.costId),
-          ),
-          onPay: _canPay(provider, schedule)
-              ? () => _paySchedule(schedule)
-              : null,
+      // 3. The first days.
+      if (firstSteps) ...[
+        const SizedBox(height: AarastV3Space.x5),
+        _FirstSteps(
+          estimated: estimated,
+          sourced: sourced,
+          agreed: agreed,
+          onItems: () => _openTab(1),
+          onSources: () =>
+              context.push(AppRouter.moneyFunding(widget.weddingPlanId)),
+          onAgreement: () =>
+              context.push(AppRouter.moneyCostCreate(widget.weddingPlanId)),
         ),
       ],
-      // Field test Q03: an overspent category shows the moment money opens.
-      // At most three, like the home's suggestions: eight overspent items
-      // used to stack eight red notes and push the rest of the tab off the
-      // screen. The count of the ones left out is said after them.
-      for (final exceeded in summary.exceededCategories.take(
-        _maxExceededNotes,
-      )) ...[
-        const SizedBox(height: AarastV3Space.x3),
-        JourneyNote(
-          key: ValueKey('money-category-exceeded-${exceeded.name}'),
-          icon: LucideIcons.alertTriangle,
-          color: AarastV3Color.danger,
-          soft: AarastV3Color.dangerSoft,
-          text: provider.amountsHidden || exceeded.overrun == null
-              ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
-              : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${keepCurrencyOnLine(formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency))}.',
+      // 4. The wedding's coming dues; loans are not wedding dues.
+      if (coming.isNotEmpty) ...[
+        const SizedBox(height: AarastV3Space.x5),
+        _ComingDues(
+          lines: coming.take(3).toList(),
+          currency: currency,
+          onAll: () => _openTab(2),
+          onOpen: (line) => manage ? _payDue(line) : _openDue(line),
         ),
       ],
-      if (summary.exceededCategories.length > _maxExceededNotes) ...[
-        const SizedBox(height: AarastV3Space.x2),
-        JourneyNote(
-          key: const ValueKey('money-exceeded-more'),
-          icon: LucideIcons.alertTriangle,
-          color: AarastV3Color.danger,
-          soft: AarastV3Color.dangerSoft,
-          // «وبند واحد ثانية تجاوزت» paired a masculine item with feminine
-          // words, and «تشوفها» spoke to a bride as a man (RA-MO-12). The
-          // verb now agrees with «المخصص» for any count, and the pointer to
-          // «البنود» addresses no one.
-          text:
-              'تجاوز المخصص في ${arabicCount(summary.exceededCategories.length - _maxExceededNotes, one: 'بند ثاني', two: 'بندين ثانيين', few: 'بنود ثانية', many: 'بند ثاني')} كذلك. '
-              'كلها في «البنود».',
-        ),
+      // 5. What needs the owner, apart from paying.
+      if (manage && _attention(summary).isNotEmpty) ...[
+        const SizedBox(height: AarastV3Space.x5),
+        _NeedsAttention(items: _attention(summary)),
       ],
-      // RA-MO-40: the budget in one compact card. The mahr is outside it
-      // (C1) and has its own place on the home and in «البنود», so c01 no
-      // longer repeats it in a card of its own (Rashad, 2026-11-08).
-      const SizedBox(height: AarastV3Space.x3),
-      _MoneyBudgetCard(
+      // 6. The whole picture.
+      const SizedBox(height: AarastV3Space.x5),
+      _WholePicture(
         summary: summary,
-        canManage: provider.canManageBudget,
-        onBudget: () =>
-            context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+        onPayments: () => _openTab(2),
+        onSources: summary.funding == null ? null : () => _openTab(3),
+        onItems: () => _openTab(1),
       ),
+    ];
+  }
+
+  /// A row that sends the reader to a tab opens it from its top: the tabs
+  /// share one list, and its place on «الملخص» means nothing there.
+  void _openTab(int tab) {
+    setState(() => _tab = tab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _list.hasClients) _list.jumpTo(0);
+    });
+  }
+
+  /// A due's own page: its agreement, where its dates are.
+  void _openDue(MoneyObligation line) {
+    final costId = line.weddingCostId;
+    if (costId == null) return;
+    context.push(AppRouter.moneyCostDetails(widget.weddingPlanId, costId));
+  }
+
+  /// Pays a wedding due on its own page (it reads the date by its id).
+  Future<void> _payDue(MoneyObligation line) async {
+    final costId = line.weddingCostId;
+    if (costId == null || line.kind != MoneyObligationKind.due) {
+      _openDue(line);
+      return;
+    }
+    final changed = await context.push<bool>(
+      AppRouter.moneySchedulePay(widget.weddingPlanId, costId, line.id),
+    );
+    if (changed == true && mounted) await _load();
+  }
+
+  void _showHowCounted(MoneySummary summary) {
+    final coverage = summary.coverage;
+    if (coverage == null) return;
+    showJourneySheet<void>(
+      context: context,
+      builder: (_) => _HowWeCountedSheet(summary: summary, coverage: coverage),
+    );
+  }
+
+  /// D102 «يحتاج انتباهك»: what is waiting for the owner besides paying,
+  /// each with where it is settled.
+  List<
+    ({
+      String key,
+      IconData icon,
+      Color color,
+      Color soft,
+      String title,
+      String sub,
+      VoidCallback? onTap,
+    })
+  >
+  _attention(MoneySummary summary) {
+    final currency = summary.currency;
+    String money(Object? value) => _figure(context, value, currency);
+    final expected = summary.expected;
+    final coverage = summary.coverage;
+    return [
+      for (final pledge
+          in coverage?.pledgesIgnored ?? const <MoneyCoveragePledge>[])
+        if (pledge.leftOut == MoneyPledgeLeftOut.late)
+          (
+            key: 'pledge-${pledge.id}',
+            icon: LucideIcons.hourglass,
+            color: AarastV3Color.lilac,
+            soft: AarastV3Color.lilacSoft,
+            title: 'وعد ${pledge.sourceName} تأخر',
+            sub: [
+              if (pledge.expectedAt case final day?)
+                'كان موعده ${_dayWords(day)}',
+              '${money(pledge.amount)} · وصلت؟',
+            ].join(' · '),
+            onTap: () => _openTab(3),
+          ),
+      if (expected?.budgetLeft case final left?)
+        if (moneyValue(left) < 0)
+          (
+            key: 'over-budget',
+            icon: LucideIcons.alertTriangle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+            title: 'تكلفة العرس المتوقعة فوق الميزانية',
+            sub: 'بـ ${money(-moneyValue(left))}، من الاتفاقات والتقديرات',
+            onTap: () => _openTab(1),
+          ),
+      // Keyed by place: two warnings can name one item.
+      for (final (index, exceeded) in summary.exceededCategories.indexed)
+        (
+          key: 'item-over-$index',
+          icon: LucideIcons.alertTriangle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          title: 'بند «${exceeded.name}» فوق المخصص له',
+          sub: exceeded.overrun == null
+              ? 'من المتوقع له'
+              : 'بـ ${money(exceeded.overrun)}',
+          onTap: () => _openTab(1),
+        ),
+      for (final line in summary.obligations)
+        if (line.kind == MoneyObligationKind.undated && line.ownerMoney)
+          (
+            key: 'undated-${line.id}',
+            icon: LucideIcons.calendarX,
+            color: AarastV3Color.amber,
+            soft: AarastV3Color.amberSoft,
+            title: '${line.title}: ${money(line.amount)} بدون موعد',
+            sub: context.say('حدد له موعد', 'حددي له موعد'),
+            onTap: () => _openDue(line),
+          ),
+      if (summary.budget.total == null)
+        (
+          key: 'no-budget',
+          icon: LucideIcons.wallet,
+          color: context.accent.primary,
+          soft: context.accent.primarySoft,
+          title: context.say('ما حطيت ميزانية', 'ما حطيتِ ميزانية'),
+          sub: 'نقارن بها التكلفة المتوقعة',
+          onTap: () =>
+              context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+        ),
+      if ((expected?.wedding.unknownCount ?? 0) > 0 && summary.costs.count > 0)
+        (
+          key: 'no-estimate',
+          icon: LucideIcons.tag,
+          color: AarastV3Color.amber,
+          soft: AarastV3Color.amberSoft,
+          title:
+              '${arabicCount(expected!.wedding.unknownCount, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} بدون تقدير',
+          sub: 'فالتكلفة المسجّلة مو نهائية',
+          onTap: () => _openTab(1),
+        ),
     ];
   }
 
@@ -417,11 +582,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   Future<void> _openMahr() async {
     await context.push(AppRouter.moneyMahr(widget.weddingPlanId));
     if (mounted) await _load();
-  }
-
-  PaymentSchedule? _nextSchedule(FinanceProvider provider) {
-    return provider.summary.paymentSchedules.next ??
-        (provider.dueSchedules.isEmpty ? null : provider.dueSchedules.first);
   }
 
   /// D86: a due payment is payable on its own; its agreement need not be
@@ -494,10 +654,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     _opening = _isEmpty(finance) ? 1 : 0;
   }
 }
-
-/// At most this many overspent-item notes at once, so they warn and do not
-/// crowd (the home's suggestions use the same limit).
-const _maxExceededNotes = 3;
 
 /// No item, agreement or payment date in the plan yet.
 bool _isEmpty(FinanceProvider provider) =>

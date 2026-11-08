@@ -70,10 +70,16 @@ extension _LocalSchedules on FinanceLocalDataSource {
 extension _LocalMoneyWrites on FinanceLocalDataSource {
   /// D106: a reversed partial payment gives its amount back to its date
   /// while the date is still to pay, never above what is left.
-  Future<void> _giveBackPartialPayment(CostPayment payment, String costId) async {
+  Future<void> _giveBackPartialPayment(
+    CostPayment payment,
+    String costId,
+  ) async {
     final scheduleId = payment.lowersScheduleId;
     if (scheduleId == null) return;
-    final cached = await _read(OfflineTables.cachedPaymentSchedules, scheduleId);
+    final cached = await _read(
+      OfflineTables.cachedPaymentSchedules,
+      scheduleId,
+    );
     if (cached == null || cached['status']?.toString() != 'PENDING') return;
     final costNow = await _read(OfflineTables.cachedCosts, costId);
     if (costNow == null) return;
@@ -98,7 +104,9 @@ extension _LocalMoneyWrites on FinanceLocalDataSource {
   }) {
     final cover =
         payload['estimateCover']?.toString() ?? (isExpense ? 'PART' : 'WHOLE');
-    if (cover != 'PART') return {'estimateCover': 'WHOLE', 'estimatePart': null};
+    if (cover != 'PART') {
+      return {'estimateCover': 'WHOLE', 'estimatePart': null};
+    }
     final part = FinanceMoneyRules.value(payload['estimatePart']);
     return {
       'estimateCover': 'PART',
@@ -116,7 +124,9 @@ extension _LocalMoneyWrites on FinanceLocalDataSource {
         due == null ||
         remind.compareTo(today) < 0 ||
         remind.compareTo(due) > 0) {
-      throw const ApiException('يوم التذكير لازم يكون من اليوم لين يوم الموعد.');
+      throw const ApiException(
+        'يوم التذكير لازم يكون من اليوم لين يوم الموعد.',
+      );
     }
   }
 

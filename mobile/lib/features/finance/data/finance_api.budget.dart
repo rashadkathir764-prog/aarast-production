@@ -213,7 +213,8 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     required String? estimatedAmount,
   }) async {
     final estimate = _nullableTrimmed(estimatedAmount);
-    if (estimate != null && !FinanceMoneyRules.serverAmount.hasMatch(estimate)) {
+    if (estimate != null &&
+        !FinanceMoneyRules.serverAmount.hasMatch(estimate)) {
       throw const ApiException('اكتب التقدير رقمًا صحيحًا.');
     }
     final payload = <String, dynamic>{'estimatedAmount': estimate};

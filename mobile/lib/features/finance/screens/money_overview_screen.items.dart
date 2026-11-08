@@ -384,7 +384,10 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
   /// it is with is on the agreement's page; its own title only tells two
   /// agreements on one item apart, and stands in for the catch-all «أخرى».
   String _itemTitle(WeddingCost cost) {
-    final item = widget.provider.categoryById(cost.budgetCategoryId)?.name.trim();
+    final item = widget.provider
+        .categoryById(cost.budgetCategoryId)
+        ?.name
+        .trim();
     if (item == null || item.isEmpty || item == 'أخرى') return cost.title;
     final shared = widget.provider.costs
         .where(
@@ -408,7 +411,9 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
             (
               id: category.id,
               name: category.name,
-              providerCategoryIds: widget.provider.providerCategoryIdsFor(category.id),
+              providerCategoryIds: widget.provider.providerCategoryIdsFor(
+                category.id,
+              ),
             ),
       ],
       costs: [
@@ -420,7 +425,8 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
           ),
       ],
       costItemById: {
-        for (final cost in widget.provider.costs) cost.id: cost.budgetCategoryId,
+        for (final cost in widget.provider.costs)
+          cost.id: cost.budgetCategoryId,
       },
       reader: context.journeyProfile,
       quotes: marketplace.quotesForPlan(widget.planId),
@@ -625,13 +631,18 @@ class _MoneyItemRow extends StatelessWidget {
                             ),
                           ),
                         ),
+                        // Flexible: a long note wraps at a large font,
+                        // never runs off the card.
                         if (note != null)
-                          Text(
-                            note!.$1,
-                            style: JourneyType.of(
-                              JourneyType.small,
-                              weight: JourneyType.bold,
-                              color: note!.$2,
+                          Flexible(
+                            child: Text(
+                              note!.$1,
+                              textAlign: TextAlign.end,
+                              style: JourneyType.of(
+                                JourneyType.small,
+                                weight: JourneyType.bold,
+                                color: note!.$2,
+                              ),
                             ),
                           ),
                       ],

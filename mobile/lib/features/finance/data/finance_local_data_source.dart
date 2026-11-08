@@ -77,7 +77,8 @@ class FinanceLocalDataSource {
               ? item
               : {
                   ...item,
-                  'estimatedAmount': saved[item['id']?.toString()]?['estimatedAmount'],
+                  'estimatedAmount':
+                      saved[item['id']?.toString()]?['estimatedAmount'],
                 },
       ],
       parentColumn: 'planId',

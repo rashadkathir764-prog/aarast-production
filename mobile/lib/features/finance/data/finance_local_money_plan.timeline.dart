@@ -162,7 +162,10 @@ extension _Timeline on _Plan {
       } else if (line.overdue) {
         add(overdue, line);
       } else {
-        add(months.putIfAbsent(line.due!.substring(0, 7), () => [0, 0, 0]), line);
+        add(
+          months.putIfAbsent(line.due!.substring(0, 7), () => [0, 0, 0]),
+          line,
+        );
       }
     }
     Map<String, dynamic> bucket(List<int> value) => {
@@ -294,10 +297,10 @@ extension _Timeline on _Plan {
     final verdict = total <= 0
         ? 'NOTHING_DUE'
         : without.deepest == null
-            ? 'COVERED'
-            : withPledges.deepest == null
-                ? 'COVERED_IF_PLEDGES'
-                : 'SHORT';
+        ? 'COVERED'
+        : withPledges.deepest == null
+        ? 'COVERED_IF_PLEDGES'
+        : 'SHORT';
     return {
       'verdict': verdict,
       'cash': _money(cash),
@@ -309,7 +312,8 @@ extension _Timeline on _Plan {
       ),
       'lastDate': dated.isEmpty ? null : dated.last,
       'hasLoan': outflows.any(
-        (line) => line.kind == 'LOAN_REPAYMENT' || line.kind == 'LOAN_UNPLANNED',
+        (line) =>
+            line.kind == 'LOAN_REPAYMENT' || line.kind == 'LOAN_UNPLANNED',
       ),
       'withoutPledges': without.toJson(),
       'withPledges': withPledges.toJson(),

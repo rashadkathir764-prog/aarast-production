@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
+import 'package:aarast_mobile/core/utils/keep_currency_on_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -90,12 +91,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // c01 (RA-MO-40): what is left to pay first, what was paid under
-      // it, then the budget.
-      expect(find.text('باقي عليك تدفع'), findsOneWidget);
-      expect(find.byKey(const ValueKey('money-left-to-pay')), findsOneWidget);
-      expect(find.byKey(const ValueKey('money-paid-line')), findsOneWidget);
-      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
+      // D102: what is left first, then the whole picture with the cost and
+      // the budget.
+      expect(find.byKey(const ValueKey('money-share-hero')), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-share-figure')), findsOneWidget);
+      // At 2.0 the whole picture is below the fold; it is reached by
+      // scrolling, and the menu is back at the top.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('money-whole-cost')),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.byKey(const ValueKey('money-whole-cost')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 4000));
+      await tester.pumpAndSettle();
       expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
         find.byKey(const ValueKey('money-destination-budget')),
@@ -203,12 +213,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('money-next-schedule-strip')),
-        findsOneWidget,
-      );
-      expect(find.text('دفعة متأخرة'), findsOneWidget);
-      expect(find.text('الدفعة الجاية'), findsNothing);
+      // D102: a late due is the one loud card, above everything.
+      expect(find.byKey(const ValueKey('money-late-due')), findsOneWidget);
+      expect(find.textContaining('متأخرة'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-coming-dues')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -235,11 +243,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.byKey(const ValueKey('money-next-schedule-strip')),
+        find.byKey(const ValueKey('money-coming-due-schedule-upcoming')),
         findsOneWidget,
       );
-      expect(find.text('الدفعة الجاية'), findsOneWidget);
-      expect(find.text('دفعة متأخرة'), findsNothing);
+      expect(find.text('دفعات العرس الجاية'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-late-due')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -370,13 +378,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Five over-limit items, three shown: the note counts the other two.
-      expect(
-        find.text('تجاوز المخصص في بندين ثانيين كذلك. كلها في «البنود».'),
-        findsOneWidget,
-      );
-      // Four payers, two named: the other two are people, «اثنين».
-      expect(find.textContaining('اثنين كذلك'), findsOneWidget);
+      // Five over-limit items: three shown, the rest one tap away (D102).
+      expect(find.textContaining('فوق المخصص له'), findsNWidgets(3));
+      expect(find.text('الكل (5)'), findsOneWidget);
       expect(find.textContaining('ثنتين'), findsNothing);
       // RA-MO-40: «الملخص» says the budget in its own card; the line under
       // «المال» is for the other tabs. Within the budget, said the same way
@@ -408,17 +412,38 @@ void main() {
               pledged: '1000',
               availableCash: '6000',
               shortfall: '1000',
+              sourcesCount: 2,
+            ),
+            coverage: MoneyCoverage(
+              verdict: MoneyCoverageVerdict.short,
+              cash: '6000',
+              total: '8000',
+              withPledges: MoneyCoverageRun(
+                firstShort: MoneyCoverageShort(
+                  amount: '1000',
+                  title: 'تكلفة 1',
+                  id: 'cost-1',
+                  date: DateTime(2026, 12, 1),
+                ),
+                deepest: MoneyCoverageShort(
+                  amount: '1000',
+                  title: 'تكلفة 1',
+                  id: 'cost-1',
+                  date: DateTime(2026, 12, 1),
+                ),
+                end: '-1000',
+              ),
             ),
           ),
           textScale: 1.3,
         ),
       );
       await tester.pumpAndSettle();
-      // RA-MO-40: the shortfall is said under what is left to pay.
+      // D103: the summary says the day it falls short (the server's).
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('money-short')),
-          matching: find.textContaining('حتى مع الموعود'),
+          of: find.byKey(const ValueKey('money-cover')),
+          matching: find.textContaining('ينقصك'),
         ),
         findsOneWidget,
       );
@@ -454,9 +479,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final strip = find.byKey(const ValueKey('money-next-schedule-strip'));
+      final strip = find.byKey(
+        const ValueKey('money-coming-due-schedule-upcoming'),
+      );
       // Inside Arabic text the amount is in its plain form.
-      final amount = compactMoneyParts(1000, currencyCode: 'YER').plainText;
+      final amount = keepCurrencyOnLine(
+        compactMoneyParts(1000, currencyCode: 'YER').plainText,
+      );
       Finder amountInStrip() =>
           find.descendant(of: strip, matching: find.textContaining(amount));
       expect(amountInStrip(), findsOneWidget);
@@ -482,7 +511,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-whole-picture')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -526,12 +555,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('money-dashboard-hero')), findsNothing);
+      expect(find.byKey(const ValueKey('money-share-hero')), findsNothing);
 
       expect(await tester.binding.handlePopRoute(), isTrue);
       await tester.pumpAndSettle();
       expect(
-        find.byKey(const ValueKey('money-dashboard-hero')),
+        find.byKey(const ValueKey('money-share-hero')),
         findsOneWidget,
         reason: 'back on «الملخص», the tab money opened on',
       );
@@ -605,12 +634,7 @@ void main() {
       // day it is recorded, an agreement of the one ledger (`entryKind`),
       // not the old expense screens and tables (removed above). «أقساط» is
       // banned in the UI, and «مستحقات» stays gone.
-      const removedTerms = <String>[
-        'المستحقات',
-        'مستحقات',
-        'الأقساط',
-        'أقساط',
-      ];
+      const removedTerms = <String>['المستحقات', 'مستحقات', 'الأقساط', 'أقساط'];
       final offenders = <String>[];
       for (final entity in Directory('lib').listSync(recursive: true)) {
         if (entity is! File || !entity.path.endsWith('.dart')) continue;
@@ -686,6 +710,7 @@ class _FakeFinanceApi extends FinanceApi {
     this.dueSchedules,
     this.warnings = const [],
     this.payers = const [],
+    this.coverage,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   factory _FakeFinanceApi.noBudget() => _FakeFinanceApi._(const []);
@@ -701,6 +726,7 @@ class _FakeFinanceApi extends FinanceApi {
     List<PaymentSchedule>? dueSchedules,
     List<MoneyWarning> warnings = const [],
     List<MoneyPayerSummary> payers = const [],
+    MoneyCoverage? coverage,
   }) => _FakeFinanceApi._(
     [
       for (var index = 1; index <= 4; index++)
@@ -722,9 +748,11 @@ class _FakeFinanceApi extends FinanceApi {
     dueSchedules: dueSchedules,
     warnings: warnings,
     payers: payers,
+    coverage: coverage,
   );
 
   final List<WeddingCost> _costs;
+  final MoneyCoverage? coverage;
   final MoneyFundingSummary? funding;
   final bool fail;
   final bool hasBudget;
@@ -786,6 +814,22 @@ class _FakeFinanceApi extends FinanceApi {
       funding: funding,
       warnings: warnings,
       payers: payers,
+      coverage: coverage,
+      outstanding: const MoneyOutstanding(total: '8000', owner: '8000'),
+      // D102: the server lists every date still to pay.
+      obligations: [
+        if (nextSchedule case final schedule?)
+          MoneyObligation(
+            kind: MoneyObligationKind.due,
+            id: schedule.id,
+            weddingCostId: schedule.costId,
+            title: schedule.costTitle ?? 'تكلفة',
+            amount: schedule.amount,
+            scheduledAmount: schedule.amount,
+            dueDate: schedule.dueDate,
+            isOverdue: schedule.isOverdueAt(DateTime.now()),
+          ),
+      ],
       categories: const [
         MoneyCategorySummary(
           categoryId: 'category-1',

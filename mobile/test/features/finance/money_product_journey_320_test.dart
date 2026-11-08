@@ -40,10 +40,7 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
-      expect(
-        find.byKey(const ValueKey('money-funding-unknown')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('money-cover-unknown')), findsOneWidget);
       expect(find.textContaining('يغطون'), findsNothing);
       expect(find.textContaining(' معك '), findsNothing);
     });
@@ -57,51 +54,52 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
-      const stripKey = ValueKey('money-next-schedule-strip');
       expect(find.byType(MoneyOverviewScreen), findsOneWidget);
-      // The budget sits under the summary and the next payment.
+      // D102: what is on him first, then his coming dues.
+      expect(find.byKey(const ValueKey('money-share-hero')), findsOneWidget);
+      const dueKey = ValueKey('money-coming-due-schedule-1');
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('money-budget-card')),
+        find.byKey(dueKey),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.byKey(const ValueKey('money-budget-card')), findsOneWidget);
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 2000));
-      await tester.pumpAndSettle();
+      // An undated rest is not a coming due.
       expect(
-        find.byKey(const ValueKey('money-dashboard-hero')),
-        findsOneWidget,
-      );
-      expect(find.byKey(stripKey), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('money-destination-costs')),
+        find.byKey(const ValueKey('money-coming-due-cost-1')),
         findsNothing,
       );
-      // c01: the costs live under «البنود».
-      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      // The whole picture opens «البنود», where the costs live (c01).
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('money-whole-cost')),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('money-whole-cost')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('money-whole-cost')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('money-item-cost-1')), findsOneWidget);
       _expectRtl(tester, find.byType(MoneyOverviewScreen));
       expect(tester.takeException(), isNull);
-      // The next payment is on «الملخص».
+
+      // A coming due is paid on its own page (D106), by its id.
       await tester.tap(find.byKey(const ValueKey('journey-tab-0')));
       await tester.pumpAndSettle();
-
       await tester.scrollUntilVisible(
-        find.byKey(stripKey),
+        find.byKey(dueKey),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(find.byKey(stripKey));
+      await tester.ensureVisible(find.byKey(dueKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(stripKey));
+      await tester.tap(find.byKey(dueKey));
       await tester.pumpAndSettle();
-      // A payment date has no page of its own: it opens its agreement (c07).
       expect(
         harness.currentLocation,
-        AppRouter.moneyCostDetails(_planId, 'cost-1'),
+        AppRouter.moneySchedulePay(_planId, 'cost-1', 'schedule-1'),
       );
-      expect(find.byType(CostDetailsScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       harness.router.pop();
@@ -1384,6 +1382,29 @@ class _MoneyProductApi extends FinanceApi {
         count: 1,
       ),
       paymentSchedules: MoneySchedulesSummary(upcomingCount: 1, next: schedule),
+      // D102: what is left, by whom, and each thing still to pay, as the
+      // server sends them.
+      outstanding: const MoneyOutstanding(total: '400000', owner: '400000'),
+      obligations: [
+        MoneyObligation(
+          kind: MoneyObligationKind.due,
+          id: 'schedule-1',
+          weddingCostId: 'cost-1',
+          budgetCategoryId: 'category-1',
+          title: 'حجز القاعة',
+          amount: '200000',
+          scheduledAmount: '200000',
+          dueDate: schedule.dueDate,
+        ),
+        const MoneyObligation(
+          kind: MoneyObligationKind.undated,
+          id: 'cost-1',
+          weddingCostId: 'cost-1',
+          budgetCategoryId: 'category-1',
+          title: 'حجز القاعة',
+          amount: '200000',
+        ),
+      ],
       categories: [
         const MoneyCategorySummary(
           categoryId: 'category-1',

@@ -30,6 +30,7 @@
 | `backend` | `npm run architecture:r8` | `node scripts/architecture/r8-global-module-removal-scan.cjs --check` |
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
+| `backend` | `npm run contracts:money-plan` | `node scripts/contracts/write-money-plan-fixtures.cjs` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |
 | `backend` | `npm run load:test` | `node scripts/smoke/run-isolated-smoke.js --load-test` |
 | `backend` | `npm run prearchitecture` | `npm run architecture:migrations` |

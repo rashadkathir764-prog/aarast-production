@@ -190,7 +190,11 @@ class MoneyObligation {
 }
 
 class MoneyBucket {
-  const MoneyBucket({this.amount = '0', this.ownerAmount = '0', this.count = 0});
+  const MoneyBucket({
+    this.amount = '0',
+    this.ownerAmount = '0',
+    this.count = 0,
+  });
 
   factory MoneyBucket.fromJson(Map<String, dynamic> json) {
     return MoneyBucket(
@@ -461,14 +465,6 @@ class MoneyCoverage {
   /// The estimates' «if»: still expected, and what would be left after them.
   final String estimatesLeft;
   final String endAfterEstimates;
-
-  /// The day and amount the sentence names: short with the promises
-  /// ([MoneyCoverageVerdict.short]), or without them (covered only if).
-  MoneyCoverageShort? get namedShort => switch (verdict) {
-    MoneyCoverageVerdict.short => withPledges.firstShort,
-    MoneyCoverageVerdict.coveredIfPledges => withoutPledges.firstShort,
-    _ => null,
-  };
 }
 
 /// D108: one person of the family.
@@ -536,7 +532,9 @@ double _value(String text) => double.tryParse(text) ?? 0;
 int _int(Object? value) => int.tryParse(value?.toString() ?? '') ?? 0;
 
 DateTime? _month(Object? value) {
-  final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value?.toString() ?? '');
+  final match = RegExp(
+    r'^(\d{4})-(\d{2})$',
+  ).firstMatch(value?.toString() ?? '');
   if (match == null) return null;
   return DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!));
 }

@@ -63,14 +63,14 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
     // D102-D109: the money tab's answers, as the server composes them
     // (finance_local_money_plan.dart, held to the server's by its fixtures).
     final planInput = await _planInput(
-        planId,
-        persona: persona,
-        totalBudget: totalBudget,
-        categories: rawCategories,
-        costs: costs,
-        paidByCost: paidByCost,
-        payments: payments,
-        schedules: schedules,
+      planId,
+      persona: persona,
+      totalBudget: totalBudget,
+      categories: rawCategories,
+      costs: costs,
+      paidByCost: paidByCost,
+      payments: payments,
+      schedules: schedules,
     );
     final plan = localMoneyPlan(planInput);
     final planItems = {
@@ -109,7 +109,8 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
         isMahr: raw['kind']?.toString() == 'MAHR',
         estimatedAmount: _nullableMoney(raw['estimatedAmount']),
         estimate: planItems[id]?['estimate']?.toString(),
-        estimateFromAllocation: planItems[id]?['estimateSource'] == 'ALLOCATION',
+        estimateFromAllocation:
+            planItems[id]?['estimateSource'] == 'ALLOCATION',
         expectedCost: planItems[id]?['expectedCost']?.toString(),
         estimateLeft: planItems[id]?['estimateLeft']?.toString(),
         costKnown: planItems[id]?['costKnown'] as bool?,
@@ -120,7 +121,6 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
       schedules,
       _today(),
     );
-
 
     final expected = MoneyExpected.fromJson(
       Map<String, dynamic>.from(plan['expected'] as Map),
@@ -219,7 +219,9 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
       family: plan['family'] is List
           ? [
               for (final person in plan['family'] as List)
-                MoneyContributor.fromJson(Map<String, dynamic>.from(person as Map)),
+                MoneyContributor.fromJson(
+                  Map<String, dynamic>.from(person as Map),
+                ),
             ]
           : null,
       permissions: const MoneyPermissions(

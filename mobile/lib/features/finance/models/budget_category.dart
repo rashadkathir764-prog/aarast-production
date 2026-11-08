@@ -39,6 +39,7 @@ class BudgetCategory {
   final String weddingPlanId;
   final String name;
   final String? clientId;
+
   /// A share of the general budget: optional, never above it.
   final String? allocatedAmount;
 

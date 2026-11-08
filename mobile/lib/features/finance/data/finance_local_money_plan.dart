@@ -40,8 +40,8 @@ String _money(int cents) {
   final text = part == 0
       ? '$whole'
       : part % 10 == 0
-          ? '$whole.${part ~/ 10}'
-          : '$whole.${part.toString().padLeft(2, '0')}';
+      ? '$whole.${part ~/ 10}'
+      : '$whole.${part.toString().padLeft(2, '0')}';
   return negative ? '-$text' : text;
 }
 
@@ -353,8 +353,8 @@ class _Plan {
     final source = item?.estimated != null
         ? 'ESTIMATE'
         : item?.allocated != null
-            ? 'ALLOCATION'
-            : null;
+        ? 'ALLOCATION'
+        : null;
     final agreed = itemCosts.fold<int>(0, (sum, cost) => sum + cost.total);
     final whole = itemCosts.any((cost) => !cost.part);
     final parts = itemCosts.fold<int>(
@@ -413,7 +413,8 @@ class _Plan {
       byItem.putIfAbsent(cost.itemId, () => []).add(cost);
     }
     final itemRows = <String, Map<String, dynamic>>{
-      for (final item in items) item.id: _expectedItem(item, byItem[item.id] ?? const []),
+      for (final item in items)
+        item.id: _expectedItem(item, byItem[item.id] ?? const []),
     };
     final outside = [
       for (final cost in costs)
@@ -456,7 +457,9 @@ class _Plan {
       'expected': {
         'wedding': _totalsJson(wedding),
         'mahr': _totalsJson(mahr),
-        'total': _money((wedding['expected'] as int) + (mahr['expected'] as int)),
+        'total': _money(
+          (wedding['expected'] as int) + (mahr['expected'] as int),
+        ),
         'budgetLeft': budget == null
             ? null
             : _money(budget! - (wedding['expected'] as int)),

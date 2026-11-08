@@ -3,10 +3,18 @@ import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 
 class LocalFinancePlanContext {
-  const LocalFinancePlanContext({this.estimatedBudget, this.currency});
+  const LocalFinancePlanContext({
+    this.estimatedBudget,
+    this.currency,
+    this.persona,
+  });
 
   final String? estimatedBudget;
   final String? currency;
+
+  /// GROOM, BRIDE or HELPER: whose side of the mahr it is and whose money
+  /// pays (D59), as the server reads the plan's persona.
+  final String? persona;
 }
 
 typedef LocalFinancePlanContextLoader =

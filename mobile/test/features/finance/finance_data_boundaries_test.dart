@@ -29,21 +29,22 @@ void main() {
     expect(api, contains('FinanceLocalDataSource get _local'));
     expect(api, contains("'/api/v1/"));
     expect(api, contains('enqueueSync('));
+    // D109: + the item's own estimate (setItemEstimate): 16 writes.
     expect(
       RegExp(r'final mutation = _mutation\(').allMatches(api),
-      hasLength(15),
+      hasLength(16),
       reason: 'every canonical financial write must create one request id',
     );
     expect(
       RegExp(r'await mutation\.send\(\)').allMatches(api),
-      hasLength(15),
-      reason: 'all 15 online writes must use the idempotent mutation wrapper',
+      hasLength(16),
+      reason: 'all 16 online writes must use the idempotent mutation wrapper',
     );
     expect(
       RegExp(r'CachePolicy\.shouldQueueReplay\(error\)').allMatches(api),
-      hasLength(15),
+      hasLength(16),
       reason:
-          'all 15 writes must preserve their request id after an ambiguous failure',
+          'all 16 writes must preserve their request id after an ambiguous failure',
     );
     expect(api, contains('clientRequestId: mutation.clientRequestId'));
     expect(api, contains('apiClient.mutateJson('));

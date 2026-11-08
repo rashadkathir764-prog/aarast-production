@@ -601,11 +601,13 @@ void main() {
     });
 
     test('live mobile copy cannot restore legacy money terminology', () {
+      // D107 brings «المصروف» back with one meaning: money paid in full the
+      // day it is recorded, an agreement of the one ledger (`entryKind`),
+      // not the old expense screens and tables (removed above). «أقساط» is
+      // banned in the UI, and «مستحقات» stays gone.
       const removedTerms = <String>[
         'المستحقات',
         'مستحقات',
-        'المصروف',
-        'مصروف',
         'الأقساط',
         'أقساط',
       ];

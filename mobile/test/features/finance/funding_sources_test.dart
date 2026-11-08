@@ -590,6 +590,7 @@ class _FakeFundingApi extends FundingApi {
     String? sourcePhone,
     String? note,
     DateTime? expectedAt,
+    Object? contributorName,
   }) async {
     _gate();
     updatedStatuses.add(status);
@@ -655,6 +656,7 @@ class _FakeFundingApi extends FundingApi {
     String? sourcePhone,
     String? note,
     DateTime? expectedAt,
+    String? contributorName,
   }) async {
     _gate();
     created.add((kind, sourceName));

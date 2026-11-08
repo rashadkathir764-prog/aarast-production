@@ -1030,6 +1030,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           weddingPlanId: summary.planId,
           name: category.name,
           allocatedAmount: category.allocatedAmount,
+          estimatedAmount: category.estimatedAmount,
           confirmedCost: category.confirmedCost,
           paid: category.paid,
           outstanding: category.outstanding,

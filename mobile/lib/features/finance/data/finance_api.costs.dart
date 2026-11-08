@@ -131,10 +131,13 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     DateTime? agreementDate,
     String? note,
     bool isPrivate = false,
+    bool isExpense = false,
+    String? estimateCover,
+    String? estimatePart,
   }) async {
     FinanceMoneyRules.assertCostAmounts(
       totalAmount: totalAmount,
-      initialPaymentAmount: initialPaymentAmount,
+      initialPaymentAmount: isExpense ? null : initialPaymentAmount,
     );
     _assertPartyChoice(providerId: providerId, partyName: partyName);
     final payload = <String, dynamic>{
@@ -154,7 +157,10 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       ),
       // V1 checklist 4.10: only the owner or partner may send it.
       if (isPrivate) 'isPrivate': true,
-    };
+      // D107: paid in full the day it is recorded (the server pays it).
+      if (isExpense) 'entryKind': 'EXPENSE',
+      ..._coverPayload(estimateCover, estimatePart),
+    }..removeWhere((key, _) => isExpense && key == 'initialPaymentAmount');
     final mutation = _mutation(
       'POST',
       '/api/v1/wedding-plans/$planId/costs',
@@ -207,6 +213,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     DateTime? agreementDate,
     String? note,
     bool shareWithPlan = false,
+    String? estimateCover,
+    String? estimatePart,
   }) async {
     _assertPartyChoice(providerId: providerId, partyName: partyName);
     final payload = <String, dynamic>{
@@ -225,6 +233,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       ),
       // V1 checklist 4.10: a private cost becomes the shared plan's.
       if (shareWithPlan) 'isPrivate': false,
+      ..._coverPayload(estimateCover, estimatePart),
     };
     final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', payload);
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
@@ -336,6 +345,20 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       );
       return local;
     }
+  }
+
+  /// D105: what an agreement settles of its item's estimate. Sent only when
+  /// chosen, so a server before D105 receives what it knows.
+  Map<String, dynamic> _coverPayload(String? cover, String? part) {
+    if (cover == null) return const {};
+    if (cover != 'WHOLE' && cover != 'PART') {
+      throw const ApiException('اختر هل الاتفاق للبند كله أو لجزء منه.');
+    }
+    return {
+      'estimateCover': cover,
+      if (cover == 'PART' && _nullableTrimmed(part) != null)
+        'estimatePart': part!.trim(),
+    };
   }
 
   Map<String, dynamic> _costPayload({

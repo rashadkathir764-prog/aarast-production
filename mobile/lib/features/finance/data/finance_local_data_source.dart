@@ -4,13 +4,16 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
+import 'finance_local_money_plan.dart';
 import 'finance_local_serializers.dart';
 import 'finance_local_summary.dart';
 import 'finance_money_rules.dart';
 
+part 'finance_local_money_summary.dart';
 part 'finance_local_schedules.dart';
 
 int _lastLocalEntityMicros = 0;
@@ -57,9 +60,26 @@ class FinanceLocalDataSource {
       totalBudget: totalBudget,
       currency: currency,
     );
+    // D109: the whole budget names the items and their allocations; an
+    // item's own estimate is kept unless the save names it (as the server).
+    final saved = {
+      for (final item in await _readPlanList(
+        OfflineTables.cachedBudgetCategories,
+        planId,
+      ))
+        item['id']?.toString(): item,
+    };
     await _offline?.database.replaceCachedList(
       table: OfflineTables.cachedBudgetCategories,
-      items: categories,
+      items: [
+        for (final item in categories)
+          item.containsKey('estimatedAmount')
+              ? item
+              : {
+                  ...item,
+                  'estimatedAmount': saved[item['id']?.toString()]?['estimatedAmount'],
+                },
+      ],
       parentColumn: 'planId',
       parentId: planId,
       preserveDirty: false,
@@ -83,170 +103,20 @@ class FinanceLocalDataSource {
     await _offline?.refreshStatus();
   }
 
+  /// The money picture of a plan kept on the phone (finance_local_money_summary.dart).
   Future<MoneySummary> moneySummary(
     String planId, {
     String? estimatedBudget,
     String? currency,
     MoneyFundingSummary? funding,
-  }) async {
-    final budget = await readBudget(planId);
-    final totalBudget = _nullableMoney(
-      budget?['totalBudget'] ?? estimatedBudget,
-    );
-    final resolvedCurrency =
-        stringOrNull(budget?['currency']) ??
-        stringOrNull(currency)?.toUpperCase() ??
-        'YER';
-    final rawCategories = await _readPlanList(
-      OfflineTables.cachedBudgetCategories,
-      planId,
-    );
-    final costs = (await _readPlanList(
-      OfflineTables.cachedCosts,
-      planId,
-    )).where((cost) => cost['status']?.toString() != 'CANCELLED').toList();
-    final activeCostIds = costs
-        .map((cost) => cost['id']?.toString())
-        .whereType<String>()
-        .toSet();
-    final payments =
-        (await _readPlanList(OfflineTables.cachedCostPayments, planId)).where(
-          (payment) => activeCostIds.contains(payment['costId']?.toString()),
-        );
-    final schedules =
-        (await _readPlanList(OfflineTables.cachedPaymentSchedules, planId))
-            .where(
-              (schedule) =>
-                  activeCostIds.contains(schedule['costId']?.toString()),
-            )
-            .toList();
-
-    final total = FinanceMoneyRules.value(totalBudget);
-    final allocated = rawCategories.fold<num>(
-      0,
-      (sum, category) =>
-          sum + FinanceMoneyRules.value(category['allocatedAmount']),
-    );
-    final costTotal = costs.fold<num>(
-      0,
-      (sum, cost) => sum + FinanceMoneyRules.value(cost['totalAmount']),
-    );
-    final paidByCost = localNetPaidByCost(payments);
-    final paidTotal = costs.fold<num>(
-      0,
-      (sum, cost) => sum + (paidByCost[cost['id']?.toString()] ?? 0),
-    );
-    final outstanding = (costTotal - paidTotal).clamp(0, costTotal);
-    final categorySummaries = rawCategories.map((raw) {
-      final id = raw['id']?.toString() ?? '';
-      final categoryCosts = costs
-          .where((cost) => cost['budgetCategoryId']?.toString() == id)
-          .toList();
-      final confirmed = categoryCosts.fold<num>(
-        0,
-        (sum, cost) => sum + FinanceMoneyRules.value(cost['totalAmount']),
-      );
-      final paid = categoryCosts.fold<num>(
-        0,
-        (sum, cost) => sum + (paidByCost[cost['id']?.toString()] ?? 0),
-      );
-      final allocation = _nullableMoney(raw['allocatedAmount']);
-      return MoneyCategorySummary(
-        categoryId: id,
-        name: raw['name']?.toString() ?? '',
-        allocatedAmount: allocation,
-        confirmedCost: FinanceMoneyRules.asMoney(confirmed) ?? '0',
-        paid: FinanceMoneyRules.asMoney(paid) ?? '0',
-        outstanding:
-            FinanceMoneyRules.asMoney((confirmed - paid).clamp(0, confirmed)) ??
-            '0',
-        remainingAllocation: allocation == null
-            ? null
-            : FinanceMoneyRules.asMoney(
-                FinanceMoneyRules.value(allocation) - confirmed,
-              ),
-        costsCount: categoryCosts.length,
-      );
-    }).toList();
-
-    final scheduleSummary = LocalPaymentScheduleSummary.from(
-      schedules,
-      _today(),
-    );
-
-    final warnings = <MoneyWarning>[
-      if (totalBudget != null && costTotal > total)
-        MoneyWarning(
-          type: 'BUDGET_EXCEEDED',
-          severity: 'DANGER',
-          amount: FinanceMoneyRules.asMoney(costTotal - total),
-        ),
-      for (final category in categorySummaries)
-        if (category.allocatedAmount != null &&
-            FinanceMoneyRules.value(category.confirmedCost) >
-                FinanceMoneyRules.value(category.allocatedAmount))
-          MoneyWarning(
-            type: 'CATEGORY_EXCEEDED',
-            severity: 'DANGER',
-            categoryId: category.categoryId,
-            count: category.costsCount,
-            amount: FinanceMoneyRules.asMoney(
-              FinanceMoneyRules.value(category.confirmedCost) -
-                  FinanceMoneyRules.value(category.allocatedAmount),
-            ),
-          ),
-      if (scheduleSummary.overdueCount > 0)
-        MoneyWarning(
-          type: 'PAYMENT_SCHEDULE_OVERDUE',
-          severity: 'DANGER',
-          count: scheduleSummary.overdueCount,
-        ),
-      if (scheduleSummary.dueSoonCount > 0)
-        MoneyWarning(
-          type: 'PAYMENT_SCHEDULE_DUE_SOON',
-          severity: 'WARNING',
-          count: scheduleSummary.dueSoonCount,
-        ),
-    ];
-
-    return MoneySummary(
-      planId: planId,
-      currency: resolvedCurrency,
-      budget: MoneyBudgetSummary(
-        total: totalBudget,
-        allocated: FinanceMoneyRules.asMoney(allocated) ?? '0',
-        unallocated: totalBudget == null
-            ? null
-            : FinanceMoneyRules.asMoney(total - allocated),
-        confirmedCost: FinanceMoneyRules.asMoney(costTotal) ?? '0',
-        remaining: totalBudget == null
-            ? null
-            : FinanceMoneyRules.asMoney(total - costTotal),
-      ),
-      costs: MoneyCostsSummary(
-        total: FinanceMoneyRules.asMoney(costTotal) ?? '0',
-        paid: FinanceMoneyRules.asMoney(paidTotal) ?? '0',
-        outstanding: FinanceMoneyRules.asMoney(outstanding) ?? '0',
-        count: costs.length,
-      ),
-      paymentSchedules: MoneySchedulesSummary(
-        totalCount: schedules.length,
-        upcomingCount: scheduleSummary.upcomingCount,
-        overdueCount: scheduleSummary.overdueCount,
-        paidCount: scheduleSummary.paidCount,
-        next: scheduleSummary.pending.isEmpty
-            ? null
-            : PaymentSchedule.fromJson(scheduleSummary.pending.first),
-      ),
-      categories: categorySummaries,
-      warnings: warnings,
-      funding: funding,
-      permissions: const MoneyPermissions(
-        canViewMoney: true,
-        canManageMoney: true,
-      ),
-    );
-  }
+    String? persona,
+  }) => _localMoneySummary(
+    planId,
+    estimatedBudget: estimatedBudget,
+    currency: currency,
+    funding: funding,
+    persona: persona,
+  );
 
   Future<BudgetCategory> createBudgetCategory({
     required String weddingPlanId,
@@ -304,10 +174,15 @@ class FinanceLocalDataSource {
     );
     final now = DateTime.now();
     final total = FinanceMoneyRules.value(payload['totalAmount']);
-    final initial = FinanceMoneyRules.value(payload['initialPaymentAmount']);
+    // D107: an expense is paid in full the day it is recorded.
+    final isExpense = payload['entryKind'] == 'EXPENSE';
+    final initial = isExpense
+        ? total
+        : FinanceMoneyRules.value(payload['initialPaymentAmount']);
     final costId = _nextLocalEntityId('local-cost');
     final costPayload = Map<String, dynamic>.from(payload)
-      ..remove('initialPaymentAmount');
+      ..remove('initialPaymentAmount')
+      ..addAll(_coverOf(payload, isExpense: isExpense, total: total));
     final json = {
       ...costPayload,
       'id': costId,
@@ -326,7 +201,7 @@ class FinanceLocalDataSource {
         payload: {
           'amount': FinanceMoneyRules.asMoney(initial),
           'paidAt': payload['agreementDate'] ?? now.toIso8601String(),
-          'note': 'دفعة أولى',
+          'note': isExpense ? 'دفعتها كاملة' : 'دفعة أولى',
         },
         updateCost: false,
       );
@@ -353,9 +228,20 @@ class FinanceLocalDataSource {
     if (total < paid) {
       throw const ApiException('إجمالي الاتفاق ما ينقص عن المدفوع.');
     }
+    final current = cached == null ? cost : WeddingCost.fromJson(cached);
+    // D107: an expense's amount is its payment.
+    if (current.isExpense &&
+        paid > 0 &&
+        total != FinanceMoneyRules.value(current.totalAmount)) {
+      throw const ApiException(
+        'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+      );
+    }
     final json = <String, dynamic>{
       ...?cached,
       ...payload,
+      if (payload.containsKey('estimateCover'))
+        ..._coverOf(payload, isExpense: current.isExpense, total: total),
       'id': cost.id,
       'weddingPlanId': cost.weddingPlanId,
       'paidAmount': FinanceMoneyRules.asMoney(paid),
@@ -457,6 +343,7 @@ class FinanceLocalDataSource {
                 FinanceMoneyRules.value(payment.amount))
             .clamp(0, FinanceMoneyRules.value(currentCost.totalAmount));
     await _updateCostBalance(currentCost, paid);
+    await _giveBackPartialPayment(payment, currentCost.id);
     return CostPayment.fromJson(reversal);
   }
 
@@ -476,6 +363,9 @@ class FinanceLocalDataSource {
       amount: amount,
       remainingAmount: FinanceMoneyRules.value(currentCost.remainingAmount),
     );
+    if (payload['remindAt'] != null) {
+      _assertRemindDay(payload['remindAt'], payload['dueDate']);
+    }
     final now = DateTime.now();
     final json = {
       'id': _nextLocalEntityId('local-payment-schedule'),
@@ -502,18 +392,38 @@ class FinanceLocalDataSource {
       throw const ApiException('هذا الموعد اندفع من قبل، ما يتعدّل.');
     }
     final currentCost = await _currentCost(cost);
-    final amount = FinanceMoneyRules.assertPositive(
-      payload['amount'],
-      'المبلغ',
-    );
-    FinanceMoneyRules.assertScheduleWithinRemaining(
-      amount: amount,
-      remainingAmount: FinanceMoneyRules.value(currentCost.remainingAmount),
-    );
     final cached = await _read(
       OfflineTables.cachedPaymentSchedules,
       schedule.id,
     );
+    final current = cached == null
+        ? schedule
+        : PaymentSchedule.fromJson(cached);
+    final amount = FinanceMoneyRules.assertPositive(
+      payload['amount'],
+      'المبلغ',
+    );
+    // RA-BE-109: only a new amount is a new claim on what is left; moving
+    // the day or the note of a date that asks less than its amount is not
+    // refused for it.
+    if (amount != FinanceMoneyRules.value(current.amount)) {
+      FinanceMoneyRules.assertScheduleWithinRemaining(
+        amount: amount,
+        remainingAmount: FinanceMoneyRules.value(currentCost.remainingAmount),
+      );
+    }
+    // D106: a new due day keeps the first one, and its own reminder goes
+    // back to the default; a reminder day is between today and the due day.
+    final dueDay = _dayOf(payload['dueDate']) ?? _dayOf(current.dueDate)!;
+    final moved = dueDay != _dayOf(current.dueDate);
+    final firstDue = current.rescheduledFrom ?? current.dueDate;
+    final Object? remindAt;
+    if (payload.containsKey('remindAt')) {
+      remindAt = payload['remindAt'];
+      if (remindAt != null) _assertRemindDay(remindAt, dueDay);
+    } else {
+      remindAt = moved ? null : cached?['remindAt'];
+    }
     final json = {
       ...?cached,
       ...payload,
@@ -521,6 +431,10 @@ class FinanceLocalDataSource {
       'weddingPlanId': currentCost.weddingPlanId,
       'costId': currentCost.id,
       'status': 'PENDING',
+      'remindAt': remindAt,
+      'rescheduledFrom': moved
+          ? (dueDay == _dayOf(firstDue) ? null : firstDue.toIso8601String())
+          : cached?['rescheduledFrom'],
       'updatedAt': DateTime.now().toIso8601String(),
     };
     await _save(OfflineTables.cachedPaymentSchedules, json, dirty: true);
@@ -536,26 +450,85 @@ class FinanceLocalDataSource {
       throw const ApiException('هذا الموعد ما يندفع الحين.');
     }
     final currentCost = await _currentCost(cost);
+    final cached = await _read(
+      OfflineTables.cachedPaymentSchedules,
+      schedule.id,
+    );
+    final current = cached == null
+        ? schedule
+        : PaymentSchedule.fromJson(cached);
     // RA-BE-53: as the server does, the reminder pays what its agreement
     // still owes at most. Refusing its whole amount over the remaining left
     // a reminder that could never be paid after a straight payment.
-    final due = schedule.withRemaining(currentCost.remainingAmount).dueAmount;
-    if (FinanceMoneyRules.value(due) <= 0) {
+    final due = FinanceMoneyRules.value(
+      current.withRemaining(currentCost.remainingAmount).dueAmount,
+    );
+    if (due <= 0) {
       throw const ApiException('هذا الاتفاق مدفوع كله، فما فيه شي يندفع.');
+    }
+    // D106: what was paid, when it is not what the date asks for; never
+    // more than what is left on the agreement.
+    final paid = payload['amount'] == null
+        ? due
+        : FinanceMoneyRules.assertPositive(payload['amount'], 'المبلغ');
+    FinanceMoneyRules.assertPaymentWithinRemaining(
+      cost: {
+        'totalAmount': currentCost.totalAmount,
+        'paidAmount': currentCost.paidAmount,
+        'status': currentCost.status,
+      },
+      amount: paid,
+    );
+    final rest = Map<String, dynamic>.from(payload)..remove('amount');
+    if (paid < due) {
+      // Less than it asks: a payment on the agreement linked to the date,
+      // and the date asks for that much less (the server's ledger keeps a
+      // paid date equal to its one payment).
+      final payment = await _createPaymentCache(
+        cost: weddingCostToLocalJson(currentCost),
+        payload: {
+          ...rest,
+          'amount': FinanceMoneyRules.asMoney(paid),
+          'lowersScheduleId': schedule.id,
+        },
+      );
+      final after =
+          await _read(OfflineTables.cachedPaymentSchedules, schedule.id) ??
+          paymentScheduleToLocalJson(current);
+      await _save(OfflineTables.cachedPaymentSchedules, {
+        ...after,
+        'amount': FinanceMoneyRules.asMoney(due - paid),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }, dirty: true);
+      final costNow = await _currentCost(currentCost);
+      await _refreshScheduleDues(costNow.id, costNow.remainingAmount);
+      return payment;
     }
     final payment = await _createPaymentCache(
       cost: weddingCostToLocalJson(currentCost),
-      payload: {...payload, 'amount': due, 'paymentScheduleId': schedule.id},
+      payload: {
+        ...rest,
+        'amount': FinanceMoneyRules.asMoney(due),
+        'paymentScheduleId': schedule.id,
+      },
     );
     await _save(OfflineTables.cachedPaymentSchedules, {
-      ...paymentScheduleToLocalJson(schedule),
+      ...paymentScheduleToLocalJson(current),
       // As the server keeps it: a paid reminder records what was paid.
-      'amount': due,
+      'amount': FinanceMoneyRules.asMoney(due),
       'amountDue': '0',
       'status': 'PAID',
       'paidAt': payment.paidAt.toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
     }, dirty: true);
+    if (paid > due) {
+      // More than it asks: the rest is a payment on the agreement.
+      final costNow = await _currentCost(currentCost);
+      await _createPaymentCache(
+        cost: weddingCostToLocalJson(costNow),
+        payload: {...rest, 'amount': FinanceMoneyRules.asMoney(paid - due)},
+      );
+    }
     return payment;
   }
 
@@ -578,6 +551,8 @@ class FinanceLocalDataSource {
       'paidAt': payload['paidAt'] ?? now.toIso8601String(),
       if (payload['paymentScheduleId'] != null)
         'paymentScheduleId': payload['paymentScheduleId'],
+      if (payload['lowersScheduleId'] != null)
+        'lowersScheduleId': payload['lowersScheduleId'],
       if (payload['method'] != null) 'method': payload['method'],
       if (payload['note'] != null) 'note': payload['note'],
       'reversible': true,

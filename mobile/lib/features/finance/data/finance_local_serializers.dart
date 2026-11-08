@@ -19,6 +19,10 @@ Map<String, dynamic> weddingCostToLocalJson(WeddingCost cost) => {
   if (cost.agreementDate != null)
     'agreementDate': cost.agreementDate!.toIso8601String(),
   if (cost.paymentsCount != null) 'paymentsCount': cost.paymentsCount,
+  // D105, D107.
+  'entryKind': cost.entryKind,
+  'estimateCover': cost.estimateCover,
+  if (cost.estimatePart != null) 'estimatePart': cost.estimatePart,
   if (cost.createdAt != null) 'createdAt': cost.createdAt!.toIso8601String(),
   if (cost.updatedAt != null) 'updatedAt': cost.updatedAt!.toIso8601String(),
 };
@@ -31,6 +35,9 @@ Map<String, dynamic> costPaymentToLocalJson(CostPayment payment) => {
   'entryType': payment.entryType,
   if (payment.paymentScheduleId != null)
     'paymentScheduleId': payment.paymentScheduleId,
+  // D106.
+  if (payment.lowersScheduleId != null)
+    'lowersScheduleId': payment.lowersScheduleId,
   if (payment.reversalOfId != null) 'reversalOfId': payment.reversalOfId,
   if (payment.reversedById != null) 'reversedById': payment.reversedById,
   'reversible': payment.reversible,
@@ -52,6 +59,11 @@ Map<String, dynamic> paymentScheduleToLocalJson(PaymentSchedule schedule) => {
   'status': schedule.status,
   if (schedule.paidAt != null) 'paidAt': schedule.paidAt!.toIso8601String(),
   if (schedule.note != null) 'note': schedule.note,
+  // D106.
+  if (schedule.remindAt != null)
+    'remindAt': schedule.remindAt!.toIso8601String(),
+  if (schedule.rescheduledFrom != null)
+    'rescheduledFrom': schedule.rescheduledFrom!.toIso8601String(),
   if (schedule.weddingPlanId != null) 'weddingPlanId': schedule.weddingPlanId,
   if (schedule.createdAt != null)
     'createdAt': schedule.createdAt!.toIso8601String(),

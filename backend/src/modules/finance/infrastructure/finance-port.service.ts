@@ -3,6 +3,7 @@ import {
   BudgetItemSuggestion,
   type BudgetCategory,
   BudgetCategoryKind,
+  type CostPayer,
   CostPaymentType,
   FundingSourceKind,
   FundingSourceStatus,
@@ -24,7 +25,7 @@ import {
 } from '../../catalog/public/catalog-read.port';
 import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
-import { expectedItem } from '../domain/expected-cost-policy';
+import { estimateCoverOf, expectedItem } from '../domain/expected-cost-policy';
 import { parseMahrAgreement } from '../public/mahr-agreement';
 import { deletePlanFundingSources } from './funding-sources.repository';
 import { recordPlanMahrInTransaction } from './mahr.repository';
@@ -45,6 +46,8 @@ import type {
   ExceededBudgetCategory,
   FinancePort,
   ImportedCostInput,
+  ImportedFundingSourceInput,
+  ImportedItemAmountInput,
   MahrAgreementRequest,
   OfferCost,
   PendingPaymentSchedule,
@@ -212,6 +215,13 @@ export class FinancePortService implements FinancePort {
     // made unpaid with its reminders, then its payments are recorded and its
     // paid total set; the ledger's own checks run at the end of the
     // transaction, on the whole agreement.
+    const entryKind = cost.entryKind ?? 'AGREEMENT';
+    const cover = estimateCoverOf({
+      entryKind,
+      totalAmount: cost.totalAmount,
+      estimateCover: cost.estimateCover ?? null,
+      estimatePart: cost.estimatePart ?? null,
+    });
     const created = await tx.weddingCost.create({
       data: {
         weddingPlanId,
@@ -224,16 +234,30 @@ export class FinancePortService implements FinancePort {
         agreementDate: cost.agreementDate,
         status: deriveCostStatus(cost.totalAmount, new Prisma.Decimal(0)),
         note: cost.note,
-        paymentSchedules: {
-          create: cost.paymentSchedules.map((schedule) => ({
-            amount: schedule.amount,
-            dueDate: schedule.dueDate,
-            note: schedule.note,
-          })),
-        },
+        payer: (cost.payer as CostPayer | null | undefined) ?? null,
+        payerName: cost.payerName ?? null,
+        entryKind,
+        estimateCover: cover.estimateCover,
+        estimatePart: cover.estimatePart,
       },
       select: { id: true },
     });
+    // One by one, in order, so a partial payment finds its date (D106).
+    const scheduleIds: string[] = [];
+    for (const schedule of cost.paymentSchedules) {
+      const row = await tx.paymentSchedule.create({
+        data: {
+          weddingCostId: created.id,
+          amount: schedule.amount,
+          dueDate: schedule.dueDate,
+          note: schedule.note,
+          remindAt: schedule.remindAt ?? null,
+          rescheduledFrom: schedule.rescheduledFrom ?? null,
+        },
+        select: { id: true },
+      });
+      scheduleIds.push(row.id);
+    }
     if (cost.payments.length === 0) return;
     await tx.costPayment.createMany({
       data: cost.payments.map((payment) => ({
@@ -242,6 +266,10 @@ export class FinancePortService implements FinancePort {
         paidAt: payment.paidAt,
         method: payment.method,
         note: payment.note,
+        lowersScheduleId:
+          payment.lowersScheduleIndex === null || payment.lowersScheduleIndex === undefined
+            ? null
+            : (scheduleIds[payment.lowersScheduleIndex] ?? null),
       })),
     });
     await tx.weddingCost.update({
@@ -251,6 +279,104 @@ export class FinancePortService implements FinancePort {
         status: deriveCostStatus(cost.totalAmount, cost.paidAmount),
       },
     });
+  }
+
+  async setImportedItemAmountsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    budget: Prisma.Decimal | null,
+    items: readonly ImportedItemAmountInput[],
+  ): Promise<void> {
+    if (items.length === 0) return;
+    const kinds = new Map(
+      (
+        await tx.budgetCategory.findMany({
+          where: { weddingPlanId, id: { in: items.map((item) => item.budgetCategoryId) } },
+          select: { id: true, kind: true },
+        })
+      ).map((row) => [row.id, row.kind]),
+    );
+    // C1: the mahr carries no allocation. The allocations come over only
+    // while they fit the budget (the account's own rule, enforced by the
+    // database): a phone's plan is never refused for them.
+    const allocations = items.filter(
+      // RA-BE-29: «0» is no allocation.
+      (item) =>
+        item.allocatedAmount !== null &&
+        item.allocatedAmount.gt(0) &&
+        kinds.get(item.budgetCategoryId) === BudgetCategoryKind.WEDDING,
+    );
+    const allocated = allocations.reduce(
+      (sum, item) => sum.plus(item.allocatedAmount as Prisma.Decimal),
+      new Prisma.Decimal(0),
+    );
+    const keepAllocations =
+      budget !== null && allocated.gt(0) && !allocated.gt(budget);
+    for (const item of items) {
+      if (!kinds.has(item.budgetCategoryId)) continue;
+      const allocation =
+        keepAllocations && allocations.includes(item) ? item.allocatedAmount : null;
+      if (allocation === null && item.estimatedAmount === null) continue;
+      await tx.budgetCategory.update({
+        where: { id: item.budgetCategoryId },
+        data: {
+          ...(allocation === null ? {} : { allocatedAmount: allocation }),
+          ...(item.estimatedAmount === null ? {} : { estimatedAmount: item.estimatedAmount }),
+        },
+      });
+    }
+  }
+
+  async createImportedFundingSourcesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    persona: string | null,
+    sources: readonly ImportedFundingSourceInput[],
+  ): Promise<void> {
+    for (const source of sources) {
+      // The mahr is money coming in on the bride's plan only; on another
+      // plan the money is kept, as «other».
+      const kind =
+        source.kind === FundingSourceKind.MAHR && persona !== 'BRIDE'
+          ? FundingSourceKind.OTHER
+          : (source.kind as FundingSourceKind);
+      // Repayments go with a loan, and never more than it (in order).
+      let room = source.amount;
+      const repayments =
+        kind === FundingSourceKind.LOAN
+          ? source.repayments.filter((repayment) => {
+              if (repayment.amount.gt(room)) return false;
+              room = room.minus(repayment.amount);
+              return true;
+            })
+          : [];
+      await tx.fundingSource.create({
+        data: {
+          weddingPlanId,
+          kind,
+          sourceName: source.sourceName,
+          sourcePhone: source.sourcePhone,
+          contributorName: source.contributorName,
+          amount: source.amount,
+          status: source.status,
+          receivedAt: source.status === FundingSourceStatus.RECEIVED ? source.receivedAt : null,
+          expectedAt: source.status === FundingSourceStatus.PLEDGED ? source.expectedAt : null,
+          note: source.note,
+          repayments: {
+            create: repayments.map((repayment) => ({
+              amount: repayment.amount,
+              dueDate: repayment.dueDate,
+              status: repayment.status,
+              paidAt:
+                repayment.status === LoanRepaymentStatus.PAID
+                  ? (repayment.paidAt ?? new Date())
+                  : null,
+              note: repayment.note,
+            })),
+          },
+        },
+      });
+    }
   }
 
   async getPlanImportCounts(

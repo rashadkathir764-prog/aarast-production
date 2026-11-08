@@ -24,6 +24,9 @@ class WeddingCost {
     this.providerName,
     this.createdAt,
     this.updatedAt,
+    this.entryKind = 'AGREEMENT',
+    this.estimateCover = 'WHOLE',
+    this.estimatePart,
   });
 
   factory WeddingCost.fromJson(Map<String, dynamic> json) {
@@ -57,6 +60,9 @@ class WeddingCost {
           _nestedString(json['provider'], 'businessName'),
       createdAt: dateTimeOrNull(json['createdAt']),
       updatedAt: dateTimeOrNull(json['updatedAt']),
+      entryKind: stringOrNull(json['entryKind']) ?? 'AGREEMENT',
+      estimateCover: stringOrNull(json['estimateCover']) ?? 'WHOLE',
+      estimatePart: stringOrNull(json['estimatePart']),
     );
   }
 
@@ -87,6 +93,15 @@ class WeddingCost {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// D107: AGREEMENT, or EXPENSE (paid in full the day it was recorded).
+  final String entryKind;
+
+  /// D105: WHOLE settles its item's estimate; PART settles [estimatePart].
+  final String estimateCover;
+  final String? estimatePart;
+
+  bool get isExpense => entryKind == 'EXPENSE';
+  bool get settlesPartOfEstimate => estimateCover == 'PART';
   bool get isCancelled => status == 'CANCELLED';
   bool get isPaid => status == 'PAID';
   bool get hasActivePayments => moneyValue(paidAmount) > 0;
@@ -104,6 +119,7 @@ class CostPayment {
     required this.paidAt,
     this.entryType = 'PAYMENT',
     this.paymentScheduleId,
+    this.lowersScheduleId,
     this.reversalOfId,
     this.reversedById,
     this.reversible = false,
@@ -126,6 +142,7 @@ class CostPayment {
       paidAt: dateTimeOrNull(json['paidAt']) ?? DateTime.now(),
       entryType: json['entryType']?.toString() ?? 'PAYMENT',
       paymentScheduleId: stringOrNull(json['paymentScheduleId']),
+      lowersScheduleId: stringOrNull(json['lowersScheduleId']),
       reversalOfId: stringOrNull(json['reversalOfId']),
       reversedById: stringOrNull(json['reversedById']),
       reversible: json['reversible'] == true,
@@ -157,6 +174,9 @@ class CostPayment {
   final DateTime paidAt;
   final String entryType;
   final String? paymentScheduleId;
+
+  /// D106: the pending date this partial payment lowered.
+  final String? lowersScheduleId;
   final String? reversalOfId;
   final String? reversedById;
   final bool reversible;
@@ -196,6 +216,8 @@ class PaymentSchedule {
     this.providerName,
     this.createdAt,
     this.updatedAt,
+    this.remindAt,
+    this.rescheduledFrom,
   });
 
   factory PaymentSchedule.fromJson(Map<String, dynamic> json) {
@@ -233,6 +255,8 @@ class PaymentSchedule {
           _nestedString(json['provider'], 'businessName'),
       createdAt: dateTimeOrNull(json['createdAt']),
       updatedAt: dateTimeOrNull(json['updatedAt']),
+      remindAt: dateTimeOrNull(json['remindAt']),
+      rescheduledFrom: dateTimeOrNull(json['rescheduledFrom']),
     );
   }
 
@@ -263,6 +287,12 @@ class PaymentSchedule {
   final String? providerName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// D106: its own reminder day; null: the week before, and when late.
+  final DateTime? remindAt;
+
+  /// D106: the first due day, when the date was moved.
+  final DateTime? rescheduledFrom;
 
   bool get isPending => status == 'PENDING';
   bool get isPaid => status == 'PAID';
@@ -299,6 +329,8 @@ class PaymentSchedule {
       providerName: providerName,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      remindAt: remindAt,
+      rescheduledFrom: rescheduledFrom,
     );
   }
 

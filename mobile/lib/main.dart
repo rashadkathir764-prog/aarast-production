@@ -259,6 +259,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
       return LocalFinancePlanContext(
         estimatedBudget: draft.estimatedBudget,
         currency: draft.currency,
+        persona: draft.persona?.name.toUpperCase(),
       );
     },
   );

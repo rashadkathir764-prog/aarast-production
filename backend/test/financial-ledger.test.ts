@@ -195,9 +195,11 @@ test("the only payment due date belongs to PaymentSchedule", () => {
   const financePort = read("src/modules/finance/infrastructure/finance-port.service.ts");
   const importedCost =
     financePort.match(/async createImportedCostInTransaction\([\s\S]*?\n  \}/)?.[0] ?? "";
+  // D106: the dates are written one by one (a partial payment finds its
+  // date by its place), still all before the payments.
   assert.ok(
-    importedCost.indexOf("paymentSchedules:") >= 0 &&
-      importedCost.indexOf("paymentSchedules:") < importedCost.indexOf("costPayment.createMany"),
+    importedCost.indexOf("paymentSchedule.create(") >= 0 &&
+      importedCost.indexOf("paymentSchedule.create(") < importedCost.indexOf("costPayment.createMany"),
     "an imported agreement's reminders are written before its payments",
   );
 });

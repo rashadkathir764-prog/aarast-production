@@ -1235,6 +1235,7 @@ class _ScheduleRecordingApi extends _MoneyDetailsApi {
     required String amount,
     required DateTime dueDate,
     String? note,
+    Object? remindAt,
   }) async {
     updated.add('${schedule.id}:$amount');
     return schedule;

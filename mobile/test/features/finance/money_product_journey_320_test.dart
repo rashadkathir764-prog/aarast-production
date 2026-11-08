@@ -1287,6 +1287,9 @@ class _MoneyProductApi extends FinanceApi {
     DateTime? agreementDate,
     String? note,
     bool isPrivate = false,
+    bool isExpense = false,
+    String? estimateCover,
+    String? estimatePart,
   }) async {
     createCostCalls += 1;
     await createCostGate?.future;

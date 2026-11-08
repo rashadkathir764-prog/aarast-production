@@ -25,6 +25,9 @@ import {
   WeddingPlanStatus,
   WeddingTaskPriority,
   WeddingTaskStatus,
+  CostEntryKind,
+  FundingSourceStatus,
+  LoanRepaymentStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { SafeUser } from "../modules/identity/public/safe-user";
@@ -571,6 +574,9 @@ export class WeddingPlansService {
           ) ?? now,
         method: this.optionalText(payment.method ?? undefined),
         note: this.optionalText(payment.note ?? undefined),
+        // D106: checked against the dates below; a date that is not there
+        // leaves it a plain payment.
+        lowersScheduleIndex: payment.lowersScheduleIndex ?? null,
       }));
       const paidAmount = payments.reduce(
         (sum, payment) => sum.plus(payment.amount),
@@ -603,10 +609,27 @@ export class WeddingPlansService {
           // above it (the agreement made smaller after) is taken at the
           // agreement's total instead of refusing the plan for ever.
           const amount = written.gt(totalAmount) ? totalAmount : written;
+          // D106: a reminder day of its own between today and the due day;
+          // one out of that range goes back to the default, never refused.
+          const remindAt = this.parseDateField(
+            schedule.remindAt ?? undefined,
+            `costs[${costIndex}].paymentSchedules[${scheduleIndex}].remindAt`,
+          );
+          const remindDay = remindAt ? riyadhDay(remindAt) : null;
           return {
             amount,
             dueDate,
             note: this.optionalText(schedule.note ?? undefined),
+            remindAt:
+              remindDay !== null &&
+              remindDay >= riyadhDay(now) &&
+              remindDay <= riyadhDay(dueDate)
+                ? remindAt
+                : null,
+            rescheduledFrom: this.parseDateField(
+              schedule.rescheduledFrom ?? undefined,
+              `costs[${costIndex}].paymentSchedules[${scheduleIndex}].rescheduledFrom`,
+            ),
           };
         },
       )
@@ -632,8 +655,73 @@ export class WeddingPlansService {
           `costs[${costIndex}].agreementDate`,
         ),
         note: this.optionalText(cost.note ?? undefined),
-        payments,
+        payments: payments.map((payment) => ({
+          ...payment,
+          lowersScheduleIndex:
+            payment.lowersScheduleIndex !== null &&
+            payment.lowersScheduleIndex < paymentSchedules.length
+              ? payment.lowersScheduleIndex
+              : null,
+        })),
         paymentSchedules,
+        // D59: who pays it, as the phone kept it.
+        payer: cost.payer ?? null,
+        payerName: this.optionalText(cost.payerName ?? undefined),
+        // D107: an expense is paid in full; one that is not comes in as an
+        // agreement rather than refusing the plan.
+        entryKind:
+          cost.entryKind === CostEntryKind.EXPENSE && paidAmount.equals(totalAmount)
+            ? CostEntryKind.EXPENSE
+            : CostEntryKind.AGREEMENT,
+        estimateCover: cost.estimateCover,
+        estimatePart:
+          cost.estimatePart === null || cost.estimatePart === undefined || String(cost.estimatePart).trim() === ""
+            ? null
+            : new Prisma.Decimal(
+                this.requiredPositiveAmount(cost.estimatePart, `costs[${costIndex}].estimatePart`),
+              ),
+      };
+    });
+
+    // D109: each item's own estimate and its allocation, by name.
+    const itemAmounts = (dto.itemAmounts ?? []).map((item, index) => ({
+      name: this.requiredText(item.name, `itemAmounts[${index}].name`),
+      allocatedAmount: this.importedAmount(item.allocatedAmount, `itemAmounts[${index}].allocatedAmount`),
+      estimatedAmount: this.importedAmount(item.estimatedAmount, `itemAmounts[${index}].estimatedAmount`),
+    }));
+    // The money in the phone's plan recorded (D103, D108).
+    const fundingSources = (dto.fundingSources ?? []).map((source, index) => {
+      const status = source.status ?? FundingSourceStatus.RECEIVED;
+      return {
+        kind: source.kind,
+        sourceName: this.requiredText(source.sourceName, `fundingSources[${index}].sourceName`),
+        sourcePhone: PhoneNormalizer.normalizeOptional(source.sourcePhone),
+        contributorName: this.optionalText(source.contributorName ?? undefined),
+        amount: new Prisma.Decimal(
+          this.requiredPositiveAmount(source.amount, `fundingSources[${index}].amount`),
+        ),
+        status,
+        receivedAt: this.parseDateField(source.receivedAt ?? undefined, `fundingSources[${index}].receivedAt`),
+        expectedAt: this.parseDateField(source.expectedAt ?? undefined, `fundingSources[${index}].expectedAt`),
+        note: this.optionalText(source.note ?? undefined),
+        repayments: (source.repayments ?? []).map((repayment, repaymentIndex) => ({
+          amount: new Prisma.Decimal(
+            this.requiredPositiveAmount(
+              repayment.amount,
+              `fundingSources[${index}].repayments[${repaymentIndex}].amount`,
+            ),
+          ),
+          dueDate: this.parseDateField(
+            repayment.dueDate ?? undefined,
+            `fundingSources[${index}].repayments[${repaymentIndex}].dueDate`,
+          ),
+          status: repayment.status ?? LoanRepaymentStatus.PLANNED,
+          paidAt: this.parseDateField(
+            repayment.paidAt ?? undefined,
+            `fundingSources[${index}].repayments[${repaymentIndex}].paidAt`,
+          ),
+          note: this.optionalText(repayment.note ?? undefined),
+        })),
       };
     });
 
@@ -797,9 +885,35 @@ export class WeddingPlansService {
               note: cost.note,
               payments: cost.payments,
               paymentSchedules: cost.paymentSchedules,
+              payer: cost.payer,
+              payerName: cost.payerName,
+              entryKind: cost.entryKind,
+              estimateCover: cost.estimateCover,
+              estimatePart: cost.estimatePart,
             },
           );
         }
+
+        // D109: the items' estimates and allocations, by name.
+        await this.finance.setImportedItemAmountsInTransaction(
+          tx,
+          createdPlan.id,
+          createdPlan.estimatedBudget,
+          itemAmounts.flatMap((item) => {
+            const budgetCategoryId = categoryIdByName.get(
+              this.normalizedCategoryName(item.name),
+            );
+            return budgetCategoryId
+              ? [{ budgetCategoryId, allocatedAmount: item.allocatedAmount, estimatedAmount: item.estimatedAmount }]
+              : [];
+          }),
+        );
+        await this.finance.createImportedFundingSourcesInTransaction(
+          tx,
+          createdPlan.id,
+          createdPlan.persona,
+          fundingSources,
+        );
 
         if (dto.mahr) {
           await this.finance.recordMahrInTransaction(
@@ -946,6 +1060,17 @@ export class WeddingPlansService {
       throw new BadRequestException(`${field} must be a valid ISO date string`);
     }
     return new Date(timestamp);
+  }
+
+  /** An imported amount that may be absent; zero stays zero. */
+  private importedAmount(
+    value: string | number | null | undefined,
+    field: string,
+  ): Prisma.Decimal | null {
+    if (value === null || value === undefined || String(value).trim() === "") {
+      return null;
+    }
+    return new Prisma.Decimal(this.requiredAmount(value, field));
   }
 
   private requiredText(value: string, field: string): string {
@@ -1186,4 +1311,9 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
+}
+
+/** The day in Riyadh (D11) a moment falls on, as YYYY-MM-DD. */
+function riyadhDay(moment: Date): string {
+  return new Date(moment.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

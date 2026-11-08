@@ -64,6 +64,7 @@
     "smoke:contributor-history-migration": "node scripts/smoke/run-isolated-smoke.js --contributor-history-migration",
     "smoke:guest-phone-migration": "node scripts/smoke/run-isolated-smoke.js --guest-phone-migration",
     "smoke:schema-equivalence": "node scripts/smoke/run-isolated-smoke.js --schema-equivalence",
+    "contracts:money-plan": "node scripts/contracts/write-money-plan-fixtures.cjs",
     "smoke:phase0-fixtures": "node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js",
     "smoke:phase1-identity": "node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts",
     "smoke:phase2-admin-mutation-authorization": "node scripts/smoke/run-isolated-smoke.js phase2-admin-mutation-authorization-smoke.ts",

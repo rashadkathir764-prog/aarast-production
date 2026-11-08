@@ -12,6 +12,7 @@ class FundingSource {
     required this.amount,
     required this.status,
     this.sourcePhone,
+    this.contributorName,
     this.receivedAt,
     this.expectedAt,
     this.isOverdue = false,
@@ -28,6 +29,7 @@ class FundingSource {
       kind: json['kind']?.toString() ?? FundingKind.other,
       sourceName: json['sourceName']?.toString() ?? '',
       sourcePhone: json['sourcePhone']?.toString(),
+      contributorName: json['contributorName']?.toString(),
       amount: json['amount']?.toString() ?? '0',
       status: json['status']?.toString() ?? FundingStatus.received,
       receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? ''),
@@ -50,6 +52,10 @@ class FundingSource {
   final String kind;
   final String sourceName;
   final String? sourcePhone;
+
+  /// D108: who gave or promised it («الوالد»), matched with the agreements'
+  /// payer name.
+  final String? contributorName;
   final String amount;
   final String status;
   final DateTime? receivedAt;
@@ -78,6 +84,7 @@ class FundingSource {
     'kind': kind,
     'sourceName': sourceName,
     'sourcePhone': sourcePhone,
+    'contributorName': contributorName,
     'amount': amount,
     'status': status,
     'receivedAt': receivedAt?.toIso8601String(),

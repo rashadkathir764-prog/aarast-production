@@ -448,4 +448,111 @@ void main() {
     // A value the server does not take is left out, not sent to be refused.
     expect((guests[1] as Map).containsKey('attendanceStatus'), isFalse);
   });
+
+  // D103-D109: what the money tab keeps reaches the account with the plan:
+  // who pays, an expense, what an agreement settles of its estimate, a
+  // date's reminder day and first day, a partial payment's date, the items'
+  // estimates and allocations, and the money in with who gave it.
+  test('the import carries the money tab\'s fields', () async {
+    final service = await buildService();
+    final snapshot = (await service.loadSnapshot())!;
+    final withMoney = LocalPlanSnapshot(
+      draft: snapshot.draft,
+      costs: const [
+        {
+          'id': 'c1',
+          'title': 'الغداء',
+          'totalAmount': '700',
+          'budgetCategoryId': 'food',
+          'payer': 'FAMILY',
+          'payerName': 'الوالد',
+          'estimateCover': 'PART',
+          'estimatePart': '600',
+        },
+        {
+          'id': 'c2',
+          'title': 'الفستان',
+          'totalAmount': '150',
+          'budgetCategoryId': 'dress',
+          'entryKind': 'EXPENSE',
+        },
+      ],
+      costPayments: const [
+        {
+          'id': 'p1',
+          'costId': 'c1',
+          'amount': '200',
+          'entryType': 'PAYMENT',
+          'lowersScheduleId': 's1',
+        },
+        {'id': 'p2', 'costId': 'c2', 'amount': '150', 'entryType': 'PAYMENT'},
+      ],
+      paymentSchedules: const [
+        {
+          'id': 's1',
+          'costId': 'c1',
+          'amount': '300',
+          'dueDate': '2026-12-01',
+          'status': 'PENDING',
+          'remindAt': '2026-11-28',
+          'rescheduledFrom': '2026-11-20',
+        },
+      ],
+      tasks: const [],
+      guests: const [],
+      categoryNameById: const {'food': 'الغداء', 'dress': 'الفستان', 'car': 'السيارة'},
+      categories: const [
+        {'id': 'food', 'name': 'الغداء', 'estimatedAmount': '1600'},
+        {'id': 'dress', 'name': 'الفستان', 'allocatedAmount': '300'},
+        {'id': 'car', 'name': 'السيارة'},
+      ],
+      fundingSources: const [
+        {
+          'id': 'f1',
+          'kind': 'FAMILY_SUPPORT',
+          'sourceName': 'وعد الوالد',
+          'contributorName': 'الوالد',
+          'amount': '800',
+          'status': 'PLEDGED',
+          'expectedAt': '2026-11-29',
+        },
+        {
+          'id': 'f2',
+          'kind': 'LOAN',
+          'sourceName': 'خالي',
+          'amount': '400',
+          'status': 'RECEIVED',
+          'repayments': [
+            {'id': 'r1', 'amount': '100', 'status': 'PAID'},
+          ],
+        },
+        {'id': 'f3', 'kind': 'NOT_A_KIND', 'sourceName': 'غلط', 'amount': '9'},
+      ],
+    );
+
+    final payload = service.buildImportPayload(withMoney);
+    final costs = [for (final cost in payload['costs'] as List) cost as Map];
+    final lunch = costs.firstWhere((cost) => cost['title'] == 'الغداء');
+    expect(lunch['payer'], 'FAMILY');
+    expect(lunch['payerName'], 'الوالد');
+    expect(lunch['estimateCover'], 'PART');
+    expect(lunch['estimatePart'], '600');
+    final schedule = (lunch['paymentSchedules'] as List).single as Map;
+    expect(schedule['remindAt'], '2026-11-28');
+    expect(schedule['rescheduledFrom'], '2026-11-20');
+    expect(((lunch['payments'] as List).single as Map)['lowersScheduleIndex'], 0);
+    final dress = costs.firstWhere((cost) => cost['title'] == 'الفستان');
+    expect(dress['entryKind'], 'EXPENSE');
+    expect(dress.containsKey('lowersScheduleIndex'), isFalse);
+
+    expect(payload['itemAmounts'], [
+      {'name': 'الغداء', 'estimatedAmount': '1600'},
+      {'name': 'الفستان', 'allocatedAmount': '300'},
+    ]);
+    final sources = [for (final source in payload['fundingSources'] as List) source as Map];
+    expect(sources.map((source) => source['sourceName']), ['وعد الوالد', 'خالي']);
+    expect(sources.first['contributorName'], 'الوالد');
+    expect(sources.first['status'], 'PLEDGED');
+    expect((sources.last['repayments'] as List).single, {'amount': '100', 'status': 'PAID'});
+  });
 }

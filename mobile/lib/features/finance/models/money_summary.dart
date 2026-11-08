@@ -1,5 +1,8 @@
 import '../../../core/utils/plan_day.dart';
+import 'money_plan.dart';
 import 'wedding_cost.dart';
+
+export 'money_plan.dart';
 
 class MoneySummary {
   const MoneySummary({
@@ -15,6 +18,12 @@ class MoneySummary {
     this.funding,
     this.mahr,
     this.payers = const [],
+    this.expected,
+    this.outstanding,
+    this.obligations = const [],
+    this.duesByMonth,
+    this.coverage,
+    this.family,
   });
 
   factory MoneySummary.empty(String planId, {String currency = 'YER'}) {
@@ -50,6 +59,23 @@ class MoneySummary {
       payers: _listOfMaps(
         json['payers'],
       ).map(MoneyPayerSummary.fromJson).toList(),
+      expected: json['expected'] is Map
+          ? MoneyExpected.fromJson(_map(json['expected']))
+          : null,
+      outstanding: json['outstanding'] is Map
+          ? MoneyOutstanding.fromJson(_map(json['outstanding']))
+          : null,
+      obligations: [
+        for (final line in _listOfMaps(json['obligations']))
+          ?MoneyObligation.fromJson(line),
+      ],
+      duesByMonth: json['duesByMonth'] is Map
+          ? MoneyDuesByMonth.fromJson(_map(json['duesByMonth']))
+          : null,
+      coverage: MoneyCoverage.fromJson(json['coverage']),
+      family: json['family'] is List
+          ? _listOfMaps(json['family']).map(MoneyContributor.fromJson).toList()
+          : null,
     );
   }
 
@@ -83,6 +109,26 @@ class MoneySummary {
 
   /// G14: what each payer agreed to and paid, by each item's payer.
   final List<MoneyPayerSummary> payers;
+
+  /// D105, D109: what the wedding is expected to cost. Null from a server
+  /// before D102.
+  final MoneyExpected? expected;
+
+  /// D102: what is left to pay, and on whom.
+  final MoneyOutstanding? outstanding;
+
+  /// D102, D106: everything still to pay, one line each (loans: the owner's).
+  final List<MoneyObligation> obligations;
+
+  /// D102: the wedding's dues by month.
+  final MoneyDuesByMonth? duesByMonth;
+
+  /// D103: whether the owner's money covers what is on him, in time. Null
+  /// for anyone but the owner, and before a source of money is recorded.
+  final MoneyCoverage? coverage;
+
+  /// D108: the family, person by person (the owner's only).
+  final List<MoneyContributor>? family;
 
   /// The groom's mahr item (outside the budget), if the plan has one.
   MoneyCategorySummary? get mahrCategory =>
@@ -160,6 +206,7 @@ class MoneyFundingSummary {
     this.availableCash = '0',
     this.shortfall,
     this.loanTotal = '0',
+    this.loanRepaid = '0',
     this.loanOutstanding = '0',
     this.overdueLoanRepayments = 0,
     this.overduePledges = 0,
@@ -175,6 +222,7 @@ class MoneyFundingSummary {
       availableCash: json['availableCash']?.toString() ?? '0',
       shortfall: _nullableString(json['shortfall']),
       loanTotal: json['loanTotal']?.toString() ?? '0',
+      loanRepaid: json['loanRepaid']?.toString() ?? '0',
       loanOutstanding: json['loanOutstanding']?.toString() ?? '0',
       overdueLoanRepayments:
           int.tryParse(json['overdueLoanRepayments']?.toString() ?? '') ?? 0,
@@ -193,13 +241,18 @@ class MoneyFundingSummary {
   /// plus in hand.
   final String spent;
 
-  /// Received minus what the owner's own money paid («معك»): what someone
-  /// else paid for the owner never left the owner's hands (D59).
+  /// «معك» (D104): received, less what the owner's own money paid, less
+  /// what he repaid on loans; never below zero. What someone else paid for
+  /// the owner never left the owner's hands (D59).
   final String availableCash;
 
-  /// Confirmed cost not yet covered by any source; null once covered.
+  /// D103: what is needed beyond his money (and promised money with a day
+  /// to come) for everything on him to be paid on its day; null when it is.
   final String? shortfall;
   final String loanTotal;
+
+  /// What he repaid on loans (it left his hands, D104).
+  final String loanRepaid;
   final String loanOutstanding;
   final int overdueLoanRepayments;
 
@@ -414,6 +467,12 @@ class MoneyCategorySummary {
     this.costsCount = 0,
     this.isMahr = false,
     this.providerCategoryIds = const [],
+    this.estimatedAmount,
+    this.estimate,
+    this.estimateFromAllocation = false,
+    this.expectedCost,
+    this.estimateLeft,
+    this.costKnown,
   });
 
   factory MoneyCategorySummary.fromJson(Map<String, dynamic> json) {
@@ -431,6 +490,12 @@ class MoneyCategorySummary {
       providerCategoryIds: providerCategoryIds is List
           ? [for (final id in providerCategoryIds) ?stringOrNull(id)]
           : const [],
+      estimatedAmount: _nullableString(json['estimatedAmount']),
+      estimate: _nullableString(json['estimate']),
+      estimateFromAllocation: json['estimateSource'] == 'ALLOCATION',
+      expectedCost: _nullableString(json['expectedCost']),
+      estimateLeft: _nullableString(json['estimateLeft']),
+      costKnown: json['costKnown'] is bool ? json['costKnown'] as bool : null,
     );
   }
 
@@ -445,6 +510,22 @@ class MoneyCategorySummary {
 
   /// The groom's mahr item: outside the wedding budget (C1).
   final bool isMahr;
+
+  /// D109: the owner's own estimate («تقديرك»), apart from the allocation.
+  final String? estimatedAmount;
+
+  /// The estimate the rules use: his, else the allocation
+  /// ([estimateFromAllocation]). Null: none (or a server before D109).
+  final String? estimate;
+  final bool estimateFromAllocation;
+
+  /// D105: agreements plus the estimate they have not settled.
+  final String? expectedCost;
+  final String? estimateLeft;
+
+  /// An estimate or an agreement for the whole covers it (or it is not
+  /// needed). Null from a server before D105.
+  final bool? costKnown;
 
   /// G40: the directory categories whose accepted offers land in this item,
   /// from the server (acceptance's own rule). Empty: no provider is searched

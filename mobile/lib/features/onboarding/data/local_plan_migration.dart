@@ -21,6 +21,8 @@ class LocalPlanSnapshot {
     required this.guests,
     required this.categoryNameById,
     this.migrationId,
+    this.categories = const [],
+    this.fundingSources = const [],
   });
 
   final GuestOnboardingDraft draft;
@@ -34,6 +36,12 @@ class LocalPlanSnapshot {
   final List<Map<String, dynamic>> tasks;
   final List<Map<String, dynamic>> guests;
   final Map<String, String> categoryNameById;
+
+  /// D109: the items as kept, for their estimates and allocations.
+  final List<Map<String, dynamic>> categories;
+
+  /// The money in the plan recorded (D103, D108).
+  final List<Map<String, dynamic>> fundingSources;
 
   bool get hasAnyRecords =>
       costs.isNotEmpty || tasks.isNotEmpty || guests.isNotEmpty;
@@ -137,6 +145,8 @@ class LocalPlanMigrationService {
           if (_text(row['id']) != null && _text(row['name']) != null)
             _text(row['id'])!: _text(row['name'])!,
       },
+      categories: categories,
+      fundingSources: await _rows(OfflineTables.cachedFundingSources, planId),
     );
   }
 
@@ -243,6 +253,12 @@ class LocalPlanMigrationService {
       // a06: the server records the mahr with the plan (C1).
       if (draft.mahr case final mahr?) 'mahr': mahr.toRequestJson(),
       if (costs.isNotEmpty) 'costs': costs,
+      // D109: each item's own estimate and its allocation, by name.
+      if (_itemAmounts(snapshot).isNotEmpty)
+        'itemAmounts': _itemAmounts(snapshot),
+      // The money in the plan recorded (D103, D108).
+      if (_fundingSources(snapshot).isNotEmpty)
+        'fundingSources': _fundingSources(snapshot),
       if (snapshot.tasks.isNotEmpty)
         'tasks': [for (final row in snapshot.tasks) _taskPayload(row)],
       if (snapshot.guests.isNotEmpty)
@@ -314,10 +330,22 @@ class LocalPlanMigrationService {
               _text(schedule['dueDate']) != null;
         })
         .toList(growable: false);
+    final scheduleIndex = {
+      for (var index = 0; index < pendingSchedules.length; index++)
+        ?_text(pendingSchedules[index]['id']): index,
+    };
     return {
       'title': _text(row['title']) ?? 'تكلفة',
       'totalAmount': totalAmount,
       'categoryName': categoryName,
+      // D59: who pays it, as the person chose.
+      'payer': ?_enumOrNull(row['payer'], _payers),
+      'payerName': ?_text(row['payerName']),
+      // D107, D105.
+      if (_text(row['entryKind'])?.toUpperCase() == 'EXPENSE')
+        'entryKind': 'EXPENSE',
+      'estimateCover': ?_enumOrNull(row['estimateCover'], _covers),
+      'estimatePart': ?_positiveMoney(row['estimatePart']),
       'partyName': ?(_text(row['partyName']) ?? _text(row['providerName'])),
       'partyPhone': ?_text(row['partyPhone']),
       'agreementDate': ?_text(row['agreementDate']),
@@ -331,6 +359,9 @@ class LocalPlanMigrationService {
               'paidAt': ?_text(payment['paidAt']),
               'method': ?_text(payment['method']),
               'note': ?_text(payment['note']),
+              // D106: a partial payment of a date sent with it.
+              'lowersScheduleIndex':
+                  ?scheduleIndex[_text(payment['lowersScheduleId'])],
             },
         ],
       if (pendingSchedules.isNotEmpty)
@@ -340,9 +371,87 @@ class LocalPlanMigrationService {
               'amount': _positiveMoney(schedule['amount']),
               'dueDate': _text(schedule['dueDate']),
               'note': ?_text(schedule['note']),
+              // D106.
+              'remindAt': ?_text(schedule['remindAt']),
+              'rescheduledFrom': ?_text(schedule['rescheduledFrom']),
             },
         ],
     };
+  }
+
+  static const _payers = {'GROOM', 'BRIDE', 'FAMILY', 'SHARED', 'OTHER'};
+  static const _covers = {'WHOLE', 'PART'};
+  static const _fundingKinds = {
+    'SAVINGS',
+    'FAMILY_SUPPORT',
+    'GIFT',
+    'LOAN',
+    'OTHER',
+    'MAHR',
+  };
+
+  /// D109: the items that carry an amount of their own.
+  static List<Map<String, dynamic>> _itemAmounts(LocalPlanSnapshot snapshot) {
+    return [
+      for (final row in snapshot.categories)
+        if (_text(row['name']) case final name?)
+          if (_amount(row['allocatedAmount']) != null ||
+              _amount(row['estimatedAmount']) != null)
+            {
+              'name': name,
+              'allocatedAmount': ?_amount(row['allocatedAmount']),
+              'estimatedAmount': ?_amount(row['estimatedAmount']),
+            },
+    ];
+  }
+
+  /// The plan's money in, with its loans' repayments.
+  static List<Map<String, dynamic>> _fundingSources(LocalPlanSnapshot snapshot) {
+    return [
+      for (final row in snapshot.fundingSources)
+        if (_enumOrNull(row['kind'], _fundingKinds) case final kind?)
+          if (_text(row['sourceName']) case final name?)
+            if (_positiveMoney(row['amount']) case final amount?)
+              {
+                'kind': kind,
+                'sourceName': name,
+                'sourcePhone': ?_text(row['sourcePhone']),
+                'contributorName': ?_text(row['contributorName']),
+                'amount': amount,
+                'status':
+                    _text(row['status'])?.toUpperCase() == 'PLEDGED'
+                        ? 'PLEDGED'
+                        : 'RECEIVED',
+                'receivedAt': ?_text(row['receivedAt']),
+                'expectedAt': ?_text(row['expectedAt']),
+                'note': ?_text(row['note']),
+                if (row['repayments'] is List)
+                  'repayments': [
+                    for (final repayment in row['repayments'] as List)
+                      if (repayment is Map)
+                        if (_positiveMoney(repayment['amount']) case final paid?)
+                          {
+                            'amount': paid,
+                            'dueDate': ?_text(repayment['dueDate']),
+                            'status':
+                                ?_enumOrNull(repayment['status'], const {
+                                  'PLANNED',
+                                  'PAID',
+                                  'CANCELLED',
+                                }),
+                            'paidAt': ?_text(repayment['paidAt']),
+                            'note': ?_text(repayment['note']),
+                          },
+                  ],
+              },
+    ];
+  }
+
+  /// An amount that may be zero (an estimate of «ما بيكلف شي»).
+  static String? _amount(Object? value) {
+    final text = _text(value)?.replaceAll(',', '');
+    final parsed = num.tryParse(text ?? '');
+    return parsed != null && parsed >= 0 ? text : null;
   }
 
   static Set<String> _reversedPaymentIds(List<Map<String, dynamic>> payments) {

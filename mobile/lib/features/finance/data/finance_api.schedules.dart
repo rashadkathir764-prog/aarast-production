@@ -118,11 +118,16 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
     required String amount,
     required DateTime dueDate,
     String? note,
+    Object? remindAt = const _Keep(),
   }) async {
     final payload = {
       'amount': amount.trim(),
       'dueDate': _dateOnly(dueDate),
       'note': _nullableTrimmed(note),
+      // D106: its own reminder day (null: back to the default); omitted
+      // when not touched, so a server before D106 receives what it knows.
+      if (remindAt is DateTime) 'remindAt': _dateOnly(remindAt),
+      if (remindAt == null) 'remindAt': null,
     };
     final mutation = _mutation(
       'PATCH',
@@ -273,8 +278,11 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
     DateTime? paidAt,
     String? method,
     String? note,
+    String? amount,
   }) async {
     final payload = {
+      // D106: what was paid, when it is not what the date asks for.
+      if (_nullableTrimmed(amount) != null) 'amount': amount!.trim(),
       if (paidAt != null) 'paidAt': _dateOnly(paidAt),
       if (_nullableTrimmed(method) != null) 'method': method!.trim(),
       if (_nullableTrimmed(note) != null) 'note': note!.trim(),
@@ -315,6 +323,13 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
       final scheduleJson = Map<String, dynamic>.from(json['schedule'] as Map);
       await _cache(OfflineTables.cachedCostPayments, paymentJson);
       await _cache(OfflineTables.cachedPaymentSchedules, scheduleJson);
+      // D106: paid more than the date asked: the rest, on the agreement.
+      if (json['extraPayment'] is Map) {
+        await _cache(
+          OfflineTables.cachedCostPayments,
+          Map<String, dynamic>.from(json['extraPayment'] as Map),
+        );
+      }
       return CostPayment.fromJson(paymentJson);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueReplay(error) || _offline == null) rethrow;
@@ -361,4 +376,9 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
     await _offline?.refreshStatus();
     return PaymentSchedule.fromJson(json);
   }
+}
+
+/// «Leave it as it is»: a parameter that may also be set to null on purpose.
+class _Keep {
+  const _Keep();
 }

@@ -13,6 +13,7 @@ class BudgetCategory {
     this.createdAt,
     this.updatedAt,
     this.isMahr = false,
+    this.estimatedAmount,
   });
 
   factory BudgetCategory.fromJson(Map<String, dynamic> json) {
@@ -23,6 +24,7 @@ class BudgetCategory {
       isMahr: json['kind']?.toString() == 'MAHR',
       clientId: json['clientId']?.toString(),
       allocatedAmount: json['allocatedAmount']?.toString(),
+      estimatedAmount: json['estimatedAmount']?.toString(),
       confirmedCost: json['confirmedCost']?.toString() ?? '0',
       paid: json['paid']?.toString() ?? '0',
       outstanding: json['outstanding']?.toString() ?? '0',
@@ -37,7 +39,12 @@ class BudgetCategory {
   final String weddingPlanId;
   final String name;
   final String? clientId;
+  /// A share of the general budget: optional, never above it.
   final String? allocatedAmount;
+
+  /// D109: what the owner expects the item to cost («تقديرك»): free, may
+  /// pass the budget, needs none.
+  final String? estimatedAmount;
   final String confirmedCost;
   final String paid;
   final String outstanding;

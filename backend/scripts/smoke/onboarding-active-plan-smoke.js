@@ -185,6 +185,7 @@ async function run() {
   }
 
   await importLocalPlanChecks(accessToken);
+  await importMoneyTabChecks(accessToken);
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
@@ -300,6 +301,119 @@ async function importLocalPlanChecks(accessToken) {
     const res = await request('POST', '/api/v1/onboarding/import-local', plan);
     check('a large anonymous body is refused before it is read (413)', res.status === 413);
   }
+}
+
+/**
+ * The money tab's fields reach the account with a plan kept on the phone
+ * (D103-D109): who pays each agreement, an expense, what an agreement
+ * settles of its item's estimate, a date's own reminder day and its first
+ * day, a partial payment's date, the items' estimates and allocations, and
+ * the money in (with who gave it, and a loan's repayments).
+ */
+async function importMoneyTabChecks(accessToken) {
+  const day = (offset) => {
+    const date = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
+    return `${date.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  };
+  const plan = {
+    clientMigrationId: `guest-money-tab-${timestamp}`,
+    path: 'USER',
+    persona: 'GROOM',
+    title: 'عرس المال',
+    currency: 'YER',
+    estimatedBudget: '5000',
+    selectedCategories: ['القاعة', 'الغداء', 'الفستان', 'التصوير'],
+    itemAmounts: [
+      { name: 'القاعة', estimatedAmount: '2000', allocatedAmount: '2500' },
+      { name: 'الغداء', estimatedAmount: '1600' },
+      { name: 'التصوير', estimatedAmount: '0' },
+    ],
+    costs: [
+      {
+        title: 'القاعة',
+        totalAmount: '1800',
+        categoryName: 'القاعة',
+        payments: [{ amount: '300', paidAt: day(-1), lowersScheduleIndex: 0 }],
+        paymentSchedules: [
+          { amount: '700', dueDate: day(20), remindAt: day(18), rescheduledFrom: day(10) },
+          { amount: '800', dueDate: day(40), remindAt: day(60) },
+        ],
+      },
+      {
+        title: 'الغداء',
+        totalAmount: '700',
+        categoryName: 'الغداء',
+        estimateCover: 'PART',
+        estimatePart: '600',
+        payer: 'FAMILY',
+        payerName: 'الوالد',
+      },
+      {
+        title: 'الفستان',
+        totalAmount: '150',
+        categoryName: 'الفستان',
+        entryKind: 'EXPENSE',
+        estimateCover: 'PART',
+        payments: [{ amount: '150', paidAt: day(-2) }],
+      },
+    ],
+    fundingSources: [
+      { kind: 'SAVINGS', sourceName: 'مدخراتي', amount: '1000' },
+      {
+        kind: 'FAMILY_SUPPORT',
+        sourceName: 'وعد الوالد',
+        contributorName: 'الوالد',
+        amount: '800',
+        status: 'PLEDGED',
+        expectedAt: day(15),
+      },
+      {
+        kind: 'LOAN',
+        sourceName: 'خالي',
+        amount: '400',
+        repayments: [
+          { amount: '100', status: 'PAID', dueDate: day(-1), paidAt: day(-1) },
+          { amount: '200', dueDate: day(70) },
+          // Past the loan: dropped, never the plan refused.
+          { amount: '500', dueDate: day(90) },
+        ],
+      },
+      // The mahr is money coming in on a bride's plan only: kept as other.
+      { kind: 'MAHR', sourceName: 'غلط', amount: '50' },
+    ],
+  };
+  const res = await request('POST', '/api/v1/onboarding/import-local', plan, accessToken);
+  check('the money tab plan is saved into the account - HTTP 201', res.status === 201);
+  const planId = res.body?.activeWeddingPlan?.id;
+  const summary = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, accessToken);
+  const item = (name) => summary.body?.categories?.find((category) => category.name === name);
+  check('D109: the items keep their estimates, zero included',
+    item('القاعة')?.estimatedAmount === '2000' && item('الغداء')?.estimatedAmount === '1600'
+      && item('التصوير')?.estimatedAmount === '0');
+  check('D109: an allocation within the budget comes over', item('القاعة')?.allocatedAmount === '2500');
+  check('D105: the lunch settles a part of its item; the hall the whole',
+    item('الغداء')?.expectedCost === '1700' && item('القاعة')?.expectedCost === '1800');
+  const costs = await request('GET', `/api/v1/wedding-plans/${planId}/costs`, null, accessToken);
+  const list = Array.isArray(costs.body) ? costs.body : costs.body?.items ?? [];
+  const lunch = list.find((cost) => cost.title === 'الغداء');
+  const dress = list.find((cost) => cost.title === 'الفستان');
+  check('D59: who pays an agreement comes over', lunch?.payer === 'FAMILY' && lunch?.payerName === 'الوالد');
+  check('D107: an expense paid in full comes over as an expense',
+    dress?.entryKind === 'EXPENSE' && dress?.status === 'PAID' && dress?.estimatePart === '150');
+  const due = (summary.body?.obligations ?? []).filter((line) => line.kind === 'DUE');
+  const first = due.find((line) => line.amount === '700');
+  const second = due.find((line) => Number(line.scheduledAmount) === 800);
+  check('D106: a partial payment finds its date', first?.paidTowards === '300' && first?.scheduledAmount === '1000');
+  check('D106: a reminder day in range and the first day come over',
+    first?.remindAt !== null && first?.rescheduledFrom !== null);
+  check('D106: a reminder day past the due day goes back to the default', second?.remindAt === null);
+  check('D108: the father is one person: promised, and still owes the lunch',
+    summary.body?.family?.some((person) => person.name === 'الوالد' && person.promised === '800' && person.left === '700'));
+  check('the money in comes over, a loan with the repayments that fit it',
+    summary.body?.funding?.sourcesCount === 4 && summary.body?.funding?.loanRepaid === '100'
+      && summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '200')
+      && !summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '500'));
+  check('D103: the coverage reads the imported money', typeof summary.body?.coverage?.verdict === 'string');
 }
 
 run().catch((err) => {

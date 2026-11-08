@@ -15,12 +15,44 @@ export interface ImportedCostPaymentInput {
   paidAt: Date;
   method: string | null;
   note: string | null;
+  /** D106: a partial payment of the agreement's date at this index. */
+  lowersScheduleIndex?: number | null;
 }
 
 export interface ImportedPaymentScheduleInput {
   amount: Prisma.Decimal;
   dueDate: Date;
   note: string | null;
+  /** D106. */
+  remindAt?: Date | null;
+  rescheduledFrom?: Date | null;
+}
+
+/** D109: an imported item's own estimate and allocation. */
+export interface ImportedItemAmountInput {
+  budgetCategoryId: string;
+  allocatedAmount: Prisma.Decimal | null;
+  estimatedAmount: Prisma.Decimal | null;
+}
+
+/** Money in a plan kept on the phone recorded. */
+export interface ImportedFundingSourceInput {
+  kind: string;
+  sourceName: string;
+  sourcePhone: string | null;
+  contributorName: string | null;
+  amount: Prisma.Decimal;
+  status: 'RECEIVED' | 'PLEDGED';
+  receivedAt: Date | null;
+  expectedAt: Date | null;
+  note: string | null;
+  repayments: ReadonlyArray<{
+    amount: Prisma.Decimal;
+    dueDate: Date | null;
+    status: 'PLANNED' | 'PAID' | 'CANCELLED';
+    paidAt: Date | null;
+    note: string | null;
+  }>;
 }
 
 /** One cost of a local plan import; `paidAmount` is the sum of its payments. */
@@ -35,6 +67,13 @@ export interface ImportedCostInput {
   note: string | null;
   payments: readonly ImportedCostPaymentInput[];
   paymentSchedules: readonly ImportedPaymentScheduleInput[];
+  /** D59: the phone's own answer of who pays. */
+  payer?: string | null;
+  payerName?: string | null;
+  /** D107, D105. */
+  entryKind?: 'AGREEMENT' | 'EXPENSE';
+  estimateCover?: 'WHOLE' | 'PART';
+  estimatePart?: Prisma.Decimal | null;
 }
 
 export interface PlanImportCounts {
@@ -201,6 +240,24 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
     cost: ImportedCostInput,
+  ): Promise<void>;
+  /**
+   * D109: the imported items' own estimates and allocations. Allocations are
+   * kept only while they fit the budget, the rule the account keeps (an
+   * estimate needs no budget and may pass it).
+   */
+  setImportedItemAmountsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    budget: Prisma.Decimal | null,
+    items: readonly ImportedItemAmountInput[],
+  ): Promise<void>;
+  /** The money in a plan kept on the phone recorded (the owner's). */
+  createImportedFundingSourcesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    persona: string | null,
+    sources: readonly ImportedFundingSourceInput[],
   ): Promise<void>;
   getPlanImportCounts(
     client: Prisma.TransactionClient,

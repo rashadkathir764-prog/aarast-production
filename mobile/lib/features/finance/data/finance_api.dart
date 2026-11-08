@@ -52,6 +52,7 @@ class FinanceApi extends _FinanceApiCore
         planId,
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
+        persona: context?.persona,
       );
     }
     try {
@@ -86,6 +87,7 @@ class FinanceApi extends _FinanceApiCore
         planId,
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
+        persona: context?.persona,
       );
     }
     final raw = await _offline.database.getMeta(_summaryKey(planId));
@@ -425,6 +427,7 @@ Map<String, dynamic> _budgetCategoryJson(BudgetCategory category) {
     'weddingPlanId': category.weddingPlanId,
     'name': category.name,
     'allocatedAmount': category.allocatedAmount,
+    'estimatedAmount': category.estimatedAmount,
     'confirmedCost': category.confirmedCost,
     'paid': category.paid,
     'outstanding': category.outstanding,
@@ -455,6 +458,8 @@ Map<String, dynamic> _paymentScheduleJson(
     'status': status,
     'paidAt': paidAt?.toIso8601String(),
     'note': schedule.note,
+    'remindAt': schedule.remindAt?.toIso8601String(),
+    'rescheduledFrom': schedule.rescheduledFrom?.toIso8601String(),
     'createdAt': schedule.createdAt?.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };

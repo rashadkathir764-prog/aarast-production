@@ -205,6 +205,61 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     }
   }
 
+  /// D109: the item's own estimate («تقديرك»), apart from its allocation:
+  /// free, may pass the budget, needs none; null clears it; zero is an
+  /// answer («ما بيكلف شي»). Nothing else of the item changes.
+  Future<BudgetCategory> setItemEstimate({
+    required BudgetCategory category,
+    required String? estimatedAmount,
+  }) async {
+    final estimate = _nullableTrimmed(estimatedAmount);
+    if (estimate != null && !FinanceMoneyRules.serverAmount.hasMatch(estimate)) {
+      throw const ApiException('اكتب التقدير رقمًا صحيحًا.');
+    }
+    final payload = <String, dynamic>{'estimatedAmount': estimate};
+    final mutation = _mutation(
+      'PATCH',
+      '/api/v1/budget-categories/${category.id}',
+      payload,
+    );
+    if (FinanceLocalDataSource.isLocalGuestPlanId(category.weddingPlanId)) {
+      return _local.updateBudgetCategory(category: category, payload: payload);
+    }
+    if (category.id.startsWith('local-')) {
+      final local = await _local.updateBudgetCategory(
+        category: category,
+        payload: payload,
+      );
+      await _queue(
+        entityType: 'budget_category',
+        operation: 'update',
+        mutation: mutation,
+        localId: category.id,
+        planId: category.weddingPlanId,
+      );
+      return local;
+    }
+    try {
+      final json = await mutation.send();
+      await _cache(OfflineTables.cachedBudgetCategories, json);
+      return BudgetCategory.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueReplay(error) || _offline == null) rethrow;
+      final local = await _local.updateBudgetCategory(
+        category: category,
+        payload: payload,
+      );
+      await _queue(
+        entityType: 'budget_category',
+        operation: 'update',
+        mutation: mutation,
+        localId: category.id,
+        planId: category.weddingPlanId,
+      );
+      return local;
+    }
+  }
+
   /// D72: the owner's answer to the home suggesting an item: «ما أحتاجها»
   /// (`NOT_NEEDED`), «بعدين» (`LATER`), or null to suggest it again. The item
   /// itself does not change. A plan kept on the phone gets no suggestions.
@@ -279,6 +334,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       planId,
       estimatedBudget: context?.estimatedBudget,
       currency: context?.currency,
+      persona: context?.persona,
     );
     final categories = (await _readCachedPlanList(
       OfflineTables.cachedBudgetCategories,

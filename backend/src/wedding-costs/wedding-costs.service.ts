@@ -596,6 +596,12 @@ export class WeddingCostsService {
           include: weddingCostResponseInclude,
         });
         await this.cancelPendingSchedulesWhenPaid(tx, id, status);
+        await this.restoreSchedulesWhenOwedAgain(
+          tx,
+          id,
+          status,
+          totalAmount.minus(locked.paidAmount),
+        );
         await this.recordMoneyEvent(tx, context, {
           entityType: ContributionEntityType.WEDDING_COST,
           entityId: updated.id,
@@ -1009,6 +1015,12 @@ export class WeddingCostsService {
           status: deriveCostStatus(cost.totalAmount, paidAmount),
         },
       });
+      await this.restoreSchedulesWhenOwedAgain(
+        tx,
+        cost.id,
+        deriveCostStatus(cost.totalAmount, paidAmount),
+        cost.totalAmount.minus(paidAmount),
+      );
       if (payment.paymentScheduleId) {
         await updatePaymentSchedule(tx, {
           where: { id: payment.paymentScheduleId },
@@ -1695,7 +1707,11 @@ export class WeddingCostsService {
         weddingCostId: costId,
         status: PaymentScheduleStatus.PENDING,
       },
-      data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
+      data: {
+        status: PaymentScheduleStatus.CANCELLED,
+        paidAt: null,
+        cancelledByPaidInFullAt: new Date(),
+      },
     });
     // R4: the agreement is paid in full, so these payments are settled too.
     for (const schedule of closed) {
@@ -1704,6 +1720,54 @@ export class WeddingCostsService {
         schedule.weddingCost.weddingPlanId,
         { scheduleId: schedule.id },
         true,
+      );
+    }
+  }
+
+  /**
+   * RA-BE-25: the reminders the agreement's being paid in full cancelled
+   * come back, with their tasks, once money is owed on it again (a payment
+   * reversed, the total raised). A pending reminder is never more than what
+   * is left (`PaymentSchedule_amount_at_write_integrity`), so one larger than
+   * the new balance comes back at the balance.
+   */
+  private async restoreSchedulesWhenOwedAgain(
+    tx: Tx,
+    costId: string,
+    status: WeddingCostStatus,
+    remaining: Prisma.Decimal,
+  ) {
+    if (
+      status === WeddingCostStatus.PAID ||
+      status === WeddingCostStatus.CANCELLED ||
+      remaining.lte(0)
+    ) {
+      return;
+    }
+    const restored = await listPaymentSchedules(tx, {
+      where: {
+        weddingCostId: costId,
+        status: PaymentScheduleStatus.CANCELLED,
+        cancelledByPaidInFullAt: { not: null },
+      },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+      include: scheduleInclude,
+    });
+    for (const schedule of restored) {
+      await updatePaymentSchedule(tx, {
+        where: { id: schedule.id },
+        data: {
+          status: PaymentScheduleStatus.PENDING,
+          paidAt: null,
+          cancelledByPaidInFullAt: null,
+          ...(schedule.amount.gt(remaining) ? { amount: remaining } : {}),
+        },
+      });
+      await this.tasks?.syncLinkedTasks(
+        tx,
+        schedule.weddingCost.weddingPlanId,
+        { scheduleId: schedule.id },
+        false,
       );
     }
   }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   BookingStatus,
-  GuestStatus,
+  GuestAttendanceStatus,
   NotificationPriority,
   PaymentScheduleStatus,
   PlanProviderLinkStatus,
@@ -149,7 +149,8 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
     ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', status: open, ...visibleTo('owner-1') }, orderBy: byDue, take: 5 }],
     ['weddingTask.findMany', { where: { ...scoped, dueDate: { lte: endOfToday }, status: open }, orderBy: byDue, take: 2 }],
     ['weddingTask.findFirst', { where: { ...scoped, status: open }, orderBy: byDue }],
-    ['weddingTask.count', { where: scoped }],
+    // RA-BE-93: a cancelled task is not one of the plan's tasks in the total.
+    ['weddingTask.count', { where: { ...scoped, status: { not: WeddingTaskStatus.CANCELLED } } }],
     ['weddingTask.count', { where: { ...scoped, status: WeddingTaskStatus.DONE } }],
     ['weddingTask.count', { where: { ...scoped, status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] } } }],
     ['weddingTask.count', { where: { ...scoped, dueDate: { lt: today }, status: open } }],
@@ -166,9 +167,11 @@ test('guests serves the plan dashboard counters, narrowed to a contributor\'s gu
   const base = { weddingPlanId: 'plan-1', id: { in: ['guest-1'] } };
   assert.deepEqual(calls, [
     ['guest.count', { where: base }],
-    ['guest.count', { where: { ...base, status: GuestStatus.CONFIRMED } }],
-    ['guest.count', { where: { ...base, status: { in: [GuestStatus.PENDING, GuestStatus.INVITED] } } }],
-    ['guest.count', { where: { ...base, status: GuestStatus.DECLINED } }],
+    // RA-BE-94: the home counts the guest's reply (`attendanceStatus`), the
+    // column the guest list, its summary and the reply page read.
+    ['guest.count', { where: { ...base, attendanceStatus: GuestAttendanceStatus.CONFIRMED } }],
+    ['guest.count', { where: { ...base, attendanceStatus: GuestAttendanceStatus.PENDING } }],
+    ['guest.count', { where: { ...base, attendanceStatus: GuestAttendanceStatus.DECLINED } }],
     ['guest.count', { where: { ...base, OR: [{ phone: null }, { phone: '' }, { name: '' }] } }],
   ]);
 });
@@ -200,6 +203,8 @@ test('marketplace serves the home counters, the active plan provider links and t
         AND: [
           { status: ProviderStatus.ACTIVE },
           { services: { some: { isActive: true } } },
+          // RA-BE-26: a provider whose owner is leaving is not listed.
+          { ownerLeavingAt: null },
           { userId: { not: null } },
           { featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } } },
         ],

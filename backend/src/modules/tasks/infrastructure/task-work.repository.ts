@@ -150,6 +150,7 @@ export interface TaskUpdateValues {
   linkedCostId?: string | null;
   linkedScheduleId?: string | null;
   autoClosedAt?: Date | null;
+  reopenedByHandAt?: Date | null;
 }
 
 export function updateTask(tx: Prisma.TransactionClient, id: string, values: TaskUpdateValues) {
@@ -177,6 +178,9 @@ export function updateTask(tx: Prisma.TransactionClient, id: string, values: Tas
         ? { linkedScheduleId: values.linkedScheduleId }
         : {}),
       ...(values.autoClosedAt !== undefined ? { autoClosedAt: values.autoClosedAt } : {}),
+      ...(values.reopenedByHandAt !== undefined
+        ? { reopenedByHandAt: values.reopenedByHandAt }
+        : {}),
     },
   });
 }

@@ -78,4 +78,6 @@ test("RA-BE-53: «the next payment» in the money picture asks for what is left"
 
   assert.equal(picture.costs.outstanding, "200000");
   assert.equal(picture.paymentSchedules.next?.amount, "200000");
+  // RA-MO-38: the card names the agreement, not «دفعة».
+  assert.equal(picture.paymentSchedules.next?.costTitle, "القاعة");
 });

@@ -261,6 +261,9 @@ export async function readMoneyPicture(
         ? {
             id: next.id,
             weddingCostId: next.weddingCostId,
+            // RA-MO-38: «الدفعة الجاية» names its agreement («القاعة: ...»),
+            // not «دفعة».
+            costTitle: nextCost?.title ?? null,
             amount: (nextAmountDue ?? next.amount).toString(),
             dueDate: next.dueDate,
             status: next.status,

@@ -37,7 +37,7 @@ export async function lockMarketplaceProvider(
   tx: Prisma.TransactionClient,
   providerId: string,
   mode: "SHARE" | "UPDATE" = "SHARE",
-): Promise<Pick<Provider, "id" | "userId" | "status" | "businessName">> {
+): Promise<Pick<Provider, "id" | "userId" | "status" | "businessName" | "ownerLeavingAt">> {
   const rows = await writeLockRepository.lockProviderRow(tx, providerId, mode);
   if (rows.length !== 1) {
     throw new NotFoundException("Provider not found");

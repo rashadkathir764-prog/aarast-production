@@ -105,6 +105,7 @@ type ScheduleWhere = {
   weddingCost?: { weddingPlanId: string; id?: IdSet; status?: { not: WeddingCostStatus } };
   status?: PaymentScheduleStatus;
   dueDate?: { lte: Date };
+  cancelledByPaidInFullAt?: { not: null };
 };
 type ScheduleData = {
   weddingCostId: string;
@@ -118,6 +119,7 @@ type ScheduleUpdate = {
   note?: string | null;
   status?: PaymentScheduleStatus;
   paidAt?: Date | null;
+  cancelledByPaidInFullAt?: Date | null;
 };
 type ScheduleReadArgs = {
   where: ScheduleWhere;

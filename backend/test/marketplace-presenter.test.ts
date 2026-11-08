@@ -75,6 +75,8 @@ test("the directory lists only providers that offer an active service", () => {
   assert.deepEqual(where.AND, [
     { status: "ACTIVE" },
     { services: { some: { isActive: true } } },
+    // RA-BE-26: nor one whose owner waits out the account's deletion.
+    { ownerLeavingAt: null },
   ]);
 });
 

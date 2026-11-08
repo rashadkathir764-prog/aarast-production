@@ -41,6 +41,7 @@ import type { PricedService } from '../public/market-prices';
 import type {
   AdminBookingFilter,
   AdminBookingRow,
+  BookingNoticeAddressee,
 } from '../public/marketplace-admin.port';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
@@ -114,11 +115,13 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     providerId: string,
     suspendedAt: Date,
+    addressee: BookingNoticeAddressee,
   ): Promise<CreateNotificationInput[]> {
     return this.repository.settleBookingsOnSuspensionInTransaction(
       tx,
       providerId,
       suspendedAt,
+      addressee,
     );
   }
 

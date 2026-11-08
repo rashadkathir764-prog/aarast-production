@@ -532,10 +532,10 @@ rewrite as permission to restore a removed live model.
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
-| `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
+| `PaymentSchedule` | 12 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `createdAt`, `updatedAt` |
 | `FundingSource` | 14 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
-| `WeddingTask` | 23 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
+| `WeddingTask` | 24 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `ContributorHistoryScope` | 11 | `id`, `weddingPlanId`, `historyCoverageStartsAt`, `archivedAt`, `deletedAt`, `createdAt`, `updatedAt` |
@@ -559,7 +559,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 49 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
+| `Provider` | 50 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |

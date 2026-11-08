@@ -1010,6 +1010,8 @@ class ApiException implements Exception {
       'ACCOUNT_DELETION_PENDING' => 'حسابك ينتظر الحذف. تراجع عنه عشان تكمل.',
       // RA-BE-95: said for what it is, not as a missing permission.
       'PROVIDER_NOT_ACTIVE' => 'المزود موقوف الحين، ما يستقبل رسائل ولا طلبات.',
+      // RA-BE-26: the provider's owner is waiting out the account's deletion.
+      'PROVIDER_LEAVING' => 'هذا المزود يقفل حسابه وما يستقبل طلبات جديدة.',
       'CONVERSATION_CLOSED' => 'هذي المحادثة انقفلت، ما تستقبل رسائل.',
       'CONVERSATION_BLOCKED' => 'المراسلة في هذي المحادثة موقوفة.',
       'CONFIRM_WORD_MISMATCH' => 'اكتب «حذف» كما هي للتأكيد.',

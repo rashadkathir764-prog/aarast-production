@@ -500,7 +500,9 @@ test('a17\'s counts follow the placement rule in a fixed number of reads', async
   // p2's placement carries on with a renewal: it does not end this week.
   assert.deepEqual(summary, { listedProviders: 10, featured: 3, endingSoon: 2 });
   assert.equal(reads.length, 4);
-  assert.deepEqual(counts[1].AND.slice(2), [
+  // After the listing rule (listedProviderConditions, which RA-BE-26 grew by
+  // «not leaving»), the placement rule's two conditions.
+  assert.deepEqual(counts[1].AND.slice(-2), [
     { userId: { not: null } },
     { featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } } },
   ]);

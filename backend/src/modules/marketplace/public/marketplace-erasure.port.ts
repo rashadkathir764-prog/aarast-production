@@ -56,6 +56,16 @@ export interface MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<string[]>;
+  /**
+   * RA-BE-26 (D63): the owner of these listings asked for the account's
+   * deletion (`at`) or took it back (null). A leaving listing is out of the
+   * directory and takes no new request; what is open stays.
+   */
+  markOwnerLeavingInTransaction(
+    tx: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    at: Date | null,
+  ): Promise<void>;
   /** Distinct provider ids the user reviewed, ascending. */
   listReviewedProviderIds(
     tx: Prisma.TransactionClient,

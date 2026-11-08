@@ -13,7 +13,7 @@ export function lockProviderRow(tx: Prisma.TransactionClient, providerId: string
 export function findLockedProvider(tx: Prisma.TransactionClient, providerId: string) {
   return tx.provider.findUnique({
     where: { id: providerId },
-    select: { id: true, userId: true, status: true, businessName: true },
+    select: { id: true, userId: true, status: true, businessName: true, ownerLeavingAt: true },
   });
 }
 

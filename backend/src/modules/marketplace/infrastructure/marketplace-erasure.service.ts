@@ -151,6 +151,18 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     return ownedProviders.map((provider) => provider.id);
   }
 
+  async markOwnerLeavingInTransaction(
+    tx: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    at: Date | null,
+  ): Promise<void> {
+    if (providerIds.length === 0) return;
+    await tx.provider.updateMany({
+      where: { id: { in: [...providerIds] } },
+      data: { ownerLeavingAt: at },
+    });
+  }
+
   async listReviewedProviderIds(
     tx: Prisma.TransactionClient,
     userId: string,

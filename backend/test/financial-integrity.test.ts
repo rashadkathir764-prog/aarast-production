@@ -493,13 +493,20 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
   assert.equal(result.id, payment.id);
   assert.equal(costUpdates[0]?.data?.paidAmount.toString(), "500");
   assert.equal(costUpdates[0]?.data?.status, WeddingCostStatus.PAID);
+  // RA-BE-25: the reminders paying in full cancels are marked so, to come
+  // back if the agreement is owed again.
+  assert.ok(reminderUpdates[0]?.data?.cancelledByPaidInFullAt instanceof Date);
   assert.deepEqual(reminderUpdates, [
     {
       where: {
         weddingCostId: cost.id,
         status: PaymentScheduleStatus.PENDING,
       },
-      data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
+      data: {
+        status: PaymentScheduleStatus.CANCELLED,
+        paidAt: null,
+        cancelledByPaidInFullAt: reminderUpdates[0]?.data?.cancelledByPaidInFullAt,
+      },
     },
   ]);
 });

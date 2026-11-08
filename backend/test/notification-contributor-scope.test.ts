@@ -170,6 +170,12 @@ test("list visibility carries live task and qualifying cost scope into the datab
         },
       ],
     },
+    // RA-BE-102: the member's plan, whose owner is not leaving (D63).
+    weddingPlan: {
+      findMany: async ({ where }: { where: { id?: { in: string[] } } }) =>
+        where.id?.in.includes("plan-1") ? [{ id: "plan-1", ownerUserId: "owner-1" }] : [],
+    },
+    user: { findMany: async () => [] },
     weddingTask: {
       findMany: async () => [
         { id: "task-assigned", weddingPlanId: "plan-1" },

@@ -396,5 +396,23 @@ void main() {
         expect(exception.statusCode, status, reason: code);
       }
     });
+
+    // RA-BE-95, RA-BE-26: a request to a provider who cannot take it says
+    // why, in the app's words, whatever the server wrote.
+    test('a provider who takes no new request is said so plainly', () {
+      const cases = <String, String>{
+        'PROVIDER_NOT_ACTIVE': 'المزود موقوف الحين، ما يستقبل رسائل ولا طلبات.',
+        'PROVIDER_LEAVING': 'هذا المزود يقفل حسابه وما يستقبل طلبات جديدة.',
+      };
+      for (final MapEntry(key: code, value: message) in cases.entries) {
+        final exception = failure(409, {
+          'statusCode': 409,
+          'code': code,
+          'message': 'English detail for $code',
+        });
+        expect(exception.message, message, reason: code);
+        expect(exception.serverCode, code, reason: code);
+      }
+    });
   });
 }

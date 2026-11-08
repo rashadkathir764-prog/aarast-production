@@ -60,7 +60,9 @@ const gates = [
   { area: 'backend', name: 'backend check', cwd: 'backend', cmd: 'npm', args: ['run', 'check'] },
   { area: 'backend', name: 'backend architecture', cwd: 'backend', cmd: 'npm', args: ['run', 'architecture'] },
   { area: 'backend', name: 'backend prisma config security', cwd: 'backend', cmd: 'npm', args: ['run', 'security:prisma-config-merge'] },
-  { area: 'backend', name: 'backend tests', cwd: 'backend', cmd: 'npm', args: ['test'], full: true },
+  // RA-TS-07: unit tests are the commit gate (the header's «static checks and
+  // unit tests»). Full-only, three pinned tests went out failing.
+  { area: 'backend', name: 'backend tests', cwd: 'backend', cmd: 'npm', args: ['test'] },
   { area: 'backend', name: 'backend smoke:all', cwd: 'backend', cmd: 'npm', args: ['run', 'smoke:all'], full: true, needs: ['docker'] },
   { area: 'backend', name: 'backend npm audit', cwd: 'backend', cmd: 'npm', args: ['audit', '--audit-level=high'], full: true },
 

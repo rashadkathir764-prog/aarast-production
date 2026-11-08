@@ -239,7 +239,7 @@ export class AdminMutationExecutor {
       currentUser,
       AdminPermission.REVIEWS_WRITE,
       async (tx) => {
-        const review = await this.moderateReview(tx, id, () =>
+        const review = await this.moderateReview(tx, currentUser, id, () =>
           this.parseReviewStatus(dto.status),
         );
         return toAdminReviewResponse(review);
@@ -269,6 +269,7 @@ export class AdminMutationExecutor {
         ) {
           throw new NotFoundException('Review not found');
         }
+        await this.assertNotOwnListing(tx, currentUser, providerId);
         const status = this.parseReviewStatus(dto.status);
         if (status !== ReviewStatus.PUBLISHED && status !== ReviewStatus.HIDDEN) {
           throw new BadRequestException('reply status is PUBLISHED or HIDDEN');
@@ -300,6 +301,7 @@ export class AdminMutationExecutor {
       async (tx) => {
         const review = await this.moderateReview(
           tx,
+          currentUser,
           id,
           () => ReviewStatus.HIDDEN,
         );
@@ -577,6 +579,7 @@ export class AdminMutationExecutor {
    */
   private async moderateReview(
     tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
     id: string,
     status: () => ReviewStatus,
   ) {
@@ -586,6 +589,7 @@ export class AdminMutationExecutor {
     if (providers.length !== 1) {
       throw new NotFoundException('Provider not found');
     }
+    await this.assertNotOwnListing(tx, currentUser, providerId);
     if (
       !(await this.owners.marketplace.lockReviewForUpdateInTransaction(
         tx,
@@ -602,6 +606,21 @@ export class AdminMutationExecutor {
     }
     const [attached] = await this.owners.attachReviews(tx, [review]);
     return attached!;
+  }
+
+  /**
+   * RA-BE-101: as with his own application and listing, a team member does
+   * not moderate the reviews of a business that is his.
+   */
+  private async assertNotOwnListing(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    providerId: string,
+  ): Promise<void> {
+    const account = await this.owners.marketplace.findProviderAccount(tx, providerId);
+    if (account?.userId === currentUser.id) {
+      throw new BadRequestException('Administrators cannot moderate reviews of their own listing');
+    }
   }
 
   private async lockProvider(

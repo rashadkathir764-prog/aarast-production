@@ -5,12 +5,22 @@ import { WeddingTaskStatus } from "@prisma/client";
  * (`autoClosedAt` cleared). RA-BE-67: the phone sends the task's status with
  * every edit, so a status sent unchanged is not a hand change; it kept
  * clearing the mark, and a task a booking had closed stayed done after the
- * booking was cancelled (D71: «ترجع إذا انلغيا»).
+ * booking was cancelled (D71: «ترجع إذا انلغيا»). RA-BE-68: a finished task
+ * reopened by hand is marked, so the booking that closed it (still there)
+ * does not close it again when its agreement is next edited (D71: «ولا يلمس
+ * النظام مهمة غيّرها صاحبها بيده»).
  */
 export function manualStatusPatch(
   current: WeddingTaskStatus,
   sent: WeddingTaskStatus | undefined,
-): { status?: WeddingTaskStatus; autoClosedAt?: null } {
+  at: Date = new Date(),
+): {
+  status?: WeddingTaskStatus;
+  autoClosedAt?: null;
+  reopenedByHandAt?: Date | null;
+} {
   if (sent === undefined || sent === current) return {};
-  return { status: sent, autoClosedAt: null };
+  const reopened =
+    current === WeddingTaskStatus.DONE && sent !== WeddingTaskStatus.DONE;
+  return { status: sent, autoClosedAt: null, reopenedByHandAt: reopened ? at : null };
 }

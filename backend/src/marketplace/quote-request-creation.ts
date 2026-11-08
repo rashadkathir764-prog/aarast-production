@@ -114,6 +114,15 @@ export function createQuoteRequestInTransaction(
           message: "This provider has not activated their account yet",
         });
       }
+      // RA-BE-26 (D63): an owner waiting out the account's deletion would
+      // never answer; the request is refused now, not after 30 days.
+      if (provider.ownerLeavingAt) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "PROVIDER_LEAVING",
+          message: "هذا المزود يقفل حسابه وما يستقبل طلبات جديدة.",
+        });
+      }
       if (serviceId) {
         await lockActiveProviderService(tx, serviceId, providerId);
       }

@@ -51,12 +51,14 @@ export function featuredEndAfter(lastDay: string): Date | null {
 /**
  * The providers customers find in the list: approved, and offering at least
  * one active service (a profile with no service showed an empty card, field
- * test Q14).
+ * test Q14), and not leaving: an owner waiting out the account's deletion
+ * answers no new request (RA-BE-26, D63).
  */
 export function listedProviderConditions() {
   return [
     { status: ProviderStatus.ACTIVE },
     { services: { some: { isActive: true } } },
+    { ownerLeavingAt: null },
   ] as const;
 }
 

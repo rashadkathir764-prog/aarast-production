@@ -401,6 +401,33 @@ async function run() {
   }
 
   {
+    // RA-BE-26 (D63): while the provider's owner waits out the account's
+    // deletion, the listing is out of the directory and a new request is
+    // refused with its reason; taking the deletion back brings both back.
+    const { requestAccountDeletion, isPendingDeletion } = require('./account-grace');
+    const asked = await requestAccountDeletion(request, providerUser.token);
+    check('the provider asks for the account\'s deletion', isPendingDeletion(asked));
+    const search = encodeURIComponent(PROVIDER_BUSINESS_NAME);
+    const hidden = await request('GET', `/api/v1/providers?search=${search}&limit=100`);
+    check('the leaving provider is out of the directory',
+      hidden.status === 200 && !hidden.body?.items?.some((item) => item.id === providerId));
+    const refused = await request('POST', `/api/v1/wedding-plans/${planId}/quote-requests`, {
+      providerId,
+      serviceId,
+      cityId: reference.city.id,
+      guestCount: 80,
+      message: 'While the provider is leaving',
+    }, customer.token);
+    check('a new request to the leaving provider is refused with its reason',
+      refused.status === 409 && refused.body?.code === 'PROVIDER_LEAVING');
+    const back = await request('DELETE', '/api/v1/users/me/deletion', null, providerUser.token);
+    check('the provider takes the deletion back', back.status === 200);
+    const shown = await request('GET', `/api/v1/providers?search=${search}&limit=100`);
+    check('the provider is back in the directory',
+      shown.status === 200 && shown.body?.items?.some((item) => item.id === providerId));
+  }
+
+  {
     const res = await request('DELETE', `/api/v1/provider/me/services/${serviceId}`, null, providerUser.token);
     check('DELETE /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
   }

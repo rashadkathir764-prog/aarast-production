@@ -298,10 +298,12 @@ export class TasksPortService implements TasksPort {
   ): Promise<void> {
     const where = linkWhere(weddingPlanId, link);
     if (settled) {
+      // RA-BE-68: a task reopened by hand stays open while this link holds.
       await tx.weddingTask.updateMany({
         where: {
           ...where,
           status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] },
+          reopenedByHandAt: null,
         },
         data: { status: WeddingTaskStatus.DONE, autoClosedAt: at },
       });
@@ -314,6 +316,12 @@ export class TasksPortService implements TasksPort {
         autoClosedAt: { not: null },
       },
       data: { status: WeddingTaskStatus.TODO, autoClosedAt: null },
+    });
+    // The booking or payment the person said no to has fallen through: the
+    // next one closes the task again.
+    await tx.weddingTask.updateMany({
+      where: { ...where, reopenedByHandAt: { not: null } },
+      data: { reopenedByHandAt: null },
     });
   }
 

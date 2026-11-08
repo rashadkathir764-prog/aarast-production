@@ -418,6 +418,12 @@ test("list and unread count include defensive live task and money predicates", a
     weddingTask: {
       findMany: async () => [{ id: "task-live", weddingPlanId: planId }],
     },
+    // RA-BE-102: the member's plan, whose owner is not leaving (D63).
+    weddingPlan: {
+      findMany: async ({ where }: any) =>
+        where.id?.in.includes(planId) ? [{ id: planId, ownerUserId: "owner-1" }] : [],
+    },
+    user: { findMany: async () => [] },
     contributionEvent: { findMany: async () => [] },
     paymentSchedule: { findMany: async () => [] },
     $transaction: async (operation: unknown) =>
@@ -448,6 +454,57 @@ test("list and unread count include defensive live task and money predicates", a
     assert.doesNotMatch(serialized, /sharedMembers|"weddingPlan":\{/);
     assert.match(serialized, /SHARING_INVITATION/);
     assert.match(serialized, /plan_invite/);
+  }
+});
+
+test("RA-BE-102: a plan whose owner waits out the account's deletion leaves the member's list and count", async () => {
+  const whereInputs: any[] = [];
+  const notificationModel = {
+    count: async ({ where }: any) => {
+      whereInputs.push(where);
+      return 0;
+    },
+    findMany: async ({ where }: any) => {
+      whereInputs.push(where);
+      return [];
+    },
+  };
+  const prisma = {
+    provider: { findUnique: async () => null },
+    notification: notificationModel,
+    sharedMember: {
+      findMany: async () => [
+        { weddingPlanId: planId, canManageTasks: true, canViewMoney: true },
+      ],
+    },
+    weddingTask: { findMany: async () => [] },
+    weddingPlan: {
+      findMany: async ({ where }: any) =>
+        where.id?.in.includes(planId) ? [{ id: planId, ownerUserId: "owner-1" }] : [],
+    },
+    // D63: the owner asked for the account's deletion.
+    user: {
+      findMany: async ({ where }: any) =>
+        where.deletionScheduledFor && where.id?.in.includes("owner-1") ? [{ id: "owner-1" }] : [],
+    },
+    contributionEvent: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
+    $transaction: async (operation: unknown) =>
+      typeof operation === "function"
+        ? (operation as (client: unknown) => unknown)(prisma)
+        : Promise.all(operation as unknown[]),
+  };
+  const service = notificationsService(prisma as any, {} as any, new OutboxService());
+
+  await service.list(user);
+  await service.unreadCount(user);
+
+  assert.equal(whereInputs.length, 3);
+  for (const where of whereInputs) {
+    // Neither listed nor counted: they could not be opened (404).
+    assert.ok(!JSON.stringify(where).includes(`"weddingPlanId":{"in":["${planId}"]}`));
+    // The invitation and the plan-less notices («خطة … متوقفة») still are.
+    assert.match(JSON.stringify(where), /plan_invite/);
   }
 });
 

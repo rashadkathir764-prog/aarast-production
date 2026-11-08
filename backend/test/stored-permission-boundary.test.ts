@@ -98,7 +98,13 @@ test("finance role is not a money-notification permission fallback", async () =>
   const service = notificationsService(
     {
       provider: { findUnique: async () => null },
-      weddingPlan: { findMany: async () => [] },
+      // The reader owns no plan; the plans he is a member of are open
+      // (RA-BE-102: their owners are not leaving).
+      weddingPlan: {
+        findMany: async ({ where }: any) =>
+          (where.id?.in ?? []).map((id: string) => ({ id, ownerUserId: "owner" })),
+      },
+      user: { findMany: async () => [] },
       sharedMember: {
         findMany: async () => [
           {

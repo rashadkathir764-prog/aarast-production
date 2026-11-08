@@ -12,7 +12,10 @@ import type { CreateNotificationInput } from '../../notifications/public/notific
 import * as bookingStore from './marketplace-booking.repository';
 import * as portfolioStore from './portfolio.repository';
 import type { PortfolioItemStatus } from '@prisma/client';
-import type { AdminPortfolioDecision } from '../public/marketplace-admin.port';
+import type {
+  AdminPortfolioDecision,
+  BookingNoticeAddressee,
+} from '../public/marketplace-admin.port';
 import {
   type BookingLifecycle,
   bookingLifecycle,
@@ -629,6 +632,7 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     providerId: string,
     suspendedAt: Date,
+    addressee: BookingNoticeAddressee,
   ): Promise<CreateNotificationInput[]> {
     // The row every booking decision locks first (marketplace-write-locks).
     const provider = await lockMarketplaceProvider(tx, providerId, 'UPDATE');
@@ -644,22 +648,29 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       providerId,
       bookingToday(suspendedAt),
     );
-    return [
+    const notices: CreateNotificationInput[] = [];
+    for (const { booking, confirmed } of [
       ...open.map((booking) => ({ booking, confirmed: false })),
       ...kept.map((booking) => ({ booking, confirmed: true })),
-    ].map(({ booking, confirmed }) =>
-      providerSuspendedCustomerNotification({
-        bookingId: booking.id,
-        quoteRequestId: booking.quoteRequestId,
-        providerId,
-        eventDate: booking.eventDate,
-        customerUserId: booking.quoteRequest.userId,
-        weddingPlanId: booking.quoteRequest.weddingPlanId,
-        providerName: provider.businessName,
-        confirmed,
-        at: suspendedAt,
-      }),
-    );
+    ]) {
+      notices.push(
+        providerSuspendedCustomerNotification({
+          bookingId: booking.id,
+          quoteRequestId: booking.quoteRequestId,
+          providerId,
+          eventDate: booking.eventDate,
+          customerUserId: await addressee(
+            booking.quoteRequest.weddingPlanId,
+            booking.quoteRequest.userId,
+          ),
+          weddingPlanId: booking.quoteRequest.weddingPlanId,
+          providerName: provider.businessName,
+          confirmed,
+          at: suspendedAt,
+        }),
+      );
+    }
+    return notices;
   }
 
   async listBookings(

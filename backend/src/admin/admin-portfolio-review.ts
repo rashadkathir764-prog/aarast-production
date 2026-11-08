@@ -118,6 +118,11 @@ export class AdminPortfolioReview {
     const decided = await runSerializableTransaction(this.deps.prisma, async (tx) => {
       const current = await this.deps.owners.marketplace.lockPortfolioItemInTransaction(tx, id);
       if (!current) throw new NotFoundException('Portfolio photo not found');
+      // RA-BE-101: as with his own application and listing, a team member
+      // does not decide on his own business's photos.
+      if (current.provider.userId === currentUser.id) {
+        throw new BadRequestException('Administrators cannot review their own portfolio');
+      }
       if (current.status !== PortfolioItemStatus.PENDING) {
         throw new ConflictException({
           code: 'PORTFOLIO_ITEM_ALREADY_DECIDED',

@@ -254,6 +254,12 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
           now.getTime() + ACCOUNT_DELETION_GRACE_DAYS * DAY_MS,
         );
         await markAccountDeletionRequested(tx, userId, now, scheduledFor);
+        // RA-BE-26: his listings leave the directory and take no new request.
+        await this.marketplaceErasure.markOwnerLeavingInTransaction(
+          tx,
+          providerIds,
+          now,
+        );
         const planIds = await this.plans.listOwnedPlanIds(tx, userId);
         for (const member of await this.permissions.listPlanMembers(tx, planIds)) {
           await this.notifications.createNotificationInTransaction(
@@ -300,6 +306,11 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
       });
     }
     await clearAccountDeletionRequest(tx, userId);
+    await this.marketplaceErasure.markOwnerLeavingInTransaction(
+      tx,
+      await this.marketplaceErasure.listOwnedProviderIds(tx, userId),
+      null,
+    );
     const planIds = await this.plans.listOwnedPlanIds(tx, userId);
     for (const member of await this.permissions.listPlanMembers(tx, planIds)) {
       await this.notifications.createNotificationInTransaction(

@@ -266,6 +266,20 @@ async function run() {
       owner.token,
     );
     check('each reminder is still bounded by the current remaining cost', oversizedReminder.status === 400);
+    // RA-BE-25: a reminder the person cancelled by hand is not brought back.
+    const reminderDropped = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      { amount: '50', dueDate: dateOffsetIso(6) },
+      owner.token,
+    );
+    const droppedByHand = await request(
+      'POST',
+      `/api/v1/payment-schedules/${reminderDropped.body?.id}/cancel`,
+      {},
+      owner.token,
+    );
+    check('a reminder is cancelled by hand', droppedByHand.status === 201 && droppedByHand.body?.status === 'CANCELLED');
     const settlingPayment = await request(
       'POST',
       `/api/v1/costs/${reminderOnlyCostId}/payments`,
@@ -282,7 +296,7 @@ async function run() {
     check(
       'settling a cost cancels every pending reminder',
       cancelledReminders.status === 200 &&
-        cancelledReminders.body?.length === 2 &&
+        cancelledReminders.body?.length === 3 &&
         cancelledReminders.body.every((item) => item.status === 'CANCELLED'),
     );
     const reopenReminderOnlyCost = await request(
@@ -292,6 +306,22 @@ async function run() {
       owner.token,
     );
     check('settling payment can be reversed for cleanup', reopenReminderOnlyCost.status === 201);
+    // RA-BE-25: the agreement is owed again, so the reminders paying it in
+    // full cancelled come back as they were; the one cancelled by hand stays.
+    const backReminders = await request(
+      'GET',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      null,
+      owner.token,
+    );
+    const backStatus = (id) => backReminders.body?.find?.((item) => item.id === id)?.status;
+    check(
+      'reversing the payment that settled the agreement brings its reminders back',
+      backReminders.status === 200 &&
+        backStatus(reminderA.body?.id) === 'PENDING' &&
+        backStatus(reminderB.body?.id) === 'PENDING' &&
+        backStatus(reminderDropped.body?.id) === 'CANCELLED',
+    );
     const cancelReminderOnlyCost = await request(
       'POST',
       `/api/v1/costs/${reminderOnlyCostId}/cancel`,
@@ -585,6 +615,15 @@ async function run() {
     }, owner.token);
     const closedAgain = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
     check('booking the item again finishes its task again', bookedAgain.status === 201 && closedAgain.body?.status === 'DONE');
+
+    // RA-BE-68 (D71): the person reopens the finished task by hand; editing
+    // the agreement that booked the item closed it again on the next write.
+    const reopenedOnPurpose = await request('PATCH', `/api/v1/tasks/${itemTask.body?.id}`, { status: 'TODO' }, owner.token);
+    check('the person reopens the booked item\'s task', reopenedOnPurpose.status === 200 && reopenedOnPurpose.body?.status === 'TODO');
+    const agreementEdited = await request('PATCH', `/api/v1/costs/${bookedAgain.body?.id}`, { note: 'Hall note' }, owner.token);
+    const keptOpen = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('editing the agreement keeps the task the person reopened',
+      agreementEdited.status === 200 && keptOpen.body?.status === 'TODO');
     const reminderOfDeleted = await request('POST', `/api/v1/costs/${bookedAgain.body?.id}/payment-schedules`, {
       amount: '20',
       dueDate: dateOffsetIso(5),
@@ -601,6 +640,18 @@ async function run() {
     const unlinkedByDelete = await request('GET', `/api/v1/tasks/${reminderTask.body?.id}`, null, owner.token);
     check('and its reminder\'s task waits on nothing gone',
       reminderTask.status === 201 && unlinkedByDelete.status === 200 && unlinkedByDelete.body?.linkedScheduleId === null);
+    // That booking is gone, so the person's «no» went with it: the next one
+    // finishes the task as before.
+    const nextBooking = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: linkItem.body?.id,
+      title: 'Outside agreement, third',
+      totalAmount: '50',
+      partyName: 'Outside party',
+    }, owner.token);
+    const closedByNext = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('the next booking finishes the task the person had reopened',
+      nextBooking.status === 201 && closedByNext.body?.status === 'DONE' && closedByNext.body?.autoClosedAt !== null);
+    await request('POST', `/api/v1/costs/${nextBooking.body?.id}/cancel`, {}, owner.token);
 
     const linkedCost = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: linkItem.body?.id,

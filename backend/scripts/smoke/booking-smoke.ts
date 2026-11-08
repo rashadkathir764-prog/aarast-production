@@ -15,7 +15,7 @@ import { MarketplaceAdminService } from "../../src/modules/marketplace/internal/
 import * as core from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import * as dashboardStore from "../../src/modules/marketplace/infrastructure/provider-dashboard.repository";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { notificationsService, ownerPorts } from "./support/owner-ports";
 
 // Bookings without payment (V1 checklist 4.6) on a real database: requests,
 // the provider's decisions, the calendar, and the provider's daily number
@@ -351,14 +351,31 @@ async function main(): Promise<void> {
     // bookings; every customer concerned is told which.
     const openQuote = await acceptedQuote(customerB.id, "2027-06-03");
     const open = await bookings.requestBooking(customerB as any, openQuote.id, {});
+    // RA-BE-100: B asked for A's plan and is not on it (left, or never
+    // managed its providers): the plan's owner is told, not B.
+    await prisma.quoteRequest.update({
+      where: { id: openQuote.id },
+      data: { weddingPlanId: plan.id },
+    });
+    const recipients = notificationsService(
+      prisma,
+      new PermissionService(prisma as any, ownerPorts.plans),
+      {},
+    );
     const suspendedAt = new Date();
     const notices = await prisma.$transaction((tx) =>
       new MarketplaceAdminService().settleBookingsOnSuspensionInTransaction(
         tx,
         provider.id,
         suspendedAt,
+        (weddingPlanId, requesterId) =>
+          recipients.resolveProviderUpdateRecipientInTransaction(tx, weddingPlanId, requesterId),
       ),
     );
+    const openNotice = notices.find((notice: any) => notice.data.bookingId === open.id)!;
+    assert.equal(openNotice.userId, customerA.id);
+    assert.ok(String(openNotice.dedupeKey).startsWith(`${customerA.id}:`));
+    assert.ok(notices.every((notice: any) => notice.userId !== customerB.id || !notice.weddingPlanId));
     const expired = await prisma.booking.findUniqueOrThrow({ where: { id: open.id } });
     assert.equal(expired.status, "EXPIRED");
     assert.ok(expired.expiredAt);
@@ -369,12 +386,18 @@ async function main(): Promise<void> {
     assert.ok(notices.some((notice: any) => notice.data.bookingId === open.id && notice.data.bookingKept === false));
     assert.ok(notices.some((notice: any) => notice.data.bookingKept === true));
     assert.ok(notices.every((notice: any) => String(notice.title).endsWith("موقوف مؤقتًا")));
+    // B's request was filed on A's plan for RA-BE-100 only; B asks again on
+    // his own, as before.
+    await prisma.quoteRequest.update({
+      where: { id: openQuote.id },
+      data: { weddingPlanId: null },
+    });
     // Once back, the customer may ask again.
     assert.equal(
       (await bookings.requestBooking(customerB as any, openQuote.id, {})).status,
       "REQUESTED",
     );
-    console.log("PASS - a suspension expires the open request, keeps the confirmed ones and tells both");
+    console.log("PASS - a suspension expires the open request, keeps the confirmed ones and tells both (a plan request its owner)");
   } finally {
     if (planId) {
       await prisma.quoteRequest.updateMany({

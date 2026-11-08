@@ -104,6 +104,8 @@ export class MarketplaceQuery {
     const pagination = this.parsePagination(query.page, query.limit);
     const and: ServiceSearchWhere["AND"] = [
       { provider: { status: ProviderStatus.ACTIVE } },
+      // RA-BE-26: a leaving provider's services are not offered either.
+      { provider: { ownerLeavingAt: null } },
     ];
     const where: ServiceSearchWhere = {
       isActive: true,

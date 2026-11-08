@@ -38,6 +38,10 @@ model WeddingTask {
   // Set when the booking or the payment finished the task, so undoing them
   // reopens it; a manual status change clears it.
   autoClosedAt      DateTime?
+  // RA-BE-68 (D71): set when the person reopened the task by hand, so the
+  // booking or payment that is still there does not close it again on the
+  // next write; cleared once that link falls through or the task is relinked.
+  reopenedByHandAt  DateTime?
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)

@@ -118,6 +118,9 @@ model Provider {
   dailyBookingCapacity Int                   @default(1)
   // B-16: { tiktok?, instagram?, facebook? }, each an https profile URL on its own host.
   socialLinks       Json?
+  // RA-BE-26 (D63): when the owner asked for the account's deletion; set and
+  // cleared by identity through the erasure port. Not listed, no new request.
+  ownerLeavingAt    DateTime?
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)

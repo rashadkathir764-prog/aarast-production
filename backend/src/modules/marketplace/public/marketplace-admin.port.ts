@@ -24,6 +24,16 @@ import type { CreateNotificationInput } from '../../notifications/public/notific
 import type { PricedService } from './market-prices';
 import type { ProviderFieldNote } from './provider-review';
 
+
+/**
+ * Who is told about a request: the notifications owner's rule
+ * (`resolveProviderUpdateRecipientInTransaction`) run on the same
+ * transaction, so the marketplace never reads a plan's members itself.
+ */
+export type BookingNoticeAddressee = (
+  weddingPlanId: string | null,
+  requesterId: string,
+) => Promise<string>;
 export const MARKETPLACE_ADMIN_PORT = Symbol('MARKETPLACE_ADMIN_PORT');
 
 export interface AdminProviderCounts {
@@ -366,12 +376,15 @@ export interface MarketplaceAdminPort {
    * B-42: on a suspension, inside its transaction and under the provider's
    * row lock: his open booking requests expire and their customers are told;
    * his confirmed bookings from today on stay and their customers are told
-   * «موقوف مؤقتًا، حجزك المؤكد باقي». Returns the notices to write.
+   * «موقوف مؤقتًا، حجزك المؤكد باقي». Returns the notices to write, each
+   * to [addressee] of its request (RA-BE-100): a plan's request is told to
+   * its owner unless the one who asked still manages its providers.
    */
   settleBookingsOnSuspensionInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
     suspendedAt: Date,
+    addressee: BookingNoticeAddressee,
   ): Promise<CreateNotificationInput[]>;
   /** a12 (B-40): bookings, newest day first, read only. */
   listBookings(

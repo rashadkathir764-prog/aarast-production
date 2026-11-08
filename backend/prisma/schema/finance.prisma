@@ -168,6 +168,10 @@ model PaymentSchedule {
   paidAt        DateTime?
   status        PaymentScheduleStatus @default(PENDING)
   note          String?
+  // RA-BE-25: set when the agreement's being paid in full cancelled this
+  // reminder; it comes back when money is owed again (a reversed payment,
+  // a raised total). A reminder cancelled by hand has none.
+  cancelledByPaidInFullAt DateTime?
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   weddingCost   WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)

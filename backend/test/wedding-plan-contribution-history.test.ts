@@ -74,6 +74,12 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
         return updatedPlan;
       },
     },
+    // RA-BE-72: the moved wedding takes its dated events with it, in the
+    // same transaction.
+    $executeRaw: async () => {
+      operations.push("events:shift");
+      return 0;
+    },
   };
   const service = new WeddingPlansService(
     {
@@ -117,6 +123,7 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
     "transaction:start",
     "plan:locked",
     "plan:update",
+    "events:shift",
     "history:record",
     "transaction:end",
   ]);

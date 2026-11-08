@@ -72,6 +72,7 @@ export interface MoneyPicture {
     next: {
       id: string;
       weddingCostId: string;
+      costTitle: string | null;
       amount: string;
       dueDate: Date;
       status: PaymentScheduleStatus;

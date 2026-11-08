@@ -127,6 +127,19 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
   ]);
 });
 
+test('RA-BE-26: marketplace marks and clears the listings of an owner waiting out the deletion', async () => {
+  const { tx, calls } = recorder();
+  const service = new MarketplaceErasureService();
+  const at = new Date('2026-11-08T10:00:00.000Z');
+  await service.markOwnerLeavingInTransaction(tx, ['provider-1'], at);
+  await service.markOwnerLeavingInTransaction(tx, ['provider-1'], null);
+  await service.markOwnerLeavingInTransaction(tx, [], at);
+  assert.deepEqual(calls, [
+    ['provider.updateMany', { where: { id: { in: ['provider-1'] } }, data: { ownerLeavingAt: at } }],
+    ['provider.updateMany', { where: { id: { in: ['provider-1'] } }, data: { ownerLeavingAt: null } }],
+  ]);
+});
+
 test('messaging locks the owned conversations, lists their attachments, deletes them and erases a retained identity', async () => {
   const { tx, calls, statements } = recorder();
   const service = new MessagingErasureService();

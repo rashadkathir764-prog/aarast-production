@@ -380,6 +380,7 @@ export class TasksService {
         });
       }
       const link = await this.linkForUpdate(tx, existing.weddingPlanId, dto);
+      const manualStatus = manualStatusPatch(current.status, dto.status);
       const updated = await updateTask(tx, id, {
           ...(dto.isPrivate === false ? { privateToUserId: null } : {}),
           ...(dto.title !== undefined
@@ -398,13 +399,15 @@ export class TasksService {
           ...(dto.reminderAt !== undefined
             ? { reminderAt: this.optionalDate(dto.reminderAt, "reminderAt") }
             : {}),
-          ...manualStatusPatch(current.status, dto.status),
+          ...manualStatus,
           ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
           ...(link
             ? {
                 linkedBudgetCategoryId: link.linkedBudgetCategoryId,
                 linkedCostId: link.linkedCostId,
                 linkedScheduleId: link.linkedScheduleId,
+                // Linked anew, the task follows its item again (RA-BE-68).
+                ...(manualStatus.reopenedByHandAt ? {} : { reopenedByHandAt: null }),
                 ...(link.settled && current.status !== WeddingTaskStatus.DONE
                   ? { status: WeddingTaskStatus.DONE, autoClosedAt: new Date() }
                   : {}),

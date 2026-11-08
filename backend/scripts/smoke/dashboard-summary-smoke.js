@@ -333,6 +333,32 @@ async function run() {
     const active = await request('GET', '/api/v1/wedding-plans/active', null, viewer.token);
     check('the member\'s open plan reads as none, not 404',
       active.status === 200 && (active.body === null || active.body === ''));
+
+    // RA-BE-102: «رجعت خطة» belongs to the plan. Once the owner asks again
+    // the plan is closed, so that notice is neither listed nor counted: it
+    // listed, counted, and opened as 404.
+    const back = await request('DELETE', '/api/v1/users/me/deletion', null, owner.token);
+    check('the owner takes the deletion back', back.status === 200);
+    const reopened = await request('GET', '/api/v1/notifications?limit=50', null, viewer.token);
+    const planNotice = (reopened.body?.items ?? []).find((item) => item.weddingPlanId === planId);
+    check('the member is told the plan is back, on the plan', Boolean(planNotice));
+    const again = await request('POST', '/api/v1/users/me/deletion', { confirmWord: 'حذف' }, owner.token);
+    check('the owner asks again', again.status === 200 || again.status === 201);
+    const list = await request('GET', '/api/v1/notifications?limit=50', null, viewer.token);
+    const items = list.body?.items ?? [];
+    // The invitation keeps its plan and stays the member's to read (it opens);
+    // the plan's own notices go while it is closed.
+    check('the closed plan\'s notice is not listed to the member',
+      list.status === 200 && Boolean(planNotice) && !items.some((item) => item.id === planNotice.id));
+    const opened = await Promise.all(
+      items.map((item) => request('GET', `/api/v1/notifications/${item.id}`, null, viewer.token)),
+    );
+    check('every notice listed to the member opens', opened.every((res) => res.status === 200));
+    const unread = await request('GET', '/api/v1/notifications/unread-count', null, viewer.token);
+    check('the member\'s count is the unread notices listed',
+      unread.status === 200 && unread.body?.count === items.filter((item) => !item.readAt).length);
+    check('the plan\'s notice itself still reads as 404 while it is closed',
+      (await request('GET', `/api/v1/notifications/${planNotice?.id}`, null, viewer.token)).status === 404);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

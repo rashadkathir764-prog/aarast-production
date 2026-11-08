@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
+import { Prisma } from "@prisma/client";
 import { test } from "node:test";
 import { BookingsService } from "../src/marketplace/bookings.service";
 import { TasksPortService } from "../src/modules/tasks/infrastructure/tasks-port.service";
@@ -33,8 +34,24 @@ test("RA-BE-67: an edit that sends the same status keeps the mark that a link cl
   assert.deepEqual(manualStatusPatch("DONE", "DONE"), {});
   assert.deepEqual(manualStatusPatch("DONE", undefined), {});
   // A status changed by hand is the person's: no link undoes it later.
-  assert.deepEqual(manualStatusPatch("DONE", "TODO"), { status: "TODO", autoClosedAt: null });
-  assert.deepEqual(manualStatusPatch("TODO", "DONE"), { status: "DONE", autoClosedAt: null });
+  const at = new Date("2027-01-01T10:00:00.000Z");
+  assert.deepEqual(manualStatusPatch("DONE", "TODO", at), {
+    status: "TODO",
+    autoClosedAt: null,
+    reopenedByHandAt: at,
+  });
+  assert.deepEqual(manualStatusPatch("TODO", "DONE", at), {
+    status: "DONE",
+    autoClosedAt: null,
+    reopenedByHandAt: null,
+  });
+});
+
+test("RA-BE-68: a finished task reopened by hand is marked, an open one moved by hand is not", () => {
+  const at = new Date("2027-01-01T10:00:00.000Z");
+  assert.equal(manualStatusPatch("DONE", "IN_PROGRESS", at).reopenedByHandAt, at);
+  assert.equal(manualStatusPatch("TODO", "IN_PROGRESS", at).reopenedByHandAt, null);
+  assert.equal(manualStatusPatch("DONE", "CANCELLED", at).reopenedByHandAt, at);
 });
 
 test("a settled link closes its open tasks and marks them closed by the link", async () => {
@@ -55,6 +72,8 @@ test("a settled link closes its open tasks and marks them closed by the link", a
         weddingPlanId: "plan-1",
         linkedBudgetCategoryId: "item-photo",
         status: { in: ["TODO", "IN_PROGRESS"] },
+        // RA-BE-68: what the person reopened by hand stays open.
+        reopenedByHandAt: null,
       },
       data: { status: "DONE", autoClosedAt: at },
     },
@@ -80,6 +99,15 @@ test("an undone link reopens only what the link itself closed", async () => {
         autoClosedAt: { not: null },
       },
       data: { status: "TODO", autoClosedAt: null },
+    },
+    // The link the person said no to has fallen through: the mark goes.
+    {
+      where: {
+        weddingPlanId: "plan-1",
+        linkedScheduleId: "schedule-1",
+        reopenedByHandAt: { not: null },
+      },
+      data: { reopenedByHandAt: null },
     },
   ]);
 });
@@ -289,6 +317,108 @@ test("an agreement paid in full settles the payments still waiting", async () =>
   await (service as any).cancelPendingSchedulesWhenPaid(tx, "cost-1", "PAID");
 
   assert.deepEqual(seen, [["plan-1", { scheduleId: "schedule-1" }, true]]);
+});
+
+function scheduleRestoreService() {
+  const seen: any[] = [];
+  const service = new WeddingCostsService(
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    undefined,
+    undefined,
+    undefined,
+    {
+      syncLinkedTasks: async (...args: any[]) => {
+        seen.push(args.slice(1));
+      },
+    } as any,
+  );
+  return { seen, service };
+}
+
+test("RA-BE-25: paid in full marks the reminders it cancels, so they can come back", async () => {
+  const { service } = scheduleRestoreService();
+  const updates: any[] = [];
+  const tx = {
+    paymentSchedule: {
+      findMany: async () => [{ id: "schedule-1", weddingCost: { weddingPlanId: "plan-1" } }],
+      updateMany: async (args: any) => {
+        updates.push(args);
+        return { count: 1 };
+      },
+    },
+  };
+
+  await (service as any).cancelPendingSchedulesWhenPaid(tx, "cost-1", "PAID");
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].data.status, "CANCELLED");
+  assert.ok(updates[0].data.cancelledByPaidInFullAt instanceof Date);
+});
+
+test("RA-BE-25: money owed again brings back what paid in full cancelled, at most the balance, with its tasks", async () => {
+  const { seen, service } = scheduleRestoreService();
+  const reads: any[] = [];
+  const writes: any[] = [];
+  const tx = {
+    paymentSchedule: {
+      findMany: async (args: any) => {
+        reads.push(args.where);
+        return [
+          { id: "small", amount: new Prisma.Decimal("20"), weddingCost: { weddingPlanId: "plan-1" } },
+          { id: "large", amount: new Prisma.Decimal("80"), weddingCost: { weddingPlanId: "plan-1" } },
+        ];
+      },
+      update: async (args: any) => {
+        writes.push(args);
+        return args;
+      },
+    },
+  };
+
+  await (service as any).restoreSchedulesWhenOwedAgain(
+    tx,
+    "cost-1",
+    "PARTIALLY_PAID",
+    new Prisma.Decimal("50"),
+  );
+
+  // Only what paying in full cancelled: a reminder cancelled by hand stays.
+  assert.deepEqual(reads, [
+    { weddingCostId: "cost-1", status: "CANCELLED", cancelledByPaidInFullAt: { not: null } },
+  ]);
+  assert.deepEqual(
+    writes.map((write) => [write.where.id, write.data.status, write.data.amount?.toString() ?? null]),
+    [
+      ["small", "PENDING", null],
+      ["large", "PENDING", "50"],
+    ],
+  );
+  assert.ok(writes.every((write) => write.data.cancelledByPaidInFullAt === null));
+  assert.deepEqual(seen, [
+    ["plan-1", { scheduleId: "small" }, false],
+    ["plan-1", { scheduleId: "large" }, false],
+  ]);
+});
+
+test("RA-BE-25: nothing comes back while the agreement is still paid in full or cancelled", async () => {
+  const { seen, service } = scheduleRestoreService();
+  let read = false;
+  const tx = {
+    paymentSchedule: {
+      findMany: async () => {
+        read = true;
+        return [];
+      },
+    },
+  };
+  for (const status of ["PAID", "CANCELLED"]) {
+    await (service as any).restoreSchedulesWhenOwedAgain(tx, "cost-1", status, new Prisma.Decimal("0"));
+  }
+  assert.equal(read, false);
+  assert.deepEqual(seen, []);
 });
 
 test("moving an agreement between items settles both once", async () => {

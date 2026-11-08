@@ -23,6 +23,7 @@ import type { ActiveFeaturedPeriodWhere, FeaturedWindow } from "../modules/marke
 export interface ProviderSearchWhere {
   AND: Array<
     | { status: ProviderStatus } | { services: { some: { isActive: boolean } } }
+    | { ownerLeavingAt: null }
     | { cityId: string }
     | { userId: { not: null } } | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } } | { OR: Array<{ userId: null } | { featuredPeriods: { none: ActiveFeaturedPeriodWhere } }> }
     | { OR: Array<{ primaryCategoryId: { in: string[] } } | { services: { some: { categoryId: { in: string[] }; isActive: boolean } } }> }
@@ -36,6 +37,7 @@ export interface ServiceSearchWhere {
   basePrice?: { gte?: string; lte?: string };
   AND: Array<
     | { provider: { status: ProviderStatus } }
+    | { provider: { ownerLeavingAt: null } }
     | { OR: Array<{ cityId: string } | { cityId: null; provider: { cityId: string } }> }
     | { id: { in: string[] } }
   >;

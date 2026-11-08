@@ -1170,7 +1170,7 @@ export class NotificationsService implements NotificationsPort {
   ): Promise<NotificationVisibilityWhere> {
     const [ownedPlanIds, memberships] = await Promise.all([
       this.plans.listOwnedPlanIds(client, userId),
-      this.permissions.listMemberships(client, userId),
+      this.enterableMemberships(client, userId),
     ]);
     const providerVisibility =
       this.providerNotificationVisibilityWhere(provider);
@@ -1196,6 +1196,35 @@ export class NotificationsService implements NotificationsPort {
     ];
     if (providerVisibility) visibility.push(providerVisibility);
     return { AND: visibility };
+  }
+
+  /**
+   * The reader's memberships in plans he may enter. D63 (w06): while a
+   * plan's owner waits out the account's deletion nobody else enters it
+   * (`getPlanAccessContext`), so its notices are neither listed nor counted
+   * for its members, as they cannot be opened (RA-BE-102); they come back if
+   * the owner keeps the account.
+   */
+  private async enterableMemberships(
+    client: NotificationVisibilityClient,
+    userId: string,
+  ): Promise<SharedMember[]> {
+    const memberships = await this.permissions.listMemberships(client, userId);
+    if (memberships.length === 0) return memberships;
+    const plans = await this.plans.getPlans(
+      client,
+      [...new Set(memberships.map((member) => member.weddingPlanId))].sort(),
+    );
+    const leaving = await listDeletionPendingUserIds(
+      client,
+      [...new Set(plans.map((plan) => plan.ownerUserId))],
+    );
+    const enterable = new Set(
+      plans
+        .filter((plan) => !leaving.has(plan.ownerUserId))
+        .map((plan) => plan.id),
+    );
+    return memberships.filter((member) => enterable.has(member.weddingPlanId));
   }
 
   private planNotificationVisibilityWhere(

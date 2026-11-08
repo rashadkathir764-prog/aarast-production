@@ -9,13 +9,16 @@
 // Nothing is submitted: sheets and forms are opened, photographed and left,
 // so the seed stays as it was and the walk can be rerun.
 import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
+import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
 
-/// The seed puts the rest of the mahr three weeks after the day it ran.
+/// The seed puts the rest of the mahr three weeks after the day it ran, and
+/// counts that day in Sana'a (`demo-seed/support.ts` `today()`): the phone's
+/// own calendar is a day behind it from 21:00 UTC on a machine set to UTC.
 String get mahrRestDay =>
-    formatArabicDayMonth(DateTime.now().add(const Duration(days: 21)));
+    formatArabicDayMonth(sanaaToday().add(const Duration(days: 21)));
 
 class OwnerPersona {
   const OwnerPersona({
@@ -498,6 +501,14 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       // One name among a hundred is found the way a person finds it: «دوّر».
       if (!await walk.openGuest('ضيف الغداء', wait: 3.5)) return;
       walk.expectSee('الغداء: ما ردّ', why: 'رد الضيف على الغداء في تفاصيله');
+      // The seed goes back as it was (124 guests) for the walks after this
+      // one and for a rerun, the way a person takes a guest off the list.
+      if (!await walk.tapKey('guest-menu', wait: 1)) return;
+      if (!await walk.tapKey('guest-menu-delete', wait: 1.5)) return;
+      if (!await walk.tapKey('guest-delete-confirm', wait: 4)) return;
+      if (await walk.searchGuest('ضيف الغداء')) {
+        walk.fail('«ضيف الغداء» باقي في القائمة بعد ما انشال');
+      }
     });
     // The direct routes left the plan shell's own history; the provider
     // steps count their backs from the home shell, as before these steps.

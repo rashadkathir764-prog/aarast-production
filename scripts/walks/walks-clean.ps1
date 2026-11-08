@@ -25,7 +25,9 @@ docker exec aarast-db psql -U $user -d postgres -c "DROP DATABASE IF EXISTS $dbN
 docker exec aarast-db psql -U $user -d postgres -c "CREATE DATABASE $dbName" 2>&1 | Select-Object -Last 1
 $env:DATABASE_URL = $url.Replace($uri.AbsolutePath, "/$dbName")
 
-$env:DEMO_SEED_TODAY = (Get-Date).ToString('yyyy-MM-dd')
+# The seed and the walks both count today in Sana'a (D11), whatever zone
+# this machine is set to (owner_walk.dart mahrRestDay).
+$env:DEMO_SEED_TODAY = [DateTime]::UtcNow.AddHours(3).ToString('yyyy-MM-dd')
 $env:DEMO_PASSWORD = (Get-Content (Join-Path $S 'walk-pass.txt') -Raw).Trim()
 npx prisma migrate deploy 2>&1 | Select-Object -Last 1
 npx ts-node prisma/demo-seed.ts 2>&1 | Select-Object -Last 1

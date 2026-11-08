@@ -69,10 +69,12 @@ const _privateMoney = [
 /// on guests sees none of them, in any spelling.
 const _guestPhones = ['+967', '967 7', '77 0'];
 
+/// A provider's price range as the directory writes it (public).
+final _publicPriceRange = RegExp(r'^[\d,]+ - [\d,]+ ر\.ي');
+
 /// D80 (demo-seed/plan.ts): صالح added the first four of «الأصحاب»;
 /// ياسر الأهدل is his, at position 84 (+967 777 010 084). عبدالله الحمدي,
 /// the first guest of «آل الحمدي», is the groom's (+967 777 010 000).
-const _helperGuestId = 'demo_guest_groom-friends-1';
 const _helperGuestName = 'ياسر الأهدل';
 const _helperGuestPhone = '777 010 084';
 const _groomGuestId = 'demo_guest_groom-hamdi-1';
@@ -89,7 +91,15 @@ Future<void> runParticipantWalk(
 
   void noPrivateMoney() {
     for (final value in _privateMoney) {
-      walk.expectNotSee(value, why: 'مال العريس الخاص');
+      // A provider's public price range in the directory («500,000 -
+      // 700,000 ر.ي») is not the groom's money; a taller screen shows more
+      // of the directory, so the walk must not depend on the window.
+      final leaks = walk.visibleTexts().where(
+        (text) => text.contains(value) && !_publicPriceRange.hasMatch(text),
+      );
+      if (leaks.isNotEmpty) {
+        walk.fail('يظهر «$value» وما لازم (مال العريس الخاص)');
+      }
     }
   }
 
@@ -159,14 +169,18 @@ Future<void> runParticipantWalk(
         walk.fail('ما فيه زر إضافة ضيف، والمساعد له حق الضيوف');
       }
       await walk.tapKey('guest-group-all');
-      walk.expectSee(_helperGuestName, why: 'ضيف أضافه هو');
-      walk.expectSee(_groomGuestName, why: 'ضيف العريس بالاسم (D80)');
-      walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
-      // The groom's guest is a plain row: no way into his details.
-      await walk.tapKey('guest-row-$_groomGuestId');
-      walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
-      walk.expectNotSee('اتصل', why: 'ما يتصل بضيف العريس');
-      if (await walk.tapKey('guest-row-$_helperGuestId', wait: 3)) {
+      // RA-MO-16: the list is built as it scrolls; a person finds a name
+      // among a hundred with «دوّر», as the owner's walk does.
+      if (await walk.searchGuest(_groomGuestName)) {
+        walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
+        // The groom's guest is a plain row: no way into his details.
+        await walk.tapKey('guest-row-$_groomGuestId');
+        walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
+        walk.expectNotSee('اتصل', why: 'ما يتصل بضيف العريس');
+      } else {
+        walk.fail('ما يظهر «$_groomGuestName» (ضيف العريس بالاسم (D80))');
+      }
+      if (await walk.openGuest(_helperGuestName)) {
         walk.expectSee(_helperGuestPhone, why: 'رقم ضيف أضافه هو');
         await walk.back();
       }

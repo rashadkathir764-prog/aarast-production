@@ -74,3 +74,36 @@ export function costCancellationViolation(paidAmount: Amount): FinanceViolation 
     ? null
     : conflict('Reverse the active payments before cancelling this cost');
 }
+
+/**
+ * D107: an expense is money paid in full the day it is recorded, so its
+ * first payment, when typed, is its whole amount.
+ */
+export function expenseInitialPaymentViolation(
+  entryKind: 'AGREEMENT' | 'EXPENSE',
+  totalAmount: Amount,
+  initialPayment: Amount,
+): FinanceViolation | null {
+  return entryKind === 'EXPENSE' &&
+    initialPayment.gt(0) &&
+    !initialPayment.equals(totalAmount)
+    ? invalid('An expense is paid in full when it is recorded')
+    : null;
+}
+
+/**
+ * D107: an expense's amount is its payment: while the payment stands, the
+ * amount does not change (correcting it is reversing the payment).
+ */
+export function expenseTotalChangeViolation(
+  entryKind: 'AGREEMENT' | 'EXPENSE',
+  totalAmount: Amount,
+  nextTotalAmount: Amount,
+  paidAmount: Amount,
+): FinanceViolation | null {
+  return entryKind === 'EXPENSE' &&
+    paidAmount.gt(0) &&
+    !nextTotalAmount.equals(totalAmount)
+    ? invalid('An expense is its payment: correct the payment instead')
+    : null;
+}

@@ -374,6 +374,9 @@ export class DashboardService {
     const outstandingNumber = decimalOrNull(money?.costs.outstanding);
     // C1: the budget is the wedding's; the groom's mahr item is outside it.
     const remainingBudgetNumber = decimalOrNull(money?.budget.remaining);
+    // D105: «over the budget» is by the expected cost (agreements and the
+    // estimates they have not settled), as in the money tab.
+    const expectedBudgetLeftNumber = decimalOrNull(money?.expected.budgetLeft);
     const location = weddingLocationResponse(
       context.plan.location,
       context.plan.city,
@@ -384,7 +387,7 @@ export class DashboardService {
       providerCount,
     );
     const financialWarnings = buildFinancialWarnings({
-      remainingBudget: remainingBudgetNumber,
+      remainingBudget: expectedBudgetLeftNumber,
       overdueCount: canViewMoney ? overdueSchedules.length : null,
       dueSoonCount: canViewMoney ? dueSoonSchedules.length : null,
     });
@@ -519,7 +522,7 @@ export class DashboardService {
         outstanding: moneyOrNull(outstandingNumber),
         remainingBudget: moneyOrNull(remainingBudgetNumber),
         overBudget:
-          remainingBudgetNumber === null ? null : remainingBudgetNumber.isNegative(),
+          expectedBudgetLeftNumber === null ? null : expectedBudgetLeftNumber.isNegative(),
       },
       financialWarnings,
       taskSummary: {

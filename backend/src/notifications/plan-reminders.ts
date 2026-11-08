@@ -134,6 +134,25 @@ export function taskDueContent(
 }
 
 /**
+ * D106: whether a pending date is reminded today. A late date is (and when
+ * late). A date with a reminder day of its own is reminded from that day,
+ * not before; without one, in the week before its due day (the scan's
+ * window). The due day itself never moves for a reminder.
+ */
+export function paymentReminderDue(
+  schedule: { dueDate: Date; remindAt: Date | null },
+  today: Date,
+): boolean {
+  if (schedule.dueDate < today) return true;
+  if (schedule.remindAt) return riyadhDayKey(schedule.remindAt) <= riyadhDayKey(today);
+  return true;
+}
+
+function riyadhDayKey(moment: Date): string {
+  return new Date(moment.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
  * A payment date coming due or overdue. The owner reads which agreement and
  * its amount (in `data`); another member with money rights reads only that
  * a payment is due (V1 checklist 4.10: no name or amount of a cost that is
@@ -183,7 +202,12 @@ export function paymentDueNotice(
     entityType: "payment_schedule",
     entityId: schedule.id,
     routeTarget: noticeRoutes.cost(plan.id, schedule.weddingCostId),
-    dedupeKey: `${userId}:${type}:payment-schedule:${schedule.id}`,
+    // D106: a moved due day is a new agreement and is reminded again, as is
+    // a reminder day chosen again; a date never moved keeps its first key.
+    dedupeKey:
+      `${userId}:${type}:payment-schedule:${schedule.id}` +
+      (schedule.rescheduledFrom ? `:due:${riyadhDayKey(schedule.dueDate)}` : "") +
+      (!overdue && schedule.remindAt ? `:remind:${riyadhDayKey(schedule.remindAt)}` : ""),
   };
 }
 
@@ -198,14 +222,17 @@ export function budgetCategoryExceededRow(
   category: ExceededBudgetCategory,
   currency: string,
 ): DueNotice {
-  const over = category.committedAmount.minus(category.allocatedAmount);
+  // D105: by what it is expected to cost, not its agreements alone.
+  const over = category.expectedAmount.minus(category.allocatedAmount);
   return {
     userId: ownerUserId,
     weddingPlanId: category.weddingPlanId,
     type: NotificationType.BUDGET_CATEGORY_EXCEEDED,
     priority: NotificationPriority.HIGH,
     title: `بند ${category.name} فات المخطط له`,
-    body: "اتفاقاته صارت أكثر من المخطط.",
+    body: category.committedAmount.gt(category.allocatedAmount)
+      ? "اتفاقاته صارت أكثر من المخطط."
+      : "تكلفته المتوقعة صارت أكثر من المخصص له.",
     data: {
       budgetCategoryId: category.id,
       weddingPlanId: category.weddingPlanId,
@@ -213,6 +240,7 @@ export function budgetCategoryExceededRow(
       currency,
       allocatedAmount: category.allocatedAmount.toString(),
       committedAmount: category.committedAmount.toString(),
+      expectedAmount: category.expectedAmount.toString(),
     },
     entityType: "budget_category",
     entityId: category.id,

@@ -381,8 +381,50 @@ export class AssistantService {
           allocated: fixed(category.allocatedAmount),
           committed: fixed(category.confirmedCost) ?? '0.00',
           paid: fixed(category.paid) ?? '0.00',
+          estimate: fixed(category.estimate),
+          expected: fixed(category.expectedCost) ?? '0.00',
         })),
+      // D105: the expected cost, as the money tab reads it.
+      expected: {
+        wedding: fixed(picture.expected.wedding.expected) ?? '0.00',
+        estimateLeft: fixed(picture.expected.wedding.estimateLeft) ?? '0.00',
+        unknownItems: picture.expected.wedding.unknownCount,
+        budgetLeft: fixed(picture.expected.budgetLeft),
+      },
+      outstanding: {
+        owner: fixed(picture.outstanding.owner) ?? '0.00',
+        others: fixed(picture.outstanding.others) ?? '0.00',
+      },
+      // D103: the same verdict the money tab and the home say.
+      coverage: picture.coverage
+        ? {
+            verdict: picture.coverage.verdict,
+            cash: fixed(picture.coverage.cash) ?? '0.00',
+            onHim: fixed(picture.coverage.total) ?? '0.00',
+            until: picture.coverage.lastDate ? localDate(picture.coverage.lastDate) : null,
+            short: shortOf(
+              picture.coverage.verdict === 'COVERED_IF_PLEDGES'
+                ? picture.coverage.withoutPledges.firstShort
+                : picture.coverage.withPledges.firstShort,
+            ),
+            needed:
+              picture.coverage.verdict === 'SHORT'
+                ? fixed(picture.coverage.withPledges.deepest?.amount ?? null)
+                : null,
+            ignoredPledges: picture.coverage.pledgesIgnored.length,
+          }
+        : null,
     };
+
+    function shortOf(value: { amount: string; date: Date | null; title: string } | null) {
+      return value
+        ? {
+            amount: fixed(value.amount) ?? '0.00',
+            date: value.date ? localDate(value.date) : null,
+            title: value.title,
+          }
+        : null;
+    }
   }
 
   /**

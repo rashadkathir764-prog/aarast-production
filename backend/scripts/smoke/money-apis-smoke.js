@@ -680,6 +680,171 @@ async function run() {
     const reopenByHand = await request('PATCH', `/api/v1/tasks/${paymentTask.body?.id}`, { status: 'DONE' }, owner.token);
     check('a task closed by hand is not the link\'s to reopen', reopenByHand.body?.status === 'DONE' && reopenByHand.body?.autoClosedAt === null);
 
+
+    // ---- The money tab (D103-D109), on its own plan --------------------
+    const tab = await request('POST', '/api/v1/wedding-plans', { title: 'Money tab plan', city: 'Sanaa' }, owner.token);
+    const tabId = tab.body?.id;
+    if (!tabId) throw new Error(`money tab plan setup failed with HTTP ${tab.status}`);
+    const ids = { hall: randomUUID(), food: randomUUID(), dress: randomUUID(), photo: randomUUID(), car: randomUUID() };
+    // D109: estimates are free: they pass the 5,000 budget (6,400) with no
+    // agreement yet, and need no allocation; the dress has an allocation only.
+    const tabBudget = await request('PUT', `/api/v1/wedding-plans/${tabId}/money-budget`, {
+      totalBudget: '5000',
+      currency: 'YER',
+      categories: [
+        { clientId: ids.hall, name: 'Hall', estimatedAmount: '2000' },
+        { clientId: ids.food, name: 'Food', estimatedAmount: '1600' },
+        { clientId: ids.dress, name: 'Dress', allocatedAmount: '300' },
+        { clientId: ids.photo, name: 'Photo', estimatedAmount: '2500' },
+        { clientId: ids.car, name: 'Car' },
+      ],
+    }, owner.token);
+    const cat = (key) => tabBudget.body?.idMap?.[ids[key]];
+    check('D109: estimates are saved apart from allocations, and may pass the budget',
+      tabBudget.status === 200
+        && tabBudget.body?.categories?.find((item) => item.id === cat('hall'))?.estimatedAmount === '2000'
+        && tabBudget.body?.categories?.find((item) => item.id === cat('dress'))?.allocatedAmount === '300');
+    let tabSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    check('D105: the early warning is the expected cost, before any agreement',
+      tabSummary.body?.expected?.wedding?.expected === '6400'
+        && tabSummary.body?.expected?.budgetLeft === '-1400'
+        && tabSummary.body?.warnings?.some((warning) => warning.type === 'BUDGET_EXCEEDED' && warning.amount === '1400'));
+    check('D109: an item with only an allocation is estimated by it; one with neither is unknown',
+      tabSummary.body?.categories?.find((item) => item.categoryId === cat('dress'))?.estimateSource === 'ALLOCATION'
+        && tabSummary.body?.expected?.wedding?.unknownCount === 1);
+    // D93: a phone that does not know estimates replaces the budget and keeps them.
+    const oldPhone = await request('PUT', `/api/v1/wedding-plans/${tabId}/money-budget`, {
+      totalBudget: '5000',
+      currency: 'YER',
+      categories: ['hall', 'food', 'dress', 'photo', 'car'].map((key) => ({
+        id: cat(key),
+        name: key[0].toUpperCase() + key.slice(1),
+        ...(key === 'dress' ? { allocatedAmount: '300' } : {}),
+      })),
+    }, owner.token);
+    check('D109: a budget saved by a phone that sends no estimate keeps the estimates',
+      oldPhone.status === 200
+        && oldPhone.body?.categories?.find((item) => item.id === cat('food'))?.estimatedAmount === '1600');
+
+    // D105: an agreement for a part keeps the rest of its item's estimate.
+    const food = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('food'), title: 'Lunch', totalAmount: '700', estimateCover: 'PART', estimatePart: '600',
+    }, owner.token);
+    check('D105: a part agreement is saved with what it settles',
+      food.status === 201 && food.body?.estimateCover === 'PART' && food.body?.estimatePart === '600' && food.body?.entryKind === 'AGREEMENT');
+    // D107: an expense is paid in full the day it is recorded.
+    const wrongExpense = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('dress'), title: 'Dress', totalAmount: '150', entryKind: 'EXPENSE', initialPaymentAmount: '100',
+    }, owner.token);
+    check('D107: an expense paid in part is refused, in Arabic', wrongExpense.status === 400 && wrongExpense.body?.code === 'FINANCE_EXPENSE_PAID_IN_FULL');
+    const dress = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('dress'), title: 'Dress', totalAmount: '150', entryKind: 'EXPENSE',
+    }, owner.token);
+    check('D107: an expense is paid in full and settles a part of its item at its value',
+      dress.status === 201 && dress.body?.entryKind === 'EXPENSE' && dress.body?.status === 'PAID'
+        && dress.body?.paidAmount === '150' && dress.body?.estimateCover === 'PART' && dress.body?.estimatePart === '150');
+    const lockedExpense = await request('PATCH', `/api/v1/costs/${dress.body?.id}`, { totalAmount: '200' }, owner.token);
+    check('D107: an expense\'s amount is its payment', lockedExpense.status === 400 && lockedExpense.body?.code === 'FINANCE_EXPENSE_AMOUNT_LOCKED');
+    const hall = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('hall'), title: 'Hall', totalAmount: '1800',
+    }, owner.token);
+    const photo = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('photo'), title: 'Photo', totalAmount: '900', payer: 'FAMILY', payerName: 'الوالد',
+    }, owner.token);
+    tabSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    const tabCat = (key) => tabSummary.body?.categories?.find((item) => item.categoryId === cat(key));
+    check('D105: each item is expected at its agreements and the estimate they did not settle',
+      tabCat('hall')?.expectedCost === '1800' && tabCat('food')?.expectedCost === '1700'
+        && tabCat('dress')?.expectedCost === '300' && tabCat('photo')?.expectedCost === '900'
+        && tabSummary.body?.expected?.wedding?.expected === '4700' && tabSummary.body?.expected?.budgetLeft === '300'
+        && !tabSummary.body?.warnings?.some((warning) => warning.type === 'BUDGET_EXCEEDED'));
+
+    // D106: a partial payment of a date lowers it, and its reversal gives it back.
+    const s1 = await request('POST', `/api/v1/costs/${hall.body?.id}/payment-schedules`, { amount: '1000', dueDate: dateOffsetIso(10) }, owner.token);
+    const s2 = await request('POST', `/api/v1/costs/${hall.body?.id}/payment-schedules`, { amount: '800', dueDate: dateOffsetIso(40) }, owner.token);
+    const part = await request('POST', `/api/v1/payment-schedules/${s1.body?.id}/pay`, { amount: '300' }, owner.token, randomUUID());
+    check('D106: paying less than a date asks lowers the date by it, in one go',
+      part.status === 201 && part.body?.payment?.lowersScheduleId === s1.body?.id && part.body?.payment?.paymentScheduleId === null
+        && part.body?.schedule?.status === 'PENDING' && part.body?.schedule?.amount === '700');
+    tabSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    const dueLine = tabSummary.body?.obligations?.find((line) => line.kind === 'DUE' && line.id === s1.body?.id);
+    check('D106: the date says what was paid towards it',
+      dueLine?.amount === '700' && dueLine?.scheduledAmount === '1000' && dueLine?.paidTowards === '300');
+    const deleteWithPart = await request('DELETE', `/api/v1/payment-schedules/${s1.body?.id}`, null, owner.token);
+    check('D106: a date with a partial payment is not deleted', deleteWithPart.status === 409 && deleteWithPart.body?.code === 'FINANCE_SCHEDULE_HAS_PAYMENTS');
+    await request('POST', `/api/v1/cost-payments/${part.body?.payment?.id}/reverse`, { reason: 'Partial smoke' }, owner.token);
+    const restored = await request('GET', `/api/v1/costs/${hall.body?.id}/payment-schedules`, null, owner.token);
+    const restoredS1 = (restored.body?.items ?? restored.body ?? []).find?.((item) => item.id === s1.body?.id);
+    check('D106: reversing the partial payment gives the date its amount back', restoredS1?.amount === '1000' && restoredS1?.status === 'PENDING');
+    // D106: more than the date asks pays it, and the rest goes to the agreement.
+    const over = await request('POST', `/api/v1/payment-schedules/${s1.body?.id}/pay`, { amount: '1200' }, owner.token, randomUUID());
+    check('D106: paying more than a date asks pays the date and records the rest',
+      over.status === 201 && over.body?.schedule?.status === 'PAID' && over.body?.payment?.amount === '1000'
+        && over.body?.extraPayment?.amount === '200' && over.body?.extraPayment?.paymentScheduleId === null);
+    const tooMuch = await request('POST', `/api/v1/payment-schedules/${s2.body?.id}/pay`, { amount: '700' }, owner.token, randomUUID());
+    check('D106: never more than what is left on the agreement', tooMuch.status === 400 && tooMuch.body?.code === 'FINANCE_PAYMENT_EXCEEDS_REMAINING');
+
+    // RA-BE-109: the second date asks 600 of its 800 now; moving its day was refused.
+    const s2Due = new Date(s2.body?.dueDate).toISOString();
+    const moved = await request('PATCH', `/api/v1/payment-schedules/${s2.body?.id}`, { dueDate: dateOffsetIso(45) }, owner.token);
+    check('RA-BE-109: a date that asks less than its amount can be moved, and keeps its first day',
+      moved.status === 200 && new Date(moved.body?.rescheduledFrom).toISOString() === s2Due && moved.body?.amountDue === '600');
+    const reminded = await request('PATCH', `/api/v1/payment-schedules/${s2.body?.id}`, { remindAt: dateOffsetIso(44) }, owner.token);
+    check('D106: a reminder day of its own moves only the reminder',
+      reminded.status === 200 && reminded.body?.remindAt !== null && new Date(reminded.body?.dueDate).toISOString() === new Date(moved.body?.dueDate).toISOString());
+    const afterDue = await request('PATCH', `/api/v1/payment-schedules/${s2.body?.id}`, { remindAt: dateOffsetIso(50) }, owner.token);
+    const beforeToday = await request('PATCH', `/api/v1/payment-schedules/${s2.body?.id}`, { remindAt: dateOffsetIso(-2) }, owner.token);
+    check('D106: the reminder day is between today and the due day',
+      afterDue.status === 400 && afterDue.body?.code === 'FINANCE_REMINDER_DAY_OUT_OF_RANGE' && beforeToday.status === 400);
+    const back = await request('PATCH', `/api/v1/payment-schedules/${s2.body?.id}`, { dueDate: s2Due }, owner.token);
+    check('D106: moving back to its first day is not a reschedule, and the reminder goes back to the default',
+      back.status === 200 && back.body?.rescheduledFrom === null && back.body?.remindAt === null);
+
+    // D104, D108: the owner's money, and the family person by person.
+    await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, { kind: 'SAVINGS', sourceName: 'My savings', amount: '1000' }, owner.token);
+    const father = await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, {
+      kind: 'FAMILY_SUPPORT', sourceName: 'Father support', contributorName: 'الوالد', amount: '500',
+    }, owner.token);
+    check('D108: a source names who gave it', father.status === 201 && father.body?.contributorName === 'الوالد');
+    await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, {
+      kind: 'FAMILY_SUPPORT', sourceName: 'Father promise', contributorName: '  الوالد ', amount: '800', status: 'PLEDGED', expectedAt: dateOffsetIso(20),
+    }, owner.token);
+    const loan = await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, { kind: 'LOAN', sourceName: 'Uncle', amount: '400' }, owner.token);
+    const r1 = await request('POST', `/api/v1/funding-sources/${loan.body?.id}/repayments`, { amount: '100', dueDate: dateOffsetIso(5) }, owner.token);
+    await request('POST', `/api/v1/funding-sources/${loan.body?.id}/repayments`, { amount: '200', dueDate: dateOffsetIso(60) }, owner.token);
+    await request('PATCH', `/api/v1/loan-repayments/${r1.body?.repayments?.[0]?.id}`, { status: 'PAID' }, owner.token);
+    tabSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    // Received 1,900; his money paid 1,350 (the hall's 1,200, the dress 150);
+    // he repaid 100 of the loan.
+    check('D104: «معك» is received less his payments less his loan repayments',
+      tabSummary.body?.funding?.availableCash === '450' && tabSummary.body?.funding?.loanRepaid === '100');
+    check('D102: what is left is said on whom',
+      tabSummary.body?.outstanding?.owner === '1300' && tabSummary.body?.outstanding?.others === '900');
+    const coverage = tabSummary.body?.coverage;
+    // On him: the hall's 600 (day 40), the loan's 200 (day 60), the lunch's
+    // 700 (no day), the loan's 100 with no plan: 1,600. The father's 800 comes
+    // on day 20. 450 + 800 − 600 − 200 − 700 − 100 = −350.
+    check('D103: the coverage walks his money on its days, the promise on its day',
+      coverage?.verdict === 'SHORT' && coverage?.cash === '450' && coverage?.total === '1600'
+        && coverage?.pledgesCounted?.length === 1 && coverage?.withPledges?.deepest?.amount === '350'
+        && coverage?.steps?.[0]?.kind === 'PLEDGE' && tabSummary.body?.funding?.shortfall === '350');
+    check('D103: the photographer the father pays is not on him',
+      !coverage?.steps?.some((step) => step.title === 'Photo'));
+    check('D108: the father is one person: gave, promised, still owes',
+      tabSummary.body?.family?.length === 1 && tabSummary.body.family[0].name === 'الوالد'
+        && tabSummary.body.family[0].gave === '500' && tabSummary.body.family[0].promised === '800' && tabSummary.body.family[0].left === '900');
+    // By month: the hall's 600 only (the loan's 200 is not a wedding due).
+    // Undated: the lunch's 700 (his) and the photographer's 900 (the father's).
+    check('D102: the wedding dues by month leave the loan out',
+      (tabSummary.body?.duesByMonth?.months ?? []).reduce((sum, month) => sum + Number(month.amount), 0) === 600
+        && tabSummary.body?.duesByMonth?.undated?.amount === '1600'
+        && tabSummary.body?.duesByMonth?.undated?.ownerAmount === '700');
+    check('D102: the loan\'s repayments are in the list, apart from the wedding dues',
+      tabSummary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '200')
+        && tabSummary.body?.obligations?.some((line) => line.kind === 'LOAN_UNPLANNED' && line.amount === '100'));
+    const viewerTab = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, viewer.token);
+    check('the money tab is the plan\'s: a stranger reads nothing', viewerTab.status === 403 || viewerTab.status === 404);
+
     const noAuth = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`);
     check('money summary requires authentication', noAuth.status === 401);
   } finally {

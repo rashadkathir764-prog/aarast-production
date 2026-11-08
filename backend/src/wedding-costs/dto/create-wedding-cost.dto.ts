@@ -1,4 +1,4 @@
-import { CostPayer } from "@prisma/client";
+import { CostEntryKind, CostPayer, EstimateCover } from "@prisma/client";
 import {
   IsBoolean,
   IsEnum,
@@ -67,4 +67,24 @@ export class CreateWeddingCostDto {
   @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
+
+  /**
+   * D107: EXPENSE is money paid in full the day it is recorded (its first
+   * payment is the whole amount). Omitted: an agreement.
+   */
+  @IsEnum(CostEntryKind)
+  @IsOptional()
+  entryKind?: CostEntryKind;
+
+  /**
+   * D105: what it settles of its item's estimate. Omitted: the whole item
+   * for an agreement, a part at its own value for an expense.
+   */
+  @IsEnum(EstimateCover)
+  @IsOptional()
+  estimateCover?: EstimateCover;
+
+  /** D105: with PART, how much of the estimate it settles (default: its own amount). */
+  @IsOptional()
+  estimatePart?: string | number | null;
 }

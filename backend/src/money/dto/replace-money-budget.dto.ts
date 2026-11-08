@@ -28,6 +28,13 @@ export class MoneyBudgetCategoryDto {
 
   @IsOptional()
   allocatedAmount?: string | number | null;
+
+  /**
+   * D109: what the owner expects the item to cost. Free: may pass the
+   * budget and needs none; 0 is an answer («ما بيكلف شي»). Omitted: kept.
+   */
+  @IsOptional()
+  estimatedAmount?: string | number | null;
 }
 
 export class ReplaceMoneyBudgetDto {

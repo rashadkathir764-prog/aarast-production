@@ -12,6 +12,8 @@ import { OutboxService } from "../src/platform/outbox/outbox.service";
 import { notificationsService } from "./support/owner-ports";
 import {
   budgetCategoryExceededRow,
+  paymentDueNotice,
+  paymentReminderDue,
   daysUntilWedding,
   loanRepaymentRow,
   weddingCountdownMilestone,
@@ -31,6 +33,7 @@ test("an over-budget category alerts the owner once per allocation", () => {
     name: "القاعة",
     allocatedAmount: new Prisma.Decimal("500000"),
     committedAmount: new Prisma.Decimal("650000"),
+    expectedAmount: new Prisma.Decimal("650000"),
   };
   const row = budgetCategoryExceededRow("owner-1", category, "YER");
 
@@ -55,6 +58,73 @@ test("an over-budget category alerts the owner once per allocation", () => {
     row.dedupeKey,
     "a further cost on the same allocation does not alert again",
   );
+});
+
+test("D105: an item expected over its allocation alerts before its agreements pass it", () => {
+  // Agreed 300,000 for a part; the estimate's rest makes it 650,000 expected.
+  const row = budgetCategoryExceededRow("owner-1", {
+    id: "category-1",
+    weddingPlanId: "plan-1",
+    name: "الضيافة",
+    allocatedAmount: new Prisma.Decimal("500000"),
+    committedAmount: new Prisma.Decimal("300000"),
+    expectedAmount: new Prisma.Decimal("650000"),
+  }, "YER");
+  assert.equal(row.body, "تكلفته المتوقعة صارت أكثر من المخصص له.");
+  assert.equal((row.data as Record<string, unknown>).amount, "150000");
+  assert.equal((row.data as Record<string, unknown>).expectedAmount, "650000");
+});
+
+test("D106: a date with a reminder day of its own is reminded on that day, not the default week", () => {
+  const due = new Date("2026-10-15T21:00:00.000Z"); // 16 October in Riyadh
+  // No day of its own: the scan's week before the due day.
+  assert.equal(paymentReminderDue({ dueDate: due, remindAt: null }, today), true);
+  // Its own day later than today: not yet, though the due day is this week.
+  assert.equal(
+    paymentReminderDue({ dueDate: due, remindAt: new Date("2026-10-14T21:00:00.000Z") }, today),
+    false,
+  );
+  // Its own day has come (in Riyadh, whatever the server's clock).
+  assert.equal(
+    paymentReminderDue({ dueDate: due, remindAt: new Date("2026-10-10T21:30:00.000Z") }, today),
+    true,
+  );
+  // Late: always, its own day or not.
+  assert.equal(
+    paymentReminderDue({ dueDate: new Date("2026-10-01T00:00:00.000Z"), remindAt: due }, today),
+    true,
+  );
+});
+
+test("D106: a moved due day or a chosen reminder day reminds again; an untouched date keeps its key", () => {
+  const schedule = {
+    id: "schedule-1",
+    weddingCostId: "cost-1",
+    amount: new Prisma.Decimal("100000"),
+    dueDate: new Date("2026-10-15T21:00:00.000Z"),
+    remindAt: null as Date | null,
+    rescheduledFrom: null as Date | null,
+    weddingCost: { weddingPlanId: "plan-1", title: "القاعة", partyName: null, providerId: null, privateToUserId: null },
+  } as unknown as Parameters<typeof paymentDueNotice>[1];
+  const plan = { id: "plan-1", currency: "YER" };
+  const plain = paymentDueNotice("owner-1", schedule, plan, today, { partyName: null });
+  assert.equal(plain.dedupeKey, "owner-1:PAYMENT_SCHEDULE_DUE_SOON:payment-schedule:schedule-1");
+  const reminded = paymentDueNotice(
+    "owner-1",
+    { ...schedule, remindAt: new Date("2026-10-11T00:00:00.000Z") } as typeof schedule,
+    plan,
+    today,
+    { partyName: null },
+  );
+  assert.equal(reminded.dedupeKey, `${plain.dedupeKey}:remind:2026-10-11`);
+  const moved = paymentDueNotice(
+    "owner-1",
+    { ...schedule, rescheduledFrom: new Date("2026-10-12T21:00:00.000Z") } as typeof schedule,
+    plan,
+    today,
+    { partyName: null },
+  );
+  assert.equal(moved.dedupeKey, `${plain.dedupeKey}:due:2026-10-16`);
 });
 
 test("a loan repayment reminder says due soon or overdue", () => {
@@ -203,9 +273,10 @@ test("the hourly scan sends money reminders to the owner only and honours prefer
       ],
     },
     weddingCost: {
-      groupBy: async () => [
-        { budgetCategoryId: "category-1", _sum: { totalAmount: new Prisma.Decimal("150") } },
-        { budgetCategoryId: "category-2", _sum: { totalAmount: new Prisma.Decimal("200") } },
+      // D105: the agreements as written (the expected cost reads each one's cover).
+      findMany: async () => [
+        { budgetCategoryId: "category-1", totalAmount: new Prisma.Decimal("150"), estimateCover: "WHOLE", estimatePart: null },
+        { budgetCategoryId: "category-2", totalAmount: new Prisma.Decimal("200"), estimateCover: "WHOLE", estimatePart: null },
       ],
     },
     loanRepayment: {

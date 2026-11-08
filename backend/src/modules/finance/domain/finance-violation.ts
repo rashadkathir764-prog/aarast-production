@@ -30,6 +30,18 @@ const WORDING: Readonly<Record<string, Wording>> = {
     code: 'FINANCE_PAYMENT_EXCEEDS_REMAINING',
     ar: 'الدفعة أكبر من الباقي على الاتفاق.',
   },
+  'An expense is paid in full when it is recorded': {
+    code: 'FINANCE_EXPENSE_PAID_IN_FULL',
+    ar: 'المصروف ينسجّل مدفوع كامل. لو باقي عليه شي، سجّله اتفاق.',
+  },
+  'An expense is its payment: correct the payment instead': {
+    code: 'FINANCE_EXPENSE_AMOUNT_LOCKED',
+    ar: 'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+  },
+  'The reminder day must be between today and the due day': {
+    code: 'FINANCE_REMINDER_DAY_OUT_OF_RANGE',
+    ar: 'يوم التذكير لازم يكون من اليوم لين يوم الموعد.',
+  },
   'Cancelled costs cannot receive payments': {
     code: 'FINANCE_COST_CANCELLED',
     ar: 'الاتفاق ملغي، ما ينسجّل عليه دفع.',

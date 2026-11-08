@@ -13,7 +13,9 @@ test("the payment ledger is append-only and reversals stay in the same cost", ()
   assert.match(payment, /entryType\s+CostPaymentType/);
   assert.match(payment, /reversalOfId\s+String\?\s+@unique/);
   assert.match(payment, /@@unique\(\[reversalOfId, weddingCostId\]\)/);
-  assert.match(payment, /paymentSchedule\s+PaymentSchedule\?\s+@relation\(fields: \[paymentScheduleId, weddingCostId\]/);
+  assert.match(payment, /paymentSchedule\s+PaymentSchedule\?\s+@relation\("CostPaymentSchedule", fields: \[paymentScheduleId, weddingCostId\], references: \[id, weddingCostId\], onDelete: Restrict/);
+  // D106: a partial payment's date is of the same agreement, and is not deleted under it.
+  assert.match(payment, /lowersSchedule\s+PaymentSchedule\?\s+@relation\("CostPaymentLowersSchedule", fields: \[lowersScheduleId, weddingCostId\], references: \[id, weddingCostId\], onDelete: Restrict/);
 
   const migration = read(
     "prisma/migrations/20260714190000_unify_money_domain/migration.sql",

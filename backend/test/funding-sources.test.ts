@@ -289,7 +289,11 @@ test("the owner's money summary weighs funding against confirmed costs", async (
   assert.equal(summary.funding?.received, "200000");
   assert.equal(summary.funding?.pledged, "100000");
   assert.equal(summary.funding?.availableCash, "50000");
-  assert.equal(summary.funding?.shortfall, "100000");
+  // D103: on the owner, the hall's 250,000 left and the whole loan (its
+  // late 50,000 counted today, and the 150,000 with no plan); the father's
+  // promise has no day, so it is not counted. 50,000 in hand: 400,000 short.
+  assert.equal(summary.coverage?.total, "450000");
+  assert.equal(summary.funding?.shortfall, "400000");
   assert.equal(summary.funding?.loanOutstanding, "200000");
   assert.equal(summary.funding?.overdueLoanRepayments, 1);
   assert.deepEqual(

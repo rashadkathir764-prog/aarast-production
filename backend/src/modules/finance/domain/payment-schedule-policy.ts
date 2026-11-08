@@ -54,3 +54,17 @@ export function scheduledPaymentViolation(
 export function schedulesToCancelOnStatus(status: WeddingCostStatus): boolean {
   return status === 'PAID';
 }
+
+/**
+ * D106: a reminder day of its own is between today and the due day (days in
+ * Riyadh, D11). It moves the reminder only; the due day stays.
+ */
+export function remindDayViolation(
+  remindDay: string,
+  today: string,
+  dueDay: string,
+): FinanceViolation | null {
+  return remindDay < today || remindDay > dueDay
+    ? invalid('The reminder day must be between today and the due day')
+    : null;
+}

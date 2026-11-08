@@ -23,6 +23,15 @@ export class CreateFundingSourceDto {
   @IsOptional()
   sourcePhone?: string | null;
 
+  /**
+   * D108: who gave or promised it («الوالد», «خالي أحمد»), matched with the
+   * agreements' payer name to show the family person by person.
+   */
+  @IsString()
+  @MaxCharacters(120)
+  @IsOptional()
+  contributorName?: string | null;
+
   @IsNotEmpty()
   amount!: string | number;
 
@@ -60,6 +69,15 @@ export class UpdateFundingSourceDto {
   @MaxLength(40)
   @IsOptional()
   sourcePhone?: string | null;
+
+  /**
+   * D108: who gave or promised it («الوالد», «خالي أحمد»), matched with the
+   * agreements' payer name to show the family person by person.
+   */
+  @IsString()
+  @MaxCharacters(120)
+  @IsOptional()
+  contributorName?: string | null;
 
   @IsOptional()
   amount?: string | number;

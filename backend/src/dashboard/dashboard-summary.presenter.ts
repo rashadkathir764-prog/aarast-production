@@ -372,6 +372,10 @@ export function nextProviderAction(
   return "REQUEST_FIRST_QUOTE";
 }
 
+/**
+ * `remainingBudget` is the budget less what the wedding items are expected
+ * to cost (D105); below zero is «over the budget».
+ */
 export function buildFinancialWarnings({
   remainingBudget,
   overdueCount,
@@ -388,7 +392,7 @@ export function buildFinancialWarnings({
     warnings.push({
       type: "BUDGET_EXCEEDED",
       severity: "DANGER",
-      message: "التكاليف المؤكدة تجاوزت الميزانية العامة.",
+      message: "تكلفة العرس المتوقعة فاتت الميزانية.",
       count: null,
       amount: moneyOrNull(remaining.abs()),
     });

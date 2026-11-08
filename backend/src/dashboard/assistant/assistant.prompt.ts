@@ -19,6 +19,26 @@ export interface AssistantCategoryFacts {
   allocated: string | null;
   committed: string;
   paid: string;
+  /** D109: the estimate the rules use (the owner's, else the allocation). */
+  estimate?: string | null;
+  /** D105: agreements plus the estimate not settled yet. */
+  expected?: string;
+}
+
+/** D103: the owner's money against what is on him, on its days. */
+export interface AssistantCoverageFacts {
+  verdict: 'NOTHING_DUE' | 'COVERED' | 'COVERED_IF_PLEDGES' | 'SHORT';
+  cash: string;
+  /** Everything on him: his share, the mahr with it, his loans. */
+  onHim: string;
+  /** The last dated line on him. */
+  until: string | null;
+  /** The first day it falls short, and by how much (SHORT; COVERED_IF_PLEDGES: without the promises). */
+  short: { amount: string; date: string | null; title: string } | null;
+  /** What is needed beyond his money for everything on its day (SHORT). */
+  needed: string | null;
+  /** Promised money left out: no day, or its day passed. */
+  ignoredPledges: number;
 }
 
 export interface AssistantQuoteFacts {
@@ -73,6 +93,18 @@ export interface AssistantPlanFacts {
       nextDueAt: string | null;
     } | null;
     categories: AssistantCategoryFacts[];
+    /** D105: the wedding items' expected cost; not final while `unknownItems` > 0. */
+    expected?: {
+      wedding: string;
+      estimateLeft: string;
+      unknownItems: number;
+      /** The budget less the expected cost; negative: over it by that much. */
+      budgetLeft: string | null;
+    };
+    /** D102: left to pay on the owner (the mahr with it), and on others. */
+    outstanding?: { owner: string; others: string };
+    /** D103: the owner's only. */
+    coverage?: AssistantCoverageFacts | null;
   } | null;
   guests: { total: number; confirmed: number; pending: number; declined: number };
   tasks: {
@@ -154,12 +186,32 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
           : `- المهر (يصل العروسة من العريس، خارج ميزانية العرس): ${mahr.total}، وصل منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`,
       );
     }
+    if (money.expected) {
+      lines.push(`- ${expectedLine(money.expected)}`);
+      if (money.expected.unknownItems > 0) {
+        lines.push(
+          `- بنود بلا تقدير ولا اتفاق: ${money.expected.unknownItems}، فالتكلفة المسجلة ليست نهائية.`,
+        );
+      }
+    }
+    if (money.outstanding) {
+      lines.push(
+        `- الباقي على صاحب الخطة (مع المهر): ${money.outstanding.owner}، وعلى غيره (الأهل والطرف الثاني): ${money.outstanding.others}`,
+      );
+    }
+    if (money.coverage) {
+      lines.push(`- هل تكفي فلوسه (محسوبة بالمواعيد): ${coverageLine(money.coverage)}`);
+    }
     if (money.categories.length === 0) {
       lines.push('- لا توجد بنود ميزانية بعد.');
     }
     for (const category of money.categories) {
+      const forecast =
+        category.expected === undefined
+          ? ''
+          : `، التقدير ${category.estimate ?? 'غير محدد'}، المتوقع ${category.expected}`;
       lines.push(
-        `- بند ${data(category.name)}: المخصص ${category.allocated ?? 'غير محدد'}، الملتزم ${category.committed}، المدفوع ${category.paid}`,
+        `- بند ${data(category.name)}: المخصص ${category.allocated ?? 'غير محدد'}، الملتزم ${category.committed}، المدفوع ${category.paid}${forecast}`,
       );
     }
   } else {
@@ -226,4 +278,34 @@ export function renderAssistantRequest(
     `المطلوب: ${KIND_INSTRUCTIONS[kind]}`,
     ...(asked ? [`سؤال المستخدم أو إضافته: ${asked}`] : []),
   ].join('\n');
+}
+
+/** D105: the expected cost against the budget, said once. */
+function expectedLine(expected: NonNullable<NonNullable<AssistantPlanFacts['money']>['expected']>): string {
+  const head = `التكلفة المتوقعة لبنود العرس (الاتفاقات وتقدير اللي ما انتفق عليه): ${expected.wedding}، منها تقديرات ${expected.estimateLeft}`;
+  if (expected.budgetLeft === null) return head;
+  const over = expected.budgetLeft.startsWith('-');
+  return over
+    ? `${head}، فوق الميزانية بـ ${expected.budgetLeft.slice(1)}`
+    : `${head}، يبقى من الميزانية ${expected.budgetLeft}`;
+}
+
+/** D103, as the money tab says it: from what he holds, on the days things are due. */
+function coverageLine(coverage: AssistantCoverageFacts): string {
+  const ignored = coverage.ignoredPledges > 0
+    ? ` (وعود ما لها موعد أو فات موعدها ما انحسبت: ${coverage.ignoredPledges})`
+    : '';
+  const short = coverage.short
+    ? `${coverage.short.amount} يوم ${coverage.short.date ?? 'بدون موعد'} (${data(coverage.short.title)})`
+    : '';
+  switch (coverage.verdict) {
+    case 'NOTHING_DUE':
+      return `ما عليه شي باقي، ومعه ${coverage.cash}`;
+    case 'COVERED':
+      return `معه ${coverage.cash}، تكفي اللي عليه (${coverage.onHim})${coverage.until ? ` لين ${coverage.until}` : ''}${ignored}`;
+    case 'COVERED_IF_PLEDGES':
+      return `معه ${coverage.cash}، وتكفي اللي عليه (${coverage.onHim}) بشرط يوصل الموعود في موعده؛ بدونه ينقصه ${short}${ignored}`;
+    case 'SHORT':
+      return `معه ${coverage.cash}، واللي عليه ${coverage.onHim}: ينقصه ${short}، ويحتاج ${coverage.needed ?? coverage.short?.amount ?? ''} زيادة عشان يدفع كل شي في موعده${ignored}`;
+  }
 }

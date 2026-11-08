@@ -1,6 +1,8 @@
 import {
+  CostEntryKind,
   CostPayer,
   CostPaymentType,
+  EstimateCover,
   Prisma,
   WeddingCostStatus,
 } from "@prisma/client";
@@ -49,6 +51,12 @@ export interface WeddingCostResponse {
   note: string | null;
   /** V1 checklist 4.10: seen only by the account that recorded it. */
   isPrivate: boolean;
+  /** D107: AGREEMENT, or EXPENSE (paid in full the day it was recorded). */
+  entryKind: CostEntryKind;
+  /** D105: what it settles of its item's estimate. */
+  estimateCover: EstimateCover;
+  /** D105: with PART, how much of the estimate. */
+  estimatePart: string | null;
   paymentsCount: number;
   paymentSchedulesCount: number;
   createdAt: Date;
@@ -79,6 +87,9 @@ export function toWeddingCostResponse(
     payerName: cost.payerName,
     note: cost.note,
     isPrivate: cost.privateToUserId !== null,
+    entryKind: cost.entryKind,
+    estimateCover: cost.estimateCover,
+    estimatePart: cost.estimatePart?.toString() ?? null,
     paymentsCount: cost._count.payments,
     paymentSchedulesCount: cost._count.paymentSchedules,
     createdAt: cost.createdAt,

@@ -79,17 +79,25 @@ export type PendingPaymentSchedule = PaymentSchedule & {
 export interface DuePaymentScheduleQuery {
   weddingPlanIds: readonly string[];
   dueBefore: Date;
+  /** D106: also the dates whose own reminder day has come by then. */
+  remindBefore?: Date;
   /** Narrows to these schedules (the re-read under the row locks). */
   scheduleIds?: readonly string[];
 }
 
-/** A budget category whose non-cancelled costs total more than its allocation. */
+/**
+ * A budget category expected to cost more than its allocation (D105): its
+ * non-cancelled agreements plus the estimate they have not settled.
+ */
 export interface ExceededBudgetCategory {
   id: string;
   weddingPlanId: string;
   name: string;
   allocatedAmount: Prisma.Decimal;
+  /** Its agreements as agreed. */
   committedAmount: Prisma.Decimal;
+  /** D105: agreements plus the estimate not settled yet. */
+  expectedAmount: Prisma.Decimal;
 }
 
 /** D59: promised money with the day it is expected (the bride's mahr rest, a promise). */

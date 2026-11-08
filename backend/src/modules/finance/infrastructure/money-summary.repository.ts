@@ -32,8 +32,12 @@ export function loadMoneySummaryRows(
         budgetCategoryId: true,
         totalAmount: true,
         title: true,
+        partyName: true,
         payer: true,
         payerName: true,
+        entryKind: true,
+        estimateCover: true,
+        estimatePart: true,
       },
     }),
     tx.costPayment.findMany({
@@ -46,7 +50,15 @@ export function loadMoneySummaryRows(
           status: { not: WeddingCostStatus.CANCELLED },
         },
       },
-      select: { weddingCostId: true, amount: true, entryType: true },
+      select: {
+        id: true,
+        weddingCostId: true,
+        amount: true,
+        entryType: true,
+        // D106: a partial payment of a date, and whether it was reversed.
+        lowersScheduleId: true,
+        reversalOfId: true,
+      },
     }),
     tx.paymentSchedule.findMany({
       where: {

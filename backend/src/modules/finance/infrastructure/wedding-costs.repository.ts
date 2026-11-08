@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type CostPayer, type WeddingCost } from '@prisma/client';
+import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type CostEntryKind, type CostPayer, type EstimateCover, type WeddingCost } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
 import { weddingCostResponseInclude } from '../public/wedding-cost.presenter';
 import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from '../../../shared-kernel/text/arabic-search';
@@ -41,6 +41,11 @@ type CostData = {
   note: string | null;
   /** V1 checklist 4.10: the one account that sees a private cost. */
   privateToUserId?: string | null;
+  /** D107. */
+  entryKind?: CostEntryKind;
+  /** D105. */
+  estimateCover?: EstimateCover;
+  estimatePart?: Prisma.Decimal | null;
 };
 type CostUpdate = Partial<Omit<CostData, 'weddingPlanId'>>;
 type CostSort = { createdAt?: 'asc' | 'desc'; id?: 'asc' | 'desc' };
@@ -67,6 +72,7 @@ type PaymentWhere = {
   id?: string | IdSet;
   weddingCostId?: string;
   paymentScheduleId?: string;
+  lowersScheduleId?: string;
   entryType?: CostPaymentType;
   weddingCost?: { weddingPlanId: string; id?: IdSet };
 };
@@ -76,6 +82,8 @@ type PaymentData = {
   paidAt: Date;
   entryType?: CostPaymentType;
   paymentScheduleId?: string;
+  /** D106: a partial payment of this pending date. */
+  lowersScheduleId?: string;
   reversalOfId?: string;
   method?: string | null;
   note?: string | null;
@@ -112,11 +120,15 @@ type ScheduleData = {
   amount: Prisma.Decimal;
   dueDate: Date;
   note: string | null;
+  remindAt?: Date | null;
 };
 type ScheduleUpdate = {
   amount?: Prisma.Decimal;
   dueDate?: Date;
   note?: string | null;
+  /** D106. */
+  remindAt?: Date | null;
+  rescheduledFrom?: Date | null;
   status?: PaymentScheduleStatus;
   paidAt?: Date | null;
   cancelledByPaidInFullAt?: Date | null;

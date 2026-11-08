@@ -1,4 +1,4 @@
-import { CostPayer } from "@prisma/client";
+import { CostPayer, EstimateCover } from "@prisma/client";
 import {
   IsBoolean,
   IsEnum,
@@ -65,4 +65,13 @@ export class UpdateWeddingCostDto {
   @MaxCharacters(2000)
   @IsOptional()
   note?: string | null;
+
+  /** D105: what it settles of its item's estimate. */
+  @IsEnum(EstimateCover)
+  @IsOptional()
+  estimateCover?: EstimateCover;
+
+  /** D105: with PART, how much of the estimate it settles. */
+  @IsOptional()
+  estimatePart?: string | number | null;
 }

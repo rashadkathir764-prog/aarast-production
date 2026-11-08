@@ -64,6 +64,8 @@ export interface BudgetCategoryResponse {
   /** MAHR is the groom's mahr item, outside the wedding budget (C1). */
   kind: BudgetCategoryKind;
   allocatedAmount: string | null;
+  /** D109: the owner's own estimate of the item. */
+  estimatedAmount: string | null;
   costsCount: number;
   /** The owner's answer to the home suggesting it: «ما أحتاجها» or «بعدين». */
   suggestion: "NOT_NEEDED" | "LATER" | null;
@@ -94,6 +96,7 @@ export class BudgetCategoriesService {
   ): Promise<BudgetCategoryResponse> {
     const name = this.requiredText(dto.name, "name");
     const allocation = this.optionalAllocation(dto.allocatedAmount);
+    const estimate = this.optionalEstimate(dto.estimatedAmount) ?? null;
     try {
       return await runSerializableTransaction(this.prisma, async (tx) => {
         const context =
@@ -109,7 +112,7 @@ export class BudgetCategoriesService {
           allocation,
         );
         const category = await createBudgetCategory(
-          tx, weddingPlanId, name, this.normalizedName(name), allocation,
+          tx, weddingPlanId, name, this.normalizedName(name), allocation, estimate,
         );
         const history = this.historyForContext(context);
         if (history) await history.recordForContextInTransaction(
@@ -248,6 +251,7 @@ export class BudgetCategoriesService {
           await excludeOthersPrivateCosts(
             tx, locked.weddingPlanId, currentUser.id, scopedCostIds,
           ),
+          this.optionalEstimate(dto.estimatedAmount),
         );
         const history = this.historyForContext(context);
         if (history) await history.recordForContextInTransaction(
@@ -514,6 +518,18 @@ export class BudgetCategoriesService {
     return amount.isZero() ? null : amount;
   }
 
+  /**
+   * D109: undefined keeps the estimate; null or empty clears it; zero is an
+   * answer («ما بيكلف شي»), unlike an allocation (RA-BE-29).
+   */
+  private optionalEstimate(value: string | number | null | undefined) {
+    if (value === undefined) return undefined;
+    if (value === null || (typeof value === "string" && value.trim() === "")) {
+      return null;
+    }
+    return new Prisma.Decimal(requiredMoneyAmount(value, "estimatedAmount"));
+  }
+
   private toResponse(category: CategoryWithCount): BudgetCategoryResponse {
     return {
       id: category.id,
@@ -521,6 +537,7 @@ export class BudgetCategoriesService {
       name: category.name,
       kind: category.kind,
       allocatedAmount: category.allocatedAmount?.toString() ?? null,
+      estimatedAmount: category.estimatedAmount?.toString() ?? null,
       costsCount: category._count.weddingCosts,
       suggestion: category.suggestion,
       suggestionUntil: category.suggestionUntil,

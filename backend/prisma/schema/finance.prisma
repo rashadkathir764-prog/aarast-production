@@ -48,6 +48,22 @@ enum CostPayer {
   OTHER
 }
 
+// D107: an EXPENSE is money paid in full the day it was recorded (a dress, a
+// gift): it lives as an agreement with one payment, and is kept apart so the
+// app can say «مصروف» and guard against recording it twice.
+enum CostEntryKind {
+  AGREEMENT
+  EXPENSE
+}
+
+// D105: how much of its item's estimate an agreement settles. WHOLE drops the
+// rest of the estimate; PART settles estimatePart of it and the rest stays
+// expected.
+enum EstimateCover {
+  WHOLE
+  PART
+}
+
 // WEDDING items share the wedding budget. MAHR is the groom's agreement with
 // the bride's family (C1): its costs count in what he owes and pays, never in
 // the budget, so it carries no allocation. One per plan.
@@ -68,7 +84,13 @@ model BudgetCategory {
   weddingPlanId   String
   name            String
   normalizedName  String
+  // A share of the general budget: optional, never above it (C15: deleting
+  // the item returns it to the reserve).
   allocatedAmount Decimal?              @db.Decimal(14, 2)
+  // D109: what the owner expects the item to cost. Free: may pass the
+  // budget (the early warning) and needs none. Without it, the allocation
+  // stands in as the estimate.
+  estimatedAmount Decimal?              @db.Decimal(14, 2)
   kind            BudgetCategoryKind    @default(WEDDING)
   suggestion      BudgetItemSuggestion?
   suggestionUntil DateTime?
@@ -98,6 +120,11 @@ model WeddingCost {
   payer            CostPayer?
   payerName        String?
   note             String?
+  entryKind        CostEntryKind     @default(AGREEMENT)
+  // D105: WHOLE keeps estimatePart null; PART needs it above zero (a CHECK
+  // constraint in the migration).
+  estimateCover    EstimateCover     @default(WHOLE)
+  estimatePart     Decimal?          @db.Decimal(14, 2)
   // V1 checklist 4.10: when set, only this account (the owner or the
   // partner who recorded it) sees the cost; null is the shared plan's.
   privateToUserId  String?
@@ -126,10 +153,15 @@ model CostPayment {
   method            String?
   note              String?
   paymentScheduleId String?
+  // D106: a partial payment of a pending date. It is a free payment (no
+  // paymentScheduleId) that lowered that date by its amount; reversing it
+  // gives the amount back.
+  lowersScheduleId  String?
   reversalOfId      String?          @unique
   createdAt         DateTime         @default(now())
   weddingCost       WeddingCost      @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
-  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_schedule_same_cost_fkey")
+  paymentSchedule   PaymentSchedule? @relation("CostPaymentSchedule", fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_schedule_same_cost_fkey")
+  lowersSchedule    PaymentSchedule? @relation("CostPaymentLowersSchedule", fields: [lowersScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_lowers_schedule_same_cost_fkey")
   reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_reversal_same_cost_fkey")
   reversedBy        CostPayment?     @relation("CostPaymentReversal")
   receipts          CostReceipt[]
@@ -138,6 +170,7 @@ model CostPayment {
   @@unique([reversalOfId, weddingCostId])
   @@index([weddingCostId, paidAt])
   @@index([paymentScheduleId])
+  @@index([lowersScheduleId])
 }
 
 /// A photo of a receipt kept with a cost, or with one of its payments (V1
@@ -161,21 +194,26 @@ model CostReceipt {
 }
 
 model PaymentSchedule {
-  id            String                @id @default(cuid())
-  weddingCostId String
-  amount        Decimal               @db.Decimal(14, 2)
-  dueDate       DateTime
-  paidAt        DateTime?
-  status        PaymentScheduleStatus @default(PENDING)
-  note          String?
+  id                      String                @id @default(cuid())
+  weddingCostId           String
+  amount                  Decimal               @db.Decimal(14, 2)
+  dueDate                 DateTime
+  paidAt                  DateTime?
+  status                  PaymentScheduleStatus @default(PENDING)
+  note                    String?
   // RA-BE-25: set when the agreement's being paid in full cancelled this
   // reminder; it comes back when money is owed again (a reversed payment,
   // a raised total). A reminder cancelled by hand has none.
   cancelledByPaidInFullAt DateTime?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  weddingCost   WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)
-  payments      CostPayment[]
+  // D106: the day to remind on, apart from the due day (null: the default
+  // window before it), and the first due day when the date was moved.
+  remindAt                DateTime?
+  rescheduledFrom         DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  weddingCost             WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)
+  payments                CostPayment[]         @relation("CostPaymentSchedule")
+  partialPayments         CostPayment[]         @relation("CostPaymentLowersSchedule")
 
   @@unique([id, weddingCostId])
   @@index([weddingCostId, status, dueDate])
@@ -185,22 +223,25 @@ model PaymentSchedule {
 /// Money coming into the wedding: savings, family support, gifts (rifd and
 /// nuqut), loans. Tracking only — Aarast never holds or moves this money.
 model FundingSource {
-  id            String              @id @default(cuid())
-  weddingPlanId String
-  kind          FundingSourceKind
-  sourceName    String
-  sourcePhone   String?
-  amount        Decimal             @db.Decimal(14, 2)
-  status        FundingSourceStatus @default(RECEIVED)
-  receivedAt    DateTime?
+  id              String              @id @default(cuid())
+  weddingPlanId   String
+  kind            FundingSourceKind
+  sourceName      String
+  sourcePhone     String?
+  amount          Decimal             @db.Decimal(14, 2)
+  status          FundingSourceStatus @default(RECEIVED)
+  receivedAt      DateTime?
   // PLEDGED money: the day it is expected (the rest of the mahr on the
   // contract day, a promise «قبل العرس»).
-  expectedAt    DateTime?
-  note          String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  weddingPlan   WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  repayments    LoanRepayment[]
+  expectedAt      DateTime?
+  note            String?
+  // D108: the person behind the money, matched with the agreements'
+  // payerName (the family member who also pays shops directly).
+  contributorName String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  weddingPlan     WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  repayments      LoanRepayment[]
 
   @@unique([id, weddingPlanId])
   @@index([weddingPlanId, kind])

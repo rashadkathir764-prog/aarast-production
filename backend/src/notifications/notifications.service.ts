@@ -105,6 +105,7 @@ import {
   type DueNotice,
   loanRepaymentRow,
   paymentDueNotice,
+  paymentReminderDue,
   taskDueContent,
   taskDueKey,
   taskDueNotice,
@@ -803,7 +804,11 @@ export class NotificationsService implements NotificationsPort {
         };
         const [taskSeeds, paymentScheduleSeeds] = await Promise.all([
           this.tasks.listDueTasks(tx, dueTasks),
-          this.finance.listDuePaymentSchedules(tx, { ...dueTasks, weddingPlanIds: planIds }),
+          this.finance.listDuePaymentSchedules(tx, {
+            ...dueTasks,
+            weddingPlanIds: planIds,
+            remindBefore: endOfRiyadhDay(today),
+          }),
         ]);
         const taskIds = taskSeeds.map((task) => task.id).sort();
         await this.tasks.lockTaskRowsForShareInTransaction(tx, taskIds);
@@ -825,6 +830,7 @@ export class NotificationsService implements NotificationsPort {
           this.finance.listDuePaymentSchedules(tx, {
             ...dueTasks,
             weddingPlanIds: planIds,
+            remindBefore: endOfRiyadhDay(today),
             scheduleIds,
           }),
           this.repository.dueReminderPreferences(tx, recipientUserIds),
@@ -953,6 +959,8 @@ export class NotificationsService implements NotificationsPort {
         for (const schedule of paymentSchedules) {
           const plan = plansById.get(schedule.weddingCost.weddingPlanId);
           if (!plan) continue;
+          // D106: its own reminder day, not the default week, when it has one.
+          if (!paymentReminderDue(schedule, today)) continue;
           const planRecipients = [
             plan.ownerUserId,
             ...plan.sharedMembers

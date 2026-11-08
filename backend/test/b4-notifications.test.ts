@@ -159,7 +159,7 @@ function allBuiltNotices(): Array<{ label: string; notice: CreateNotificationInp
     { label: 'payment/owner', notice: paymentDueNotice(ids.requester, schedule, { id: ids.plan, currency: 'YER' }, today, { partyName: 'قاعة سبأ' }) },
     { label: 'payment/member', notice: paymentDueNotice('user-3', schedule, { id: ids.plan, currency: 'YER' }, today, null) },
     { label: 'payment/overdue', notice: paymentDueNotice(ids.requester, { ...schedule, dueDate: new Date('2026-10-20T00:00:00.000Z') } as typeof schedule, { id: ids.plan, currency: 'YER' }, today, { partyName: null }) },
-    { label: 'budget/exceeded', notice: budgetCategoryExceededRow(ids.requester, { id: 'category-1', weddingPlanId: ids.plan, name: 'القاعة', allocatedAmount: d('2000000'), committedAmount: d('2500000') }, 'YER') },
+    { label: 'budget/exceeded', notice: budgetCategoryExceededRow(ids.requester, { id: 'category-1', weddingPlanId: ids.plan, name: 'القاعة', allocatedAmount: d('2000000'), committedAmount: d('2500000'), expectedAmount: d('2500000') }, 'YER') },
     { label: 'loan/soon', notice: loanRepaymentRow(ids.requester, { id: 'repayment-1', weddingPlanId: ids.plan, sourceName: 'العم أحمد', amount: d('150000'), dueDate: new Date('2026-10-29T00:00:00.000Z') }, today, 'YER') },
     { label: 'loan/overdue', notice: loanRepaymentRow(ids.requester, { id: 'repayment-1', weddingPlanId: ids.plan, sourceName: 'العم أحمد', amount: d('150000'), dueDate: new Date('2026-10-01T00:00:00.000Z') }, today, 'YER') },
     ...[30, 7, 1, 0].map((days) => ({

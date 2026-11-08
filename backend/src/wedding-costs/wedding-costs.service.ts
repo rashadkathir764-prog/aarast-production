@@ -17,6 +17,7 @@ import {
   ContributionEntityType,
   ContributionPermission,
   ContributionSection,
+  CostEntryKind,
   CostPaymentType,
   PaymentScheduleStatus,
   Prisma,
@@ -79,6 +80,8 @@ import {
 import {
   costCancellationViolation,
   costDeletionViolation,
+  expenseInitialPaymentViolation,
+  expenseTotalChangeViolation,
   deriveCostStatus,
   initialPaymentViolation,
   payableViolation,
@@ -89,10 +92,13 @@ import {
 } from "../modules/finance/domain/wedding-cost-aggregate";
 import {
   scheduleAmountDue,
+  remindDayViolation,
   scheduleAmountViolation,
   scheduledPaymentViolation,
   schedulesToCancelOnStatus,
 } from "../modules/finance/domain/payment-schedule-policy";
+import { estimateCoverOf } from "../modules/finance/domain/expected-cost-policy";
+import { riyadhDay } from "../modules/finance/domain/money-timeline-policy";
 import {
   insertWeddingCost,
   requireWeddingCost,
@@ -171,6 +177,8 @@ export interface CostPaymentResponse {
   amount: string;
   entryType: CostPaymentType;
   paymentScheduleId: string | null;
+  /** D106: the pending date this partial payment lowered. */
+  lowersScheduleId: string | null;
   reversalOfId: string | null;
   reversedById: string | null;
   reversible: boolean;
@@ -208,6 +216,10 @@ export interface PaymentScheduleResponse {
   status: PaymentScheduleStatus;
   isOverdue: boolean;
   note: string | null;
+  /** D106: its own reminder day; null: the week before, and when late. */
+  remindAt: Date | null;
+  /** D106: the first due day, when it was moved. */
+  rescheduledFrom: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -215,6 +227,8 @@ export interface PaymentScheduleResponse {
 export interface SchedulePaymentResponse {
   payment: CostPaymentResponse;
   schedule: PaymentScheduleResponse;
+  /** D106: paid more than the date asked: the rest, on the agreement. */
+  extraPayment?: CostPaymentResponse | null;
 }
 
 interface NormalizedCounterparty {
@@ -250,11 +264,25 @@ export class WeddingCostsService {
     dto: CreateWeddingCostDto,
   ): Promise<WeddingCostResponse> {
     const totalAmount = this.positiveAmount(dto.totalAmount, "totalAmount");
-    const initialPayment = this.optionalAmount(
+    const entryKind = dto.entryKind ?? CostEntryKind.AGREEMENT;
+    const typedInitialPayment = this.optionalAmount(
       dto.initialPaymentAmount,
       "initialPaymentAmount",
     );
+    // D107: an expense is paid in full the day it is recorded.
+    raiseFinanceViolation(
+      expenseInitialPaymentViolation(entryKind, totalAmount, typedInitialPayment),
+    );
+    const initialPayment =
+      entryKind === CostEntryKind.EXPENSE ? totalAmount : typedInitialPayment;
     raiseFinanceViolation(initialPaymentViolation(initialPayment, totalAmount));
+    // D105: what it settles of its item's estimate.
+    const cover = estimateCoverOf({
+      entryKind,
+      totalAmount,
+      estimateCover: dto.estimateCover ?? null,
+      estimatePart: this.optionalPositiveAmount(dto.estimatePart, "estimatePart"),
+    });
 
     try {
       const cost = await runSerializableTransaction(this.prisma, async (tx) => {
@@ -300,6 +328,9 @@ export class WeddingCostsService {
             payerName: this.optionalText(dto.payerName),
             note: this.optionalText(dto.note),
             privateToUserId: this.privateOwnerForNewCost(context, currentUser, dto.isPrivate),
+            entryKind,
+            estimateCover: cover.estimateCover,
+            estimatePart: cover.estimatePart,
           },
         });
         if (initialPayment.gt(0)) {
@@ -308,7 +339,8 @@ export class WeddingCostsService {
               weddingCostId: created.id,
               amount: initialPayment,
               paidAt: created.agreementDate ?? new Date(),
-              note: "دفعة أولى",
+              note:
+                entryKind === CostEntryKind.EXPENSE ? "دفعتها كاملة" : "دفعة أولى",
             },
           });
         }
@@ -545,6 +577,28 @@ export class WeddingCostsService {
         raiseFinanceViolation(
           totalAmountViolation(totalAmount, locked.paidAmount),
         );
+        raiseFinanceViolation(
+          expenseTotalChangeViolation(
+            locked.entryKind,
+            locked.totalAmount,
+            totalAmount,
+            locked.paidAmount,
+          ),
+        );
+        // D105: a new choice of what it settles; a part with no amount is
+        // the agreement's own amount.
+        const cover =
+          dto.estimateCover === undefined && dto.estimatePart === undefined
+            ? null
+            : estimateCoverOf({
+                entryKind: locked.entryKind,
+                totalAmount,
+                estimateCover: dto.estimateCover ?? locked.estimateCover,
+                estimatePart:
+                  dto.estimatePart === undefined
+                    ? locked.estimatePart
+                    : this.optionalPositiveAmount(dto.estimatePart, "estimatePart"),
+              });
         const budgetCategoryId =
           dto.budgetCategoryId === undefined
             ? locked.budgetCategoryId
@@ -592,6 +646,7 @@ export class WeddingCostsService {
             ...(dto.note === undefined
               ? {}
               : { note: this.optionalText(dto.note) }),
+            ...(cover ?? {}),
           },
           include: weddingCostResponseInclude,
         });
@@ -1021,6 +1076,23 @@ export class WeddingCostsService {
         deriveCostStatus(cost.totalAmount, paidAmount),
         cost.totalAmount.minus(paidAmount),
       );
+      // D106: a partial payment gives its amount back to its date while the
+      // date is still to pay (never above what is left); a date paid or
+      // cancelled since keeps its amount, and the rest is undated.
+      if (payment.lowersScheduleId) {
+        await this.lockSchedule(tx, payment.lowersScheduleId);
+        const lowered = await findPaymentSchedule(tx, {
+          where: { id: payment.lowersScheduleId },
+        });
+        if (lowered && lowered.status === PaymentScheduleStatus.PENDING) {
+          const restored = lowered.amount.plus(payment.amount);
+          const left = cost.totalAmount.minus(paidAmount);
+          await updatePaymentSchedule(tx, {
+            where: { id: lowered.id },
+            data: { amount: restored.lt(left) ? restored : left },
+          });
+        }
+      }
       if (payment.paymentScheduleId) {
         await updatePaymentSchedule(tx, {
           where: { id: payment.paymentScheduleId },
@@ -1072,12 +1144,15 @@ export class WeddingCostsService {
       raiseFinanceViolation(
         scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
       );
+      const dueDate = this.requiredDate(dto.dueDate, "dueDate");
       const schedule = await insertPaymentSchedule(tx, {
         data: {
           weddingCostId: costId,
           amount,
-          dueDate: this.requiredDate(dto.dueDate, "dueDate"),
+          dueDate,
           note: this.optionalText(dto.note),
+          remindAt:
+            dto.remindAt === undefined ? null : this.remindAtFor(dto.remindAt, dueDate),
         },
         include: scheduleInclude,
       });
@@ -1222,21 +1297,45 @@ export class WeddingCostsService {
       if (paymentHistory > 0 && dto.amount !== undefined) {
         throw financeConflict("The amount of a payment schedule with ledger history cannot be changed");
       }
+      this.assertCostPayable(cost.status);
+      // RA-BE-109: only a new amount is a new claim on what is left. Moving
+      // the day, the note or the reminder of a date that asks for less than
+      // its amount (RA-BE-53) is not refused for that amount.
       const amount =
         dto.amount === undefined
-          ? schedule.amount
+          ? undefined
           : this.positiveAmount(dto.amount, "amount");
-      this.assertCostPayable(cost.status);
-      raiseFinanceViolation(
-        scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
-      );
+      if (amount !== undefined && !amount.equals(schedule.amount)) {
+        raiseFinanceViolation(
+          scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
+        );
+      }
+      // D106: a new due day is a new agreement with the other side; the
+      // first one is kept, and its own reminder goes back to the default.
+      const dueDate =
+        dto.dueDate === undefined
+          ? schedule.dueDate
+          : this.requiredDate(dto.dueDate, "dueDate");
+      const moved = riyadhDay(dueDate) !== riyadhDay(schedule.dueDate);
+      const firstDue = schedule.rescheduledFrom ?? schedule.dueDate;
+      const remindAt =
+        dto.remindAt !== undefined
+          ? this.remindAtFor(dto.remindAt, dueDate)
+          : moved
+            ? null
+            : undefined;
       const updated = await updatePaymentSchedule(tx, {
         where: { id },
         data: {
-          amount,
-          ...(dto.dueDate === undefined
-            ? {}
-            : { dueDate: this.requiredDate(dto.dueDate, "dueDate") }),
+          ...(amount === undefined ? {} : { amount }),
+          ...(moved
+            ? {
+                dueDate,
+                rescheduledFrom:
+                  riyadhDay(dueDate) === riyadhDay(firstDue) ? null : firstDue,
+              }
+            : {}),
+          ...(remindAt === undefined ? {} : { remindAt }),
           ...(dto.note === undefined
             ? {}
             : { note: this.optionalText(dto.note) }),
@@ -1286,9 +1385,10 @@ export class WeddingCostsService {
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
         throw financeConflict("Only pending payment schedules can be deleted");
       }
-      const paymentHistory = await countCostPayments(tx, {
-        where: { paymentScheduleId: id },
-      });
+      // D106: a partial payment of it is ledger history too.
+      const paymentHistory =
+        (await countCostPayments(tx, { where: { paymentScheduleId: id } })) +
+        (await countCostPayments(tx, { where: { lowersScheduleId: id } }));
       if (paymentHistory > 0) {
         throw financeConflict("A payment schedule with ledger history cannot be deleted");
       }
@@ -1457,6 +1557,16 @@ export class WeddingCostsService {
       raiseFinanceViolation(
         scheduledPaymentViolation(due, cost.totalAmount, cost.paidAmount),
       );
+      // D106: what was paid, when it is not what the date asks for. Never
+      // more than what is left on the agreement.
+      const paid = this.optionalPositiveAmount(dto.amount, "amount") ?? due;
+      raiseFinanceViolation(
+        paymentAmountViolation(paid, cost.totalAmount, cost.paidAmount),
+      );
+      const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
+      if (paid.lt(due)) {
+        return this.payPartOfSchedule(tx, context, { cost, schedule, due, paid, paidAt, dto });
+      }
       // A paid schedule is the record of its payment: the ledger holds the
       // two equal (`CostPayment_entry_integrity`), so a schedule paid for
       // less than it asked takes the amount paid.
@@ -1466,7 +1576,6 @@ export class WeddingCostsService {
           data: { amount: due },
         });
       }
-      const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
       const payment = await insertCostPayment(tx, {
         data: {
           weddingCostId: cost.id,
@@ -1489,7 +1598,21 @@ export class WeddingCostsService {
         { scheduleId: id },
         true,
       );
-      const paidAmount = cost.paidAmount.plus(due);
+      // D106: more than the date asked: the rest is a payment on the
+      // agreement, and the dates after it ask for what is left.
+      const extra = paid.gt(due)
+        ? await insertCostPayment(tx, {
+            data: {
+              weddingCostId: cost.id,
+              amount: paid.minus(due),
+              paidAt,
+              method: this.optionalText(dto.method),
+              note: this.optionalText(dto.note) ?? schedule.note,
+            },
+            include: paymentInclude,
+          })
+        : null;
+      const paidAmount = cost.paidAmount.plus(paid);
       const status = deriveCostStatus(cost.totalAmount, paidAmount);
       await updateWeddingCost(tx, {
         where: { id: cost.id },
@@ -1509,7 +1632,7 @@ export class WeddingCostsService {
           currency: context.plan.currency,
           totalAmount: cost.totalAmount,
           paidAmount,
-          amount: payment.amount,
+          amount: paid,
           status,
           relevantDate: paidAt,
         },
@@ -1518,11 +1641,81 @@ export class WeddingCostsService {
       return {
         payment: await this.presentPayment(tx, payment),
         schedule: await this.presentSchedule(tx, paidSchedule),
+        extraPayment: extra ? await this.presentPayment(tx, extra) : null,
         created: true,
       };
     });
     if (result.created) paymentsRecordedTotal.inc();
-    return { payment: result.payment, schedule: result.schedule };
+    return {
+      payment: result.payment,
+      schedule: result.schedule,
+      extraPayment: result.extraPayment ?? null,
+    };
+  }
+
+  /**
+   * D106: less than a pending date asks for. The ledger holds a paid date
+   * equal to its one payment, so this is a payment on the agreement linked to
+   * the date (`lowersScheduleId`), and the date asks for that much less, in
+   * the same transaction. Reversing it gives the amount back to the date.
+   */
+  private async payPartOfSchedule(
+    tx: Tx,
+    context: Awaited<ReturnType<PermissionService["assertMoneyManageableInTransaction"]>>,
+    input: {
+      cost: Awaited<ReturnType<WeddingCostsService["lockCost"]>>;
+      schedule: { id: string; note: string | null };
+      due: Prisma.Decimal;
+      paid: Prisma.Decimal;
+      paidAt: Date;
+      dto: PayPaymentScheduleDto;
+    },
+  ) {
+    const { cost, schedule, due, paid, paidAt, dto } = input;
+    const payment = await insertCostPayment(tx, {
+      data: {
+        weddingCostId: cost.id,
+        lowersScheduleId: schedule.id,
+        amount: paid,
+        paidAt,
+        method: this.optionalText(dto.method),
+        note: this.optionalText(dto.note) ?? schedule.note,
+      },
+      include: paymentInclude,
+    });
+    const lowered = await updatePaymentSchedule(tx, {
+      where: { id: schedule.id },
+      data: { amount: due.minus(paid) },
+      include: scheduleInclude,
+    });
+    const paidAmount = cost.paidAmount.plus(paid);
+    const status = deriveCostStatus(cost.totalAmount, paidAmount);
+    await updateWeddingCost(tx, {
+      where: { id: cost.id },
+      data: { paidAmount, status },
+    });
+    await this.recordMoneyEvent(tx, context, {
+      entityType: ContributionEntityType.WEDDING_COST,
+      entityId: cost.id,
+      action: ContributionAction.PAYMENT_RECORDED,
+      dedupeKey: `money:wedding-cost:${cost.id}:schedule-part:${payment.id}`,
+      source: {
+        title: cost.title,
+        currency: context.plan.currency,
+        totalAmount: cost.totalAmount,
+        paidAmount,
+        amount: paid,
+        status,
+        relevantDate: paidAt,
+      },
+      occurredAt: paidAt,
+    });
+    return {
+      payment: await this.presentPayment(tx, payment),
+      schedule: await this.presentSchedule(tx, lowered),
+      extraPayment: null,
+      created: true,
+    };
   }
 
   private async normalizeCounterparty(
@@ -2152,6 +2345,7 @@ export class WeddingCostsService {
       amount: payment.amount.toString(),
       entryType: payment.entryType,
       paymentScheduleId: payment.paymentScheduleId,
+      lowersScheduleId: payment.lowersScheduleId,
       reversalOfId: payment.reversalOfId,
       reversedById: payment.reversedBy?.id ?? null,
       reversible:
@@ -2198,6 +2392,8 @@ export class WeddingCostsService {
         schedule.status === PaymentScheduleStatus.PENDING &&
         schedule.dueDate < this.startOfTodayInRiyadh(),
       note: schedule.note,
+      remindAt: schedule.remindAt,
+      rescheduledFrom: schedule.rescheduledFrom,
       createdAt: schedule.createdAt,
       updatedAt: schedule.updatedAt,
     };
@@ -2225,6 +2421,34 @@ export class WeddingCostsService {
       return new Prisma.Decimal(0);
     }
     return this.positiveAmount(value, field);
+  }
+
+  private optionalPositiveAmount(
+    value: string | number | null | undefined,
+    field: string,
+  ): Prisma.Decimal | null {
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "string" && value.trim() === "")
+    ) {
+      return null;
+    }
+    return this.positiveAmount(value, field);
+  }
+
+  /** D106: a reminder day of its own, between today and the due day; null clears it. */
+  private remindAtFor(value: string | null, dueDate: Date): Date | null {
+    if (value === null || value.trim() === "") return null;
+    const remindAt = this.requiredDate(value, "remindAt");
+    raiseFinanceViolation(
+      remindDayViolation(
+        riyadhDay(remindAt),
+        riyadhDay(this.startOfTodayInRiyadh()),
+        riyadhDay(dueDate),
+      ),
+    );
+    return remindAt;
   }
 
   private requiredText(value: string, field: string) {

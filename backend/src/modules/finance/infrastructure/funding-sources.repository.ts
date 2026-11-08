@@ -18,6 +18,8 @@ export interface FundingSourceValues {
   kind: FundingSourceKind;
   sourceName: string;
   sourcePhone: string | null;
+  /** D108. */
+  contributorName?: string | null;
   amount: Prisma.Decimal;
   status: FundingSourceStatus;
   receivedAt: Date | null;

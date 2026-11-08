@@ -289,7 +289,8 @@ test('dashboard money warnings distinguish budget, overdue and due-soon states',
       {
         type: 'BUDGET_EXCEEDED',
         severity: 'DANGER',
-        message: 'التكاليف المؤكدة تجاوزت الميزانية العامة.',
+        // D105: by the expected cost, and in the app's words.
+        message: 'تكلفة العرس المتوقعة فاتت الميزانية.',
         count: null,
         amount: '125.50',
       },

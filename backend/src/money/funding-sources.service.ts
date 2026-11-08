@@ -73,6 +73,8 @@ export interface FundingSourceResponse {
   kind: FundingSourceKind;
   sourceName: string;
   sourcePhone: string | null;
+  /** D108: who gave or promised it. */
+  contributorName: string | null;
   amount: string;
   status: FundingSourceStatus;
   receivedAt: Date | null;
@@ -147,6 +149,7 @@ export class FundingSourcesService {
         kind: dto.kind,
         sourceName: this.requiredText(dto.sourceName, "sourceName"),
         sourcePhone: this.optionalText(dto.sourcePhone),
+        contributorName: this.optionalText(dto.contributorName),
         amount: this.amount(dto.amount, "amount"),
         status,
         receivedAt: this.receivedAt(status, dto.receivedAt),
@@ -190,6 +193,9 @@ export class FundingSourcesService {
           : {}),
         ...(dto.sourcePhone !== undefined
           ? { sourcePhone: this.optionalText(dto.sourcePhone) }
+          : {}),
+        ...(dto.contributorName !== undefined
+          ? { contributorName: this.optionalText(dto.contributorName) }
           : {}),
         amount: nextAmount,
         status: nextStatus,
@@ -427,6 +433,7 @@ export function toFundingSourceResponse(
     kind: source.kind,
     sourceName: source.sourceName,
     sourcePhone: source.sourcePhone,
+    contributorName: source.contributorName,
     amount: source.amount.toString(),
     status: source.status,
     receivedAt: source.receivedAt,

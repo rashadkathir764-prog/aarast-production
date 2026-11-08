@@ -126,6 +126,14 @@ const emptyMoney = {
   mahr: null,
   payers: [],
   categories: [],
+  expected: {
+    wedding: { agreed: '0', estimateLeft: '0', expected: '0', unknownCount: 0 },
+    mahr: { agreed: '0', estimateLeft: '0', expected: '0', unknownCount: 0 },
+    total: '0',
+    budgetLeft: '20000',
+  },
+  outstanding: { total: '0', owner: '0', ownerMahr: '0', others: '0' },
+  coverage: null,
 };
 
 function serviceFor(options: {
@@ -276,9 +284,29 @@ test('the assistant reads the money the app shows: the budget is the wedding\'s,
       { payer: 'FAMILY', payerName: 'الوالد', ownerMoney: false, paid: '1300000' },
     ],
     categories: [
-      { name: 'المهر', kind: 'MAHR', allocatedAmount: null, confirmedCost: '3000000', paid: '2000000' },
-      { name: 'القاعة', kind: 'WEDDING', allocatedAmount: '2500000', confirmedCost: '2000000', paid: '500000' },
+      { name: 'المهر', kind: 'MAHR', allocatedAmount: null, estimate: null, expectedCost: '3000000', confirmedCost: '3000000', paid: '2000000' },
+      { name: 'القاعة', kind: 'WEDDING', allocatedAmount: '2500000', estimate: '2500000', expectedCost: '2000000', confirmedCost: '2000000', paid: '500000' },
     ],
+    expected: {
+      wedding: { agreed: '4900000', estimateLeft: '1500000', expected: '6400000', unknownCount: 2 },
+      mahr: { agreed: '3000000', estimateLeft: '0', expected: '3000000', unknownCount: 0 },
+      total: '9400000',
+      budgetLeft: '600000',
+    },
+    outstanding: { total: '3300000', owner: '1600000', ownerMahr: '1000000', others: '1700000' },
+    coverage: {
+      verdict: 'SHORT',
+      cash: '200000',
+      total: '1600000',
+      lastDate: new Date('2026-12-14T21:00:00.000Z'),
+      withPledges: {
+        firstShort: { date: new Date('2026-11-14T21:00:00.000Z'), amount: '800000', title: 'المهر', id: 's1' },
+        deepest: { date: null, amount: '1400000', title: 'الضيافة', id: 'c1' },
+        end: '-1400000',
+      },
+      withoutPledges: { firstShort: null, deepest: null, end: '-1400000' },
+      pledgesIgnored: [{ id: 'p1' }],
+    },
   };
   const { service, calls } = serviceFor({ money });
   await service.ask(user, 'plan-1', ask);
@@ -289,6 +317,13 @@ test('the assistant reads the money the app shows: the budget is the wedding\'s,
   assert.match(text, /دفعه صاحب الخطة من فلوسه \(كل الاتفاقات\): 3300000.00/);
   assert.match(text, /دفع عنه الوالد: 1300000.00/);
   assert.doesNotMatch(text, /بند المهر/, 'the mahr item is not one of the budget items');
+  // D105: the expected cost, and that it is not final; D102: on whom; D103:
+  // the same verdict the money tab says, with its day.
+  assert.match(text, /التكلفة المتوقعة لبنود العرس \(الاتفاقات وتقدير اللي ما انتفق عليه\): 6400000.00، منها تقديرات 1500000.00، يبقى من الميزانية 600000.00/);
+  assert.match(text, /بنود بلا تقدير ولا اتفاق: 2، فالتكلفة المسجلة ليست نهائية/);
+  assert.match(text, /الباقي على صاحب الخطة \(مع المهر\): 1600000.00، وعلى غيره \(الأهل والطرف الثاني\): 1700000.00/);
+  assert.match(text, /هل تكفي فلوسه \(محسوبة بالمواعيد\): معه 200000.00، واللي عليه 1600000.00: ينقصه 800000.00 يوم 2026-11-15 \(المهر\)، ويحتاج 1400000.00 زيادة عشان يدفع كل شي في موعده \(وعود ما لها موعد أو فات موعدها ما انحسبت: 1\)/);
+  assert.match(text, /بند القاعة: المخصص 2500000.00، الملتزم 2000000.00، المدفوع 500000.00، التقدير 2500000.00، المتوقع 2000000.00/);
   assert.deepEqual(calls.moneyQueries, [
     {
       weddingPlanId: 'plan-1',

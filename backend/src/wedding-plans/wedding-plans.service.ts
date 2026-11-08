@@ -116,6 +116,8 @@ export interface OnboardingBudgetCategoryResponse {
   weddingPlanId: string;
   name: string;
   allocatedAmount: string | null;
+  /** D109. */
+  estimatedAmount: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1152,6 +1154,7 @@ export class WeddingPlansService {
       weddingPlanId: category.weddingPlanId,
       name: category.name,
       allocatedAmount: category.allocatedAmount?.toString() ?? null,
+      estimatedAmount: category.estimatedAmount?.toString() ?? null,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     };

@@ -55,6 +55,8 @@ export interface MoneyBudgetCategoryResult {
   weddingPlanId: string;
   name: string;
   allocatedAmount: string | null;
+  /** D109. */
+  estimatedAmount: string | null;
   costsCount: number;
   createdAt: Date;
   updatedAt: Date;
@@ -160,6 +162,7 @@ export class MoneyBudgetService {
             item.name,
             item.normalizedName,
             item.allocatedAmount,
+            item.estimatedAmount,
           );
         }
         for (const item of categories.filter((category) => !category.id)) {
@@ -169,6 +172,7 @@ export class MoneyBudgetService {
             item.name,
             item.normalizedName,
             item.allocatedAmount,
+            item.estimatedAmount ?? null,
           );
           idMap[item.clientId!] = created.id;
         }
@@ -196,6 +200,7 @@ export class MoneyBudgetService {
             weddingPlanId: category.weddingPlanId,
             name: category.name,
             allocatedAmount: category.allocatedAmount?.toString() ?? null,
+            estimatedAmount: category.estimatedAmount?.toString() ?? null,
             costsCount: category._count.weddingCosts,
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
@@ -305,6 +310,17 @@ export class MoneyBudgetService {
       name,
       normalizedName: name.toLocaleLowerCase("ar"),
       allocatedAmount: parsed?.isZero() ? null : parsed,
+      // D109: a phone that does not send it keeps what is saved.
+      estimatedAmount:
+        item.estimatedAmount === undefined
+          ? undefined
+          : item.estimatedAmount === null ||
+              (typeof item.estimatedAmount === "string" &&
+                item.estimatedAmount.trim() === "")
+            ? null
+            : new Prisma.Decimal(
+                requiredMoneyAmount(item.estimatedAmount, "estimatedAmount"),
+              ),
     };
   }
 

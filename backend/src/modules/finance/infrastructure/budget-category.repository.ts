@@ -10,9 +10,10 @@ export function createBudgetCategory(
   name: string,
   normalizedName: string,
   allocatedAmount: Prisma.Decimal | null,
+  estimatedAmount: Prisma.Decimal | null = null,
 ) {
   return tx.budgetCategory.create({
-    data: { weddingPlanId, name, normalizedName, allocatedAmount },
+    data: { weddingPlanId, name, normalizedName, allocatedAmount, estimatedAmount },
     include: { _count: { select: { weddingCosts: true } } },
   });
 }
@@ -52,10 +53,17 @@ export function updateBudgetCategory(
   normalizedName: string,
   allocatedAmount: Prisma.Decimal | null,
   scopedCostIds: readonly string[] | null,
+  /** D109: undefined keeps it. */
+  estimatedAmount?: Prisma.Decimal | null,
 ) {
   return tx.budgetCategory.update({
     where: { id },
-    data: { name, normalizedName, allocatedAmount },
+    data: {
+      name,
+      normalizedName,
+      allocatedAmount,
+      ...(estimatedAmount === undefined ? {} : { estimatedAmount }),
+    },
     include: {
       _count: {
         select: {
@@ -172,10 +180,17 @@ export function replaceBudgetCategoryValues(
   name: string,
   normalizedName: string,
   allocatedAmount: Prisma.Decimal | null,
+  /** D109: undefined keeps it (a phone that does not know it yet). */
+  estimatedAmount?: Prisma.Decimal | null,
 ) {
   return tx.budgetCategory.update({
     where: { id },
-    data: { name, normalizedName, allocatedAmount },
+    data: {
+      name,
+      normalizedName,
+      allocatedAmount,
+      ...(estimatedAmount === undefined ? {} : { estimatedAmount }),
+    },
   });
 }
 
@@ -185,9 +200,10 @@ export function createReplacementBudgetCategory(
   name: string,
   normalizedName: string,
   allocatedAmount: Prisma.Decimal | null,
+  estimatedAmount: Prisma.Decimal | null = null,
 ) {
   return tx.budgetCategory.create({
-    data: { weddingPlanId, name, normalizedName, allocatedAmount },
+    data: { weddingPlanId, name, normalizedName, allocatedAmount, estimatedAmount },
   });
 }
 

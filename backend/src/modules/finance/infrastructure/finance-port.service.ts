@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BudgetItemSuggestion,
   type BudgetCategory,
   BudgetCategoryKind,
   CostPaymentType,
@@ -23,6 +24,7 @@ import {
 } from '../../catalog/public/catalog-read.port';
 import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
+import { expectedItem } from '../domain/expected-cost-policy';
 import { parseMahrAgreement } from '../public/mahr-agreement';
 import { deletePlanFundingSources } from './funding-sources.repository';
 import { recordPlanMahrInTransaction } from './mahr.repository';
@@ -396,7 +398,15 @@ export class FinancePortService implements FinancePort {
     const schedules = await client.paymentSchedule.findMany({
       where: {
         ...(query.scheduleIds ? { id: { in: [...query.scheduleIds] } } : {}),
-        dueDate: { lte: query.dueBefore },
+        // D106: a reminder day of its own may be further out than the window.
+        ...(query.remindBefore
+          ? {
+              OR: [
+                { dueDate: { lte: query.dueBefore } },
+                { remindAt: { lte: query.remindBefore } },
+              ],
+            }
+          : { dueDate: { lte: query.dueBefore } }),
         status: PaymentScheduleStatus.PENDING,
         weddingCost: {
           weddingPlanId: { in: [...query.weddingPlanIds] },
@@ -437,12 +447,19 @@ export class FinancePortService implements FinancePort {
         weddingPlanId: { in: [...weddingPlanIds] },
         allocatedAmount: { not: null },
       },
-      select: { id: true, weddingPlanId: true, name: true, allocatedAmount: true },
+      select: {
+        id: true,
+        weddingPlanId: true,
+        name: true,
+        allocatedAmount: true,
+        estimatedAmount: true,
+        suggestion: true,
+      },
     });
     if (categories.length === 0) return [];
-    // The same committed total the money summary uses: non-cancelled costs.
-    const totals = await client.weddingCost.groupBy({
-      by: ['budgetCategoryId'],
+    // The money summary's rule (D105): non-cancelled agreements, and the
+    // estimate they have not settled.
+    const costs = await client.weddingCost.findMany({
       where: {
         budgetCategoryId: { in: categories.map((category) => category.id) },
         status: { not: WeddingCostStatus.CANCELLED },
@@ -450,22 +467,34 @@ export class FinancePortService implements FinancePort {
         // plan-wide alert (it would reveal the cost indirectly).
         privateToUserId: null,
       },
-      _sum: { totalAmount: true },
+      select: {
+        budgetCategoryId: true,
+        totalAmount: true,
+        estimateCover: true,
+        estimatePart: true,
+      },
     });
-    const committedByCategory = new Map(
-      totals.map((total) => [total.budgetCategoryId, total._sum.totalAmount]),
-    );
+    const zero = new Prisma.Decimal(0);
     return categories.flatMap((category) => {
-      const committed = committedByCategory.get(category.id);
-      if (!committed || !category.allocatedAmount) return [];
-      if (!committed.gt(category.allocatedAmount)) return [];
+      if (!category.allocatedAmount) return [];
+      const expected = expectedItem(
+        {
+          allocatedAmount: category.allocatedAmount,
+          estimatedAmount: category.estimatedAmount,
+          notNeeded: category.suggestion === BudgetItemSuggestion.NOT_NEEDED,
+        },
+        costs.filter((cost) => cost.budgetCategoryId === category.id),
+        zero,
+      );
+      if (!expected.expected.gt(category.allocatedAmount)) return [];
       return [
         {
           id: category.id,
           weddingPlanId: category.weddingPlanId,
           name: category.name,
           allocatedAmount: category.allocatedAmount,
-          committedAmount: committed,
+          committedAmount: expected.agreed,
+          expectedAmount: expected.expected,
         },
       ];
     });

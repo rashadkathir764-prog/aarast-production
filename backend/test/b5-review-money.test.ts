@@ -169,24 +169,34 @@ test('D59: what the father paid never leaves the groom\'s hands; agreements and 
   assert.equal(picture.mahr?.settled, '2000000');
 });
 
-test('D59: the shortfall leaves out what others paid; paid, in hand, promised and short make up every agreement', async () => {
+test('D103: the shortfall is what is on the groom, in time: not the father\'s share, not a promise with no day', async () => {
   const picture = await readMoneyPicture(
     groomPlanTx([source('SAVINGS', 3_000_000, 'RECEIVED'), source('OTHER', 500_000, 'PLEDGED')]),
     groomQuery,
   );
   // RA-BE-17: the groom's own money paid 3,300,000 (mahr 2.0, suit 0.2,
-  // hosp 1.1) of the 3,000,000 he recorded as received, so this read «معك
-  // −300,000» and «ناقصك 3,100,000» (7.9 − 1.3 − 3.5). Nothing is in hand;
-  // he lacks what is left (7.9 − 3.3 − 1.3 = 3.3) less the 0.5 promised.
+  // hosp 1.1) of the 3,000,000 he recorded as received: nothing is in hand.
   assert.equal(picture.funding?.availableCash, '0');
-  assert.equal(picture.funding?.shortfall, '2800000');
-  const parts = [
-    picture.costs.paid,
-    picture.funding?.availableCash,
-    picture.funding?.pledged,
-    picture.funding?.shortfall,
-  ].reduce((sum, part) => sum.plus(part ?? 0), d(0));
-  assert.equal(parts.toString(), picture.costs.total);
+  // On him: the mahr's 1.0, the suit's 0.1 and the hospitality's 0.5 (no
+  // payer is his). The father's 1.7 left on the lunch and the hall is the
+  // father's (D103); before D103 it read «ناقصك 2,800,000» with it, less a
+  // promise that has no day.
+  assert.deepEqual(picture.outstanding, {
+    total: '3300000',
+    owner: '1600000',
+    ownerMahr: '1000000',
+    others: '1700000',
+  });
+  assert.equal(picture.coverage?.total, '1600000');
+  assert.deepEqual(
+    picture.coverage?.pledgesIgnored.map((pledge) => [pledge.sourceName, pledge.reason]),
+    [['OTHER', 'NO_DATE']],
+  );
+  assert.equal(picture.funding?.shortfall, '1600000');
+  assert.equal(
+    picture.warnings.find((warning) => warning.type === 'FUNDING_SHORTFALL')?.amount,
+    '1600000',
+  );
 });
 
 test('D59: an agreement never moves between the wedding items and the mahr item', () => {

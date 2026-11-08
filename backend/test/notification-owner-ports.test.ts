@@ -162,6 +162,8 @@ test('finance serves the due schedules, the schedules of contributed costs, the 
   assert.deepEqual(await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before, scheduleIds: [] }), []);
   assert.equal((await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before })).length, 1);
   assert.equal((await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before, scheduleIds: ['schedule-1'] })).length, 1);
+  // D106: with a reminder day of its own, a date further out than the window.
+  assert.equal((await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before, remindBefore: before })).length, 1);
   assert.deepEqual(await finance.listPaymentScheduleIdsForCosts(tx, [{ weddingPlanId: 'plan-1', costIds: [] }]), []);
   assert.deepEqual(await finance.listPaymentScheduleIdsForCosts(tx, [{ weddingPlanId: 'plan-1', costIds: ['cost-1'] }]), [{ id: 'schedule-1', weddingPlanId: 'plan-1' }]);
   assert.equal(await finance.isPaymentScheduleOfCosts(tx, 'plan-1', 'schedule-1', []), false);
@@ -182,6 +184,14 @@ test('finance serves the due schedules, the schedules of contributed costs, the 
   assert.deepEqual(calls, [
     ['paymentSchedule.findMany', { where: dueWhere(), include }],
     ['paymentSchedule.findMany', { where: dueWhere(['schedule-1']), include }],
+    ['paymentSchedule.findMany', {
+      where: {
+        OR: [{ dueDate: { lte: before } }, { remindAt: { lte: before } }],
+        status: PaymentScheduleStatus.PENDING,
+        weddingCost: { weddingPlanId: { in: ['plan-1'] }, status: { not: WeddingCostStatus.CANCELLED } },
+      },
+      include,
+    }],
     ['paymentSchedule.findMany', { where: { OR: [{ weddingCost: { weddingPlanId: 'plan-1', id: { in: ['cost-1'] } } }] }, select: { id: true, weddingCost: { select: { weddingPlanId: true } } } }],
     ['paymentSchedule.findFirst', { where: { id: 'schedule-1', weddingCost: { weddingPlanId: 'plan-1', id: { in: ['cost-1'] } } }, select: { id: true } }],
     ['$queryRaw', { sql: 'SELECT "id" FROM "WeddingCost" WHERE "id" = ANY(?::text[]) ORDER BY "id" ASC FOR SHARE', values: [['cost-1', 'cost-2']] }],

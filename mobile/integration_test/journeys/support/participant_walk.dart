@@ -177,6 +177,9 @@ Future<void> runParticipantWalk(
         await walk.tapKey('guest-row-$_groomGuestId');
         walk.expectNotSee(_groomGuestPhone, why: 'رقم ضيف العريس للعريس');
         walk.expectNotSee('اتصل', why: 'ما يتصل بضيف العريس');
+        // The next name is a new search, as a person does it: close this
+        // one (it clears what was typed) and «دوّر» again.
+        await walk.tapKey('guests-search', wait: 1);
       } else {
         walk.fail('ما يظهر «$_groomGuestName» (ضيف العريس بالاسم (D80))');
       }

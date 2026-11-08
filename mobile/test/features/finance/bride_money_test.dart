@@ -53,13 +53,17 @@ void main() {
     await _pump(tester, JourneyProfile.bride);
 
     expect(_tabFill(tester, 0), AarastV3Color.rose);
-    expect(find.textContaining('اتفقتِ على '), findsOneWidget);
-    expect(find.textContaining('، دفعتِ منها '), findsOneWidget);
-    expect(find.textContaining('اتفقت على '), findsNothing);
+    // RA-MO-40: what is left to her first, then what she paid.
+    expect(find.text('باقي عليك تدفعين'), findsOneWidget);
+    expect(find.text('باقي عليك تدفع'), findsNothing);
+    expect(find.textContaining('دفعتِ '), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('c01: the four-part bar names paid, in hand, promised, short', (
+  // RA-MO-40: whether her money covers what is left, said right under it,
+  // with what is in hand and promised beside the shortfall; the four-part
+  // bar put what was spent beside what is in hand.
+  testWidgets('c01: short, with what is in hand and promised beside it', (
     tester,
   ) async {
     await _pump(
@@ -74,21 +78,73 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('money-funding-bar')), findsOneWidget);
-    for (final label in ['دفعتِ', 'معك', 'موعود', 'ناقصك']) {
-      expect(find.text(label), findsOneWidget);
-    }
+    final short = find.byKey(const ValueKey('money-short'));
+    expect(
+      find.descendant(
+        of: short,
+        matching: find.textContaining('حتى مع الموعود'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: short, matching: find.textContaining('معك ')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: short, matching: find.textContaining('موعود لك ')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('c01: no bar before any funding source', (tester) async {
+  // RA-MO-40: covered is one short line, with what is in hand and promised
+  // small under it, not inside it.
+  testWidgets('c01: covered, in one short line with the figures under it', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      JourneyProfile.bride,
+      funding: const MoneyFundingSummary(
+        received: '3000',
+        pledged: '400',
+        availableCash: '2500',
+        sourcesCount: 2,
+      ),
+    );
+
+    final covered = find.byKey(const ValueKey('money-covered'));
+    expect(
+      find.descendant(
+        of: covered,
+        matching: find.text('فلوسك والموعود يغطونه'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: covered, matching: find.textContaining('معك ')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: covered, matching: find.textContaining('موعود لك ')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('money-short')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('c01: before any funding source, nothing claims to cover it', (
+    tester,
+  ) async {
     await _pump(
       tester,
       JourneyProfile.bride,
       funding: const MoneyFundingSummary(),
     );
 
-    expect(find.byKey(const ValueKey('money-funding-bar')), findsNothing);
+    expect(find.byKey(const ValueKey('money-funding-unknown')), findsOneWidget);
+    expect(find.byKey(const ValueKey('money-covered')), findsNothing);
+    expect(find.byKey(const ValueKey('money-short')), findsNothing);
   });
 
   testWidgets('c02: her items say what she paid and invite her to add', (
@@ -107,7 +163,7 @@ void main() {
     await _pump(tester, JourneyProfile.groom);
 
     expect(_tabFill(tester, 0), AarastV3Color.primary);
-    expect(find.textContaining('اتفقت على '), findsOneWidget);
+    expect(find.text('باقي عليك تدفع'), findsOneWidget);
   });
 
   test('c12: her gifts are «هدايا ونقوط», his are «رفد ونقوط»', () {

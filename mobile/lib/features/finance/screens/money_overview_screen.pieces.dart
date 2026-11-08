@@ -5,6 +5,7 @@ enum _MoneySettingsAction { budget, receipts }
 class _MoneyHeader extends StatelessWidget {
   const _MoneyHeader({
     required this.summary,
+    required this.showStatus,
     required this.canManage,
     required this.onShare,
     required this.onBudget,
@@ -12,6 +13,9 @@ class _MoneyHeader extends StatelessWidget {
   });
 
   final MoneySummary summary;
+
+  /// The budget state under «المال»; off where the tab says it itself.
+  final bool showStatus;
   final bool canManage;
   final VoidCallback? onShare;
   final VoidCallback onBudget;
@@ -37,13 +41,14 @@ class _MoneyHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                _moneyStatusLine(summary, context.journeyProfile),
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: AarastV3Color.textMuted,
+              if (showStatus)
+                Text(
+                  _moneyStatusLine(summary, context.journeyProfile),
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

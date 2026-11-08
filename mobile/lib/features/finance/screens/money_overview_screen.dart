@@ -143,6 +143,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           children: [
             _MoneyHeader(
               summary: provider.summary,
+              // RA-MO-40: «الملخص» says the budget and the cover itself,
+              // once each; the line is for the other tabs.
+              showStatus: tab != 0,
               canManage: provider.canManageBudget,
               onShare: provider.summary.hasAnyData
                   ? () => showAarastShareSheet(
@@ -290,6 +293,20 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         const SizedBox(height: AarastV3Space.x3),
         _RecordMahrEntry(onTap: _openMahr),
       ],
+      // RA-MO-40: the one thing to do here comes right after the answer.
+      if (_nextSchedule(provider) case final schedule?) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        _NextPaymentCard(
+          schedule: schedule,
+          currency: summary.currency,
+          onTap: () => context.push(
+            AppRouter.moneyCostDetails(widget.weddingPlanId, schedule.costId),
+          ),
+          onPay: _canPay(provider, schedule)
+              ? () => _paySchedule(schedule)
+              : null,
+        ),
+      ],
       if (mahr != null) ...[
         const SizedBox(height: AarastV3Space.x3),
         _MahrAndWeddingCards(
@@ -346,26 +363,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               'كلها في «البنود».',
         ),
       ],
-      if (_nextSchedule(provider) case final schedule?) ...[
+      // With the mahr's cards, «اتفاقات عرسك» says the budget and what is
+      // left of it (RA-MO-40); the card stays where nothing else says it,
+      // and to set a budget where there is none.
+      if (mahr == null || !summary.hasBudget) ...[
         const SizedBox(height: AarastV3Space.x3),
-        _NextPaymentCard(
-          schedule: schedule,
-          currency: summary.currency,
-          onTap: () => context.push(
-            AppRouter.moneyCostDetails(widget.weddingPlanId, schedule.costId),
-          ),
-          onPay: _canPay(provider, schedule)
-              ? () => _paySchedule(schedule)
-              : null,
+        _MoneyBudgetCard(
+          summary: summary,
+          canManage: provider.canManageBudget,
+          onBudget: () =>
+              context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
         ),
       ],
-      const SizedBox(height: AarastV3Space.x3),
-      _MoneyBudgetCard(
-        summary: summary,
-        canManage: provider.canManageBudget,
-        onBudget: () =>
-            context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-      ),
     ];
   }
 

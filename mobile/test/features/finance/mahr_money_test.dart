@@ -99,7 +99,9 @@ void main() {
       );
       expect(find.text('وين تروح الفلوس'), findsOneWidget);
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      expect(find.text('عرسك'), findsOneWidget);
+      // RA-MO-40: the wedding card is what was agreed for it, not its
+      // budget under the same name.
+      expect(find.text('اتفاقات عرسك'), findsOneWidget);
       final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
       expect(
         find.descendant(of: mahrCard, matching: find.textContaining('سلّمت ')),
@@ -127,15 +129,24 @@ void main() {
         findsOneWidget,
       );
       // D59: the hall was paid by her father, so it is not «دفعتِ».
-      final weddingCard = find.byKey(const ValueKey('money-wedding-card'));
+      final paidLine = find.byKey(const ValueKey('money-paid-line'));
       expect(
         find.descendant(
-          of: weddingCard,
-          matching: find.textContaining('دفع عنك 1.2 مليون'),
+          of: paidLine,
+          matchRoot: true,
+          matching: find.textContaining('دفع عنك'),
         ),
         findsOneWidget,
       );
-      expect(find.textContaining('اتفقتِ على'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: paidLine,
+          matchRoot: true,
+          matching: find.textContaining('1.2 مليون'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('باقي عليك تدفعين'), findsOneWidget);
       expect(find.text('الاتفاق مع أهل العروسة'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -149,18 +160,20 @@ void main() {
         mahr: _groomMahr,
       );
 
-      final hero = find.byKey(const ValueKey('money-dashboard-hero'));
+      final paidLine = find.byKey(const ValueKey('money-paid-line'));
       expect(
         find.descendant(
-          of: hero,
-          matching: find.textContaining('دفعت منها 2 مليون'),
+          of: paidLine,
+          matchRoot: true,
+          matching: find.textContaining('دفعت 2 مليون'),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
-          of: hero,
-          matching: find.textContaining('، ودفع عنك الوالد 1.2 مليون'),
+          of: paidLine,
+          matchRoot: true,
+          matching: find.textContaining('دفع عنك الوالد 1.2 مليون'),
         ),
         findsOneWidget,
       );
@@ -182,7 +195,7 @@ void main() {
         mahr: _groomMahr,
       );
 
-      expect(find.textContaining('اتفق العريس على'), findsOneWidget);
+      expect(find.text('باقي على العريس'), findsOneWidget);
       expect(find.textContaining('دفعتِ'), findsNothing);
       expect(find.textContaining('سلّمتِ'), findsNothing);
       final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
@@ -194,7 +207,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('دفع عنه الوالد'), findsOneWidget);
-      expect(find.textContaining('باقي عليه'), findsOneWidget);
+      expect(find.textContaining('باقي عليك'), findsNothing);
       // Only the owner records the mahr.
       expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
       expect(tester.takeException(), isNull);
@@ -233,20 +246,27 @@ void main() {
         mahr: _groomMahr,
       );
 
-      final hero = find.byKey(const ValueKey('money-dashboard-hero'));
+      final agreed = find.byKey(const ValueKey('money-agreed-line'));
       expect(
         find.descendant(
-          of: hero,
-          matching: find.textContaining(
-            'اتفقت على 5.4 مليون ر.ي مع المهر، دفعت منها 2 مليون ر.ي',
-          ),
+          of: agreed,
+          matchRoot: true,
+          matching: find.textContaining('5.4 مليون'),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
-          of: hero,
-          matching: find.textContaining('. باقي عليك 2.2 مليون ر.ي.'),
+          of: agreed,
+          matchRoot: true,
+          matching: find.textContaining('، مع المهر'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-left-to-pay')),
+          matching: find.textContaining('2.2 مليون'),
         ),
         findsOneWidget,
       );
@@ -267,16 +287,21 @@ void main() {
       );
 
       expect(
-        find.textContaining('اتفق العريس على 5.4 مليون ر.ي مع المهر، دفع منها'),
+        find.descendant(
+          of: find.byKey(const ValueKey('money-agreed-line')),
+          matchRoot: true,
+          matching: find.textContaining('، مع المهر'),
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('العريس دفع'), findsOneWidget);
     });
 
     testWidgets('D79: the groom before his mahr: no «مع المهر»', (
       tester,
     ) async {
       await _pumpMoney(tester, profile: JourneyProfile.groom, persona: 'GROOM');
-      expect(find.textContaining('اتفقت على 2.4 مليون'), findsOneWidget);
+      expect(find.textContaining('الاتفاقات كلها 2.4 مليون'), findsOneWidget);
       expect(find.textContaining('مع المهر'), findsNothing);
     });
 
@@ -289,7 +314,7 @@ void main() {
         persona: 'BRIDE',
         mahr: _brideMahr,
       );
-      expect(find.textContaining('اتفقتِ على 2.4 مليون'), findsOneWidget);
+      expect(find.textContaining('الاتفاقات كلها 2.4 مليون'), findsOneWidget);
       expect(find.textContaining('مع المهر'), findsNothing);
     });
 

@@ -90,15 +90,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // c01: the server's numbers in one sentence, then the budget.
-      expect(
-        find.textContaining('اتفقت على', findRichText: true),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('دفعت منها', findRichText: true),
-        findsOneWidget,
-      );
+      // c01 (RA-MO-40): what is left to pay first, what was paid under
+      // it, then the budget.
+      expect(find.text('باقي عليك تدفع'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-left-to-pay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-paid-line')), findsOneWidget);
       expect(find.text('المتاح من الميزانية'), findsOneWidget);
       expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
@@ -374,9 +370,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Within the budget, said the same way to the owner and a participant.
-      expect(find.text('في حدود الميزانية'), findsOneWidget);
-      expect(find.text('في حدود ميزانيتك'), findsNothing);
       // Five over-limit items, three shown: the note counts the other two.
       expect(
         find.text('تجاوز المخصص في بندين ثانيين كذلك. كلها في «البنود».'),
@@ -385,6 +378,19 @@ void main() {
       // Four payers, two named: the other two are people, «اثنين».
       expect(find.textContaining('اثنين كذلك'), findsOneWidget);
       expect(find.textContaining('ثنتين'), findsNothing);
+      // RA-MO-40: «الملخص» says the budget in its own card; the line under
+      // «المال» is for the other tabs. Within the budget, said the same way
+      // to the owner and a participant.
+      expect(find.text('في حدود الميزانية'), findsNothing);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-tabs')),
+          matching: find.text('البنود'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('في حدود الميزانية'), findsOneWidget);
+      expect(find.text('في حدود ميزانيتك'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -408,7 +414,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('ومع الموعود ناقصك'), findsOneWidget);
+      // RA-MO-40: the shortfall is said under what is left to pay.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-short')),
+          matching: find.textContaining('حتى مع الموعود'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const ValueKey('journey-tab-3')));
       await tester.pumpAndSettle();
 
@@ -513,15 +526,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('اتفقت على', findRichText: true),
-        findsNothing,
-      );
+      expect(find.byKey(const ValueKey('money-dashboard-hero')), findsNothing);
 
       expect(await tester.binding.handlePopRoute(), isTrue);
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('اتفقت على', findRichText: true),
+        find.byKey(const ValueKey('money-dashboard-hero')),
         findsOneWidget,
         reason: 'back on «الملخص», the tab money opened on',
       );

@@ -38,6 +38,7 @@ class OwnerPersona {
     required this.otherPlanRole,
     required this.agreed,
     required this.paid,
+    required this.left,
     required this.inHand,
     required this.promised,
     required this.fundingAmounts,
@@ -76,6 +77,9 @@ class OwnerPersona {
   /// payer of the hall and the lunch. [inHand] and [promised] are millions.
   final String agreed;
   final String paid;
+
+  /// What is left to pay on every agreement (RA-MO-40's figure).
+  final String left;
   final String inHand;
   final String promised;
   final List<String> fundingAmounts;
@@ -140,6 +144,8 @@ const groomPersona = OwnerPersona(
   // D59: of the 4.6 million paid, his father paid 1.3 (the hall and the
   // lunch): «دفعت منها 3.3»، and «معك» is 7.5 received less his 3.3.
   paid: '3.3 مليون',
+  // 7.9 agreed, 4.6 paid (3.3 his, 1.3 his father's).
+  left: '3.3 مليون',
   inHand: '4.2',
   promised: '1.2',
   fundingAmounts: ['4.5 مليون', '2.4 مليون', '600,000'],
@@ -179,6 +185,8 @@ const bridePersona = OwnerPersona(
   agreed: '4.9 مليون',
   // D59: her father paid 1.3 of the 2.6: «دفعتِ منها 1.3»، «معك» 4.5 − 1.3.
   paid: '1.3 مليون',
+  // 4.9 agreed, 2.6 paid (1.3 hers, 1.3 her father's).
+  left: '2.3 مليون',
   inHand: '3.2',
   promised: '2.2',
   fundingAmounts: ['900,000', '600,000'],
@@ -301,15 +309,24 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // ------------------------------------------------------------ money
   await walk.step('c01_money_summary', 'المال: الملخص', () async {
     await walk.tab('المال');
-    walk.expectSee(p.say('اتفقت على ${p.agreed}', 'اتفقتِ على ${p.agreed}'));
-    walk.expectSee(p.say('دفعت منها ${p.paid}', 'دفعتِ منها ${p.paid}'));
+    // RA-MO-40: what is left to pay first, whether the money covers it,
+    // then what was paid of everything agreed.
+    walk.expectSee(p.say('باقي عليك تدفع', 'باقي عليك تدفعين'));
+    walk.expectSee(p.left, why: 'الباقي رقم واحد أول الملخص');
+    walk.expectSee(
+      'معك ${p.inHand} مليون',
+      why: 'الحكم تحت الباقي مباشرة',
+    );
+    walk.expectSee('موعود لك ${p.promised} مليون');
+    walk.expectSee('فلوسك والموعود يغطونه', why: 'الحكم سطر واحد');
+    walk.expectSee(p.say('دفعت ${p.paid}', 'دفعتِ ${p.paid}'));
     // D59: what the family paid is theirs, not the owner's.
     walk.expectSee(
-      'ودفع عنك ${p.familyPayer} 1.3 مليون',
+      'دفع عنك ${p.familyPayer} 1.3 مليون',
       why: 'الدفع عن صاحب الخطة',
     );
-    walk.expectSee('معك ${p.inHand} مليون');
-    walk.expectSee('موعود لك ${p.promised} مليون');
+    walk.expectSee('الاتفاقات كلها ${p.agreed}');
+    walk.expectNotSee('في حدود الميزانية', why: 'الحكم مرة وحدة في الملخص');
   });
 
   await walk.step('c01_money_mahr', 'المال: المهر وعرسك', () async {
@@ -317,21 +334,17 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     if (!walk.sees(p.mahr.moneyTitle)) await walk.scroll(pixels: 400);
     walk.expectSee(p.mahr.moneyTitle, why: 'قسمين c01: المهر والعرس');
     walk.expectSee(p.mahr.moneyCard);
-    walk.expectSee('عرسك');
     walk.expectSee(
       p.say('سلّمت 2 مليون', 'وصلك 2 مليون'),
       why: 'المسلّم أو الواصل من المهر',
     );
-    // D59: of the 2.6 million paid on the wedding, the family paid 1.3.
-    walk.expectSee(
-      p.say('دفعت 1.3 مليون', 'دفعتِ 1.3 مليون'),
-      why: 'المدفوع من بنود العرس بدون المهر',
-    );
-    walk.expectSee('دفع عنك 1.3 مليون', why: 'نصيب الأهل منفصل');
-    // The budget card sits below the mahr: the mahr is outside it (C1).
-    if (!walk.sees('من ميزانية 7 مليون')) await walk.scroll(pixels: 500);
+    // RA-MO-40: the wedding is what was agreed for it, against its budget
+    // (the mahr is outside it, C1), and what is left of the budget.
+    walk.expectSee('اتفاقات عرسك');
+    walk.expectSee('4.9 مليون', why: 'اتفاقات العرس بدون المهر');
     walk.expectSee('من ميزانية 7 مليون');
-    walk.expectSee('2.1 مليون', why: 'المتاح من الميزانية بدون المهر');
+    walk.expectSee('باقي منها 2.1 مليون', why: 'المتاح من الميزانية');
+    walk.expectNotSee('المتاح من الميزانية', why: 'الميزانية تنقال مرة');
     await walk.scroll(pixels: -1500);
   });
 

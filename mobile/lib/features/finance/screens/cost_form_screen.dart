@@ -81,6 +81,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
   /// D105: the agreement settles the whole item's estimate, or a part.
   bool _coversPart = false;
 
+  /// Where the duplicate guards sit, brought into sight when they stop a save.
+  final _guardsKey = GlobalKey();
+
   /// The two duplicate guards, answered «it is something else».
   bool _separateFromAgreement = false;
   bool _notTheSameAgain = false;
@@ -436,8 +439,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     amount: _total,
                     currency: currency,
                     label: context.say('كم دفعت؟', 'كم دفعتِ؟'),
-                    why:
-                        'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+                    why: context.say(
+                      'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+                      'مبلغ المصروف هو اللي دفعتيه. لو غلطتِ فيه، تراجعي عن دفعته وسجّليه من جديد.',
+                    ),
                   )
                 else
                   JourneyTextField(
@@ -464,7 +469,14 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     left: _leftInCategory(category!, widget.cost, _total),
                     currency: currency,
                   ),
-                ..._duplicateGuards(provider, currency),
+                KeyedSubtree(
+                  key: _guardsKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: _duplicateGuards(provider, currency),
+                  ),
+                ),
                 if (!_expense && category != null && !category.isMahr)
                   ..._coverQuestion(provider, category, currency),
                 const SizedBox(height: AarastV3Space.x4),
@@ -706,11 +718,37 @@ class _CostFormScreenState extends State<CostFormScreen> {
         ),
       );
     }
-    // A guard not answered stops the save; its note says why.
+    // A guard not answered stops the save; its note says why, and the save
+    // says so and brings it into sight (RA-MO-69: the button did nothing,
+    // the note scrolled away above it).
     final guarded =
         _openAgreementsFor(context.read<FinanceProvider>()).isNotEmpty &&
             !_separateFromAgreement ||
         _sameToday(context.read<FinanceProvider>()) && !_notTheSameAgain;
+    final onlyGuarded =
+        guarded &&
+        _categoryError == null &&
+        _partyError == null &&
+        _totalError == null &&
+        _depositError == null &&
+        !planIncomplete;
+    if (onlyGuarded) {
+      AarastToast.showInfo(
+        context,
+        context.say(
+          'جاوب على السؤال اللي تحت المبلغ أول، عشان ما ينحسب مرتين.',
+          'جاوبي على السؤال اللي تحت المبلغ أول، عشان ما ينحسب مرتين.',
+        ),
+      );
+      final guards = _guardsKey.currentContext;
+      if (guards != null) {
+        Scrollable.ensureVisible(
+          guards,
+          duration: const Duration(milliseconds: 250),
+          alignment: 0.2,
+        );
+      }
+    }
     return _categoryError == null &&
         _partyError == null &&
         _totalError == null &&
@@ -867,7 +905,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
         !_coversPart
             ? 'الاتفاق ياخذ مكان التقدير، والتقدير يسقط.'
             : rest > 0
-            ? 'يبقى من التقدير ${money(rest)} محسوب في تكلفة العرس، لين تتفق على الباقي.'
+            ? 'يبقى من التقدير ${money(rest)} محسوب في تكلفة العرس، لين ${context.say('تتفق', 'تتفقين')} على الباقي.'
             : 'يغطي التقدير كله.',
         key: const ValueKey('cost-cover-means'),
         style: JourneyType.of(

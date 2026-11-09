@@ -10,6 +10,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_links.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';

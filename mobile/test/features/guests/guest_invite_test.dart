@@ -150,9 +150,11 @@ class _Events extends PlanEventsProvider {
   _Events(this._wedding)
     : super(api: PlanEventsApi(ApiClient(tokenProvider: () async => null)));
 
-  final PlanEvent _wedding;
+  /// Null: the plan has no wedding event.
+  final PlanEvent? _wedding;
   bool _arrived = false;
   final saved = <PlanEventDraft>[];
+  final savedOn = <PlanEvent?>[];
 
   void arrive() {
     _arrived = true;
@@ -164,7 +166,7 @@ class _Events extends PlanEventsProvider {
       ? PlanEventsView(
           weddingPlanId: weddingPlanId,
           canEdit: true,
-          items: [_wedding],
+          items: [?_wedding],
           suggestions: const [],
         )
       : null;
@@ -178,7 +180,10 @@ class _Events extends PlanEventsProvider {
     PlanEvent? event,
     PlanEventType? type,
     required PlanEventDraft draft,
-  }) async => saved.add(draft);
+  }) async {
+    saved.add(draft);
+    savedOn.add(event);
+  }
 }
 
 /// The plan in Sana'a: the place the card stands in while it has no venue.
@@ -366,6 +371,29 @@ void main() {
     expect(events.saved, isEmpty);
   });
 
+  // RA-MO-68: a plan with no wedding event showed the venue typed on the
+  // card and never saved it; the guests' links went without it.
+  testWidgets('a venue typed with no wedding event makes one with it', (
+    tester,
+  ) async {
+    final events = _Events(null)..arrive();
+    await _pumpWithEvents(tester, events);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('invite-place')),
+        matching: find.byType(TextField),
+      ),
+      'قاعة سبأ',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('invite-send')));
+    await tester.pumpAndSettle();
+
+    expect(events.saved.map((draft) => draft.placeLabel), ['قاعة سبأ']);
+    expect(events.savedOn, [null], reason: 'a new wedding event');
+  });
+
   testWidgets('the card that could not be read offers to read it again', (
     tester,
   ) async {
@@ -419,6 +447,21 @@ void main() {
     // No card fields: the reminder has nothing to write.
     expect(find.byKey(const ValueKey('invite-host')), findsNothing);
     expect(api.cardWrites, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-66: with every guest still waited on lacking a number, the reminder
+  // said «ما فيه أحد ينتظر رده», as if everyone had answered.
+  testWidgets('guests waited on without a number are said, not dropped', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _guest('a', 'ياسر', invitationStatus: 'SENT', phone: null),
+      _guest('b', 'مراد', invitationStatus: 'SENT', phone: null),
+    ], reminder: true);
+
+    expect(find.textContaining('ما فيه أحد ينتظر رده'), findsNothing);
+    expect(find.textContaining('ضيفين بدون رقم'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

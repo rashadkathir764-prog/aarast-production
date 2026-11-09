@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/plan_day.dart';
+import '../models/money_plan.dart' show reminderDayToCome;
 
 // D106: a date agreed again (it is no longer late until its new day, and
 // its first day is kept), and a date's own reminder day.
@@ -156,13 +157,8 @@ class _DueReminderSheetState extends State<DueReminderSheet> {
   // RA-MO-50: its own day while it is still to come; one that has passed
   // was used, and the date is reminded as usual unless another is chosen
   // (the server takes a day from today on, D106).
-  late DateTime? _day = _stillToCome(widget.remindAt);
+  late DateTime? _day = reminderDayToCome(widget.remindAt);
   bool _saving = false;
-
-  static DateTime? _stillToCome(DateTime? day) =>
-      day == null || DateUtils.dateOnly(day).isBefore(sanaaToday())
-      ? null
-      : day;
 
   Future<void> _pick(DateTime due) async {
     final today = sanaaToday();

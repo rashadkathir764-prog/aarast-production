@@ -36,7 +36,7 @@ const WORDING: Readonly<Record<string, Wording>> = {
   },
   'An expense is its payment: correct the payment instead': {
     code: 'FINANCE_EXPENSE_AMOUNT_LOCKED',
-    ar: 'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+    ar: 'مبلغ المصروف هو اللي اندفع. لو فيه غلط، تتراجع دفعته وينسجل من جديد.',
   },
   'The reminder day must be between today and the due day': {
     code: 'FINANCE_REMINDER_DAY_OUT_OF_RANGE',

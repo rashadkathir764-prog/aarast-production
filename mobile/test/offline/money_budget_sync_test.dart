@@ -772,7 +772,9 @@ void main() {
       expect(expense.status, 'PAID');
       expect(moneyValue(expense.paidAmount), 150);
       expect(expense.estimateCover, 'PART');
-      expect(moneyValue(expense.estimatePart), 150);
+      // RA-BE-120: its own amount, read when it counts (as on the server),
+      // never written as a figure that an edit could leave behind.
+      expect(expense.estimatePart, isNull);
       await expectLater(
         api.updateCost(
           cost: expense,

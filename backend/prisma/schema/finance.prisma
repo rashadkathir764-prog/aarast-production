@@ -121,8 +121,9 @@ model WeddingCost {
   payerName        String?
   note             String?
   entryKind        CostEntryKind     @default(AGREEMENT)
-  // D105: WHOLE keeps estimatePart null; PART needs it above zero (a CHECK
-  // constraint in the migration).
+  // D105: WHOLE keeps estimatePart null; PART has it above zero, or null for
+  // the agreement's own amount, read at the time (RA-BE-120; a CHECK
+  // constraint in the migrations).
   estimateCover    EstimateCover     @default(WHOLE)
   estimatePart     Decimal?          @db.Decimal(14, 2)
   // V1 checklist 4.10: when set, only this account (the owner or the

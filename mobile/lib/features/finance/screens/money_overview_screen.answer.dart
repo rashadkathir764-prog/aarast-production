@@ -655,7 +655,13 @@ class _WholePicture extends StatelessWidget {
                 icon: LucideIcons.coins,
                 color: AarastV3Color.lilac,
                 soft: AarastV3Color.lilacSoft,
-                title: 'سلف ترجعها',
+                // RA-MO-71: the owner's debt, in the reader's words.
+                title: context.ownerDid(
+                  'سلف ترجعها',
+                  'سلف ترجعينها',
+                  groom: 'سلف يرجعها العريس',
+                  bride: 'سلف ترجعها العروسة',
+                ),
                 subtitleMaxLines: 2,
                 // The owner's debt, said to the reader as «الدفعات» says it.
                 subtitle:

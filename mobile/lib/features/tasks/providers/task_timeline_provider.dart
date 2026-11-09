@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/arabic_for.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_checklist_item.dart';
 import '../models/task_starter_catalog.dart';
@@ -167,6 +168,18 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       } else {
         await _refreshTaskData(weddingPlanId);
       }
+      return true;
+    } on TaskAssignRefused catch (refused) {
+      // Saved, not given: the form closes on the saved task and says what
+      // did not happen, so nobody saves it a second time (RA-MO-65).
+      final task = refused.task;
+      _tasks = [task, ..._tasks.where((item) => item.id != task.id)];
+      final name = assigneeName?.trim();
+      _noticeMessage =
+          'انضافت المهمة، وما انعطت '
+          '${name == null || name.isEmpty ? 'للعضو' : arabicFor(name)}: '
+          '${refused.reason}';
+      await _refreshTaskData(weddingPlanId);
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;

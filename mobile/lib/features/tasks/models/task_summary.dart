@@ -1,4 +1,5 @@
-﻿import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
+import '../utils/task_display.dart';
 import 'wedding_task.dart';
 
 class TaskSummary {
@@ -55,7 +56,6 @@ class TaskSummary {
     required List<WeddingTask> tasks,
     DateTime? now,
   }) {
-    final today = _dateOnly(now ?? appNow());
     var completed = 0;
     var pendingInProgress = 0;
     var overdue = 0;
@@ -74,13 +74,16 @@ class TaskSummary {
         highPriority++;
       }
       if (task.hasResponsibleParticipant) assignedCount++;
+      // The day in Sana'a, by the list's own rule (RA-MO-73: the summary
+      // used the phone's date, so a phone on another zone counted one late
+      // task fewer than the list showed).
+      if (isTaskLate(task, now: now)) overdue++;
       final dueDate = task.dueDate;
-      if (dueDate == null || task.isDone || task.status == 'CANCELLED') {
-        continue;
+      if (dueDate != null &&
+          task.isOpen &&
+          daysUntilPlanDay(dueDate, now: now) == 0) {
+        dueToday++;
       }
-      final due = _dateOnly(dueDate);
-      if (due.isBefore(today)) overdue++;
-      if (due == today) dueToday++;
     }
 
     // A cancelled task is neither done nor one of the plan's tasks, as the
@@ -167,5 +170,3 @@ int _intOrZero(Object? value) {
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
 }
-
-DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);

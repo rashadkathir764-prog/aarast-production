@@ -742,7 +742,7 @@ async function run() {
     }, owner.token);
     check('D107: an expense is paid in full and settles a part of its item at its value',
       dress.status === 201 && dress.body?.entryKind === 'EXPENSE' && dress.body?.status === 'PAID'
-        && dress.body?.paidAmount === '150' && dress.body?.estimateCover === 'PART' && dress.body?.estimatePart === '150');
+        && dress.body?.paidAmount === '150' && dress.body?.estimateCover === 'PART' && dress.body?.estimatePart === null);
     const lockedExpense = await request('PATCH', `/api/v1/costs/${dress.body?.id}`, { totalAmount: '200' }, owner.token);
     check('D107: an expense\'s amount is its payment', lockedExpense.status === 400 && lockedExpense.body?.code === 'FINANCE_EXPENSE_AMOUNT_LOCKED');
     const hall = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
@@ -895,8 +895,21 @@ async function run() {
     const albumCleared = await request('PATCH', `/api/v1/costs/${album.body?.id}`, { totalAmount: '800', estimateCover: 'PART' }, owner.token);
     const albumPart = await request('PATCH', `/api/v1/costs/${album.body?.id}`, { estimatePart: '200' }, owner.token);
     check('D105: a part chosen again with no amount is the agreement\'s own amount; a part alone keeps the choice',
-      album.body?.estimatePart === '300' && albumCleared.status === 200 && albumCleared.body?.estimatePart === '800'
+      album.body?.estimatePart === '300' && albumCleared.status === 200 && albumCleared.body?.estimatePart === null
         && albumPart.status === 200 && albumPart.body?.estimateCover === 'PART' && albumPart.body?.estimatePart === '200');
+    // RA-BE-120: a part left empty follows the amount when it is corrected:
+    // written as the amount, it stayed at the old figure and the item's
+    // expected cost drifted.
+    const veilItem = await request('POST', `/api/v1/wedding-plans/${tabId}/budget-categories`, { name: 'Veil', estimatedAmount: '1000' }, owner.token);
+    const veil = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: veilItem.body?.id, title: 'Veil', totalAmount: '300', estimateCover: 'PART',
+    }, owner.token);
+    const veilFixed = await request('PATCH', `/api/v1/costs/${veil.body?.id}`, { totalAmount: '500' }, owner.token);
+    const veilSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    const veilRow = veilSummary.body?.categories?.find((row) => row.categoryId === veilItem.body?.id);
+    check('RA-BE-120: a part left empty follows the corrected amount',
+      veil.status === 201 && veil.body?.estimatePart === null && veilFixed.status === 200
+        && veilFixed.body?.estimatePart === null && String(veilRow?.estimateLeft) === '500');
     const viewerTab = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, viewer.token);
     check('the money tab is the plan\'s: a stranger reads nothing', viewerTab.status === 403 || viewerTab.status === 404);
 

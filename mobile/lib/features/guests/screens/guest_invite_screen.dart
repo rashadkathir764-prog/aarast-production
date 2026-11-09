@@ -128,11 +128,15 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         guest,
   ];
 
+  /// The plan's events are read: a missing wedding event is known missing.
+  bool _eventsRead = false;
+
   /// The wedding event (b12): its venue and time are the card's.
   PlanEvent? _wedding(BuildContext context) {
     final view = context.watch<PlanEventsProvider?>()?.viewOf(
       widget.weddingPlanId,
     );
+    _eventsRead = view != null;
     if (view == null) return null;
     for (final event in view.items) {
       if (event.type == PlanEventType.wedding) return event;
@@ -193,9 +197,14 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     };
   }
 
-  bool _placeChanged(PlanEvent? wedding) =>
-      wedding != null &&
-      _place.text.trim() != (wedding.placeLabel?.trim() ?? '');
+  /// The venue is the wedding event's. A plan whose events are read and
+  /// that has no wedding event gets one, with the venue, when it is saved
+  /// (RA-MO-68: the venue typed was shown on the card and never saved).
+  bool _placeChanged(PlanEvent? wedding) {
+    final typed = _place.text.trim();
+    if (wedding != null) return typed != (wedding.placeLabel?.trim() ?? '');
+    return _eventsRead && typed.isNotEmpty;
+  }
 
   bool _dirty(PlanEvent? wedding) =>
       _cardChanges().isNotEmpty || _placeChanged(wedding);
@@ -224,15 +233,19 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
             widget.weddingPlanId,
             event: wedding,
             type: PlanEventType.wedding,
-            draft: PlanEventDraft(
-              title: wedding!.title,
-              date: wedding.date,
-              slot: wedding.slot,
-              exactTime: wedding.exactTime,
-              placeLabel: _place.text,
-              responsibleName: wedding.responsibleName,
-              note: wedding.note,
-            ),
+            // The wedding's day is the plan's; a new wedding event carries
+            // the venue alone.
+            draft: wedding == null
+                ? PlanEventDraft(placeLabel: _place.text)
+                : PlanEventDraft(
+                    title: wedding.title,
+                    date: wedding.date,
+                    slot: wedding.slot,
+                    exactTime: wedding.exactTime,
+                    placeLabel: _place.text,
+                    responsibleName: wedding.responsibleName,
+                    note: wedding.note,
+                  ),
           );
         }
       }
@@ -358,7 +371,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     soft: AarastV3Color.brandAccentSoft,
                   ),
                 ],
-                if (!reading && !unread && reachable.isEmpty) ...[
+                // Nobody waited on at all; who waits without a number is
+                // the note above, not «nobody» (RA-MO-66).
+                if (!reading && !unread && candidates.isEmpty) ...[
                   const SizedBox(height: AarastV3Space.x2),
                   Text(
                     widget.reminder
@@ -451,7 +466,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         hint: plan('مثلًا: قاعة سبأ', 'مثلًا: صالة الياسمين'),
         controller: _place,
         icon: LucideIcons.mapPin,
-        helper: wedding == null
+        helper: wedding == null && !_eventsRead
             ? null
             : 'ينحفظ على موعد ${plan('الزفاف', 'الزفة')} في «يوم العرس»',
       ),

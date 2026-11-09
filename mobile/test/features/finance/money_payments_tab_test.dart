@@ -43,7 +43,9 @@ String _day(int offset) {
 /// left beyond its dates with no date. The photographer: 350,000 in 25 days, paid by the father. The mahr:
 /// 800,000 with no date. A loan of 400,000: 200,000 back in 60 and in 120
 /// days. An old payment of 50,000, taken back.
-Future<FinanceProvider> _plan() async {
+/// [firstPageOnly]: the payments come a page at a time, and only the newest
+/// one is read yet (as on an account plan with many payments).
+Future<FinanceProvider> _plan({bool firstPageOnly = false}) async {
   SharedPreferences.setMockInitialValues({});
   final database = JsonLocalDatabase(await SharedPreferences.getInstance());
   await database.initialize();
@@ -138,10 +140,12 @@ Future<FinanceProvider> _plan() async {
       ...payment,
     });
   }
-  for (final (id, costId, amount, day) in [
-    ('s-late', 'k-hall', '300000', -3),
-    ('s-next', 'k-hall', '400000', 12),
-    ('s-photo', 'k-photo', '350000', 25),
+  // Own reminder days: the hall's next date's has passed (two days ago),
+  // the photographer's is still to come.
+  for (final (id, costId, amount, day, remind) in [
+    ('s-late', 'k-hall', '300000', -3, null),
+    ('s-next', 'k-hall', '400000', 12, -2),
+    ('s-photo', 'k-photo', '350000', 25, 20),
   ]) {
     await put(OfflineTables.cachedPaymentSchedules, {
       'id': id,
@@ -149,6 +153,7 @@ Future<FinanceProvider> _plan() async {
       'amount': amount,
       'status': 'PENDING',
       'dueDate': _day(day),
+      'remindAt': ?(remind == null ? null : _day(remind)),
       'createdAt': _day(-40),
     });
   }
@@ -185,14 +190,27 @@ Future<FinanceProvider> _plan() async {
   ]) {
     await put(OfflineTables.cachedFundingSources, source);
   }
-  return FinanceProvider(
-    FinanceApi(
-      _NoNetwork(),
-      offline: offline,
-      localPlanContextLoader: (_) async =>
-          const LocalFinancePlanContext(currency: 'YER', persona: 'GROOM'),
-    ),
+  final api = FinanceApi(
+    _NoNetwork(),
+    offline: offline,
+    localPlanContextLoader: (_) async =>
+        const LocalFinancePlanContext(currency: 'YER', persona: 'GROOM'),
   );
+  return firstPageOnly ? _FirstPage(api) : FinanceProvider(api);
+}
+
+/// Only the newest payment read so far; older ones wait for «دفعات أقدم».
+class _FirstPage extends FinanceProvider {
+  _FirstPage(super.api);
+
+  @override
+  List<CostPayment> get payments => [
+    for (final payment in super.payments)
+      if (payment.id == 'p-2') payment,
+  ];
+
+  @override
+  bool get hasMorePayments => true;
 }
 
 class _App {
@@ -361,6 +379,35 @@ void main() {
     expect(find.byKey(const ValueKey('money-due-s-late')), findsOneWidget);
   });
 
+  // RA-MO-64: the father's last date gone, his chip left the row and its
+  // filter stayed on, so the tab was empty with nothing to undo it.
+  testWidgets('a payer with nothing left takes his filter with him', (
+    tester,
+  ) async {
+    final provider = await tester.runAsync(_plan);
+    await _open(tester, provider!);
+    await _payments(tester);
+
+    await tester.tap(find.byKey(const ValueKey('money-pay-who-FAMILY|أبوي')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('money-due-s-late')), findsNothing);
+
+    // The photographer's agreement, all of it the father's, goes.
+    final gone = await tester.runAsync(
+      () => provider.deleteCost(provider.costById('k-photo')!),
+    );
+    expect(gone, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('money-pay-who-FAMILY|أبوي')),
+      findsNothing,
+    );
+    expect(find.textContaining('ما في دفعات عرس على'), findsNothing);
+    expect(find.byKey(const ValueKey('money-due-s-late')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a date opens its pay page; what has no date, its agreement', (
     tester,
   ) async {
@@ -462,5 +509,37 @@ void main() {
     expect(p2, lessThan(p1));
     // 300,000 + 100,000; the reversed 50,000 does not count.
     expect(find.textContaining('400,000'), findsWidgets);
+  });
+
+  // RA-MO-70: «اللي اندفع» added up the payments read so far, a page at a
+  // time, and read as the total; it changed with «دفعات أقدم».
+  testWidgets('what was paid is the plan\'s total, not the page read', (
+    tester,
+  ) async {
+    final provider = await tester.runAsync(() => _plan(firstPageOnly: true));
+    await _open(tester, provider!);
+    await _payments(tester);
+    await tester.tap(find.byKey(const ValueKey('money-pay-done')));
+    await tester.pumpAndSettle();
+
+    // The page holds 100,000; the plan paid 400,000.
+    final title = find.byKey(const ValueKey('money-paid-total'));
+    expect(_said(tester, title), contains('400,000'));
+  });
+
+  // RA-MO-74: a reminder day that passed still read «نذكّرك 5 نوفمبر».
+  testWidgets('a row says its reminder day only while it is to come', (
+    tester,
+  ) async {
+    final provider = await tester.runAsync(_plan);
+    await _open(tester, provider!);
+    await _payments(tester);
+
+    final next = find.byKey(const ValueKey('money-due-s-next'));
+    await _show(tester, next);
+    expect(_said(tester, next), isNot(contains('نذكّرك')));
+    final photo = find.byKey(const ValueKey('money-due-s-photo'));
+    await _show(tester, photo);
+    expect(_said(tester, photo), contains('نذكّرك'));
   });
 }

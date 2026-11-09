@@ -391,6 +391,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-67: past a hundred the word follows the last two digits.
+  testWidgets('105 days out the count still reads «أيام»', (tester) async {
+    final harness = await _Harness.create(daysRemaining: 105);
+    await harness.pump(tester);
+
+    expect(find.text('105'), findsOneWidget);
+    expect(find.text('أيام على العرس'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('q18: on the day the home is the wedding and today\'s tasks', (
     tester,
   ) async {

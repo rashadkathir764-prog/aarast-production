@@ -13,6 +13,7 @@ import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../data/guests_api.dart';
@@ -181,7 +182,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       children: [
         Center(
           child: JourneyAvatar(
-            letter: name.isEmpty ? '؟' : name.characters.first,
+            letter: nameLetter(name),
             color: context.accent.primary,
             size: 64,
           ),

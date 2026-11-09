@@ -11,6 +11,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
@@ -318,8 +319,12 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       const SizedBox(height: AarastV3Space.x1),
     ];
     for (final section in sections) {
+      // «اختر الكل» takes the new ones; a name already on the list is ticked
+      // one by one, by whoever knows it is someone else (RA-MO-72).
       final open = section.members
-          .where((i) => !candidates[i].isDuplicate)
+          .where(
+            (i) => !candidates[i].isDuplicate && candidates[i].sameName == null,
+          )
           .toList();
       final allPicked = open.isNotEmpty && open.every(_picked.contains);
       final family = section.family;
@@ -350,6 +355,8 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             key: ValueKey('import-contact-$i'),
             candidate: candidates[i],
             picked: _picked.contains(i),
+            // Ticked, a same name is said to be someone else.
+            anotherPerson: _picked.contains(i),
             onTap: candidates[i].isDuplicate
                 ? null
                 : () => setState(() {
@@ -507,7 +514,7 @@ class _CandidateRow extends StatelessWidget {
         child: Row(
           children: [
             JourneyAvatar(
-              letter: name.isEmpty ? '؟' : name.characters.first,
+              letter: nameLetter(name),
               color: duplicate
                   ? AarastV3Color.textFaint
                   : context.accent.primary,
@@ -542,7 +549,8 @@ class _CandidateRow extends StatelessWidget {
             ),
             if (picked case final isPicked?)
               Icon(
-                duplicate
+                // Only the same person is shut; a same name can be ticked.
+                candidate.isDuplicate
                     ? LucideIcons.minusCircle
                     : isPicked
                     ? LucideIcons.checkCircle2

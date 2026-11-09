@@ -1796,6 +1796,13 @@
             "allocatedAmount": null,
             "estimatedAmount": null,
             "notNeeded": false
+          },
+          {
+            "id": "decor",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": true
           }
         ],
         "costs": [
@@ -1822,6 +1829,18 @@
             "ownerMoney": true,
             "estimateCover": "PART",
             "estimatePart": "50"
+          },
+          {
+            "id": "decor",
+            "budgetCategoryId": "decor",
+            "title": "decor",
+            "totalAmount": "40",
+            "paid": "40",
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "PART",
+            "estimatePart": null
           }
         ],
         "schedules": [],
@@ -1866,13 +1885,22 @@
             "estimateLeft": "0",
             "costKnown": false,
             "overBudget": null
+          },
+          {
+            "id": "decor",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "40",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
           }
         ],
         "expected": {
           "wedding": {
-            "agreed": "150",
+            "agreed": "190",
             "estimateLeft": "0",
-            "expected": "150",
+            "expected": "190",
             "unknownCount": 1
           },
           "mahr": {
@@ -1881,8 +1909,8 @@
             "expected": "0",
             "unknownCount": 0
           },
-          "total": "150",
-          "budgetLeft": "-50"
+          "total": "190",
+          "budgetLeft": "-90"
         },
         "outstanding": {
           "total": "0",
@@ -1906,7 +1934,7 @@
         },
         "coverage": {
           "verdict": "NOTHING_DUE",
-          "cash": "350",
+          "cash": "310",
           "total": "0",
           "undated": "0",
           "lastDate": null,
@@ -1914,19 +1942,19 @@
           "withoutPledges": {
             "firstShort": null,
             "deepest": null,
-            "end": "350"
+            "end": "310"
           },
           "withPledges": {
             "firstShort": null,
             "deepest": null,
-            "end": "350"
+            "end": "310"
           },
           "steps": [],
           "pledgesCounted": [],
           "pledgesIgnored": [],
           "estimates": {
             "left": "0",
-            "endAfter": "350"
+            "endAfter": "310"
           }
         },
         "family": []

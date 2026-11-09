@@ -86,7 +86,10 @@ export function expectedItem(
     settled,
     estimateLeft,
     expected: agreed.plus(estimateLeft),
-    costKnown: whole || estimate !== null || (item.notNeeded && costs.length === 0),
+    // «ما أحتاجها» expects nothing beyond what was agreed, so its cost is
+    // known whatever was recorded in it (RA-BE-122: a part recorded made it
+    // «مو نهائية»).
+    costKnown: whole || estimate !== null || item.notNeeded,
   };
 }
 
@@ -126,8 +129,11 @@ export function estimateCoverOf(input: {
   const cover =
     input.estimateCover ?? (input.entryKind === 'EXPENSE' ? 'PART' : 'WHOLE');
   if (cover === 'WHOLE') return { estimateCover: 'WHOLE', estimatePart: null };
+  // No part typed is the agreement's own amount, read when it counts
+  // (`estimatePart ?? totalAmount`), never written as a figure: written,
+  // it stayed behind when the amount was corrected (RA-BE-120).
   return {
     estimateCover: 'PART',
-    estimatePart: input.estimatePart ?? input.totalAmount,
+    estimatePart: input.estimatePart ?? null,
   };
 }

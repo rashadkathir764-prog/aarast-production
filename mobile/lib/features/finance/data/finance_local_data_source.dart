@@ -235,7 +235,7 @@ class FinanceLocalDataSource {
         paid > 0 &&
         total != FinanceMoneyRules.value(current.totalAmount)) {
       throw const ApiException(
-        'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+        'مبلغ المصروف هو اللي اندفع. لو فيه غلط، تتراجع دفعته وينسجل من جديد.',
       );
     }
     final json = <String, dynamic>{

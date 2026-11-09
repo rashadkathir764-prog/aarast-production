@@ -147,8 +147,10 @@ class _CountHero extends StatelessWidget {
       line = 'الموعد لسا ما ثبت';
       figure = null;
     } else if (count > 2) {
-      // «7 أيام», «11 يوم» (RA-MO-63: «7 يوم»).
-      line = '${count <= 10 ? 'أيام' : 'يوم'} على العرس';
+      // «7 أيام», «11 يوم», «105 أيام»: the app's one counting rule
+      // (RA-MO-63, RA-MO-67).
+      line =
+          '${arabicCountWord(count, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')} على العرس';
       figure = '$count';
     } else if (count == 2) {
       line = 'يومين على العرس';

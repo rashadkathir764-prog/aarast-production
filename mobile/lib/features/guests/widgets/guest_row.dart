@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/name_letter.dart';
 import '../models/guest.dart';
 import '../utils/guest_display.dart';
 
@@ -44,7 +45,7 @@ class GuestRow extends StatelessWidget {
       child: Row(
         children: [
           JourneyAvatar(
-            letter: name.isEmpty ? '؟' : name.characters.first,
+            letter: nameLetter(name),
             color: context.accent.primary,
             size: 38,
           ),

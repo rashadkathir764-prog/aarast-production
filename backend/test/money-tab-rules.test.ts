@@ -93,7 +93,8 @@ test("D105: one whole agreement settles the item even beside parts", () => {
 
 test("D107: an expense is a part of the estimate at its own value", () => {
   const cover = estimateCoverOf({ entryKind: "EXPENSE", totalAmount: d("150000") });
-  assert.deepEqual({ cover: cover.estimateCover, part: s(cover.estimatePart) }, { cover: "PART", part: "150000" });
+  // RA-BE-120: its own value, read when it counts, never written as a figure.
+  assert.deepEqual({ cover: cover.estimateCover, part: cover.estimatePart }, { cover: "PART", part: null });
   const x = expectedItem(item("300000"), [agreement("150000", cover.estimateCover, "150000")], ZERO);
   assert.equal(s(x.expected), "300000");
   // An agreement with no choice settles the whole item (every agreement before D105).
@@ -101,8 +102,11 @@ test("D107: an expense is a part of the estimate at its own value", () => {
     estimateCover: "WHOLE",
     estimatePart: null,
   });
-  // A part with no amount is the agreement's own value; WHOLE carries none.
-  assert.equal(s(estimateCoverOf({ entryKind: "AGREEMENT", totalAmount: d("9"), estimateCover: "PART" }).estimatePart), "9");
+  // A part with no amount is the agreement's own value (null, read as its
+  // amount when it counts); WHOLE carries none.
+  assert.equal(estimateCoverOf({ entryKind: "AGREEMENT", totalAmount: d("9"), estimateCover: "PART" }).estimatePart, null);
+  const own = expectedItem(item("1000000"), [agreement("500000", "PART", null)], ZERO);
+  assert.equal(s(own.estimateLeft), "500000", "the part follows the amount");
   assert.equal(
     estimateCoverOf({ entryKind: "EXPENSE", totalAmount: d("9"), estimateCover: "WHOLE", estimatePart: d("3") }).estimatePart,
     null,
@@ -607,4 +611,11 @@ test("D108: family support and gifts are from the one they were recorded as", ()
       ["خالي", "0", "200000", "0", "0"],
     ],
   );
+});
+
+test("RA-BE-122: an item not needed, with only an expense in it, has a known cost", () => {
+  const x = expectedItem(item(null, null, true), [agreement("40000", "PART", null)], ZERO);
+  assert.equal(x.costKnown, true);
+  assert.equal(s(x.expected), "40000");
+  assert.equal(sumExpected([x], ZERO).unknownCount, 0);
 });

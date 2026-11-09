@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show PlanReadGuest, PlanReadViewProvider;
 import '../utils/guest_display.dart';
@@ -208,7 +209,7 @@ class _GuestLine extends StatelessWidget {
         child: Row(
           children: [
             JourneyAvatar(
-              letter: name.characters.first,
+              letter: nameLetter(name),
               color: JourneyAvatar.paletteAt(context, index),
               size: 32,
             ),

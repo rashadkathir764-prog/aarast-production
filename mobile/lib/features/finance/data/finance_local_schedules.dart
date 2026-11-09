@@ -144,10 +144,12 @@ extension _LocalMoneyWrites on FinanceLocalDataSource {
     if (cover != 'PART') {
       return {'estimateCover': 'WHOLE', 'estimatePart': null};
     }
+    // No part typed is the agreement's own amount, read when it counts,
+    // as on the server (RA-BE-120).
     final part = FinanceMoneyRules.value(payload['estimatePart']);
     return {
       'estimateCover': 'PART',
-      'estimatePart': FinanceMoneyRules.asMoney(part > 0 ? part : total),
+      'estimatePart': part > 0 ? FinanceMoneyRules.asMoney(part) : null,
     };
   }
 

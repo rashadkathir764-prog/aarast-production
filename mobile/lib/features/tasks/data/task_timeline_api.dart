@@ -12,6 +12,15 @@ import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
 
+/// The server made the task and refused giving it: [task] is saved and
+/// unassigned, and [reason] is the server's word on the giving.
+class TaskAssignRefused implements Exception {
+  const TaskAssignRefused(this.task, this.reason);
+
+  final WeddingTask task;
+  final String reason;
+}
+
 class TaskTimelineApi {
   TaskTimelineApi(this._apiClient, {OfflineSyncService? offline})
     : _offline = offline,
@@ -272,7 +281,15 @@ class TaskTimelineApi {
         );
         taskJson = _taskToCacheJson(assigned);
       } on Object catch (error) {
-        if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+        if (!CachePolicy.shouldQueueWrite(error) || _offline == null) {
+          // RA-MO-65: refused for a reason that is not the network (the
+          // member left, no right): the task was made and stays, unassigned;
+          // only the giving failed. Saving again would make it twice.
+          throw TaskAssignRefused(
+            WeddingTask.fromJson(taskJson),
+            error is ApiException ? error.message : 'ما قدرنا نعطيها له الحين.',
+          );
+        }
         taskJson = {
           ...taskJson,
           'assigneeUserId': assigneeUserId!.trim(),

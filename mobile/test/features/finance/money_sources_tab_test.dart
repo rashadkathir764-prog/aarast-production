@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -45,7 +46,9 @@ String _day(int offset) {
 /// 200,000 with no day. Out of his own money: 400,000 on the hall. The
 /// photographer (350,000) is the father's, 100,000 of it paid.
 /// «معك» = 1,800,000 − 400,000 − 200,000 = 1,200,000.
-Future<(FinanceProvider, FundingProvider)> _plan() async {
+Future<(FinanceProvider, FundingProvider)> _plan({
+  String persona = 'GROOM',
+}) async {
   SharedPreferences.setMockInitialValues({});
   final database = JsonLocalDatabase(await SharedPreferences.getInstance());
   await database.initialize();
@@ -177,7 +180,7 @@ Future<(FinanceProvider, FundingProvider)> _plan() async {
         _NoNetwork(),
         offline: offline,
         localPlanContextLoader: (_) async =>
-            const LocalFinancePlanContext(currency: 'YER', persona: 'GROOM'),
+            LocalFinancePlanContext(currency: 'YER', persona: persona),
       ),
     ),
     FundingProvider(FundingApi(_NoNetwork(), offline: offline)),
@@ -186,8 +189,9 @@ Future<(FinanceProvider, FundingProvider)> _plan() async {
 
 Future<void> _open(
   WidgetTester tester,
-  (FinanceProvider, FundingProvider) providers,
-) async {
+  (FinanceProvider, FundingProvider) providers, {
+  String personaCode = 'groom',
+}) async {
   tester.view.physicalSize = const Size(320, 760);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -196,9 +200,9 @@ Future<void> _open(
     routes: [
       GoRoute(
         path: '/wedding-plans/:id/money',
-        builder: (_, _) => const MoneyOverviewScreen(
+        builder: (_, _) => MoneyOverviewScreen(
           weddingPlanId: _planId,
-          personaCode: 'groom',
+          personaCode: personaCode,
         ),
         routes: [
           for (final path in const ['funding', 'payers'])
@@ -226,7 +230,12 @@ Future<void> _open(
           ).copyWith(textScaler: const TextScaler.linear(1.3)),
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: child!,
+            child: JourneyProfileScope(
+              profile: personaCode == 'bride'
+                  ? JourneyProfile.bride
+                  : JourneyProfile.groom,
+              child: child!,
+            ),
           ),
         ),
       ),
@@ -397,5 +406,14 @@ void main() {
     );
     await tester.pump();
     expect(find.byKey(const ValueKey('funding-person-0')), findsNothing);
+  });
+
+  // RA-MO-71: the bride, owner of her plan, read «سلف ترجعها».
+  testWidgets('the bride\'s loans speak to her', (tester) async {
+    final providers = await tester.runAsync(() => _plan(persona: 'BRIDE'));
+    await _open(tester, providers!, personaCode: 'bride');
+
+    final hero = find.byKey(const ValueKey('money-cash-hero'));
+    expect(_said(tester, hero), contains('سلف ترجعينها 200,000'));
   });
 }

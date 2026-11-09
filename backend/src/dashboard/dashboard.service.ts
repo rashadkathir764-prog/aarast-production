@@ -410,6 +410,7 @@ export class DashboardService {
       quoteRequestsCount,
       acceptedProviders: providerCount,
       canManageMoney: this.permissions.canManageMoney(context),
+      canManageGuests: this.permissions.canManageGuests(context),
       form: readerAddressForm(currentUser, context),
       planPersona: context.plan.persona,
       // J1-04: the mahr step is the owner's (only he records it); the first

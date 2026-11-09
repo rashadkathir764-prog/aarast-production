@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/utils/task_display.dart';
 import 'package:aarast_mobile/features/tasks/utils/task_groups.dart';
@@ -33,6 +34,17 @@ void main() {
       isFalse,
       reason: '23:00 in Sana\'a is still the 6th',
     );
+  });
+
+  // RA-MO-73: the summary counted late tasks by the phone's own date.
+  test('the summary counts late tasks as the list marks them', () {
+    final summary = TaskSummary.fromTasks(
+      weddingPlanId: 'plan-1',
+      tasks: [due(DateTime(2026, 11, 6))],
+      now: lateNight,
+    );
+    expect(summary.overdue, 1);
+    expect(isTaskLate(due(DateTime(2026, 11, 6)), now: lateNight), isTrue);
   });
 
   test('RA-MO-58: a cancelled task is not late', () {

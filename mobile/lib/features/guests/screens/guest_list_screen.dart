@@ -336,7 +336,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
         )
         .toList();
     final words = GuestWords.of(context);
-    final remindable = guests.where((guest) => guest.canBeReminded).length;
+    final remindable = guests
+        .where((guest) => guest.canBeRemindedOnWhatsApp)
+        .length;
     final uninvited = guests.any((guest) => guest.awaitsInvitation);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

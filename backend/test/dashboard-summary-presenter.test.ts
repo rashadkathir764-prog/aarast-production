@@ -126,6 +126,7 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     quoteRequestsCount: 1,
     acceptedProviders: 0,
     canManageMoney: true,
+    canManageGuests: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -183,6 +184,7 @@ test('dashboard next step: a reader who cannot record money only reads the payme
     quoteRequestsCount: 1,
     acceptedProviders: 0,
     canManageMoney: false,
+    canManageGuests: true,
     form: 'FEMININE',
     planPersona: 'BRIDE',
   });
@@ -210,6 +212,7 @@ test('dashboard setup actions and provider preview keep current product wording'
     quoteRequestsCount: 0,
     acceptedProviders: 0,
     canManageMoney: true,
+    canManageGuests: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -236,6 +239,7 @@ test('dashboard setup actions and provider preview keep current product wording'
     quoteRequestsCount: 1,
     acceptedProviders: 1,
     canManageMoney: true,
+    canManageGuests: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -262,6 +266,7 @@ test('dashboard provider card describes a plan link without claiming proximity',
     quoteRequestsCount: 1,
     acceptedProviders: 1,
     canManageMoney: true,
+    canManageGuests: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -474,6 +479,7 @@ function setupItems(
     quoteRequestsCount: 0,
     acceptedProviders: 0,
     canManageMoney: true,
+    canManageGuests: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
     mahrRecorded: false,
@@ -603,4 +609,11 @@ test('days to the wedding are Sana\'a days, the same as the countdown notice', (
   // Late at night in Sana'a (still 7 November in UTC) is already the 8th.
   const lateNight = startOfRiyadhDay(new Date('2026-11-07T21:30:00.000Z'));
   assert.equal(dashboardPresenter.daysRemaining(new Date('2026-11-20T00:00:00.000Z'), lateNight), 12);
+});
+
+test('RA-BE-121: «أضف أول ضيف» is offered only to a reader who may add guests', () => {
+  const editor = setupItems({ canManageGuests: false });
+  assert.equal(editor.some((item) => item.type === 'ADD_GUESTS'), false);
+  const owner = setupItems({});
+  assert.equal(owner.some((item) => item.type === 'ADD_GUESTS'), true);
 });

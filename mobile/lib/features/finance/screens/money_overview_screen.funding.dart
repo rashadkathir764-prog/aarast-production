@@ -204,7 +204,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                   ),
                   if (moneyValue(funding.loanOutstanding) > 0)
                     Text(
-                      'سلف ترجعها ${money(funding.loanOutstanding)}',
+                      '${context.ownerDid('سلف ترجعها', 'سلف ترجعينها', groom: 'سلف يرجعها العريس', bride: 'سلف ترجعها العروسة')} ${money(funding.loanOutstanding)}',
                       style: JourneyType.of(
                         JourneyType.small,
                         weight: JourneyType.bold,

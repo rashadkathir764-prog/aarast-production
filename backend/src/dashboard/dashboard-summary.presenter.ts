@@ -63,6 +63,7 @@ export function buildImportantItems({
   quoteRequestsCount,
   acceptedProviders,
   canManageMoney,
+  canManageGuests,
   form,
   planPersona,
   mahrRecorded = null,
@@ -82,6 +83,8 @@ export function buildImportantItems({
   acceptedProviders: number;
   /** A reader who may record a payment is offered that; others only read it. */
   canManageMoney: boolean;
+  /** «أضف أول ضيف» opens the adding: only for a reader who may add (RA-BE-121). */
+  canManageGuests: boolean;
   /** The reader's form (B5): the next steps speak to them. */
   form: AddressForm;
   /** Whose wedding the plan is: the bride's guests are «الضيفات». */
@@ -274,7 +277,7 @@ export function buildImportantItems({
       ),
     );
   }
-  if (guestCount === 0) {
+  if (canManageGuests && guestCount === 0) {
     // D55: the verb follows the reader, the guests follow the plan: the
     // bride's are «الضيفات», so her first one is «ضيفة».
     const brideGuests = planPersona === "BRIDE";

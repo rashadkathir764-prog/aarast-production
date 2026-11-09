@@ -544,3 +544,16 @@ DateTime? _month(Object? value) {
   if (match == null) return null;
   return DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!));
 }
+
+/// A date's own reminder day while it is still to come, in Sana'a; one that
+/// has passed was used, and the date is reminded as usual (D106). One rule
+/// for the row that says it and the sheet that changes it (RA-MO-50,
+/// RA-MO-74: the row kept saying «نذكّرك 5 نوفمبر» on the 9th).
+DateTime? reminderDayToCome(DateTime? day) {
+  if (day == null) return null;
+  final today = sanaaToday();
+  final plain = DateTime(day.year, day.month, day.day);
+  return plain.isBefore(DateTime(today.year, today.month, today.day))
+      ? null
+      : day;
+}

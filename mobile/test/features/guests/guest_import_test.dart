@@ -365,6 +365,37 @@ void main() {
     ]);
   });
 
+  // RA-MO-72: a contact with no valid number, whose name is already on the
+  // list, was shown held back, and «اختر الكل» added it all the same.
+  testWidgets('a same name is ticked one by one, never by «اختر الكل»', (
+    tester,
+  ) async {
+    ContactPhoneDraft contact(String name, String phone) =>
+        ContactPhoneDraft.fromInput(name: name, rawPhone: phone);
+    final api = await _pump(
+      tester,
+      source: GuestImportSource.contacts,
+      guests: [_guest('g1', 'أحمد علي')],
+      contacts: [contact('أحمد علي', '123'), contact('فهد', '777000004')],
+    );
+
+    await tester.tap(find.text('اختر الكل').first);
+    await tester.pumpAndSettle();
+    expect(find.text('أضف ضيف واحد'), findsOneWidget);
+    expect(
+      find.text('الاسم هذا في القائمة · اضغط لو هو شخص ثاني'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('import-contact-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('شخص ثاني بنفس الاسم · بينضاف'), findsOneWidget);
+    expect(find.text('أضف ضيفين'), findsOneWidget);
+
+    await _tapAdd(tester);
+    expect(api.sent.map((person) => person.name), ['أحمد علي', 'فهد']);
+  });
+
   testWidgets('e03 says plainly when contacts cannot be read', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(360, 900);

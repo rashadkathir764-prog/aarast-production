@@ -137,6 +137,7 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     quoteRequestsCount: 0,
     acceptedProviders: 0,
     canManageMoney: true,
+    canManageGuests: true,
   };
   const bride = presenter.buildImportantItems({
     ...base,

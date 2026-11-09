@@ -569,10 +569,15 @@ void main() {
       expect(_said(tester, guard), contains('قاعة الريان'));
       expect(_said(tester, guard), contains('800,000'));
 
-      // Not answered: nothing is saved.
+      // Not answered: nothing is saved, and the save says why (RA-MO-69:
+      // the button did nothing and said nothing).
       await tester.tap(find.byKey(const ValueKey('cost-save')));
       await _settle(tester);
       expect(provider.costs.where((cost) => cost.isExpense), isEmpty);
+      expect(
+        find.textContaining('جاوب على السؤال اللي تحت المبلغ أول'),
+        findsOneWidget,
+      );
 
       await _show(tester, find.byKey(const ValueKey('cost-guard-separate')));
       await tester.tap(find.byKey(const ValueKey('cost-guard-separate')));

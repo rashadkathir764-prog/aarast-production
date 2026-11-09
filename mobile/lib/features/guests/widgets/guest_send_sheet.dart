@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/network/api_client.dart' show ApiException;
 import '../models/guest.dart';
 import '../models/guest_invite_text.dart';
@@ -98,9 +99,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
             child: Row(
               children: [
                 JourneyAvatar(
-                  letter: widget.guests[_index].name.trim().isEmpty
-                      ? '؟'
-                      : widget.guests[_index].name.trim().characters.first,
+                  letter: nameLetter(widget.guests[_index].name),
                   color: context.accent.primary,
                   size: 40,
                 ),

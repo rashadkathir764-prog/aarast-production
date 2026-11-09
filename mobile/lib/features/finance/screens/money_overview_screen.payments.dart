@@ -143,6 +143,14 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
         amount: (before?.amount ?? 0) + moneyValue(line.amount),
       );
     }
+    // The filter holds while its chip is on screen: a payer whose dates are
+    // all gone leaves the row, and his filter with him (RA-MO-64: the tab
+    // stayed empty, «على .», with no chip to undo it).
+    final chipsShown = others.isNotEmpty && wedding.isNotEmpty;
+    if (_who != null &&
+        (!chipsShown || (_who!.isNotEmpty && !others.containsKey(_who)))) {
+      _who = null;
+    }
     final who = _who;
     final shown = [
       for (final line in wedding)
@@ -390,7 +398,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
                       ? 'بدون موعد سداد'
                       : 'دفعة سداد',
                   subtitle: line.dueDate == null
-                      ? 'حدد متى ترجعه'
+                      ? '${context.say('حدد', 'حددي')} متى ${context.ownerDid('ترجعه', 'ترجعينه', groom: 'يرجعه العريس', bride: 'ترجعه العروسة')}'
                       : '${formatArabicDayMonth(line.dueDate!)} · ${_whenWords(line.dueDate!)}',
                   subtitleMaxLines: 2,
                   trailing: Text(
@@ -453,11 +461,12 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
         ),
       ];
     }
-    final total = payments
-        .where((payment) => !payment.isReversed)
-        .fold<num>(0, (sum, payment) => sum + moneyValue(payment.amount));
+    // The plan's total from the summary (C2), not the payments read so far:
+    // they come a page at a time (RA-MO-70).
+    final total = moneyValue(provider.summary.costs.paid);
     return [
       JourneySectionTitle(
+        key: const ValueKey('money-paid-total'),
         'اللي اندفع',
         action: money(total),
         actionColor: AarastV3Color.textMuted,
@@ -672,7 +681,7 @@ class _DueLine extends StatelessWidget {
         'اندفع ${money(line.paidTowards)} من ${money(line.scheduledAmount)}',
       if (line.rescheduledFrom case final first?)
         'كانت ${formatArabicDayMonth(first)}',
-      if (line.remindAt case final remind?)
+      if (reminderDayToCome(line.remindAt) case final remind?)
         'نذكّرك ${formatArabicDayMonth(remind)}',
     ];
     final pay = onPay;

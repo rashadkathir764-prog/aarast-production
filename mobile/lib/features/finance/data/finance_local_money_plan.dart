@@ -369,10 +369,9 @@ class _Plan {
     } else {
       estimateLeft = estimate - _min(parts, estimate);
     }
-    final known =
-        whole ||
-        estimate != null ||
-        ((item?.notNeeded ?? false) && itemCosts.isEmpty);
+    // As on the server: «ما أحتاجها» expects nothing beyond what was
+    // agreed, whatever was recorded in it (RA-BE-122).
+    final known = whole || estimate != null || (item?.notNeeded ?? false);
     return {
       'estimate': estimate,
       'estimateSource': source,

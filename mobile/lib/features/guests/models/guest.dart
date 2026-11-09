@@ -124,13 +124,17 @@ class Guest {
 
   bool get isPending => !isConfirmed && !isDeclined;
 
-  /// Invited and not answered: who a reminder can reach (e08). Only a guest
-  /// the reader keeps: another's guest has no number or link to send.
-  ///
-  /// A reminder goes to a number (RA-MO-61: «ذكّر الـ N» counted the guests
-  /// without one, and their turn opened WhatsApp on no chat).
+  /// Invited and not answered: who is waited on for a reminder (e08). Only a
+  /// guest the reader keeps: another's guest has no number or link to send.
+  /// The reminder screen says who of them has no number; a count of who a
+  /// reminder reaches is [canBeRemindedOnWhatsApp].
   bool get canBeReminded =>
-      editable && hasPhone && isPending && invitationStatus != 'NOT_SENT';
+      editable && isPending && invitationStatus != 'NOT_SENT';
+
+  /// Waited on and reachable: the reminder goes to a number (RA-MO-61: «ذكّر
+  /// الـ N» counted the guests without one; RA-MO-66: the rule belongs to the
+  /// count, not to who is waited on, or the screen said nobody was waiting).
+  bool get canBeRemindedOnWhatsApp => canBeReminded && hasPhone;
 
   /// No invitation has gone out to this guest yet (e04), from this reader.
   bool get awaitsInvitation =>

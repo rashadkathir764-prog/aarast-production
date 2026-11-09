@@ -226,7 +226,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     // Nothing left on him; an item with a part agreement and no estimate is
-    // not known; one not needed is.
+    // not known; one not needed is, even with an expense in it (RA-BE-122),
+    // and a part left empty is its own amount (RA-BE-120).
     name: "nothing due",
     input: {
       today: "2026-11-09",
@@ -236,10 +237,12 @@ const SCENARIOS: Scenario[] = [
         item("hall"),
         item("gold", { notNeeded: true }),
         item("photo"),
+        item("decor", { notNeeded: true }),
       ],
       costs: [
         cost("hall", "100", { paid: "100" }),
         cost("photo", "50", { paid: "50", estimateCover: "PART", estimatePart: "50" }),
+        cost("decor", "40", { paid: "40", estimateCover: "PART" }),
       ],
       schedules: [],
       sources: [source("savings", "SAVINGS", "500")],

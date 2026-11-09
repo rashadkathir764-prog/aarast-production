@@ -11,7 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 // and only its giving waits to be sent.
 
 class _Server extends ApiClient {
-  _Server() : super(tokenProvider: () async => 'token');
+  _Server({this.refuse = false}) : super(tokenProvider: () async => 'token');
+
+  /// The server refuses the giving (the member left the plan a minute ago).
+  final bool refuse;
 
   final created = <Map<String, dynamic>>[];
 
@@ -35,8 +38,25 @@ class _Server extends ApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
+    if (refuse) {
+      throw const ApiException('هذا العضو مو في الخطة.', statusCode: 404);
+    }
     throw const ApiException('ما وصلنا للخادم.', isNetworkFailure: true);
   }
+}
+
+Future<(TaskTimelineProvider, _Server, OfflineSyncService)> _refusing() async {
+  SharedPreferences.setMockInitialValues({});
+  final database = JsonLocalDatabase(await SharedPreferences.getInstance());
+  await database.initialize();
+  final server = _Server(refuse: true);
+  final offline = OfflineSyncService(database: database, apiClient: server);
+  await offline.initialize();
+  return (
+    TaskTimelineProvider(TaskTimelineApi(server, offline: offline)),
+    server,
+    offline,
+  );
 }
 
 void main() {
@@ -72,5 +92,29 @@ void main() {
       table: OfflineTables.cachedTasks,
     );
     expect(cached.map((row) => row['id']), ['task-1']);
+  });
+
+  // RA-MO-65: the giving refused for a reason that is not the network
+  // (the member left): the task was made, so it is saved and kept, the
+  // reason is said, and saving again would not make it twice.
+  test('a refused giving keeps the task made and says why', () async {
+    final (provider, server, offline) = await _refusing();
+
+    final saved = await provider.createTask(
+      weddingPlanId: 'plan-1',
+      title: 'حجز القاعة',
+      assigneeUserId: 'user-left',
+      assigneeName: 'ليلى',
+    );
+
+    expect(saved, isTrue, reason: 'the task is on the server');
+    expect(server.created, hasLength(1));
+    expect(provider.tasks.map((task) => task.id), contains('task-1'));
+    expect(provider.tasks.single.assigneeUserId, isNull);
+    expect(provider.errorMessage, isNull);
+    expect(provider.noticeMessage, contains('ما انعطت لليلى'));
+    expect(provider.noticeMessage, contains('هذا العضو مو في الخطة.'));
+    final queued = await offline.database.pendingSyncItems();
+    expect(queued, isEmpty, reason: 'nothing waits: the server said no');
   });
 }

@@ -126,9 +126,12 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
     final stillOpen = mine.where((task) => !task.isDone).length;
     final status = [
       if (title.isNotEmpty) title,
-      if (widget.canManage)
-        stillOpen == 0 ? 'خلصت مهامك' : 'معك $stillOpen'
-      else if (done != null)
+      if (widget.canManage && stillOpen > 0)
+        'معك $stillOpen'
+      else if (widget.canManage && mine.isNotEmpty)
+        // Nothing left; with no task at all the list itself says so.
+        'خلصت مهامك'
+      else if (!widget.canManage && done != null)
         'خلصت $done',
     ].join(' · ');
 

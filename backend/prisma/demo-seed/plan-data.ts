@@ -327,12 +327,12 @@ function funding(words: {
       amount: 600_000,
       status: FundingSourceStatus.RECEIVED,
       receivedAt: day('2026-09-05'),
-      note: 'أرده 4 أقساط بعد العرس',
+      note: 'أرده على 4 دفعات بعد العرس',
       repayments: [
-        { key: 'r1', amount: 150_000, dueDate: day('2027-02-01'), note: 'القسط الأول' },
-        { key: 'r2', amount: 150_000, dueDate: day('2027-03-01'), note: 'القسط الثاني' },
-        { key: 'r3', amount: 150_000, dueDate: day('2027-04-01'), note: 'القسط الثالث' },
-        { key: 'r4', amount: 150_000, dueDate: day('2027-05-01'), note: 'القسط الرابع' },
+        { key: 'r1', amount: 150_000, dueDate: day('2027-02-01'), note: 'السداد الأول' },
+        { key: 'r2', amount: 150_000, dueDate: day('2027-03-01'), note: 'السداد الثاني' },
+        { key: 'r3', amount: 150_000, dueDate: day('2027-04-01'), note: 'السداد الثالث' },
+        { key: 'r4', amount: 150_000, dueDate: day('2027-05-01'), note: 'السداد الرابع' },
       ],
     },
     {
@@ -380,7 +380,7 @@ export const GROOM_PLAN: PlanSpec = {
     }),
   ],
   funding: funding({
-    father: 'دعم الوالد',
+    father: 'الوالد',
     friend: 'صاحبي عادل',
     savings: 4_500_000,
     family: 2_400_000,
@@ -520,7 +520,7 @@ export const BRIDE_PLAN: PlanSpec = {
   funding: [
     ...brideMahrFunding(),
     ...funding({
-      father: 'دعم الوالدة',
+      father: 'الوالدة',
       friend: 'صاحبتي عبلة',
       savings: 900_000,
       family: 1_000_000,

@@ -181,10 +181,13 @@ Future<_Screen> _open(
   WidgetTester tester,
   (FinanceApi, FundingApi) apis, {
   double textScale = 1.3,
+  JourneyProfile? profile,
 }) async {
   tester.view.physicalSize = const Size(320, 760);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
+  // A second plan in one test gets its own providers, not the first's.
+  await tester.pumpWidget(const SizedBox.shrink());
   Widget elsewhere(GoRouterState state) =>
       Scaffold(body: Text(state.uri.path, key: const ValueKey('elsewhere')));
   final router = GoRouter(
@@ -225,7 +228,9 @@ Future<_Screen> _open(
           ).copyWith(textScaler: TextScaler.linear(textScale)),
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: child!,
+            child: profile == null
+                ? child!
+                : JourneyProfileScope(profile: profile, child: child!),
           ),
         ),
       ),
@@ -339,7 +344,7 @@ void main() {
         await _open(tester, apis!);
 
         // 800,000 hall + 350,000 photographer + 800,000 mahr: 1,950,000, a
-      // half rounded up.
+        // half rounded up.
         expect(
           tester
               .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
@@ -484,6 +489,116 @@ void main() {
         greaterThan(0),
       );
       expect(tester.takeException(), isNull);
+    });
+
+    // The lead's parts (the mahr's rest, his agreements) when there are
+    // both; one part alone would say the lead's figure twice.
+    testWidgets('the lead is split only when it has two parts', (tester) async {
+      final both = await tester.runAsync(twoDips);
+      await _open(tester, both!);
+      // Mahr 800,000; hall 800,000 left + photo 350,000: 1,150,000.
+      expect(find.textContaining('باقي المهر 800,000'), findsOneWidget);
+      expect(find.textContaining('اتفاقاتك 1.2 مليون'), findsOneWidget);
+
+      final hallOnly = await tester.runAsync(
+        () => _plan(costs: _hallCost, payments: _hallPaid, dates: _hallDates),
+      );
+      await _open(tester, hallOnly!);
+      expect(find.textContaining('باقي المهر'), findsNothing);
+      expect(find.textContaining('اتفاقاتك'), findsNothing);
+    });
+
+    // The loan is the owner's debt: «عليك» to him, «على العريس» to anyone
+    // helping, as «الدفعات» says it.
+    testWidgets('a loan is the owner\'s debt, said to the reader', (
+      tester,
+    ) async {
+      final apis = await tester.runAsync(twoDips);
+      await _open(tester, apis!);
+      var loans = find.byKey(const ValueKey('money-whole-loans'));
+      await _scrollTo(tester, loans);
+      expect(
+        find.descendant(
+          of: loans,
+          matching: find.textContaining('دين عليك، من'),
+        ),
+        findsOneWidget,
+      );
+
+      final again = await tester.runAsync(twoDips);
+      await _open(
+        tester,
+        again!,
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: true,
+          readerIsOwner: false,
+        ),
+      );
+      loans = find.byKey(const ValueKey('money-whole-loans'));
+      await _scrollTo(tester, loans);
+      expect(
+        find.descendant(
+          of: loans,
+          matching: find.textContaining('دين على العريس، من'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    // D103, D105: the verdict «يكفي ... ويبقى» is the money in hand alone;
+    // the estimates' «if» counts the dated promise too, and says so.
+    testWidgets('the estimates\' «if» names the promise it counts', (
+      tester,
+    ) async {
+      // Cash 1,100,000 (1,500,000 − 400,000 paid); 800,000 due on day 12
+      // leaves 300,000. أبوي's 600,000 on day 30 makes it 900,000.
+      Future<(FinanceApi, FundingApi)> plan(String photo) => _plan(
+        items: [
+          _hall,
+          {
+            'id': 'c-photo',
+            'weddingPlanId': _planId,
+            'name': 'التصوير',
+            'estimatedAmount': photo,
+          },
+        ],
+        costs: _hallCost,
+        payments: _hallPaid,
+        dates: [_date('s-next', 'k-hall', '800000', 12)],
+        sources: [
+          _source('f-save', 'SAVINGS', 'مدخراتي', '1500000'),
+          _source(
+            'f-father',
+            'FAMILY_SUPPORT',
+            'أبوي',
+            '600000',
+            pledged: true,
+            expected: 30,
+          ),
+        ],
+      );
+      Future<String> ifLine() async {
+        await tester.tap(find.text('من وين'));
+        await tester.pumpAndSettle();
+        final line = find.byKey(const ValueKey('money-sources-if'));
+        await _scrollTo(tester, line);
+        return tester.widget<Text>(line).data!;
+      }
+
+      // The photographer at 500,000: 900,000 − 500,000.
+      await _open(tester, (await tester.runAsync(() => plan('500000')))!);
+      expect(find.textContaining('ويبقى 300,000'), findsOneWidget);
+      var words = await ifLine();
+      expect(words, contains('يبقى معك 400,000'));
+      expect(words, contains('لو وصل أبوي ('));
+      expect(words, contains('في موعده'));
+
+      // At 1,000,000: short by 100,000 even with the promise.
+      await _open(tester, (await tester.runAsync(() => plan('1000000')))!);
+      words = await ifLine();
+      expect(words, contains('ينقصك 100,000'));
+      expect(words, contains('حتى لو وصل أبوي ('));
     });
 
     testWidgets('covered only if the promise arrives on its day', (

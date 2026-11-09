@@ -20,6 +20,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../data/cost_receipts_api.dart';
+import '../models/money_payer_words.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import 'money_widgets.dart' show shownMoney;
@@ -149,7 +150,8 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       return context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ');
     }
     if (amount > _remaining) {
-      return '${context.ownerDid('أكثر من الباقي عليك', 'أكثر من الباقي عليك', groom: 'أكثر من الباقي عليه', bride: 'أكثر من الباقي عليها')} (${_plain(_remaining)})';
+      final cost = widget.cost;
+      return 'أكثر من الباقي ${restOnWhom(cost.payer, cost.payerName, context.journeyProfile)} (${_plain(_remaining)})';
     }
     return null;
   }

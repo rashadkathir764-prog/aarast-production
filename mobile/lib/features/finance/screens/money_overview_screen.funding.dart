@@ -247,10 +247,9 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                     ),
                   ),
                 // The estimates' «if» (D105): not agreed yet, not on him.
-                if (estimates > 0)
+                if (estimates > 0 && coverage != null)
                   Text(
-                    '${context.say('ولو اتفقت', 'ولو اتفقتِ')} على البنود الباقية بتقديراتك (${money(estimates)})، '
-                    '${afterEstimates >= 0 ? 'يبقى معك ${money(afterEstimates)}' : 'ينقصك ${money(-afterEstimates)}'}.',
+                    _ifEstimatesWords(context, coverage, money),
                     key: const ValueKey('money-sources-if'),
                     style: JourneyType.of(
                       JourneyType.small,

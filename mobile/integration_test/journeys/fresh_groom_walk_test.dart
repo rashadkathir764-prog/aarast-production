@@ -179,13 +179,14 @@ void main() {
       await walk.step('c02_items', 'الاتفاق ظهر في البنود', () async {
         await walk.tab('المال');
         await walk.tapText('البنود', required: false);
-        // The row carries the item's name, and opens the agreement's own.
+        // The row carries the item's name, and opens the item's page.
         walk.expectSee('قاعة أو مخدرة الرجال');
         walk.expectSee('1 مليون', why: 'الاتفاق الجديد ظهر بمبلغه، لا اسم البند فقط');
       });
 
-      await walk.step('c07_item', 'افتح الاتفاق', () async {
+      await walk.step('c07_item', 'افتح البند', () async {
         await walk.tapText('قاعة أو مخدرة الرجال', wait: 3);
+        // The item's page lists its agreement by the name it was saved with.
         walk.expectSee('قاعة التجربة');
         walk.note(walk.visibleTexts().take(24).join(' · '));
       });
@@ -208,7 +209,9 @@ void main() {
         await walk.tab('المال');
         await walk.tapText('الملخص', required: false);
         walk.note(walk.visibleTexts().take(24).join(' · '));
-        walk.expectSee('250,000', why: 'الدفعة بمبلغها الكامل في الملخص');
+        // D59: what is left on him is the agreement less what he paid.
+        walk.expectSee('عليك من العرس');
+        walk.expectSee('750,000', why: 'الباقي عليه نزل بالدفعة كاملة');
       });
 
       await walk.step('e06_add_guest', 'أضف ضيفًا', () async {

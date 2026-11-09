@@ -13,6 +13,7 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/release_field_focus.dart';
+import '../models/money_payer_words.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import 'money_input_formatter.dart';
@@ -66,6 +67,12 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
 
   bool get _editing => widget.schedule != null;
   num get _available => moneyValue(widget.cost.remainingAmount);
+
+  String _onWhom() => restOnWhom(
+    widget.cost.payer,
+    widget.cost.payerName,
+    context.journeyProfile,
+  );
 
   @override
   void initState() {
@@ -135,7 +142,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
       _amountError = amount == null || amount <= 0
           ? context.say('اكتب كم المبلغ', 'اكتبي كم المبلغ')
           : amount > _available
-          ? '${context.ownerDid('أكثر من الباقي عليك', 'أكثر من الباقي عليك', groom: 'أكثر من الباقي عليه', bride: 'أكثر من الباقي عليها')} (${_plain(_available)})'
+          ? 'أكثر من الباقي ${_onWhom()} (${_plain(_available)})'
           : null;
       _dateError = _dueDate == null
           ? context.say('اختر يوم الدفعة', 'اختاري يوم الدفعة')
@@ -225,10 +232,9 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
       title: _editing ? 'موعد الدفعة' : 'موعد دفع جديد',
       subtitle: [
         widget.cost.title,
-        // D59: the owner reads what is left to them; a helper reads it as
-        // the owner's.
-        if (_available > 0)
-          '${context.ownerDid('باقي عليك', 'باقي عليك', groom: 'باقي عليه', bride: 'باقي عليها')} ${_plain(_available)}',
+        // D59: the owner reads what is left to them, a helper reads it as
+        // the owner's, and the family's rest is theirs.
+        if (_available > 0) 'باقي ${_onWhom()} ${_plain(_available)}',
       ].join(' · '),
       bottom: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

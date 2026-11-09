@@ -33,6 +33,23 @@ String payerLabel(
   };
 }
 
+/// D59 (backend `paidFromOwnerMoney`): whether an agreement's payer pays
+/// from the plan owner's own money: none written, a shared one, or the
+/// plan's own side. Anyone else's rest is theirs, not «عليك».
+bool payerIsOwner(String? payer, {required bool bridePlan}) =>
+    payer == null ||
+    payer.isEmpty ||
+    payer == 'SHARED' ||
+    payer == (bridePlan ? 'BRIDE' : 'GROOM');
+
+/// J1-17, D59: on whom an agreement's rest is, as «الملخص» says it: the
+/// owner's («عليك»; to a helper «عليه» or «عليها»), or the family's or
+/// someone else's by the name written with it («على الوالد»).
+String restOnWhom(String? payer, String? payerName, JourneyProfile profile) =>
+    payerIsOwner(payer, bridePlan: profile.isBride)
+    ? profile.ownerDid('عليك', 'عليك', groom: 'عليه', bride: 'عليها')
+    : 'على ${payerLabel(payer, payerName, bridePlan: profile.isBride, owner: profile.readerIsOwner)}';
+
 /// w20's line over a payer's total, its verb agreeing with who paid
 /// («العروسة دفعت», «الأهل دفعوا», «الوالد دفع»); what is shared is said
 /// without a doer («المدفوع المشترك»).

@@ -7,7 +7,7 @@ import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_payer_words.dart'
-    show payerAvatarLetter, payerPaidLine;
+    show payerAvatarLetter, payerPaidLine, restOnWhom;
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -99,7 +99,9 @@ void main() {
 
       expect(find.byKey(const ValueKey('money-mahr-card')), findsNothing);
       expect(find.text('عليك من العرس'), findsOneWidget);
-      expect(find.textContaining('باقي المهر'), findsOneWidget);
+      // All that is left on him is the mahr: said once, not its figure
+      // under the same figure.
+      expect(find.text('كله باقي المهر'), findsOneWidget);
       expect(find.byKey(const ValueKey('money-whole-cost')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -596,6 +598,24 @@ void main() {
       );
       expect(payerLabel('FAMILY', ' ', bridePlan: false, owner: true), 'الأهل');
       expect(payerLabel(null, null, bridePlan: false, owner: true), 'ما تحدد');
+    });
+
+    // J1-17, D59 (backend `paidFromOwnerMoney`): the rest of an agreement
+    // is on whoever pays it, said to the reader.
+    test('the rest is on whoever pays the agreement', () {
+      const groom = JourneyProfile.groom;
+      final helper = JourneyProfile.of(
+        planPersona: 'BRIDE',
+        readerFeminine: true,
+        readerIsOwner: false,
+      );
+      expect(restOnWhom(null, null, groom), 'عليك');
+      expect(restOnWhom('SHARED', null, groom), 'عليك');
+      expect(restOnWhom('GROOM', null, groom), 'عليك');
+      expect(restOnWhom('FAMILY', 'الوالد', groom), 'على الوالد');
+      expect(restOnWhom('BRIDE', null, groom), 'على العروسة');
+      expect(restOnWhom('BRIDE', null, helper), 'عليها');
+      expect(restOnWhom('FAMILY', '', helper), 'على الأهل');
     });
 
     test(

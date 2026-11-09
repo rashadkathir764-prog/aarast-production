@@ -190,6 +190,24 @@ void main() {
     expect(find.textContaining('ما سجلت من وين فلوسك'), findsOneWidget);
   });
 
+  // RA-MO-42: the plan's money summary is its owner's to send.
+  testWidgets('only the plan\'s owner may share its money summary', (
+    tester,
+  ) async {
+    await _pump(tester, JourneyProfile.bride);
+    expect(find.byKey(const Key('money-share-summary')), findsOneWidget);
+
+    await _pump(
+      tester,
+      JourneyProfile.of(
+        planPersona: 'BRIDE',
+        readerFeminine: true,
+        readerIsOwner: false,
+      ),
+    );
+    expect(find.byKey(const Key('money-share-summary')), findsNothing);
+  });
+
   test('c12: her gifts are «هدايا ونقوط», his are «رفد ونقوط»', () {
     expect(fundingKindChoice('GIFT', JourneyProfile.bride), 'هدايا ونقوط');
     expect(fundingKindChoice('GIFT', JourneyProfile.groom), 'رفد ونقوط');

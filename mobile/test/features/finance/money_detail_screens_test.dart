@@ -542,6 +542,26 @@ void main() {
       expect(find.textContaining('باقي عليها '), findsOneWidget);
     });
 
+    // D59: an agreement the family pays is not the owner's to owe.
+    testWidgets('the owner reads the family\'s rest as theirs on the '
+        'payment screen', (tester) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        api: _MoneyDetailsApi(payer: 'FAMILY', payerName: 'الوالد'),
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: false,
+          readerIsOwner: true,
+        ),
+      );
+      expect(find.textContaining('باقي على الوالد '), findsOneWidget);
+      expect(find.textContaining('باقي عليك'), findsNothing);
+    });
+
     testWidgets('the owner reads «باقي عليك» on the payment screen', (
       tester,
     ) async {
@@ -1089,12 +1109,14 @@ class _NoAgreementApi extends _MoneyDetailsApi {
 }
 
 class _MoneyDetailsApi extends FinanceApi {
-  _MoneyDetailsApi({this.quoteOfferId})
+  _MoneyDetailsApi({this.quoteOfferId, this.payer, this.payerName})
     : super(ApiClient(tokenProvider: () async => null));
 
   static final _now = DateTime(2026, 7, 14, 12);
 
   final String? quoteOfferId;
+  final String? payer;
+  final String? payerName;
 
   late final WeddingCost cost = WeddingCost(
     id: 'cost-1',
@@ -1108,6 +1130,8 @@ class _MoneyDetailsApi extends FinanceApi {
     providerId: 'provider-1',
     providerName: 'قاعة السعادة',
     quoteOfferId: quoteOfferId,
+    payer: payer,
+    payerName: payerName,
     agreementDate: _now.subtract(const Duration(days: 20)),
     note: 'الاتفاق يشمل تجهيز القاعة.',
     paymentsCount: 1,

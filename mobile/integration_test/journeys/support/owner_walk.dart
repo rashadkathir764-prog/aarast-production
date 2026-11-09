@@ -39,6 +39,7 @@ class OwnerPersona {
     required this.agreed,
     required this.paid,
     required this.left,
+    required this.wholeLeft,
     required this.inHand,
     required this.promised,
     required this.fundingAmounts,
@@ -71,15 +72,18 @@ class OwnerPersona {
   final String lateTask;
   final String guestFamily;
 
-  /// The money as the seed leaves it (DEMO_DATA.md): what was agreed and
-  /// paid (his mahr agreement included), in hand and promised (her mahr
-  /// received and its rest included), the sources' amounts, and the family
-  /// payer of the hall and the lunch. [inHand] and [promised] are millions.
+  /// The money as the seed leaves it (DEMO_DATA.md): the wedding items'
+  /// agreements (the mahr apart), what the owner's own money paid (his
+  /// mahr included), in hand and promised (her mahr received and its rest
+  /// included), the sources' amounts, and the family payer of the hall and
+  /// the lunch. [inHand] and [promised] are millions.
   final String agreed;
   final String paid;
 
-  /// What is left to pay on every agreement (RA-MO-40's figure).
+  /// What is left on the owner (D59: the family's share apart), and on
+  /// every agreement, the family's share included.
   final String left;
+  final String wholeLeft;
   final String inHand;
   final String promised;
   final List<String> fundingAmounts;
@@ -136,16 +140,18 @@ const groomPersona = OwnerPersona(
   otherPlanName: 'عرس سلمى',
   // He is the groom in her plan (SharedMemberRole.GROOM), a man.
   otherPlanRole: 'تساعد فيها',
-  fundingNames: ['مدخراتي', 'دعم الوالد', 'خالي أحمد', 'صاحبي عادل'],
+  fundingNames: ['مدخراتي', 'الوالد', 'خالي أحمد', 'صاحبي عادل'],
   loanSource: 'خالي أحمد',
   lateTask: 'حدد موعد عقد القران',
   guestFamily: 'آل الحمدي',
-  agreed: '7.9 مليون',
+  agreed: '4.9 مليون',
   // D59: of the 4.6 million paid, his father paid 1.3 (the hall and the
-  // lunch): «دفعت منها 3.3»، and «معك» is 7.5 received less his 3.3.
+  // lunch): «صرفت منها 3.3»، and «معك» is 7.5 received less his 3.3.
   paid: '3.3 مليون',
+  // 7.9 agreed with the mahr, 3 of it on his father: 4.9 his, 3.3 paid.
+  left: '1.6 مليون',
   // 7.9 agreed, 4.6 paid (3.3 his, 1.3 his father's).
-  left: '3.3 مليون',
+  wholeLeft: '3.3 مليون',
   inHand: '4.2',
   promised: '1.2',
   fundingAmounts: ['4.5 مليون', '2.4 مليون', '600,000'],
@@ -178,15 +184,17 @@ const bridePersona = OwnerPersona(
   ],
   otherPlanName: 'عرس محمد',
   otherPlanRole: 'تساعدين فيها',
-  fundingNames: ['مدخراتي', 'دعم الوالدة', 'خالي أحمد', 'صاحبتي عبلة'],
+  fundingNames: ['مدخراتي', 'الوالدة', 'خالي أحمد', 'صاحبتي عبلة'],
   loanSource: 'خالي أحمد',
   lateTask: 'حددي موعد عقد القران',
   guestFamily: 'آل السقاف',
   agreed: '4.9 مليون',
-  // D59: her father paid 1.3 of the 2.6: «دفعتِ منها 1.3»، «معك» 4.5 − 1.3.
+  // D59: her father paid 1.3 of the 2.6: «صرفتِ منها 1.3»، «معك» 4.5 − 1.3.
   paid: '1.3 مليون',
+  // 4.9 agreed, 3 of it on her father: 1.9 hers, 1.3 paid.
+  left: '600,000',
   // 4.9 agreed, 2.6 paid (1.3 hers, 1.3 her father's).
-  left: '2.3 مليون',
+  wholeLeft: '2.3 مليون',
   inHand: '3.2',
   promised: '2.2',
   fundingAmounts: ['900,000', '600,000'],
@@ -309,46 +317,60 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // ------------------------------------------------------------ money
   await walk.step('c01_money_summary', 'المال: الملخص', () async {
     await walk.tab('المال');
-    // RA-MO-40: what is left to pay first, whether the money covers it,
-    // then what was paid of everything agreed.
-    walk.expectSee(p.say('باقي عليك تدفع', 'باقي عليك تدفعين'));
-    walk.expectSee(p.left, why: 'الباقي رقم واحد أول الملخص');
+    // D103-D105: the owner's own share first, then whether the money in
+    // hand covers each due on its day, then the promise left out of it.
+    walk.expectSee(p.say('عليك من العرس', 'عليكِ من العرس'));
+    walk.expectSee(p.left, why: 'نصيب صاحب الخطة رقم واحد أول الملخص');
+    // His share splits into the mahr's rest and his agreements; hers is
+    // one part, said once.
+    if (p.bride) {
+      walk.expectNotSee('اتفاقاتك', why: 'جزء واحد ما يتكرر تحت الرقم');
+    } else {
+      walk.expectSee('باقي المهر 1 مليون');
+      walk.expectSee('اتفاقاتك 600,000');
+    }
+    walk.expectSee('معك ${p.inHand} مليون', why: 'الحكم تحت الرقم مباشرة');
     walk.expectSee(
-      'معك ${p.inHand} مليون',
-      why: 'الحكم تحت الباقي مباشرة',
+      'يكفي دفعاتك وسداد السلفة بمواعيدها',
+      why: 'التغطية بالمواعيد، والسلفة منها (D103، D104)',
     );
-    walk.expectSee('موعود لك ${p.promised} مليون');
-    walk.expectSee('فلوسك والموعود يغطونه', why: 'الحكم سطر واحد');
-    walk.expectSee(p.say('دفعت ${p.paid}', 'دفعتِ ${p.paid}'));
-    // D59: what the family paid is theirs, not the owner's.
     walk.expectSee(
-      'دفع عنك ${p.familyPayer} 1.3 مليون',
-      why: 'الدفع عن صاحب الخطة',
+      'وعد ${p.fundingNames.last}',
+      why: 'الوعد بلا موعد ما ينحسب في التغطية',
     );
-    walk.expectSee('الاتفاقات كلها ${p.agreed}');
-    walk.expectNotSee('في حدود الميزانية', why: 'الحكم مرة وحدة في الملخص');
+    // His mahr's rest is a due on him; hers is money coming to her.
+    if (p.bride) {
+      walk.expectNotSee('الباقي يوم العقد', why: 'مهرها يوصلها، مو دفعة عليها');
+    } else {
+      walk.expectSee('الباقي يوم العقد', why: 'باقي المهر من دفعاته الجاية');
+    }
   });
 
-  await walk.step('c01_money_mahr', 'المال: الميزانية', () async {
-    // RA-MO-40: the budget in one card under the next payment; the mahr is
-    // outside it (C1) and has its own section in «البنود» (c02 below).
-    if (!walk.sees('الميزانية 7 مليون')) await walk.scroll(pixels: 400);
-    walk.expectSee('الميزانية 7 مليون');
-    walk.expectSee('باقي 2.1 مليون', why: 'المتاح من الميزانية بدون المهر');
+  await walk.step('c01_money_whole', 'المال: الصورة كاملة', () async {
+    walk.expectSee('باقي على العرس كله');
+    walk.expectSee(p.wholeLeft, why: 'الباقي على كل الاتفاقات، عليه وعلى أهله');
+    // D59: what the family pays is theirs, not the owner's.
     walk.expectSee(
-      p.say('اتفقت على 4.9 مليون', 'اتفقتِ على 4.9 مليون'),
-      why: 'اتفاقات العرس بدون المهر',
+      'على ${p.familyPayer} 1.7 مليون',
+      why: 'باقي الأهل على القاعة والغداء',
     );
-    walk.expectNotSee('وين تروح الفلوس', why: 'المهر له مكانه في البنود');
+    walk.expectSee('سلف ترجعها');
+    walk.expectSee(p.say('دين عليك،', 'دين عليكِ،'), why: 'السلفة دين عليه');
+    walk.expectSee('تكلفة العرس المسجّلة');
     await walk.scroll(pixels: -1500);
   });
 
-  await walk.step('c02_money_items', 'المال: البنود بأسمائها', () async {
+  await walk.step('c02_money_items', 'المال: البنود والميزانية', () async {
     await walk.tapText('البنود', wait: 2.5);
-    // B5: the mahr is its own section above «عرسك».
+    // D105, D109: the budget against the items' agreements and estimates.
+    walk.expectSee('ميزانية العرس');
+    walk.expectSee('اتفاقات ${p.agreed}', why: 'اتفاقات العرس بدون المهر');
+    walk.expectSee('على قد الميزانية', why: 'الاتفاقات والتقديرات = 7 مليون');
+    // B5: the mahr is its own section, outside the budget.
+    if (!walk.sees(p.mahr.itemsSection)) await walk.scroll(pixels: 1200);
     walk.expectSee(p.mahr.itemsSection, why: 'قسم المهر في c02');
     walk.expectSee('المهر');
-    walk.expectSee('الباقي $mahrRestDay', why: 'موعد باقي المهر');
+    await walk.scroll(pixels: -1500);
     for (final name in p.itemNames) {
       if (!walk.sees(name)) await walk.scroll(pixels: 300);
       walk.expectSee(name, why: 'اسم البند كما في التصميم c02');
@@ -356,20 +378,33 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.scroll(pixels: -1500);
   });
 
-  await walk.step('c07_item_detail', 'تفاصيل بند ${p.hallItem}', () async {
+  await walk.step('c07_item_detail', 'صفحة بند ${p.hallItem}', () async {
     if (!await walk.tapText(p.hallItem, required: false, wait: 3)) {
       walk.fail('البند ما اسمه «${p.hallItem}» في قائمة البنود');
       if (!await walk.tapText(p.hallProvider, wait: 3)) return;
     }
     walk.expectSee(p.hallProvider);
+    walk.expectSee('المخصص له');
     walk.expectSee('500,000', why: 'المدفوع للقاعة 500 ألف');
-    walk.expectSee('جدول الدفعات');
+    walk.expectSee('1.5 مليون', why: 'باقي القاعة 1.5 مليون');
+    walk.expectSee('الجاي عليه', why: 'دفعات البند الجاية في صفحته');
   });
   await walk.back();
 
   await walk.step('c03_money_payments', 'المال: الدفعات', () async {
     await walk.tapText('الدفعات', wait: 2.5);
-    walk.expectSee('500,000');
+    walk.expectSee('الكل ${p.wholeLeft}');
+    walk.expectSee(
+      '${p.say('عليك', 'عليكِ')} ${p.left}',
+      why: 'فرز الدفعات: عليه وعلى أهله',
+    );
+    walk.expectSee('على ${p.familyPayer} 1.7 مليون');
+    walk.expectSee('500,000', why: 'دفعة القاعة الجاية');
+    // D104: the loan is paid back apart from the wedding's dues.
+    if (!walk.sees('سداد ${p.loanSource}')) await walk.scroll(pixels: 1500);
+    walk.expectSee('سداد ${p.loanSource}');
+    walk.expectSee('مو من تكاليف العرس', why: 'السلفة مو من دفعات العرس');
+    await walk.scroll(pixels: -3000);
   });
 
   await walk.step('w20_payers', 'مين دفع ايش', () async {
@@ -385,13 +420,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   });
   await walk.back();
 
-  await walk.step('c06_pay_sheet', 'فتح «سجّل الدفعة» (بدون حفظ)', () async {
-    await walk.tab('المال');
-    await walk.tapText('الملخص', wait: 2);
-    if (!await walk.tapText(p.say('سجّل الدفعة', 'سجّلي الدفعة'), wait: 3)) {
-      return;
-    }
-    walk.expectSee('500,000');
+  await walk.step('c06_pay_sheet', 'فتح «سجّل» على دفعة (بدون حفظ)', () async {
+    // The first due is the hall's second payment, 500 thousand.
+    if (!await walk.tapText(p.say('سجّل', 'سجّلي'), wait: 3)) return;
+    walk.expectSee('500,000', why: 'الدفعة المستحقة بمبلغها');
     walk.expectSee('حفظ الدفعة');
   });
   await walk.back();
@@ -399,14 +431,18 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.step('c05_money_funding', 'المال: من وين (المصادر)', () async {
     await walk.tab('المال');
     await walk.tapText('من وين', wait: 2.5);
-    // c05 as drawn (D59): «صرفت» is what the owner's own money paid.
+    // D104: «معك» is what reached the owner less what the owner paid.
+    walk.expectSee('معك الحين');
     walk.expectSee(
-      '${p.say('صرفت', 'صرفتِ')} ${p.paid} ر.ي · معك ${p.inHand} مليون',
-      why: 'وصلك = صرفت + معك',
+      // The amount only: the currency sits after a no-break space.
+      '${p.say('صرفت', 'صرفتِ')} منها ${p.paid}',
+      why: 'معك = وصلك − صرفت',
     );
     for (final name in p.fundingNames) {
+      if (!walk.sees(name)) await walk.scroll(pixels: 300);
       walk.expectSee(name);
     }
+    await walk.scroll(pixels: -1500);
     for (final amount in p.fundingAmounts) {
       walk.expectSee(amount);
     }
@@ -415,14 +451,19 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       if (!walk.sees('باقي المهر')) await walk.scroll(pixels: 400);
       walk.expectSee('المهر من العريس');
       walk.expectSee('باقي المهر');
-      walk.expectSee('يوصلك $mahrRestDay', why: 'موعد باقي المهر');
-      await walk.scroll(pixels: -1200);
+      walk.expectSee('موعدها $mahrRestDay', why: 'موعد باقي المهر');
     } else {
       walk.expectNotSee('المهر من العريس', why: 'مهر العريس اتفاق، مو مصدر');
     }
+    // D108: the family by person: what reached the owner and what the
+    // family paid the shops, each under the person who gave it.
+    if (!walk.sees('مساهمات الأهل')) await walk.scroll(pixels: 600);
+    walk.expectSee('مساهمات الأهل');
+    walk.expectSee('مدفوع للمحلات 1.3 مليون', why: 'دفع الأهل للمحلات');
+    await walk.scroll(pixels: -2000);
   });
 
-  await walk.step('c13_loan', 'السلفة: الأقساط', () async {
+  await walk.step('c13_loan', 'السلفة: السداد', () async {
     if (!await walk.tapText(p.loanSource, wait: 3)) return;
     // The summary's row opens «من وين» (the sources list); the loan is one
     // more tap from there.

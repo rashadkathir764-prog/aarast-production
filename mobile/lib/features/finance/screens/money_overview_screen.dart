@@ -161,7 +161,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               // once each; the line is for the other tabs.
               showStatus: tab != 0,
               canManage: provider.canManageBudget,
-              onShare: provider.summary.hasAnyData
+              // RA-MO-42: the plan's summary is its owner's to send.
+              onShare:
+                  provider.summary.hasAnyData &&
+                      context.journeyProfile.readerIsOwner
                   ? () => showAarastShareSheet(
                       context: context,
                       title: 'مشاركة ملخص الميزانية',

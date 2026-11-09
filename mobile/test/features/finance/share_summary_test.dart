@@ -92,11 +92,17 @@ void main() {
 
       expect(text, startsWith('ملخص ميزانية «عرس أحمد»'));
       expect(text, contains('الميزانية: 5 مليون'));
+      expect(text, contains('• تكلفة العرس المتوقعة: 3.2 مليون'));
       expect(text, contains('(64٪ من الميزانية)'));
+      expect(text, contains('• باقي من الميزانية: 1.8 مليون'));
       expect(text, contains('• الذهب: 1.7 مليون'));
       expect(text.indexOf('الذهب'), lessThan(text.indexOf('القاعة')));
       expect(text, isNot(contains('شهر العسل')));
-      expect(text, contains('⚠ تجاوزت المخصص: الذهب'));
+      expect(text, contains('⚠ فوق المخصص لها: الذهب'));
+      // In the app's voice (RA-MO-42).
+      for (final formal in ['الملتزم به', 'المتبقي للدفع', 'المدفوع']) {
+        expect(text, isNot(contains(formal)), reason: formal);
+      }
       expect(text, isNot(contains('777')));
       expect(text, isNot(contains('9 مليون')));
     },
@@ -109,8 +115,8 @@ void main() {
       hideAmounts: true,
     );
 
-    expect(text, contains('استُخدم 64٪ من الميزانية'));
-    expect(text, contains('دُفع 31٪ من التكاليف المسجلة'));
+    expect(text, contains('التكلفة المتوقعة 64٪ من الميزانية'));
+    expect(text, contains('اندفع 31٪ من الاتفاقات'));
     expect(text, contains('• الذهب'));
     expect(text, isNot(contains('مليون')));
     expect(text, isNot(contains('ر.ي')));
@@ -169,16 +175,19 @@ void main() {
         hideAmounts: false,
       );
 
-      // Before D59: «الملتزم به: 7.9 مليون (113٪ من الميزانية)».
-      expect(text, contains('• الملتزم به: 4.9 مليون ر.ي (70٪ من الميزانية)'));
+      // Before D59: the agreements with the mahr, 7.9 million (113٪).
+      expect(
+        text,
+        contains('• تكلفة العرس المتوقعة: 4.9 مليون ر.ي (70٪ من الميزانية)'),
+      );
       expect(text, isNot(contains('7.9')));
-      expect(text, contains('• المدفوع: 2.6 مليون ر.ي'));
+      expect(text, contains('• اندفع: 2.6 مليون ر.ي'));
       expect(text, contains('• منه دفعه غير العريس: 1.3 مليون ر.ي'));
-      expect(text, contains('• المتبقي للدفع: 2.3 مليون ر.ي'));
+      expect(text, contains('• باقي على الاتفاقات: 2.3 مليون ر.ي'));
       expect(
         text,
         contains(
-          '• المهر (خارج الميزانية): 3 مليون ر.ي، سُلّم منه 2 مليون ر.ي',
+          '• المهر (برا الميزانية): 3 مليون ر.ي، انسلّم منه 2 مليون ر.ي',
         ),
       );
       // Never among the biggest items.
@@ -190,8 +199,8 @@ void main() {
         planTitle: 'عرس محمد',
         hideAmounts: true,
       );
-      expect(hidden, contains('استُخدم 70٪ من الميزانية'));
-      expect(hidden, contains('سُلّم 67٪ منه'));
+      expect(hidden, contains('التكلفة المتوقعة 70٪ من الميزانية'));
+      expect(hidden, contains('انسلّم 67٪ منه'));
     },
   );
 
@@ -281,5 +290,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(preview(), isNot(contains('مليون')));
     expect(find.text('إرسال عبر واتساب'), findsOneWidget);
+  });
+
+  // D105: the cost shared is the expected cost, and the budget is held
+  // against it, as the tab says: an estimate can take it over.
+  test('D105: the shared cost is the expected one, the budget held to it', () {
+    final summary = MoneySummary.fromJson({
+      'planId': 'plan-1',
+      'currency': 'YER',
+      'budget': {
+        'total': '3000000',
+        'remaining': '1450000',
+        'confirmedCost': '1550000',
+        'paid': '400000',
+        'outstanding': '1150000',
+        'count': 2,
+      },
+      'expected': {
+        'wedding': {
+          'agreed': '1550000',
+          'estimateLeft': '1700000',
+          'expected': '3250000',
+        },
+        'total': '3250000',
+        'budgetLeft': '-250000',
+      },
+    });
+    final text = moneyShareText(
+      summary,
+      planTitle: 'عرس أحمد',
+      hideAmounts: false,
+    );
+    expect(text, contains('• تكلفة العرس المتوقعة: 3.3 مليون'));
+    expect(text, contains('• منها اتفاقات: 1.6 مليون'));
+    expect(text, contains('• فوق الميزانية بـ 250,000'));
+    // Never «1.45 million left» from the agreements alone.
+    expect(text, isNot(contains('باقي من الميزانية')));
   });
 }

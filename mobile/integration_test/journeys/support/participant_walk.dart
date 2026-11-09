@@ -51,14 +51,16 @@ const viewerFather = ParticipantPersona(
   managesProviders: false,
 );
 
-/// The owner's money as the owner sees it; none of it may reach a
-/// participant without the money right.
+/// The owner's money as the owner sees it (the seed's figures, D103 to
+/// D105); none of it may reach a participant without the money right.
 const _privateMoney = [
   '4.9 مليون',
   '2.6 مليون',
   '7 مليون',
-  'باقي تدفع',
-  'معك 4.9',
+  '1.6 مليون',
+  '3.3 مليون',
+  'عليك من العرس',
+  'معك 4.2',
   'موعود 1.2',
   'مدخراتي',
   'خالي أحمد',

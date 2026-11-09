@@ -17,6 +17,7 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/finance_local_data_source.dart';
+import '../models/money_payer_words.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/cost_receipts_section.dart';
@@ -408,9 +409,9 @@ Widget paymentEntryFrame(
                 ? null
                 : [
                     ?cost.partyLabel,
-                    // J1-17: whose the rest is, as «الملخص» says it.
+                    // J1-17, D59: whose the rest is, as «الملخص» says it.
                     if (moneyValue(cost.remainingAmount) > 0)
-                      '${context.ownerDid('باقي عليك', 'باقي عليك', groom: 'باقي عليه', bride: 'باقي عليها')} $left',
+                      'باقي ${restOnWhom(cost.payer, cost.payerName, context.journeyProfile)} $left',
                   ].join(' · '),
             onBack: () => context.popOrGo(AppRouter.money(planId)),
           ),

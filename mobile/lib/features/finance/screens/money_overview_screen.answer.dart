@@ -44,6 +44,40 @@ List<MoneyObligation> _weddingDues(MoneySummary summary) => [
     if (line.kind == MoneyObligationKind.due) line,
 ];
 
+/// The promised money with a date that the account counted (D103), named
+/// with its day: «باقي المهر (30 نوفمبر)».
+String _countedPledges(MoneyCoverage coverage) => [
+  for (final pledge in coverage.pledgesCounted)
+    '${pledge.sourceName}${pledge.expectedAt == null ? '' : ' (${_dayWords(pledge.expectedAt!)})'}',
+].join(' و');
+
+/// D105's «if» under the verdict: the estimates still expected, agreed at
+/// their figures, and what would be left. Its figure counts the promised
+/// money that has a date (D103), as a shortfall does; where the verdict
+/// spoke of the money in hand alone («يكفي ... ويبقى»), it says so, so the
+/// two sentences add up for the reader.
+String _ifEstimatesWords(
+  BuildContext context,
+  MoneyCoverage coverage,
+  String Function(Object? value) money,
+) {
+  final after = moneyValue(coverage.endAfterEstimates);
+  final inHandOnly =
+      coverage.verdict == MoneyCoverageVerdict.covered ||
+      coverage.verdict == MoneyCoverageVerdict.nothingDue;
+  final pledges = inHandOnly ? _countedPledges(coverage) : '';
+  final result = after >= 0
+      ? 'يبقى معك ${money(after)}'
+      : 'ينقصك ${money(-after)}';
+  final basis = pledges.isEmpty
+      ? ''
+      : after >= 0
+      ? ' لو وصل $pledges في موعده'
+      : ' حتى لو وصل $pledges في موعده';
+  return '${context.say('ولو اتفقت', 'ولو اتفقتِ')} على البنود الباقية '
+      'بتقديراتك (${money(coverage.estimatesLeft)})، $result$basis.';
+}
+
 /// D103's one verdict, in the money tab's words: the sentence, a second
 /// line with what it rests on, and whether it is good news.
 ({bool ok, String main, String sub}) _coverSentence(
@@ -94,10 +128,7 @@ List<MoneyObligation> _weddingDues(MoneySummary summary) => [
         sub: tail.join(' '),
       );
     case MoneyCoverageVerdict.coveredIfPledges:
-      final names = [
-        for (final pledge in coverage.pledgesCounted)
-          '${pledge.sourceName}${pledge.expectedAt == null ? '' : ' (${_dayWords(pledge.expectedAt!)})'}',
-      ].join(' و');
+      final names = _countedPledges(coverage);
       final without = coverage.withoutPledges;
       return (
         ok: true,
@@ -283,13 +314,18 @@ class _ShareHero extends StatelessWidget {
     final lead = owner
         ? (outstanding?.owner ?? summary.costs.outstanding)
         : (outstanding?.total ?? summary.costs.outstanding);
+    // D79: the groom's mahr is its own part of the lead. Beside his
+    // agreements, each with its figure; when it is all of it, said
+    // without the lead's figure twice; with no mahr, the lead says it all.
+    final ownerMahr = moneyValue(outstanding?.ownerMahr);
+    final ownerAgreements = moneyValue(outstanding?.owner) - ownerMahr;
     final chips = <String>[
       if (owner && outstanding != null) ...[
-        if (moneyValue(outstanding.ownerMahr) > 0)
+        if (ownerMahr > 0 && ownerAgreements > 0) ...[
           'باقي المهر ${_figure(context, outstanding.ownerMahr, currency)}',
-        if (moneyValue(outstanding.owner) - moneyValue(outstanding.ownerMahr) >
-            0)
-          'اتفاقاتك ${_figure(context, moneyValue(outstanding.owner) - moneyValue(outstanding.ownerMahr), currency)}',
+          'اتفاقاتك ${_figure(context, ownerAgreements, currency)}',
+        ] else if (ownerMahr > 0)
+          'كله باقي المهر',
       ] else
         for (final group in summary.payers)
           if (moneyValue(group.outstanding) > 0)
@@ -741,9 +777,9 @@ class _WholePicture extends StatelessWidget {
                 soft: AarastV3Color.lilacSoft,
                 title: 'سلف ترجعها',
                 subtitleMaxLines: 2,
-                subtitle: repayments.isEmpty
-                    ? 'دين عليك، بدون مواعيد سداد'
-                    : 'دين عليك، من ${_dayWords(repayments.first)} لين ${_dayWords(repayments.last)}',
+                // The owner's debt, said to the reader as «الدفعات» says it.
+                subtitle:
+                    '${context.ownerDid('دين عليك', 'دين عليكِ', groom: 'دين على العريس', bride: 'دين على العروسة')}، ${repayments.isEmpty ? 'بدون مواعيد سداد' : 'من ${_dayWords(repayments.first)} لين ${_dayWords(repayments.last)}'}',
                 trailing: end(money(loanLeft)),
                 onTap: onSources,
               ),
@@ -899,8 +935,7 @@ class _HowWeCountedSheet extends StatelessWidget {
           for (final pledge in coverage.pledgesIgnored)
             'وعد ${pledge.sourceName} (${money(pledge.amount)})، لأنه ${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر عن موعده' : 'ما له موعد'}.',
           if (estimates > 0)
-            'التقديرات، لأنها مو اتفاقات. ولو اتفقت على الباقي بتقديراتك (${money(coverage.estimatesLeft)})، '
-                '${moneyValue(coverage.endAfterEstimates) >= 0 ? 'يبقى معك ${money(coverage.endAfterEstimates)}' : 'ينقصك ${money(-moneyValue(coverage.endAfterEstimates))}'}.',
+            'التقديرات، لأنها مو اتفاقات. ${_ifEstimatesWords(context, coverage, money)}',
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: AarastV3Space.x1),

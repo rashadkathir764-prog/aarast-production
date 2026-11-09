@@ -301,7 +301,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('money-due-total')), findsOneWidget);
-      expect(find.text('خلال 30 يوم'), findsOneWidget);
+      expect(find.text('باقي من دفعات العرس'), findsOneWidget);
       expect(find.text('دفعة وحدة'), findsOneWidget);
       expect(find.text('تكلفة 1'), findsOneWidget);
       expect(
@@ -313,13 +313,12 @@ void main() {
         find.byKey(const ValueKey('money-due-pay-schedule-upcoming')),
         findsOneWidget,
       );
-      expect(find.text('سجّل الدفعة'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    // RA-MO-10: the label says what the figure adds up. «المستحق عليك الآن»
-    // over late and coming payments called the coming ones due now.
-    testWidgets('the «الدفعات» total names late, coming, or both', (
+    // RA-MO-10: the figure says what it adds up; the late ones are their
+    // own section and their part of it is said, never called coming.
+    testWidgets('the «الدفعات» total says how much of it is late', (
       tester,
     ) async {
       _setTallView(tester);
@@ -345,14 +344,33 @@ void main() {
       }
 
       await openPayments([schedule('late', -5), schedule('soon', 10)]);
-      expect(find.text('المتأخر والقادم خلال 30 يوم'), findsOneWidget);
+      expect(find.textContaining('دفعتين · منها متأخر 1,000'), findsOneWidget);
+      // The late one in its own section; the coming one under its month.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-due-late')),
+          matching: find.byKey(const ValueKey('money-due-pay-late')),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-due-late')),
+          matching: find.byKey(const ValueKey('money-due-pay-soon')),
+        ),
+        findsNothing,
+      );
       expect(find.text('المستحق عليك الآن'), findsNothing);
 
       await openPayments([schedule('late', -5)]);
-      expect(find.text('المتأخر'), findsOneWidget);
+      expect(
+        find.textContaining('دفعة وحدة · منها متأخر 1,000'),
+        findsOneWidget,
+      );
 
       await openPayments([schedule('soon', 10)]);
-      expect(find.text('خلال 30 يوم'), findsOneWidget);
+      expect(find.text('دفعة وحدة'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-due-late')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -840,7 +858,10 @@ class _FakeFinanceApi extends FinanceApi {
       outstanding: const MoneyOutstanding(total: '8000', owner: '8000'),
       // D102: the server lists every date still to pay.
       obligations: [
-        if (nextSchedule case final schedule?)
+        for (final schedule in [
+          ...?dueSchedules,
+          if (dueSchedules == null) ?nextSchedule,
+        ])
           MoneyObligation(
             kind: MoneyObligationKind.due,
             id: schedule.id,

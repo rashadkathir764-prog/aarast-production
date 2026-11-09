@@ -45,9 +45,9 @@ class PaymentEntryForm extends StatefulWidget {
     required this.currency,
     required this.draftScope,
     required this.onSave,
-    this.fixedAmount,
-    this.fixedLine,
-    this.fixedAction,
+    this.dueAmount,
+    this.dueLine,
+    this.dateActions = const [],
     super.key,
   });
 
@@ -55,14 +55,16 @@ class PaymentEntryForm extends StatefulWidget {
   final String currency;
   final String draftScope;
 
-  /// The scheduled amount, paid in full; null lets the person type it.
-  final Object? fixedAmount;
+  /// D106: what a date asks for. The amount starts at it and may be less
+  /// (the date is lowered by it) or more (the date is paid, the rest goes
+  /// on the agreement). Null lets the person type any amount.
+  final Object? dueAmount;
 
-  /// Under the fixed amount: «المتفق في موعد 10 سبتمبر».
-  final String? fixedLine;
+  /// Under the amount: «المتفق في موعد 10 سبتمبر».
+  final String? dueLine;
 
-  /// «عدّل الموعد» under a fixed amount, to pay a different one.
-  final VoidCallback? fixedAction;
+  /// The date's own actions under it (a new day, its reminder).
+  final List<Widget> dateActions;
 
   /// Saves the payment; null when it was not saved.
   final Future<CostPayment?> Function(PaymentEntry entry) onSave;
@@ -82,12 +84,19 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   XFile? _receipt;
   AarastFormDraftBinding? _draft;
 
-  bool get _fixed => widget.fixedAmount != null;
   num get _remaining => moneyValue(widget.cost.remainingAmount);
+  num? get _due =>
+      widget.dueAmount == null ? null : moneyValue(widget.dueAmount);
 
   @override
   void initState() {
     super.initState();
+    // «أخفِ المبالغ»: the field is not filled with a hidden figure; its
+    // chip fills it when tapped.
+    final hidden = context.read<FinanceProvider?>()?.amountsHidden ?? false;
+    if (_due case final due? when !hidden) {
+      _amountController.text = formatMoneyInputValue(due.round());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _configureDraft();
     });
@@ -107,7 +116,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       store: context.read<AarastFormDraftStore?>(),
       scope: widget.draftScope,
       fields: {
-        if (!_fixed) 'amount': _amountController,
+        'amount': _amountController,
         'method': _methodController,
         'note': _noteController,
       },
@@ -135,7 +144,6 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       int.tryParse(_amountController.text.replaceAll(',', '').trim());
 
   String? _validate() {
-    if (_fixed) return null;
     final amount = _typedAmount;
     if (amount == null || amount <= 0) {
       return context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ');
@@ -193,7 +201,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
 
   Future<void> _saveOnce() async {
     final payment = await widget.onSave((
-      amount: _fixed ? null : '${_typedAmount!}',
+      amount: '${_typedAmount!}',
       paidAt: _paidAt,
       method: _methodController.text.trim(),
       note: _noteController.text.trim(),
@@ -262,14 +270,73 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
           child: ListView(
             padding: AarastV3Density.pageInsets,
             children: [
-              if (_fixed)
-                _FixedAmount(
-                  amount: widget.fixedAmount,
-                  currency: widget.currency,
-                  line: widget.fixedLine,
-                  onChange: widget.fixedAction,
-                )
-              else ...[
+              if (_due case final due?) ...[
+                JourneyTextField(
+                  key: const Key('cost-payment-amount'),
+                  label: context.say('كم دفعت؟', 'كم دفعتِ؟'),
+                  controller: _amountController,
+                  large: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [MoneyInputFormatter()],
+                  textInputAction: TextInputAction.done,
+                  suffix: currencyLabelAr(widget.currency),
+                  errorText: _amountError,
+                  // D106: what this amount does to the date.
+                  helper: typed == null || typed <= 0 || typed > _remaining
+                      ? null
+                      : typed < due
+                      ? 'تنسجل جزء من الموعد، ويبقى عليه ${_plain(due - typed)} بنفس اليوم'
+                      : typed == due
+                      ? 'يندفع الموعد كامل'
+                      : 'يندفع الموعد كامل، و${_plain(typed - due)} زيادة تنحسب من باقي الاتفاق',
+                  onChanged: (_) => setState(() => _amountError = null),
+                ),
+                const SizedBox(height: AarastV3Space.x2),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    JourneyChip(
+                      key: const ValueKey('payment-amount-due'),
+                      label: 'المتفق · ${_plain(due)}',
+                      selected: typed == due.round(),
+                      onTap: () {
+                        _amountController.text = formatMoneyInputValue(
+                          due.round(),
+                        );
+                        setState(() => _amountError = null);
+                        _draft?.changed();
+                      },
+                    ),
+                    if (_remaining > due)
+                      JourneyChip(
+                        key: const ValueKey('payment-amount-remaining'),
+                        label: 'الباقي كامل · ${_plain(_remaining)}',
+                        selected: typed == _remaining.round(),
+                        onTap: () {
+                          _amountController.text = formatMoneyInputValue(
+                            _remaining.round(),
+                          );
+                          setState(() => _amountError = null);
+                          _draft?.changed();
+                        },
+                      ),
+                  ],
+                ),
+                if (widget.dueLine case final line?)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AarastV3Space.x2),
+                    child: Text(
+                      line,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                if (widget.dateActions.isNotEmpty)
+                  Wrap(spacing: AarastV3Space.x1, children: widget.dateActions),
+              ] else ...[
                 JourneyTextField(
                   key: const Key('cost-payment-amount'),
                   label: 'المبلغ',
@@ -380,83 +447,6 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   }
 }
 
-class _FixedAmount extends StatelessWidget {
-  const _FixedAmount({
-    required this.amount,
-    required this.currency,
-    required this.line,
-    required this.onChange,
-  });
-
-  final Object? amount;
-  final String currency;
-  final String? line;
-  final VoidCallback? onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = moneyValue(amount).round();
-    final hidden = context.select<FinanceProvider?, bool>(
-      (provider) => provider?.amountsHidden ?? false,
-    );
-    return JourneyBox(
-      key: const ValueKey('payment-fixed-amount'),
-      color: context.accent.primarySoft,
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              hidden
-                  ? hiddenMoneyText
-                  : '${formatMoneyInputValue(value)} ${currencyLabelAr(currency)}',
-              style: JourneyType.of(
-                JourneyType.display,
-                weight: JourneyType.bold,
-                color: context.accent.primaryDark,
-              ),
-            ),
-          ),
-          // The words would say the hidden amount.
-          if (!hidden)
-            Text(
-              amountInWords(value, currency: currencyLabelAr(currency)),
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: context.accent.primary,
-              ),
-            ),
-          if (line != null) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            Text(
-              line!,
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          ],
-          if (onChange != null)
-            JourneyTextAction(
-              key: const ValueKey('payment-fixed-change'),
-              label: context.say(
-                'دفعت مبلغ ثاني؟ عدّل الموعد',
-                'دفعتِ مبلغ ثاني؟ عدّلي الموعد',
-              ),
-              color: context.accent.primary,
-              onPressed: onChange!,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// «صوّر الإيصال»: a photo held until the payment is saved.
 class _ReceiptPick extends StatelessWidget {
   const _ReceiptPick({
     required this.file,

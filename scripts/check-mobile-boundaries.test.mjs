@@ -1734,7 +1734,9 @@ const r19ProviderPortalApi = Object.freeze({
 // +2 (D102, 2026-11-09): the providers tab's word on each money item is read
 // once (money_item_market.dart) for «البنود» and the item's page, which
 // shows where its offers are.
-const r19LegalRecordCount = 263;
+// +1 (D106, 2026-11-09): a date's pay page offers the wedding's day as a
+// new due day, from the wedding plans owner API.
+const r19LegalRecordCount = 264;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2783,6 +2785,11 @@ const trackedPlanningBatchContracts = [
   },
   {
     source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/cost_payment_screens.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider'],
   },

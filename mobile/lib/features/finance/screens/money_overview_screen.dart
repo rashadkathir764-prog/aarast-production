@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -8,13 +7,13 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
@@ -34,6 +33,7 @@ import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
 import '../widgets/funding_widgets.dart' show fundingStateTag;
+import '../widgets/due_date_sheets.dart';
 import '../widgets/money_widgets.dart';
 import 'money_item_market.dart';
 
@@ -253,8 +253,14 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                 _MoneyPaymentsTab(
                   planId: widget.weddingPlanId,
                   provider: provider,
-                  onPay: (schedule) =>
-                      _canPay(provider, schedule) ? _paySchedule : null,
+                  weddingDate: _weddingDay(context),
+                  onOpen: _openDue,
+                  onPay: provider.canManageMoney ? _payDue : null,
+                  onAgreement: provider.canManageMoney
+                      ? () => context.push(
+                          AppRouter.moneyCostCreate(widget.weddingPlanId),
+                        )
+                      : null,
                 ),
               ],
               _ => [
@@ -330,7 +336,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           others: late.length - 1,
           currency: currency,
           onPay: () => _payDue(late.first),
-          onMove: () => _openDue(late.first),
+          onMove: () => _moveDue(late.first),
         ),
         const SizedBox(height: AarastV3Space.x3),
       ],
@@ -586,25 +592,73 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     if (mounted) await _load();
   }
 
-  /// D86: a due payment is payable on its own; its agreement need not be
-  /// in the page read so far (the pay screen reads it by id).
-  bool _canPay(FinanceProvider provider, PaymentSchedule schedule) {
-    final cost = provider.costById(schedule.costId);
-    return provider.canManageMoney &&
-        schedule.isPending &&
-        !(cost?.isCancelled ?? false);
+  /// The wedding's day, when the plan has one.
+  DateTime? _weddingDay(BuildContext context) {
+    final summary = context.watch<DashboardSummaryProvider?>()?.summary;
+    if (summary?.planId != widget.weddingPlanId) return null;
+    final date = summary?.weddingDate;
+    return date == null ? null : DateUtils.dateOnly(date);
   }
 
-  Future<void> _paySchedule(PaymentSchedule schedule) async {
-    final changed = await context.push<bool>(
-      AppRouter.moneySchedulePay(
-        widget.weddingPlanId,
-        schedule.costId,
-        schedule.id,
+  /// A date and its agreement, read by id when they are not loaded yet.
+  Future<(PaymentSchedule, WeddingCost)?> _dateOf(MoneyObligation line) async {
+    final costId = line.weddingCostId;
+    if (costId == null) return null;
+    final provider = context.read<FinanceProvider>();
+    if (provider.scheduleById(line.id) == null) {
+      await provider.loadCostDetails(costId);
+    }
+    final schedule = provider.scheduleById(line.id);
+    final cost = provider.costById(costId);
+    if (schedule == null || cost == null) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          provider.loadErrorMessage ?? 'ما قدرنا نجيب هذا الموعد',
+        );
+      }
+      return null;
+    }
+    return (schedule, cost);
+  }
+
+  /// D106 «اتفقتوا على موعد ثاني؟».
+  Future<void> _moveDue(MoneyObligation line) async {
+    if (line.kind != MoneyObligationKind.due || line.dueDate == null) {
+      _openDue(line);
+      return;
+    }
+    final date = await _dateOf(line);
+    if (date == null || !mounted) return;
+    final (schedule, cost) = date;
+    final provider = context.read<FinanceProvider>();
+    final moved = await showJourneySheet<bool>(
+      context: context,
+      builder: (_) => MoveDueDateSheet(
+        title: line.title,
+        dueDate: line.dueDate!,
+        firstDue: line.rescheduledFrom,
+        party: cost.partyLabel,
+        weddingDate: _weddingDay(context),
+        onSave: (day) async {
+          final ok = await provider.moveSchedule(
+            schedule: schedule,
+            cost: cost,
+            dueDate: day,
+          );
+          if (!ok && mounted) {
+            AarastToast.showError(
+              context,
+              provider.errorMessage ?? 'ما انحفظ الموعد',
+            );
+          }
+          return ok;
+        },
       ),
-      extra: schedule,
     );
-    if (changed == true && mounted) await _load();
+    if (moved == true && mounted) {
+      AarastToast.showSuccess(context, provider.savedMessage('تغيّر الموعد'));
+    }
   }
 
   /// The plan's name for a shared summary; a generic one for a guest.

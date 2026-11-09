@@ -23,7 +23,9 @@ import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart' show shownMoney;
 import '../widgets/payment_entry_form.dart';
-import '../widgets/payment_schedule_sheet.dart';
+import '../widgets/due_date_sheets.dart';
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardSummaryProvider;
 
 part 'cost_payment_screens.details.dart';
 
@@ -133,8 +135,9 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
   }
 }
 
-/// c06 for a scheduled payment: its agreed amount is paid in full, and
-/// «عدّل الموعد» changes the date's amount or day in its sheet first.
+/// c06 for a scheduled payment: it starts at what the date asks for; less
+/// is part of it and more pays it with the rest on the agreement (D106).
+/// «عدّل الموعد» changes the date's amount or day in its sheet.
 class PayPaymentScheduleScreen extends StatefulWidget {
   const PayPaymentScheduleScreen({
     required this.weddingPlanId,
@@ -170,6 +173,68 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
       await provider.loadCostDetails(widget.costId);
     }
     if (mounted) setState(() => _isLoadingDetails = false);
+  }
+
+  /// D106 «اتفقتوا على موعد ثاني؟».
+  Future<void> _move(PaymentSchedule schedule, WeddingCost cost) async {
+    final provider = context.read<FinanceProvider>();
+    final summary = context.read<DashboardSummaryProvider?>()?.summary;
+    final wedding = summary?.planId == widget.weddingPlanId
+        ? summary?.weddingDate
+        : null;
+    final moved = await showJourneySheet<bool>(
+      context: context,
+      builder: (_) => MoveDueDateSheet(
+        title: cost.title,
+        dueDate: schedule.dueDate,
+        firstDue: schedule.rescheduledFrom,
+        party: cost.partyLabel,
+        weddingDate: wedding,
+        onSave: (day) => _saved(
+          provider.moveSchedule(schedule: schedule, cost: cost, dueDate: day),
+          'ما انحفظ الموعد',
+        ),
+      ),
+    );
+    if (moved == true && mounted) {
+      AarastToast.showSuccess(context, provider.savedMessage('تغيّر الموعد'));
+    }
+  }
+
+  /// D106: the date's own reminder day.
+  Future<void> _remind(PaymentSchedule schedule, WeddingCost cost) async {
+    final provider = context.read<FinanceProvider>();
+    final saved = await showJourneySheet<bool>(
+      context: context,
+      builder: (_) => DueReminderSheet(
+        title: cost.title,
+        dueDate: schedule.dueDate,
+        remindAt: schedule.remindAt,
+        onSave: (day) => _saved(
+          provider.setScheduleReminder(
+            schedule: schedule,
+            cost: cost,
+            remindAt: day,
+          ),
+          'ما انحفظ التذكير',
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      AarastToast.showSuccess(context, provider.savedMessage('انحفظ التذكير'));
+    }
+  }
+
+  /// A write's answer; its reason said when it failed.
+  Future<bool> _saved(Future<bool> write, String failed) async {
+    final ok = await write;
+    if (!ok && mounted) {
+      AarastToast.showError(
+        context,
+        context.read<FinanceProvider>().errorMessage ?? failed,
+      );
+    }
+    return ok;
   }
 
   @override
@@ -219,15 +284,42 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
           currency: currency,
           draftScope:
               'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
-          // RA-BE-53: the payment records what the reminder asks for now.
-          fixedAmount: schedule.dueAmount,
-          fixedLine: 'المتفق في موعد ${formatArabicDayMonth(schedule.dueDate)}',
-          fixedAction: () => showPaymentScheduleSheet(
-            context,
-            cost: cost,
-            currency: currency,
-            schedule: schedule,
-          ),
+          // RA-BE-53: it starts at what the date asks for now; D106: less
+          // or more is what was paid.
+          dueAmount: schedule.dueAmount,
+          dueLine: [
+            'المتفق في موعد ${formatArabicDayMonth(schedule.dueDate)}',
+            if (schedule.rescheduledFrom case final first?)
+              'كانت ${formatArabicDayMonth(first)}',
+            if (schedule.remindAt case final remind?)
+              'نذكّرك ${formatArabicDayMonth(remind)}',
+          ].join(' · '),
+          // D106: the date's own actions, beside paying it.
+          dateActions: [
+            JourneyTextAction(
+              key: const ValueKey('payment-move'),
+              label: 'اتفقتوا على موعد ثاني؟',
+              icon: LucideIcons.calendarClock,
+              color: context.accent.primary,
+              onPressed: () => _move(schedule, cost),
+            ),
+            JourneyTextAction(
+              key: const ValueKey('payment-remind'),
+              label: 'التذكير',
+              icon: LucideIcons.bell,
+              color: context.accent.primary,
+              onPressed: () => _remind(schedule, cost),
+            ),
+            JourneyTextAction(
+              key: const ValueKey('payment-open-cost'),
+              label: context.say('افتح الاتفاق', 'افتحي الاتفاق'),
+              icon: LucideIcons.arrowUpRight,
+              color: AarastV3Color.textMuted,
+              onPressed: () => context.push(
+                AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
+              ),
+            ),
+          ],
           onSave: (entry) async {
             final finance = context.read<FinanceProvider>();
             final result = await finance.paySchedule(
@@ -236,6 +328,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
               paidAt: entry.paidAt,
               method: entry.method,
               note: entry.note,
+              amount: entry.amount,
             );
             if (result != null && context.mounted) {
               AarastFormSuccess.show(

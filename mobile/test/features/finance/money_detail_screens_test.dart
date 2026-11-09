@@ -595,19 +595,21 @@ void main() {
         provider: finance,
       );
 
-      final fixed = find.byKey(const ValueKey('payment-fixed-amount'));
-      expect(
-        find.descendant(of: fixed, matching: find.text('••••')),
-        findsOneWidget,
+      // The field is not filled with the hidden figure; its chip fills it
+      // when tapped, on purpose.
+      final field = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(const Key('cost-payment-amount')),
+          matching: find.byType(EditableText),
+        ),
       );
-      expect(
-        find.descendant(of: fixed, matching: find.textContaining('ريال')),
-        findsNothing,
-      );
-      expect(
-        find.descendant(of: fixed, matching: find.textContaining('ر.ي')),
-        findsNothing,
-      );
+      expect(field.controller.text, isEmpty);
+      expect(find.text('المتفق · ••••'), findsOneWidget);
+      expect(find.textContaining('400'), findsNothing);
+      expect(find.textContaining('ريال'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('payment-amount-due')));
+      await tester.pump();
+      expect(field.controller.text, '400');
     });
 
     testWidgets('«أخفِ المبالغ» hides the budget screen\'s own totals', (
@@ -737,8 +739,10 @@ void main() {
       },
     );
 
+    // D106: a date's payment starts at what it asks; less is part of it,
+    // more pays it with the rest on the agreement; and its own actions.
     testWidgets(
-      'paying a schedule shows fixed amount and no free amount field',
+      'paying a schedule starts at what the date asks, and may differ',
       (tester) async {
         await _pumpMoneyScreen(
           tester,
@@ -749,31 +753,38 @@ void main() {
           ),
         );
 
-        // The scheduled amount is paid in full: shown, not typed.
-        expect(
-          find.byKey(const ValueKey('payment-fixed-amount')),
-          findsOneWidget,
-        );
+        final amount = find.byKey(const Key('cost-payment-amount'));
+        expect(amount, findsOneWidget);
+        expect(find.text('400'), findsOneWidget);
         expect(find.textContaining('المتفق في موعد'), findsOneWidget);
+        expect(find.text('يندفع الموعد كامل'), findsOneWidget);
+        for (final key in [
+          'payment-move',
+          'payment-remind',
+          'payment-open-cost',
+        ]) {
+          expect(find.byKey(ValueKey(key)), findsOneWidget, reason: key);
+        }
+
+        // Less: part of the date, the rest on the same day.
+        await tester.enterText(amount, '100');
+        await tester.pump();
         expect(
-          find.byKey(const ValueKey('payment-fixed-change')),
+          find.textContaining('تنسجل جزء من الموعد، ويبقى عليه 300'),
           findsOneWidget,
         );
-        expect(find.byKey(const Key('cost-payment-amount')), findsNothing);
-        expect(
-          find.byKey(const ValueKey('payment-schedule-amount')),
-          findsNothing,
-        );
+        // More (within the 800 left): the date, and 200 off the rest.
+        await tester.enterText(amount, '600');
+        await tester.pump();
+        expect(find.textContaining('يندفع الموعد كامل، و200'), findsOneWidget);
         expect(find.byKey(const ValueKey('payment-save')), findsOneWidget);
 
-        // «عدّل الموعد» opens the date's own sheet over the payment.
-        await tester.tap(find.byKey(const ValueKey('payment-fixed-change')));
+        // «اتفقتوا على موعد ثاني؟» opens the new-day sheet over it.
+        await tester.ensureVisible(find.byKey(const ValueKey('payment-move')));
+        await tester.tap(find.byKey(const ValueKey('payment-move')));
         await tester.pumpAndSettle();
-        expect(find.text('موعد الدفعة'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('payment-schedule-amount')),
-          findsOneWidget,
-        );
+        expect(find.text('اتفقتوا على موعد ثاني؟'), findsWidgets);
+        expect(find.byKey(const ValueKey('money-move-save')), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

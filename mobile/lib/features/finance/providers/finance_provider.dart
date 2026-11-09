@@ -836,12 +836,16 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     );
   }
 
+  /// [amount]: D106, what was paid when it is not what the date asks: less
+  /// lowers the date by it, more pays the date and the rest goes on the
+  /// agreement. Null pays the date as it is.
   Future<CostPayment?> paySchedule({
     required PaymentSchedule schedule,
     required WeddingCost cost,
     DateTime? paidAt,
     String? method,
     String? note,
+    String? amount,
   }) async {
     CostPayment? result;
     final ok = await _submit(cost.weddingPlanId, () async {
@@ -851,9 +855,47 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         paidAt: paidAt,
         method: method,
         note: note,
+        amount: amount,
       );
     }, refresh: () => _reloadCost(cost));
     return ok ? result : null;
+  }
+
+  /// D106 «اتفقتوا على موعد ثاني؟»: the date moves; its amount and note
+  /// stay, and its first day is kept (rescheduledFrom) until it is back.
+  Future<bool> moveSchedule({
+    required PaymentSchedule schedule,
+    required WeddingCost cost,
+    required DateTime dueDate,
+  }) {
+    return _submit(cost.weddingPlanId, () async {
+      await _api.updateSchedule(
+        schedule: schedule,
+        cost: cost,
+        amount: schedule.amount,
+        dueDate: dueDate,
+        note: schedule.note,
+      );
+    }, refresh: () => _reloadCost(cost));
+  }
+
+  /// D106: the date's own reminder day, between today and the date; null
+  /// goes back to the default (a few days before).
+  Future<bool> setScheduleReminder({
+    required PaymentSchedule schedule,
+    required WeddingCost cost,
+    required DateTime? remindAt,
+  }) {
+    return _submit(cost.weddingPlanId, () async {
+      await _api.updateSchedule(
+        schedule: schedule,
+        cost: cost,
+        amount: schedule.amount,
+        dueDate: schedule.dueDate,
+        note: schedule.note,
+        remindAt: remindAt,
+      );
+    }, refresh: () => _reloadCost(cost));
   }
 
   Future<PlanAccessPermissions> _resolveAccess(

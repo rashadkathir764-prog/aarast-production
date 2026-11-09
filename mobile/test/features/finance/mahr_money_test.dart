@@ -298,7 +298,7 @@ void main() {
     });
   });
 
-  group('c02 the mahr is its own section above the wedding', () {
+  group('c02 the mahr is its own section, outside the budget', () {
     testWidgets('the groom: his agreement, what he handed over, the rest\'s '
         'day', (tester) async {
       await _pumpMoney(
@@ -329,13 +329,17 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('عرسك'), findsOneWidget);
-      // The mahr item is not one of the wedding's rows.
+      expect(find.text('برا الميزانية'), findsOneWidget);
+      // The mahr item is not one of the wedding's rows, which come first.
       expect(
         find.descendant(of: section, matching: find.text('القاعة')),
         findsNothing,
       );
       expect(find.text('القاعة'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('القاعة')).dy,
+        lessThan(tester.getTopLeft(section).dy),
+      );
       expect(tester.takeException(), isNull);
     });
 

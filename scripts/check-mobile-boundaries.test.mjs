@@ -1731,7 +1731,10 @@ const r19ProviderPortalApi = Object.freeze({
 // are gone with their four owner-API imports.
 // +2 (D83, 2026-11-03): the guests' card and form read the plan's events
 // from the wedding-day owner API.
-const r19LegalRecordCount = 261;
+// +2 (D102, 2026-11-09): the providers tab's word on each money item is read
+// once (money_item_market.dart) for «البنود» and the item's page, which
+// shows where its offers are.
+const r19LegalRecordCount = 263;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2769,6 +2772,11 @@ const trackedPlanningBatchContracts = [
     show: ['PlanAccessPermissions', 'SharingApi'],
   },
   {
+    source: 'mobile/lib/features/finance/screens/budget_category_details_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderBoardRow'],
+  },
+  {
     source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
     show: ['MarketplaceProvider', 'ProviderMarketplaceProvider'],
@@ -2779,6 +2787,15 @@ const trackedPlanningBatchContracts = [
     show: ['DashboardSummaryProvider'],
   },
   {
+    source: 'mobile/lib/features/finance/screens/money_item_market.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: [
+      'ProviderBoardRow',
+      'ProviderMarketplaceProvider',
+      'buildProviderBoard',
+    ],
+  },
+  {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
@@ -2786,11 +2803,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: [
-      'ProviderBoardRow',
-      'ProviderMarketplaceProvider',
-      'buildProviderBoard',
-    ],
+    show: ['ProviderBoardRow', 'ProviderMarketplaceProvider'],
   },
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
@@ -3877,9 +3890,12 @@ function assertTrackedPlanningBatch({
 
   const coreFormatterText = readFileSync(coreFormatterPath, 'utf8')
     .replace(/\r\n/g, '\n');
+  // Re-pinned (RA-MO-45, 2026-11-09): a half is rounded up from the value
+  // itself (compactTenths), not from a float already divided. The move
+  // itself was proved by the hashes this replaced.
   assert.equal(
     createHash('sha256').update(coreFormatterText).digest('hex'),
-    '34515407d93a1733b80253561d22d3751deeac6321f85b2bf737304b10a4c37d',
+    'd1340972bd72c6d4710f7d83c38f6eb5423f693ca359a9a92c0ddd3e93131710',
     'Planning batch Core money formatter normalized hash mismatch',
   );
   const restoredFinanceFormatterText = coreFormatterText.replace(
@@ -3889,7 +3905,7 @@ function assertTrackedPlanningBatch({
   assert.notEqual(restoredFinanceFormatterText, coreFormatterText);
   assert.equal(
     createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
-    'a9998b46f98f28f3d1bf52643459fa97a23accb685fd684569150d04446b7133',
+    '109297ba710d1b92c1899616a58907d4aa11f3b9ae67b639d133251e87f2481c',
     'Planning batch original Finance money formatter hash mismatch',
   );
 

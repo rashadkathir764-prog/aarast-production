@@ -350,10 +350,16 @@ class AppRouter {
     return '/wedding-plans/$planId/money/categories/$categoryId/edit';
   }
 
-  static String moneyCostCreate(String planId, {String? categoryId}) {
+  /// [expense]: D107 «مصروف دفعته», paid in full the day it is recorded.
+  static String moneyCostCreate(
+    String planId, {
+    String? categoryId,
+    bool expense = false,
+  }) {
+    final query = {'categoryId': ?categoryId, if (expense) 'kind': 'expense'};
     return Uri(
       path: '/wedding-plans/$planId/money/costs/create',
-      queryParameters: categoryId == null ? null : {'categoryId': categoryId},
+      queryParameters: query.isEmpty ? null : query,
     ).toString();
   }
 

@@ -566,6 +566,23 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// D109 «تقديرك»: the item's own estimate, apart from its share of the
+  /// budget. Free: it may pass the budget (the item tab says so), and null
+  /// clears it. The expected cost moves with it, so the money is re-read.
+  Future<bool> setItemEstimate({
+    required BudgetCategory category,
+    required String? estimatedAmount,
+  }) {
+    return _submit(
+      category.weddingPlanId,
+      () => _api.setItemEstimate(
+        category: category,
+        estimatedAmount: estimatedAmount,
+      ),
+      refresh: () => _reloadData(category.weddingPlanId),
+    );
+  }
+
   /// w10 «بيانات الخطة»: sets the wedding budget (null clears it) and
   /// keeps every item's share. The plan's money must be loaded first.
   Future<bool> setTotalBudget({
@@ -641,6 +658,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     DateTime? agreementDate,
     String? note,
     bool isPrivate = false,
+    bool isExpense = false,
+    String? estimateCover,
+    String? estimatePart,
   }) async {
     WeddingCost? result;
     final ok = await _submit(planId, () async {
@@ -659,6 +679,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         agreementDate: agreementDate,
         note: note,
         isPrivate: isPrivate,
+        isExpense: isExpense,
+        estimateCover: estimateCover,
+        estimatePart: estimatePart,
       );
     }, refresh: () => _reloadData(planId));
     return ok ? result : null;
@@ -678,6 +701,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     DateTime? agreementDate,
     String? note,
     bool shareWithPlan = false,
+    String? estimateCover,
+    String? estimatePart,
   }) {
     return _submit(cost.weddingPlanId, () async {
       await _api.updateCost(
@@ -694,6 +719,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         agreementDate: agreementDate,
         note: note,
         shareWithPlan: shareWithPlan,
+        estimateCover: estimateCover,
+        estimatePart: estimatePart,
       );
     }, refresh: () => _reloadData(cost.weddingPlanId));
   }

@@ -156,10 +156,20 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
 
-      // c02: a budget item with no agreement yet reads «ما انحجز», with
-      // the way to add more under it, and no second empty list.
+      // c02: a budget item with no agreement yet waits at its estimate,
+      // with the way to add more under it, and no second empty list.
       expect(find.text('الصالة'), findsOneWidget);
-      expect(find.text('ما انحجز'), findsOneWidget);
+      expect(find.text('ما اتفقت عليها بعد'), findsOneWidget);
+      final item = find.byKey(const ValueKey('money-item-category-category-1'));
+      expect(
+        find.descendant(of: item, matching: find.text('بدون تقدير')),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
+        find.text('أضف بند'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('أضف بند'), findsOneWidget);
       expect(find.text('ما في بنود بعد'), findsNothing);
       expect(find.text('مواعيد الدفع'), findsNothing);
@@ -171,7 +181,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('«البنود» lists every loaded agreement', (tester) async {
+    testWidgets('«البنود» shows an item once, with its agreements', (
+      tester,
+    ) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.withCosts()));
       await tester.pumpAndSettle();
@@ -184,11 +196,21 @@ void main() {
         findsNothing,
       );
       expect(find.text('إضافة تكلفة'), findsNothing);
-      // c02: one list of agreements, each with what is paid.
+      // c02 (D102): the item once, with how many agreements and what is
+      // left on them, never one row per agreement.
+      final item = find.byKey(const ValueKey('money-item-category-1'));
+      expect(item, findsOneWidget);
+      String said() => tester
+          .widgetList<RichText>(
+            find.descendant(of: item, matching: find.byType(RichText)),
+          )
+          .map((text) => text.text.toPlainText())
+          .join(' ');
+      expect(said(), contains('4 اتفاقات'));
+      expect(said(), contains('8,000'));
       for (var index = 1; index <= 4; index++) {
-        expect(find.byKey(ValueKey('money-item-cost-$index')), findsOneWidget);
+        expect(find.byKey(ValueKey('money-item-cost-$index')), findsNothing);
       }
-      expect(find.text('ما دفعت شي'), findsNWidgets(4));
     });
 
     testWidgets('past pending schedule is shown as an overdue payment', (

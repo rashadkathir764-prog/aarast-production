@@ -14,6 +14,7 @@ import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/month_math.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -49,6 +50,7 @@ class CostFormScreen extends StatefulWidget {
     this.cost,
     this.intent,
     this.initialCategoryId,
+    this.expense = false,
     super.key,
   });
 
@@ -56,6 +58,9 @@ class CostFormScreen extends StatefulWidget {
   final WeddingCost? cost;
   final CostDraftIntent? intent;
   final String? initialCategoryId;
+
+  /// D107: «مصروف دفعته», paid in full the day it is recorded.
+  final bool expense;
 
   @override
   State<CostFormScreen> createState() => _CostFormScreenState();
@@ -69,6 +74,16 @@ class _CostFormScreenState extends State<CostFormScreen> {
   final _partyPhoneController = TextEditingController();
   final _payerNameController = TextEditingController();
   final _noteController = TextEditingController();
+
+  /// D105: how much of the item's estimate a part-agreement settles.
+  final _coverPartController = TextEditingController();
+
+  /// D105: the agreement settles the whole item's estimate, or a part.
+  bool _coversPart = false;
+
+  /// The two duplicate guards, answered «it is something else».
+  bool _separateFromAgreement = false;
+  bool _notTheSameAgain = false;
 
   /// Who pays: '' (not set) or a CostPayerOption code.
   String _payer = '';
@@ -99,6 +114,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
 
   bool get _editing => widget.cost != null;
 
+  /// D107: an expense, paid in full the day it is recorded.
+  bool get _expense => widget.expense || (widget.cost?.isExpense ?? false);
+
   List<TextEditingController> get _controllers => [
     _titleController,
     _totalController,
@@ -107,6 +125,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _partyPhoneController,
     _payerNameController,
     _noteController,
+    _coverPartController,
   ];
 
   @override
@@ -134,6 +153,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _noteController.text = intent?.note ?? cost?.note ?? '';
     _payer = cost?.payer ?? '';
     _payerNameController.text = cost?.payerName ?? '';
+    _coversPart = cost?.settlesPartOfEstimate ?? false;
+    _coverPartController.text = formatMoneyInputValue(cost?.estimatePart);
     _providerId = intent?.providerId ?? cost?.providerId;
     _providerName = intent?.providerName ?? cost?.providerName;
     _quoteOfferId = intent?.quoteOfferId ?? cost?.quoteOfferId;
@@ -186,7 +207,11 @@ class _CostFormScreenState extends State<CostFormScreen> {
 
   String get _draftScope {
     final quoteId = widget.intent?.quoteOfferId?.trim();
-    final suffix = quoteId?.isNotEmpty == true ? 'quote:$quoteId' : 'new';
+    final suffix = quoteId?.isNotEmpty == true
+        ? 'quote:$quoteId'
+        : widget.expense
+        ? 'expense'
+        : 'new';
     return 'cost:${widget.weddingPlanId}:$suffix';
   }
 
@@ -325,9 +350,18 @@ class _CostFormScreenState extends State<CostFormScreen> {
               0,
             ),
             child: JourneySubHeader(
-              title: _editing ? 'تعديل الاتفاق' : 'اتفاق جديد',
+              title: _expense
+                  ? (_editing ? 'تعديل المصروف' : 'مصروف بدون اتفاق')
+                  : _editing
+                  ? 'تعديل الاتفاق'
+                  : 'اتفاق جديد',
               subtitle: _editing
                   ? widget.cost!.title
+                  : _expense
+                  ? context.say(
+                      'شي دفعته كامل مرة وحدة وما كان عليه اتفاق. يتسجل في بنده خالص.',
+                      'شي دفعتيه كامل مرة وحدة وما كان عليه اتفاق. يتسجل في بنده خالص.',
+                    )
                   : context.say(
                       'مع مين اتفقت، وبكم، وكيف بتدفع',
                       'مع مين اتفقتِ، وبكم، وكيف بتدفعين',
@@ -366,7 +400,13 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   const SizedBox(height: AarastV3Space.x3),
                 ],
                 _CategoryChips(
-                  categories: provider.categories,
+                  // The mahr has its own way (C1), never an expense.
+                  categories: _expense
+                      ? [
+                          for (final item in provider.categories)
+                            if (!item.isMahr) item,
+                        ]
+                      : provider.categories,
                   selectedId: _categoryId,
                   error: _categoryError,
                   onSelect: (id) => _mutateDraft(() {
@@ -388,10 +428,23 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 const SizedBox(height: AarastV3Space.x4),
                 if (quoteLocked)
                   _QuoteTotal(amount: _total, currency: currency)
+                // D107: an expense's amount is its payment.
+                else if (_editing &&
+                    _expense &&
+                    moneyValue(widget.cost!.paidAmount) > 0)
+                  _QuoteTotal(
+                    amount: _total,
+                    currency: currency,
+                    label: context.say('كم دفعت؟', 'كم دفعتِ؟'),
+                    why:
+                        'مبلغ المصروف هو اللي دفعته. لو غلطت فيه، تراجع عن دفعته وسجّله من جديد.',
+                  )
                 else
                   JourneyTextField(
                     key: const Key('cost-total-amount'),
-                    label: context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
+                    label: _expense
+                        ? context.say('كم دفعت؟', 'كم دفعتِ؟')
+                        : context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
                     controller: _totalController,
                     large: true,
                     keyboardType: TextInputType.number,
@@ -411,13 +464,18 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     left: _leftInCategory(category!, widget.cost, _total),
                     currency: currency,
                   ),
+                ..._duplicateGuards(provider, currency),
+                if (!_expense && category != null && !category.isMahr)
+                  ..._coverQuestion(provider, category, currency),
                 const SizedBox(height: AarastV3Space.x4),
                 JourneyTextField(
                   key: const ValueKey('cost-title'),
-                  label: context.say(
-                    'اسم الاتفاق (لو تبي)',
-                    'اسم الاتفاق (لو تبين)',
-                  ),
+                  label: _expense
+                      ? 'ايش هو؟'
+                      : context.say(
+                          'اسم الاتفاق (لو تبي)',
+                          'اسم الاتفاق (لو تبين)',
+                        ),
                   hint:
                       _titleFallback(
                         _partyKind,
@@ -432,7 +490,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   controller: _titleController,
                   maxLength: _costTitleMaxLength,
                 ),
-                if (!_editing) ...[
+                // An expense is paid the day it is recorded: no plan.
+                if (!_editing && !_expense) ...[
                   const SizedBox(height: AarastV3Space.x2),
                   _PlanSection(
                     plan: _plan,
@@ -503,7 +562,11 @@ class _CostFormScreenState extends State<CostFormScreen> {
             padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('cost-save'),
-              label: 'حفظ الاتفاق',
+              label: _expense
+                  ? (_editing
+                        ? 'حفظ المصروف'
+                        : context.say('سجّل المصروف', 'سجّلي المصروف'))
+                  : 'حفظ الاتفاق',
               expand: true,
               large: true,
               loading: provider.isSubmitting,
@@ -622,7 +685,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
         _ => null,
       };
       _totalError = _total <= 0
-          ? context.say('اكتب بكم اتفقت', 'اكتبي بكم اتفقتِ')
+          ? _expense
+                ? context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ')
+                : context.say('اكتب بكم اتفقت', 'اكتبي بكم اتفقتِ')
           : _editing && _total < paid
           ? '${context.say('ما يصير أقل من اللي دفعته', 'ما يصير أقل من اللي دفعتيه')} (${compactMoneyParts(paid, currencyCode: context.read<FinanceProvider>().summary.currency).plainText})'
           : null;
@@ -631,7 +696,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
           : _depositProblem(_plan, _deposit, _total, context.journeyProfile);
     });
     final planIncomplete =
-        !_editing && _plan != _PayPlan.later && lines.isEmpty;
+        !_editing && !_expense && _plan != _PayPlan.later && lines.isEmpty;
     if (planIncomplete && _depositError == null) {
       AarastToast.showInfo(
         context,
@@ -641,10 +706,188 @@ class _CostFormScreenState extends State<CostFormScreen> {
         ),
       );
     }
+    // A guard not answered stops the save; its note says why.
+    final guarded =
+        _openAgreementsFor(context.read<FinanceProvider>()).isNotEmpty &&
+            !_separateFromAgreement ||
+        _sameToday(context.read<FinanceProvider>()) && !_notTheSameAgain;
     return _categoryError == null &&
         _partyError == null &&
         _totalError == null &&
         _depositError == null &&
-        !planIncomplete;
+        !planIncomplete &&
+        !guarded;
+  }
+
+  /// D107: an expense typed into an item that has an agreement with
+  /// something left: it may be a payment to that agreement, counted twice.
+  List<WeddingCost> _openAgreementsFor(FinanceProvider provider) {
+    if (!_expense || _editing || _categoryId == null) return const [];
+    return [
+      for (final cost in provider.costs)
+        if (cost.budgetCategoryId == _categoryId &&
+            !cost.isCancelled &&
+            !cost.isExpense &&
+            moneyValue(cost.remainingAmount) > 0)
+          cost,
+    ];
+  }
+
+  /// The same amount in the same item, recorded today: a second tap, or the
+  /// same thing typed twice.
+  bool _sameToday(FinanceProvider provider) {
+    if (_editing || _categoryId == null || _total <= 0) return false;
+    final today = DateUtils.dateOnly(appNow());
+    return provider.costs.any(
+      (cost) =>
+          cost.budgetCategoryId == _categoryId &&
+          !cost.isCancelled &&
+          moneyValue(cost.totalAmount) == _total &&
+          cost.createdAt != null &&
+          DateUtils.isSameDay(cost.createdAt!.toLocal(), today),
+    );
+  }
+
+  List<Widget> _duplicateGuards(FinanceProvider provider, String currency) {
+    final open = _openAgreementsFor(provider);
+    String money(Object? value) => keepCurrencyOnLine(
+      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+    );
+    return [
+      if (open.isNotEmpty)
+        _GuardNote(
+          key: const ValueKey('cost-guard-open-agreement'),
+          text:
+              '${open.map((cost) => 'عندك اتفاق مع «${cost.partyLabel ?? cost.title}» في هالبند، باقي عليه ${money(cost.remainingAmount)}').join('، ')}. '
+              '${context.say('لو هذا المبلغ دفعة له، سجّله على الاتفاق عشان ما ينحسب مرتين.', 'لو هذا المبلغ دفعة له، سجّليه على الاتفاق عشان ما ينحسب مرتين.')}',
+          actions: [
+            (
+              key: 'cost-guard-pay-agreement',
+              label: context.say(
+                'سجّله دفعة على الاتفاق',
+                'سجّليه دفعة على الاتفاق',
+              ),
+              chosen: false,
+              onTap: () => _payAgreementInstead(open.first),
+            ),
+            (
+              key: 'cost-guard-separate',
+              label: 'لا، هذا مصروف ثاني',
+              chosen: _separateFromAgreement,
+              onTap: () => setState(
+                () => _separateFromAgreement = !_separateFromAgreement,
+              ),
+            ),
+          ],
+        ),
+      if (_sameToday(provider))
+        _GuardNote(
+          key: const ValueKey('cost-guard-same-today'),
+          text: context.say(
+            'سجّلت اليوم نفس المبلغ في نفس البند. متأكد إنه مو نفس الشي؟',
+            'سجّلتِ اليوم نفس المبلغ في نفس البند. متأكدة إنه مو نفس الشي؟',
+          ),
+          actions: [
+            (
+              key: 'cost-guard-again',
+              label: 'إيه، شي ثاني',
+              chosen: _notTheSameAgain,
+              onTap: () => setState(() => _notTheSameAgain = !_notTheSameAgain),
+            ),
+          ],
+        ),
+    ];
+  }
+
+  /// The payment goes on the agreement; this form closes when it is saved.
+  Future<void> _payAgreementInstead(WeddingCost cost) async {
+    final saved = await context.push<bool>(
+      AppRouter.moneyPaymentCreate(widget.weddingPlanId, cost.id),
+    );
+    if (saved == true && mounted) {
+      await _draft?.clear();
+      if (mounted) {
+        context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
+      }
+    }
+  }
+
+  /// D105: when the item has an estimate, whether this agreement settles
+  /// all of it (the estimate drops) or a part (the rest still counts).
+  List<Widget> _coverQuestion(
+    FinanceProvider provider,
+    BudgetCategory category,
+    String currency,
+  ) {
+    final item = provider.summary.categories
+        .where((entry) => entry.categoryId == category.id)
+        .firstOrNull;
+    final estimate = item?.estimate;
+    if (estimate == null) return const [];
+    String money(Object? value) => keepCurrencyOnLine(
+      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+    );
+    final part = moneyValue(_coverPartController.text);
+    final settles = part > 0 ? part : _total;
+    final rest = moneyValue(estimate) - settles;
+    return [
+      const SizedBox(height: AarastV3Space.x4),
+      Text(
+        'هذا الاتفاق للبند كله؟',
+        style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+      ),
+      Text(
+        '${item!.estimateFromAllocation ? 'المخصص له' : context.say('تقديرك', 'تقديرك')} ${money(estimate)}',
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.textMuted,
+        ),
+      ),
+      const SizedBox(height: AarastV3Space.x2),
+      Wrap(
+        spacing: AarastV3Space.x2,
+        runSpacing: AarastV3Space.x2,
+        children: [
+          JourneyChip(
+            key: const ValueKey('cost-cover-whole'),
+            label: 'إيه، البند كله',
+            selected: !_coversPart,
+            onTap: () => _mutateDraft(() => _coversPart = false),
+          ),
+          JourneyChip(
+            key: const ValueKey('cost-cover-part'),
+            label: 'لا، جزء منه',
+            selected: _coversPart,
+            onTap: () => _mutateDraft(() => _coversPart = true),
+          ),
+        ],
+      ),
+      const SizedBox(height: AarastV3Space.x1),
+      Text(
+        !_coversPart
+            ? 'الاتفاق ياخذ مكان التقدير، والتقدير يسقط.'
+            : rest > 0
+            ? 'يبقى من التقدير ${money(rest)} محسوب في تكلفة العرس، لين تتفق على الباقي.'
+            : 'يغطي التقدير كله.',
+        key: const ValueKey('cost-cover-means'),
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.textMuted,
+        ),
+      ),
+      if (_coversPart) ...[
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyTextField(
+          key: const ValueKey('cost-cover-part-amount'),
+          label: 'كم من التقدير يغطي؟',
+          hint: _total > 0 ? 'لو تتركه: ${money(_total)}' : null,
+          controller: _coverPartController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [MoneyInputFormatter()],
+          suffix: currencyLabelAr(currency),
+          onChanged: (_) => setState(() {}),
+        ),
+      ],
+    ];
   }
 }

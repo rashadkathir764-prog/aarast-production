@@ -14,7 +14,7 @@ String compactMoneyFigure(num value, {required String currencyCode}) {
   if (million != null) return keepCurrencyOnLine('${parts.number} $million');
   final abs = value.abs();
   if (abs >= 1000) {
-    final thousands = _oneDecimal(abs / 1000);
+    final thousands = compactTenths(abs, 1000);
     // 999,999 rounds to «1000 ألف»: that is a million.
     if (thousands == '1000') {
       return compactMoneyFigure(
@@ -26,9 +26,4 @@ String compactMoneyFigure(num value, {required String currencyCode}) {
     return keepCurrencyOnLine('$sign$thousands ألف');
   }
   return keepCurrencyOnLine(parts.plainText);
-}
-
-String _oneDecimal(num value) {
-  final fixed = value.toStringAsFixed(1);
-  return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
 }

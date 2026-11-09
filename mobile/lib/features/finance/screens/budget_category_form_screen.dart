@@ -20,9 +20,12 @@ import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
 import '../widgets/money_input_formatter.dart';
 
-/// c09 «بند جديد» and editing one: its name and roughly how much it gets
-/// from the budget. No grams, karats or other currencies: the plan keeps
-/// one currency, and gold is an ordinary item (C20).
+/// c09 «بند جديد» and editing one: its name and, if known, how much it is
+/// expected to cost (D109 «تقديرك»: free, may pass the budget with a word,
+/// never refused). Its share of the budget is set where the budget is
+/// shared out (w19) and is kept here as it is. No grams, karats or other
+/// currencies: the plan keeps one currency, and gold is an ordinary item
+/// (C20).
 class BudgetCategoryFormScreen extends StatefulWidget {
   const BudgetCategoryFormScreen({
     required this.weddingPlanId,
@@ -56,7 +59,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       text: widget.category?.name ?? widget.initialName ?? '',
     );
     _amountController = TextEditingController(
-      text: formatMoneyInputValue(widget.category?.allocatedAmount),
+      text: formatMoneyInputValue(widget.category?.estimatedAmount),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
@@ -85,18 +88,25 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     return text.isEmpty ? null : int.tryParse(text);
   }
 
-  /// What the budget has left for this item: the total less every other
-  /// item's share.
-  num _budgetLeft(FinanceProvider provider) {
-    final total = moneyValue(provider.summary.budget.total);
-    final others = provider.categories
-        .where((item) => item.id != widget.category?.id)
-        .fold<num>(0, (sum, item) => sum + moneyValue(item.allocatedAmount));
-    return total - others;
-  }
-
   String _plain(num value, String currency) =>
       compactMoneyParts(value, currencyCode: currency).plainText;
+
+  /// By how much the wedding's items would pass the budget with [amount]
+  /// as this item's estimate; 0 when they would not, or when it cannot be
+  /// told here (the item has agreements: they decide its cost, D105).
+  num _overBudget(FinanceProvider provider, int? amount) {
+    final budget = provider.summary.budget.total;
+    final expected = provider.summary.expected;
+    if (budget == null || expected == null || amount == null) return 0;
+    final item = provider.summary.categories
+        .where((entry) => entry.categoryId == widget.category?.id)
+        .firstOrNull;
+    if (item != null && moneyValue(item.confirmedCost) > 0) return 0;
+    final others =
+        moneyValue(expected.wedding.expected) - moneyValue(item?.expectedCost);
+    final over = others + amount - moneyValue(budget);
+    return over > 0 ? over : 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,9 +120,8 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     if (accessBlock != null) return accessBlock;
 
     final currency = provider.summary.currency;
-    final hasBudget = moneyValue(provider.summary.budget.total) > 0;
-    final left = _budgetLeft(provider);
     final amount = _amount;
+    final over = _overBudget(provider, amount);
     final isGold = _nameController.text.contains('ذهب');
 
     return AarastScreenFrame(
@@ -161,10 +170,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                 const SizedBox(height: AarastV3Space.x3),
                 JourneyTextField(
                   key: const ValueKey('money-category-form-amount'),
-                  label: context.say(
-                    'كم تخصص له تقريبًا؟',
-                    'كم تخصصين له تقريبًا؟',
-                  ),
+                  label: context.say('كم تتوقع يكلف؟', 'كم تتوقعين يكلف؟'),
                   hint: context.say(
                     'تقدر تتركه لبعدين',
                     'تقدرين تتركينه لبعدين',
@@ -175,14 +181,16 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                   inputFormatters: [MoneyInputFormatter()],
                   suffix: currencyLabelAr(currency),
                   errorText: _amountError,
-                  helper: amount != null && amount > 0
+                  // Said, never refused (D109).
+                  helper: over > 0
+                      ? 'بهذا التقدير تصير بنود العرس فوق الميزانية بـ${_plain(over, currency)}'
+                      : amount != null && amount > 0
                       ? amountInWords(
                           amount,
                           currency: currencyLabelAr(currency),
                         )
-                      : hasBudget
-                      ? 'باقي في ميزانيتك ${_plain(left, currency)}'
-                      : null,
+                      : 'رقم تقريبي يكفي، ونقارنه بميزانيتك',
+                  helperColor: over > 0 ? AarastV3Color.danger : null,
                   onChanged: (_) => setState(() => _amountError = null),
                 ),
                 if (isGold) ...[
@@ -231,10 +239,6 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           item.id != widget.category?.id &&
           _normalizedCategoryName(item.name) == normalized,
     );
-    final amount = _amount ?? 0;
-    final currency = provider.summary.currency;
-    final hasBudget = moneyValue(provider.summary.budget.total) > 0;
-    final left = _budgetLeft(provider);
     setState(() {
       _nameError = name.isEmpty
           ? context.say('اكتب اسم البند', 'اكتبي اسم البند')
@@ -243,13 +247,6 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           : null;
       _amountError = _amountController.text.trim().isNotEmpty && _amount == null
           ? 'المبلغ مش صحيح'
-          : amount > 0 && !hasBudget
-          ? context.say(
-              'حدد ميزانيتك أول، بعدين خصص للبنود',
-              'حددي ميزانيتك أول، بعدين خصصي للبنود',
-            )
-          : hasBudget && amount > left
-          ? 'أكثر من الباقي في ميزانيتك (${_plain(left, currency)})'
           : null;
     });
     return _nameError == null && _amountError == null;
@@ -259,13 +256,13 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     final provider = context.read<FinanceProvider>();
     if (!_validate(provider)) return;
     final amount = _amount;
-    final allocated = amount == null ? null : '$amount';
+    final estimate = amount == null ? null : '$amount';
+    final name = _nameController.text.trim();
     final category = widget.category;
     if (category == null) {
       final createdId = await provider.createCategory(
         planId: widget.weddingPlanId,
-        name: _nameController.text.trim(),
-        allocatedAmount: allocated,
+        name: name,
       );
       if (!mounted) return;
       if (createdId == null) {
@@ -274,6 +271,22 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           provider.errorMessage ?? 'ما انضاف البند',
         );
         return;
+      }
+      final created = provider.categoryById(createdId);
+      if (estimate != null && created != null) {
+        final estimated = await provider.setItemEstimate(
+          category: created,
+          estimatedAmount: estimate,
+        );
+        if (!mounted) return;
+        // The item is there either way; say what did not keep.
+        if (!estimated) {
+          AarastToast.showError(
+            context,
+            'انضاف البند، وما انحفظ التقدير. ${provider.errorMessage ?? ''}'
+                .trim(),
+          );
+        }
       }
       await _draft?.clear();
       if (mounted) {
@@ -284,11 +297,24 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       }
       return;
     }
-    final saved = await provider.updateCategory(
-      category: category,
-      name: _nameController.text.trim(),
-      allocatedAmount: allocated,
-    );
+    // Its share of the budget stays as it is (w19 sets it).
+    var saved = true;
+    if (name != category.name) {
+      saved = await provider.updateCategory(
+        category: category,
+        name: name,
+        allocatedAmount: category.allocatedAmount,
+      );
+    }
+    final current = category.estimatedAmount == null
+        ? null
+        : '${moneyValue(category.estimatedAmount).round()}';
+    if (saved && estimate != current) {
+      saved = await provider.setItemEstimate(
+        category: provider.categoryById(category.id) ?? category,
+        estimatedAmount: estimate,
+      );
+    }
     if (!mounted) return;
     if (!saved) {
       AarastToast.showError(context, provider.errorMessage ?? 'ما انحفظ البند');

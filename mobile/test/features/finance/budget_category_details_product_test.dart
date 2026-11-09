@@ -33,13 +33,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الصالة'), findsWidgets);
-    expect(find.text('حطيت له'), findsOneWidget);
-    expect(find.text('اتفقت على'), findsOneWidget);
-    expect(find.text('دفعت'), findsOneWidget);
-    expect(find.text('باقي عليك'), findsOneWidget);
-    expect(find.text('الاتفاقات'), findsOneWidget);
+    // D102: its share (the estimate it falls back to, D109), what was
+    // agreed, paid and left; its one agreement, and a second one away.
+    expect(find.text('المخصص له'), findsOneWidget);
+    expect(find.text('اتفقت'), findsOneWidget);
+    expect(find.text('اندفع'), findsOneWidget);
+    expect(find.text('باقي'), findsOneWidget);
+    expect(find.text('الاتفاق'), findsOneWidget);
     expect(find.text('حجز الصالة'), findsWidgets);
-    expect(find.text('اتفاق جديد'), findsOneWidget);
+    expect(find.text('اتفاق ثاني'), findsOneWidget);
+    expect(find.byKey(const ValueKey('item-pay')), findsOneWidget);
     final overflow = find.byKey(const ValueKey('money-category-overflow'));
     expect(overflow, findsOneWidget);
     expect(
@@ -147,6 +150,10 @@ class _CategoryFinanceApi extends FinanceApi {
           categoryId: 'category-1',
           name: 'الصالة',
           allocatedAmount: allocated,
+          // D109: no estimate of its own, so its share stands in.
+          estimate: allocated,
+          estimateFromAllocation: true,
+          expectedCost: '500000',
           confirmedCost: '500000',
           paid: '100000',
           outstanding: '400000',

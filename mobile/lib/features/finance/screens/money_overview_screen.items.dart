@@ -1,9 +1,9 @@
 part of 'money_overview_screen.dart';
 
-// c02 «البنود»: one list. Each agreement (a cost) with what is agreed, what
-// is paid and the next thing about it; a budget category with no agreement
-// yet reads «ما انحجز». Then «أضف بند»: the starter items the plan does not
-// have, or any other.
+// c02 «البنود» (D102, D105, D109): the wedding's items, each once. First how
+// they stand against the budget and how complete the recorded cost is; then
+// the items with an agreement (what is left on them and when), the items
+// still at their estimate, and the mahr outside the budget. «أضف بند» last.
 
 class _MoneyItemsTab extends StatefulWidget {
   const _MoneyItemsTab({
@@ -20,18 +20,24 @@ class _MoneyItemsTab extends StatefulWidget {
   State<_MoneyItemsTab> createState() => _MoneyItemsTabState();
 }
 
+enum _ItemsFilter { all, agreed, open }
+
 class _MoneyItemsTabState extends State<_MoneyItemsTab> {
   /// Cancelled agreements, folded away like «اللي خلصت» in the tasks.
   bool _showCancelled = false;
+  _ItemsFilter _filter = _ItemsFilter.all;
 
   @override
   Widget build(BuildContext context) {
     final planId = widget.planId;
     final provider = widget.provider;
     final catalog = widget.catalog;
-    final currency = provider.summary.currency;
-    // c02: the mahr is its own section above «عرسك» (C1): the groom's
-    // agreement with the bride's family, or the bride's mahr coming in.
+    final summary = provider.summary;
+    final currency = summary.currency;
+    String money(Object? value) => _figure(context, value, currency);
+    // c02: the mahr is its own section, outside the budget (C1): the
+    // groom's agreement with the bride's family, or the bride's mahr coming
+    // in.
     final mahrItemIds = {
       for (final category in provider.categories)
         if (category.isMahr) category.id,
@@ -41,37 +47,44 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
         if (mahrItemIds.contains(cost.budgetCategoryId) && !cost.isCancelled)
           cost,
     ];
-    final live = [
-      for (final cost in provider.costs)
-        if (!cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId))
-          cost,
-    ];
-    // Cancelled agreements piled into the same list for good, with no
-    // filter and no divider: a graveyard mixed into live rows. They are
-    // kept reachable (this list is the only door to an agreement's
-    // details) but folded away under their own count.
+    // Each item's live agreements; a cancelled one no longer holds its
+    // item (it waits again), and is folded away under its own count.
+    final costsByItem = <String, List<WeddingCost>>{};
+    for (final cost in provider.costs) {
+      if (cost.isCancelled) continue;
+      costsByItem.putIfAbsent(cost.budgetCategoryId, () => []).add(cost);
+    }
     final cancelled = [
       for (final cost in provider.costs)
         if (cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId))
           cost,
     ];
-    // An item counts as booked by its live agreements only: one whose only
-    // agreement was cancelled is waiting again («ما انحجز»), not gone from
-    // the list (it was reachable only through the folded cancelled one).
-    final withCosts = {
-      for (final cost in provider.costs)
-        if (!cost.isCancelled) cost.budgetCategoryId,
-    };
-    final waiting = provider.categories
-        .where(
-          (category) => !category.isMahr && !withCosts.contains(category.id),
-        )
-        .toList(growable: false);
-    final mahr = provider.summary.mahr;
+    final wedding = [
+      for (final item in summary.categories)
+        if (!item.isMahr) item,
+    ];
+    bool agreedOn(MoneyCategorySummary item) =>
+        (costsByItem[item.categoryId]?.isNotEmpty ?? false) ||
+        moneyValue(item.confirmedCost) > 0;
+    final agreed = [
+      for (final item in wedding)
+        if (agreedOn(item)) item,
+    ];
+    final open = [
+      for (final item in wedding)
+        if (!agreedOn(item)) item,
+    ];
+    // D102: each item's next wedding due, as the server lists them.
+    final dues = <String, List<MoneyObligation>>{};
+    for (final line in summary.obligations) {
+      final item = line.budgetCategoryId;
+      if (line.isLoan || item == null) continue;
+      dues.putIfAbsent(item, () => []).add(line);
+    }
+    final mahr = summary.mahr;
     final brideMahr = mahr != null && mahr.side == MahrSide.receives
         ? mahr
         : null;
-    final hasMahrSection = mahrCosts.isNotEmpty || brideMahr != null;
     final starterIcons = {
       for (final group in catalog.groups)
         for (final item in group.categories) item.name: item.icon,
@@ -82,78 +95,138 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
     final have = {
       for (final category in provider.categories) category.name.trim(),
     };
+    // What most weddings have and this one does not list: the catalog's
+    // recommended items first.
+    final missingCommon = [
+      for (final item in catalog.categories)
+        if (item.recommended && !have.contains(item.name.trim())) item,
+    ];
     final suggestions = [
-      for (final group in catalog.groups)
-        for (final item in group.categories)
-          if (!have.contains(item.name.trim())) item,
+      ...missingCommon,
+      for (final item in catalog.categories)
+        if (!item.recommended && !have.contains(item.name.trim())) item,
     ].take(3).toList(growable: false);
 
     final services = _servicesInMotion(context);
-    final now = appNow();
-    // D59: the owner reads what they did; anyone else reads it unowned.
-    final nothingPaid = context.ownerDid(
-      'ما دفعت شي',
-      'ما دفعتِ شي',
-      groom: 'ما اندفع شي',
-      bride: 'ما اندفع شي',
-    );
-    final rows = <Widget>[
-      for (final cost in live)
-        _MoneyItemRow(
-          key: ValueKey('money-item-${cost.id}'),
-          icon: iconFor(
-            provider.categoryById(cost.budgetCategoryId)?.name ??
-                cost.categoryName,
-          ),
-          title: _itemTitle(cost),
-          amount: _amount(context, cost.totalAmount, currency),
-          paidRatio: moneyValue(cost.totalAmount) <= 0
-              ? 0
-              : moneyValue(cost.paidAmount) / moneyValue(cost.totalAmount),
-          paidLine: cost.isCancelled
-              ? 'ملغي'
-              : moneyValue(cost.paidAmount) <= 0
-              ? nothingPaid
-              : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
-              ? 'خالص'
-              : '${_whoPaid(context, provider.summary, cost)} ${_amount(context, cost.paidAmount, currency)}',
-          note: cost.isCancelled ? null : _nextDueNote(provider, cost, now),
-          muted: cost.isCancelled,
-          private: cost.isPrivate,
-          onTap: () =>
-              context.push(AppRouter.moneyCostDetails(planId, cost.id)),
-        ),
-      for (final category in waiting)
-        _MoneyItemRow(
-          key: ValueKey('money-item-category-${category.id}'),
-          icon: iconFor(category.name),
-          title: category.name,
-          amount: category.allocatedAmount == null
-              ? ''
-              : _amount(context, category.allocatedAmount, currency),
-          paidRatio: 0,
-          paidLine: nothingPaid,
-          note: (
-            services[category.id]?.detail ?? 'ما انحجز',
-            AarastV3Color.brandAccentStrong,
-          ),
-          // A row opens the thing it names. An item with a service under
-          // way opens where that service is (its note says so); an item on
-          // its own opens the item, whoever is reading. It used to open a
-          // blank «agreement» form for whoever may manage the money: the
-          // row looked the same and landed the reader in a creation form
-          // they had not asked for. Adding the agreement is still one tap
-          // away, from the item's own «أضف اتفاق».
-          onTap: switch (services[category.id]) {
-            final service? => () => context.push(
-              AppRouter.providerRequests(planId, itemKey: service.key),
+    final profile = context.journeyProfile;
+    final manage = provider.canManageMoney;
+    final manageBudget = provider.canManageBudget;
+    void openItem(String id) =>
+        context.push(AppRouter.moneyCategoryDetails(planId, id));
+
+    Widget agreedRow(MoneyCategorySummary item) {
+      final mine = costsByItem[item.categoryId] ?? const <WeddingCost>[];
+      final count = mine.isNotEmpty ? mine.length : item.costsCount;
+      final expense = mine.isNotEmpty && mine.every((cost) => cost.isExpense);
+      final payers = {
+        for (final cost in mine) payerKey(cost.payer, cost.payerName),
+      };
+      final group = payers.length == 1
+          ? summary.payers
+                .where(
+                  (group) =>
+                      payerKey(group.payer, group.payerName) == payers.single,
+                )
+                .firstOrNull
+          : null;
+      final lines = dues[item.categoryId] ?? const <MoneyObligation>[];
+      final dated = [
+        for (final line in lines)
+          if (line.dueDate != null) line,
+      ]..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+      final outstanding = moneyValue(item.outstanding);
+      final estimate = moneyValue(item.estimatedAmount);
+      final ownEstimate =
+          !item.estimateFromAllocation && item.estimatedAmount != null;
+      return _ItemLine(
+        key: ValueKey('money-item-${item.categoryId}'),
+        icon: iconFor(item.name),
+        title: item.name,
+        private: mine.isNotEmpty && mine.every((cost) => cost.isPrivate),
+        facts: [
+          if (mine.length == 1)
+            (mine.single.partyLabel ?? mine.single.title, null)
+          else if (count > 1)
+            (
+              arabicCount(
+                count,
+                one: 'اتفاق واحد',
+                two: 'اتفاقين',
+                few: 'اتفاقات',
+                many: 'اتفاق',
+              ),
+              null,
             ),
-            null => () => context.push(
-              AppRouter.moneyCategoryDetails(planId, category.id),
+          if (group != null && !group.ownerMoney)
+            (
+              'على ${payerLabel(group.payer, group.payerName, bridePlan: profile.isBride, owner: profile.readerIsOwner)}',
+              null,
             ),
-          },
-        ),
-    ];
+        ],
+        state: outstanding <= 0
+            ? const [('خالص', AarastV3Color.mint)]
+            : [
+                // Joined: «باقي» never wraps away from its figure.
+                ('باقي\u00A0${money(outstanding)}', AarastV3Color.ink),
+                if (dated.isNotEmpty)
+                  dated.first.isOverdue
+                      ? ('متأخرة', AarastV3Color.danger)
+                      : ('الجاية ${_dayWords(dated.first.dueDate!)}', null)
+                else if (lines.any(
+                  (line) => line.kind == MoneyObligationKind.undated,
+                ))
+                  ('بدون موعد', AarastV3Color.amber),
+              ],
+        // Against the item's own estimate: by how much, not the agreed
+        // figure again (it is the row's own).
+        under: !ownEstimate || moneyValue(item.confirmedCost) == estimate
+            ? null
+            : moneyValue(item.confirmedCost) > estimate
+            ? (
+                'أكثر من ${context.ownerDid('تقديرك', 'تقديرك', groom: 'التقدير', bride: 'التقدير')} بـ${money(moneyValue(item.confirmedCost) - estimate)}',
+                AarastV3Color.danger,
+              )
+            : (
+                'أقل من ${context.ownerDid('تقديرك', 'تقديرك', groom: 'التقدير', bride: 'التقدير')} بـ${money(estimate - moneyValue(item.confirmedCost))}',
+                null,
+              ),
+        figure: money(item.confirmedCost),
+        figureNote: expense ? 'مصروف' : 'اتفاق',
+        onTap: () => openItem(item.categoryId),
+      );
+    }
+
+    Widget openRow(MoneyCategorySummary item) {
+      final service = services[item.categoryId];
+      final market = item.providerCategoryIds.isNotEmpty;
+      return _ItemLine(
+        key: ValueKey('money-item-category-${item.categoryId}'),
+        icon: iconFor(item.name),
+        title: item.name,
+        quiet: true,
+        facts: [
+          if (service != null)
+            (service.detail, AarastV3Color.brandAccentStrong)
+          else if (market && manage)
+            (
+              context.ownerDid(
+                'ما طلبت عروض بعد',
+                'ما طلبتِ عروض بعد',
+                groom: 'ما في عروض بعد',
+                bride: 'ما في عروض بعد',
+              ),
+              null,
+            ),
+        ],
+        figure: item.estimate == null ? '—' : money(item.estimate),
+        figureNote: item.estimate == null
+            ? 'بدون تقدير'
+            : item.estimateFromAllocation
+            ? 'المخصص'
+            : 'تقدير',
+        onTap: () => openItem(item.categoryId),
+      );
+    }
 
     String? mahrDue(DateTime? day) =>
         day == null ? null : 'الباقي ${formatArabicDayMonth(day)}';
@@ -203,64 +276,145 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
         ),
     ];
 
-    Widget sectionTitle(String title, String? total) => JourneySectionTitle(
-      title,
-      action: total,
-      actionColor: AarastV3Color.textMuted,
+    Widget listOf(List<Widget> rows) => JourneyBox(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var index = 0; index < rows.length; index++) ...[
+            if (index > 0)
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AarastV3Color.line,
+              ),
+            rows[index],
+          ],
+        ],
+      ),
     );
 
+    final filter = _filter;
+    final showAgreed = filter != _ItemsFilter.open;
+    final showOpen = filter != _ItemsFilter.agreed;
+    final nothing = wedding.isEmpty && mahrRows.isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (hasMahrSection) ...[
-          sectionTitle(
-            brideMahr != null
-                ? 'المهر يوصلك من العريس'
-                : 'الاتفاق مع أهل العروسة',
-            mahr == null ? null : _amount(context, mahr.total, currency),
-          ),
-          JourneyBox(
-            key: const ValueKey('money-mahr-section'),
-            padding: EdgeInsets.zero,
-            child: Column(children: mahrRows),
-          ),
-          sectionTitle(
-            'عرسك',
-            provider.summary.budget.total == null
-                ? null
-                : _amount(context, provider.summary.budget.total, currency),
-          ),
-        ],
-        if (rows.isEmpty)
+        if (nothing)
           JourneyListState(
             phase: JourneyListPhase.empty,
             section: JourneySection.money,
             emptyTitle: 'ما في بنود بعد',
-            emptyAction: provider.canManageBudget
+            emptyAction: manageBudget
                 ? context.say('أضف أول بند', 'أضيفي أول بند')
                 : null,
-            onEmptyAction: provider.canManageBudget
+            onEmptyAction: manageBudget
                 ? () => context.push(AppRouter.moneyCategoryCreate(planId))
                 : null,
           )
-        else
-          JourneyBox(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var index = 0; index < rows.length; index++) ...[
-                  if (index > 0)
-                    const Divider(
-                      height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                      color: AarastV3Color.line,
-                    ),
-                  rows[index],
-                ],
-              ],
+        else ...[
+          _ItemsBudgetBox(
+            summary: summary,
+            onBudget: manageBudget
+                ? () => context.push(AppRouter.moneyBudget(planId))
+                : null,
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+          _RecordedCostBox(
+            summary: summary,
+            missing: manageBudget
+                ? [for (final item in missingCommon.take(3)) item.name]
+                : const [],
+            onExplain: () => showJourneySheet<void>(
+              context: context,
+              builder: (_) => const _ItemsExplainSheet(),
             ),
           ),
+          const SizedBox(height: AarastV3Space.x3),
+          Wrap(
+            spacing: AarastV3Space.x2,
+            runSpacing: AarastV3Space.x2,
+            children: [
+              for (final (choice, label, count) in [
+                (_ItemsFilter.all, 'الكل', wedding.length + mahrRows.length),
+                (
+                  _ItemsFilter.agreed,
+                  context.ownerDid(
+                    'اتفقت',
+                    'اتفقتِ',
+                    groom: 'عليها اتفاق',
+                    bride: 'عليها اتفاق',
+                  ),
+                  agreed.length + mahrRows.length,
+                ),
+                (
+                  _ItemsFilter.open,
+                  context.ownerDid(
+                    'ما اتفقت',
+                    'ما اتفقتِ',
+                    groom: 'بدون اتفاق',
+                    bride: 'بدون اتفاق',
+                  ),
+                  open.length,
+                ),
+              ])
+                JourneyChip(
+                  key: ValueKey('money-items-filter-${choice.name}'),
+                  label: '$label $count',
+                  selected: filter == choice,
+                  onTap: () => setState(() => _filter = choice),
+                ),
+            ],
+          ),
+          if (showAgreed && agreed.isNotEmpty) ...[
+            JourneySectionTitle(
+              context.ownerDid(
+                'اتفقت عليها',
+                'اتفقتِ عليها',
+                groom: 'عليها اتفاق',
+                bride: 'عليها اتفاق',
+              ),
+              action: arabicCount(
+                agreed.length,
+                one: 'بند واحد',
+                two: 'بندين',
+                few: 'بنود',
+                many: 'بند',
+              ),
+              actionColor: AarastV3Color.textMuted,
+            ),
+            listOf([for (final item in agreed) agreedRow(item)]),
+          ],
+          if (showOpen && open.isNotEmpty) ...[
+            JourneySectionTitle(
+              context.ownerDid(
+                'ما اتفقت عليها بعد',
+                'ما اتفقتِ عليها بعد',
+                groom: 'بدون اتفاق بعد',
+                bride: 'بدون اتفاق بعد',
+              ),
+              action: 'بالتقدير',
+              actionColor: AarastV3Color.textMuted,
+            ),
+            listOf([for (final item in open) openRow(item)]),
+          ],
+          if (showAgreed && mahrRows.isNotEmpty) ...[
+            JourneySectionTitle(
+              // Its row is «المهر»: the title says whose agreement it is.
+              brideMahr != null
+                  ? 'المهر يوصلك من العريس'
+                  : 'الاتفاق مع أهل العروسة',
+              action: 'برا الميزانية',
+              actionColor: AarastV3Color.textMuted,
+            ),
+            JourneyBox(
+              key: const ValueKey('money-mahr-section'),
+              padding: EdgeInsets.zero,
+              child: Column(children: mahrRows),
+            ),
+          ],
+        ],
         if (cancelled.isNotEmpty) ...[
           const SizedBox(height: AarastV3Space.x1),
           Align(
@@ -278,54 +432,34 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
             ),
           ),
           if (_showCancelled)
-            JourneyBox(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  for (var index = 0; index < cancelled.length; index++) ...[
-                    if (index > 0)
-                      const Divider(
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
-                        color: AarastV3Color.line,
-                      ),
-                    _MoneyItemRow(
-                      key: ValueKey('money-item-${cancelled[index].id}'),
-                      icon: iconFor(
-                        provider
-                                .categoryById(cancelled[index].budgetCategoryId)
-                                ?.name ??
-                            cancelled[index].categoryName,
-                      ),
-                      title: _itemTitle(cancelled[index]),
-                      amount: _amount(
-                        context,
-                        cancelled[index].totalAmount,
-                        currency,
-                      ),
-                      paidRatio: 0,
-                      paidLine: 'ملغي',
-                      note: null,
-                      muted: true,
-                      private: cancelled[index].isPrivate,
-                      onTap: () => context.push(
-                        AppRouter.moneyCostDetails(planId, cancelled[index].id),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            listOf([
+              for (final cost in cancelled)
+                _MoneyItemRow(
+                  key: ValueKey('money-item-${cost.id}'),
+                  icon: iconFor(
+                    provider.categoryById(cost.budgetCategoryId)?.name ??
+                        cost.categoryName,
+                  ),
+                  title: _itemTitle(cost),
+                  amount: _amount(context, cost.totalAmount, currency),
+                  paidRatio: 0,
+                  paidLine: 'ملغي',
+                  note: null,
+                  muted: true,
+                  private: cost.isPrivate,
+                  onTap: () =>
+                      context.push(AppRouter.moneyCostDetails(planId, cost.id)),
+                ),
+            ]),
         ],
         // The server sends the agreements a page at a time; the rest load
-        // here, in the same list.
+        // here, so each item names who it is with.
         if (provider.hasMoreCosts) ...[
           const SizedBox(height: AarastV3Space.x2),
           Center(
             child: JourneyTextAction(
               key: const ValueKey('money-items-more'),
-              label: provider.isLoadingMoreCosts ? 'يحمّل…' : 'باقي البنود',
+              label: provider.isLoadingMoreCosts ? 'يحمّل…' : 'باقي الاتفاقات',
               color: context.accent.primary,
               onPressed: provider.isLoadingMoreCosts
                   ? null
@@ -333,7 +467,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
             ),
           ),
         ],
-        if (provider.canManageBudget) ...[
+        if (manageBudget && showOpen) ...[
           const SizedBox(height: AarastV3Space.x3),
           JourneyBox(
             padding: const EdgeInsets.all(AarastV3Space.x4),
@@ -401,76 +535,14 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
 
   /// The plan's items whose service has started on the providers tab, with
   /// that tab's own words.
-  Map<String, ProviderBoardRow> _servicesInMotion(BuildContext context) {
-    final marketplace = context.watch<ProviderMarketplaceProvider?>();
-    if (marketplace == null) return const {};
-    final rows = buildProviderBoard(
-      items: [
-        for (final category in widget.provider.categories)
-          if (!category.isMahr)
-            (
-              id: category.id,
-              name: category.name,
-              providerCategoryIds: widget.provider.providerCategoryIdsFor(
-                category.id,
-              ),
-            ),
-      ],
-      costs: [
-        for (final cost in widget.provider.costs)
-          (
-            budgetCategoryId: cost.budgetCategoryId,
-            providerId: cost.providerId,
-            partyName: cost.partyName,
-          ),
-      ],
-      costItemById: {
-        for (final cost in widget.provider.costs)
-          cost.id: cost.budgetCategoryId,
-      },
-      reader: context.journeyProfile,
-      quotes: marketplace.quotesForPlan(widget.planId),
-    );
-    return {
-      for (final row in rows)
-        if (row.stage > 0 && row.budgetCategoryId != null)
-          row.budgetCategoryId!: row,
-    };
-  }
-
-  /// Who paid what was paid of an agreement (D59): the owner in their own
-  /// voice (or named to anyone else), someone who paid for the owner by
-  /// their name with the verb agreeing («الوالد دفع», «العروسة دفعت»). The
-  /// server says whose money each payer's payments were.
-  String _whoPaid(
-    BuildContext context,
-    MoneySummary summary,
-    WeddingCost cost,
-  ) {
-    final profile = context.journeyProfile;
-    final key = payerKey(cost.payer, cost.payerName);
-    final group = summary.payers
-        .where((group) => payerKey(group.payer, group.payerName) == key)
-        .firstOrNull;
-    if (group == null || group.ownerMoney) {
-      return profile.ownerDid(
-        'دفعت',
-        'دفعتِ',
-        groom: 'العريس دفع',
-        bride: 'العروسة دفعت',
-      );
-    }
-    return payerPaidLine(
-      group.payer,
-      payerLabel(
-        group.payer,
-        group.payerName,
-        bridePlan: profile.isBride,
-        owner: profile.readerIsOwner,
-      ),
-      profile,
-    );
-  }
+  Map<String, ProviderBoardRow> _servicesInMotion(BuildContext context) => {
+    for (final entry in moneyItemsOnBoard(
+      context,
+      widget.provider,
+      widget.planId,
+    ).entries)
+      if (entry.value.stage > 0) entry.key: entry.value,
+  };
 
   /// The day the cost's next payment is due, if one is pending.
   DateTime? _nextDueDay(FinanceProvider provider, WeddingCost cost) {
@@ -483,30 +555,6 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
     // The mahr's rest is usually weeks away, past the due list's 30 days:
     // the summary names its day.
     return widget.provider.summary.mahr?.nextDueAt;
-  }
-
-  /// «دفعة بعد 5 أيام» or «دفعة متأخرة» from the cost's own schedules.
-  (String, Color)? _nextDueNote(
-    FinanceProvider provider,
-    WeddingCost cost,
-    DateTime now,
-  ) {
-    final due =
-        widget.provider.dueSchedules
-            .where((schedule) => schedule.costId == cost.id)
-            .toList()
-          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-    if (due.isEmpty) return null;
-    final next = due.first;
-    if (next.isOverdueAt(now)) return ('دفعة متأخرة', AarastV3Color.danger);
-    // D11, RA-MO-25: from today in Sana'a, as isOverdueAt counts.
-    final days = daysUntilPlanDay(next.dueDate, now: now);
-    final when = days <= 0
-        ? 'اليوم'
-        : days == 1
-        ? 'بكرة'
-        : 'بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
-    return ('دفعة $when', AarastV3Color.brandAccentStrong);
   }
 }
 

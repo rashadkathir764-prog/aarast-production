@@ -338,12 +338,13 @@ void main() {
         final apis = await tester.runAsync(twoDips);
         await _open(tester, apis!);
 
-        // 800,000 hall + 350,000 photographer + 800,000 mahr.
+        // 800,000 hall + 350,000 photographer + 800,000 mahr: 1,950,000, a
+      // half rounded up.
         expect(
           tester
               .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
               .data,
-          contains('1.9 مليون'),
+          matches(RegExp(r'^2[\s\u00A0]مليون')),
         );
         final cover = _coverText(tester);
         // D103: what is missing is the deepest fall (950,000), the home's
@@ -467,10 +468,10 @@ void main() {
         find.descendant(of: loans, matching: find.textContaining('400,000')),
         findsOneWidget,
       );
-      // Hall 1,200,000 + photo 550,000 + gold none + mahr 800,000.
+      // Hall 1,200,000 + photo 550,000 + mahr 800,000: 2,550,000.
       final cost = find.byKey(const ValueKey('money-whole-cost'));
       expect(
-        find.descendant(of: cost, matching: find.textContaining('2.5 مليون')),
+        find.descendant(of: cost, matching: find.textContaining('2.6 مليون')),
         findsOneWidget,
       );
 

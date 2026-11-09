@@ -51,7 +51,7 @@ CompactYemeniMoneyParts compactMoneyParts(
   final negative = value < 0 ? '-' : '';
   if (absValue >= 1000000) {
     return CompactYemeniMoneyParts(
-      number: '$negative${_trimDecimal(absValue / 1000000)}',
+      number: '$negative${compactTenths(absValue, 1000000)}',
       millionUnit: 'مليون',
       currency: currencyLabelAr(currencyCode),
       spokenCurrency: currencySpokenLabelAr(currencyCode),
@@ -96,9 +96,14 @@ String _isolateLtr(String value) => '\u2066$value\u2069';
 
 String _isolateRtl(String value) => '\u2067$value\u2069';
 
-String _trimDecimal(num value) {
-  final fixed = value.toStringAsFixed(1);
-  return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
+/// [value] in [unit]s to one decimal, a half rounded up («1.95 مليون» is
+/// «2»). Counted in tenths from the value itself: dividing first stores 1.95
+/// as 1.9499…, so 1,950,000 read «1.9 مليون» while 1,550,000 read «1.6».
+String compactTenths(num value, num unit) {
+  final tenths = (value / (unit / 10)).round();
+  final whole = tenths ~/ 10;
+  final part = tenths % 10;
+  return part == 0 ? '$whole' : '$whole.$part';
 }
 
 String _formatMoney(num value) {

@@ -80,7 +80,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('money-whole-cost')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('money-item-cost-1')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-item-category-1')),
+        findsOneWidget,
+      );
       _expectRtl(tester, find.byType(MoneyOverviewScreen));
       expect(tester.takeException(), isNull);
 
@@ -138,7 +141,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
-      const itemKey = ValueKey('money-item-cost-1');
+      // D102: an item opens its page; its agreement is one press on.
+      const itemKey = ValueKey('money-item-category-1');
       await tester.scrollUntilVisible(
         find.byKey(itemKey),
         220,
@@ -147,6 +151,21 @@ void main() {
       await tester.ensureVisible(find.byKey(itemKey));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(itemKey));
+      await tester.pumpAndSettle();
+      expect(
+        harness.currentLocation,
+        AppRouter.moneyCategoryDetails(_planId, 'category-1'),
+      );
+      expect(find.byType(BudgetCategoryDetailsScreen), findsOneWidget);
+      const agreementKey = ValueKey('category-cost-cost-1');
+      await tester.scrollUntilVisible(
+        find.byKey(agreementKey),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.byKey(agreementKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(agreementKey));
       await tester.pumpAndSettle();
       expect(
         harness.currentLocation,
@@ -425,7 +444,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('category allocation cannot exceed the remaining budget', (
+    // D109: an item's estimate is free; passing the budget is said under
+    // the field, and the item is saved with it.
+    testWidgets('an item estimate may pass the budget, said, not refused', (
       tester,
     ) async {
       final harness = _MoneyProductHarness.owner(
@@ -442,10 +463,28 @@ void main() {
         find.byKey(const ValueKey('money-category-form-amount')),
         '400000',
       );
-      await tester.tap(find.byKey(const ValueKey('category-save')));
       await tester.pump();
+      // The budget is 1,000,000 and the items expect 500,000 already.
+      expect(find.textContaining('فوق الميزانية'), findsNothing);
+      await tester.enterText(
+        find.byKey(const ValueKey('money-category-form-amount')),
+        '900000',
+      );
+      await tester.pump();
+      expect(
+        find.textContaining('تصير بنود العرس فوق الميزانية بـ400,000'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('category-save')));
+      await tester.pumpAndSettle();
 
-      expect(find.textContaining('أكثر من الباقي في ميزانيتك'), findsOneWidget);
+      // Saved: the item, and its estimate; no share was asked for.
+      expect(harness.api.lastCreatedCategoryId, isNotNull);
+      expect(harness.api.savedAllocations?['التصوير'], isNull);
+      expect(
+        harness.api.savedEstimates[harness.api.lastCreatedCategoryId],
+        '900000',
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -483,7 +522,7 @@ void main() {
       // c09: the item's name and roughly what it gets.
       expect(find.text('بند جديد'), findsOneWidget);
       expect(find.text('اسم البند'), findsOneWidget);
-      expect(find.text('كم تخصص له تقريبًا؟'), findsOneWidget);
+      expect(find.text('كم تتوقع يكلف؟'), findsOneWidget);
       expect(find.text('أضف البند'), findsOneWidget);
       _expectRtl(tester, find.byType(BudgetCategoryFormScreen));
       expect(tester.takeException(), isNull);
@@ -916,9 +955,29 @@ void main() {
       await tester.pumpAndSettle();
       expect(market.loads, 1);
       expect(find.text('وصلك عرض'), findsOneWidget);
-      expect(find.text('ما انحجز'), findsNothing);
 
+      // The item opens its page, which says where its offers are.
+      await tester.scrollUntilVisible(
+        find.text('التصوير'),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('التصوير'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('التصوير'));
+      await tester.pumpAndSettle();
+      expect(
+        harness.currentLocation,
+        AppRouter.moneyCategoryDetails(_planId, 'category-2'),
+      );
+      final offers = find.byKey(const ValueKey('item-market'));
+      expect(
+        find.descendant(of: offers, matching: find.textContaining('وصلك عرض')),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(offers);
+      await tester.pumpAndSettle();
+      await tester.tap(offers);
       await tester.pumpAndSettle();
       expect(harness.currentLocation, contains('/providers/requests'));
       expect(harness.currentLocation, contains('item=category-2'));
@@ -1251,6 +1310,19 @@ class _MoneyProductApi extends FinanceApi {
   Map<String, String?>? savedAllocations;
   int replaceBudgetCalls = 0;
   String? lastCreatedCategoryId;
+
+  /// D109: each item estimate saved, by item.
+  final savedEstimates = <String, String?>{};
+
+  @override
+  Future<BudgetCategory> setItemEstimate({
+    required BudgetCategory category,
+    required String? estimatedAmount,
+  }) async {
+    savedEstimates[category.id] = estimatedAmount;
+    return category;
+  }
+
   int _categorySequence = 0;
 
   WeddingCost get cost => WeddingCost(
@@ -1382,6 +1454,12 @@ class _MoneyProductApi extends FinanceApi {
         count: 1,
       ),
       paymentSchedules: MoneySchedulesSummary(upcomingCount: 1, next: schedule),
+      // D105: the wedding's items expect their one agreement.
+      expected: const MoneyExpected(
+        wedding: MoneyExpectedTotals(agreed: '500000', expected: '500000'),
+        total: '500000',
+        budgetLeft: '500000',
+      ),
       // D102: what is left, by whom, and each thing still to pay, as the
       // server sends them.
       outstanding: const MoneyOutstanding(total: '400000', owner: '400000'),

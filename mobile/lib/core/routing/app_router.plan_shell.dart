@@ -103,6 +103,7 @@ List<RouteBase> _planShellRoutes() => [
                 ? state.extra! as CostDraftIntent
                 : null,
             initialCategoryId: state.uri.queryParameters['categoryId'],
+            expense: state.uri.queryParameters['kind'] == 'expense',
           );
         },
       ),

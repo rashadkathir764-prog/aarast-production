@@ -41,7 +41,10 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   }
   final funding = summary.funding;
   final short = funding != null && funding.shortfall != null;
-  final over = moneyValue(summary.budget.remaining) < 0;
+  // D105: the budget is held against the expected cost (agreements and
+  // what is still an estimate), as «البنود» and «يحتاج انتباهك» say it.
+  final left = summary.expected?.budgetLeft ?? summary.budget.remaining;
+  final over = moneyValue(left) < 0;
   if (over && short) return 'فوق الميزانية، وفلوسك ما تغطي اتفاقاتك';
   if (short) return 'فلوسك ما تغطي اتفاقاتك';
   if (over) return 'فوق الميزانية';

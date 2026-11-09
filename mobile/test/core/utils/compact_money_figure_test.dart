@@ -22,6 +22,18 @@ void main() {
     expect(figure(12340), '12.3$nbspألف');
   });
 
+  // A half rounds up the same way every time: dividing before rounding
+  // read 1,950,000 as «1.9» and 1,550,000 as «1.6».
+  test('a half rounds up, whatever its digits', () {
+    expect(figure(1950000), '2$nbspمليون');
+    expect(figure(1550000), '1.6$nbspمليون');
+    expect(figure(3150000), '3.2$nbspمليون');
+    expect(figure(2350000), '2.4$nbspمليون');
+    expect(figure(1940000), '1.9$nbspمليون');
+    expect(figure(1150), '1.2$nbspألف');
+    expect(figure(-1950000), '-2$nbspمليون');
+  });
+
   test('a figure that rounds up to a thousand thousands reads one million', () {
     expect(figure(999999), '1$nbspمليون');
   });

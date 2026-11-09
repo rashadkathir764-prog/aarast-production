@@ -20,7 +20,7 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../marketplace/marketplace_api.dart'
-    show ProviderBoardRow, ProviderMarketplaceProvider, buildProviderBoard;
+    show ProviderBoardRow, ProviderMarketplaceProvider;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider;
@@ -35,10 +35,12 @@ import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
 import '../widgets/funding_widgets.dart' show fundingStateTag;
 import '../widgets/money_widgets.dart';
+import 'money_item_market.dart';
 
 part 'money_overview_screen.answer.dart';
 part 'money_overview_screen.funding.dart';
 part 'money_overview_screen.items.dart';
+part 'money_overview_screen.items_view.dart';
 part 'money_overview_screen.payments.dart';
 part 'money_overview_screen.pieces.dart';
 part 'money_overview_screen.summary.dart';

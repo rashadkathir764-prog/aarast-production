@@ -214,10 +214,20 @@ class _PartySection extends StatelessWidget {
 
 /// An accepted quote's amount: agreed, so not typed again.
 class _QuoteTotal extends StatelessWidget {
-  const _QuoteTotal({required this.amount, required this.currency});
+  const _QuoteTotal({
+    required this.amount,
+    required this.currency,
+    this.label,
+    this.why,
+  });
 
   final num amount;
   final String currency;
+
+  /// What the fixed amount is, and why it is fixed (an accepted offer by
+  /// default; an expense's payment, D107).
+  final String? label;
+  final String? why;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +240,7 @@ class _QuoteTotal extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
+            label ?? context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -249,10 +259,11 @@ class _QuoteTotal extends StatelessWidget {
             ),
           ),
           Text(
-            context.say(
-              'مثبت من العرض اللي وافقت عليه',
-              'مثبت من العرض اللي وافقتِ عليه',
-            ),
+            why ??
+                context.say(
+                  'مثبت من العرض اللي وافقت عليه',
+                  'مثبت من العرض اللي وافقتِ عليه',
+                ),
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
@@ -540,6 +551,59 @@ class _MoreDetails extends StatelessWidget {
           maxLength: 1000,
         ),
       ],
+    );
+  }
+}
+
+/// A guard before saving (D107): what may be the same money twice, and the
+/// answers; an answer chosen is ticked.
+class _GuardNote extends StatelessWidget {
+  const _GuardNote({required this.text, required this.actions, super.key});
+
+  final String text;
+  final List<({String key, String label, bool chosen, VoidCallback onTap})>
+  actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AarastV3Space.x3),
+      child: JourneyBox(
+        color: AarastV3Color.amberSoft,
+        borderColor: AarastV3Color.amber.withValues(alpha: 0.3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  LucideIcons.alertCircle,
+                  size: 18,
+                  color: AarastV3Color.amber,
+                ),
+                const SizedBox(width: AarastV3Space.x2),
+                Expanded(
+                  child: Text(text, style: JourneyType.of(JourneyType.small)),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: AarastV3Space.x2,
+              children: [
+                for (final action in actions)
+                  JourneyTextAction(
+                    key: ValueKey(action.key),
+                    label: action.label,
+                    icon: action.chosen ? LucideIcons.check : null,
+                    color: context.accent.primary,
+                    onPressed: action.onTap,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

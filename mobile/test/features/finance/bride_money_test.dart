@@ -149,14 +149,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('c02: her items say what she paid and invite her to add', (
+  testWidgets('c02: her items speak to her and invite her to add', (
     tester,
   ) async {
     await _pump(tester, JourneyProfile.bride);
     await tester.tap(find.text('البنود'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('دفعتِ '), findsOneWidget);
+    expect(find.text('اتفقتِ عليها'), findsOneWidget);
+    expect(find.text('اتفقت عليها'), findsNothing);
+    expect(find.text('اتفقتِ 1'), findsOneWidget);
+    // What is left on her dress, from its agreement.
+    final row = find.byKey(const ValueKey('money-item-category-1'));
+    expect(
+      find.descendant(of: row, matching: find.textContaining('فستان الزفة')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.textContaining('1,500')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('أضيفي بند'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('أضيفي بند'), findsOneWidget);
     expect(find.text('أضف بند'), findsNothing);
   });
@@ -202,6 +219,17 @@ class _Api extends FinanceApi {
     // D102: what is left on her, and the coverage the server worked out.
     outstanding: const MoneyOutstanding(total: '1500', owner: '1500'),
     coverage: coverage,
+    // Her one item, as the server sums its agreement.
+    categories: const [
+      MoneyCategorySummary(
+        categoryId: 'category-1',
+        name: 'الفستان',
+        confirmedCost: '2000',
+        paid: '500',
+        outstanding: '1500',
+        costsCount: 1,
+      ),
+    ],
   );
 
   @override

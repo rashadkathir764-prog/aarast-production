@@ -52,6 +52,15 @@ extension _CostFormSave on _CostFormScreenState {
         ? _partyPhoneController.text.trim()
         : null;
     final cost = widget.cost;
+    // D105: what the agreement settles of its item's estimate; an expense
+    // is a part by its own amount (the server's default).
+    final coverPart = moneyValue(_coverPartController.text);
+    final estimateCover = _expense ? null : (_coversPart ? 'PART' : 'WHOLE');
+    final estimatePart = !_expense && _coversPart && coverPart > 0
+        ? '${coverPart.round()}'
+        : null;
+    final savedWord = _expense ? 'انحفظ المصروف' : 'انحفظ الاتفاق';
+    final failedWord = _expense ? 'ما انحفظ المصروف' : 'ما انحفظ الاتفاق';
 
     if (cost != null) {
       final ok = await provider.updateCost(
@@ -67,18 +76,17 @@ extension _CostFormSave on _CostFormScreenState {
         payerName: _payerNameOrNull,
         agreementDate: _agreementDate,
         note: _noteController.text.trim(),
+        estimateCover: estimateCover,
+        estimatePart: estimatePart,
       );
       if (!mounted) return;
       if (!ok) {
-        AarastToast.showError(
-          context,
-          provider.errorMessage ?? 'ما انحفظ الاتفاق',
-        );
+        AarastToast.showError(context, provider.errorMessage ?? failedWord);
         return;
       }
       AarastFormSuccess.show(
         context,
-        message: provider.savedMessage('انحفظ الاتفاق'),
+        message: provider.savedMessage(savedWord),
       );
       context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
       return;
@@ -89,7 +97,7 @@ extension _CostFormSave on _CostFormScreenState {
       budgetCategoryId: _categoryId!,
       title: title,
       totalAmount: '$_total',
-      initialPaymentAmount: paidNow > 0 ? '$paidNow' : null,
+      initialPaymentAmount: !_expense && paidNow > 0 ? '$paidNow' : null,
       providerId: providerId,
       quoteOfferId: quoteOfferId,
       partyName: partyName,
@@ -99,14 +107,14 @@ extension _CostFormSave on _CostFormScreenState {
       agreementDate: _agreementDate,
       note: _noteController.text.trim(),
       isPrivate: _isPrivate,
+      isExpense: _expense,
+      estimateCover: estimateCover,
+      estimatePart: estimatePart,
     );
     if (!mounted) return;
     if (created == null) {
       // The form stays as typed; the reason is the server's.
-      AarastToast.showError(
-        context,
-        provider.errorMessage ?? 'ما انحفظ الاتفاق',
-      );
+      AarastToast.showError(context, provider.errorMessage ?? failedWord);
       return;
     }
     await _draft?.clear();
@@ -132,7 +140,7 @@ extension _CostFormSave on _CostFormScreenState {
     } else {
       AarastFormSuccess.show(
         context,
-        message: provider.savedMessage('انحفظ الاتفاق'),
+        message: provider.savedMessage(savedWord),
         nextLabel: context.say('افتح الاتفاق', 'افتحي الاتفاق'),
         onNext: () => router.push(
           AppRouter.moneyCostDetails(widget.weddingPlanId, created.id),

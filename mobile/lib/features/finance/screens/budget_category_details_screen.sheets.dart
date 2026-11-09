@@ -1,99 +1,5 @@
 part of 'budget_category_details_screen.dart';
 
-/// What the item was given, what was agreed and what was paid.
-class _CategorySummary extends StatelessWidget {
-  const _CategorySummary({required this.category, required this.plain});
-
-  final BudgetCategory category;
-  final String Function(num value) plain;
-
-  @override
-  Widget build(BuildContext context) {
-    final allocated = moneyValue(category.allocatedAmount);
-    final agreed = moneyValue(category.confirmedCost);
-    final paid = moneyValue(category.paid);
-    final ratio = agreed <= 0 ? 0.0 : (paid / agreed).clamp(0.0, 1.0);
-    Widget row(String label, String value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: JourneyType.of(
-                JourneyType.body,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
-          ),
-        ],
-      ),
-    );
-    return JourneyBox(
-      key: const ValueKey('category-summary'),
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // D59: the owner reads their own doing; a helper reads it as the
-          // owner's, like the money summary.
-          row(
-            context.ownerDid(
-              'حطيت له',
-              'حطيتِ له',
-              groom: 'حط له العريس',
-              bride: 'حطت له العروسة',
-            ),
-            category.allocatedAmount == null
-                ? context.ownerDid(
-                    'ما حددت',
-                    'ما حددتِ',
-                    groom: 'ما حدد',
-                    bride: 'ما حددت',
-                  )
-                : plain(allocated),
-          ),
-          row(
-            context.ownerDid(
-              'اتفقت على',
-              'اتفقتِ على',
-              groom: 'اتفق العريس على',
-              bride: 'اتفقت العروسة على',
-            ),
-            plain(agreed),
-          ),
-          row(
-            context.ownerDid(
-              'دفعت',
-              'دفعتِ',
-              groom: 'دفع العريس',
-              bride: 'دفعت العروسة',
-            ),
-            plain(paid),
-          ),
-          row(
-            context.ownerDid(
-              'باقي عليك',
-              'باقي عليك',
-              groom: 'باقي عليه',
-              bride: 'باقي عليها',
-            ),
-            plain(moneyValue(category.outstanding)),
-          ),
-          if (agreed > 0) ...[
-            const SizedBox(height: AarastV3Space.x2),
-            JourneyBar(value: ratio, color: context.accent.primary),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 /// w18: the item went over what it was given.
 class _OverCard extends StatelessWidget {
   const _OverCard({
@@ -166,6 +72,9 @@ class _OverChoices extends StatelessWidget {
     required this.over,
     required this.overLabel,
     required this.budgetAfter,
+    required this.fromUnshared,
+    required this.reserveAfter,
+    required this.totalOver,
     required this.onGrow,
     required this.onMove,
   });
@@ -173,6 +82,15 @@ class _OverChoices extends StatelessWidget {
   final num over;
   final String overLabel;
   final String budgetAfter;
+
+  /// The reserve (the budget not shared out) covers it; null when not.
+  final VoidCallback? fromUnshared;
+
+  /// What the reserve keeps after it.
+  final String reserveAfter;
+
+  /// By how much the whole wedding is over the budget; null when it is not.
+  final String? totalOver;
   final VoidCallback onGrow;
   final VoidCallback onMove;
 
@@ -181,6 +99,20 @@ class _OverChoices extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (fromUnshared case final fromUnshared?) ...[
+          JourneyChoiceCard(
+            key: const ValueKey('category-over-unshared'),
+            choosable: false,
+            title: context.say('خذها من الاحتياط', 'خذيها من الاحتياط'),
+            subtitle: 'يزيد المخصص له $overLabel، ويبقى الاحتياط $reserveAfter',
+            leading: Icon(
+              LucideIcons.plusCircle,
+              color: context.accent.primary,
+            ),
+            onTap: fromUnshared,
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
         JourneyChoiceCard(
           key: const ValueKey('category-over-grow'),
           choosable: false,
@@ -206,7 +138,9 @@ class _OverChoices extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x2),
         Text(
-          '${context.say('لو خليتها', 'لو خليتيها')} كذا، المجموع يطلع فوق الميزانية بـ $overLabel.',
+          totalOver == null
+              ? '${context.say('لو خليتها', 'لو خليتيها')} كذا، يبقى البند فوق المخصص له، ومجموع العرس تحت الميزانية.'
+              : 'مجموع العرس فوق الميزانية بـ$totalOver.',
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,

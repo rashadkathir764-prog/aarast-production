@@ -361,7 +361,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       'على ${p.familyPayer} 1.7 مليون',
       why: 'باقي الأهل على القاعة والغداء',
     );
-    walk.expectSee('سلف ترجعها');
+    // RA-MO-71: the loans in the owner's words.
+    walk.expectSee(p.say('سلف ترجعها', 'سلف ترجعينها'));
     walk.expectSee(p.say('دين عليك،', 'دين عليكِ،'), why: 'السلفة دين عليه');
     walk.expectSee('تكلفة العرس المسجّلة');
     await walk.scroll(pixels: -1500);

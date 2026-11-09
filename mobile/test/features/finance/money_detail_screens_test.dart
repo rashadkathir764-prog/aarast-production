@@ -759,6 +759,43 @@ void main() {
       },
     );
 
+    // RA-MO-52: the field holds whole riyals; left as it is, the date is
+    // paid exactly, fractions and all.
+    testWidgets('a date that asks for fractions is paid exactly', (
+      tester,
+    ) async {
+      final api = _FractionDateApi();
+      final router = GoRouter(
+        initialLocation: '/money',
+        routes: [
+          GoRoute(
+            path: '/money',
+            builder: (_, _) => const Scaffold(body: Text('money-page')),
+            routes: [
+              GoRoute(
+                path: 'pay',
+                builder: (_, _) => const PayPaymentScheduleScreen(
+                  weddingPlanId: 'plan-1',
+                  costId: 'cost-1',
+                  scheduleId: 'schedule-1',
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+      await _pumpMoneyRouter(tester, router, api: api);
+      router.push('/money/pay');
+      await tester.pumpAndSettle();
+      expect(find.text('يندفع الموعد كامل'), findsOneWidget);
+      final save = find.byKey(const ValueKey('payment-save'));
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(api.sent, ['400.50']);
+      expect(tester.takeException(), isNull);
+    });
+
     // D106: a date's payment starts at what it asks; less is part of it,
     // more pays it with the rest on the agreement; and its own actions.
     testWidgets(
@@ -989,6 +1026,32 @@ class _FailingMoneyDetailsApi extends _MoneyDetailsApi {
   }
 }
 
+/// RA-MO-52: a date that asks for fractions (an older or imported
+/// agreement), and what its payment sends.
+class _FractionDateApi extends _MoneyDetailsApi {
+  _FractionDateApi() : super(scheduleAmount: '400.50');
+
+  final sent = <String?>[];
+
+  @override
+  Future<CostPayment> paySchedule({
+    required PaymentSchedule schedule,
+    required WeddingCost cost,
+    DateTime? paidAt,
+    String? method,
+    String? note,
+    String? amount,
+  }) async {
+    sent.add(amount);
+    return CostPayment(
+      id: 'payment-fraction',
+      costId: cost.id,
+      amount: amount ?? schedule.amount,
+      paidAt: paidAt ?? DateTime(2026, 7, 14),
+    );
+  }
+}
+
 class _RefusedPaymentApi extends _MoneyDetailsApi {
   static const refusal = 'ما انحفظت الدفعة عند الخادم.';
 
@@ -1109,14 +1172,19 @@ class _NoAgreementApi extends _MoneyDetailsApi {
 }
 
 class _MoneyDetailsApi extends FinanceApi {
-  _MoneyDetailsApi({this.quoteOfferId, this.payer, this.payerName})
-    : super(ApiClient(tokenProvider: () async => null));
+  _MoneyDetailsApi({
+    this.quoteOfferId,
+    this.payer,
+    this.payerName,
+    this.scheduleAmount = '400',
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   static final _now = DateTime(2026, 7, 14, 12);
 
   final String? quoteOfferId;
   final String? payer;
   final String? payerName;
+  final String scheduleAmount;
 
   late final WeddingCost cost = WeddingCost(
     id: 'cost-1',
@@ -1148,11 +1216,11 @@ class _MoneyDetailsApi extends FinanceApi {
     costTitle: 'قاعة الحفل',
   );
 
-  final PaymentSchedule schedule = PaymentSchedule(
+  late final PaymentSchedule schedule = PaymentSchedule(
     id: 'schedule-1',
     costId: 'cost-1',
     weddingPlanId: 'plan-1',
-    amount: '400',
+    amount: scheduleAmount,
     dueDate: _now.add(const Duration(days: 30)),
     status: 'PENDING',
     costTitle: 'قاعة الحفل',

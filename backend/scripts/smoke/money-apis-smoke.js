@@ -852,6 +852,51 @@ async function run() {
     check('D108: family support and gifts are from the one they were recorded as',
       mother?.gave === '50' && withMother.body?.family?.length === 2
         && withMother.body.family.some((person) => person.name === 'الوالد'));
+    // The app sends a date's own amount with every edit («اتفقتوا على موعد
+    // ثاني؟», «التذكير»); the same amount is not a change. A date with a
+    // payment on it, paid then reversed or partly paid (D106), keeps its
+    // amount, as it is not deleted.
+    const rehearsal = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('hall'), title: 'Hall rehearsal', totalAmount: '500',
+    }, owner.token);
+    const once = await request('POST', `/api/v1/costs/${rehearsal.body?.id}/payment-schedules`, { amount: '500', dueDate: dateOffsetIso(15) }, owner.token);
+    const paidOnce = await request('POST', `/api/v1/payment-schedules/${once.body?.id}/pay`, {}, owner.token, randomUUID());
+    await request('POST', `/api/v1/cost-payments/${paidOnce.body?.payment?.id}/reverse`, { reason: 'Review smoke' }, owner.token);
+    const appMove = await request('PATCH', `/api/v1/payment-schedules/${once.body?.id}`, { amount: '500', dueDate: dateOffsetIso(20), note: null }, owner.token);
+    check('a date paid then reversed moves the way the app sends it, its own amount with it',
+      paidOnce.status === 201 && appMove.status === 200 && appMove.body?.rescheduledFrom !== null);
+    const appRemind = await request('PATCH', `/api/v1/payment-schedules/${once.body?.id}`, {
+      amount: '500', dueDate: dateOffsetIso(20), note: null, remindAt: dateOffsetIso(18),
+    }, owner.token);
+    check('a date paid then reversed takes a reminder day the way the app sends it',
+      appRemind.status === 200 && appRemind.body?.remindAt !== null);
+    const onceAmount = await request('PATCH', `/api/v1/payment-schedules/${once.body?.id}`, { amount: '400' }, owner.token);
+    check('a date paid then reversed keeps its amount',
+      onceAmount.status === 409 && onceAmount.body?.code === 'FINANCE_SCHEDULE_HAS_PAYMENTS');
+    const extra = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('hall'), title: 'Hall extra', totalAmount: '500',
+    }, owner.token);
+    const partDate = await request('POST', `/api/v1/costs/${extra.body?.id}/payment-schedules`, { amount: '500', dueDate: dateOffsetIso(15) }, owner.token);
+    const partPaid = await request('POST', `/api/v1/payment-schedules/${partDate.body?.id}/pay`, { amount: '100' }, owner.token, randomUUID());
+    const partAmount = await request('PATCH', `/api/v1/payment-schedules/${partDate.body?.id}`, { amount: '450' }, owner.token);
+    check('D106: a partly paid date keeps its amount, so its reversal cannot ask more than agreed',
+      partPaid.status === 201 && partAmount.status === 409 && partAmount.body?.code === 'FINANCE_SCHEDULE_HAS_PAYMENTS');
+    const partMove = await request('PATCH', `/api/v1/payment-schedules/${partDate.body?.id}`, { amount: '400', dueDate: dateOffsetIso(25), note: null }, owner.token);
+    await request('POST', `/api/v1/cost-payments/${partPaid.body?.payment?.id}/reverse`, { reason: 'Review smoke' }, owner.token);
+    const extraDates = await request('GET', `/api/v1/costs/${extra.body?.id}/payment-schedules`, null, owner.token);
+    const partBack = (extraDates.body?.items ?? extraDates.body ?? []).find?.((item) => item.id === partDate.body?.id);
+    check('D106: a partly paid date moves the way the app sends it, and its reversal gives back what was agreed',
+      partMove.status === 200 && partBack?.amount === '500' && partBack?.status === 'PENDING');
+    // D105: the cover chosen again with no part is the agreement's own
+    // amount, as the phone's copy writes it; a part alone keeps the cover.
+    const album = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('photo'), title: 'Album', totalAmount: '500', estimateCover: 'PART', estimatePart: '300',
+    }, owner.token);
+    const albumCleared = await request('PATCH', `/api/v1/costs/${album.body?.id}`, { totalAmount: '800', estimateCover: 'PART' }, owner.token);
+    const albumPart = await request('PATCH', `/api/v1/costs/${album.body?.id}`, { estimatePart: '200' }, owner.token);
+    check('D105: a part chosen again with no amount is the agreement\'s own amount; a part alone keeps the choice',
+      album.body?.estimatePart === '300' && albumCleared.status === 200 && albumCleared.body?.estimatePart === '800'
+        && albumPart.status === 200 && albumPart.body?.estimateCover === 'PART' && albumPart.body?.estimatePart === '200');
     const viewerTab = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, viewer.token);
     check('the money tab is the plan\'s: a stranger reads nothing', viewerTab.status === 403 || viewerTab.status === 404);
 

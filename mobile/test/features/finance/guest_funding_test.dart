@@ -3,6 +3,7 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
+import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -111,5 +112,64 @@ void main() {
     final cleared = await api.deleteRepayment(withRepayment.repayments.single);
     expect(cleared.repayments, isEmpty);
     expect(client.calls, 0);
+  });
+
+  // D108, RA-MO-49: the family view reads who gave money from the person
+  // the app asks for («من مين؟»); the app writes it, so a source renamed in
+  // the app is never left under the person it had before.
+  test('the person a family source is from is written with its name', () async {
+    final (api, _) = await _api();
+    final funding = FundingProvider(api);
+    await funding.load(_planId);
+    expect(
+      await funding.create(
+        weddingPlanId: _planId,
+        kind: FundingKind.familySupport,
+        sourceName: 'الوالد',
+        amount: '500000',
+        status: FundingStatus.pledged,
+        expectedAt: DateTime(2030, 1, 1),
+      ),
+      isTrue,
+    );
+    await funding.create(
+      weddingPlanId: _planId,
+      kind: FundingKind.savings,
+      sourceName: 'مدخراتي',
+      amount: '900000',
+      status: FundingStatus.received,
+    );
+    final father = funding.sources.firstWhere((s) => s.sourceName == 'الوالد');
+    final savings = funding.sources.firstWhere(
+      (s) => s.sourceName == 'مدخراتي',
+    );
+    expect(father.contributorName, 'الوالد');
+    expect(savings.contributorName, isNull);
+
+    // «وصلت؟» keeps who it is from.
+    await funding.markReceived(father);
+    expect(
+      funding.sources.firstWhere((s) => s.id == father.id).contributorName,
+      'الوالد',
+    );
+
+    // Renamed in the form, it is from the one the form names.
+    final arrived = funding.sources.firstWhere((s) => s.id == father.id);
+    expect(
+      await funding.update(
+        arrived,
+        kind: arrived.kind,
+        sourceName: 'أبوي',
+        amount: arrived.amount,
+        status: arrived.status,
+        expectedAt: arrived.expectedAt,
+        person: 'أبوي',
+      ),
+      isTrue,
+    );
+    expect(
+      funding.sources.firstWhere((s) => s.id == father.id).contributorName,
+      'أبوي',
+    );
   });
 }

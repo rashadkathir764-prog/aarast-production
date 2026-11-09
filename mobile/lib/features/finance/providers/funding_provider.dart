@@ -102,6 +102,8 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
         sourcePhone: sourcePhone,
         note: note,
         expectedAt: expectedAt,
+        // D108, RA-MO-49: who it is from, as the family view reads it.
+        contributorName: FundingKind.namesPerson(kind) ? sourceName : null,
       );
       // Another plan's list (or none yet) is not this one: the next read of
       // this plan brings it.
@@ -121,6 +123,9 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     required DateTime? expectedAt,
     String? sourcePhone,
     String? note,
+    // D108, RA-MO-49: who it is from, when the form named them; null
+    // leaves it as it was («وصلت؟» does not ask).
+    String? person,
   }) {
     return _save(source.weddingPlanId, () async {
       _replace(
@@ -133,6 +138,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
           sourcePhone: sourcePhone,
           note: note,
           expectedAt: expectedAt,
+          contributorName: person,
         ),
       );
     });

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   BudgetItemSuggestion,
@@ -69,6 +70,11 @@ function amountDueOf(
   cost: { totalAmount: Prisma.Decimal; paidAmount: Prisma.Decimal },
 ): Prisma.Decimal {
   return scheduleAmountDue(amount, cost.totalAmount, cost.paidAmount);
+}
+
+/** A row id made before its write, in the schema's own form (a cuid). */
+function newRowId(): string {
+  return `c${randomUUID().replaceAll('-', '').slice(0, 24)}`;
 }
 
 @Injectable()
@@ -201,67 +207,78 @@ export class FinancePortService implements FinancePort {
     });
   }
 
-  async createImportedCostInTransaction(
+  async createImportedCostsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
-    cost: ImportedCostInput,
+    costs: readonly ImportedCostInput[],
   ): Promise<void> {
+    if (costs.length === 0) return;
     // The import validated paid <= total before calling the port.
     //
-    // RA-BE-63: the agreement is written as it happened. A reminder is
+    // RA-BE-63: each agreement is written as it happened. A reminder is
     // checked against what is left when it is written (the database's
     // `PaymentSchedule_amount_at_write_integrity`), and on the phone it was
-    // written before the payments that came after it. So the agreement is
-    // made unpaid with its reminders, then its payments are recorded and its
-    // paid total set; the ledger's own checks run at the end of the
-    // transaction, on the whole agreement.
-    const entryKind = cost.entryKind ?? 'AGREEMENT';
-    const cover = estimateCoverOf({
-      entryKind,
-      totalAmount: cost.totalAmount,
-      estimateCover: cost.estimateCover ?? null,
-      estimatePart: cost.estimatePart ?? null,
+    // written before the payments that came after it. So the agreements are
+    // made unpaid with their reminders, then their payments are recorded and
+    // their paid totals set; the ledger's own checks run at the end of the
+    // transaction, on every agreement.
+    //
+    // RA-BE-113: four statements whatever the size of the plan, with the ids
+    // made here so a payment finds its date (D106). One statement per row
+    // ran past the transaction's time on a plan at the caps (RA-BE-64).
+    const rows = costs.map((cost) => {
+      const entryKind = cost.entryKind ?? 'AGREEMENT';
+      return {
+        id: newRowId(),
+        cost,
+        entryKind,
+        cover: estimateCoverOf({
+          entryKind,
+          totalAmount: cost.totalAmount,
+          estimateCover: cost.estimateCover ?? null,
+          estimatePart: cost.estimatePart ?? null,
+        }),
+        scheduleIds: cost.paymentSchedules.map(() => newRowId()),
+      };
     });
-    const created = await tx.weddingCost.create({
-      data: {
+    const unpaid = new Prisma.Decimal(0);
+    await tx.weddingCost.createMany({
+      data: rows.map(({ id, cost, entryKind, cover }) => ({
+        id,
         weddingPlanId,
         budgetCategoryId: cost.budgetCategoryId,
         title: cost.title,
         partyName: cost.partyName,
         partyPhone: cost.partyPhone,
         totalAmount: cost.totalAmount,
-        paidAmount: new Prisma.Decimal(0),
+        paidAmount: unpaid,
         agreementDate: cost.agreementDate,
-        status: deriveCostStatus(cost.totalAmount, new Prisma.Decimal(0)),
+        status: deriveCostStatus(cost.totalAmount, unpaid),
         note: cost.note,
         payer: (cost.payer as CostPayer | null | undefined) ?? null,
         payerName: cost.payerName ?? null,
         entryKind,
         estimateCover: cover.estimateCover,
         estimatePart: cover.estimatePart,
-      },
-      select: { id: true },
+      })),
     });
-    // One by one, in order, so a partial payment finds its date (D106).
-    const scheduleIds: string[] = [];
-    for (const schedule of cost.paymentSchedules) {
-      const row = await tx.paymentSchedule.create({
-        data: {
-          weddingCostId: created.id,
-          amount: schedule.amount,
-          dueDate: schedule.dueDate,
-          note: schedule.note,
-          remindAt: schedule.remindAt ?? null,
-          rescheduledFrom: schedule.rescheduledFrom ?? null,
-        },
-        select: { id: true },
-      });
-      scheduleIds.push(row.id);
+    const schedules = rows.flatMap(({ id, cost, scheduleIds }) =>
+      cost.paymentSchedules.map((schedule, index) => ({
+        id: scheduleIds[index],
+        weddingCostId: id,
+        amount: schedule.amount,
+        dueDate: schedule.dueDate,
+        note: schedule.note,
+        remindAt: schedule.remindAt ?? null,
+        rescheduledFrom: schedule.rescheduledFrom ?? null,
+      })),
+    );
+    if (schedules.length > 0) {
+      await tx.paymentSchedule.createMany({ data: schedules });
     }
-    if (cost.payments.length === 0) return;
-    await tx.costPayment.createMany({
-      data: cost.payments.map((payment) => ({
-        weddingCostId: created.id,
+    const payments = rows.flatMap(({ id, cost, scheduleIds }) =>
+      cost.payments.map((payment) => ({
+        weddingCostId: id,
         amount: payment.amount,
         paidAt: payment.paidAt,
         method: payment.method,
@@ -271,14 +288,23 @@ export class FinancePortService implements FinancePort {
             ? null
             : (scheduleIds[payment.lowersScheduleIndex] ?? null),
       })),
-    });
-    await tx.weddingCost.update({
-      where: { id: created.id },
-      data: {
-        paidAmount: cost.paidAmount,
-        status: deriveCostStatus(cost.totalAmount, cost.paidAmount),
-      },
-    });
+    );
+    if (payments.length === 0) return;
+    await tx.costPayment.createMany({ data: payments });
+    const paid = rows.filter(({ cost }) => cost.payments.length > 0);
+    await tx.$executeRaw`
+      UPDATE "WeddingCost" AS cost
+      SET "paidAmount" = paid.amount,
+          "status" = paid.status::"WeddingCostStatus",
+          "updatedAt" = NOW()
+      FROM (
+        SELECT
+          unnest(${paid.map((row) => row.id)}::text[]) AS id,
+          unnest(${paid.map((row) => row.cost.paidAmount.toString())}::numeric[]) AS amount,
+          unnest(${paid.map((row) => deriveCostStatus(row.cost.totalAmount, row.cost.paidAmount))}::text[]) AS status
+      ) AS paid
+      WHERE cost.id = paid.id
+    `;
   }
 
   async setImportedItemAmountsInTransaction(
@@ -312,19 +338,30 @@ export class FinancePortService implements FinancePort {
     );
     const keepAllocations =
       budget !== null && allocated.gt(0) && !allocated.gt(budget);
-    for (const item of items) {
-      if (!kinds.has(item.budgetCategoryId)) continue;
+    const writes = items.flatMap((item) => {
+      if (!kinds.has(item.budgetCategoryId)) return [];
       const allocation =
         keepAllocations && allocations.includes(item) ? item.allocatedAmount : null;
-      if (allocation === null && item.estimatedAmount === null) continue;
-      await tx.budgetCategory.update({
-        where: { id: item.budgetCategoryId },
-        data: {
-          ...(allocation === null ? {} : { allocatedAmount: allocation }),
-          ...(item.estimatedAmount === null ? {} : { estimatedAmount: item.estimatedAmount }),
-        },
-      });
-    }
+      if (allocation === null && item.estimatedAmount === null) return [];
+      return [{ id: item.budgetCategoryId, allocation, estimate: item.estimatedAmount }];
+    });
+    if (writes.length === 0) return;
+    // RA-BE-113: one statement for every item; a value not given is kept.
+    // An array parameter cannot carry a null beside values (the driver
+    // refuses it, 08P01), so «not given» travels as '' and is read as null.
+    await tx.$executeRaw`
+      UPDATE "BudgetCategory" AS item
+      SET "allocatedAmount" = COALESCE(NULLIF(next.allocation, '')::numeric, item."allocatedAmount"),
+          "estimatedAmount" = COALESCE(NULLIF(next.estimate, '')::numeric, item."estimatedAmount"),
+          "updatedAt" = NOW()
+      FROM (
+        SELECT
+          unnest(${writes.map((write) => write.id)}::text[]) AS id,
+          unnest(${writes.map((write) => write.allocation?.toString() ?? '')}::text[]) AS allocation,
+          unnest(${writes.map((write) => write.estimate?.toString() ?? '')}::text[]) AS estimate
+      ) AS next
+      WHERE item.id = next.id
+    `;
   }
 
   async createImportedFundingSourcesInTransaction(
@@ -333,7 +370,8 @@ export class FinancePortService implements FinancePort {
     persona: string | null,
     sources: readonly ImportedFundingSourceInput[],
   ): Promise<void> {
-    for (const source of sources) {
+    // RA-BE-113: two statements whatever their number, the ids made here.
+    const rows = sources.map((source) => {
       // The mahr is money coming in on the bride's plan only; on another
       // plan the money is kept, as «other».
       const kind =
@@ -350,32 +388,39 @@ export class FinancePortService implements FinancePort {
               return true;
             })
           : [];
-      await tx.fundingSource.create({
-        data: {
-          weddingPlanId,
-          kind,
-          sourceName: source.sourceName,
-          sourcePhone: source.sourcePhone,
-          contributorName: source.contributorName,
-          amount: source.amount,
-          status: source.status,
-          receivedAt: source.status === FundingSourceStatus.RECEIVED ? source.receivedAt : null,
-          expectedAt: source.status === FundingSourceStatus.PLEDGED ? source.expectedAt : null,
-          note: source.note,
-          repayments: {
-            create: repayments.map((repayment) => ({
-              amount: repayment.amount,
-              dueDate: repayment.dueDate,
-              status: repayment.status,
-              paidAt:
-                repayment.status === LoanRepaymentStatus.PAID
-                  ? (repayment.paidAt ?? new Date())
-                  : null,
-              note: repayment.note,
-            })),
-          },
-        },
-      });
+      return { id: newRowId(), kind, source, repayments };
+    });
+    if (rows.length === 0) return;
+    await tx.fundingSource.createMany({
+      data: rows.map(({ id, kind, source }) => ({
+        id,
+        weddingPlanId,
+        kind,
+        sourceName: source.sourceName,
+        sourcePhone: source.sourcePhone,
+        contributorName: source.contributorName,
+        amount: source.amount,
+        status: source.status,
+        receivedAt: source.status === FundingSourceStatus.RECEIVED ? source.receivedAt : null,
+        expectedAt: source.status === FundingSourceStatus.PLEDGED ? source.expectedAt : null,
+        note: source.note,
+      })),
+    });
+    const repayments = rows.flatMap(({ id, repayments: own }) =>
+      own.map((repayment) => ({
+        fundingSourceId: id,
+        amount: repayment.amount,
+        dueDate: repayment.dueDate,
+        status: repayment.status,
+        paidAt:
+          repayment.status === LoanRepaymentStatus.PAID
+            ? (repayment.paidAt ?? new Date())
+            : null,
+        note: repayment.note,
+      })),
+    );
+    if (repayments.length > 0) {
+      await tx.loanRepayment.createMany({ data: repayments });
     }
   }
 
@@ -601,6 +646,14 @@ export class FinancePortService implements FinancePort {
       },
     });
     const zero = new Prisma.Decimal(0);
+    // RA-BE-117: each item's agreements in one pass, not one scan of every
+    // agreement per item (the hourly due scan reads all planning plans).
+    const costsByItem = new Map<string, typeof costs>();
+    for (const cost of costs) {
+      const list = costsByItem.get(cost.budgetCategoryId);
+      if (list) list.push(cost);
+      else costsByItem.set(cost.budgetCategoryId, [cost]);
+    }
     return categories.flatMap((category) => {
       if (!category.allocatedAmount) return [];
       const expected = expectedItem(
@@ -609,7 +662,7 @@ export class FinancePortService implements FinancePort {
           estimatedAmount: category.estimatedAmount,
           notNeeded: category.suggestion === BudgetItemSuggestion.NOT_NEEDED,
         },
-        costs.filter((cost) => cost.budgetCategoryId === category.id),
+        costsByItem.get(category.id) ?? [],
         zero,
       );
       if (!expected.expected.gt(category.allocatedAmount)) return [];

@@ -358,6 +358,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                   sourcePhone: result.sourcePhone,
                   note: result.note,
                   expectedAt: result.expectedAt,
+                  // D108: «من مين؟» names who it is from.
+                  person: FundingKind.namesPerson(result.kind)
+                      ? result.sourceName
+                      : null,
                 );
           return saved
               ? null

@@ -20,7 +20,13 @@ export function manualStatusPatch(
   reopenedByHandAt?: Date | null;
 } {
   if (sent === undefined || sent === current) return {};
-  const reopened =
-    current === WeddingTaskStatus.DONE && sent !== WeddingTaskStatus.DONE;
-  return { status: sent, autoClosedAt: null, reopenedByHandAt: reopened ? at : null };
+  if (current === WeddingTaskStatus.DONE) {
+    return { status: sent, autoClosedAt: null, reopenedByHandAt: at };
+  }
+  if (sent === WeddingTaskStatus.DONE) {
+    return { status: sent, autoClosedAt: null, reopenedByHandAt: null };
+  }
+  // RA-BE-111: moved between two states that are not done, a task reopened
+  // by hand is still the person's; its mark is kept.
+  return { status: sent, autoClosedAt: null };
 }

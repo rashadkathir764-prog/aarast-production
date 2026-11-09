@@ -186,6 +186,7 @@ async function run() {
 
   await importLocalPlanChecks(accessToken);
   await importMoneyTabChecks(accessToken);
+  await importAtCapsCheck(accessToken);
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
@@ -414,6 +415,60 @@ async function importMoneyTabChecks(accessToken) {
       && summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '200')
       && !summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '500'));
   check('D103: the coverage reads the imported money', typeof summary.body?.coverage?.verdict === 'string');
+}
+
+/**
+ * RA-BE-113: a phone plan at every cap RA-BE-64 promises to take is saved in
+ * one go: 1,000 agreements with their dates and a partial payment each, 300
+ * money sources (100 loans with their repayments), 2,000 tasks and 5,000
+ * guests.
+ */
+async function importAtCapsCheck(accessToken) {
+  const day = (offset) => new Date(Date.UTC(2026, 10, 9 + offset)).toISOString();
+  const names = Array.from({ length: 40 }, (_, index) => `بند ${index + 1}`);
+  const plan = {
+    clientMigrationId: `guest-plan-caps-${timestamp}`,
+    path: 'USER',
+    persona: 'GROOM',
+    title: 'عرس بكل الحدود',
+    currency: 'YER',
+    estimatedBudget: '900000000',
+    selectedCategories: names.slice(0, 12),
+    itemAmounts: names.map((name) => ({ name, estimatedAmount: '100000' })),
+    costs: Array.from({ length: 1000 }, (_, index) => ({
+      title: `اتفاق ${index + 1}`,
+      totalAmount: '3000',
+      categoryName: names[index % names.length],
+      payments: [{ amount: '400', paidAt: day(-1), lowersScheduleIndex: 0 }],
+      paymentSchedules: [
+        { amount: '1000', dueDate: day(10) },
+        { amount: '1000', dueDate: day(40) },
+      ],
+    })),
+    fundingSources: Array.from({ length: 300 }, (_, index) =>
+      index < 100
+        ? {
+            kind: 'LOAN',
+            sourceName: `سلفة ${index + 1}`,
+            amount: '4000',
+            status: 'RECEIVED',
+            receivedAt: day(-5),
+            repayments: [1, 2, 3, 4].map((month) => ({ amount: '1000', dueDate: day(30 * month) })),
+          }
+        : { kind: 'SAVINGS', sourceName: `مدخرات ${index + 1}`, amount: '1000', status: 'RECEIVED', receivedAt: day(-5) }),
+    tasks: Array.from({ length: 2000 }, (_, index) => ({ title: `مهمة ${index + 1}` })),
+    guests: Array.from({ length: 5000 }, (_, index) => ({
+      name: `ضيف ${index + 1}`,
+      phone: `+96773${String(1000000 + index).slice(-7)}`,
+      side: 'GROOM',
+    })),
+  };
+  const started = Date.now();
+  const res = await request('POST', '/api/v1/onboarding/import-local', plan, accessToken);
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+  check(`RA-BE-113: a phone plan at every cap is saved (${seconds}s, HTTP ${res.status})`,
+    res.status === 201 && res.body?.imported?.costs === 1000 && res.body?.imported?.guests === 5000
+      && res.body?.imported?.tasks === 2000 && res.body?.imported?.paymentSchedules === 2000);
 }
 
 run().catch((err) => {

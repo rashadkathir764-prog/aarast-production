@@ -362,7 +362,9 @@ class _Plan {
       (sum, cost) => cost.part ? sum + (cost.estimatePart ?? cost.total) : sum,
     );
     final int estimateLeft;
-    if (whole || estimate == null) {
+    // RA-BE-112: an item the owner does not need («ما أحتاجها») expects
+    // nothing beyond what was agreed in it.
+    if (whole || estimate == null || (item?.notNeeded ?? false)) {
       estimateLeft = 0;
     } else {
       estimateLeft = estimate - _min(parts, estimate);

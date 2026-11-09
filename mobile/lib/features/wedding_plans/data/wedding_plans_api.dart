@@ -268,11 +268,12 @@ class WeddingPlansApi {
         id: id,
       );
       if (cached == null) rethrow;
+      // `moveOpenTasks` is a request to the server, not part of the plan.
       final localJson = {
         ...cached,
         ...data,
         'updatedAt': DateTime.now().toIso8601String(),
-      };
+      }..remove('moveOpenTasks');
       await _offline.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: localJson,

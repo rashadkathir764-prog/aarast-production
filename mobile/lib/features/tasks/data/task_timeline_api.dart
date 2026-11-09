@@ -26,7 +26,6 @@ class TaskTimelineApi {
       'الخطوات الفرعية تُحفظ في الخادم الحين؛ المهمة نفسها محفوظة في جوالك.';
   static const _assignNeedsServer =
       'تعيين المسؤول يتأكد من عضويته في الخطة، فيحتاج الخادم.';
-  static const _shiftNeedsServer = 'نقل كل المواعيد مرة وحدة يحتاج الخادم.';
 
   /// RA-BE-15: the server's TASK_PERSON_NAME_MAX. A name picked from the
   /// contacts is set from code and can pass the field's limit.
@@ -130,29 +129,6 @@ class TaskTimelineApi {
       }
       return _timelineFromCachedTasks(weddingPlanId);
     }
-  }
-
-  /// The wedding moved (V1 checklist 4.13): the owner moves the plan's open
-  /// dated tasks by [days]. Online only: it is a one-off decision the owner
-  /// takes right after changing the date. Returns how many tasks moved.
-  ///
-  /// RA-BE-71: the move is relative, so a retry after a lost answer moved
-  /// every task twice. Every try of one move sends the same [clientRequestId],
-  /// and the server answers a repeat with the first answer.
-  Future<int> shiftOpenDueDates(
-    String weddingPlanId,
-    int days, {
-    required String clientRequestId,
-  }) async {
-    final json = await _writes.serverOnly(
-      reason: _shiftNeedsServer,
-      method: 'POST',
-      path: '/api/v1/wedding-plans/$weddingPlanId/tasks/shift-due-dates',
-      body: {'days': days},
-      clientRequestId: clientRequestId,
-    );
-    final shifted = json['shifted'];
-    return shifted is num ? shifted.toInt() : 0;
   }
 
   Future<TaskSummary> getTaskSummary(String weddingPlanId) async {

@@ -2,6 +2,7 @@ import { OnboardingPath, WeddingPersona } from '@prisma/client';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsObject,
   IsOptional,
@@ -48,4 +49,12 @@ export class UpdateWeddingPlanDto {
   @IsEnum(WeddingPersona)
   @IsOptional()
   persona?: WeddingPersona | null;
+
+  /**
+   * RA-BE-116: the wedding moved, and its open dated tasks move with it by
+   * the same days, in the same save (the app asks first).
+   */
+  @IsBoolean()
+  @IsOptional()
+  moveOpenTasks?: boolean;
 }

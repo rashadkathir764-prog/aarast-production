@@ -95,6 +95,51 @@ MoneyObligation _line(FinanceProvider provider, String id) =>
 WeddingCost _hall(FinanceProvider provider) => provider.costById('k-hall')!;
 
 void main() {
+  // RA-BE-25 on the phone (RA-MO-51): the dates its being paid in full
+  // cancelled come back once money is owed on it again, as the server does.
+  test(
+    'dates cancelled by paying in full come back when it is owed again',
+    () async {
+      final provider = await _provider();
+      final payment = await provider.recordPayment(
+        cost: _hall(provider),
+        amount: '1200000',
+      );
+      expect(payment, isNotNull, reason: provider.errorMessage);
+      expect(provider.scheduleById('s-next')!.status, 'CANCELLED');
+
+      final reversed = await provider.reversePayment(
+        payment: payment!,
+        cost: _hall(provider),
+        reason: 'غلط في المبلغ',
+      );
+      expect(reversed, isTrue, reason: provider.errorMessage);
+      expect(provider.scheduleById('s-late')!.status, 'PENDING');
+      expect(provider.scheduleById('s-next')!.status, 'PENDING');
+      expect(moneyValue(provider.scheduleById('s-next')!.amount), 500000);
+      expect(_line(provider, 's-next').amount, isNotNull);
+    },
+  );
+
+  test('a raised total brings them back, never above what is left', () async {
+    final provider = await _provider();
+    await provider.recordPayment(cost: _hall(provider), amount: '1200000');
+    expect(provider.scheduleById('s-late')!.status, 'CANCELLED');
+
+    // 1,600,000 now: 400,000 is owed again.
+    final saved = await provider.updateCost(
+      cost: _hall(provider),
+      budgetCategoryId: 'c-hall',
+      title: 'قاعة الريان',
+      totalAmount: '1600000',
+    );
+    expect(saved, isTrue, reason: provider.errorMessage);
+    expect(provider.scheduleById('s-late')!.status, 'PENDING');
+    expect(moneyValue(provider.scheduleById('s-late')!.amount), 300000);
+    expect(provider.scheduleById('s-next')!.status, 'PENDING');
+    expect(moneyValue(provider.scheduleById('s-next')!.amount), 400000);
+  });
+
   test('paying less than a date asks lowers the date by it', () async {
     final provider = await _provider();
     final payment = await provider.paySchedule(

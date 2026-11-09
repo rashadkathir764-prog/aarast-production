@@ -10,6 +10,8 @@ type Amount = Prisma.Decimal;
  * estimate; an expense is a part at its own value). The estimate is the
  * owner's own (`estimatedAmount`); without one, the item's allocation stands
  * in for it, so a plan that only split its budget keeps its numbers (D109).
+ * An item the owner does not need («ما أحتاجها», D72) expects nothing
+ * beyond what was agreed in it (RA-BE-112).
  */
 export interface ExpectedItemInput {
   allocatedAmount: Amount | null;
@@ -70,7 +72,7 @@ export function expectedItem(
   if (whole) {
     settled = estimate ?? ZERO;
     estimateLeft = ZERO;
-  } else if (estimate === null) {
+  } else if (estimate === null || item.notNeeded) {
     settled = ZERO;
     estimateLeft = ZERO;
   } else {

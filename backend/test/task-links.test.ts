@@ -50,8 +50,19 @@ test("RA-BE-67: an edit that sends the same status keeps the mark that a link cl
 test("RA-BE-68: a finished task reopened by hand is marked, an open one moved by hand is not", () => {
   const at = new Date("2027-01-01T10:00:00.000Z");
   assert.equal(manualStatusPatch("DONE", "IN_PROGRESS", at).reopenedByHandAt, at);
-  assert.equal(manualStatusPatch("TODO", "IN_PROGRESS", at).reopenedByHandAt, null);
   assert.equal(manualStatusPatch("DONE", "CANCELLED", at).reopenedByHandAt, at);
+  // Closed by hand, it is no longer «reopened».
+  assert.equal(manualStatusPatch("IN_PROGRESS", "DONE", at).reopenedByHandAt, null);
+});
+
+test("RA-BE-111: a task reopened by hand and then started keeps its mark, so the booking does not close it again", () => {
+  const at = new Date("2027-01-01T10:00:00.000Z");
+  // Between two open states the mark is not touched: kept if it was set.
+  for (const [from, to] of [["TODO", "IN_PROGRESS"], ["IN_PROGRESS", "TODO"], ["TODO", "CANCELLED"]] as const) {
+    const patch = manualStatusPatch(from, to, at);
+    assert.equal(patch.status, to);
+    assert.equal("reopenedByHandAt" in patch, false, `${from} → ${to}`);
+  }
 });
 
 test("a settled link closes its open tasks and marks them closed by the link", async () => {

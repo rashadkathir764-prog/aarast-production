@@ -240,11 +240,11 @@ export class TasksService {
       throw new BadRequestException("days must be a whole number of days other than 0");
     }
     const shifted = await runSerializableTransaction(this.prisma, async (tx) => {
-      // RA-BE-69: whoever may move the wedding's date moves its open tasks
-      // with it: the same right as the date (editing the plan). Only the
-      // owner and the partner could, so an editor who moved the date was
-      // refused in English, and the tasks stayed on the old days.
-      await this.permissions.assertPlanManageableForUpdateInTransaction(
+      // RA-BE-116: every open task by any number of days is for whoever
+      // manages the tasks (RA-BE-69: not the owner and the partner only).
+      // The wedding's move carries its tasks itself, with the right that
+      // moves the date (`moveOpenTasks` on the plan's save).
+      await this.permissions.assertTaskManageableInTransaction(
         tx,
         weddingPlanId,
         currentUser,

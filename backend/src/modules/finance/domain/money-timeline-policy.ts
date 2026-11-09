@@ -4,7 +4,11 @@ type Amount = Prisma.Decimal;
 
 const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
 
-/** The day in Riyadh (D11) a moment falls on, as YYYY-MM-DD. */
+/**
+ * The day in Riyadh (D11) a moment falls on, as YYYY-MM-DD: the one rule the
+ * money's dates, their reminder days and the reminders' keys agree on
+ * (other contexts read it through the finance port).
+ */
 export function riyadhDay(moment: Date): string {
   return new Date(moment.getTime() + RIYADH_OFFSET_MS).toISOString().slice(0, 10);
 }
@@ -529,4 +533,17 @@ export function coverageVerdict(coverage: Coverage): CoverageVerdict {
   if (coverage.withoutPledges.deepest === null) return 'COVERED';
   if (coverage.withPledges.deepest === null) return 'COVERED_IF_PLEDGES';
   return 'SHORT';
+}
+
+/**
+ * D103: what is missing, said only with the verdict that the money falls
+ * short: the deepest it falls with the promised money counted. A promised
+ * loan brings its repayments with it, and one set before the loan arrives
+ * dips that run while the money in hand covers everything by itself
+ * (RA-BE-115); every screen, warning and the assistant read it here.
+ */
+export function coverageShortfall(coverage: Coverage): Amount | null {
+  return coverageVerdict(coverage) === 'SHORT'
+    ? (coverage.withPledges.deepest?.amount ?? null)
+    : null;
 }

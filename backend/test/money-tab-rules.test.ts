@@ -16,6 +16,7 @@ import {
   type TimelineSchedule,
   type TimelineSource,
   coverageOf,
+  coverageShortfall,
   coverageVerdict,
   listObligations,
   openScheduleAmounts,
@@ -133,6 +134,19 @@ test("D105: an item's cost is unknown until an estimate or a whole agreement cov
   // «ما أحتاجها» with nothing in it is not missing; zero is an answer.
   assert.equal(expectedItem(item(null, null, true), [], ZERO).costKnown, true);
   assert.equal(expectedItem(item("0"), [], ZERO).costKnown, true);
+});
+
+test("RA-BE-112: an item the owner does not need expects nothing beyond what was agreed in it", () => {
+  // «ما أحتاجها» on an item with an allocation of 800,000 and no agreement.
+  const dropped = expectedItem(item(null, "800000", true), [], ZERO);
+  assert.equal(s(dropped.estimateLeft), "0");
+  assert.equal(s(dropped.expected), "0");
+  assert.equal(dropped.costKnown, true);
+  // Its own estimate too; an agreement already in it still counts as agreed.
+  assert.equal(s(expectedItem(item("500000", null, true), [], ZERO).expected), "0");
+  const kept = expectedItem(item("500000", null, true), [agreement("200000", "PART", "200000")], ZERO);
+  assert.equal(s(kept.expected), "200000");
+  assert.equal(s(kept.estimateLeft), "0");
 });
 
 test("D105: the plan's expected cost sums its items and counts the unknown ones", () => {
@@ -492,6 +506,39 @@ test("D103: one verdict: nothing due, covered, covered if the promise comes, sho
     coverageVerdict(coverageOf({ cash: d("5"), today: TODAY, obligations: [], sources: [] })),
     "NOTHING_DUE",
   );
+});
+
+test("RA-BE-115: a shortfall is said only with the verdict that the money falls short", () => {
+  // In hand 1,000; the hall 900 on 1 December. A promised loan of 300 on 10
+  // December with its repayment set on 5 December: counted, it dips the
+  // money by 200, while the money in hand covers everything by itself.
+  const c = coverageOf({
+    cash: d("1000"),
+    today: TODAY,
+    obligations: [ob({ id: "hall", amount: d("900"), dueDate: day("2026-12-01") })],
+    sources: [
+      source({
+        id: "loan",
+        kind: "LOAN",
+        status: "PLEDGED",
+        amount: d("300"),
+        expectedAt: day("2026-12-10"),
+        repayments: [{ id: "r", amount: d("300"), dueDate: day("2026-12-05"), status: "PLANNED", note: null }],
+      }),
+    ],
+  });
+  assert.equal(coverageVerdict(c), "COVERED");
+  assert.equal(s(c.withPledges.deepest?.amount), "200");
+  assert.equal(coverageShortfall(c), null);
+  // Short: the deepest with the promised money counted (D103).
+  const short = coverageOf({
+    cash: d("600"),
+    today: TODAY,
+    obligations: [ob({ id: "hall", amount: d("1000"), dueDate: day("2026-12-20") })],
+    sources: [source({ id: "p", status: "PLEDGED", amount: d("300"), expectedAt: day("2026-12-10") })],
+  });
+  assert.equal(coverageVerdict(short), "SHORT");
+  assert.equal(s(coverageShortfall(short)), "100");
 });
 
 test("D103: nothing on the owner covers trivially", () => {

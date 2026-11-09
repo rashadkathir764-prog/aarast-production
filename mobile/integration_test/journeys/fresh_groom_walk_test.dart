@@ -147,8 +147,11 @@ void main() {
 
       await walk.step('c01_money', 'المال قبل أي شيء', () async {
         await walk.tab('المال');
-        walk.expectSee('5 مليون', why: 'الميزانية وصلت الخادم (C2)');
         walk.expectSee('2 مليون', why: 'المهر وصل الخادم');
+        // D109: the budget heads «البنود»; on «الملخص» it is in the whole
+        // picture at the bottom, out of the list's built rows.
+        await walk.tapText('البنود', wait: 2.5);
+        walk.expectSee('5 مليون', why: 'الميزانية وصلت الخادم (C2)');
       });
 
       await walk.step('c10_add_cost', 'سجّل اتفاقًا: القاعة', () async {

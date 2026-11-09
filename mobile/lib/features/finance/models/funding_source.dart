@@ -173,6 +173,11 @@ abstract final class FundingKind {
 
   static const all = [savings, familySupport, gift, loan, other];
 
+  /// D108: the kinds whose name is who the money is from: the app asks
+  /// «من مين؟», and the family view reads that person (backend
+  /// `sourcePerson`).
+  static bool namesPerson(String kind) => kind == familySupport || kind == gift;
+
   /// The kind's name; the groom's rafd is the bride's gifts.
   static String label(String kind, JourneyProfile profile) => switch (kind) {
     savings => 'مدخرات',

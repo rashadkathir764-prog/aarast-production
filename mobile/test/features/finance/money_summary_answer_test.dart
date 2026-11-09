@@ -8,6 +8,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_plan.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
@@ -599,6 +600,45 @@ void main() {
       words = await ifLine();
       expect(words, contains('ينقصك 100,000'));
       expect(words, contains('حتى لو وصل أبوي ('));
+    });
+
+    // RA-BE-115: the money in hand covers everything, so no «ينقصك» is
+    // raised for a promised loan whose repayment is set before it arrives.
+    testWidgets('no shortfall beside a verdict that the money covers it', (
+      tester,
+    ) async {
+      final summary = await tester.runAsync(() async {
+        final apis = await _plan(
+          costs: [_cost('k-hall', 'c-hall', 'قاعة الريان', '900')],
+          dates: [_date('s-hall', 'k-hall', '900', 20)],
+          sources: [
+            _source('f-save', 'SAVINGS', 'مدخراتي', '1000'),
+            _source(
+              'f-loan',
+              'LOAN',
+              'سلفة من خالي',
+              '300',
+              pledged: true,
+              expected: 30,
+              repayments: [
+                {
+                  'id': 'r-early',
+                  'amount': '300',
+                  'dueDate': _day(25),
+                  'status': 'PLANNED',
+                },
+              ],
+            ),
+          ],
+        );
+        return apis.$1.getMoneySummary(_planId);
+      });
+      expect(summary!.coverage?.verdict, MoneyCoverageVerdict.covered);
+      expect(
+        summary.warnings.where((w) => w.type == 'FUNDING_SHORTFALL'),
+        isEmpty,
+      );
+      expect(summary.funding?.shortfall, isNull);
     });
 
     testWidgets('covered only if the promise arrives on its day', (

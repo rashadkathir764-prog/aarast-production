@@ -585,8 +585,10 @@ export class WeddingCostsService {
             locked.paidAmount,
           ),
         );
-        // D105: a new choice of what it settles; a part with no amount is
-        // the agreement's own amount.
+        // D105: a new choice of what it settles. A part chosen with no
+        // amount is the agreement's own amount (the app leaves the part out
+        // when its field is empty, and the phone's copy writes it so); a
+        // part alone keeps the choice made before.
         const cover =
           dto.estimateCover === undefined && dto.estimatePart === undefined
             ? null
@@ -595,9 +597,11 @@ export class WeddingCostsService {
                 totalAmount,
                 estimateCover: dto.estimateCover ?? locked.estimateCover,
                 estimatePart:
-                  dto.estimatePart === undefined
-                    ? locked.estimatePart
-                    : this.optionalPositiveAmount(dto.estimatePart, "estimatePart"),
+                  dto.estimatePart !== undefined
+                    ? this.optionalPositiveAmount(dto.estimatePart, "estimatePart")
+                    : dto.estimateCover !== undefined
+                      ? null
+                      : locked.estimatePart,
               });
         const budgetCategoryId =
           dto.budgetCategoryId === undefined
@@ -1291,21 +1295,28 @@ export class WeddingCostsService {
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
         throw financeConflict("Only pending payment schedules can be edited");
       }
-      const paymentHistory = await countCostPayments(tx, {
-        where: { paymentScheduleId: id },
-      });
-      if (paymentHistory > 0 && dto.amount !== undefined) {
-        throw financeConflict("The amount of a payment schedule with ledger history cannot be changed");
-      }
       this.assertCostPayable(cost.status);
-      // RA-BE-109: only a new amount is a new claim on what is left. Moving
-      // the day, the note or the reminder of a date that asks for less than
-      // its amount (RA-BE-53) is not refused for that amount.
-      const amount =
+      // RA-BE-109: only a new amount is a new claim on what is left. The app
+      // sends a date's own amount with every edit (a new day, a reminder),
+      // and the same amount is not a change.
+      const asked =
         dto.amount === undefined
           ? undefined
           : this.positiveAmount(dto.amount, "amount");
-      if (amount !== undefined && !amount.equals(schedule.amount)) {
+      const amount =
+        asked === undefined || asked.equals(schedule.amount)
+          ? undefined
+          : asked;
+      if (amount !== undefined) {
+        // A payment on the date, paid then reversed or partly paid (D106),
+        // is ledger history: its amount stays, as the date is not deleted;
+        // a partial payment's reversal gives back what it took (RA-BE-110).
+        const paymentHistory =
+          (await countCostPayments(tx, { where: { paymentScheduleId: id } })) +
+          (await countCostPayments(tx, { where: { lowersScheduleId: id } }));
+        if (paymentHistory > 0) {
+          throw financeConflict("The amount of a payment schedule with ledger history cannot be changed");
+        }
         raiseFinanceViolation(
           scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
         );

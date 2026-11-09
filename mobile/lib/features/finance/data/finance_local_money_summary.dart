@@ -152,7 +152,7 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
                   FinanceMoneyRules.value(category.allocatedAmount),
             ),
           ),
-      if (coverage?.withPledges.deepest case final short?)
+      if (coverage?.shortfall case final short?)
         MoneyWarning(
           type: 'FUNDING_SHORTFALL',
           severity: 'WARNING',
@@ -390,7 +390,7 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
       pledged: FinanceMoneyRules.asMoney(pledged) ?? '0',
       spent: FinanceMoneyRules.asMoney(spent) ?? '0',
       availableCash: FinanceMoneyRules.asMoney(inHand > 0 ? inHand : 0) ?? '0',
-      shortfall: coverage?.withPledges.deepest?.amount,
+      shortfall: coverage?.shortfall?.amount,
       loanTotal: FinanceMoneyRules.asMoney(loanTotal) ?? '0',
       loanRepaid: FinanceMoneyRules.asMoney(loanRepaid) ?? '0',
       loanOutstanding: FinanceMoneyRules.asMoney(loanTotal - loanRepaid) ?? '0',

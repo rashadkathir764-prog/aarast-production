@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-// g03 «تأجيل العرس»: what moves, then two calls (date, then tasks).
+// g03 «تأجيل العرس»: what moves, then one save: the day and its open tasks
+// (RA-BE-116).
 
 final _oldDay = DateTime(2027, 1, 21);
 
@@ -30,10 +31,6 @@ class _Api extends ApiClient {
 class _Tasks extends TaskTimelineApi {
   _Tasks(super.apiClient);
 
-  final shifted = <int>[];
-  final requestIds = <String>[];
-  bool failShift = false;
-
   @override
   Future<List<WeddingTask>> getTasks(String weddingPlanId) async => [
     _task('t1', due: DateTime(2027, 1, 1)),
@@ -41,18 +38,6 @@ class _Tasks extends TaskTimelineApi {
     _task('t3', due: DateTime(2026, 12, 1), status: 'DONE'),
     _task('t4'),
   ];
-
-  @override
-  Future<int> shiftOpenDueDates(
-    String weddingPlanId,
-    int days, {
-    required String clientRequestId,
-  }) async {
-    requestIds.add(clientRequestId);
-    if (failShift) throw Exception('offline');
-    shifted.add(days);
-    return 2;
-  }
 }
 
 WeddingTask _task(String id, {DateTime? due, String status = 'TODO'}) =>
@@ -71,6 +56,10 @@ class _Plans extends WeddingPlansProvider {
   _Plans(super.api);
 
   final saved = <Map<String, dynamic>>[];
+  bool fail = false;
+
+  @override
+  String? get errorMessage => fail ? 'ما وصلنا للخادم.' : null;
 
   @override
   Future<WeddingPlan?> updateWeddingPlan(
@@ -78,6 +67,7 @@ class _Plans extends WeddingPlansProvider {
     Map<String, dynamic> data,
   ) async {
     saved.add(data);
+    if (fail) return null;
     return WeddingPlan.fromJson({
       'id': id,
       'ownerUserId': 'u1',
@@ -171,44 +161,42 @@ void main() {
     expect(find.textContaining('الضيوف'), findsNothing);
   });
 
-  testWidgets('g03 saves the day, then moves the tasks by the same days', (
+  testWidgets('g03 saves the day and its open tasks in one save', (
     tester,
   ) async {
-    final (tasks, plans) = await _open(tester);
+    final (_, plans) = await _open(tester);
     await _pickApril15(tester);
 
     await tester.tap(find.byKey(const ValueKey('postpone-apply')));
     await tester.pumpAndSettle();
 
+    // The server moves the open tasks by the day's own difference (84).
     expect(plans.saved, [
-      {'weddingDate': '2027-04-15'},
+      {'weddingDate': '2027-04-15', 'moveOpenTasks': true},
     ]);
-    expect(tasks.shifted, [84]);
     expect(find.text('تأجيل العرس'), findsNothing);
   });
 
-  testWidgets('g03 retries only the tasks when they did not move', (
-    tester,
-  ) async {
-    final (tasks, plans) = await _open(tester);
-    tasks.failShift = true;
+  testWidgets('g03 a save that did not go through says so and is tried as it '
+      'was', (tester) async {
+    final (_, plans) = await _open(tester);
+    plans.fail = true;
     await _pickApril15(tester);
 
     await tester.tap(find.byKey(const ValueKey('postpone-apply')));
     await tester.pumpAndSettle();
-
     expect(find.byKey(const ValueKey('postpone-error')), findsOneWidget);
-    expect(find.text('انقل المهام'), findsOneWidget);
+    expect(find.text('ما وصلنا للخادم.'), findsOneWidget);
 
-    tasks.failShift = false;
+    plans.fail = false;
     await tester.tap(find.byKey(const ValueKey('postpone-apply')));
     await tester.pumpAndSettle();
-
-    expect(plans.saved, hasLength(1));
-    expect(tasks.shifted, [84]);
-    // RA-BE-71: the move is relative; a retry after a lost answer is the
-    // same request, so the server answers it once and the tasks move once.
-    expect(tasks.requestIds, hasLength(2));
-    expect(tasks.requestIds.toSet(), hasLength(1));
+    // RA-BE-71, RA-BE-116: the same save again; the server finds the day
+    // moved already and moves nothing twice.
+    expect(plans.saved, [
+      {'weddingDate': '2027-04-15', 'moveOpenTasks': true},
+      {'weddingDate': '2027-04-15', 'moveOpenTasks': true},
+    ]);
+    expect(find.text('تأجيل العرس'), findsNothing);
   });
 }

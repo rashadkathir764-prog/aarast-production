@@ -144,8 +144,24 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   int? get _typedAmount =>
       int.tryParse(_amountController.text.replaceAll(',', '').trim());
 
+  /// RA-MO-52: the field holds whole riyals. A date or a rest that has
+  /// fractions (an older or imported agreement) is paid exactly when its
+  /// rounded figure is left as it is.
+  ({num value, String text})? get _amount {
+    final typed = _typedAmount;
+    if (typed == null) return null;
+    for (final exact in [widget.dueAmount, widget.cost.remainingAmount]) {
+      if (exact == null) continue;
+      final value = moneyValue(exact);
+      if (value != typed && value.round() == typed) {
+        return (value: value, text: exact.toString().trim());
+      }
+    }
+    return (value: typed, text: '$typed');
+  }
+
   String? _validate() {
-    final amount = _typedAmount;
+    final amount = _amount?.value;
     if (amount == null || amount <= 0) {
       return context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ');
     }
@@ -203,7 +219,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
 
   Future<void> _saveOnce() async {
     final payment = await widget.onSave((
-      amount: '${_typedAmount!}',
+      amount: _amount!.text,
       paidAt: _paidAt,
       method: _methodController.text.trim(),
       note: _noteController.text.trim(),
@@ -265,7 +281,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     final submitting = context.select<FinanceProvider?, bool>(
       (provider) => provider?.isSubmitting ?? false,
     );
-    final typed = _typedAmount;
+    final typed = _amount?.value;
     return Column(
       children: [
         Expanded(
@@ -352,7 +368,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
                   helper: typed == null || typed <= 0
                       ? null
                       : amountInWords(
-                          typed,
+                          typed.round(),
                           currency: currencyLabelAr(widget.currency),
                         ),
                   onChanged: (_) => setState(() => _amountError = null),

@@ -457,6 +457,12 @@ class MoneyCoverage {
   final MoneyCoverageRun withoutPledges;
   final MoneyCoverageRun withPledges;
 
+  /// D103 (backend `coverageShortfall`): what is missing, said only with the
+  /// verdict that the money falls short. A promised loan's own repayment can
+  /// dip [withPledges] while the money in hand covers everything (RA-BE-115).
+  MoneyCoverageShort? get shortfall =>
+      verdict == MoneyCoverageVerdict.short ? withPledges.deepest : null;
+
   /// «كيف حسبناها؟»: the account with the promised money that counts.
   final List<MoneyCoverageStep> steps;
   final List<MoneyCoveragePledge> pledgesCounted;

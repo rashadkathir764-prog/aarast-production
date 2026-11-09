@@ -89,6 +89,7 @@ async function run() {
   const ownerToken = await register('Shift owner', phone(51));
   const strangerToken = await register('Shift stranger', phone(52));
   const editorToken = await register('Shift editor', phone(53));
+  const dateEditorToken = await register('Shift date editor', phone(54));
   try {
     const plan = await request('POST', '/api/v1/wedding-plans', { title: 'Shift plan', city: 'Sanaa' }, ownerToken);
     const planId = plan.body?.id;
@@ -152,8 +153,32 @@ async function run() {
     const samraAfter = list.find((event) => event.type === 'SAMRA');
     check('postponing the wedding two weeks moves the samra with it',
       moved.status === 200 && day(samraAfter?.date) === '2027-04-22');
+
+    // RA-BE-116: the open tasks move with the wedding's date, by its own
+    // difference, in the same save; moving every task by any number of days
+    // on its own is for whoever manages the tasks.
+    const dateJoined = await inviteAndAccept(request, {
+      planId,
+      inviterToken: ownerToken,
+      member: { phone: phone(54), token: dateEditorToken },
+      access: { role: 'MANAGER', canEditPlan: true, canManageTasks: false },
+    });
+    check('an editor without the tasks right joins the plan', dateJoined.status === 201);
+    const loose = await request('POST', shiftPath, { days: 7 }, dateEditorToken);
+    check('an editor without the tasks right cannot shift every task on its own',
+      loose.status === 403 && loose.body?.code !== undefined);
+    const withDate = await request('PATCH', `/api/v1/wedding-plans/${planId}`,
+      { weddingDate: '2027-05-01T00:00:00.000Z', moveOpenTasks: true }, dateEditorToken);
+    const openWithDate = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
+    check('postponing the wedding a week moves its open tasks a week, in the same save',
+      withDate.status === 200 && day(openWithDate.body?.dueDate) === '2027-04-02'
+        && day(openWithDate.body?.reminderAt) === '2027-03-29');
+    const sameDay = await request('PATCH', `/api/v1/wedding-plans/${planId}`,
+      { weddingDate: '2027-05-01T00:00:00.000Z', moveOpenTasks: true }, dateEditorToken);
+    const openSameDay = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
+    check('the same day again moves nothing', sameDay.status === 200 && day(openSameDay.body?.dueDate) === '2027-04-02');
   } finally {
-    for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken], ['editor', editorToken]]) {
+    for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken], ['editor', editorToken], ['date editor', dateEditorToken]]) {
       if (!token) continue;
       check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
     }

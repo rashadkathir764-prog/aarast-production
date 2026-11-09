@@ -9,7 +9,7 @@ import type {
   TaskReadScope,
   TasksPort,
 } from '../public/tasks.port';
-import { visibleToReader } from './task-work.repository';
+import { shiftOpenTaskDates, visibleToReader } from './task-work.repository';
 
 const openStatuses = () => ({
   notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
@@ -257,6 +257,15 @@ export class TasksPortService implements TasksPort {
     await tx.weddingTask.createMany({
       data: tasks.map((task) => ({ weddingPlanId, ...task })),
     });
+  }
+
+  async shiftOpenTaskDatesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    days: number,
+    readerUserId: string,
+  ): Promise<number> {
+    return shiftOpenTaskDates(tx, weddingPlanId, days, readerUserId);
   }
 
   async countPlanTasks(

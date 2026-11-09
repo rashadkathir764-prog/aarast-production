@@ -253,8 +253,16 @@ class FinanceLocalDataSource {
       'updatedAt': DateTime.now().toIso8601String(),
     }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
+    final remaining = json['remainingAmount'].toString();
+    if (json['status'] == 'PAID') {
+      // R4: lowered to what was paid, it is paid in full.
+      await _cancelPendingSchedules(cost.id, paidInFull: true);
+    } else if (json['status'] != 'CANCELLED') {
+      // RA-BE-25: raised, its dates come back.
+      await _restoreSchedulesWhenOwedAgain(cost.id, remaining);
+    }
     // RA-BE-53: a new total changes what is left, so what each reminder asks.
-    await _refreshScheduleDues(cost.id, json['remainingAmount'].toString());
+    await _refreshScheduleDues(cost.id, remaining);
     return WeddingCost.fromJson(json);
   }
 
@@ -596,9 +604,15 @@ class FinanceLocalDataSource {
       await _cancelPendingSchedules(
         cost.id,
         exceptScheduleId: exceptScheduleId,
+        paidInFull: true,
       );
     } else {
-      await _refreshScheduleDues(cost.id, json['remainingAmount'].toString());
+      final remaining = json['remainingAmount'].toString();
+      if (json['status'] != 'CANCELLED') {
+        // RA-BE-25: a payment reversed, so its dates come back.
+        await _restoreSchedulesWhenOwedAgain(cost.id, remaining);
+      }
+      await _refreshScheduleDues(cost.id, remaining);
     }
   }
 

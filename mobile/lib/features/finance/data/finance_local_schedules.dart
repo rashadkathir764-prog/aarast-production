@@ -29,10 +29,13 @@ extension _LocalSchedules on FinanceLocalDataSource {
     }
   }
 
-  /// R4: an agreement paid in full cancels its pending reminders.
+  /// R4: an agreement paid in full cancels its pending reminders, marked as
+  /// cancelled by it ([paidInFull]) so they come back once money is owed on
+  /// it again (RA-BE-25); a cancelled agreement's do not.
   Future<void> _cancelPendingSchedules(
     String costId, {
     String? exceptScheduleId,
+    bool paidInFull = false,
   }) async {
     final schedules = await _offline?.database.readCachedList(
       table: OfflineTables.cachedPaymentSchedules,
@@ -43,9 +46,43 @@ extension _LocalSchedules on FinanceLocalDataSource {
           schedule['id']?.toString() == exceptScheduleId) {
         continue;
       }
+      final now = DateTime.now().toIso8601String();
       await _save(OfflineTables.cachedPaymentSchedules, {
         ...schedule,
         'status': 'CANCELLED',
+        'paidAt': null,
+        'cancelledByPaidInFullAt': paidInFull ? now : null,
+        'updatedAt': now,
+      }, dirty: true);
+    }
+  }
+
+  /// RA-BE-25 (backend `restoreSchedulesWhenOwedAgain`): the reminders its
+  /// being paid in full cancelled come back once money is owed on it again
+  /// (a payment reversed, the total raised), never asking more than what is
+  /// now left.
+  Future<void> _restoreSchedulesWhenOwedAgain(
+    String costId,
+    String remaining,
+  ) async {
+    final left = FinanceMoneyRules.value(remaining);
+    if (left <= 0) return;
+    final schedules = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedPaymentSchedules,
+    );
+    for (final schedule in schedules ?? const <Map<String, dynamic>>[]) {
+      if (schedule['costId']?.toString() != costId ||
+          schedule['status']?.toString() != 'CANCELLED' ||
+          schedule['cancelledByPaidInFullAt'] == null) {
+        continue;
+      }
+      final amount = FinanceMoneyRules.value(schedule['amount']);
+      await _save(OfflineTables.cachedPaymentSchedules, {
+        ...schedule,
+        'status': 'PENDING',
+        'paidAt': null,
+        'cancelledByPaidInFullAt': null,
+        'amount': FinanceMoneyRules.asMoney(amount > left ? left : amount),
         'updatedAt': DateTime.now().toIso8601String(),
       }, dirty: true);
     }

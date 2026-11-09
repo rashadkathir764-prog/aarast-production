@@ -55,14 +55,6 @@ class _PostponeSheetState extends State<_PostponeSheet> {
   int? _openDatedTasks;
   List<PlanBookingDay> _oldDayBookings = const [];
   bool _saving = false;
-
-  /// The date moved but the tasks did not: the retry moves only the tasks.
-  bool _dateSaved = false;
-
-  /// RA-BE-71: one move of the tasks, the same for every retry of it (the
-  /// day is locked once the date is saved), so a retry after a lost answer
-  /// gets the first answer instead of moving the tasks again.
-  String? _shiftRequestId;
   String? _error;
 
   @override
@@ -121,42 +113,24 @@ class _PostponeSheetState extends State<_PostponeSheet> {
       _error = null;
     });
     final plans = context.read<WeddingPlansProvider>();
-    final tasksApi = context.read<TaskTimelineApi>();
     final dashboard = context.read<DashboardSummaryProvider>();
-    if (!_dateSaved) {
-      final updated = await plans.updateWeddingPlan(widget.planId, {
-        'weddingDate': planDayToJson(next),
+    // RA-BE-116: the day and its open tasks in one save: the server moves
+    // them by the day's own difference, so a retry after a lost answer finds
+    // the day already moved and moves nothing twice.
+    final updated = await plans.updateWeddingPlan(widget.planId, {
+      'weddingDate': planDayToJson(next),
+      'moveOpenTasks': true,
+    });
+    if (!mounted) return;
+    if (updated == null) {
+      setState(() {
+        _saving = false;
+        _error =
+            plans.errorMessage ??
+            'ما قدرنا نغيّر الموعد. '
+                '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
       });
-      if (!mounted) return;
-      if (updated == null) {
-        setState(() {
-          _saving = false;
-          _error =
-              plans.errorMessage ??
-              'ما قدرنا نغيّر الموعد. '
-                  '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
-        });
-        return;
-      }
-      _dateSaved = true;
-    }
-    if ((_openDatedTasks ?? 1) > 0) {
-      try {
-        await tasksApi.shiftOpenDueDates(
-          widget.planId,
-          days,
-          clientRequestId: _shiftRequestId ??= ApiClient.newClientRequestId(),
-        );
-      } on Object {
-        if (!mounted) return;
-        setState(() {
-          _saving = false;
-          _error =
-              'تغيّر الموعد، بس المهام ما انتقلت. '
-              '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
-        });
-        return;
-      }
+      return;
     }
     await dashboard.loadDashboard(widget.planId);
     if (!mounted) return;
@@ -193,7 +167,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                     ? context.say('اختر اليوم', 'اختاري اليوم')
                     : formatArabicDayMonth(next),
                 selected: true,
-                onTap: _dateSaved ? null : _pick,
+                onTap: _pick,
               ),
             ),
           ],
@@ -241,7 +215,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                     ),
                     onTap: () {
                       final router = GoRouter.of(context);
-                      Navigator.of(context).pop(_dateSaved);
+                      Navigator.of(context).pop(false);
                       router.push(AppRouter.planBookings(widget.planId));
                     },
                   ),
@@ -268,9 +242,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('postpone-apply'),
-          label: _dateSaved
-              ? context.say('انقل المهام', 'انقلي المهام')
-              : context.say('أجّل العرس', 'أجّلي العرس'),
+          label: context.say('أجّل العرس', 'أجّلي العرس'),
           large: true,
           expand: true,
           loading: _saving,

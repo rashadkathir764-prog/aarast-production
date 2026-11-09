@@ -153,8 +153,16 @@ class DueReminderSheet extends StatefulWidget {
 }
 
 class _DueReminderSheetState extends State<DueReminderSheet> {
-  late DateTime? _day = widget.remindAt;
+  // RA-MO-50: its own day while it is still to come; one that has passed
+  // was used, and the date is reminded as usual unless another is chosen
+  // (the server takes a day from today on, D106).
+  late DateTime? _day = _stillToCome(widget.remindAt);
   bool _saving = false;
+
+  static DateTime? _stillToCome(DateTime? day) =>
+      day == null || DateUtils.dateOnly(day).isBefore(sanaaToday())
+      ? null
+      : day;
 
   Future<void> _pick(DateTime due) async {
     final today = sanaaToday();

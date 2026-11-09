@@ -129,7 +129,19 @@ class FundingSourceFormSheet extends StatefulWidget {
 }
 
 class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
-  late final _name = TextEditingController(text: widget.source?.sourceName);
+  // D108: a family source opens on who it is from, the name it is saved as.
+  late final _name = TextEditingController(text: _nameOf(widget.source));
+
+  static String? _nameOf(FundingSource? source) {
+    if (source == null) return null;
+    final person = source.contributorName?.trim();
+    return FundingKind.namesPerson(source.kind) &&
+            person != null &&
+            person.isNotEmpty
+        ? person
+        : source.sourceName;
+  }
+
   late final _phone = TextEditingController(text: widget.source?.sourcePhone);
   late final _amount = TextEditingController(
     text: formatMoneyInputValue(widget.source?.amount),

@@ -29,9 +29,9 @@ import type {
   MoneyWarningType as WarningType,
 } from '../public/money-picture';
 import { isBudgetItemSuggestionHidden } from '../domain/budget-item-suggestion-policy';
-import type { ExpectedItem } from '../domain/expected-cost-policy';
 import { composeMoneyPlan } from '../domain/money-plan-policy';
-import { presentMoneyPlan } from './money-plan.presenter';
+import { coverageShortfall } from '../domain/money-timeline-policy';
+import { presentMoneyPlan, presentPlanItem } from './money-plan.presenter';
 
 /**
  * The plan's money in one read (C1, C2, D59): the wedding budget (WEDDING
@@ -207,7 +207,9 @@ export async function readMoneyPicture(
     const categorySchedules = schedules.filter(
       (schedule) => schedule.weddingCost.budgetCategoryId === category.id,
     );
-    const expected = plan.items.get(category.id) as ExpectedItem;
+    // D105, D109: the item's expected cost, presented by the one function
+    // the phone's copy is held to (money_plan_fixtures.json).
+    const { id: _id, ...expected } = presentPlanItem(plan, category);
     return {
       categoryId: category.id,
       name: category.name,
@@ -219,21 +221,13 @@ export async function readMoneyPicture(
       remainingAllocation:
         category.allocatedAmount?.minus(confirmedCost).toString() ?? null,
       // D109: the owner's own estimate; `estimate` is the one the rule uses
-      // (his, else the allocation).
+      // (his, else the allocation). D105: `expectedCost` is agreements plus
+      // the estimate no agreement settled yet, and `overBudget` is over the
+      // allocation by it.
       estimatedAmount: category.estimatedAmount?.toString() ?? null,
-      estimate: expected.estimate?.toString() ?? null,
-      estimateSource: expected.estimateSource,
-      // D105: agreements plus the estimate no agreement settled yet.
-      expectedCost: expected.expected.toString(),
-      estimateLeft: expected.estimateLeft.toString(),
-      costKnown: expected.costKnown,
+      ...expected,
       costsCount: categoryCosts.length,
       paymentSchedulesCount: categorySchedules.length,
-      // D105: over its allocation by what it is expected to cost.
-      overBudget:
-        category.allocatedAmount === null
-          ? null
-          : expected.expected.gt(category.allocatedAmount),
       suggestion: category.suggestion,
       suggestionUntil: category.suggestionUntil,
       suggestionHidden: isBudgetItemSuggestionHidden(category, clock),
@@ -289,7 +283,9 @@ export async function readMoneyPicture(
   const funding = fundingTotals
     ? {
         ...fundingTotals,
-        shortfall: plan.coverage?.withPledges.deepest?.amount.toString() ?? null,
+        shortfall: plan.coverage
+          ? (coverageShortfall(plan.coverage)?.toString() ?? null)
+          : null,
       }
     : null;
   if (funding && funding.shortfall !== null) {

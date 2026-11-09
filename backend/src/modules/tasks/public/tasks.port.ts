@@ -147,6 +147,17 @@ export interface TasksPort {
     weddingPlanId: string,
     tasks: readonly ImportedTaskInput[],
   ): Promise<void>;
+  /**
+   * RA-BE-116: the wedding moved by [days]; its open dated tasks (and their
+   * reminders) move with it, in the save that moved it. Returns how many
+   * the reader may see moved.
+   */
+  shiftOpenTaskDatesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    days: number,
+    readerUserId: string,
+  ): Promise<number>;
   countPlanTasks(
     client: Prisma.TransactionClient,
     weddingPlanId: string,

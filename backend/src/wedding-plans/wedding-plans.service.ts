@@ -42,6 +42,7 @@ import {
 import {
   FINANCE_PORT,
   type FinancePort,
+  riyadhDay,
 } from "../modules/finance/public/finance.port";
 import { GUESTS_PORT, type GuestsPort } from "../modules/guests/public/guests.port";
 import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from "../modules/guests/public/guest-text-limits";
@@ -344,7 +345,19 @@ export class WeddingPlansService {
       // the old days in the wedding week, the reply page and the invite.
       if (previousWeddingDate && plan.weddingDate) {
         const days = daysBetween(previousWeddingDate, plan.weddingDate);
-        if (days !== 0) await shiftPlanEventDates(tx, id, days);
+        if (days !== 0) {
+          await shiftPlanEventDates(tx, id, days);
+          // RA-BE-116: its open tasks too when the person said so, by the
+          // date's own difference, with the right that moves the date.
+          if (dto.moveOpenTasks === true) {
+            await this.tasks.shiftOpenTaskDatesInTransaction(
+              tx,
+              id,
+              days,
+              currentUser.id,
+            );
+          }
+        }
       }
       await this.recordPlanContribution(
         tx,
@@ -862,7 +875,7 @@ export class WeddingPlansService {
           categories.map((category) => [category.normalizedName, category.id]),
         );
 
-        for (const [index, cost] of costs.entries()) {
+        const importedCosts = costs.map((cost, index) => {
           const budgetCategoryId = categoryIdByName.get(
             this.normalizedCategoryName(cost.categoryName),
           );
@@ -871,28 +884,30 @@ export class WeddingPlansService {
               `costs[${index}].categoryName must map to a budget category`,
             );
           }
-          await this.finance.createImportedCostInTransaction(
-            tx,
-            createdPlan.id,
-            {
-              budgetCategoryId,
-              title: cost.title,
-              partyName: cost.partyName,
-              partyPhone: cost.partyPhone,
-              totalAmount: cost.totalAmount,
-              paidAmount: cost.paidAmount,
-              agreementDate: cost.agreementDate,
-              note: cost.note,
-              payments: cost.payments,
-              paymentSchedules: cost.paymentSchedules,
-              payer: cost.payer,
-              payerName: cost.payerName,
-              entryKind: cost.entryKind,
-              estimateCover: cost.estimateCover,
-              estimatePart: cost.estimatePart,
-            },
-          );
-        }
+          return {
+            budgetCategoryId,
+            title: cost.title,
+            partyName: cost.partyName,
+            partyPhone: cost.partyPhone,
+            totalAmount: cost.totalAmount,
+            paidAmount: cost.paidAmount,
+            agreementDate: cost.agreementDate,
+            note: cost.note,
+            payments: cost.payments,
+            paymentSchedules: cost.paymentSchedules,
+            payer: cost.payer,
+            payerName: cost.payerName,
+            entryKind: cost.entryKind,
+            estimateCover: cost.estimateCover,
+            estimatePart: cost.estimatePart,
+          };
+        });
+        // RA-BE-113: every agreement in a few statements (RA-BE-64's caps).
+        await this.finance.createImportedCostsInTransaction(
+          tx,
+          createdPlan.id,
+          importedCosts,
+        );
 
         // D109: the items' estimates and allocations, by name.
         await this.finance.setImportedItemAmountsInTransaction(
@@ -1311,9 +1326,4 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
-}
-
-/** The day in Riyadh (D11) a moment falls on, as YYYY-MM-DD. */
-function riyadhDay(moment: Date): string {
-  return new Date(moment.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

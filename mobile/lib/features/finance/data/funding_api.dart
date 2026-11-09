@@ -122,7 +122,9 @@ class FundingApi {
     String? sourcePhone,
     String? note,
     DateTime? expectedAt,
-    Object? contributorName = _unchanged,
+    // D108: who it is from, sent when the form named them; null keeps it
+    // (an edit that does not ask, «وصلت؟»).
+    String? contributorName,
   }) async {
     final payload = {
       'kind': kind,
@@ -130,10 +132,7 @@ class FundingApi {
       'amount': amount,
       'status': status,
       'sourcePhone': _trimmedOrNull(sourcePhone),
-      // D108: sent only when the form has it, so an edit that does not
-      // show it keeps the name.
-      if (!identical(contributorName, _unchanged))
-        'contributorName': _trimmedOrNull(contributorName as String?),
+      'contributorName': ?_trimmedOrNull(contributorName),
       'note': _trimmedOrNull(note),
       // D59: the promised day is the whole field: null clears it.
       'expectedAt': _date(expectedAt),
@@ -317,6 +316,3 @@ class FundingApi {
       ? null
       : DateTime.utc(value.year, value.month, value.day).toIso8601String();
 }
-
-/// «Not part of this edit» for a field an edit may also clear (null).
-const Object _unchanged = Object();

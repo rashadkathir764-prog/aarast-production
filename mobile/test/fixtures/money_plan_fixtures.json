@@ -46,7 +46,7 @@
           {
             "id": "gold",
             "kind": "WEDDING",
-            "allocatedAmount": null,
+            "allocatedAmount": "400",
             "estimatedAmount": null,
             "notNeeded": true
           },
@@ -295,12 +295,12 @@
           },
           {
             "id": "gold",
-            "estimate": null,
-            "estimateSource": null,
+            "estimate": "400",
+            "estimateSource": "ALLOCATION",
             "expectedCost": "0",
             "estimateLeft": "0",
             "costKnown": true,
-            "overBudget": null
+            "overBudget": false
           },
           {
             "id": "mahr",

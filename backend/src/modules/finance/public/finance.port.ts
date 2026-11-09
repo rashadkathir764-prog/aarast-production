@@ -8,6 +8,8 @@ import type {
 import type { WeddingCostWithDetails } from './wedding-cost.presenter';
 import type { MoneyPicture, MoneyPictureQuery } from './money-picture';
 
+/** D11: the day in Riyadh a moment falls on, as the money's dates read it. */
+export { riyadhDay } from '../domain/money-timeline-policy';
 export const FINANCE_PORT = Symbol('FINANCE_PORT');
 
 export interface ImportedCostPaymentInput {
@@ -235,11 +237,15 @@ export interface FinancePort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<BudgetCategory[]>;
-  /** Creates one imported cost with its payments and schedules; the status follows finance's paid/total rule. */
-  createImportedCostInTransaction(
+  /**
+   * Creates the imported costs with their payments and schedules, in a few
+   * statements whatever their number (RA-BE-113); each status follows
+   * finance's paid/total rule.
+   */
+  createImportedCostsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
-    cost: ImportedCostInput,
+    costs: readonly ImportedCostInput[],
   ): Promise<void>;
   /**
    * D109: the imported items' own estimates and allocations. Allocations are

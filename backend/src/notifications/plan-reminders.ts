@@ -1,8 +1,9 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
-import type {
-  DueLoanRepayment,
-  DuePaymentSchedule,
-  ExceededBudgetCategory,
+import {
+  type DueLoanRepayment,
+  type DuePaymentSchedule,
+  type ExceededBudgetCategory,
+  riyadhDay,
 } from "../modules/finance/public/finance.port";
 import type { DueNotificationRow } from "../modules/notifications/infrastructure/notifications.repository";
 import { startOfRiyadhDay } from "../shared-kernel/time/business-day";
@@ -144,12 +145,8 @@ export function paymentReminderDue(
   today: Date,
 ): boolean {
   if (schedule.dueDate < today) return true;
-  if (schedule.remindAt) return riyadhDayKey(schedule.remindAt) <= riyadhDayKey(today);
+  if (schedule.remindAt) return riyadhDay(schedule.remindAt) <= riyadhDay(today);
   return true;
-}
-
-function riyadhDayKey(moment: Date): string {
-  return new Date(moment.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 /**
@@ -206,8 +203,8 @@ export function paymentDueNotice(
     // a reminder day chosen again; a date never moved keeps its first key.
     dedupeKey:
       `${userId}:${type}:payment-schedule:${schedule.id}` +
-      (schedule.rescheduledFrom ? `:due:${riyadhDayKey(schedule.dueDate)}` : "") +
-      (!overdue && schedule.remindAt ? `:remind:${riyadhDayKey(schedule.remindAt)}` : ""),
+      (schedule.rescheduledFrom ? `:due:${riyadhDay(schedule.dueDate)}` : "") +
+      (!overdue && schedule.remindAt ? `:remind:${riyadhDay(schedule.remindAt)}` : ""),
   };
 }
 

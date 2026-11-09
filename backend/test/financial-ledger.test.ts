@@ -194,14 +194,16 @@ test("the only payment due date belongs to PaymentSchedule", () => {
   assert.match(importService, /\.filter\(\(\) => remainingAmount\.gt\(0\)\)/);
   const financePort = read("src/modules/finance/infrastructure/finance-port.service.ts");
   const importedCost =
-    financePort.match(/async createImportedCostInTransaction\([\s\S]*?\n  \}/)?.[0] ?? "";
-  // D106: the dates are written one by one (a partial payment finds its
-  // date by its place), still all before the payments.
+    financePort.match(/async createImportedCostsInTransaction\([\s\S]*?\n  \}/)?.[0] ?? "";
+  // D106: the dates are written with ids made beforehand (a partial payment
+  // finds its date by its place), all before the payments; RA-BE-113: in
+  // one statement each, whatever the size of the plan.
   assert.ok(
-    importedCost.indexOf("paymentSchedule.create(") >= 0 &&
-      importedCost.indexOf("paymentSchedule.create(") < importedCost.indexOf("costPayment.createMany"),
+    importedCost.indexOf("paymentSchedule.createMany(") >= 0 &&
+      importedCost.indexOf("paymentSchedule.createMany(") < importedCost.indexOf("costPayment.createMany"),
     "an imported agreement's reminders are written before its payments",
   );
+  assert.doesNotMatch(importedCost, /for \(const /, "no statement per agreement");
 });
 
 test("a reversed schedule can be cancelled and generic plan updates cannot bypass money-budget", () => {

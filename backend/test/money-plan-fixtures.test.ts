@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
@@ -91,7 +91,8 @@ const SCENARIOS: Scenario[] = [
         item("dress", { allocatedAmount: "300" }),
         item("photo", { estimatedAmount: "2500", allocatedAmount: "800" }),
         item("car"),
-        item("gold", { notNeeded: true }),
+        // RA-BE-112: dropped with an allocation, it expects nothing.
+        item("gold", { notNeeded: true, allocatedAmount: "400" }),
         item("mahr", { kind: "MAHR" }),
       ],
       costs: [
@@ -382,4 +383,33 @@ test("the fixtures cover every verdict and the cases the phone must agree on", (
   assert.ok(
     ((groom.coverage as Json).pledgesIgnored as Json[]).some((pledge) => pledge.reason === "LATE"),
   );
+});
+
+// Review 2026-11-09 (AGENTS.md rule 11, one implementation of each thing):
+// the money summary serves each item through the presenter these fixtures
+// hold the phone to, and the day in Riyadh has one rule.
+test("the money summary presents each item through presentPlanItem", () => {
+  const picture = readFileSync(
+    path.join(__dirname, "..", "src", "modules", "finance", "infrastructure", "money-picture.ts"),
+    "utf8",
+  );
+  assert.match(picture, /presentPlanItem\(plan, category\)/);
+  assert.doesNotMatch(picture, /expectedCost:\s*expected\.expected/);
+});
+
+test("D11: the day in Riyadh is worked out in one place", () => {
+  const root = path.join(__dirname, "..", "src");
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".ts")) {
+        const source = readFileSync(full, "utf8");
+        if (/function riyadhDay\w*\(/.test(source)) offenders.push(path.relative(root, full));
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(offenders, [path.join("modules", "finance", "domain", "money-timeline-policy.ts")]);
 });

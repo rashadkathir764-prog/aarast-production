@@ -68,6 +68,8 @@ void main() {
     expect(summary.incompleteGuestsCount, 1);
     expect(summary.expectedSeatsCount, 4);
     expect(summary.companionsExpectedCount, 2);
+    // RA-MO-59: only the confirmed one and his two companions.
+    expect(summary.confirmedSeatsCount, 3);
     expect(summary.bySideForSuper['groom'], 1);
     expect(summary.bySideForSuper['bride'], 1);
   });
@@ -117,8 +119,9 @@ void main() {
     // e01: one confirmed guest, with his two companions counted once.
     expect(find.text('2 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
     expect(find.text('أكدوا من 2'), findsOneWidget);
-    // 3 to 10 take the plural (arabicSeats).
-    expect(find.text('مع المرافقين: 4 مقاعد'), findsOneWidget);
+    // RA-MO-59: the confirmed and who comes with them, not the one who has
+    // not replied (3 to 10 take the plural, arabicSeats).
+    expect(find.text('مع المرافقين: 3 مقاعد'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

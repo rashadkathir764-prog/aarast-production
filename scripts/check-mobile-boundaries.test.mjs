@@ -1893,6 +1893,11 @@ const trackedOwnerApiContracts = [
         uri: 'widgets/mahr_fields.dart',
         show: ['MahrFields', 'mahrWords', 'pickMahrDueDate'],
       },
+      // RA-MO-53 (D103): the money's one verdict, for the home's card too.
+      {
+        uri: 'widgets/money_cover_words.dart',
+        show: ['MoneyCoverWords', 'moneyCoverWords'],
+      },
       {
         uri: 'widgets/money_input_formatter.dart',
         show: ['MoneyInputFormatter', 'formatMoneyInputValue'],
@@ -3039,7 +3044,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['FinanceApi', 'FinanceProvider'],
+    show: ['FinanceApi', 'FinanceProvider', 'moneyCoverWords', 'moneyValue'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',

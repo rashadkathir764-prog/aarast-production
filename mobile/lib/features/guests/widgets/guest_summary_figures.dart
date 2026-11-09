@@ -14,7 +14,7 @@ class GuestSummaryFigures extends StatelessWidget {
     required this.total,
     required this.confirmed,
     required this.pending,
-    this.expectedSeats,
+    this.confirmedSeats,
     super.key,
   });
 
@@ -24,13 +24,14 @@ class GuestSummaryFigures extends StatelessWidget {
   final int pending;
 
   /// Seats with companions; null when not known to the reader.
-  final int? expectedSeats;
+  /// The seats the confirmed need, their companions counted (RA-MO-59).
+  final int? confirmedSeats;
 
   @override
   Widget build(BuildContext context) {
     // e01's grey is everyone who neither confirmed nor is still waited on.
     final rest = total - confirmed - pending;
-    final seats = expectedSeats;
+    final seats = confirmedSeats;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -93,7 +94,7 @@ class GuestSummaryFigures extends StatelessWidget {
         if (seats != null && seats > confirmed) ...[
           const SizedBox(height: AarastV3Space.x2),
           Text(
-            'مع المرافقين: ${arabicSeats(seats)}',
+            '${words.withCompanions}: ${arabicSeats(seats)}',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

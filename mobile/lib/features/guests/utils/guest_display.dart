@@ -52,6 +52,9 @@ class GuestWords {
   /// «اعتذروا» / «اعتذرن».
   String get declined => _say('اعتذروا', 'اعتذرن');
 
+  /// «مع المرافقين» / «مع المرافقات» (the server's own words for her plan).
+  String get withCompanions => _say('مع المرافقين', 'مع المرافقات');
+
   /// «ما أضفت أحد بعد» / «ما أضفتِ أحد بعد»: said to the reader.
   String get noneAdded => profile.say('ما أضفت أحد بعد', 'ما أضفتِ أحد بعد');
 

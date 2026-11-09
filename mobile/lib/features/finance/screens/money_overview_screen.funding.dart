@@ -146,7 +146,11 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
     final coverage = summary.coverage;
     final words = coverage == null
         ? null
-        : _coverSentence(context, summary, coverage);
+        : moneyCoverWords(
+            context,
+            coverage,
+            (value) => _figure(context, value, summary.currency),
+          );
     final estimates = moneyValue(coverage?.estimatesLeft);
     final afterEstimates = moneyValue(coverage?.endAfterEstimates);
     final out = moneyValue(funding.spent) + moneyValue(funding.loanRepaid);
@@ -249,7 +253,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 // The estimates' «if» (D105): not agreed yet, not on him.
                 if (estimates > 0 && coverage != null)
                   Text(
-                    _ifEstimatesWords(context, coverage, money),
+                    moneyIfEstimatesWords(context, coverage, money),
                     key: const ValueKey('money-sources-if'),
                     style: JourneyType.of(
                       JourneyType.small,

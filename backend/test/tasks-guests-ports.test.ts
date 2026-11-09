@@ -42,6 +42,8 @@ test('the tasks port creates imported tasks for the plan and counts them', async
   const task = {
     title: 'Book the hall', description: null, dueDate: null, taskCategory: null, reminderAt: null,
     status: WeddingTaskStatus.TODO, priority: WeddingTaskPriority.MEDIUM,
+    // RA-MO-56: who it is on, as named on the phone.
+    responsibleName: 'الوالد', responsiblePhone: '+967777000999', responsibleSource: 'manual',
   };
   await service.createImportedTasksInTransaction(tx, 'plan-1', [task]);
   await service.createImportedTasksInTransaction(tx, 'plan-1', []);

@@ -168,6 +168,9 @@ void main() {
         'title': 'حجز القاعة',
         'status': 'WEIRD_STATUS',
         'priority': 'HIGH',
+        'responsibleName': 'الوالد',
+        'responsiblePhone': '+967777000999',
+        'responsibleSource': 'manual',
       },
       dirty: true,
     );
@@ -255,6 +258,10 @@ void main() {
     // Off-enum values are dropped so one bad row can't fail the migration.
     expect(task.containsKey('status'), isFalse);
     expect(task['priority'], 'HIGH');
+    // RA-MO-56: who it is on goes with it.
+    expect(task['responsibleName'], 'الوالد');
+    expect(task['responsiblePhone'], '+967777000999');
+    expect(task['responsibleSource'], 'manual');
 
     final guests = payload['guests'] as List;
     final guest = guests.single as Map<String, dynamic>;

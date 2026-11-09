@@ -53,6 +53,7 @@ import {
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import {
   TASK_DESCRIPTION_MAX,
+  TASK_PERSON_NAME_MAX,
   TASK_TITLE_MAX,
 } from "../modules/tasks/public/task-text-limits";
 import { withinCharacters } from "../shared-kernel/text/text-length";
@@ -764,6 +765,18 @@ export class WeddingPlansService {
       ),
       status: task.status ?? WeddingTaskStatus.TODO,
       priority: task.priority ?? WeddingTaskPriority.MEDIUM,
+      // RA-MO-56: who it is on comes over with it, as the phone named them.
+      responsibleName: this.withinLength(
+        this.optionalText(task.responsibleName ?? undefined),
+        TASK_PERSON_NAME_MAX,
+        `tasks[${index}].responsibleName`,
+      ),
+      responsiblePhone: this.withinLength(
+        this.optionalText(task.responsiblePhone ?? undefined),
+        40,
+        `tasks[${index}].responsiblePhone`,
+      ),
+      responsibleSource: this.optionalText(task.responsibleSource ?? undefined),
     }));
 
     // RA-BE-83: a plan holds one guest per number. A second guest on a

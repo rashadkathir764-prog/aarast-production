@@ -255,6 +255,13 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('21 يناير', why: 'موعد العرس في البيانات');
     walk.expectSee('معك ${p.inHand}', why: 'معك ${p.inHand} مليون');
     walk.expectSee('موعود ${p.promised}', why: 'موعود ${p.promised} مليون');
+    // RA-MO-53 (D102, D103): the home says what «الملخص» says.
+    walk.expectSee(p.say('عليك من العرس', 'عليكِ من العرس'));
+    walk.expectSee(
+      'يكفي دفعاتك وسداد السلفة بمواعيدها',
+      why: 'حكم المال نفسه في الرئيسية',
+    );
+    walk.expectNotSee('فلوسك والموعود', why: 'كلام ما يقوله تبويب المال');
     walk.expectSee('من 20 مهمة');
     walk.expectSee(p.say('أكدوا من 124', 'أكدن من 124'));
     walk.expectSee('86');

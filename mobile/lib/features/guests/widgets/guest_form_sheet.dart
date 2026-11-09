@@ -63,6 +63,11 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   late String? _groupId;
   late int _seatsCount;
   late int _companionsCount;
+
+  /// RA-MO-60: a guest and who comes with them take at most the server's
+  /// 20 seats (`CreateGuestDto.seatsCount`), so at most 19 come with them.
+  static const _seatsMax = 20;
+  static const _companionsMax = _seatsMax - 1;
   late List<GuestGroup> _groups = List.of(widget.groups);
   late Set<String> _eventIds;
   late bool _showMore;
@@ -174,11 +179,11 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
       _companionsCount = _draftInt(
         data['companionsCount'],
         _companionsCount,
-      ).clamp(0, 20);
+      ).clamp(0, _companionsMax);
       _seatsCount = _draftInt(
         data['seatsCount'],
         _seatsCount,
-      ).clamp(_companionsCount + 1, 21);
+      ).clamp(_companionsCount + 1, _seatsMax);
     });
     _restoringDraft = false;
   }
@@ -409,7 +414,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   : 'أكثر',
               selected: _companionsCount > 3,
               selectedColor: context.accent.primary,
-              onTap: _companionsCount < 20
+              onTap: _companionsCount < _companionsMax
                   ? () => _setCompanions(
                       _companionsCount < 4 ? 4 : _companionsCount + 1,
                     )

@@ -15,6 +15,10 @@ export interface ImportedTaskInput {
   reminderAt: Date | null;
   status: WeddingTaskStatus;
   priority: WeddingTaskPriority;
+  /** RA-MO-56: who the task is on, named by hand on the phone. */
+  responsibleName: string | null;
+  responsiblePhone: string | null;
+  responsibleSource: string | null;
 }
 
 // Tasks owns `WeddingTask` and `WeddingTaskChecklistItem`. Planning's local

@@ -206,28 +206,12 @@ class TaskTimelineApi {
     }
     // A plan on the phone has no items yet; imported tasks stay unlinked.
     if (starterKey != null) payload['starterKey'] = starterKey;
+    final Map<String, dynamic> json;
     try {
-      final json = await _apiClient.postJson(
+      json = await _apiClient.postJson(
         '/api/v1/wedding-plans/$weddingPlanId/tasks',
         payload,
       );
-      var taskJson = Map<String, dynamic>.from(json);
-      if (_hasValue(assigneeUserId)) {
-        final assigned = await assignTask(
-          json['id'].toString(),
-          assigneeUserId: assigneeUserId,
-          assigneeName: assigneeName,
-          assigneePhone: assigneePhone,
-          assigneeRole: assigneeRole,
-        );
-        taskJson = _taskToCacheJson(assigned);
-      }
-      await _offline?.database.saveCachedItem(
-        table: OfflineTables.cachedTasks,
-        json: taskJson,
-      );
-      await _offline?.syncPendingChanges();
-      return WeddingTask.fromJson(taskJson);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
       final now = DateTime.now();
@@ -269,6 +253,54 @@ class TaskTimelineApi {
       await _offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
     }
+    // RA-MO-55: the server made the task; giving it is its own step. Lost on
+    // the network, only the giving waits to be sent, never a second task.
+    var taskJson = Map<String, dynamic>.from(json);
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: taskJson,
+    );
+    if (_hasValue(assigneeUserId)) {
+      final id = json['id'].toString();
+      try {
+        final assigned = await assignTask(
+          id,
+          assigneeUserId: assigneeUserId,
+          assigneeName: assigneeName,
+          assigneePhone: assigneePhone,
+          assigneeRole: assigneeRole,
+        );
+        taskJson = _taskToCacheJson(assigned);
+      } on Object catch (error) {
+        if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+        taskJson = {
+          ...taskJson,
+          'assigneeUserId': assigneeUserId!.trim(),
+          if (_hasValue(assigneeName)) 'assigneeName': assigneeName!.trim(),
+          if (_hasValue(assigneePhone)) 'assigneePhone': assigneePhone!.trim(),
+          if (_hasValue(assigneeRole)) 'assigneeRole': assigneeRole!.trim(),
+        };
+        await _offline.database.saveCachedItem(
+          table: OfflineTables.cachedTasks,
+          json: taskJson,
+          dirty: true,
+        );
+        await _offline.database.enqueueSync(
+          entityType: 'task',
+          operation: 'assign',
+          endpoint: '/api/v1/tasks/$id/assign',
+          method: 'PATCH',
+          payload: {'assigneeUserId': assigneeUserId.trim()},
+          planId: weddingPlanId,
+          localEntityId: id,
+          replacePendingForEntity: true,
+        );
+        await _offline.refreshStatus();
+        return WeddingTask.fromJson(taskJson);
+      }
+    }
+    await _offline?.syncPendingChanges();
+    return WeddingTask.fromJson(taskJson);
   }
 
   Future<WeddingTask> assignTask(

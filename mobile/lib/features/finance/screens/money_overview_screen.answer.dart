@@ -44,130 +44,6 @@ List<MoneyObligation> _weddingDues(MoneySummary summary) => [
     if (line.kind == MoneyObligationKind.due) line,
 ];
 
-/// The promised money with a date that the account counted (D103), named
-/// with its day: «باقي المهر (30 نوفمبر)».
-String _countedPledges(MoneyCoverage coverage) => [
-  for (final pledge in coverage.pledgesCounted)
-    '${pledge.sourceName}${pledge.expectedAt == null ? '' : ' (${_dayWords(pledge.expectedAt!)})'}',
-].join(' و');
-
-/// D105's «if» under the verdict: the estimates still expected, agreed at
-/// their figures, and what would be left. Its figure counts the promised
-/// money that has a date (D103), as a shortfall does; where the verdict
-/// spoke of the money in hand alone («يكفي ... ويبقى»), it says so, so the
-/// two sentences add up for the reader.
-String _ifEstimatesWords(
-  BuildContext context,
-  MoneyCoverage coverage,
-  String Function(Object? value) money,
-) {
-  final after = moneyValue(coverage.endAfterEstimates);
-  final inHandOnly =
-      coverage.verdict == MoneyCoverageVerdict.covered ||
-      coverage.verdict == MoneyCoverageVerdict.nothingDue;
-  final pledges = inHandOnly ? _countedPledges(coverage) : '';
-  final result = after >= 0
-      ? 'يبقى معك ${money(after)}'
-      : 'ينقصك ${money(-after)}';
-  final basis = pledges.isEmpty
-      ? ''
-      : after >= 0
-      ? ' لو وصل $pledges في موعده'
-      : ' حتى لو وصل $pledges في موعده';
-  return '${context.say('ولو اتفقت', 'ولو اتفقتِ')} على البنود الباقية '
-      'بتقديراتك (${money(coverage.estimatesLeft)})، $result$basis.';
-}
-
-/// D103's one verdict, in the money tab's words: the sentence, a second
-/// line with what it rests on, and whether it is good news.
-({bool ok, String main, String sub}) _coverSentence(
-  BuildContext context,
-  MoneySummary summary,
-  MoneyCoverage coverage,
-) {
-  final currency = summary.currency;
-  String money(Object? value) => _figure(context, value, currency);
-  final tail = <String>[
-    for (final pledge in coverage.pledgesIgnored)
-      'وعد ${pledge.sourceName} (${money(pledge.amount)}) '
-          '${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر' : 'ما له موعد'}، فما حسبناه.',
-    if (moneyValue(coverage.undated) > 0)
-      '${money(coverage.undated)} عليك بدون موعد، حسبناها في الآخر.',
-  ];
-  final loan = coverage.hasLoan ? ' وسداد السلفة' : '';
-  final until = coverage.lastDate == null
-      ? ''
-      : ' لين ${_dayWords(coverage.lastDate!)}';
-  String when(MoneyCoverageShort short) =>
-      short.date == null ? 'في الآخر' : 'يوم ${_dayWords(short.date!)}';
-  // D103: what is missing is the deepest the money falls (what pays
-  // everything on its day, the home's and the assistant's figure), said
-  // from the day it first falls short.
-  String shortWords(MoneyCoverageRun run) {
-    final first = run.firstShort!;
-    final deepest = run.deepest ?? first;
-    if (deepest.id == first.id) {
-      return '${money(first.amount)} ${when(first)} (${first.title})';
-    }
-    return '${money(deepest.amount)}، يبدأ ${when(first)} (${first.title})';
-  }
-
-  switch (coverage.verdict) {
-    case MoneyCoverageVerdict.nothingDue:
-      return (
-        ok: true,
-        main:
-            'ما عليك شي باقي${moneyValue(coverage.cash) > 0 ? '، ومعك ${money(coverage.cash)}' : ''}',
-        sub: '',
-      );
-    case MoneyCoverageVerdict.covered:
-      return (
-        ok: true,
-        main:
-            'معك ${money(coverage.cash)} يكفي دفعاتك$loan بمواعيدها$until، ويبقى ${money(coverage.withoutPledges.end)}',
-        sub: tail.join(' '),
-      );
-    case MoneyCoverageVerdict.coveredIfPledges:
-      final names = _countedPledges(coverage);
-      final without = coverage.withoutPledges;
-      return (
-        ok: true,
-        main: 'يكفي بشرط يوصل موعود $names في موعده',
-        sub: [
-          if (without.firstShort != null) 'بدونه ينقصك ${shortWords(without)}.',
-          ...tail,
-        ].join(' '),
-      );
-    case MoneyCoverageVerdict.short:
-      final run = coverage.withPledges;
-      final short = run.firstShort!;
-      final promised = coverage.pledgesCounted.fold<num>(
-        0,
-        (sum, pledge) => sum + moneyValue(pledge.amount),
-      );
-      final late = [
-        for (final pledge in coverage.pledgesCounted)
-          if (pledge.expectedAt != null &&
-              short.date != null &&
-              pledge.expectedAt!.isAfter(short.date!))
-            '${pledge.sourceName} يوصل ${_dayWords(pledge.expectedAt!)}',
-      ];
-      final totalCovers =
-          moneyValue(coverage.cash) + promised >= moneyValue(coverage.total);
-      return (
-        ok: false,
-        main: 'ينقصك ${shortWords(run)}',
-        sub: [
-          if (totalCovers && late.isNotEmpty)
-            'المجموع يكفي، لكن موعود ${late.join(' و')}، بعد الموعد.'
-          else
-            'معك ${money(coverage.cash)}.',
-          ...tail,
-        ].join(' '),
-      );
-  }
-}
-
 /// 1. The one loud card: a wedding due that is late.
 class _LateDueCard extends StatelessWidget {
   const _LateDueCard({
@@ -387,7 +263,11 @@ class _ShareHero extends StatelessWidget {
             else
               Builder(
                 builder: (context) {
-                  final words = _coverSentence(context, summary, coverage);
+                  final words = moneyCoverWords(
+                    context,
+                    coverage,
+                    (value) => _figure(context, value, summary.currency),
+                  );
                   return _CoverWords(
                     key: const ValueKey('money-cover'),
                     ok: words.ok,
@@ -822,7 +702,11 @@ class _HowWeCountedSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = summary.currency;
     String money(Object? value) => _figure(context, value, currency);
-    final words = _coverSentence(context, summary, coverage);
+    final words = moneyCoverWords(
+      context,
+      coverage,
+      (value) => _figure(context, value, summary.currency),
+    );
     final profile = context.journeyProfile;
     final others = [
       for (final group in summary.payers)
@@ -935,7 +819,7 @@ class _HowWeCountedSheet extends StatelessWidget {
           for (final pledge in coverage.pledgesIgnored)
             'وعد ${pledge.sourceName} (${money(pledge.amount)})، لأنه ${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر عن موعده' : 'ما له موعد'}.',
           if (estimates > 0)
-            'التقديرات، لأنها مو اتفاقات. ${_ifEstimatesWords(context, coverage, money)}',
+            'التقديرات، لأنها مو اتفاقات. ${moneyIfEstimatesWords(context, coverage, money)}',
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: AarastV3Space.x1),

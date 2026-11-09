@@ -325,7 +325,9 @@ void main() {
     );
   });
 
-  testWidgets('b02: her money card shows the gap, in hand and promised', (
+  // RA-MO-53 (D102, D103): her card says what «الملخص» says: what is on
+  // her, the money tab's own verdict, in hand and promised.
+  testWidgets('b02: her money card says the money tab\'s verdict when short', (
     tester,
   ) async {
     await _pump(
@@ -346,15 +348,18 @@ void main() {
         pledged: 2200000,
         shortfall: 300000,
         sourcesCount: 3,
+        ownerLeft: 600000,
+        verdict: (ok: false, words: 'ينقصك 300,000، يبدأ يوم 1 ديسمبر'),
       ),
     );
 
-    expect(find.text('ومع الموعود ناقصك'), findsOneWidget);
-    expect(find.text('300,000 ر.ي'), findsOneWidget);
+    expect(find.text('عليكِ من العرس'), findsOneWidget);
+    expect(find.text('ينقصك 300,000، يبدأ يوم 1 ديسمبر'), findsOneWidget);
+    expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // V-01: every far-side figure with its unit.
     expect(find.text('معك 1.9 مليون'), findsOneWidget);
     expect(find.text('موعود 2.2 مليون'), findsOneWidget);
-    expect(find.textContaining('باقي تدفعين'), findsOneWidget);
+    expect(find.textContaining('باقي تدفعين'), findsNothing);
     expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
     // The design's «حطي 100 ألف كل شهر» is not built (b02 row).
     expect(find.textContaining('كل شهر'), findsNothing);
@@ -390,9 +395,8 @@ void main() {
     expect(find.textContaining('دفعت 2.6'), findsNothing);
   });
 
-  testWidgets('b02: covered agreements say so instead of a gap', (
-    tester,
-  ) async {
+  testWidgets('b02: when her money covers it, the card says so in the '
+      'money tab\'s words', (tester) async {
     await _pump(
       tester,
       _summary(budget: '7000000', venueSecured: true, guests: 124),
@@ -402,13 +406,16 @@ void main() {
         pledged: 0,
         shortfall: null,
         sourcesCount: 2,
+        ownerLeft: 600000,
+        verdict: (ok: true, words: 'معك 5 مليون يكفي دفعاتك بمواعيدها'),
       ),
     );
 
     expect(
-      find.byKey(const ValueKey('dashboard-money-covered')),
+      find.byKey(const ValueKey('dashboard-money-verdict')),
       findsOneWidget,
     );
+    expect(find.text('معك 5 مليون يكفي دفعاتك بمواعيدها'), findsOneWidget);
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // Nothing promised: no «موعود» line on the far side.
     expect(find.textContaining(RegExp('^موعود ')), findsNothing);

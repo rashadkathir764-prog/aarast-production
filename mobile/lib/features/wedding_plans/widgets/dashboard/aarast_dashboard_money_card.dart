@@ -1,12 +1,11 @@
 part of 'aarast_dashboard_view.dart';
 
 // b02 «المال» on the home: the plan's soft fill, «المال» with the eye that
-// hides the amounts, the gap on the reading side and what is left to pay,
-// in hand and promised on the far side, the four-part bar under them.
-// Every number is a server field (C2): the gap is the server's shortfall,
-// which already counts what was promised, so it reads «ومع الموعود ناقصك»,
-// and the design's «ناقصك» without the promises and «وإذا وصل الموعود»
-// wait for the server formula. «حط 450 ألف كل شهر» is dropped (b02 row).
+// hides the amounts, what is on the owner and the money tab's own verdict on
+// the reading side (D102, D103: «عليك من العرس» and «يكفي … بمواعيدها», the
+// same words as «الملخص», RA-MO-53), in hand and promised on the far side,
+// the four-part bar under them. Every number is a server field (C2).
+// «حط 450 ألف كل شهر» is dropped (b02 row).
 // Every far-side line writes its figure one way, with its unit («3 مليون»,
 // «250 ألف», «0 ر.ي»), never the design's bare «5.4» beside a full figure
 // (V-01). Before the money in is known, the agreed line of a groom's plan
@@ -21,7 +20,17 @@ class DashboardHomeFunding {
     required this.pledged,
     required this.shortfall,
     required this.sourcesCount,
+    this.ownerLeft,
+    this.verdict,
   });
+
+  /// D102: what is on the owner, the money tab's «عليك من العرس» (his
+  /// share, the mahr with it); null from a server before D102.
+  final double? ownerLeft;
+
+  /// D103: the money tab's verdict, in its words, and whether it is good
+  /// news; null until the money in is known.
+  final ({bool ok, String words})? verdict;
 
   final double inHand;
   final double pledged;
@@ -90,7 +99,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final funding = widget.funding;
     final known = funding != null && funding.isKnown;
     final gap = known ? funding.shortfall : null;
-    final covered = known && (gap == null || gap <= 0);
 
     String amount(double value) =>
         amountsHidden ? '••••' : _money(value, currency);
@@ -117,22 +125,32 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         mahr.side == MahrHomeSide.pays &&
         mahr.total > 0;
 
+    final ownerLeft = funding?.ownerLeft;
+    final verdict = known ? funding.verdict : null;
     final Widget lead;
-    if (known && !covered) {
-      lead = _MoneyLead(
-        label: 'ومع الموعود ناقصك',
-        value: amount(gap!),
-        color: AarastV3Color.danger,
-      );
-    } else if (covered) {
-      lead = Text(
-        'فلوسك والموعود يغطون اتفاقاتك',
-        key: const ValueKey('dashboard-money-covered'),
-        style: JourneyType.of(
-          JourneyType.lead,
-          weight: JourneyType.bold,
-          color: AarastV3Color.mint,
-        ),
+    if (ownerLeft != null && (agreed > 0 || ownerLeft > 0)) {
+      // D102, D103: the owner reads what «الملخص» says, in its words.
+      lead = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MoneyLead(
+            label: context.say('عليك من العرس', 'عليكِ من العرس'),
+            value: amount(ownerLeft),
+            color: AarastV3Color.ink,
+          ),
+          if (verdict != null) ...[
+            const SizedBox(height: AarastV3Space.x1),
+            Text(
+              verdict.words,
+              key: const ValueKey('dashboard-money-verdict'),
+              style: JourneyType.of(
+                JourneyType.bodySmall,
+                weight: JourneyType.bold,
+                color: verdict.ok ? AarastV3Color.mint : AarastV3Color.danger,
+              ),
+            ),
+          ],
+        ],
       );
     } else if (agreed <= 0) {
       lead = Text(
@@ -155,7 +173,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
 
     final side = <Widget>[
       if (known) ...[
-        _SideFigure('$leftLabel ${figure(left)}', AarastV3Color.ink),
+        if (ownerLeft == null)
+          _SideFigure('$leftLabel ${figure(left)}', AarastV3Color.ink),
         _SideFigure('معك ${figure(funding.inHand)}', context.accent.primary),
         if (funding.pledged > 0)
           _SideFigure('موعود ${figure(funding.pledged)}', AarastV3Color.lilac),
@@ -197,10 +216,11 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           ? 'المال، المبالغ مخفية مؤقتًا'
           : [
               'المال',
-              if (known && !covered)
-                'ومع الموعود ناقصك ${_money(gap!, currency)}',
-              if (covered) 'فلوسك والموعود يغطون اتفاقاتك',
-              if (agreed > 0) '$leftLabel ${_money(left, currency)}',
+              if (ownerLeft != null)
+                '${context.say('عليك من العرس', 'عليكِ من العرس')} ${_money(ownerLeft, currency)}'
+              else if (agreed > 0)
+                '$leftLabel ${_money(left, currency)}',
+              ?verdict?.words,
               if (known) 'معك ${_money(funding.inHand, currency)}',
               if (known && funding.pledged > 0)
                 'موعود ${_money(funding.pledged, currency)}',

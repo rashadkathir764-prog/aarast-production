@@ -153,7 +153,7 @@ class _GuestSummaryCard extends StatelessWidget {
               total: total,
               confirmed: summary.confirmed,
               pending: summary.pending,
-              expectedSeats: summary.expectedSeatsCount,
+              confirmedSeats: summary.confirmedSeatsCount,
             ),
           ),
           if (action != null) ...[

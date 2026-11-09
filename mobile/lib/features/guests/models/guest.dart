@@ -297,6 +297,7 @@ class GuestSummary {
     required this.byGroup,
     required this.groupsCount,
     this.byEvent = const [],
+    this.confirmedSeatsCount = 0,
   });
 
   factory GuestSummary.empty(String weddingPlanId) {
@@ -373,6 +374,7 @@ class GuestSummary {
     var missingName = 0;
     var expectedSeats = 0;
     var companions = 0;
+    var confirmedSeats = 0;
     final bySide = {'groom': 0, 'bride': 0, 'unknown': 0};
     final byGroup = <String, int>{};
     final groupNames = {for (final group in groups) group.id: group.name};
@@ -380,6 +382,13 @@ class GuestSummary {
     for (final guest in guests) {
       if (guest.isConfirmed) {
         confirmed++;
+        // RA-MO-59: a confirmed guest and who comes with them: the form's
+        // seats, or the reply's companions (a reply by link writes only
+        // those), whichever says more.
+        final withCompanions = 1 + guest.companionsCount;
+        confirmedSeats += guest.seatsCount > withCompanions
+            ? guest.seatsCount
+            : withCompanions;
       } else if (guest.isDeclined) {
         declined++;
       } else {
@@ -416,6 +425,7 @@ class GuestSummary {
           .length,
       expectedSeatsCount: expectedSeats,
       companionsExpectedCount: companions,
+      confirmedSeatsCount: confirmedSeats,
       bySideForSuper: bySide,
       byGroup: byGroup,
       groupsCount: groups.length,
@@ -427,6 +437,10 @@ class GuestSummary {
   final int confirmed;
   final int pending;
   final int declined;
+
+  /// RA-MO-59: the seats the confirmed guests need, their companions
+  /// counted (the hall's and the caterer's number); counted on the phone.
+  final int confirmedSeatsCount;
   final int missingPhoneCount;
   final int missingNameCount;
   final int incompleteGuestsCount;

@@ -67,18 +67,23 @@ MoneySummary _summary() => MoneySummary.fromJson({
   },
 });
 
-WeddingTask _task(String title, {String status = 'TODO', DateTime? due}) =>
-    WeddingTask.fromJson({
-      'id': title,
-      'weddingPlanId': 'plan-1',
-      'title': title,
-      'status': status,
-      'priority': 'MEDIUM',
-      'dueDate': due?.toIso8601String(),
-      'description': 'وصف خاص',
-      'createdAt': '2026-10-01T00:00:00Z',
-      'updatedAt': '2026-10-01T00:00:00Z',
-    });
+WeddingTask _task(
+  String title, {
+  String status = 'TODO',
+  DateTime? due,
+  bool private = false,
+}) => WeddingTask.fromJson({
+  'isPrivate': private,
+  'id': title,
+  'weddingPlanId': 'plan-1',
+  'title': title,
+  'status': status,
+  'priority': 'MEDIUM',
+  'dueDate': due?.toIso8601String(),
+  'description': 'وصف خاص',
+  'createdAt': '2026-10-01T00:00:00Z',
+  'updatedAt': '2026-10-01T00:00:00Z',
+});
 
 void main() {
   test(
@@ -239,15 +244,34 @@ void main() {
       today: DateTime(2026, 10, 15),
     );
 
-    expect(text, contains('أُنجز 1 من 4'));
+    expect(text, contains('خلصنا 1 من 4'));
     expect(text, contains('متأخرة: 1'));
+    // In the app's words: the day and the month by name, never «1/10».
     expect(
-      text.indexOf('شراء الذهب (1/10)'),
-      lessThan(text.indexOf('دعوة الضيوف (5/11)')),
+      text.indexOf('شراء الذهب (1 أكتوبر)'),
+      lessThan(text.indexOf('دعوة الضيوف (5 نوفمبر)')),
     );
+    expect(text, isNot(contains('أُنجز')));
+    expect(text, isNot(contains('القادم')));
     expect(text.indexOf('دعوة الضيوف'), lessThan(text.indexOf('بلا موعد')));
     expect(text, isNot(contains('ملغاة')));
     expect(text, isNot(contains('وصف خاص')));
+  });
+
+  // RA-MO-54: a private task is the person's own; it is never sent to a
+  // chat, nor counted in what is.
+  test('the task summary never carries a private task', () {
+    final text = taskShareText(
+      [
+        _task('حجز القاعة', status: 'DONE'),
+        _task('هدية العروسة', due: DateTime(2026, 10, 20), private: true),
+        _task('دعوة الضيوف', due: DateTime(2026, 11, 5)),
+      ],
+      planTitle: 'عرس أحمد',
+      today: DateTime(2026, 10, 15),
+    );
+    expect(text, isNot(contains('هدية العروسة')));
+    expect(text, contains('خلصنا 1 من 2'));
   });
 
   test('the WhatsApp link carries the text for any chat', () {

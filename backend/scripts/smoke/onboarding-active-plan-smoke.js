@@ -358,6 +358,13 @@ async function importMoneyTabChecks(accessToken) {
         payments: [{ amount: '150', paidAt: day(-2) }],
       },
     ],
+    // RA-MO-56: a task kept on the phone comes over with who it is on.
+    tasks: [{
+      title: 'حجز سيارة الزفة',
+      responsibleName: 'الوالد',
+      responsiblePhone: '+967777000999',
+      responsibleSource: 'manual',
+    }],
     fundingSources: [
       { kind: 'SAVINGS', sourceName: 'مدخراتي', amount: '1000' },
       {
@@ -415,6 +422,10 @@ async function importMoneyTabChecks(accessToken) {
       && summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '200')
       && !summary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '500'));
   check('D103: the coverage reads the imported money', typeof summary.body?.coverage?.verdict === 'string');
+  const tasks = await request('GET', `/api/v1/wedding-plans/${planId}/tasks`, null, accessToken);
+  const car = (Array.isArray(tasks.body) ? tasks.body : tasks.body?.items ?? []).find((task) => task.title === 'حجز سيارة الزفة');
+  check('RA-MO-56: an imported task keeps who it is on',
+    car?.responsibleName === 'الوالد' && car?.responsiblePhone === '+967777000999' && car?.responsibleSource === 'manual');
 }
 
 /**

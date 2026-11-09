@@ -1,14 +1,18 @@
+import '../../../core/utils/arabic_date_formatter.dart';
 import 'wedding_task.dart';
 
 /// A task progress summary to send on WhatsApp (V1 checklist 4.16): how many
 /// are done and the next open ones by due date. Only titles and dates, never
-/// descriptions or phone numbers.
+/// descriptions or phone numbers, and never a private task (RA-MO-54); in
+/// the app's words, the day by name.
 String taskShareText(
   List<WeddingTask> tasks, {
   required String planTitle,
   required DateTime today,
 }) {
-  final active = tasks.where((task) => task.status != 'CANCELLED').toList();
+  final active = tasks
+      .where((task) => task.status != 'CANCELLED' && !task.isPrivate)
+      .toList();
   final done = active.where((task) => task.isDone).length;
   final open = active.where((task) => !task.isDone).toList()
     ..sort((left, right) {
@@ -23,7 +27,7 @@ String taskShareText(
   final lines = <String>[
     'مهام «${planTitle.trim()}»',
     '',
-    '• أُنجز $done من ${active.length}',
+    '• خلصنا $done من ${active.length}',
   ];
   final overdue = open
       .where((task) => task.dueDate != null && task.dueDate!.isBefore(day))
@@ -32,13 +36,13 @@ String taskShareText(
   if (open.isNotEmpty) {
     lines
       ..add('')
-      ..add('القادم:');
+      ..add('الجاي:');
     for (final task in open.take(5)) {
       final due = task.dueDate;
       lines.add(
         due == null
             ? '• ${task.title}'
-            : '• ${task.title} (${due.day}/${due.month})',
+            : '• ${task.title} (${formatArabicDayMonth(due)})',
       );
     }
   }

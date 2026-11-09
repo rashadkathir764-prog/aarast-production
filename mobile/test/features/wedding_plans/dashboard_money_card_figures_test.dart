@@ -145,6 +145,36 @@ void main() {
       expect(find.text('موعود 250$_nbspألف'), findsOneWidget);
     });
 
+    // RA-MO-53 (D102, D103): the owner reads what «الملخص» says: what is on
+    // him, not on the whole wedding, and the money tab's own verdict.
+    testWidgets('the owner reads the money tab\'s words: on him, and its '
+        'verdict', (tester) async {
+      await _pump(
+        tester,
+        _summary(agreed: '7900000', paid: '4600000', outstanding: '3300000'),
+        funding: const DashboardHomeFunding(
+          inHand: 4200000,
+          pledged: 1200000,
+          shortfall: null,
+          sourcesCount: 4,
+          ownerLeft: 1600000,
+          verdict: (ok: true, words: 'معك 4.2 مليون يكفي دفعاتك بمواعيدها'),
+        ),
+      );
+
+      expect(find.text('عليك من العرس'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('dashboard-money-verdict')),
+        findsOneWidget,
+      );
+      expect(find.text('معك 4.2 مليون يكفي دفعاتك بمواعيدها'), findsOneWidget);
+      // Not the whole wedding's 3.3 as his, nor words the tab never says.
+      expect(find.textContaining('باقي تدفع'), findsNothing);
+      expect(find.textContaining('3.3'), findsNothing);
+      expect(find.textContaining('فلوسك والموعود'), findsNothing);
+      expect(find.text('معك 4.2$_nbspمليون'), findsOneWidget);
+    });
+
     testWidgets('«أخفِ المبالغ» hides every far-side figure', (tester) async {
       await _pump(
         tester,

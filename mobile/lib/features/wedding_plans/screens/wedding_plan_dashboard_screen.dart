@@ -13,10 +13,12 @@ import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/compact_money_figure.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
-import '../../finance/finance_api.dart' show FinanceApi, FinanceProvider;
+import '../../finance/finance_api.dart'
+    show FinanceApi, FinanceProvider, moneyCoverWords, moneyValue;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart'
@@ -345,15 +347,29 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       }
       return null;
     }
-    final funding = finance.hasLoadedMoney ? finance.summary.funding : null;
-    if (funding == null) return null;
+    final money = finance.hasLoadedMoney ? finance.summary : null;
+    final funding = money?.funding;
+    if (money == null || funding == null) return null;
     double value(String? text) => double.tryParse(text ?? '') ?? 0;
     final shortfall = funding.shortfall;
+    // D103: the money tab's own verdict, with the home's figures and its
+    // «أخفِ المبالغ» (RA-MO-53).
+    final hidden = context.watch<DevicePreferences?>()?.hideAmounts ?? false;
+    String figure(Object? amount) => hidden
+        ? '••••'
+        : compactMoneyFigure(moneyValue(amount), currencyCode: money.currency);
+    final coverage = money.coverage;
+    final words = coverage == null
+        ? null
+        : moneyCoverWords(context, coverage, figure);
+    final outstanding = money.outstanding;
     return DashboardHomeFunding(
       inHand: value(funding.availableCash),
       pledged: value(funding.pledged),
       shortfall: shortfall == null ? null : value(shortfall),
       sourcesCount: funding.sourcesCount,
+      ownerLeft: outstanding == null ? null : value(outstanding.owner),
+      verdict: words == null ? null : (ok: words.ok, words: words.main),
     );
   }
 

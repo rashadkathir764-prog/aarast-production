@@ -149,6 +149,28 @@ void main() {
     expect(result!.seatsCount, 3);
   });
 
+  // RA-MO-60: a guest and who comes with them take at most 20 seats (the
+  // server's own limit), so «أكثر» stops at +19 and the save is taken.
+  testWidgets('companions stop where the seats do', (tester) async {
+    GuestFormResult? result;
+    await _openForm(
+      tester,
+      guest: _guest(phone: '+967777123456'),
+      onResult: (value) => result = value,
+    );
+    final more = find.byKey(const ValueKey('guest-form-companions-more'));
+    await tester.ensureVisible(more);
+    for (var tap = 0; tap < 25; tap++) {
+      await tester.tap(more);
+      await tester.pump();
+    }
+    await _submit(tester);
+
+    expect(result, isNotNull);
+    expect(result!.companionsCount, 19);
+    expect(result!.seatsCount, 20);
+  });
+
   testWidgets('a new family is made from the form and chosen', (tester) async {
     GuestFormResult? result;
     final made = <String>[];

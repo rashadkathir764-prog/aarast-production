@@ -475,6 +475,10 @@ class LocalPlanMigrationService {
       'reminderAt': ?_text(row['reminderAt']),
       'status': ?status,
       'priority': ?priority,
+      // RA-MO-56: who it is on, as named on the phone.
+      'responsibleName': ?_text(row['responsibleName']),
+      'responsiblePhone': ?_text(row['responsiblePhone']),
+      'responsibleSource': ?_text(row['responsibleSource']),
     };
   }
 

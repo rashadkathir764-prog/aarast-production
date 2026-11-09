@@ -32,7 +32,8 @@ import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
-import '../widgets/funding_widgets.dart' show fundingStateTag;
+import '../widgets/funding_widgets.dart'
+    show fundingKindChoice, fundingKindIcon;
 import '../widgets/due_date_sheets.dart';
 import '../widgets/money_widgets.dart';
 import 'money_item_market.dart';
@@ -264,11 +265,12 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                 ),
               ],
               _ => [
-                if (provider.summary.funding case final funding?)
+                if (provider.summary.funding != null)
                   _MoneyFundingTab(
                     planId: widget.weddingPlanId,
-                    funding: funding,
-                    currency: provider.summary.currency,
+                    summary: provider.summary,
+                    onHowCounted: () => _showHowCounted(provider.summary),
+                    onChanged: _load,
                   ),
               ],
             },

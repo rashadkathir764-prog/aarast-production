@@ -19,6 +19,8 @@ export interface ContributionCost {
 
 export interface ContributionSource {
   contributorName: string | null;
+  /** What it was recorded as («من مين؟»). */
+  sourceName: string;
   amount: Amount;
   status: 'RECEIVED' | 'PLEDGED';
   /** A loan is money he returns, not help. */
@@ -39,6 +41,26 @@ export interface Contributor {
   /** Still on them, on their agreements. */
   left: Amount;
   costsCount: number;
+}
+
+/**
+ * D108: who a source of money is from. Its contributor when one is named;
+ * otherwise family support and gifts are from the one they were recorded
+ * as («من مين؟ الوالد»), the way the form asks. Savings, a loan (it goes
+ * back), the mahr and anything else are no one's help.
+ */
+export function sourcePerson(source: {
+  contributorName: string | null;
+  sourceName: string;
+  kind: string;
+}): string | null {
+  if (source.kind === 'LOAN') return null;
+  if (contributorKey(source.contributorName) !== null) return source.contributorName;
+  return source.kind === 'FAMILY_SUPPORT' || source.kind === 'GIFT'
+    ? contributorKey(source.sourceName) === null
+      ? null
+      : source.sourceName
+    : null;
 }
 
 /**
@@ -70,8 +92,9 @@ export function familyContributions(input: {
     return person;
   };
   for (const source of input.sources) {
-    if (source.kind === 'LOAN' || contributorKey(source.contributorName) === null) continue;
-    const person = personOf(source.contributorName as string, null);
+    const name = sourcePerson(source);
+    if (name === null) continue;
+    const person = personOf(name, null);
     if (source.status === 'RECEIVED') person.gave = person.gave.plus(source.amount);
     else person.promised = person.promised.plus(source.amount);
   }

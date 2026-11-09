@@ -490,12 +490,30 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('journey-tab-3')));
       await tester.pumpAndSettle();
 
-      expect(find.text('وصلك'), findsOneWidget);
-      expect(find.text('موعود لك'), findsOneWidget);
-      expect(find.text('مدخراتي'), findsOneWidget);
-      expect(find.text('وصل'), findsOneWidget);
-      expect(find.text('سلفة خالي'), findsOneWidget);
-      expect(find.text('موعود'), findsOneWidget);
+      // D104: what he holds now, then each source under its state.
+      expect(find.byKey(const ValueKey('money-cash-hero')), findsOneWidget);
+      expect(find.text('معك الحين'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-sources-received')),
+          matching: find.text('مدخراتي'),
+        ),
+        findsOneWidget,
+      );
+      final promised = find.byKey(const ValueKey('money-sources-pledged'));
+      await tester.scrollUntilVisible(
+        promised,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.descendant(of: promised, matching: find.text('سلفة خالي')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('money-pledge-arrived-source-2')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 

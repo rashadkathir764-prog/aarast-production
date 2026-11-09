@@ -233,6 +233,16 @@
             "status": "PLEDGED",
             "expectedAt": "2026-11-01",
             "repayments": []
+          },
+          {
+            "id": "mother",
+            "kind": "FAMILY_SUPPORT",
+            "sourceName": " الوالدة ",
+            "contributorName": null,
+            "amount": "250",
+            "status": "RECEIVED",
+            "expectedAt": null,
+            "repayments": []
           }
         ]
       },
@@ -609,6 +619,24 @@
             "paid": "100",
             "left": "800",
             "costsCount": 1
+          },
+          {
+            "name": "الوالدة",
+            "payer": null,
+            "gave": "250",
+            "promised": "0",
+            "paid": "0",
+            "left": "0",
+            "costsCount": 0
+          },
+          {
+            "name": "late",
+            "payer": null,
+            "gave": "0",
+            "promised": "200",
+            "paid": "0",
+            "left": "0",
+            "costsCount": 0
           }
         ]
       }
@@ -830,7 +858,17 @@
             "endAfter": "500"
           }
         },
-        "family": []
+        "family": [
+          {
+            "name": "father",
+            "payer": null,
+            "gave": "0",
+            "promised": "1000",
+            "paid": "0",
+            "left": "0",
+            "costsCount": 0
+          }
+        ]
       }
     },
     {
@@ -1111,7 +1149,17 @@
             "endAfter": "-800"
           }
         },
-        "family": []
+        "family": [
+          {
+            "name": "father",
+            "payer": null,
+            "gave": "0",
+            "promised": "600",
+            "paid": "0",
+            "left": "0",
+            "costsCount": 0
+          }
+        ]
       }
     },
     {

@@ -122,6 +122,8 @@ const SCENARIOS: Scenario[] = [
         }),
         source("friend", "OTHER", "300", { status: "PLEDGED" }),
         source("late", "GIFT", "200", { status: "PLEDGED", expectedAt: "2026-11-01" }),
+        // D108: recorded as «الوالدة» with no contributor named: hers.
+        source("mother", "FAMILY_SUPPORT", "250", { sourceName: " الوالدة " }),
       ],
     },
   },

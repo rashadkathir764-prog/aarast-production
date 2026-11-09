@@ -107,11 +107,17 @@ class FundingSourceFormSheet extends StatefulWidget {
     this.source,
     this.currency = 'YER',
     this.onSave,
+    this.knownPeople = const [],
     super.key,
   });
 
   final FundingSource? source;
   final String currency;
+
+  /// D108: names already in the plan (the family, who pays agreements),
+  /// offered for family support and gifts so one person is written one
+  /// way, and their money and their agreements are one line.
+  final List<String> knownPeople;
 
   /// Saves what was typed: null once saved, or why not. The sheet closes
   /// only once it is saved, so a failure keeps everything typed. Without
@@ -301,6 +307,27 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           errorText: _nameError,
           onChanged: (_) => setState(() => _nameError = null),
         ),
+        if ((_kind == FundingKind.familySupport || _kind == FundingKind.gift) &&
+            widget.knownPeople.isNotEmpty) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Wrap(
+            spacing: AarastV3Space.x2,
+            runSpacing: AarastV3Space.x2,
+            children: [
+              for (final (index, name) in widget.knownPeople.indexed)
+                JourneyChip(
+                  key: ValueKey('funding-person-$index'),
+                  label: name,
+                  icon: LucideIcons.user,
+                  selected: _name.text.trim() == name,
+                  onTap: () => setState(() {
+                    _name.text = name;
+                    _nameError = null;
+                  }),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(
           key: const ValueKey('funding-amount'),

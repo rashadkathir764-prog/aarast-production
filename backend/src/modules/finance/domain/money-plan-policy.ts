@@ -184,6 +184,7 @@ export function composeMoneyPlan(input: MoneyPlanInput): MoneyPlan {
           costs: timelineCosts,
           sources: input.sources.map((source) => ({
             contributorName: source.contributorName,
+            sourceName: source.sourceName,
             amount: source.amount,
             status: source.status,
             kind: source.kind,

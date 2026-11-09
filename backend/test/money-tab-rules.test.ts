@@ -508,10 +508,10 @@ test("D108: one line per person: what they gave, promised, paid for him, still o
   const people = familyContributions({
     zero: ZERO,
     sources: [
-      { contributorName: "الوالد", amount: d("2400000"), status: "RECEIVED", kind: "FAMILY_SUPPORT" },
-      { contributorName: " الوالد  ", amount: d("500000"), status: "PLEDGED", kind: "FAMILY_SUPPORT" },
-      { contributorName: "خالي أحمد", amount: d("1000000"), status: "RECEIVED", kind: "LOAN" },
-      { contributorName: null, amount: d("900000"), status: "RECEIVED", kind: "SAVINGS" },
+      { contributorName: "الوالد", sourceName: "دعم الوالد", amount: d("2400000"), status: "RECEIVED", kind: "FAMILY_SUPPORT" },
+      { contributorName: " الوالد  ", sourceName: "وعد الوالد", amount: d("500000"), status: "PLEDGED", kind: "FAMILY_SUPPORT" },
+      { contributorName: "خالي أحمد", sourceName: "سلفة خالي", amount: d("1000000"), status: "RECEIVED", kind: "LOAN" },
+      { contributorName: null, sourceName: "مدخراتي", amount: d("900000"), status: "RECEIVED", kind: "SAVINGS" },
     ],
     costs: [
       { totalAmount: d("3000000"), paid: d("1300000"), payer: "FAMILY", payerName: "الوالد", ownerMoney: false },
@@ -533,4 +533,31 @@ test("D108: names match after folding spaces and case, nothing else", () => {
   assert.equal(contributorKey("Ali"), contributorKey("ALI"));
   assert.equal(contributorKey("   "), null);
   assert.notEqual(contributorKey("الوالد"), contributorKey("والدي"));
+});
+
+test("D108: family support and gifts are from the one they were recorded as", () => {
+  const people = familyContributions({
+    zero: ZERO,
+    sources: [
+      // The form asks «من مين؟ الوالد» and sends no contributor: it is his.
+      { contributorName: null, sourceName: "الوالد", amount: d("1000000"), status: "RECEIVED", kind: "FAMILY_SUPPORT" },
+      { contributorName: null, sourceName: " خالي  ", amount: d("200000"), status: "PLEDGED", kind: "GIFT" },
+      // A contributor named wins over what it was recorded as.
+      { contributorName: "الوالدة", sourceName: "ذهب الوالدة", amount: d("300000"), status: "RECEIVED", kind: "GIFT" },
+      // Savings, a loan, the mahr and anything else are no one's help.
+      { contributorName: null, sourceName: "مدخراتي", amount: d("900000"), status: "RECEIVED", kind: "SAVINGS" },
+      { contributorName: null, sourceName: "خالي", amount: d("400000"), status: "RECEIVED", kind: "LOAN" },
+      { contributorName: null, sourceName: "صاحبي", amount: d("50000"), status: "RECEIVED", kind: "OTHER" },
+    ],
+    // Paid for him by «الوالد»: the same person as the source above.
+    costs: [{ totalAmount: d("500000"), paid: d("100000"), payer: "FAMILY", payerName: "الوالد", ownerMoney: false }],
+  });
+  assert.deepEqual(
+    people.map((p) => [p.name, s(p.gave), s(p.promised), s(p.paid), s(p.left)]),
+    [
+      ["الوالد", "1000000", "0", "100000", "400000"],
+      ["الوالدة", "300000", "0", "0", "0"],
+      ["خالي", "0", "200000", "0", "0"],
+    ],
+  );
 });

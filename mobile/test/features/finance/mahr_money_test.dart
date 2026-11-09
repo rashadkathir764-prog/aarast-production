@@ -397,12 +397,19 @@ void main() {
 
     expect(find.text('المهر من العريس'), findsOneWidget);
     expect(find.text('باقي المهر'), findsOneWidget);
-    expect(find.text('يوصلك 15 نوفمبر'), findsOneWidget);
+    // Promised, with its day.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('money-source-mahr-rest')),
+        matching: find.textContaining('15 نوفمبر'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('D59 c05 as drawn: «صرفتِ · معك», what came first with the '
-      'mahr leading it, then what is promised, a late one «متأخر»', (
+  testWidgets('D59 D104 c05: «معك» and how, what came first with the mahr '
+      'leading it, then what is promised, a late one said late', (
     tester,
   ) async {
     FundingSource source(
@@ -442,12 +449,28 @@ void main() {
     await tester.tap(find.text('من وين'));
     await tester.pumpAndSettle();
 
-    expect(find.text('صرفتِ 1.2 مليون ر.ي · معك 800,000 ر.ي'), findsOneWidget);
+    // Her voice: what she spent of what reached her.
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('money-cash-how'))).data,
+      contains('صرفتِ منها 1.2 مليون'),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('money-cash-figure'))).data,
+      contains('800,000'),
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+    await tester.pumpAndSettle();
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(top('المهر من العريس'), lessThan(top('مدخراتي')));
     expect(top('مدخراتي'), lessThan(top('صاحبتي عبلة')));
     expect(top('صاحبتي عبلة'), lessThan(top('باقي المهر')));
-    expect(find.text('متأخر'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('money-source-friend')),
+        matching: find.text('تأخرت عن موعدها'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

@@ -75,6 +75,24 @@ class FundingSource {
   final List<LoanRepayment> repayments;
 
   bool get isLoan => kind == FundingKind.loan;
+
+  /// What is left of a loan: its amount less its paid repayments, as the
+  /// server counts it. Worked out from the repayments the phone holds, so a
+  /// repayment paid on the phone (offline, or a plan kept on the phone,
+  /// which has no server figure) is counted at once; without repayments,
+  /// the server's figure, or all of it.
+  num get loanLeft {
+    final value = num.tryParse;
+    if (repayments.isEmpty) {
+      return value(outstandingAmount ?? amount) ?? value(amount) ?? 0;
+    }
+    final paid = repayments
+        .where((repayment) => repayment.isPaid)
+        .fold<num>(0, (sum, repayment) => sum + (value(repayment.amount) ?? 0));
+    final left = (value(amount) ?? 0) - paid;
+    return left > 0 ? left : 0;
+  }
+
   bool get isMahr => kind == FundingKind.mahr;
   bool get isPledged => status == FundingStatus.pledged;
 

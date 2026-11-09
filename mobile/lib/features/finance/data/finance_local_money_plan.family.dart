@@ -10,6 +10,17 @@ String? _contributorKey(String? name) {
   return folded.isEmpty ? null : folded;
 }
 
+/// D108: who a source of money is from (backend `sourcePerson`): its
+/// contributor when one is named; otherwise family support and gifts are
+/// from the one they were recorded as («من مين؟ الوالد»). Savings, a loan,
+/// the mahr and anything else are no one's help.
+String? _sourcePerson(_Source source) {
+  if (source.kind == 'LOAN') return null;
+  if (_contributorKey(source.contributor) != null) return source.contributor;
+  if (source.kind != 'FAMILY_SUPPORT' && source.kind != 'GIFT') return null;
+  return _contributorKey(source.name) == null ? null : source.name;
+}
+
 /// D108: the family, person by person (backend family-contributions-policy).
 extension _Family on _Plan {
   // ----------------------------------------------------------------- D108
@@ -35,11 +46,9 @@ extension _Family on _Plan {
     }
 
     for (final source in sources) {
-      if (source.kind == 'LOAN' ||
-          _contributorKey(source.contributor) == null) {
-        continue;
-      }
-      final person = personOf(source.contributor, null);
+      final name = _sourcePerson(source);
+      if (name == null) continue;
+      final person = personOf(name, null);
       final field = source.received ? 'gave' : 'promised';
       person[field] = (person[field] as int) + source.amount;
     }

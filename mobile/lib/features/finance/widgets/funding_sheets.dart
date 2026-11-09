@@ -128,7 +128,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     ]..sort();
     final allDated =
         repayments.isNotEmpty && dueDates.length == repayments.length;
-    final owed = moneyValue(loan.outstandingAmount ?? loan.amount);
+    final owed = loan.loanLeft;
 
     return JourneySheetBody(
       title: 'سلفة ${loan.sourceName}',

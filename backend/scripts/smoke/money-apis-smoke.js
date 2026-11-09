@@ -842,6 +842,16 @@ async function run() {
     check('D102: the loan\'s repayments are in the list, apart from the wedding dues',
       tabSummary.body?.obligations?.some((line) => line.kind === 'LOAN_REPAYMENT' && line.amount === '200')
         && tabSummary.body?.obligations?.some((line) => line.kind === 'LOAN_UNPLANNED' && line.amount === '100'));
+    // D108: a gift recorded as «الوالدة» with no contributor named is hers,
+    // the way the app asks «من مين؟» (sourcePerson).
+    await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, {
+      kind: 'GIFT', sourceName: ' الوالدة ', amount: '50',
+    }, owner.token);
+    const withMother = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    const mother = withMother.body?.family?.find((person) => person.name === 'الوالدة');
+    check('D108: family support and gifts are from the one they were recorded as',
+      mother?.gave === '50' && withMother.body?.family?.length === 2
+        && withMother.body.family.some((person) => person.name === 'الوالد'));
     const viewerTab = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, viewer.token);
     check('the money tab is the plan\'s: a stranger reads nothing', viewerTab.status === 403 || viewerTab.status === 404);
 

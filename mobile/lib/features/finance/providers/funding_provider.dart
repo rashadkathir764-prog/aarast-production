@@ -138,6 +138,19 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// «وصلت؟»: promised money arrived. Everything else of it stays,
+  /// its day too (the record of when it was due).
+  Future<bool> markReceived(FundingSource source) => update(
+    source,
+    kind: source.kind,
+    sourceName: source.sourceName,
+    amount: source.amount,
+    status: FundingStatus.received,
+    expectedAt: source.expectedAt,
+    sourcePhone: source.sourcePhone,
+    note: source.note,
+  );
+
   Future<bool> delete(FundingSource source) {
     return _save(source.weddingPlanId, () async {
       await _api.deleteFundingSource(source);

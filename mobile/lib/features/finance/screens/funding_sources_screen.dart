@@ -110,7 +110,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     // G33: a promised loan is owed only once it arrived.
     final owed = sum(
       sources.where((item) => item.isLoan && !item.isPledged),
-      (item) => item.outstandingAmount ?? item.amount,
+      (item) => item.loanLeft,
     );
 
     final Widget list;
@@ -149,7 +149,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                     : context.accent.primarySoft,
                 title: source.sourceName,
                 subtitle: source.isLoan
-                    ? 'سلفة · باقي ${_plain(source.outstandingAmount ?? source.amount)}'
+                    ? 'سلفة · باقي ${_plain(source.loanLeft)}'
                     : FundingKind.label(source.kind, context.journeyProfile),
                 trailing: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -305,6 +305,28 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     return confirmed == true;
   }
 
+  /// D108: the people the plan already names, each once, as first written:
+  /// the family's lines, then who pays agreements for the owner.
+  List<String> _knownPeople() {
+    final finance = context.read<FinanceProvider?>();
+    if (finance == null) return const [];
+    final seen = <String>{};
+    final names = <String>[];
+    void add(String? name) {
+      final trimmed = name?.trim().replaceAll(RegExp(r'\s+'), ' ') ?? '';
+      if (trimmed.isEmpty || !seen.add(trimmed.toLowerCase())) return;
+      names.add(trimmed);
+    }
+
+    for (final person in finance.summary.family ?? const []) {
+      add(person.name);
+    }
+    for (final cost in finance.costs) {
+      if (cost.payer == 'FAMILY' || cost.payer == 'OTHER') add(cost.payerName);
+    }
+    return names.take(6).toList(growable: false);
+  }
+
   Future<void> _openSourceSheet({FundingSource? source}) async {
     final funding = context.read<FundingProvider>();
     // The sheet saves, and closes only once saved: a failure keeps what was
@@ -314,6 +336,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       builder: (_) => FundingSourceFormSheet(
         source: source,
         currency: _currency,
+        knownPeople: _knownPeople(),
         onSave: (result) async {
           final saved = source == null
               ? await funding.create(

@@ -3,6 +3,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../models/funding_source.dart';
+import 'finance_local_data_source.dart';
 
 /// Funding sources and loan repayments.
 ///
@@ -10,13 +11,29 @@ import '../models/funding_source.dart';
 /// every change is kept on the phone and sent when the server answers. A
 /// repayment on a loan the server has not named yet stays on the phone
 /// with its loan's create; its own status waits for that create.
+///
+/// A plan kept on the phone (a guest's, before an account) has no plan on
+/// the server: its sources are the phone's alone, read and written there,
+/// online or not (asking the server answered 401 and lost them). Saving the
+/// plan to an account carries them (RA-MO-43).
 class FundingApi {
   FundingApi(ApiClient apiClient, {OfflineSyncService? offline})
-    : _reads = OfflineReads(apiClient, offline),
+    : _offline = offline,
+      _reads = OfflineReads(apiClient, offline),
       _writes = OfflineWrites(apiClient, offline);
 
+  final OfflineSyncService? _offline;
   final OfflineReads _reads;
   final OfflineWrites _writes;
+
+  static bool _onPhone(String? planId) =>
+      FinanceLocalDataSource.isLocalGuestPlanId(planId);
+
+  /// A row of a plan kept on the phone: written as it is, nothing to send.
+  Future<Map<String, dynamic>> _keep(Map<String, dynamic> json) async {
+    await _offline?.database.saveCachedItem(table: _table, json: json);
+    return json;
+  }
 
   static const _table = OfflineTables.cachedFundingSources;
 
@@ -24,6 +41,7 @@ class FundingApi {
       '/api/v1/wedding-plans/$weddingPlanId/funding-sources';
 
   Future<List<FundingSource>> getFundingSources(String weddingPlanId) async {
+    if (_onPhone(weddingPlanId)) return cachedFundingSources(weddingPlanId);
     final items = await _reads.list(
       _base(weddingPlanId),
       table: _table,
@@ -65,6 +83,16 @@ class FundingApi {
       'note': ?_trimmedOrNull(note),
       'expectedAt': ?_date(expectedAt),
     };
+    if (_onPhone(weddingPlanId)) {
+      return FundingSource.fromJson(
+        await _keep({
+          'id': 'local-funding-${DateTime.now().microsecondsSinceEpoch}',
+          'weddingPlanId': weddingPlanId,
+          ...payload,
+          'repayments': const [],
+        }),
+      );
+    }
     final localId = OfflineWrites.localId('funding');
     final json = await _writes.queued(
       entityType: 'funding_source',
@@ -111,6 +139,9 @@ class FundingApi {
       'expectedAt': _date(expectedAt),
     };
     final localJson = {...source.toJson(), ...payload};
+    if (_onPhone(source.weddingPlanId)) {
+      return FundingSource.fromJson(await _keep(localJson));
+    }
     final json = await _writes.queued(
       entityType: 'funding_source',
       operation: 'update',
@@ -134,6 +165,14 @@ class FundingApi {
   }
 
   Future<void> deleteFundingSource(FundingSource source) async {
+    if (_onPhone(source.weddingPlanId)) {
+      await _offline?.database.discardLocalEntity(
+        table: _table,
+        entityType: 'funding_source',
+        entityId: source.id,
+      );
+      return;
+    }
     await _writes.queued(
       entityType: 'funding_source',
       operation: 'delete',
@@ -240,6 +279,7 @@ class FundingApi {
     required Map<String, dynamic> localJson,
     String? queueKey,
   }) async {
+    if (_onPhone(loan.weddingPlanId)) return _keep(localJson);
     if (OfflineWrites.isLocalId(loan.id) ||
         (queueKey != null && OfflineWrites.isLocalId(queueKey))) {
       // The loan (or the repayment) is still the phone's: its create carries

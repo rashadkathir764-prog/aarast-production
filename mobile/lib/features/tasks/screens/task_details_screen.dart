@@ -16,14 +16,17 @@ import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_for.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/auth_api.dart' show AuthController;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
+import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
+import '../utils/task_people.dart';
 import '../widgets/task_checklist_section.dart';
 import '../widgets/task_link_sheet.dart';
 import '../widgets/task_postpone.dart';
@@ -58,14 +61,32 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       final provider = context.read<TaskTimelineProvider>();
       final known = provider.tasks.any((task) => task.id == widget.taskId);
       if (!known) provider.load(widget.weddingPlanId);
+      _loadMembersIfMissing();
     });
   }
 
+  /// Opened straight from a notice, the plan's members were never read: a
+  /// task given to one of them names them, and the page calls them.
+  void _loadMembersIfMissing() {
+    if (AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) return;
+    final sharing = context.read<SharingProvider?>();
+    if (sharing == null) return;
+    if (planMembers(sharing.members, widget.weddingPlanId).isNotEmpty) return;
+    sharing.loadMembers(widget.weddingPlanId);
+  }
+
   WeddingTask? _task(TaskTimelineProvider provider) {
+    final members = planMembers(
+      context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
+      widget.weddingPlanId,
+    );
     for (final task in provider.tasks) {
-      if (task.id == widget.taskId) return task;
+      if (task.id == widget.taskId) return withMemberNamed(task, members);
     }
-    return provider.tasks.isEmpty ? widget.initialTask : null;
+    final initial = widget.initialTask;
+    return provider.tasks.isEmpty && initial != null
+        ? withMemberNamed(initial, members)
+        : null;
   }
 
   void _back() => context.popOrGo(AppRouter.tasks(widget.weddingPlanId));
@@ -97,7 +118,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       body = _details(provider, task);
     }
 
-    final open = task != null && !task.isDone && task.status != 'CANCELLED';
+    final open = task != null && task.isOpen;
     final canLink = context.watch<FinanceProvider?>()?.canViewMoney ?? false;
     return AarastScreenFrame(
       maxWidth: 600,
@@ -287,7 +308,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ],
           ),
         ),
-        if (!task.isDone && task.status != 'CANCELLED')
+        if (task.isOpen)
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: JourneyTextAction(
@@ -333,7 +354,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         TaskChecklistSection(
           items: steps,
           saving: provider.isSavingChecklist,
-          errorMessage: provider.checklistErrorMessage,
+          errorMessage: provider.checklistErrorFor(task.id),
           onAdd: (title) => provider.addChecklistItem(task, title),
           onToggle: (item, done) =>
               provider.updateChecklistItem(task, item, isDone: done),

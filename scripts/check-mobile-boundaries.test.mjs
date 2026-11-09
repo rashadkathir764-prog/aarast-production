@@ -1736,7 +1736,10 @@ const r19ProviderPortalApi = Object.freeze({
 // shows where its offers are.
 // +1 (D106, 2026-11-09): a date's pay page offers the wedding's day as a
 // new due day, from the wedding plans owner API.
-const r19LegalRecordCount = 264;
+// +2 (RA-MO-57, 2026-11-09): the task page names the member a task is given
+// to, as the list does: both read the plan's members from the sharing owner
+// API through one helper (task_people.dart).
+const r19LegalRecordCount = 266;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2945,7 +2948,17 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController'],
+    show: ['AuthActionGuard', 'AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember', 'SharingProvider'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/utils/task_people.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',

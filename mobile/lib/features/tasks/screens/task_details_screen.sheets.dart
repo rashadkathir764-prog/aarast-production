@@ -63,7 +63,7 @@ class _ContactCard extends StatelessWidget {
       child: Row(
         children: [
           JourneyAvatar(
-            letter: name.isEmpty ? '؟' : name.characters.first,
+            letter: nameLetter(name),
             color: context.accent.primary,
             size: 40,
           ),

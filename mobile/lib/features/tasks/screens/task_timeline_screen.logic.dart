@@ -69,28 +69,3 @@ String _taskCountLabel(int count) => arabicCount(
   few: 'مهام',
   many: 'مهمة',
 );
-
-List<SharedMember> _membersForPlan(
-  List<SharedMember> members,
-  String weddingPlanId,
-) {
-  return members
-      .where((member) => member.weddingPlanId == weddingPlanId)
-      .toList(growable: false);
-}
-
-WeddingTask _hydrateTaskParticipant(
-  WeddingTask task,
-  List<SharedMember> members,
-) {
-  if (!task.hasResponsibleParticipant) return task;
-  for (final member in members) {
-    if (member.userId != task.assigneeUserId) continue;
-    return task.copyWith(
-      assigneeName: member.displayName,
-      assigneePhone: member.user?.phone,
-      assigneeRole: member.role,
-    );
-  }
-  return task;
-}

@@ -120,12 +120,14 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
         ? null
         : '${view.tasksDone} من ${view.tasksTotal}';
 
-    // «عرس محمد · معك 3» for whoever works on tasks; «عرس محمد · خلصت 12
-    // من 20» for whoever only follows the plan.
+    // «عرس محمد · معك 3» for whoever works on tasks, counting what is still
+    // theirs to do (RA-MO-57: it counted the ones they finished); «عرس محمد ·
+    // خلصت 12 من 20» for whoever only follows the plan.
+    final stillOpen = mine.where((task) => !task.isDone).length;
     final status = [
       if (title.isNotEmpty) title,
       if (widget.canManage)
-        'معك ${mine.length}'
+        stillOpen == 0 ? 'خلصت مهامك' : 'معك $stillOpen'
       else if (done != null)
         'خلصت $done',
     ].join(' · ');

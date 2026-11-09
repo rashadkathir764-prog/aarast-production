@@ -71,7 +71,9 @@ class _PostponeSheetState extends State<_PostponeSheet> {
       if (!mounted) return;
       setState(() {
         _openDatedTasks = tasks
-            .where((task) => !task.isDone && task.dueDate != null)
+            // What the server moves: open and dated (RA-MO-58: it counted
+            // the cancelled ones).
+            .where((task) => task.isOpen && task.dueDate != null)
             .length;
       });
     } on Object {

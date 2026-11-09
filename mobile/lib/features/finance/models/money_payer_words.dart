@@ -1,6 +1,5 @@
-import 'package:flutter/widgets.dart' show StringCharacters;
-
 import '../../../core/experience_v3/aarast_journey_profile.dart';
+import '../../../core/utils/name_letter.dart';
 import 'money_summary.dart';
 import 'wedding_cost.dart' show moneyValue;
 
@@ -64,15 +63,8 @@ String payerPaidLine(String? payer, String label, JourneyProfile profile) {
   };
 }
 
-/// The avatar's letter for a payer: the first letter of the word without
-/// its article («الوالد» و, «العروسة» ع, «خالي أحمد» خ).
-String payerAvatarLetter(String label) {
-  final word = label.trim();
-  final bare = word.startsWith('ال') && word.length > 2
-      ? word.substring(2)
-      : word;
-  return bare.characters.isEmpty ? '؟' : bare.characters.first;
-}
+/// The avatar's letter for a payer («الوالد» و).
+String payerAvatarLetter(String label) => nameLetter(label);
 
 /// D59: who paid for the plan's owner, as the server grouped them: the
 /// groups whose money was not the owner's and that paid something.

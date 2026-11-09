@@ -9,6 +9,7 @@ class GuestCandidate {
     required this.name,
     this.phone,
     this.existing,
+    this.sameName,
     this.repeated = false,
     this.badPhone,
   });
@@ -22,9 +23,13 @@ class GuestCandidate {
   /// without it rather than failing the whole list.
   final String? badPhone;
 
-  /// The guest already in the plan with this number (or this name, when
-  /// neither has a number).
+  /// The guest already in the plan with this number: the same person.
   final Guest? existing;
+
+  /// A guest in the plan with the same name, neither with a number: maybe
+  /// the same person, maybe another (two «أحمد علي» are common). Whoever adds
+  /// decides (RA-MO-61: it was refused as «موجود من قبل»).
+  final Guest? sameName;
 
   /// The same person appears earlier in the same list.
   final bool repeated;
@@ -79,7 +84,8 @@ List<GuestCandidate> markGuestCandidates(
         name: person.name,
         phone: phone,
         badPhone: raw.isNotEmpty && phone == null ? raw : null,
-        existing: _existingMatch(clean, existing),
+        existing: _samePhone(clean, existing),
+        sameName: _sameNameWithoutPhone(clean, existing),
         repeated: !seen.add(
           phone ?? 'name:${ContactDuplicateUtils.normalizeName(person.name)}',
         ),
@@ -89,17 +95,20 @@ List<GuestCandidate> markGuestCandidates(
   return candidates;
 }
 
-Guest? _existingMatch(
+Guest? _samePhone(({String name, String? phone}) person, List<Guest> existing) {
+  if ((person.phone ?? '').trim().isEmpty) return null;
+  return ContactDuplicateUtils.findByPhone(
+    existing,
+    candidatePhone: person.phone!,
+    phoneOf: (guest) => guest.phone,
+  );
+}
+
+Guest? _sameNameWithoutPhone(
   ({String name, String? phone}) person,
   List<Guest> existing,
 ) {
-  if ((person.phone ?? '').trim().isNotEmpty) {
-    return ContactDuplicateUtils.findByPhone(
-      existing,
-      candidatePhone: person.phone!,
-      phoneOf: (guest) => guest.phone,
-    );
-  }
+  if ((person.phone ?? '').trim().isNotEmpty) return null;
   for (final guest in existing) {
     if (!guest.hasPhone &&
         ContactDuplicateUtils.sameName(guest.name, person.name)) {

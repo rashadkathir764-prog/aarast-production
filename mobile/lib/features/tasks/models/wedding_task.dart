@@ -124,6 +124,10 @@ class WeddingTask {
 
   bool get isDone => status == 'DONE';
 
+  /// Still to do: neither done nor cancelled (the server moves these with
+  /// the wedding's date, and only these can be late).
+  bool get isOpen => !isDone && status != 'CANCELLED';
+
   bool get hasResponsibleParticipant {
     final assigneeId = assigneeUserId?.trim();
     return assigneeId != null && assigneeId.isNotEmpty;

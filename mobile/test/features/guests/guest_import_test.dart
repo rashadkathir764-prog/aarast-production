@@ -198,6 +198,7 @@ void main() {
       );
       expect(candidates[0].existing?.id, 'g1');
       expect(candidates[1].isDuplicate, isFalse);
+      expect(candidates[1].sameName, isNull);
       expect(candidates[2].repeated, isTrue);
       expect(candidates[3].isDuplicate, isFalse);
       expect(candidates[3].phone, '+967771000000');
@@ -259,6 +260,41 @@ void main() {
     ]);
     expect(api.sentGroupId, 'g-hara');
     expect(find.text('قائمة الضيوف'), findsOneWidget);
+  });
+
+  // RA-MO-61: a name already on the list without a number may be another
+  // person; it was refused as «موجود من قبل» with no way to add it.
+  testWidgets('a same name without a number is added once said to be another', (
+    tester,
+  ) async {
+    final api = await _pump(
+      tester,
+      source: GuestImportSource.paste,
+      guests: [_guest('g1', 'سالم علي')],
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('import-paste')).hitTestable().first,
+      'سالم علي\nيحيى السنيدار',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('الاسم هذا في القائمة · اضغط لو هو شخص ثاني'),
+      findsOneWidget,
+    );
+    expect(find.text('موجود من قبل · ما نضيفه مرتين'), findsNothing);
+    expect(find.text('أضف ضيف واحد'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('import-line-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('شخص ثاني بنفس الاسم · بينضاف'), findsOneWidget);
+    expect(find.text('أضف ضيفين'), findsOneWidget);
+
+    await _tapAdd(tester);
+    expect(api.sent, [
+      (name: 'سالم علي', phone: null),
+      (name: 'يحيى السنيدار', phone: null),
+    ]);
   });
 
   // RA-MO-34: one refused line said «ما قدرنا نضيف الضيوف» over the guests it

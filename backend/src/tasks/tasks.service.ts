@@ -182,7 +182,7 @@ export class TasksService {
     weddingPlanId: string,
     dto: CreatePlanTaskDto,
   ): Promise<TaskResponse> {
-    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+    const { task, seesMoney } = await runSerializableTransaction(this.prisma, async (tx) => {
       const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         weddingPlanId,
@@ -219,11 +219,11 @@ export class TasksService {
         dedupeKey: `task:${created.id}:created:${created.createdAt.toISOString()}`,
         occurredAt: created.createdAt,
       });
-      return created;
+      return { task: created, seesMoney: this.permissions.canViewMoney(context) };
     });
     await this.notifyTaskDueBestEffort(task);
 
-    return this.toResponse(task);
+    return this.toResponse(task, true, seesMoney);
   }
 
   /**
@@ -357,7 +357,7 @@ export class TasksService {
   ): Promise<TaskResponse> {
     const existing = await this.findTaskOrThrow(id);
     const manualResponsibility = this.manualResponsibilityUpdate(dto);
-    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+    const { task, seesMoney } = await runSerializableTransaction(this.prisma, async (tx) => {
       const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         existing.weddingPlanId,
@@ -419,11 +419,11 @@ export class TasksService {
         action,
         dedupeKey: `task:${updated.id}:${action.toLowerCase()}:${updated.updatedAt.toISOString()}`,
       });
-      return updated;
+      return { task: updated, seesMoney: this.permissions.canViewMoney(context) };
     });
     await this.notifyTaskDueBestEffort(task);
 
-    return this.toResponse(task);
+    return this.toResponse(task, true, seesMoney);
   }
 
   async assign(
@@ -434,7 +434,7 @@ export class TasksService {
     const existing = await this.findTaskOrThrow(id);
     const assigneeUserId = this.optionalText(dto.assigneeUserId);
 
-    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+    const { task, seesMoney } = await runSerializableTransaction(this.prisma, async (tx) => {
       const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         existing.weddingPlanId,
@@ -538,10 +538,10 @@ export class TasksService {
           dedupeKey: `task-assigned:${updated.id}:${assigneeUserId}:${updated.updatedAt.toISOString()}`,
         });
       }
-      return updated;
+      return { task: updated, seesMoney: this.permissions.canViewMoney(context) };
     });
 
-    return this.toResponse(task);
+    return this.toResponse(task, true, seesMoney);
   }
 
   async createChecklistItem(
@@ -1119,10 +1119,15 @@ export class TasksService {
     };
   }
 
+  /**
+   * Every answer says whether its reader reaches the helper's phone and the
+   * money: no default, so a new answer cannot hand either out (RA-BE-119).
+   * Saving a task needs the tasks right, which reaches the phone.
+   */
   private toResponse(
     task: WeddingTask & { checklistItems: WeddingTaskChecklistItem[] },
-    includeResponsiblePhone = true,
-    includeMoneyLinks = true,
+    includeResponsiblePhone: boolean,
+    includeMoneyLinks: boolean,
   ): TaskResponse {
     return {
       id: task.id,

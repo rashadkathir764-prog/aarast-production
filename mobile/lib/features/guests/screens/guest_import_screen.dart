@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
@@ -48,6 +49,13 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   List<ContactPhoneDraft>? _contacts;
   String? _contactsError;
   final _picked = <int>{};
+
+  /// Pasted names the person said are someone else than the guest of the
+  /// same name already on the list, by the name as compared.
+  final _anotherPerson = <String>{};
+
+  static String _nameKey(GuestCandidate candidate) =>
+      ContactDuplicateUtils.normalizeName(candidate.name);
   String _query = '';
   String? _groupId;
   bool _saving = false;
@@ -103,10 +111,15 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     return markGuestCandidates(people, guests);
   }
 
-  /// Who the button adds: every new line pasted, or every new contact ticked.
+  /// Who the button adds: every new line pasted (a name already on the list
+  /// once said to be someone else), or every new contact ticked.
   List<GuestCandidate> _toAdd(List<GuestCandidate> candidates) => [
     for (var i = 0; i < candidates.length; i++)
-      if (!candidates[i].isDuplicate && (!_fromContacts || _picked.contains(i)))
+      if (!candidates[i].isDuplicate &&
+          (_fromContacts
+              ? _picked.contains(i)
+              : candidates[i].sameName == null ||
+                    _anotherPerson.contains(_nameKey(candidates[i]))))
         candidates[i],
   ];
 
@@ -211,6 +224,17 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
                   _CandidateRow(
                     key: ValueKey('import-line-$i'),
                     candidate: candidates[i],
+                    anotherPerson: _anotherPerson.contains(
+                      _nameKey(candidates[i]),
+                    ),
+                    onTap: candidates[i].sameName == null
+                        ? null
+                        : () => setState(() {
+                            final key = _nameKey(candidates[i]);
+                            if (!_anotherPerson.remove(key)) {
+                              _anotherPerson.add(key);
+                            }
+                          }),
                   ),
               ],
             ),
@@ -441,11 +465,15 @@ class _CandidateRow extends StatelessWidget {
   const _CandidateRow({
     required this.candidate,
     this.picked,
+    this.anotherPerson = false,
     this.onTap,
     super.key,
   });
 
   final GuestCandidate candidate;
+
+  /// A name already on the list, said to be someone else: it is added.
+  final bool anotherPerson;
 
   /// Null on the pasted list, where every new line is added.
   final bool? picked;
@@ -453,10 +481,19 @@ class _CandidateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final duplicate = candidate.isDuplicate;
+    final maybeSame = candidate.sameName != null;
+    // Held back: the same person, or a same name not yet said to be another.
+    final duplicate = candidate.isDuplicate || (maybeSame && !anotherPerson);
     final phone = candidate.phone;
-    final detail = duplicate
+    final detail = candidate.isDuplicate
         ? 'موجود من قبل · ما نضيفه مرتين'
+        : maybeSame && !anotherPerson
+        ? context.say(
+            'الاسم هذا في القائمة · اضغط لو هو شخص ثاني',
+            'الاسم هذا في القائمة · اضغطي لو هو شخص ثاني',
+          )
+        : maybeSame
+        ? 'شخص ثاني بنفس الاسم · بينضاف'
         : candidate.badPhone != null
         ? 'الرقم غير صحيح · نضيفه بدون رقم'
         : phone == null

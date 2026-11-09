@@ -15,7 +15,8 @@ DateTime taskDateOnly(DateTime date) =>
 /// RA-MO-25), as the server counts it.
 bool isTaskLate(WeddingTask task, {DateTime? now}) {
   final dueDate = task.dueDate;
-  if (dueDate == null || task.isDone) return false;
+  // RA-MO-58: a cancelled task is not late, whatever its date.
+  if (dueDate == null || !task.isOpen) return false;
   return daysUntilPlanDay(dueDate, now: now) < 0;
 }
 

@@ -69,7 +69,7 @@ class TaskSummary {
       byStatus[task.status] = (byStatus[task.status] ?? 0) + 1;
       byPriority[task.priority] = (byPriority[task.priority] ?? 0) + 1;
       if (task.isDone) completed++;
-      if (!task.isDone && task.status != 'CANCELLED') pendingInProgress++;
+      if (task.isOpen) pendingInProgress++;
       if (task.priority == 'HIGH' || task.priority == 'URGENT') {
         highPriority++;
       }

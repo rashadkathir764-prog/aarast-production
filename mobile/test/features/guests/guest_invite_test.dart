@@ -4,6 +4,12 @@ import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/models/guest_invite_text.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_invite_screen.dart';
+import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
+import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
+import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -138,6 +144,106 @@ Future<_Api> _pump(
   return api;
 }
 
+/// The plan's events, read when [arrive] is called (as late as the test
+/// wants), and every save kept.
+class _Events extends PlanEventsProvider {
+  _Events(this._wedding)
+    : super(api: PlanEventsApi(ApiClient(tokenProvider: () async => null)));
+
+  final PlanEvent _wedding;
+  bool _arrived = false;
+  final saved = <PlanEventDraft>[];
+
+  void arrive() {
+    _arrived = true;
+    notifyListeners();
+  }
+
+  @override
+  PlanEventsView? viewOf(String weddingPlanId) => _arrived
+      ? PlanEventsView(
+          weddingPlanId: weddingPlanId,
+          canEdit: true,
+          items: [_wedding],
+          suggestions: const [],
+        )
+      : null;
+
+  @override
+  Future<void> load(String weddingPlanId) async {}
+
+  @override
+  Future<void> save(
+    String weddingPlanId, {
+    PlanEvent? event,
+    PlanEventType? type,
+    required PlanEventDraft draft,
+  }) async => saved.add(draft);
+}
+
+/// The plan in Sana'a: the place the card stands in while it has no venue.
+class _Dashboard extends DashboardSummaryProvider {
+  _Dashboard()
+    : super(
+        weddingPlansApi: WeddingPlansApi(
+          ApiClient(tokenProvider: () async => null),
+        ),
+      );
+
+  final _summary = DashboardSummary.fromJson({
+    'planId': 'plan-1',
+    'title': 'عرس محمد',
+    'city': 'صنعاء',
+    'currency': 'YER',
+    'status': 'PLANNING',
+    'permissions': {'isOwner': true, 'role': 'OWNER'},
+  });
+
+  @override
+  DashboardSummary? get summary => _summary;
+
+  @override
+  Future<void> loadDashboard(String weddingPlanId, {sharedMember}) async {}
+}
+
+Future<_Api> _pumpWithEvents(WidgetTester tester, _Events events) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(320, 1400);
+  addTearDown(tester.view.reset);
+  final api = _Api([_guest('a', 'ياسر')]);
+  final provider = GuestsProvider(api);
+  await provider.loadGuests('plan-1');
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<GuestsApi>.value(value: api),
+        ChangeNotifierProvider<GuestsProvider>.value(value: provider),
+        ChangeNotifierProvider<PlanEventsProvider>.value(value: events),
+        ChangeNotifierProvider<DashboardSummaryProvider>.value(
+          value: _Dashboard(),
+        ),
+      ],
+      child: MaterialApp(
+        builder: (context, child) =>
+            Directionality(textDirection: TextDirection.rtl, child: child!),
+        home: const GuestInviteScreen(weddingPlanId: 'plan-1'),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return api;
+}
+
+String _venueField(WidgetTester tester) => tester
+    .widget<TextField>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invite-place')),
+        matching: find.byType(TextField),
+      ),
+    )
+    .controller!
+    .text;
+
 void main() {
   test('the WhatsApp link opens the guest chat with the text ready', () {
     final uri = guestWhatsAppUri('+967777000111', 'أهلًا');
@@ -214,6 +320,50 @@ void main() {
     ]);
     expect(find.text('إرسال الدعوات'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-62: the venue field took the plan's city, so the card opened as
+  // changed and saving wrote the city over the wedding's venue.
+  testWidgets(
+    'a wedding without a venue opens unchanged, the city on the card only',
+    (tester) async {
+      final events = _Events(
+        const PlanEvent(id: 'e-wedding', type: PlanEventType.wedding),
+      )..arrive();
+      await _pumpWithEvents(tester, events);
+
+      expect(_venueField(tester), '');
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invite-card')),
+          matching: find.textContaining('صنعاء'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('أرسل لـ ضيف واحد'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('invite-send')));
+      await tester.pumpAndSettle();
+      expect(events.saved, isEmpty);
+    },
+  );
+
+  testWidgets('the hall read after the plan keeps its venue', (tester) async {
+    final events = _Events(
+      const PlanEvent(
+        id: 'e-wedding',
+        type: PlanEventType.wedding,
+        placeLabel: 'قاعة سبأ',
+      ),
+    );
+    await _pumpWithEvents(tester, events);
+    events.arrive();
+    await tester.pumpAndSettle();
+
+    expect(_venueField(tester), 'قاعة سبأ');
+    expect(find.text('أرسل لـ ضيف واحد'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invite-send')));
+    await tester.pumpAndSettle();
+    expect(events.saved, isEmpty);
   });
 
   testWidgets('the card that could not be read offers to read it again', (

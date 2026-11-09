@@ -143,6 +143,23 @@ async function run() {
     check('an editor who may move the date moves the tasks',
       byEditor.status === 200 && day(openByEditor.body?.dueDate) === '2027-03-26');
 
+    // RA-BE-119: a helper who manages the tasks without seeing the money gets
+    // no link into the money back from saving a task, as from reading it.
+    const item = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, { name: 'Hall' }, ownerToken);
+    const createdByHelper = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`,
+      { title: 'Pay the hall', linkedBudgetCategoryId: item.body?.id }, editorToken);
+    check('a task created by a helper without the money right answers without the item',
+      createdByHelper.status === 201 && createdByHelper.body?.linkedBudgetCategoryId === null);
+    const helperTask = createdByHelper.body?.id;
+    const editedByHelper = await request('PATCH', `/api/v1/tasks/${helperTask}`, { title: 'Pay the hall today' }, editorToken);
+    check('an edit by that helper answers without the item',
+      editedByHelper.status === 200 && editedByHelper.body?.linkedBudgetCategoryId === null);
+    const assignedByHelper = await request('PATCH', `/api/v1/tasks/${helperTask}/assign`, { assigneeUserId: null }, editorToken);
+    check('an assignment by that helper answers without the item',
+      assignedByHelper.status === 200 && assignedByHelper.body?.linkedBudgetCategoryId === null);
+    const forOwner = await request('GET', `/api/v1/tasks/${helperTask}`, null, ownerToken);
+    check('the task keeps its item for the owner', forOwner.body?.linkedBudgetCategoryId === item.body?.id);
+
     // RA-BE-72: the wedding moved, its dated events move with it.
     await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: '2027-04-10T00:00:00.000Z' }, ownerToken);
     const samra = await request('POST', `/api/v1/wedding-plans/${planId}/events`, { type: 'SAMRA', date: '2027-04-08' }, ownerToken);

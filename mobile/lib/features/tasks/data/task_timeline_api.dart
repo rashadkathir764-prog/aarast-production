@@ -23,7 +23,7 @@ class TaskTimelineApi {
   /// server's to keep (their ids and members live there); the task itself
   /// stays on the phone (D85).
   static const _stepsNeedServer =
-      'الخطوات الفرعية تُحفظ في الخادم الحين؛ المهمة نفسها محفوظة في جوالك.';
+      'الخطوات تنحفظ في الخادم بس، والمهمة نفسها محفوظة في جوالك.';
   static const _assignNeedsServer =
       'تعيين المسؤول يتأكد من عضويته في الخطة، فيحتاج الخادم.';
 
@@ -886,12 +886,16 @@ class TaskTimelineApi {
     ]);
   }
 
+  /// Steps live on the server, under a task it already has (RA-MO-58: a
+  /// task still waiting to be sent was told to save itself to an account).
   void _assertChecklistAvailable(WeddingTask task) {
-    if (task.id.startsWith('local-') ||
-        _isLocalGuestPlanId(task.weddingPlanId)) {
+    if (_isLocalGuestPlanId(task.weddingPlanId)) {
       throw const ApiException(
-        'القائمة الفرعية تُحفظ في حسابك؛ احفظ المهمة على حسابك أولًا.',
+        'الخطوات تنحفظ في الحساب، والخطة هذي لسا في الجوال بس.',
       );
+    }
+    if (task.id.startsWith('local-')) {
+      throw const ApiException('المهمة لسا ما وصلت. الخطوات تنضاف لما توصل.');
     }
   }
 

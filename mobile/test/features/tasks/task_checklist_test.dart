@@ -37,6 +37,46 @@ void main() {
     expect(task.checklistDoneCount, 1);
   });
 
+  test(
+    'RA-MO-58: a step on a task not sent yet waits for it, on an account',
+    () async {
+      final api = TaskTimelineApi(ApiClient(tokenProvider: () async => null));
+      WeddingTask task(String id, String planId) => WeddingTask(
+        id: id,
+        weddingPlanId: planId,
+        title: 'حجز القاعة',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        createdAt: DateTime(2026, 11, 1),
+        updatedAt: DateTime(2026, 11, 1),
+      );
+
+      await expectLater(
+        api.createChecklistItem(task('local-task-1', 'plan-1'), 'الاتصال'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.message,
+            'message',
+            'المهمة لسا ما وصلت. الخطوات تنضاف لما توصل.',
+          ),
+        ),
+      );
+      await expectLater(
+        api.createChecklistItem(
+          task('local-task-2', 'local-guest-plan'),
+          'الاتصال',
+        ),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('الخطة هذي لسا في الجوال'),
+          ),
+        ),
+      );
+    },
+  );
+
   group('TaskTimelineProvider checklist', () {
     late _ChecklistApi api;
     late TaskTimelineProvider provider;
@@ -75,7 +115,7 @@ void main() {
         isTrue,
       );
       expect(shown().checklist.map((item) => item.title), ['الاتصال بالقاعة']);
-      expect(provider.checklistErrorMessage, isNull);
+      expect(provider.checklistErrorFor(shown().id), isNull);
     });
 
     test('a rejected change keeps the steps and says why', () async {
@@ -90,7 +130,12 @@ void main() {
 
       expect(ok, isFalse);
       expect(shown().checklist.single.isDone, isFalse);
-      expect(provider.checklistErrorMessage, 'لا تملك صلاحية إدارة المهام.');
+      expect(
+        provider.checklistErrorFor(shown().id),
+        'لا تملك صلاحية إدارة المهام.',
+      );
+      // RA-MO-58: the next task opened does not carry it.
+      expect(provider.checklistErrorFor('another-task'), isNull);
       expect(provider.isSavingChecklist, isFalse);
     });
   });

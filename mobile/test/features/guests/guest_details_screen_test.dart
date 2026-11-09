@@ -18,6 +18,7 @@ Guest _guest({
   String attendanceStatus = 'PENDING',
   String? phone = '+967777000111',
   bool editable = true,
+  String side = 'BRIDE',
 }) {
   final now = DateTime.utc(2026, 10, 15);
   return Guest(
@@ -26,7 +27,7 @@ Guest _guest({
     weddingPlanId: planId,
     name: 'ليلى سالم',
     phone: phone,
-    side: 'BRIDE',
+    side: side,
     status: status,
     attendanceStatus: attendanceStatus,
     invitationStatus: invitationStatus,
@@ -135,6 +136,14 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // RA-MO-61: «غير محدد» stood under every guest whose side was not chosen.
+  testWidgets('a side shows only when one was chosen', (tester) async {
+    await _pump(tester, _guest(side: 'OTHER'));
+    expect(find.textContaining('غير محدد'), findsNothing);
+    await _pump(tester, _guest());
+    expect(find.textContaining('أهل العروسة'), findsOneWidget);
+  });
 
   testWidgets('a guest who has not answered can be marked by hand', (
     tester,

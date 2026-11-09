@@ -242,7 +242,7 @@ AarastDashboardFocus resolveDashboardFocus(
           ? say('ضيف واحد ما ردّ', 'ضيفة وحدة ما ردّت')
           : say(
               '${arabicCount(summary.pendingGuests, one: 'ضيف', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')} ما ردّوا',
-              '${arabicCount(summary.pendingGuests, one: 'ضيفة', two: 'ضيفتين', few: 'ضيفات', many: 'ضيفة')} ما ردّين',
+              '${arabicCount(summary.pendingGuests, one: 'ضيفة', two: 'ضيفتين', few: 'ضيفات', many: 'ضيفة')} ما ردّن',
             ),
       reason: say(
         'حدّث ردودهم أول بأول عشان يبقى العدد صح.',

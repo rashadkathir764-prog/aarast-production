@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_task.dart';
 import '../utils/task_display.dart';
@@ -77,9 +78,7 @@ class TaskRow extends StatelessWidget {
       if (showResponsible && !mine) responsible,
       ?steps,
     ].join(' · ');
-    final letter = mine
-        ? selfLetter
-        : (responsible.isEmpty ? '؟' : responsible.characters.first);
+    final letter = mine ? selfLetter : nameLetter(responsible);
 
     return Semantics(
       button: onOpen != null,

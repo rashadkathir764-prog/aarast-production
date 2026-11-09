@@ -1,5 +1,4 @@
-import 'package:flutter/widgets.dart' show StringCharacters;
-
+import '../../../core/utils/name_letter.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../tasks/tasks_api.dart' show WeddingTask;
 
@@ -144,11 +143,8 @@ class PlanReadTask {
       PlanReadAssignee.owner => assigneeFirstName ?? ownerWord,
       _ => assigneeFirstName,
     };
-    if (name == null || name.isEmpty) return null;
-    final word = name.startsWith('ال') && name.length > 2
-        ? name.substring(2)
-        : name;
-    return word.characters.first;
+    if (name == null || name.trim().isEmpty) return null;
+    return nameLetter(name);
   }
 }
 

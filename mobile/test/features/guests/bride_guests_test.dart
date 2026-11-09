@@ -23,10 +23,12 @@ Guest _guest(
   String name,
   String status, {
   String invitation = 'SENT',
+  String? phone = '+967777000123',
 }) => Guest(
   id: id,
   weddingPlanId: 'plan-1',
   name: name,
+  phone: phone,
   side: 'BRIDE',
   status: status,
   attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
@@ -144,6 +146,8 @@ void main() {
         _guest('g1', 'هدى', 'INVITED'),
         _guest('g2', 'أسماء', 'INVITED'),
         _guest('g3', 'عبلة', 'INVITED', invitation: 'NOT_SENT'),
+        // RA-MO-61: a reminder goes to a number.
+        _guest('g4', 'سلوى', 'INVITED', phone: null),
       ],
     );
 

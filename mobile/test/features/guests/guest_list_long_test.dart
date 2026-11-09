@@ -133,6 +133,8 @@ Guest _guest(String id, String name) => Guest(
   id: id,
   weddingPlanId: _planId,
   name: name,
+  // Invited on WhatsApp: a reminder reaches them by number.
+  phone: '+967777123456',
   side: 'GROOM',
   status: 'INVITED',
   attendanceStatus: 'PENDING',

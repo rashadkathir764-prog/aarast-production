@@ -195,7 +195,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         Text(
           [
             guestGroupLabel(guest, provider.groups),
-            if (guest.side != 'UNKNOWN') guestSideLabel(guest.side),
+            // A side only when one was chosen (RA-MO-61: «غير محدد» on every
+            // guest without one; the server's default is OTHER).
+            if (guest.side == 'GROOM' || guest.side == 'BRIDE')
+              guestSideLabel(guest.side),
             if (phone != null && phone.trim().isNotEmpty)
               PhoneNumberUtils.directionalDisplay(phone) ?? phone,
           ].join(' · '),

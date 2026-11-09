@@ -425,6 +425,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'RA-MO-57: the task page names a member it is given to and calls them',
+    (tester) async {
+      _setPhoneView(tester);
+      final harness = await _createHarness();
+      await harness.api.createTask(
+        weddingPlanId: localPlanId,
+        title: 'مراجعة الضيوف',
+        assigneeUserId: 'user-participant',
+      );
+      final provider = TaskTimelineProvider(harness.api);
+      await provider.load(localPlanId);
+      final task = provider.tasks.single;
+      // The task carries the member's account alone, as the server sends it.
+      expect(task.responsibleLabel, 'عضو مشارك');
+
+      await tester.pumpWidget(
+        _providers(
+          harness,
+          provider,
+          MaterialApp(
+            home: TaskDetailsScreen(
+              weddingPlanId: localPlanId,
+              taskId: task.id,
+            ),
+          ),
+          sharingProvider: _FakeSharingProvider(harness, [
+            _member(
+              weddingPlanId: localPlanId,
+              userId: 'user-participant',
+              name: 'ليلى',
+            ),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('لليلى'), findsOneWidget);
+      expect(find.text('عضو مشارك'), findsNothing);
+      expect(find.byKey(const ValueKey('task-contact-call')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Add Task works without login for local plan', (tester) async {
     _setPhoneView(tester, width: 390);
     final harness = await _createHarness();
@@ -751,7 +795,7 @@ void main() {
       expect(find.byKey(const ValueKey('tasks-members-unread')), findsNothing);
 
       await pump(accountTask('member-2'));
-        expect(
+      expect(
         find.byKey(const ValueKey('tasks-members-unread')),
         findsOneWidget,
       );

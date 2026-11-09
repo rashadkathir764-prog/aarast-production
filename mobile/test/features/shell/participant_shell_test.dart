@@ -179,7 +179,8 @@ void main() {
     await _openTab(tester, 'المهام');
 
     expect(find.byType(ParticipantTasksScreen), findsOneWidget);
-    expect(find.text('عرس محمد · معك 2'), findsOneWidget);
+    // RA-MO-57: what is still theirs to do, not the one they finished.
+    expect(find.text('عرس محمد · معك 1'), findsOneWidget);
     expect(find.text('لي'), findsOneWidget);
     expect(find.text('كل مهام الخطة'), findsOneWidget);
     expect(find.text('لك'), findsOneWidget);
@@ -377,6 +378,16 @@ void main() {
 
     await _openTab(tester, 'المزودين');
     expect(find.text('عرس سلمى · تشوف بس'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-63: «7 يوم على العرس».
+  testWidgets('a week out the count reads «أيام»', (tester) async {
+    final harness = await _Harness.create(daysRemaining: 7);
+    await harness.pump(tester);
+
+    expect(find.text('7'), findsOneWidget);
+    expect(find.text('أيام على العرس'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

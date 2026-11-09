@@ -163,6 +163,7 @@ Guest _guest(String id, String status, {String invitation = 'NOT_SENT'}) =>
       id: id,
       weddingPlanId: 'plan-1',
       name: 'ضيف $id',
+      phone: '+967777123456',
       side: 'GROOM',
       status: status,
       attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',

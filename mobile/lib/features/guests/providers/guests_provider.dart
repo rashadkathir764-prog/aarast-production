@@ -394,7 +394,9 @@ String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
       normalized.contains('هذا الضيف مضاف') ||
       normalized.contains('Guest already exists') ||
       normalized.contains('duplicate')) {
-    return 'هذا الضيف مضاف مسبقًا';
+    // The server knows a guest twice by the number (RA-MO-61: «هذا الضيف
+    // مضاف مسبقًا» was formal and a man for the bride's guests).
+    return 'الرقم هذا مضاف في القائمة من قبل';
   }
   if (normalized.contains('valid Yemeni phone') ||
       normalized.contains('phone must')) {

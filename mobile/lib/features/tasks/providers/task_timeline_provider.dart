@@ -34,10 +34,17 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   final Map<String, int> _statusMutationVersions = {};
   final Map<String, String> _lastMeaningfulStatuses = {};
   bool _isSavingChecklist = false;
-  String? _checklistErrorMessage;
+  ({String taskId, String message})? _checklistError;
 
   bool get isSavingChecklist => _isSavingChecklist;
-  String? get checklistErrorMessage => _checklistErrorMessage;
+
+  /// A step that did not save says so on its own task alone (RA-MO-58: one
+  /// field showed it on whichever task opened next).
+  String? checklistErrorFor(String taskId) {
+    final error = _checklistError;
+    return error != null && error.taskId == taskId ? error.message : null;
+  }
+
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
@@ -610,17 +617,20 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   ) async {
     if (_isSavingChecklist) return false;
     _isSavingChecklist = true;
-    _checklistErrorMessage = null;
+    _checklistError = null;
     notifyListeners();
     try {
       final checklist = await change(_currentTask(task));
       _replaceTask(_currentTask(task).copyWith(checklist: checklist));
       return true;
     } on ApiException catch (error) {
-      _checklistErrorMessage = error.message;
+      _checklistError = (taskId: task.id, message: error.message);
       return false;
     } catch (_) {
-      _checklistErrorMessage = 'ما انحفظت الخطوة، ما تغيّر شي';
+      _checklistError = (
+        taskId: task.id,
+        message: 'ما انحفظت الخطوة، ما تغيّر شي',
+      );
       return false;
     } finally {
       _isSavingChecklist = false;

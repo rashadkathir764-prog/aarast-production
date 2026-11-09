@@ -35,6 +35,12 @@ void main() {
     );
   });
 
+  test('RA-MO-58: a cancelled task is not late', () {
+    final cancelled = due(DateTime(2026, 11, 1)).copyWith(status: 'CANCELLED');
+    expect(isTaskLate(cancelled, now: lateNight), isFalse);
+    expect(cancelled.isOpen, isFalse);
+  });
+
   test('«اليوم» and «بكرة» follow the day in Sana\'a', () {
     expect(taskWhenLabel(due(DateTime(2026, 11, 7)), now: lateNight), 'اليوم');
     expect(taskWhenLabel(due(DateTime(2026, 11, 8)), now: lateNight), 'بكرة');

@@ -149,7 +149,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       );
     } on Object {
       if (mounted) {
-        AarastToast.showError(context, 'ما انحفظ جوابك، جرّب مرة ثانية');
+        AarastToast.showError(
+          context,
+          context.say(
+            'ما انحفظ جوابك، جرّب مرة ثانية',
+            'ما انحفظ جوابك، جرّبي مرة ثانية',
+          ),
+        );
       }
       return;
     }
@@ -157,7 +163,9 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     AarastToast.showSuccess(
       context,
       choice == 'LATER'
-          ? 'بنذكّرك فيها بعد أسبوع'
+          // The item hides a week and is suggested here again; no notice
+          // is sent (RA-MO-63: «بنذكّرك» promised one).
+          ? 'تمام، تطلع لك هنا مرة ثانية بعد أسبوع'
           : context.say(
               'تمام، ترجع لها من بنود المال لو احتجتها',
               'تمام، ترجعين لها من بنود المال لو احتجتيها',

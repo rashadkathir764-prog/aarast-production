@@ -11,6 +11,7 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/arabic_for.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -27,6 +28,7 @@ import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../utils/task_groups.dart';
+import '../utils/task_people.dart';
 import '../widgets/task_group_title.dart';
 import '../widgets/task_postpone.dart';
 import '../widgets/task_row.dart';
@@ -102,7 +104,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
-    final members = _membersForPlan(
+    final members = planMembers(
       context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
@@ -110,11 +112,11 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     final user = context.watch<AuthController?>()?.user;
     final userId = user?.id;
     final selfName = user?.name.trim() ?? '';
-    final selfLetter = selfName.isEmpty ? 'أ' : selfName.characters.first;
+    final selfLetter = nameLetter(selfName, empty: 'أ');
     final today = appNow();
     final tasks = provider.tasks
         .where((task) => task.weddingPlanId == widget.weddingPlanId)
-        .map((task) => _hydrateTaskParticipant(task, members))
+        .map((task) => withMemberNamed(task, members))
         .toList();
     // The members were asked for and did not arrive, while a task here is
     // given to one of them and so reads «عضو مشارك» (RA-MO-15: the note
@@ -391,7 +393,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     String person,
     String selfLetter,
   ) {
-    final open = !task.isDone && task.status != 'CANCELLED';
+    final open = task.isOpen;
     final row = TaskRow(
       key: ValueKey('task-row-${task.id}'),
       task: task,

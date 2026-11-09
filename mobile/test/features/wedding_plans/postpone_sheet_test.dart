@@ -36,6 +36,8 @@ class _Tasks extends TaskTimelineApi {
     _task('t1', due: DateTime(2027, 1, 1)),
     _task('t2', due: DateTime(2027, 1, 10)),
     _task('t3', due: DateTime(2026, 12, 1), status: 'DONE'),
+    // RA-MO-58: a cancelled task stays where it is, as on the server.
+    _task('t5', due: DateTime(2026, 12, 20), status: 'CANCELLED'),
     _task('t4'),
   ];
 }

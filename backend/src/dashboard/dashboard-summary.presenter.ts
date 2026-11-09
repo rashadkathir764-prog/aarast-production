@@ -289,7 +289,8 @@ export function buildImportantItems({
         brideGuests
           ? say("أضف أول ضيفة", "أضيفي أول ضيفة")
           : say("أضف أول ضيف", "أضيفي أول ضيف"),
-        `/wedding-plans/${weddingPlanId}/guests`,
+        // RA-MO-63: «أضف أول ضيف» opens the adding, not the empty list.
+        `/wedding-plans/${weddingPlanId}/guests/add`,
       ),
     );
   }

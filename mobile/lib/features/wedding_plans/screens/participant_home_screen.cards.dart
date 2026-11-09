@@ -147,7 +147,8 @@ class _CountHero extends StatelessWidget {
       line = 'الموعد لسا ما ثبت';
       figure = null;
     } else if (count > 2) {
-      line = 'يوم على العرس';
+      // «7 أيام», «11 يوم» (RA-MO-63: «7 يوم»).
+      line = '${count <= 10 ? 'أيام' : 'يوم'} على العرس';
       figure = '$count';
     } else if (count == 2) {
       line = 'يومين على العرس';

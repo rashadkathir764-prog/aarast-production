@@ -220,7 +220,7 @@ test('dashboard setup actions and provider preview keep current product wording'
   );
   assert.equal(setupItems[0].routeTarget, '/wedding-plans/plan-1/plan-center');
   assert.equal(setupItems[1].routeTarget, '/wedding-plans/plan-1/money/budget');
-  assert.equal(setupItems[2].routeTarget, '/wedding-plans/plan-1/guests');
+  assert.equal(setupItems[2].routeTarget, '/wedding-plans/plan-1/guests/add');
 
   const providerItems = dashboardPresenter.buildImportantItems({
     weddingPlanId: 'plan-1',

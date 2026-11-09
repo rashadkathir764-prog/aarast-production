@@ -149,25 +149,28 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   GuestInviteCard _preview(BuildContext context, PlanEvent? wedding) {
     final summary = context.watch<DashboardSummaryProvider?>()?.summary;
     final mine = summary?.planId == widget.weddingPlanId ? summary : null;
-    if (!_placeFilled && (wedding != null || mine != null)) {
-      final saved = wedding?.placeLabel?.trim() ?? '';
-      final label = saved.isNotEmpty
-          ? saved
-          : mine?.location?['fullLabel']?.toString().trim() ??
-                mine?.location?['address']?.toString().trim() ??
-                mine?.city?.trim() ??
-                '';
-      if (wedding != null || label.isNotEmpty) {
-        _placeFilled = true;
-        _place.text = label;
+    // The venue field is the wedding's own venue, filled once the wedding is
+    // read; the plan's place only stands in on the card while it is empty
+    // (RA-MO-62: the field took the city when the wedding had no venue, or
+    // before the events arrived, and saving wrote it over the hall).
+    if (!_placeFilled && wedding != null) {
+      _placeFilled = true;
+      if (_place.text.trim().isEmpty) {
+        _place.text = wedding.placeLabel?.trim() ?? '';
       }
     }
+    final typed = _place.text.trim();
+    final standIn =
+        mine?.location?['fullLabel']?.toString().trim() ??
+        mine?.location?['address']?.toString().trim() ??
+        mine?.city?.trim() ??
+        '';
     return GuestInviteCard(
       title: mine?.title.trim().isNotEmpty == true ? mine!.title : 'زفافنا',
       host: _host.text,
       weddingDate: mine?.weddingDate,
       timeLabel: wedding?.timeLabel,
-      place: _place.text,
+      place: typed.isNotEmpty ? typed : standIn,
       freeText: _freeText.text,
       photoUrl: _photoUrl,
       mapUrl: _mapUrl.text,
@@ -433,7 +436,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(
         key: const ValueKey('invite-free-text'),
-        label: 'كلمة أو بيت شعر (لو تبي)',
+        label: say('كلمة أو بيت شعر (لو تبي)', 'كلمة أو بيت شعر (لو تبين)'),
         hint: 'مثلًا: يا مرحبا بالحاضرين',
         controller: _freeText,
         icon: LucideIcons.feather,

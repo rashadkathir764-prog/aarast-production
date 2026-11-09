@@ -174,7 +174,10 @@ test("sensitive user text is omitted from history without rejecting the task mut
     operation(prisma);
   const service = tasksService(
     prisma,
-    { assertTaskManageableInTransaction: async () => context } as any,
+    {
+      assertTaskManageableInTransaction: async () => context,
+      canViewMoney: () => true,
+    } as any,
     { notifyTaskDue: async () => undefined } as any,
     {
       recordForContextInTransaction: async (

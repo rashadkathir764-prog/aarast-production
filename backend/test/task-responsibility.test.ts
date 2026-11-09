@@ -57,6 +57,8 @@ test("account task creation persists optional manual responsibility", async () =
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
   const permissions = {
+    // Saving answers with the money links only to who sees the money (RA-BE-119).
+    canViewMoney: () => true,
     assertTaskManageableInTransaction: async () => ({ plan: { persona: null } }),
   };
   const service = tasksService(
@@ -101,6 +103,8 @@ test("assigning a plan participant clears manual responsibility", async () => {
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
   const permissions = {
+    // Saving answers with the money links only to who sees the money (RA-BE-119).
+    canViewMoney: () => true,
     assertTaskManageableInTransaction: async () => ({
       plan: { ownerUserId: "user-1" },
       isOwner: true,
@@ -159,6 +163,8 @@ test("assigning a notification-enabled contributor creates one durable task noti
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
   const permissions = {
+    // Saving answers with the money links only to who sees the money (RA-BE-119).
+    canViewMoney: () => true,
     assertTaskManageableInTransaction: async () => ({
       plan: { ownerUserId: "owner-1" },
       isOwner: true,
@@ -232,6 +238,8 @@ test("reassigning the same contributor does not duplicate the task notification"
   const service = tasksService(
     prisma as any,
     {
+      // Saving answers with the money links only to who sees the money (RA-BE-119).
+      canViewMoney: () => true,
       assertTaskManageableInTransaction: async () => ({
         plan: { ownerUserId: "owner-1" },
         isOwner: true,

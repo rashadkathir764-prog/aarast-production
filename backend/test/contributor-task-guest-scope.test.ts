@@ -495,6 +495,8 @@ test("owner assignment records ASSIGNED for the target contributor in the same t
   const service = tasksService(
     prisma,
     {
+      // Saving answers with the money links only to who sees the money (RA-BE-119).
+      canViewMoney: () => true,
       assertTaskManageableInTransaction: async () => ownerContext,
     },
     {

@@ -1,0 +1,848 @@
+<title>تبويب المال في اعّرست</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: a journey read top to bottom in seven chapters. Each chapter opens with the qamariya lit up to
+   its stage, then its screens run in one row you swipe sideways, in the order the user meets them. */
+:root{
+  --bg:#EDF0EE; --fg:#13211F; --muted:#55625E; --rule:#D5DCD9; --note:#FFFFFF; --mark:#0B6E69; --markSoft:#DCEFEC; --gold:#F2A93B; --dim:#C9D1CE;
+  --canvas:#F2F4F3; --paper:#FFFFFF; --quiet:#F7F8F8; --ink:#13211F; --text2:#55625E; --faint:#8A9592;
+  --line:#E2E7E5; --lineS:#C9D1CE; --acc:#0B6E69; --accDark:#064B47; --accSoft:#DCEFEC;
+  --saf:#F2A93B; --safText:#9A5F0E; --safSoft:#FCEFD8; --mint:#25774F; --mintSoft:#DDF0E5;
+  --danger:#B8432A; --dangerSoft:#F8E1DB; --lilac:#6A4FA3; --night:#041F1E;
+  --font:'Tajawal','Noto Sans Arabic','Segoe UI',Tahoma,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#101715; --fg:#E8EEEC; --muted:#A3B0AC; --rule:#2A3532; --note:#1A2321; --mark:#5CC2BB; --markSoft:#16312F; --dim:#35423F; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#101715; --fg:#E8EEEC; --muted:#A3B0AC; --rule:#2A3532; --note:#1A2321; --mark:#5CC2BB; --markSoft:#16312F; --dim:#35423F; color-scheme:dark }
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.7}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.page{direction:rtl}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.intro{padding-block:40px 24px}
+.kicker{font-size:13px;font-weight:700;color:var(--mark);letter-spacing:.02em}
+h1{font-size:clamp(30px,6vw,46px);font-weight:800;line-height:1.2;margin:4px 0 12px;text-wrap:balance}
+.lede{color:var(--muted);max-width:60ch;margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:20px;font-size:14px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 10px;background:var(--note);color:var(--muted);border:1px solid var(--rule);white-space:nowrap}
+.tag.new{background:var(--mark);color:var(--bg);border-color:transparent}
+.tag.built{background:var(--markSoft);color:var(--mark);border-color:transparent}
+/* chapter rail */
+.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--rule)}
+.rail .wrap{display:flex;align-items:center;gap:12px;padding-block:8px}
+.rail svg{width:44px;height:23px;flex:none}
+.rail nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.rail nav::-webkit-scrollbar{display:none}
+.rail a{flex:none;font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:999px;white-space:nowrap}
+.rail a.on{background:var(--mark);color:var(--bg)}
+.rail a:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+/* a chapter */
+.ch{padding-block:48px 8px;scroll-margin-top:64px}
+.chh{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.chh svg{width:132px;height:68px;flex:none}
+.chh .t{flex:1;min-width:min(100%,260px)}
+.chh .when{font-size:13px;font-weight:700;color:var(--mark)}
+h2{font-size:28px;font-weight:800;line-height:1.25;margin:0}
+.chh p{margin:4px 0 0;color:var(--muted);max-width:58ch}
+.flow{display:flex;gap:28px;overflow-x:auto;padding:28px 0 20px;scroll-snap-type:x proximity;align-items:flex-start;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scroll-padding-inline:16px}
+.flow > figure{flex:none;width:360px;max-width:86vw;margin:0;scroll-snap-align:start;display:flex;flex-direction:column;gap:12px}
+.flow > figure.mini{width:190px}
+@media (min-width:1212px){ .flow{padding-left:calc((100vw - 1180px)/2 + 16px);padding-right:calc((100vw - 1180px)/2 + 16px)} }
+figcaption{display:block}
+figcaption .n{font-size:12px;font-weight:800;color:var(--mark);margin-inline-end:6px;font-variant-numeric:tabular-nums}
+figcaption b{font-weight:800;font-size:16px}
+figcaption span.d{color:var(--muted);font-size:14px;line-height:1.6;display:block;margin-top:2px}
+figcaption span.from{font-size:13px;color:var(--mark);font-weight:700;display:block;margin-top:4px}
+.fin{padding-block:48px 72px}
+.fin h2{margin-bottom:12px}
+.open{display:grid;gap:10px;max-width:64ch;padding:0;margin:0;list-style:none}
+.open li{background:var(--note);border:1px solid var(--rule);border-radius:14px;padding:12px 16px;font-size:15px}
+.open b{font-weight:800}
+/* ---------- the phone: the app's own measures (D74) ----------
+   type: 52 homeCount · 28 headline · 21 display · 19 figure · 16.5 title · 14.5 body · 13.5 bodySmall · 12.5 small · 11.5 caption · 11 tab
+   space: grid of 4 · gutter 16 · card padding 16 · gap 12     radius: 24 feature · 18 card · 14 surface · 12 control
+   weights: 400 and 700 only · line height 1.35 · touch 48 */
+.ph{direction:rtl;width:360px;max-width:100%;background:var(--canvas);color:var(--ink);border-radius:28px;border:1px solid var(--rule);overflow:hidden;display:flex;flex-direction:column;min-height:700px;font-size:14.5px;line-height:1.35;font-weight:400}
+.ph b,.ph strong,.ph h4{font-weight:700}
+.ph.bride{--acc:#B4536A;--accDark:#6E2A3E;--accSoft:#F8E4EA}
+.ph.old{min-height:0}.ph.old img{display:block;width:100%}
+.ph svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.scr{padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
+/* header, as the app has it */
+.hdr{display:flex;align-items:center;gap:8px}
+.hdr .who{flex:1;min-width:0}
+.hdr strong{display:block;font-size:21px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr small{display:block;font-size:12.5px;color:var(--text2)}
+.rb{width:48px;height:48px;border-radius:50%;background:var(--paper);display:grid;place-items:center;position:relative}
+.rb i{position:absolute;top:12px;inset-inline-start:13px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+.av{width:48px;height:48px;border-radius:50%;background:var(--saf);display:grid;place-items:center;font-weight:700;color:#3d2a05}
+/* the countdown card: same card, same height, the qamariya in place of the five dashes */
+.hero{position:relative;border-radius:24px;padding:16px;color:#fff;background:linear-gradient(135deg,var(--acc),var(--accDark));display:flex;flex-direction:column;gap:12px}
+.hero .r1{display:flex;align-items:center;gap:8px}
+.hero .num{font-size:52px;font-weight:700;line-height:.95;font-variant-numeric:tabular-nums}
+.hero .tx{flex:1;min-width:0}
+.hero .lbl{font-size:16.5px;font-weight:700}
+.hero .date{font-size:13.5px;opacity:.85}
+.hero .r2{padding-inline-end:76px;min-height:24px}
+.hero .qam{position:absolute;inset-inline-end:16px;bottom:16px;width:68px}
+.hero .qam.inl{position:static;width:92px;flex:none}
+.hero .qam svg{display:block;width:100%;height:auto}
+.hero .r2{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.hero .cur{background:var(--saf);color:#3d2a05;font-weight:700;border-radius:999px;padding:4px 12px;font-size:11.5px;white-space:nowrap}
+.hero .nxt{opacity:.85}
+.hero.sky{background:
+  radial-gradient(circle at 14% 22%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 30% 14%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  radial-gradient(circle at 46% 22%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 62% 14%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  radial-gradient(circle at 78% 22%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 92% 14%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  linear-gradient(180deg,var(--night),var(--accDark));padding-top:40px}
+.card{background:var(--paper);border-radius:18px;padding:16px}
+.eyebrow{font-size:12.5px;font-weight:700;color:var(--acc);display:flex;align-items:center;gap:4px}
+.eyebrow.saf{color:var(--safText)}.eyebrow.red{color:var(--danger)}.eyebrow.mut{color:var(--text2)}
+.eyebrow .end{margin-inline-start:auto;display:flex;align-items:center;gap:4px;color:var(--acc)}
+.eyebrow svg.i{width:16px;height:16px}
+/* the next step: one row, one button */
+.act{display:flex;gap:12px;align-items:center}
+.due{width:48px;height:48px;border-radius:12px;background:var(--safSoft);color:var(--safText);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;flex:none}
+.due b{font-size:19px;font-variant-numeric:tabular-nums}.due small{font-size:11px;font-weight:700;margin-top:2px}
+.due.red{background:var(--dangerSoft);color:var(--danger)}.due.acc{background:var(--accSoft);color:var(--acc)}
+.act .tx{flex:1;min-width:0}
+.act h4{margin:2px 0;font-size:16.5px;line-height:1.3}
+.act p{margin:0;color:var(--text2);font-size:12.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:14px;background:var(--acc);color:#fff;font-weight:700;font-size:16px;padding:0 20px;margin-top:12px;align-self:flex-start}
+.btn.wide{display:flex;align-self:stretch}.btn.inv{background:#fff;color:var(--accDark)}
+/* money */
+.mrow{display:flex;align-items:flex-end;gap:12px;margin-top:4px}
+.mrow .big{font-size:28px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;flex:1;white-space:nowrap}
+.mrow .side{font-size:12.5px;color:var(--text2);text-align:end;padding-bottom:4px}
+.mrow .side b{display:block;color:var(--mint)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;margin-top:8px}
+.chip svg.i{width:14px;height:14px;stroke-width:2.6}
+.chip.ok{background:var(--mintSoft);color:var(--mint)}.chip.bad{background:var(--dangerSoft);color:var(--danger)}.chip.unk{background:var(--quiet);color:var(--text2);font-weight:400}.chip.saf{background:var(--safSoft);color:var(--safText)}
+.split{display:flex;gap:4px;margin-top:12px}
+.split div{min-width:0}
+.split i{display:block;height:6px;border-radius:3px;background:var(--accSoft)}
+.split .now i{background:var(--acc)}.split .red i{background:var(--danger)}
+.mos{display:flex;margin-top:4px}
+.mos span{flex:1;font-size:11.5px;color:var(--text2);white-space:nowrap;text-align:center}
+.mos span:first-child{text-align:start}.mos span:last-child{text-align:end}
+.mos b{color:var(--ink);font-variant-numeric:tabular-nums}.mos .red b{color:var(--danger)}
+/* three small arches */
+.three{display:flex}
+.g{flex:1;text-align:center;min-width:0;padding:0 4px}
+.g + .g{border-inline-start:1px solid var(--line)}
+.g .nm{font-size:12.5px;font-weight:700;color:var(--acc);display:flex;justify-content:center;align-items:center;gap:4px;margin-bottom:8px}
+.g .nm svg.i{width:16px;height:16px}
+.g .arc{position:relative;width:64px;margin:0 auto}
+.g svg.a{display:block;width:100%;height:auto}
+.g .arc b{position:absolute;inset:auto 0 -2px 0;font-size:19px;line-height:1;font-variant-numeric:tabular-nums}
+.g .of{font-size:12.5px;color:var(--text2);margin-top:4px}
+.g .nt{font-size:11.5px;font-weight:700;min-height:16px}
+.g .nt.red{color:var(--danger)}.g .nt.saf{color:var(--safText)}.g .nt.acc{color:var(--acc)}
+/* a plain row, 60 high as the app's */
+.rowc{padding:0 16px}
+.li{display:flex;align-items:center;gap:12px;min-height:60px}
+.li + .li{border-top:1px solid var(--line)}
+.li .ic{width:40px;height:40px;border-radius:12px;background:var(--accSoft);color:var(--acc);display:grid;place-items:center;flex:none}
+.li .ic.saf{background:var(--safSoft);color:var(--safText)}.li .ic.lil{background:#ECE6F6;color:var(--lilac)}
+.li .t{flex:1;min-width:0;font-weight:700;font-size:14.5px}
+.li .t small{display:block;font-weight:400;color:var(--text2);font-size:12.5px}
+.li .chev{color:var(--faint)}.li .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* first steps */
+.step{display:flex;gap:12px;align-items:center;min-height:48px;position:relative}
+.step:not(:last-of-type)::before{content:"";position:absolute;inset-inline-start:11px;top:36px;height:24px;width:2px;background:var(--line)}
+.step .no{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--text2);flex:none;background:var(--paper);position:relative}
+.step.on .no{border-color:var(--acc);background:var(--acc);color:#fff}
+.step.ok .no{border-color:var(--mint);background:var(--mint);color:#fff}.step.ok .no svg.i{width:14px;height:14px;stroke-width:3}
+.step b{display:block;font-size:14.5px}.step small{color:var(--text2);font-size:12.5px;display:block}
+.step.ok b{color:var(--faint);font-weight:400}
+.calm{font-size:12.5px;color:var(--text2);margin-top:8px}
+/* notices */
+.ban{display:flex;align-items:center;gap:8px;border-radius:14px;padding:8px 12px;font-size:12.5px;min-height:48px;background:var(--paper);color:var(--text2)}
+.ban .go{margin-inline-start:auto;font-weight:700;white-space:nowrap}
+.ban.red{background:var(--dangerSoft);color:var(--danger)}.ban.saf{background:var(--safSoft);color:var(--safText)}
+.lockline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);padding:0 4px}
+.lockline b{color:var(--ink)}
+/* programme */
+.ev{display:flex;gap:12px;align-items:center;min-height:60px}
+.ev + .ev{border-top:1px solid var(--line)}
+.day{width:48px;height:48px;border-radius:12px;background:var(--accSoft);color:var(--acc);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;line-height:1.15;flex:none;font-size:16.5px}
+.day small{font-size:11px}.day.on{background:var(--acc);color:#fff}
+.ev .t{flex:1}.ev .t b{display:block;font-size:14.5px}.ev .t small{color:var(--text2);font-size:12.5px}
+.ev.past{opacity:.45}.ev .hr{width:68px;font-size:12.5px;color:var(--text2);flex:none}
+.ev.now .hr{color:var(--acc);font-weight:700}.ev .chip{margin:0}
+/* loading and error */
+.sk{background:#E1E6E4;border-radius:12px}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 16px;gap:4px}
+.center .ring{width:64px;height:64px;border-radius:50%;background:var(--safSoft);color:var(--safText);display:grid;place-items:center;margin-bottom:12px}
+.center .ring svg.i{width:24px;height:24px}
+.center h4{margin:0;font-size:19px}.center p{margin:0;color:var(--text2);max-width:28ch}
+.center .btn{align-self:center;margin-top:16px}.center a{color:var(--acc);font-weight:700;margin-top:12px;font-size:13.5px;min-height:48px;display:grid;place-items:center}
+/* tab bar, as it is */
+.tabs{margin:0 12px 12px;background:var(--paper);border-radius:20px;border:1px solid var(--line);display:flex;padding:4px;gap:2px}
+.tabs div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:11px;color:var(--text2);min-height:48px;border-radius:16px}
+.tabs div.on{flex:1.7;flex-direction:row;gap:6px;background:var(--acc);color:#fff;font-weight:700;font-size:13.5px}
+.ph{position:relative}
+/* the next step, one row: when, what, and its button at the row's end */
+.ns{display:flex;align-items:center;gap:12px;padding:12px}
+.ns .tx{flex:1;min-width:0}
+.ns .eb{font-size:11.5px;font-weight:700;color:var(--acc)}
+.ns .eb.saf{color:var(--safText)}.ns .eb.red{color:var(--danger)}
+.ns h4{margin:0;font-size:16.5px;line-height:1.3}
+.ns p{margin:0;color:var(--text2);font-size:12.5px}.ns p b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ns .btn{margin:0;padding:0 16px;font-size:14.5px;align-self:center;white-space:nowrap}
+/* the two tools float over the page's end, where the thumb is */
+.dock{position:absolute;inset-inline:16px;bottom:76px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:48px;border-radius:999px;padding:0 16px;font-weight:700;font-size:14.5px;box-shadow:0 4px 14px rgba(10,40,36,.16)}
+.pill.ask{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.pill.ask svg.i{color:var(--acc);width:18px;height:18px}
+.pill.add{background:var(--acc);color:#fff}
+.scr.docked{padding-bottom:72px}
+.askbar{display:flex;align-items:center;gap:8px;min-height:48px;border-radius:999px;padding:0 16px;background:var(--paper);border:1px solid var(--line);color:var(--faint);font-size:14.5px}
+.askbar svg.i{color:var(--acc);width:18px;height:18px}
+.ph.cut{min-height:0}
+/* ---------- the other tabs, in the home's own language ---------- */
+.ph.mini{min-height:0;border-radius:18px}.ph.mini img,.ph.shot img{display:block;width:100%}
+.ph.shot{min-height:0}
+.th{display:flex;align-items:center;gap:8px;min-height:48px}
+.th .who{flex:1;min-width:0}
+.th strong{display:block;font-size:24px;line-height:1.2}
+.th small{display:block;font-size:13px;color:var(--text2)}
+.th small.lk{color:var(--acc);font-weight:700}
+.sh{display:flex;align-items:center;gap:12px;min-height:48px}
+.sh .who{flex:1;min-width:0}
+.sh strong{display:block;font-size:18px;line-height:1.25}
+.sh small{display:block;font-size:13px;color:var(--text2)}
+.hbtn{display:inline-flex;align-items:center;gap:6px;min-height:48px;padding:0 14px;border-radius:999px;background:var(--paper);font-weight:700;font-size:13.5px;position:relative}
+.hbtn svg.i{width:18px;height:18px}
+.hbtn i{position:absolute;top:10px;inset-inline-start:12px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+.seg{display:flex;background:var(--paper);border-radius:14px;padding:4px;gap:4px}
+.seg div{flex:1;min-height:40px;display:grid;place-items:center;border-radius:12px;font-size:13.5px;font-weight:700;color:var(--text2)}
+.seg div.on{background:var(--acc);color:#fff}
+.chips{display:flex;gap:8px;overflow:hidden}
+.c2{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:13.5px;font-weight:700;white-space:nowrap}
+.c2.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.c2 svg.i{width:16px;height:16px}
+.sect{display:flex;align-items:baseline;gap:8px;font-size:16px;font-weight:700;padding:4px 4px 0}
+.sect small{font-weight:400;color:var(--text2);font-size:13px}
+.sect.red{color:var(--danger)}
+.sect .lk{margin-inline-start:auto;color:var(--acc);font-size:13.5px}
+.list{padding:0 16px}
+.tk{display:flex;align-items:flex-start;gap:12px;padding:12px 0}
+.tk + .tk{border-top:1px solid var(--line)}
+.ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--lineS);flex:none;margin-top:1px}
+.ck.red{border-color:var(--danger)}
+.ck.ok{background:var(--mint);border-color:var(--mint);color:#fff;display:grid;place-items:center}.ck.ok svg.i{width:14px;height:14px;stroke-width:3}
+.tk .t{flex:1;min-width:0}
+.tk .t b{display:block;font-size:14.5px}
+.tk .t small{display:block;font-size:12.5px;color:var(--text2)}
+.tk .t small.red{color:var(--danger)}
+.lnk{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--accSoft);border-radius:999px;padding:4px 10px}
+.lnk svg.i{width:14px;height:14px}
+.lnk.saf{background:var(--safSoft);color:var(--safText)}
+.ava{width:28px;height:28px;border-radius:50%;background:var(--accSoft);color:var(--acc);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.ava.lg{width:40px;height:40px;font-size:14.5px}
+.tbtn{color:var(--acc);font-weight:700;font-size:13.5px;white-space:nowrap}
+.more{display:flex;justify-content:center;align-items:center;min-height:48px;color:var(--acc);font-weight:700;font-size:13.5px;border-top:1px solid var(--line)}
+.sum{display:flex;align-items:center;gap:16px}
+.sum .arc{position:relative;width:84px;flex:none}
+.sum .arc svg{display:block;width:100%}
+.sum .arc b{position:absolute;inset:auto 0 -2px 0;text-align:center;font-size:24px;line-height:1;font-variant-numeric:tabular-nums}
+.sum .tx{flex:1;min-width:0}
+.sum .tx b{display:block;font-size:16.5px}
+.sum .tx small{font-size:12.5px;color:var(--text2);display:block}
+.stat3{display:flex;margin-top:12px}
+.stat3 div{flex:1;min-width:0}
+.stat3 b{display:block;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat3 small{font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.stat3 small::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.bar3{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden}
+.bar3 i{display:block}
+.mb{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}.mb i{display:block;height:100%;background:var(--acc)}
+.st{display:inline-flex;align-items:center;border-radius:999px;padding:4px 12px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.st.ok{background:var(--mintSoft);color:var(--mint)}.st.wait{background:var(--safSoft);color:var(--safText)}.st.no{background:var(--quiet);color:var(--text2)}.st.red{background:var(--dangerSoft);color:var(--danger)}.st.acc{background:var(--accSoft);color:var(--acc)}
+/* providers */
+.search{display:flex;align-items:center;gap:8px;min-height:48px;border-radius:999px;padding:0 16px;background:var(--paper);border:1px solid var(--line);color:var(--faint);font-size:14.5px}
+.search svg.i{width:18px;height:18px;color:var(--text2)}
+.pv{display:flex;gap:12px;padding:12px;align-items:stretch}
+.pic{width:76px;height:76px;border-radius:12px;flex:none;position:relative;overflow:hidden;display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:24px;font-weight:700}
+.pic.a{background:radial-gradient(circle at 30% 25%,rgba(242,169,59,.9) 0 3px,transparent 4px),radial-gradient(circle at 62% 18%,rgba(255,236,190,.9) 0 2px,transparent 3px),radial-gradient(circle at 80% 34%,rgba(242,169,59,.8) 0 2px,transparent 3px),linear-gradient(160deg,#0B4F4B,#0F2F2D)}
+.pic.b{background:linear-gradient(135deg,#C98B5E,#7B4A2D 60%,#3A2418)}
+.pic.c{background:linear-gradient(135deg,#6A4FA3,#2F2450)}
+.pic.d{background:linear-gradient(135deg,#B8862F,#6B4A12)}
+.pic.e{background:var(--accSoft);color:var(--acc)}
+.pv .tx{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.pv .nm{display:flex;align-items:center;gap:4px;font-size:16.5px;font-weight:700}
+.pv .nm svg.i{width:16px;height:16px;color:var(--acc)}
+.pv small{font-size:12.5px;color:var(--text2)}
+.pv .pr{font-size:14.5px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
+.pv .pr small{font-weight:400}
+.rate{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700}
+.rate svg{width:14px;height:14px;fill:var(--saf);stroke:none}
+.pv .hrt{color:var(--faint);align-self:flex-start;width:32px;height:32px;display:grid;place-items:center}
+.pv .hrt.on{color:#B4536A}.pv .hrt.on svg{fill:#B4536A}
+.cover{height:176px;position:relative;margin:-12px -16px 0;color:#fff}
+.cover .rb{position:absolute;top:12px;background:rgba(255,255,255,.92);color:var(--ink)}
+.cover .cnt{position:absolute;bottom:12px;inset-inline-start:16px;background:rgba(0,0,0,.45);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700}
+.h21{font-size:21px;font-weight:700;display:flex;align-items:center;gap:6px;line-height:1.25}
+.h21 svg.i{color:var(--acc)}
+.meta{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pin{padding:8px 16px 12px;background:var(--canvas);border-top:1px solid var(--line)}
+.pin .btn{margin:0}
+.pin small{display:block;text-align:center;font-size:12.5px;color:var(--text2);margin-top:8px}
+.kv{display:flex;align-items:center;gap:12px;min-height:48px}
+.kv + .kv{border-top:1px solid var(--line)}
+.kv svg.i{color:var(--acc)}
+.kv .k{font-size:13px;color:var(--text2);width:64px;flex:none}
+.kv .v{flex:1;font-size:14.5px;font-weight:700}
+.kv .e{color:var(--faint)}.kv .e svg.i{color:var(--faint);width:16px;height:16px}
+.field{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:8px 16px;min-height:56px}
+.field small{display:block;font-size:12px;color:var(--text2)}
+.field div{font-size:16px;color:var(--faint)}
+.tg{display:flex;align-items:center;gap:12px;min-height:60px}
+.tg + .tg{border-top:1px solid var(--line)}
+.tg .t{flex:1}.tg .t b{display:block;font-size:14.5px}.tg .t small{font-size:12.5px;color:var(--text2)}
+.sw{width:44px;height:26px;border-radius:13px;background:var(--lineS);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.on{background:var(--acc)}.sw.on::after{inset-inline-start:21px}
+.cmp{display:flex}
+.cmp > div{flex:1;min-width:0;padding:0 4px;display:flex;flex-direction:column;gap:6px}
+.cmp > div + div{border-inline-start:1px solid var(--line);padding-inline-start:12px;margin-inline-start:8px}
+.cmp .nm{font-size:14.5px;font-weight:700;min-height:2.7em}
+.cmp .pr{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.cmp small{font-size:12.5px;color:var(--text2);display:block}
+.cmp .btn{margin-top:6px;padding:0 8px;align-self:stretch;font-size:14.5px}
+.cmp .btn.ghost{background:var(--accSoft);color:var(--acc)}
+.note{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text2);padding:0 4px}
+.note svg.i{width:16px;height:16px;color:var(--acc);margin-top:1px}
+.moment{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 8px 4px;gap:4px}
+.moment svg{width:150px;height:78px}
+.moment h4{margin:8px 0 0;font-size:21px}.moment p{margin:0;color:var(--text2);font-size:14.5px}
+.stars{display:flex;justify-content:center;gap:8px;padding:8px 0}
+.stars svg{width:36px;height:36px;fill:var(--saf)}.stars svg.off{fill:var(--line)}
+.steps4{display:flex;gap:3px;margin-top:6px}
+.steps4 i{width:18px;height:4px;border-radius:2px;background:var(--line)}
+.steps4 i.on{background:var(--acc)}.steps4 i.ok{background:var(--mint)}
+.li .t .steps4 + small{margin-top:2px}
+.li .btn{margin:0;min-height:40px;padding:0 14px;font-size:13.5px;border-radius:12px;background:var(--accSoft);color:var(--acc)}
+.li .ic.ok{background:var(--mintSoft);color:var(--mint)}
+.way{display:flex;align-items:center;gap:12px;min-height:72px;padding:0 16px}
+/* ---------- the door, the money tab and the detail screens ---------- */
+.scr.night{color:#fff;background:
+  radial-gradient(circle at 12% 9%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 28% 5%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  radial-gradient(circle at 46% 10%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 64% 5%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  radial-gradient(circle at 80% 10%,rgba(242,169,59,.8) 0 1.5px,transparent 2.5px),radial-gradient(circle at 93% 6%,rgba(255,236,190,.85) 0 1.5px,transparent 2.5px),
+  radial-gradient(ellipse at 50% 34%,rgba(242,169,59,.22),transparent 55%),
+  linear-gradient(180deg,var(--night) 0%,#063634 55%,var(--accDark) 100%);padding:24px 16px 20px}
+.brand{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:44px;gap:4px}
+.brand svg{width:200px;height:104px}
+.brand .logo{font-size:34px;font-weight:700;line-height:1.3;margin-top:12px}
+.brand .logo i{color:var(--saf);font-style:normal}
+.brand p{margin:0;font-size:14.5px;opacity:.85}
+.grow{flex:1}
+.gl{display:flex;align-items:center;gap:12px;min-height:60px;border-radius:14px;padding:0 16px;background:rgba(255,255,255,.1)}
+.gl .t{flex:1;font-weight:700;font-size:14.5px}.gl .t small{display:block;font-weight:400;font-size:12.5px;opacity:.8}
+.gl svg.i{opacity:.9}
+.txl{display:grid;place-items:center;min-height:48px;font-weight:700;font-size:14.5px}
+.p3{display:flex;gap:4px;flex:1}
+.p3 i{flex:1;height:4px;border-radius:2px;background:var(--line)}.p3 i.on{background:var(--acc)}
+.qh{display:flex;align-items:center;gap:12px;min-height:48px}
+.q{font-size:25px;font-weight:700;line-height:1.3;margin:8px 0 0}
+.qs{font-size:15.5px;color:var(--text2);margin:0}
+.roles{display:flex;gap:12px}
+.role{flex:1;border-radius:18px;padding:16px;min-height:188px;display:flex;flex-direction:column;gap:4px;background:var(--paper);border:2px solid transparent}
+.role .em{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;margin-bottom:8px}
+.role b{font-size:19px}.role small{font-size:12.5px;color:var(--text2)}
+.role.g{border-color:#BFE0DC}.role.g .em{background:var(--accSoft);color:var(--acc)}.role.g b{color:var(--acc)}
+.role.b{border-color:#F0CBD5}.role.b .em{background:#F8E4EA;color:#B4536A}.role.b b{color:#B4536A}
+.field.v div{color:var(--ink)}
+.field.f{border:2px solid var(--acc);padding:7px 15px}
+.field .amt{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mc{background:var(--paper);border:1px solid var(--line);border-radius:14px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:14.5px}
+.mc small{font-weight:400;font-size:11.5px;color:var(--text2)}
+.mc.on{border:2px solid var(--acc);background:var(--accSoft);color:var(--acc)}
+.wrapc{display:flex;flex-wrap:wrap;gap:8px}
+.hint{font-size:12.5px;color:var(--text2);display:flex;gap:6px;align-items:center}
+.hint svg.i{width:16px;height:16px}
+.hint.ok{color:var(--mint)}
+.ready{border-radius:24px;padding:16px;color:#fff;background:linear-gradient(135deg,var(--acc),var(--accDark));display:flex;flex-direction:column;gap:12px}
+.ready .r1{display:flex;align-items:center;gap:8px}
+.ready .num{font-size:52px;font-weight:700;line-height:.95}
+.ready .q4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ready .q4 div{background:rgba(255,255,255,.12);border-radius:12px;padding:8px 12px;font-size:12.5px}
+.ready .q4 b{display:block;font-size:16.5px}
+.otp{display:flex;gap:8px;justify-content:center;direction:ltr}
+.otp span{width:44px;height:56px;border-radius:12px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font-size:24px;font-weight:700}
+.otp span.f{border:2px solid var(--acc)}
+.fig4{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.fig4 small{display:block;font-size:12.5px;color:var(--text2)}
+.fig4 b{display:block;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.25}
+.cols{display:flex;gap:12px;align-items:flex-end;height:96px;margin-top:8px}
+.cols > div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.cols .a{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cols .stk{width:100%;display:flex;flex-direction:column;gap:2px;border-radius:8px 8px 3px 3px;overflow:hidden}
+.cols .stk i{display:block;background:var(--acc)}.cols .stk i.o{background:#9FD0CB}
+.cols .m{font-size:11.5px;color:var(--text2)}
+.cols .now .m{color:var(--acc);font-weight:700}
+.lgd{display:flex;gap:16px;font-size:11.5px;color:var(--text2);margin-top:8px}
+.lgd span{display:flex;align-items:center;gap:4px}.lgd span::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
+.li .day{width:44px;height:44px;font-size:15.5px}
+.li .day.red{background:var(--dangerSoft);color:var(--danger)}
+.li .v small{display:block;font-weight:400;font-size:11.5px;color:var(--text2);text-align:end}
+.ic.red{background:var(--dangerSoft);color:var(--danger)}
+.amtbox{background:var(--paper);border:2px solid var(--acc);border-radius:18px;padding:12px 16px}
+.amtbox small{font-size:12px;color:var(--text2);display:block}
+.amtbox b{font-size:28px;font-variant-numeric:tabular-nums;line-height:1.3;display:block}
+.stp{display:flex;align-items:center;gap:8px}
+.stp span{width:40px;height:40px;border-radius:50%;background:var(--accSoft);color:var(--acc);display:grid;place-items:center}
+.stp b{min-width:24px;text-align:center;font-size:16.5px}
+.invc{border-radius:18px;padding:20px 16px 16px;text-align:center;color:#fff;background:linear-gradient(180deg,var(--night),var(--accDark));display:flex;flex-direction:column;align-items:center;gap:4px}
+.invc svg{width:96px;height:50px}
+.invc small{font-size:12.5px;opacity:.8}.invc b{font-size:21px}.invc p{margin:4px 0;font-size:13.5px;opacity:.9;line-height:1.6}
+.invc .d{margin-top:8px;border-top:1px solid rgba(255,255,255,.2);padding-top:8px;font-size:13.5px;font-weight:700;align-self:stretch}
+.prof{display:flex;align-items:center;gap:12px}
+.prof .av{width:56px;height:56px;font-size:19px}
+.prof b{display:block;font-size:17px}.prof small{font-size:12.5px;color:var(--text2);direction:ltr;display:block;text-align:end}
+.sub3{display:flex;gap:8px;align-items:center;padding:8px 0 0}
+.un{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none}
+.li.read .t{font-weight:400}.li.read .ic{opacity:.6}
+.ctr{text-align:center}
+/* ---------- the balanced skin: the app's own soft shapes and typeface, kept clean:
+   a hairline on every card, light tints, colour only where it means something ---------- */
+.ph{--canvas:#F4F6F5;--paper:#FFFFFF;--quiet:#F6F7F6;--ink:#13211F;--text2:#58645F;--faint:#8E9895;--line:#E4E8E6;--lineS:#C5CCCA;
+  --acc:#0B6E69;--accDark:#064B47;--accSoft:#E9F3F1;--saf:#F2A93B;--safText:#8F5A0C;--safSoft:#FCF3E2;--mint:#22724B;--mintSoft:#E8F4EC;--danger:#B03E26;--dangerSoft:#FBECE7;--lilac:#6A4FA3}
+.ph b,.ph strong,.ph h4{font-weight:700}
+.ph svg.i{stroke-width:1.8}
+/* surfaces: soft corners, one hairline, no heavy tints */
+.ph .card{border:1px solid var(--line);border-radius:18px}
+.ph .card.ns{padding:12px}
+.ph .card .card.ns{border:0;border-top:1px solid var(--line);border-radius:0;margin-top:12px}
+.ph .rb,.ph .hbtn{border:1px solid var(--line)}
+.ph .av{background:var(--accSoft);color:var(--acc);border:1px solid #CFE3E0}
+.ph .askbar,.ph .search{border-radius:16px}
+/* the countdown: a calm gradient, the card's own shape */
+.ph .hero,.ph .ready{background:linear-gradient(140deg,#0B6E69,#064B47);border-radius:22px}
+.ph .hero.sky{background:linear-gradient(180deg,#04302D,#064B47);padding-top:16px}
+.ph .hero .cur{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:3px 12px;font-weight:700}
+/* the action row */
+.ph .due{border-radius:14px;background:var(--safSoft);color:var(--safText);border:0}
+.ph .due.red{background:var(--dangerSoft);color:var(--danger)}
+.ph .due.acc{background:var(--accSoft);color:var(--acc)}
+.ph .btn{border-radius:14px}
+.ph .eyebrow{color:var(--text2)}
+.ph .eyebrow .end{color:var(--acc)}
+/* figures */
+.ph .chip{border-radius:999px}
+.ph .split i{height:5px;border-radius:3px}
+.ph .g .nm{color:var(--ink)}
+.ph .g .nm svg.i{color:var(--acc)}
+.ph .g svg.a path{stroke-width:5}
+/* rows: a light tint behind the icon, rounded */
+.ph .li .ic{background:var(--accSoft);border:0;border-radius:12px;color:var(--acc)}
+.ph .li .ic.saf{background:var(--safSoft);color:var(--safText)}.ph .li .ic.lil{background:#F0ECF8;color:var(--lilac)}.ph .li .ic.red{background:var(--dangerSoft);color:var(--danger)}.ph .li .ic.ok{background:var(--mintSoft);color:var(--mint)}
+.ph .li .btn{border-radius:12px}
+.ph .ava{background:var(--accSoft);color:var(--acc)}
+.ph .day{border-radius:12px}
+.ph .st{border-radius:999px}
+.ph .lnk{border-radius:999px}
+/* tabs inside a screen: the soft segmented control; filters: rounded, quiet */
+.ph .seg{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:4px}
+.ph .seg div{border-radius:10px}
+.ph .c2{border-radius:999px;min-height:38px;font-size:13px}
+.ph .c2.on{background:var(--acc);border-color:var(--acc)}
+/* the bottom bar: the app's floating bar, lighter */
+.ph .tabs{border-radius:20px;border:1px solid var(--line)}
+.ph .tabs div.on{border-radius:16px}
+.ph .pill{border-radius:16px;box-shadow:0 3px 10px rgba(10,40,36,.14)}
+/* forms */
+.ph .field,.ph .mc,.ph .otp span,.ph .gl{border-radius:14px}
+.ph .amtbox{border-radius:18px;border-width:1.5px}.ph .field.f,.ph .mc.on{border-width:1.5px}
+.ph .role{border-radius:18px;border-width:1px}
+.ph .pin{background:var(--paper)}
+/* providers */
+.ph .pic{border-radius:14px}
+.ph .cover.pic{border-radius:0}
+.ph .pv .pr{color:var(--ink)}
+/* the door and the invitation: a calm night, no scattered lights */
+.ph .scr.night{background:linear-gradient(180deg,#04302D,#064B47)}
+.ph .scr.night .btn.inv{background:#fff;color:#064B47}
+.ph .btn.inv{background:#fff;color:var(--accDark)}
+.ph .invc{background:linear-gradient(180deg,#04302D,#064B47);border-radius:18px}
+.ph .ban{border-radius:14px}
+
+/* sheets and the door's extra states */
+.ph .dim{position:absolute;inset:0;background:rgba(15,26,25,.42);z-index:2}
+.ph .sheet{position:absolute;inset:auto 0 0 0;z-index:3;background:var(--paper);border-radius:24px 24px 0 0;padding:8px 16px 16px;display:flex;flex-direction:column}
+.ph .grab{width:40px;height:4px;border-radius:2px;background:var(--lineS);align-self:center;margin-bottom:12px}
+.ph .sht{font-size:19px}.ph .shs{font-size:13px;color:var(--text2)}
+.ph .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:12px 0 4px;text-align:center}
+.ph .cal small{font-size:11.5px;color:var(--text2);padding-bottom:4px}
+.ph .cal span{height:40px;display:grid;place-items:center;border-radius:50%;font-size:14.5px;font-variant-numeric:tabular-nums}
+.ph .cal span.on{background:var(--acc);color:#fff;font-weight:700}
+.ph .btn.off{background:var(--line);color:var(--faint)}
+.ph .hint.bad{color:var(--danger)}
+.ph .field.err{border:1.5px solid var(--danger)}
+.ph .otp.bad span{border-color:var(--danger);background:var(--dangerSoft);color:var(--danger)}
+.ph .spin{width:56px;height:56px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--acc);margin-bottom:16px}
+
+.ph .scr.night .btn{height:52px;min-height:52px;flex:none}
+
+.ph .bub{max-width:82%;align-self:flex-end;background:var(--paper);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:10px 12px;font-size:14px;line-height:1.6}
+.ph .bub.me{align-self:flex-start;background:var(--acc);color:#fff;border-color:var(--acc);border-radius:16px 16px 4px 16px}
+.ph .bub small{display:block;font-size:11px;opacity:.65;margin-top:2px}
+.ph .scr{position:relative}
+</style>
+<div class="page">
+  <div class="wrap intro">
+    <div class="kicker">اعّرست · الدفعة 1 · <span id="count"></span> شاشات</div>
+    <h1>تبويب المال</h1>
+    <p class="lede">قلب التطبيق. نفس الأرقام والقواعد الموجودة اليوم، بلغة الرئيسية المعتمدة: شي واحد يقود كل تبويب، وإجراء واحد في سطر، وبطاقات بيضاء بحد رفيع. موك اب للنظر قبل التنفيذ، ما دخل منه شي في الكود.</p>
+  </div>
+  <div class="rail" hidden><div class="wrap"><span class="q"></span><nav></nav></div></div>
+  <div id="chapters"></div>
+  <div class="wrap fin">
+    <h2>ايش يقود كل تبويب</h2>
+    <ul class="open">
+      <li><b>الملخص: كم عليّ وهل يكفي؟</b> المتأخرة أولًا بزرها، ثم الرقم وحكمه ومتى تدفع، ثم اللي يحتاج انتباه.</li>
+      <li><b>البنود: وين تروح الفلوس؟</b> الميزانية بشريط واحد، ثم كل بند مرة واحدة: اللي عليه اتفاق بشريطه، واللي بالتقدير مكتوب عليه «تقدير».</li>
+      <li><b>الدفعات: متى أدفع؟</b> الأشهر أعمدة، ثم المتأخر، ثم شهر شهر. السلف لحالها تحت.</li>
+      <li><b>من وين: هل معي ما يكفي؟</b> معك، الموعود، السلف. ثم كل مصدر، ومين ساعد.</li>
+    </ul>
+    <h2 style="margin-top:40px">ثلاثة أسئلة لك</h2>
+    <ul class="open">
+      <li><b>الأزرار فوق:</b> اليوم ثلاث دوائر بلا اسم (عين، مشاركة، إعدادات). هنا زر واحد مكتوب «شارك»، والعين نزلت جنب الرقم مع كلمة «أخفِ». إعدادات المال تروح لـ«حسابي». موافق؟</li>
+      <li><b>بطاقة «عليك من العرس»:</b> اليوم فيروزي مصمت. هنا بيضاء مثل الرئيسية، واللون للزر فقط. أيهم؟</li>
+      <li><b>«سجّل المهر»:</b> اليوم صف لحاله في الملخص. هنا المهر بند في آخر «البنود». لو تبغاه يبقى في الملخص قل لي.</li>
+    </ul>
+  </div>
+</div>
+<script>
+
+const P={bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+wallet:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+tasks:'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+store:'<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9v1a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0V9"/><path d="M5 13v8h14v-8"/><path d="M10 21v-5h4v5"/>',
+home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+chev:'<path d="m15 18-6-6 6-6"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+eye:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/>',
+cloud:'<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/>',
+refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+phone:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>'};
+P.spark='<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/>';P.plus='<path d="M5 12h14"/><path d="M12 5v14"/>';
+const ic=n=>`<svg viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const I=n=>ic(n).replace('<svg','<svg class="i"');
+// The qamariya: a half disc of five panes, read from the right like the text.
+function qam(stage,o={},inl){
+  const cx=60,cy=60,R=58,r=30,gap=3,pt=(rad,a)=>[cx+rad*Math.cos(a*Math.PI/180),cy-rad*Math.sin(a*Math.PI/180)].map(v=>v.toFixed(1)).join(' ');
+  let s='';
+  for(let i=0;i<5;i++){const a=i*36+gap,b=(i+1)*36-gap;
+    const fill=o.all?'#F2A93B':i<stage?'rgba(255,255,255,.92)':i===stage?'#F2A93B':'rgba(255,255,255,.18)';
+    s+=`<path d="M${pt(R,a)} A${R} ${R} 0 0 0 ${pt(R,b)} L${pt(r,b)} A${r} ${r} 0 0 1 ${pt(r,a)}Z" fill="${fill}"/>`;}
+  s+=`<path d="M${pt(22,0)} A22 22 0 0 0 ${pt(22,180)}Z" fill="rgba(255,255,255,.18)"/>`;
+  return `<div class="qam ${inl?'inl':''}"><svg viewBox="0 0 120 62" aria-hidden="true">${s}</svg></div>`;
+}
+const hdr=(hi,plan,o={})=>`<div class="hdr"><div class="who"><strong>${hi}</strong><small>${plan}</small></div><div class="rb">${I('bell')}${o.dot?'<i></i>':''}</div><div class="av">${o.av||'م'}</div></div>`;
+const hero=(n,lbl,date,st,cur,nxt,o={})=>`<div class="hero ${o.cls||''}"><div class="r1">${n?`<div class="num">${n}</div>`:''}<div class="tx"><div class="lbl">${lbl}</div><div class="date">${date}</div></div>${qam(st,o,!(cur||o.extra))}</div>${cur||o.extra?`<div class="r2">${cur?`<span class="cur">${cur}</span>`:''}${nxt?`<span class="nxt">${nxt}</span>`:''}${o.extra||''}</div>`:''}</div>`;
+const due=(b,s,c='')=>`<div class="due ${c}"><b>${b}</b><small>${s}</small></div>`, dueI=(i,c)=>`<div class="due ${c}">${I(i)}</div>`;
+const act=(tone,d,h,p,btn)=>`<div class="card ns">${d}<div class="tx"><div class="eb ${tone}">الخطوة الجاية</div><h4>${h}</h4><p>${p}</p></div><div class="btn">${btn}</div></div>`;
+const dock=(ask='اسأل اعّرست')=>`<div class="dock">${ask?`<span class="pill ask">${I('spark')}${ask}</span>`:'<span></span>'}<span class="pill add">${I('plus')}إضافة</span></div>`;
+const seg=(flex,a,m,c='')=>`<div class="${c}" style="flex:${flex}"><i></i></div>§<span class="${c}">${m} <b>${a}</b></span>¦`;
+const splitHtml=s=>{const ps=s.split('¦').filter(Boolean).map(x=>x.split('§'));return `<div class="split">${ps.map(p=>p[0]).join('')}</div><div class="mos">${ps.map(p=>p[1]).join('')}</div>`};
+const money=(k,big,side,chip,split,o={})=>`<div class="card"><div class="eyebrow">${I('wallet')}${k}<span class="end">${I('eye')}${o.hidden?'أظهر':'أخفِ'}</span></div><div class="mrow"><div class="big">${big}</div>${side?`<div class="side">${side}</div>`:''}</div>${chip}${split?splitHtml(split):''}</div>`;
+const g=(ico,nm,v,of,pct,nt='',ntc='')=>`<div class="g"><div class="nm">${I(ico)}${nm}</div><div class="arc"><svg class="a" viewBox="0 0 64 36"><path d="M59 33 A27 27 0 0 0 5 33" fill="none" stroke="var(--line)" stroke-width="6" stroke-linecap="round"/>${pct!=null?`<path d="M59 33 A27 27 0 0 0 5 33" fill="none" stroke="var(--acc)" stroke-width="6" stroke-linecap="round" pathLength="100" stroke-dasharray="${pct} 100"/>`:''}</svg><b>${v}</b></div><div class="of">${of}</div><div class="nt ${ntc}">${nt}</div></div>`;
+const three=(a,b,c)=>`<div class="card"><div class="three">${a}${b}${c}</div></div>`;
+const row=(ico,t,s,o={})=>`<div class="li"><div class="ic ${o.c||''}">${I(ico)}</div><div class="t">${t}<small>${s}</small></div>${o.v?`<span class="v">${o.v}</span>`:''}<span class="chev">${I('chev')}</span></div>`;
+const team=s=>`<div class="card rowc">${row('users','فريق الخطة',s)}</div>`;
+const tabs=()=>`<div class="tabs"><div class="on">${I('home')}الرئيسية</div><div>${I('wallet')}المال</div><div>${I('tasks')}المهام</div><div>${I('users')}الضيوف</div><div>${I('store')}المزودين</div></div>`;
+const ok=t=>`<div class="chip ok">${I('check')}${t}</div>`, bad=t=>`<div class="chip bad">${I('alert')}${t}</div>`, unk=t=>`<div class="chip unk">${t}</div>`;
+const STEPS=[['حدّد ميزانية تقريبية','رقم تقريبي يكفي'],['أضف أول ضيوفك','من جهات الاتصال بضغطة'],['سجّل أول اتفاق','القاعة أو أي شي اتفقت عليه']];
+const steps=(done,btn)=>`<div class="card" style="display:flex;flex-direction:column"><div class="eyebrow">ابدأ خطتك<span class="end" style="color:var(--text2)">${done} من 3</span></div><div style="margin-top:8px">${STEPS.map((r,i)=>`<div class="step ${i<done?'ok':i==done?'on':''}"><div class="no">${i<done?I('check'):i+1}</div><div><b>${r[0]}</b>${i<done?'':`<small>${r[1]}</small>`}</div></div>`).join('')}</div><div class="btn">${btn}</div><div class="calm">تقدر تغيّر أي شي بعدين.</div></div>`;
+
+const HD=(o={})=>hdr(o.hi||'أهلًا محمد',o.plan||'عرس محمد · صنعاء',o);
+const HE=(o={})=>hero('93','يوم على عرسك','الخميس 21 يناير · 13 شعبان',o.st??1,o.cur||'التجهيز',o.nxt??'ثم الشهر الأخير بعد 63 يوم',o);
+const G3=three(g('tasks','المهام','8','من 20',40,'1 متأخرة','red'),g('users','الضيوف','86','أكدوا من 124',69,'20 ما ردّوا','saf'),g('store','المزودين','1','محجوز من 5',20,'عرضين وصلوك','acc'));
+const SPLIT=seg(5,'500 ألف','أكتوبر','now')+seg(12,'1.2 م','ديسمبر')+seg(13,'1.3 م','يناير');
+const SIDE='<b>دفعت 2.4 مليون</b>من 5.4 مليون';
+const M_OK=money('عليك من العرس','3 مليون ر.ي',SIDE,ok('فلوسك تغطي كل دفعاتك'),SPLIT);
+const A_PAY=act('saf',due('5','أيام'),'دفعة القاعة','<b>500,000 ر.ي</b>','سجّل الدفعة');
+
+const S={
+active:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['الخطة ماشية','الحالة اللي بيشوفها أغلب الوقت.'],h:HD({dot:1})+HE()+A_PAY+M_OK+G3+team('4 مشاركين · دعوتين تنتظر الرد')},
+fresh:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['أول دخول','أول فص مضوّي. بدل أصفار ومربعات فاضية: ثلاث خطوات، والأولى بزرها.'],h:HD()+HE({st:0,cur:'البداية',nxt:'ثم التجهيز'})+steps(0,'حدّد الميزانية')+team('أنت لحالك · ادعُ أهلك يساعدونك')},
+nodate:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['بدون موعد','القمرية مطفية، والبطاقة نفسها تسأل وتطمّن إنه مش إجباري الحين.'],h:HD()+`<div class="hero"><div class="r1"><div class="tx"><div class="lbl" style="font-size:19px">متى العرس؟</div><div class="date">ثبّته ونرتب لك كل شي عليه.</div></div>${qam(-1,{},1)}</div><div class="r2" style="padding:0"><span class="btn inv" style="margin:0">حدّد الموعد</span><span class="nxt">لسا ما تعرف؟ عادي، حدده بعدين.</span></div></div>`+money('عليك من العرس','1.2 مليون ر.ي','<b>دفعت 400,000</b>من 1.6 مليون',unk('بدون موعد ما نقدر نقول تكفي ولا لا'),'')+three(g('tasks','المهام','2','من 20',10),g('users','الضيوف','12','مدعو',null),g('store','المزودين','1','محجوز',null))},
+short:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['الفلوس ما تكفي','الخطوة الجاية هي النقص نفسه. الحكم أحمر وبتاريخه، وقطعة ديسمبر في الشريط تحمرّ.'],h:HD({dot:1})+HE()+act('red',dueI('alert','red'),'ينقصك 300 ألف','يوم 20 ديسمبر','ليش؟')+money('عليك من العرس','3 مليون ر.ي',SIDE,bad('ينقصك 300 ألف يوم 20 ديسمبر'),seg(5,'500 ألف','أكتوبر','now')+seg(12,'1.2 م','ديسمبر','red')+seg(13,'1.3 م','يناير'))+G3},
+hidden:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['المبالغ مخفية','الزر مكتوب عليه «أظهر». الأرقام نقاط، والحكم والشريط يبقون بلا مبالغ.'],h:HD()+HE()+act('saf',due('5','أيام'),'دفعة القاعة','<b>••••</b>','سجّل الدفعة')+money('عليك من العرس','••••','',ok('فلوسك تغطي كل دفعاتك'),seg(5,'','أكتوبر','now')+seg(12,'','ديسمبر')+seg(13,'','يناير'),{hidden:1})+G3},
+bride:{ask:'اسألي اعّرست عن عرسك…',d:dock(''),cls:'bride',cap:['العروسة','نفس الترتيب بلون خطتها وبصيغتها.'],h:HD({hi:'أهلًا سلمى',plan:'عرس سلمى · صنعاء',av:'س'})+HE()+act('saf',due('3','أيام'),'دفعة الكوافير','<b>80,000 ر.ي</b>','سجّلي الدفعة')+money('عليكِ من العرس','650,000 ر.ي','<b>دفعتِ 350,000</b>من 1 مليون',ok('فلوسك تغطي كل دفعاتك'),seg(4,'80 ألف','أكتوبر','now')+seg(9,'220 ألف','ديسمبر')+seg(13,'350 ألف','يناير'))+three(g('tasks','المهام','5','من 14',36),g('users','الضيوف','40','أكدوا من 60',67,'8 ما ردّوا','saf'),g('store','المزودين','2','محجوز من 4',50))},
+helper:{d:dock(''),cap:['مساعد بلا مال','يشوف شغله أولًا. المال ما ينعرض، وسطر القفل يقول مين يفتحه.'],h:HD({hi:'أهلًا صالح',plan:'عرس محمد · أنت مساعد',av:'ص'})+HE()+act('red',dueI('clock','red'),'حجز المصور','مهمتك · متأخرة','افتح المهمة')+G3+`<div class="lockline">${I('lock')}<span><b>المال مقفل.</b> يفتحه لك محمد من «المشاركين».</span></div>`},
+
+week:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['أسبوع العرس','البطاقة تصير ليل وحبل نور، بنصف طولها الحالي، فبرنامج الأسبوع يبان بدون سحب.'],h:HD()+hero('2','يومين على عرسك','الخميس 21 يناير · 13 شعبان',3,'الأسبوع الأخير','الليلة 5 من 7',{cls:'sky'})+act('',dueI('mail','acc'),'5 عروض','وصلتك · قارن بينها','شوف العروض')+`<div class="card" style="padding-block:12px 4px"><div class="eyebrow mut">برنامج الأسبوع<span class="end">تعديل</span></div><div class="ev"><div class="day on"><small>الثلاثاء</small>19</div><div class="t"><b>السمرة</b><small>الديوان · بعد العشاء</small></div><span class="chip saf">الليلة</span></div><div class="ev"><div class="day"><small>الأربعاء</small>20</div><div class="t"><b>المقيل</b><small>بيت الوالد · بعد الظهر</small></div></div><div class="ev"><div class="day"><small>الخميس</small>21</div><div class="t"><b>الغداء ثم الزفاف</b><small>بيت الوالد · قاعة سبأ</small></div></div></div>`},
+day:{cap:['يوم العرس','القمرية كلها مضوّية. لا مال ولا مهام: البرنامج فقط، و«الآن» واضح.'],h:HD({hi:'مبروك يا عريس'})+hero('','اليوم يوم عرسك','الخميس 21 يناير · 13 شعبان',5,'','',{cls:'sky',all:1})+`<div class="card" style="padding-block:12px 4px"><div class="eyebrow mut">برنامج اليوم<span class="end">تعديل</span></div><div class="ev past"><span class="hr">الظهر</span><div class="t"><b>الغداء</b><small>بيت الوالد · أبو علي</small></div></div><div class="ev now"><span class="hr">بعد العصر</span><div class="t"><b>الزفاف</b><small>قاعة سبأ</small></div><span class="chip saf">الآن</span></div><div class="ev"><span class="hr">بعد العشاء</span><div class="t"><b>العشاء</b><small>قاعة سبأ · ضيافة الأصالة</small></div></div></div>`},
+after:{cap:['بعد العرس','اليوم الشاشة شبه فاضية. هنا: الفصوص كلها بيضاء، ثم اللي باقي عليك وسداده الجاي، ومزودينك للتقييم.'],h:HD({hi:'ألف مبروك يا محمد'})+hero('','عرسك كان 21 يناير','الله يتمم لكم بخير.',5,'','')+`<div class="card" style="display:flex;flex-direction:column"><div class="eyebrow">${I('wallet')}باقي عليك من السلف</div><div class="mrow"><div class="big">1 مليون ر.ي</div><div class="side"><b style="color:var(--lilac)">السداد الجاي 250,000</b>ابن العم عادل · 1 مارس</div></div><div class="btn">سجّل السداد</div></div><div class="card rowc">${row('star','قيّم مزودينك','3 ينتظرون تقييمك',{c:'saf'})}</div>`},
+
+loading:{cap:['تحميل','هيكل بنفس ترتيب الشاشة، فما يُقرأ كأنه فاضي.'],h:`<div class="hdr"><div class="who"><div class="sk" style="height:20px;width:120px;margin-bottom:8px"></div><div class="sk" style="height:12px;width:150px"></div></div><div class="sk" style="width:48px;height:48px;border-radius:50%"></div><div class="sk" style="width:48px;height:48px;border-radius:50%"></div></div><div class="sk" style="height:120px;border-radius:24px"></div><div class="card"><div class="sk" style="height:48px;margin-bottom:12px"></div><div class="sk" style="height:48px;width:130px"></div></div><div class="card"><div class="sk" style="height:12px;width:100px;margin-bottom:12px"></div><div class="sk" style="height:28px;width:160px"></div></div><div class="calm" style="text-align:center">نجهز خطتك…</div>`},
+error:{cap:['خطأ','يقول السبب المقاس باليمني، وزر بلون الخطة، وطريق لفحص الاتصال.'],h:`<div class="center"><div class="ring">${I('cloud')}</div><h4>ما قدرنا نفتح خطتك</h4><p>الخادم تأخر في الرد. خطتك محفوظة وما ضاع منها شي.</p><div class="btn">${I('refresh')}حاول مرة ثانية</div><a>فحص الاتصال</a></div>`},
+offline:{d:dock(''),cap:['بدون نت','سطر واحد يقول ايش يشتغل، والشاشة كاملة من نسخة الجوال.'],h:`<div class="ban">${I('cloud')}<span><b style="color:var(--ink)">بدون نت.</b> اللي تسجله ينحفظ على جوالك.</span><span class="go" style="font-weight:400">09:40</span></div>`+HD()+HE()+A_PAY+M_OK},
+blocked:{ask:'اسأل اعّرست عن عرسك…',d:dock(''),cap:['تغيير ما انرسل','أحمر لأنه يحتاج قرار: يقول أي تغيير، وزر يفتحه.'],h:`<div class="ban red">${I('alert')}<span><b>تغيير ما انرسل.</b> ضيف: عبدالله الحمدي</span><span class="go">شوفه</span></div>`+HD({dot:1})+HE()+A_PAY+M_OK},
+device:{d:dock(''),cap:['خطة على الجوال بس','يقول الخطر صراحة ومعه زر الحفظ.'],h:HD()+`<div class="ban saf">${I('phone')}<span><b>خطتك على هذا الجوال بس.</b></span><span class="go">احفظها برقمك</span></div>`+HE({st:0,cur:'البداية',nxt:'ثم التجهيز'})+steps(1,'اختر من جهات الاتصال')}
+};
+const askbar=t=>`<div class="askbar">${I('spark')}${t}</div>`;
+const fig=(k,tag)=>{const s=S[k];const body=s.ask?s.h.replace(/(<div class="av">[^<]*<\/div><\/div>)/,'$1'+askbar(s.ask)):s.h;return `<figure><div class="ph ${s.cls||''}"><div class="scr ${s.d?'docked':''}">${body}</div>${s.d||''}${tabs()}</div><figcaption>${tag?`<span class="tag new">${tag}</span>`:''}<b>${s.cap[0]}</b><span>${s.cap[1]}</span></figcaption></figure>`};
+Object.assign(P,{
+search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/>',
+msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+food:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+hall:'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+pen:'<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+back:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+ver:'<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>',
+clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+uplus:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
+gem:'<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>'});
+
+// the qamariya outside a phone: page colours, or a phone's own
+function qsvg(stage,c={}){const cx=60,cy=60,R=58,r=30,gap=3,pt=(rad,a)=>[cx+rad*Math.cos(a*Math.PI/180),cy-rad*Math.sin(a*Math.PI/180)].map(v=>v.toFixed(1)).join(' ');
+  const done=c.done||'var(--mark)',now=c.now||'var(--gold)',dim=c.dim||'var(--dim)';let s='';
+  for(let i=0;i<5;i++){const a=i*36+gap,b=(i+1)*36-gap;s+=`<path d="M${pt(R,a)} A${R} ${R} 0 0 0 ${pt(R,b)} L${pt(r,b)} A${r} ${r} 0 0 1 ${pt(r,a)}Z" fill="${stage>5?now:i<stage?done:i===stage?now:dim}"/>`;}
+  s+=`<path d="M${pt(22,0)} A22 22 0 0 0 ${pt(22,180)}Z" fill="${dim}"/>`;
+  return `<svg viewBox="0 0 120 62" aria-hidden="true">${s}</svg>`;}
+const star=off=>`<svg viewBox="0 0 24 24" class="${off?'off':''}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+const rate=(v,n)=>`<span class="rate">${star()}${v} <small>(${n})</small></span>`;
+const TABN=[['home','الرئيسية'],['wallet','المال'],['tasks','المهام'],['users','الضيوف'],['store','المزودين']];
+const tabsAt=i=>`<div class="tabs">${TABN.map((t,k)=>`<div class="${k==i?'on':''}">${I(t[0])}${t[1]}</div>`).join('')}</div>`;
+const th=(t,s,end='',lk)=>`<div class="th"><div class="who"><strong>${t}</strong><small class="${lk?'lk':''}">${s}</small></div>${end}</div>`;
+const sh=(t,s,end='')=>`<div class="sh"><div class="rb">${I('back')}</div><div class="who"><strong>${t}</strong><small>${s}</small></div>${end}</div>`;
+const hbtn=(ico,t,dot)=>`<span class="hbtn">${I(ico)}${t}${dot?'<i></i>':''}</span>`;
+const segc=(a,on)=>`<div class="seg">${a.map((t,i)=>`<div class="${i==on?'on':''}">${t}</div>`).join('')}</div>`;
+const chips=a=>`<div class="chips">${a.map(c=>`<span class="c2 ${c[1]?'on':''}">${c[2]?I(c[2]):''}${c[0]}</span>`).join('')}</div>`;
+const sect=(t,n='',lk='',cls='')=>`<div class="sect ${cls}">${t}${n!==''?`<small>${n}</small>`:''}${lk?`<span class="lk">${lk}</span>`:''}</div>`;
+const tk=(ck,title,meta,o={})=>`<div class="tk"><span class="ck ${ck}">${ck=='ok'?I('check'):''}</span><div class="t"><b>${title}</b><small class="${o.red?'red':''}">${meta}</small>${o.lnk?`<span class="lnk ${o.lc||''}">${I(o.li||'wallet')}${o.lnk}</span>`:''}</div>${o.end||''}${o.who?`<span class="ava">${o.who}</span>`:''}</div>`;
+const arcBig=(v,pct)=>`<div class="arc"><svg viewBox="0 0 84 46"><path d="M78 43 A36 36 0 0 0 6 43" fill="none" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/><path d="M78 43 A36 36 0 0 0 6 43" fill="none" stroke="var(--acc)" stroke-width="7" stroke-linecap="round" pathLength="100" stroke-dasharray="${pct} 100"/></svg><b>${v}</b></div>`;
+const pv=(pic,ch,name,ver,meta,rt,price,o={})=>`<div class="card pv"><div class="pic ${pic}">${ch}</div><div class="tx"><div class="nm">${name}${ver?I('ver'):''}</div><small>${meta}</small>${rt?rt:''}<div class="pr">${price}</div></div><span class="hrt ${o.fav?'on':''}">${I('heart')}</span></div>`;
+const srow=(ico,name,status,step,end,ok)=>`<div class="li" style="min-height:68px"><div class="ic ${ok?'ok':''}">${I(ok?'check':ico)}</div><div class="t">${name}<div class="steps4">${[0,1,2,3].map(i=>`<i class="${ok?'ok':i<step?'on':''}"></i>`).join('')}</div><small>${status}</small></div>${end}</div>`;
+const fam=(name,done,total,wait)=>`<div class="li" style="min-height:64px"><div class="t">${name}<div class="mb"><i style="width:${Math.round(done/total*100)}%"></i></div><small style="margin-top:4px">${done} من ${total} أكدوا</small></div>${wait?`<span class="st wait">${wait} ما ردّوا</span>`:''}<span class="chev">${I('chev')}</span></div>`;
+const gst=(ch,name,meta,st,stc,end='')=>`<div class="li"><span class="ava lg">${ch}</span><div class="t">${name}<small>${meta}</small></div>${end}<span class="st ${stc}">${st}</span></div>`;
+const kv=(ico,k,v)=>`<div class="kv">${I(ico)}<span class="k">${k}</span><span class="v">${v}</span><span class="e">${I('pen')}</span></div>`;
+const tg=(t,s,on)=>`<div class="tg"><div class="t"><b>${t}</b><small>${s}</small></div><span class="sw ${on?'on':''}"></span></div>`;
+const pinb=(btn,small='')=>`<div class="pin"><div class="btn wide">${btn}</div>${small?`<small>${small}</small>`:''}</div>`;
+const PQ={done:'var(--acc)',now:'var(--saf)',dim:'var(--line)'};
+
+/* ---------- screens ---------- */
+const provHdr=on=>th('المزودين','محجوز 1 · عرضين ينتظرونك',hbtn('msg','المحادثات',1),1)+segc(['خدمات عرسك','استكشف'],on);
+const SC={
+guestsEmpty:th('الضيوف','ابدأ بقائمة ضيوفك')+`<div class="card ns" style="padding:16px"><div class="tx"><h4>مين بتعزم؟</h4><p>عددهم يوضّح لك أي قاعة تكفي وكم ضيافة تحتاج.</p></div></div><div class="card rowc">${row('users','من جهات الاتصال','تختار مين تعزم، والمكرر نعلّمه لك')}${row('clip','الصق قائمة','اسم في كل سطر، ورقمه لو عندك')}${row('uplus','ضيف واحد','اسمه ورقمه وكم معه')}</div>`,
+provFirst:th('المزودين','ما طلبت من أحد بعد')+`<div class="card" style="display:flex;flex-direction:column"><div class="act"><div class="due acc">${I('hall')}</div><div class="tx"><div class="eyebrow">نبدأ بالقاعة</div><p style="margin-top:2px">لأنها تحدد يومك وعدد ضيوفك، والقاعات تنحجز قبل بشهرين.</p></div></div><div class="btn wide">قاعات لعرسك في صنعاء</div></div><div class="card rowc">${row('check','حجزت برا اعّرست؟','سجّله هنا عشان يدخل خطتك')}${row('search','استكشف كل الخدمات','فرق، تصوير، زينة، ضيافة')}</div>`,
+explore:provHdr(1)+`<div class="search">${I('search')}دوّر على قاعة، مصور، فرقة…</div>`+chips([['صنعاء',0,'pin'],['الكل',1],['قاعات',0],['تصوير',0],['فرق',0]])
+ +pv('a','','قاعة سبأ',1,'قاعات · حدة',rate('4.7',52),'1,500,000 <small>ر.ي</small>')
+ +pv('b','','قاعة ليالي صنعاء',1,'قاعات · شارع الستين',rate('4.8',63),'2,200,000 <small>ر.ي</small>',{fav:1})
+ +pv('c','','قصر الماسة',0,'قاعات · السبعين',rate('4.5',30),'900,000 - 1,400,000 <small>ر.ي</small>')
+ +pv('e','ق','قاعة الحارة',0,'قاعات · الصافية','','<small>ما تستقبل طلبات لين يستلم صاحبها ملفه</small>'),
+provider:`<div class="cover pic a" style="width:auto;border-radius:0"><div class="rb" style="inset-inline-start:16px">${I('back')}</div><div class="rb" style="inset-inline-end:16px">${I('heart')}</div><span class="cnt">1 / 10 صور</span></div><div class="h21">قاعة سبأ ${I('ver')}</div><div class="meta">${rate('4.7',52)}<span>قاعات · صنعاء، حدة</span></div><div><span class="st ok">فاضية يوم عرسك · الخميس 21 يناير</span></div>`
+ +`<div class="card"><div class="eyebrow mut">أسعارها تبدأ من</div><div class="mrow"><div class="big">1,500,000 ر.ي</div><div class="side">محدّثة هذا الشهر</div></div></div>`
+ +sect('الباقات')+`<div class="card rowc">${row('gem','الباقة الماسية','قاعة كبار · زفة · غرفة عروس',{v:'2,200,000'})}${row('store','الباقة الفضية','قاعة كبار · ضيافة قهوة',{v:'1,500,000'})}</div>`
+ +sect('التقييمات','4.7 من 52')+`<div class="card"><div style="display:flex;align-items:center;gap:8px"><b>أم فيصل</b><span class="rate">${star()}${star()}${star()}${star()}${star()}</span></div><p style="margin:4px 0 0;color:var(--text2);font-size:13.5px">«قاعة راقية وخدمة ممتازة، والتنظيم أكثر من رائع.»</p></div>`,
+quote:sh('اطلب عرض سعر','من قاعة سبأ')+sect('من خطتك','نعبّيها عنك')+`<div class="card" style="padding-block:4px">${kv('cal','اليوم','الخميس 21 يناير')}${kv('users','الضيوف','124 مدعو')}${kv('pin','المكان','صنعاء')}</div>`
+ +sect('ايش تحتاج؟')+chips([['الباقة الماسية',1],['زفة',0],['غرفة عروس',0]])+`<div class="field"><small>كلمة لهم (اختياري)</small><div>أي تفصيل يهمّك يعرفوه</div></div>`
+ +`<div class="card" style="padding-block:0">${tg('شاركهم بندك: 2.5 مليون ر.ي','يساعدهم يعطونك عرض على قدّك',1)}${tg('شاركهم رقمك','غير كذا يكلمونك من الرسائل بس',0)}</div>`,
+compare:sh('قارن عروض التصوير','بندك 600,000 ر.ي')+`<div class="card"><div class="cmp"><div><span class="nm">استوديو ضوء صنعاء</span><span class="pr">550,000 <small style="display:inline">ر.ي</small></span><span><span class="st ok">داخل بندك</span></span><small>مصورين اثنين<br>فيلم 10 دقائق<br>ألبوم مطبوع</small>${rate('4.8',63)}<small style="color:var(--safText)">ينتهي بكرة</small><div class="btn">اختر هذا</div></div><div><span class="nm">استوديو الورد</span><span class="pr">480,000 <small style="display:inline">ر.ي</small></span><span><span class="st acc">الأرخص بـ 70 ألف</span></span><small>مصور واحد<br>فيلم 6 دقائق<br>ألبوم صغير</small>${rate('4.5',29)}<small>ينتهي بعد 5 أيام</small><div class="btn ghost">اختر هذا</div></div></div></div>`
+ +`<div class="note">${I('wallet')}<span>لما تختار، يصير اتفاق في المال، ونطلب منهم حجز يوم عرسك. الدفع بينك وبينهم مباشرة.</span></div><div class="card rowc">${row('msg','اسأل قبل تختار','محادثة مع كل استوديو')}</div>`,
+booked:`<div class="moment"><div style="width:64px;height:64px;border-radius:50%;background:var(--mintSoft);color:var(--mint);display:grid;place-items:center">${I('check')}</div><h4>اخترت استوديو ضوء صنعاء</h4><p>ننتظر تأكيدهم ليوم الخميس 21 يناير.</p></div><div class="card rowc">${row('wallet','صار اتفاق في المال','التصوير · 550,000 ر.ي')}<div class="li"><div class="ic ok">${I('check')}</div><div class="t">مهمة «حجز المصور» خلصت<small>علّمناها عنك</small></div></div>${row('store','خدمات عرسك','2 من 5 بعد تأكيدهم')}</div>`,
+board:provHdr(0)+`<div class="card sum">${arcBig('1',20)}<div class="tx"><b>محجوزة من 5 خدمات</b><small>عرضين وصلوك، وطلب ينتظر الرد</small></div></div><div class="card rowc">`
+ +srow('hall','القاعة','قاعة سبأ · أكّدوا 21 يناير',4,'<span class="st ok">محجوزة</span>',1)
+ +srow('cam','التصوير','وصلك عرضين',2,'<span class="btn">قارن</span>')
+ +srow('music','الفرقة','طلبت من واحد · ينتظر الرد',1,`<span class="chev">${I('chev')}</span>`)
+ +srow('food','الضيافة','ما بدأت',0,'<span class="btn">ابحث</span>')
+ +srow('gem','الشبكة والذهب','ما بدأت',0,'<span class="btn">ابحث</span>')+`</div><div class="note">${I('alert')}<span>الشرطات الأربع: طلب، عرض، طلب حجز، محجوز.</span></div>`,
+tasks:th('المهام','باقي 12 · واحدة متأخرة',hbtn('share','شارك'))+segc(['القائمة','الوقت'],0)+chips([['الكل',1],['لي',0],['صالح',0],['الوالد',0]])
+ +sect('متأخرة','1','','red')+`<div class="card list">${tk('red','حجز المصور','كان موعدها 22 أكتوبر · صالح',{red:1,lnk:'عرضين وصلوك',li:'mail',end:'<span class="tbtn">أجّلها</span>'})}</div>`
+ +sect('هذا الأسبوع','2')+`<div class="card list">${tk('','دفعة القاعة الثانية','الأحد 25 أكتوبر',{lnk:'500,000 ر.ي · سجّل الدفعة',lc:'saf',who:'م'})}${tk('','تذوّق الضيافة','الثلاثاء 27 أكتوبر',{who:'و'})}</div>`
+ +sect('بعدين','9')+`<div class="card list">${tk('','شراء الشبكة والذهب','1 نوفمبر',{who:'م'})}${tk('','الاتفاق مع الفنان والفرقة','5 نوفمبر',{who:'ص',lnk:'طلبك ينتظر الرد',li:'store'})}<div class="more">شوف الـ7 الباقية</div></div>`
+ +`<div class="card list">${tk('ok','اللي خلصت','8 مهام',{end:`<span class="chev" style="color:var(--faint)">${I('chev')}</span>`})}</div>`,
+guests:th('الضيوف','124 مدعو',`<div class="rb">${I('search')}</div>`)+`<div class="card"><div class="bar3"><i style="flex:86;background:var(--acc)"></i><i style="flex:20;background:var(--saf)"></i><i style="flex:18;background:var(--lineS)"></i></div><div class="stat3"><div style="--c:var(--acc)"><b>86</b><small>أكدوا</small></div><div style="--c:var(--saf)"><b>20</b><small>ما ردّوا</small></div><div style="--c:var(--lineS)"><b>18</b><small>اعتذروا</small></div></div><div class="calm">مع المرافقين: 143 مقعد</div></div>`
+ +`<div class="card ns"><div class="due acc">${I('send')}</div><div class="tx"><h4>ذكّر اللي ما ردّوا</h4><p>20 ضيف · من واتساب جوالك</p></div><div class="btn">ذكّرهم</div></div><div class="card rowc">${row('mail','بطاقة الدعوة','قاعة سبأ · الخميس 21 يناير')}</div>`
+ +sect('حسب العائلة','','المجموعات')+`<div class="card rowc">${fam('آل الحمدي',4,6,1)}${fam('آل السقاف',10,12,2)}${fam('زملاء العمل',14,20,6)}${fam('الأصحاب',22,30,0)}</div>`,
+family:sh('آل الحمدي','6 ضيوف · 4 أكدوا')+chips([['الكل 6',1],['أكدوا 4',0],['ما ردّوا 1',0],['اعتذروا 1',0]])+`<div class="card rowc">${gst('أ','أحمد الحمدي','لحاله','أكّد','ok')}${gst('ع','عبدالله الحمدي','مع 1 · مقعدين','أكّد','ok')}${gst('ع','علي الحمدي','لسا ما ردّ','ما ردّ','wait','<span class="tbtn">ذكّره</span>')}${gst('هـ','هاني الحمدي','بدون رقم','ما وصلته دعوة','no')}${gst('س','سالم الحمدي','مع 2 · 3 مقاعد','أكّد','ok')}${gst('ي','يحيى الحمدي','مسافر','اعتذر','no')}</div>`,
+rate:sh('قيّم قاعة سبأ','عرسك كان 21 يناير')+`<div class="card"><div class="stars">${star()}${star()}${star()}${star()}${star(1)}</div><div style="text-align:center;font-weight:700">زينة</div></div>`+sect('ايش عجبك؟')+`<div style="display:flex;flex-wrap:wrap;gap:8px"><span class="c2 on">التزموا بالوقت</span><span class="c2 on">المكان نظيف</span><span class="c2">التعامل</span><span class="c2">السعر مناسب</span></div><div class="field" style="min-height:88px"><small>كلمة لهم (اختياري)</small><div>ايش تقول لعريس غيرك عنهم؟</div></div><div class="note">${I('lock')}<span>يظهر باسمك الأول بس، ويساعد عرسان غيرك يختارون.</span></div>`
+};
+const month=HD()+askbar('اسأل اعّرست عن عرسك…')+hero('22','يوم على عرسك','الخميس 21 يناير · 13 شعبان',2,'الشهر الأخير','الجاي بعد 15 يوم')
+ +`<div class="card ns"><div class="due acc">${I('send')}</div><div class="tx"><div class="eb">الخطوة الجاية</div><h4>20 ضيف ما ردّوا</h4><p>القاعة تبغى العدد</p></div><div class="btn">ذكّرهم</div></div>`
+ +money('عليك من العرس','1.6 مليون ر.ي','<b>دفعت 3.8 مليون</b>من 5.4 مليون',ok('فلوسك تغطي كل دفعاتك'),seg(13,'1.3 م','يناير','now')+seg(3,'300 ألف','فبراير'))
+ +three(g('tasks','المهام','16','من 20',80),g('users','الضيوف','86','أكدوا من 124',69,'20 ما ردّوا','saf'),g('store','المزودين','4','محجوز من 5',80));
+
+Object.assign(P,{
+minus:'<path d="M5 12h14"/>',
+shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+layers:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+eyeon:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+login:'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>'});
+const qh=(on)=>`<div class="qh"><div class="rb">${I('back')}</div><div class="p3">${[0,1,2].map(i=>`<i class="${i<=on?'on':''}"></i>`).join('')}</div></div>`;
+const fld=(l,v,o={})=>`<div class="field ${o.v?'v':''} ${o.f?'f':''}"><small>${l}</small><div class="${o.amt?'amt':''}">${v}</div></div>`;
+const wc=a=>`<div class="wrapc">${a.map(c=>`<span class="c2 ${c[1]?'on':''}">${c[2]?I(c[2]):''}${c[0]}</span>`).join('')}</div>`;
+const mc=(m,h,on)=>`<div class="mc ${on?'on':''}">${m}<small>${h}</small></div>`;
+const hint=(ico,t,c='')=>`<div class="hint ${c}">${I(ico)}<span>${t}</span></div>`;
+const moneyHdr=on=>th('المال','عليك 3 مليون · دفعة متأخرة',hbtn('share','شارك'))+segc(['الملخص','البنود','الدفعات','من وين'],on);
+const prow=(d,m,t,s,v,o={})=>`<div class="li"><div class="day ${o.red?'red':''}"><small>${m}</small>${d}</div><div class="t">${t}<small>${s}</small></div><span class="v">${v}${o.by?`<small>${o.by}</small>`:''}</span></div>`;
+const irow=(ico,name,sub,v,pct,o={})=>`<div class="li" style="min-height:68px"><div class="ic ${o.c||''}">${I(ico)}</div><div class="t">${name}${pct!=null?`<div class="mb"><i style="width:${pct}%"></i></div>`:''}<small style="margin-top:4px;${o.red?'color:var(--danger)':''}">${sub}</small></div><span class="v">${v}${o.vs?`<small>${o.vs}</small>`:''}</span></div>`;
+const col=(a,h1,h2,m,now)=>`<div class="${now?'now':''}"><span class="a">${a}</span><div class="stk">${h2?`<i class="o" style="height:${h2}px"></i>`:''}<i style="height:${h1}px"></i></div><span class="m">${m}</span></div>`;
+
+Object.assign(SC,{
+/* ---- the door ---- */
+welcome:`<div class="brand">${qsvg(9,{now:'#F2A93B',dim:'rgba(255,255,255,.2)'})}<div class="logo">اعّرست<i>.</i></div><p>عرسك من أول ريال إلى آخر دفعة</p></div><div class="grow"></div><div class="btn wide inv" style="margin:0">أسوّي خطة عرسي</div><div class="gl">${I('mail')}<div class="t">معي رابط دعوة<small>من صاحب خطة عرس</small></div>${I('chev')}</div><div class="gl">${I('store')}<div class="t">أقدّم خدمة للأعراس<small>قاعة، تصوير، فرقة، ضيافة</small></div>${I('chev')}</div><div class="txl">عندي حساب · تسجيل الدخول</div>`,
+role:`<div class="qh"><div class="rb">${I('back')}</div></div><h3 class="q">أنت العريس ولا العروسة؟</h3><p class="qs">نرتب لك بنود عرسك والمهر من جهتك.</p><div class="roles"><div class="role g"><div class="em">${I('users')}</div><b>العريس</b><small>عرس الرجال، والمهر اللي تسلّمه.</small></div><div class="role b"><div class="em">${I('gem')}</div><b>العروسة</b><small>عرس النساء، والمهر اللي تستلمينه.</small></div></div>`+hint('users','كل واحد خطته. والأهل يدخلون بدعوة.'),
+name:qh(0)+`<h3 class="q">ايش اسمك، ومتى العرس؟</h3><p class="qs">نناديك باسمك، ونرتب المهام والدفعات على الموعد.</p>`+fld('اسمك','محمد',{v:1,f:1})+hint('check','خطتك بتكون: <b>عرس محمد</b>','ok')+sect('شهر العرس','أكتوبر 2026 - مارس 2027')+`<div class="grid3">${mc('أكتوبر','ربيع الآخر')}${mc('نوفمبر','جمادى الأولى')}${mc('ديسمبر','جمادى الآخرة')}${mc('يناير','رجب · شعبان',1)}${mc('فبراير','شعبان · رمضان')}${mc('مارس','رمضان · شوال')}</div><div class="txl" style="color:var(--acc)">ما حددنا الموعد بعد</div>`,
+city:qh(1)+`<h3 class="q">وين العرس، وكم ميزانيته؟</h3><p class="qs">رقم تقريبي يكفي. المهر لحاله وما يدخل هنا.</p>`+sect('المدينة')+wc([['صنعاء',1],['عدن',0],['تعز',0],['إب',0],['الحديدة',0],['مدينة ثانية',0,'plus']])+sect('ميزانية العرس')+wc([['3 مليون',0],['5 مليون',0],['8 مليون',1],['12 مليون',0]])+fld('أو اكتب رقمك','8,000,000 ر.ي',{v:1,amt:1})+hint('lock','ما يشوفها إلا أنت ومن تسمح له.'),
+mahr:qh(2)+`<h3 class="q">اتفقتوا على المهر؟</h3><p class="qs">برّا ميزانية العرس. نذكّرك بباقيه قبل العقد.</p>`+fld('المهر','2,000,000 ر.ي',{v:1,amt:1,f:1})+fld('سلّمت منه','1,000,000 ر.ي',{v:1,amt:1})+hint('lock','ما يشوفه إلا من تسمح له يشوف المال.'),
+ready:`<div class="qh"><div class="rb">${I('back')}</div></div><h3 class="q">خطتك جاهزة يا محمد</h3><p class="qs">رتبناها على موعدك وميزانيتك، وهي الحين على هذا الجوال.</p><div class="ready"><div class="r1"><div class="num">93</div><div style="flex:1"><b style="font-size:16.5px">يوم على عرسك</b><div style="font-size:13.5px;opacity:.85">الخميس 21 يناير · صنعاء</div></div><div style="width:76px">${qsvg(0,{done:'#fff',now:'#F2A93B',dim:'rgba(255,255,255,.18)'})}</div></div><div class="q4"><div><b>8 مليون</b>ميزانية العرس</div><div><b>2 مليون</b>المهر</div><div><b>20 مهمة</b>مرتبة على موعدك</div><div><b>14 قاعة</b>في صنعاء</div></div></div>`+hint('phone','لو ضاع الجوال أو انمسح التطبيق، تضيع الخطة معه.'),
+save:`<div class="qh"><div class="rb">${I('back')}</div></div><h3 class="q">احفظ خطتك برقمك</h3><p class="qs">بدون كلمة مرور. نرسل لك رمز على واتساب وتدخل فيه من أي جوال.</p><div class="card rowc">${row('home','عرس محمد','93 يوم · 8 مليون · 20 مهمة',{})}</div>`+fld('رقم جوالك','<span style="direction:ltr;display:inline-block">+967 777 123 456</span>',{v:1,amt:1,f:1})+hint('msg','الرمز يوصل على واتساب هذا الرقم.'),
+otp:`<div class="qh"><div class="rb">${I('back')}</div></div><h3 class="q">اكتب الرمز</h3><p class="qs">أرسلناه على واتساب <b style="direction:ltr;display:inline-block">777 123 456</b></p><div class="otp"><span>4</span><span>7</span><span>1</span><span class="f"></span><span></span><span></span></div><p class="qs ctr" style="font-size:13.5px">يدخل لحاله أول ما تكمل الستة.</p><div class="txl" style="color:var(--text2);font-weight:400">ما وصل؟ نرسله مرة ثانية بعد <b style="margin-inline-start:4px;color:var(--ink)">0:42</b></div>`,
+
+/* ---- money, four tabs, each one question ---- */
+mSum:moneyHdr(0)+`<div class="card ns"><div class="due red">${I('alert')}</div><div class="tx"><div class="eb red">متأخرة من 15 أكتوبر</div><h4>ليالي صنعاء</h4><p><b>700,000 ر.ي</b></p></div><div class="btn">سجّل الدفعة</div></div>`
+ +`<div class="card"><div class="eyebrow">${I('wallet')}عليك من العرس<span class="end">${I('eye')}أخفِ</span></div><div class="mrow"><div class="big">3 مليون ر.ي</div><div class="side"><b style="color:var(--ink)">اتفاقاتك 2 مليون</b>المهر 1 مليون</div></div><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ok">${I('check')}فلوسك تكفي لين يوم العرس</span><span class="tbtn" style="margin-top:8px">كيف حسبناها؟</span></div>${splitHtml(SPLIT)}</div>`
+ +sect('يحتاج انتباهك')+`<div class="card rowc"><div class="li"><div class="ic red">${I('alert')}</div><div class="t">التصوير فوق تقديرك<small>بـ 50,000 ر.ي</small></div><span class="chev">${I('chev')}</span></div></div>`
+ +sect('الصورة كاملة','ثلاثة أرقام ما تنجمع')+`<div class="card"><div class="stat3" style="margin:0"><div style="--c:var(--acc)"><b>3 م</b><small>عليك</small></div><div style="--c:#9FD0CB"><b>5.4 م</b><small>العرس كله</small></div><div style="--c:var(--lilac)"><b>1 م</b><small>سلف ترجعها</small></div></div></div>`,
+mItems:moneyHdr(1)+`<div class="card"><div class="eyebrow mut">ميزانية العرس 8 مليون</div><div class="bar3" style="margin-top:8px"><i style="flex:54;background:var(--acc)"></i><i style="flex:11;background:#9FD0CB"></i><i style="flex:15;background:var(--line)"></i></div><div class="stat3"><div style="--c:var(--acc)"><b>5.4 م</b><small>اتفاقات</small></div><div style="--c:#9FD0CB"><b>1.1 م</b><small>تقديرات</small></div><div style="--c:var(--lineS)"><b>1.5 م</b><small>متاح</small></div></div></div>`
+ +chips([['الكل 6',1],['عليها اتفاق 3',0],['بالتقدير 3',0]])
+ +`<div class="card rowc">${irow('hall','القاعة','باقي 1.2 مليون · 15 يناير','2.2 م',45)}${irow('cam','التصوير','فوق تقديرك بـ 50 ألف','550,000',36,{red:1})}${irow('food','الضيافة','تقدير، ما اتفقت بعد','900,000',null,{vs:'تقدير'})}${irow('gem','الشبكة والذهب','تقدير، ما اتفقت بعد','1.5 م',null,{vs:'تقدير'})}</div>`
+ +`<div class="card rowc">${irow('heart','المهر','برّا الميزانية · باقي 1 مليون','2 م',50)}</div>`,
+mItem:sh('القاعة','اتفاق واحد · قاعة سبأ')+`<div class="card"><div class="fig4"><div><small>تقديرك</small><b>2.5 مليون</b></div><div><small>اتفقت</small><b>2.2 مليون</b></div><div><small>اندفع</small><b style="color:var(--mint)">1 مليون</b></div><div><small>باقي</small><b>1.2 مليون</b></div></div><div class="mb" style="height:6px;margin-top:12px"><i style="width:45%"></i></div><div style="margin-top:8px"><span class="st ok">تحت تقديرك بـ 300 ألف</span></div></div>`
+ +`<div class="card ns"><div class="due"><b>5</b><small>أيام</small></div><div class="tx"><div class="eb saf">الدفعة الجاية</div><h4>الدفعة الثانية</h4><p><b>500,000 ر.ي</b></p></div><div class="btn">سجّل دفعة</div></div>`
+ +sect('مواعيد الدفع','','أضف موعد')+`<div class="card rowc">${prow('10','أغسطس','الدفعة الأولى','اندفعت · تحويل','1,000,000')}${prow('25','أكتوبر','الدفعة الثانية','بعد 5 أيام','500,000')}${prow('15','يناير','آخر دفعة','قبل العرس بأسبوع','700,000')}</div>`
+ +`<div class="card rowc">${row('store','قاعة سبأ','المزود · الباقة الماسية')}${row('cam','الإيصالات','صوّر الإيصال واحفظه مع الاتفاق')}</div><div class="txl" style="color:var(--acc)">دفعت شي برّا الاتفاق؟ سجّله مصروف</div>`,
+mPay:moneyHdr(2)+`<div class="card"><div class="eyebrow mut">اللي جاي شهر بشهر</div><div class="cols">${col('1.2 م',34,0,'أكتوبر',1)}${col('300 ألف',9,0,'نوفمبر')}${col('1.6 م',34,12,'ديسمبر')}${col('1.3 م',37,0,'يناير')}</div><div class="lgd"><span style="--c:var(--acc)">عليك</span><span style="--c:#9FD0CB">على الوالد</span></div></div>`
+ +chips([['الكل',1],['عليّ',0],['على الوالد',0]])
+ +sect('متأخرة','1','','red')+`<div class="card rowc">${prow('15','أكتوبر','قاعة ليالي صنعاء','الدفعة الثانية','700,000',{red:1})}</div>`
+ +sect('أكتوبر','500,000 ر.ي')+`<div class="card rowc">${prow('25','أكتوبر','قاعة سبأ','الدفعة الثانية · بعد 5 أيام','500,000')}</div>`
+ +sect('ديسمبر','1.6 مليون ر.ي')+`<div class="card rowc">${prow('1','ديسمبر','استوديو ضوء صنعاء','الباقي','450,000')}${prow('20','ديسمبر','الشبكة والذهب','تقدير','400,000',{by:'على الوالد'})}</div>`
+ +`<div class="card rowc">${row('clock','السلف','دين عليك، مو من تكاليف العرس',{c:'lil',v:'1 م'})}${row('check','اللي دفعتها','9 دفعات',{v:'2.4 م'})}</div>`,
+mSrc:moneyHdr(3)+`<div class="card"><div class="stat3" style="margin:0"><div style="--c:var(--acc)"><b>1.4 م</b><small>معك</small></div><div style="--c:var(--lilac)"><b>1 م</b><small>موعود لك</small></div><div style="--c:var(--danger)"><b>1 م</b><small>سلف عليك</small></div></div><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ok">${I('check')}تكفي لين يوم العرس</span><span class="tbtn" style="margin-top:8px">كيف حسبناها؟</span></div></div>`
+ +sect('من وين الفلوس')+`<div class="card rowc">${row('wallet','مدخراتي','وصل',{v:'2 م'})}${row('heart','الوالد','دعم الأهل · وعد بها يوم 1 ديسمبر',{c:'lil',v:'1 م'})}${row('clock','ابن العم عادل','سلفة · باقي عليك كلها',{c:'saf',v:'1 م'})}</div>`
+ +sect('مين ساعدك')+`<div class="card rowc"><div class="li" style="min-height:68px"><span class="ava lg">و</span><div class="t">الوالد<small>عطاك 500 ألف · دفع للقاعة 400 ألف</small></div><span class="st wait">باقي وعده 1 م</span></div></div>`,
+mRec:sh('سجّل دفعة','قاعة سبأ · الدفعة الثانية')+`<div class="amtbox"><small>المبلغ</small><b>500,000 ر.ي</b></div>`+hint('alert','هذا المتفق. دفعت أقل؟ اكتبه، والباقي يبقى لنفس اليوم.')+`<div class="card" style="padding-block:4px">${kv('cal','متى','اليوم، الأحد 25 أكتوبر')}</div>`+sect('مين دفع؟')+chips([['أنا',1],['الوالد',0],['شخص ثاني',0,'plus']])+sect('كيف؟')+chips([['نقدًا',1],['تحويل',0]])+`<div class="card rowc">${row('cam','صوّر الإيصال','اختياري')}</div>`,
+
+/* ---- details ---- */
+tNew:sh('مهمة جديدة','')+fld('ايش المهمة؟','تذوّق الضيافة مع صالح',{v:1,f:1})+sect('متى؟')+wc([['هذا الأسبوع',1],['هذا الشهر',0],['تاريخ',0,'cal'],['بدون موعد',0]])+sect('لمين؟')+wc([['أنا',0],['صالح',1],['الوالد',0],['شخص ثاني',0,'plus']])+sect('مربوطة بشي؟','اختياري')+wc([['بند: الضيافة',1,'wallet'],['مزود',0,'store']])+`<div class="txl" style="color:var(--acc);justify-content:start;place-items:center start">+ أضف ملاحظة</div>`,
+tOne:sh('حجز المصور','مهمة صالح')+`<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st red">متأخرة من 22 أكتوبر</span><span class="st no">صالح</span></div><div class="card ns" style="padding:12px 0 0;border-radius:0"><div class="due acc">${I('mail')}</div><div class="tx"><div class="eb">مربوطة بطلبك</div><h4>عرضين وصلوك</h4><p>اختيار واحد يخلّص المهمة</p></div><div class="btn">قارن</div></div></div>`
+ +sect('الخطوات','1 من 3')+`<div class="card list">${tk('ok','اسأل عن الأسعار','')}${tk('','قارن العروض','')}${tk('','ثبّت الموعد مع الاستوديو','')}</div>`+`<div class="card" style="padding-block:4px">${kv('cal','الموعد','الخميس 22 أكتوبر')}${kv('users','لمين','صالح')}</div><div class="txl" style="color:var(--acc)">أجّلها أسبوع</div>`,
+gNew:sh('ضيف جديد','')+fld('الاسم','خالد الحمدي',{v:1,f:1})+fld('رقم الجوال (اختياري)','<span style="direction:ltr;display:inline-block">+967 7XX XXX XXX</span>')+`<div class="txl" style="color:var(--acc)">أو اختر من جهات الاتصال</div>`+sect('العائلة')+wc([['آل الحمدي',1],['آل السقاف',0],['زملاء العمل',0],['الأصحاب',0],['جديدة',0,'plus']])+`<div class="card" style="padding-block:0"><div class="tg"><div class="t"><b>كم معه؟</b><small>المجموع 3 مقاعد</small></div><div class="stp"><span>${I('minus')}</span><b>2</b><span>${I('plus')}</span></div></div>${tg('يحضر الغداء أيضًا','الخميس 21 يناير · بيت الوالد',1)}</div>`,
+gCard:sh('بطاقة الدعوة','كما يشوفها الضيف')+`<div class="invc">${qsvg(9,{now:'#F2A93B',dim:'rgba(255,255,255,.2)'})}<small>يتشرف أحمد الحمدي وأولاده بدعوتكم لحضور زفاف ابنهم</small><b>محمد</b><p>«وجعل بينكم مودة ورحمة»</p><div class="d">الخميس 21 يناير · قاعة سبأ، صنعاء</div></div>`
+ +`<div class="card" style="padding-block:4px">${kv('users','باسم مين','أحمد الحمدي وأولاده')}${kv('pen','الكلمة','وجعل بينكم مودة…')}${kv('pin','المكان','قاعة سبأ · رابط الخريطة')}${kv('cam','الصورة','ما اخترت')}</div>`+hint('msg','تنرسل من واتساب جوالك، وكل ضيف يرد من رابطه.'),
+notif:sh('التنبيهات','3 ما قريتها',`<span class="tbtn">قراءة الكل</span>`)+sect('اليوم')+`<div class="card rowc"><div class="li"><div class="ic">${I('mail')}</div><div class="t">عرض سعر جديد<small>استوديو الورد · 480,000 ر.ي</small></div><span class="un"></span></div><div class="li"><div class="ic saf">${I('wallet')}</div><div class="t">دفعة القاعة بعد 5 أيام<small>500,000 ر.ي · قاعة سبأ</small></div><span class="un"></span></div></div>`
+ +sect('هذا الأسبوع')+`<div class="card rowc"><div class="li"><div class="ic red">${I('alert')}</div><div class="t">دفعة تأخرت<small>قاعة ليالي صنعاء · 700,000 ر.ي</small></div><span class="un"></span></div><div class="li read"><div class="ic">${I('uplus')}</div><div class="t">صالح دخل خطتك<small>يساعد في المهام والضيوف</small></div></div><div class="li read"><div class="ic">${I('check')}</div><div class="t">قاعة سبأ أكدوا الحجز<small>الخميس 21 يناير</small></div></div></div>`+hint('lock','على شاشة القفل تطلع بدون أسماء ولا مبالغ.'),
+team:sh('فريق الخطة','3 معك · دعوة تنتظر')+`<div class="card rowc"><div class="li" style="min-height:68px"><span class="ava lg">و</span><div class="t">الوالد<small>أهل · المهام والضيوف، ويشوف المال</small></div><span class="chev">${I('chev')}</span></div><div class="li" style="min-height:68px"><span class="ava lg">ص</span><div class="t">صالح<small>مساعد · المهام والمزودين، بدون المال</small></div><span class="chev">${I('chev')}</span></div><div class="li" style="min-height:68px"><span class="ava lg">أ</span><div class="t">أم العريس<small>تشوف بس</small></div><span class="chev">${I('chev')}</span></div></div>`
+ +sect('تنتظر الرد')+`<div class="card rowc"><div class="li" style="min-height:68px"><span class="ava lg">ه</span><div class="t">أبو همدان<small>باقي لرابطه 5 أيام</small></div><span class="btn">انسخ الرابط</span></div></div>`
+ +sect('ادعُ أحد')+`<div class="card rowc">${row('tasks','مساعد','المهام والضيوف والمزودين')}${row('users','أهل','مثل المساعد، ويشوف المال إذا سمحت')}${row('eyeon','يشوف بس','يتابع الخطة وما يعدّل شي')}</div>`,
+acct:sh('حسابي','')+`<div class="card prof"><div class="av">م</div><div style="flex:1"><b>محمد الحمدي</b><small>+967 777 123 456</small></div></div><div class="card rowc">${row('layers','خططك','عرس محمد · خطة واحدة')}${row('users','فريق الخطة','3 معك')}</div>`
+ +sect('الأمان والخصوصية')+`<div class="card rowc">${row('eye','أخفِ المبالغ','في كل الشاشات على هذا الجوال')}${row('lock','قفل التطبيق','بالبصمة أو رمز')}${row('shield','الخصوصية','مين يشوف ايش')}${row('phone','رقم الجوال وكلمة المرور','')}</div>`
+ +sect('المساعدة')+`<div class="card rowc">${row('help','المساعدة','')}${row('bell','التنبيهات','')}<div class="li"><div class="ic red">${I('out')}</div><div class="t" style="color:var(--danger)">الخروج</div></div></div>`
+});
+/* ---------- batch 1: the door, every sub-screen ---------- */
+const sheet=(title,sub,body)=>`<div class="dim"></div><div class="sheet"><i class="grab"></i><b class="sht">${title}</b>${sub?`<small class="shs">${sub}</small>`:''}${body}</div>`;
+const cal=(sel)=>{const d=['س','ح','ن','ث','ر','خ','ج'];let s=d.map(x=>`<small>${x}</small>`).join('');for(let i=0;i<5;i++)s+='<span></span>';for(let i=1;i<=31;i++)s+=`<span class="${i==sel?'on':''}">${i}</span>`;return `<div class="cal">${s}</div>`;};
+const back=`<div class="qh"><div class="rb">${I('back')}</div></div>`;
+const phoneF=(v,o={})=>fld('رقم جوالك',`<span style="direction:ltr;display:inline-block">${v}</span>`,Object.assign({v:1,amt:1},o));
+Object.assign(SC,{
+welcomeBack:`<div class="brand">${qsvg(9,{now:'#F2A93B',dim:'rgba(255,255,255,.2)'})}<div class="logo">اعّرست<i>.</i></div><p>عرسك من أول ريال إلى آخر دفعة</p></div><div class="grow"></div><div class="gl" style="background:rgba(255,255,255,.16)">${I('home')}<div class="t">عرس محمد<small>خطتك على هذا الجوال · 93 يوم</small></div></div><div class="btn wide inv" style="margin:0">افتح خطتي</div><div class="txl">خطة جديدة · معي رابط دعوة · تسجيل الدخول</div>`,
+nameEmpty:qh(0)+`<h3 class="q">ايش اسمك، ومتى العرس؟</h3><p class="qs">نناديك باسمك، ونرتب المهام والدفعات على الموعد.</p>`+fld('اسمك','مثلًا: محمد',{f:1})+sect('شهر العرس','أكتوبر 2026 - مارس 2027')+`<div class="grid3">${mc('أكتوبر','ربيع الآخر')}${mc('نوفمبر','جمادى الأولى')}${mc('ديسمبر','جمادى الآخرة')}${mc('يناير','رجب · شعبان')}${mc('فبراير','شعبان · رمضان')}${mc('مارس','رمضان · شوال')}</div><div class="txl" style="color:var(--acc)">ما حددنا الموعد بعد</div>`,
+dayPick:SC.name+sheet('أي يوم في يناير؟','تقدر تغيّره بعدين',cal(21)+`<div class="btn wide">الخميس 21 يناير</div><div class="txl" style="color:var(--acc)">ما أعرف اليوم بالضبط</div>`),
+cityOther:SC.city+sheet('مدينة ثانية','',`<div class="search" style="margin-top:8px">${I('search')}اكتب اسم المدينة</div><div style="margin-top:4px">${['ذمار','المكلا','سيئون','حجة','صعدة'].map(c=>`<div class="li" style="min-height:48px"><div class="t">${c}</div></div>`).join('')}</div>`),
+saveHas:back+`<h3 class="q">احفظ خطتك برقمك</h3><p class="qs">بدون كلمة مرور. نرسل لك رمز على واتساب وتدخل فيه من أي جوال.</p>`+phoneF('+967 777 123 456')+`<div class="ban" style="background:var(--accSoft);color:var(--accDark)">${I('users')}<span><b>هذا الرقم عليه حساب باسم محمد.</b> نرسل الرمز وندخلك حسابك، وخطتك هذي تنضاف له.</span></div>`,
+saveErr:back+`<h3 class="q">احفظ خطتك برقمك</h3><p class="qs">بدون كلمة مرور. نرسل لك رمز على واتساب وتدخل فيه من أي جوال.</p><div class="field v err"><small>رقم جوالك</small><div class="amt"><span style="direction:ltr;display:inline-block">+967 777 12</span></div></div>`+hint('alert','الرقم ناقص. رقم يمني من 9 أرقام.','bad'),
+otpWrong:back+`<h3 class="q">اكتب الرمز</h3><p class="qs">أرسلناه على واتساب <b style="direction:ltr;display:inline-block">777 123 456</b></p><div class="otp bad"><span>4</span><span>7</span><span>1</span><span>9</span><span>0</span><span>2</span></div>`+hint('alert','الرمز غلط أو انتهى وقته. اطلب رمز جديد.','bad')+`<div class="btn wide" style="margin-top:4px">أرسل رمز جديد</div><div class="txl" style="color:var(--acc)">غيّر الرقم</div>`,
+saving:`<div class="center"><div class="spin"></div><h4>نحفظ خطتك في حسابك</h4><p>الميزانية، المهر، والـ20 مهمة. ثواني.</p></div>`,
+saveFail:`<div class="center"><div class="ring">${I('cloud')}</div><h4>ما قدرنا نحفظها في حسابك</h4><p>خطتك باقية على هذا الجوال وما ضاع منها شي. نحاول لحالنا أول ما يرجع النت.</p><div class="btn wide">جرّب مرة ثانية</div><a>افتح خطتي على الجوال الحين</a></div>`,
+login:back+`<h3 class="q">تسجيل الدخول</h3><p class="qs">بنفس رقم جوالك، ونرسل لك رمز على واتساب.</p>`+phoneF('+967 7XX XXX XXX',{f:1}).replace('class="amt"','class="amt" style="color:var(--faint)"')+`<div class="txl" style="color:var(--acc)">عندي كلمة مرور</div>`,
+loginPw:back+`<h3 class="q">الدخول بكلمة المرور</h3><p class="qs">لو الرمز ما يوصلك. تنضاف كلمة المرور من «حسابي».</p>`+phoneF('+967 777 123 456')+fld('كلمة المرور','••••••••',{v:1,amt:1,f:1})+`<div class="txl" style="color:var(--acc)">نسيتها؟ ادخل برمز واتساب</div>`,
+reset:back+`<div class="p3" style="flex:none"><i class="on"></i><i class="on"></i><i class="on"></i></div><h3 class="q">كلمة مرور جديدة</h3><p class="qs">أثبتنا رقمك. اختر كلمة تتذكرها.</p>`+fld('كلمة المرور الجديدة','••••••••',{v:1,amt:1,f:1})+hint('check','8 أحرف أو أكثر','ok')+fld('اكتبها مرة ثانية','')
+});
+/* ---------- the remaining sub-screens: only screens the app already has ---------- */
+Object.assign(P,{
+trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+wifi:'<path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M12 20h.01"/>',
+hist:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>'});
+const srow2=(t,s,end='')=>`<div class="li"><div class="t">${t}${s?`<small>${s}</small>`:''}</div>${end}</div>`;
+const sw=on=>`<span class="sw ${on?'on':''}"></span>`;
+const menu=(title,sub,items)=>sheet(title,sub,`<div style="margin-top:4px">${items.map(i=>`<div class="li" style="min-height:52px"><span style="display:grid;color:${i[2]||'var(--ink)'}">${I(i[0])}</span><div class="t" style="color:${i[2]||'var(--ink)'}">${i[1]}</div></div>`).join('')}</div>`);
+const bub=(t,me,time)=>`<div class="bub ${me?'me':''}">${t}<small>${time}</small></div>`;
+Object.assign(SC,{
+/* home */
+ask:sh('اسأل اعّرست','يجاوبك من خطتك أنت، وما يخترع أسعار')+`<div class="grow"></div>${bub('كم باقي عليّ قبل العرس؟',1,'10:02')}${bub('باقي عليك <b>3 مليون ر.ي</b>: مليونين من اتفاقاتك ومليون من المهر. أقرب دفعة للقاعة، 500,000 بعد 5 أيام.',0,'10:02')}<div class="wrapc"><span class="c2">ايش أسوي هذا الأسبوع؟</span><span class="c2">مين ما ردّ من الضيوف؟</span></div><div class="askbar" style="margin-top:4px">${I('spark')}اسأل عن عرسك…</div>`,
+quick:S.active.h+sheet('ايش تضيف؟','',`<div style="margin-top:4px">${row('wallet','دفعة','على اتفاق موجود')}${row('clip','اتفاق','مع مزود أو محل')}${row('tasks','مهمة','لك أو لأحد من الفريق')}${row('uplus','ضيف','واحد، أو من جهات الاتصال')}</div>`),
+events:sh('مناسبات عرسك','4 مناسبات',`<span class="tbtn">أضف</span>`)+`<div class="card rowc">${prow('19','الثلاثاء','السمرة','الديوان · بعد العشاء','')}${prow('20','الأربعاء','المقيل','بيت الوالد · بعد الظهر','')}${prow('21','الخميس','الغداء','بيت الوالد · الظهر','40 ضيف')}${prow('21','الخميس','الزفاف','قاعة سبأ · بعد العصر','124 ضيف')}</div>`+hint('users','الضيف ينعزم للزفاف دايمًا، والمناسبات الثانية تختارها له.'),
+planc:sh('خطتك','عرس محمد')+`<div class="card" style="padding-block:4px">${kv('pen','الاسم','عرس محمد')}${kv('cal','الموعد','الخميس 21 يناير')}${kv('pin','المدينة','صنعاء')}${kv('wallet','الميزانية','8 مليون ر.ي')}</div><div class="card rowc">${row('cal','مناسبات عرسك','4 مناسبات')}${row('users','فريق الخطة','3 معك')}${row('layers','خططك','خطة واحدة')}</div>`+hint('alert','تأجيل الموعد ينقل مهامك ومواعيد مناسباتك معه.')+`<div class="txl" style="color:var(--danger)">أرشف الخطة</div>`,
+/* money */
+mAgree:sh('اتفاق جديد','')+fld('مع مين؟','استوديو ضوء صنعاء',{v:1,f:1})+sect('أي بند؟')+wc([['القاعة',0],['التصوير',1],['الضيافة',0],['بند جديد',0,'plus']])+fld('على كم اتفقتوا؟','550,000 ر.ي',{v:1,amt:1})+`<div class="card" style="padding-block:0">${tg('يغطي البند كله','لو يغطي جزء، اكتب كم من تقديرك',1)}</div>`+sect('مواعيد الدفع','اختياري','أضف موعد')+`<div class="card rowc">${prow('1','نوفمبر','عربون','','100,000')}${prow('1','ديسمبر','الباقي','','450,000')}</div>`,
+mCost:sh('استوديو ضوء صنعاء','التصوير',`<div class="rb">${I('pen')}</div>`)+`<div class="card"><div class="fig4"><div><small>الاتفاق</small><b>550,000</b></div><div><small>باقي</small><b>450,000</b></div></div><div class="mb" style="height:6px;margin-top:12px"><i style="width:18%"></i></div></div><div class="card ns"><div class="due"><b>1</b><small>ديسمبر</small></div><div class="tx"><div class="eb">الدفعة الجاية</div><h4>الباقي</h4><p><b>450,000 ر.ي</b></p></div><div class="btn">سجّل دفعة</div></div>`+sect('اللي اندفع')+`<div class="card rowc">${prow('1','نوفمبر','عربون','نقدًا · أنت','100,000')}</div><div class="card rowc">${row('store','صفحة المزود','استوديو ضوء صنعاء')}${row('msg','المحادثة','')}${row('cam','الإيصالات','إيصال واحد')}</div>`,
+mPaid:sh('دفعة','عربون · استوديو ضوء صنعاء')+`<div class="card"><div class="eyebrow mut">اندفع</div><div class="mrow"><div class="big">100,000 ر.ي</div></div></div><div class="card" style="padding-block:4px">${kv('cal','متى','الأحد 1 نوفمبر')}${kv('users','مين دفع','أنت')}${kv('wallet','كيف','نقدًا')}</div><div class="card rowc">${row('cam','الإيصال','صورة واحدة')}</div><div class="txl" style="color:var(--danger)">${I('undo')}&nbsp; اعكس الدفعة</div>`+hint('alert','العكس يرجّع المبلغ للباقي ويبقى في السجل مشطوب.'),
+mBudget:sh('توزيع الميزانية','8 مليون ر.ي · المهر لحاله')+`<div class="card"><div class="fig4"><div><small>موزّع</small><b>6.3 مليون</b></div><div><small>احتياط</small><b style="color:var(--mint)">1.7 مليون</b></div></div></div><div class="card rowc">${irow('hall','القاعة','','2.5 م',31)}${irow('gem','الشبكة والذهب','','1.5 م',19)}${irow('food','الضيافة','','1.2 م',15)}${irow('cam','التصوير','فوق المحطوط بـ 50 ألف','600,000',8,{red:1})}${irow('users','الكسوة','','500,000',6)}</div><div class="txl" style="color:var(--acc)">+ أضف بند</div>`,
+mMahr:sh('المهر','برّا ميزانية العرس')+`<div class="card"><div class="eyebrow mut">الاتفاق مع أهل العروسة</div><div class="mrow"><div class="big">2 مليون ر.ي</div><div class="side"><b style="color:var(--mint)">سلّمت 1 مليون</b>باقي 1 مليون</div></div><div class="mb" style="height:6px;margin-top:12px"><i style="width:50%"></i></div></div><div class="card ns"><div class="due acc">${I('heart')}</div><div class="tx"><div class="eb">قبل العقد</div><h4>سلّم الباقي</h4><p><b>1,000,000 ر.ي</b></p></div><div class="btn">سجّل تسليم</div></div>`+sect('اللي سلّمته')+`<div class="card rowc">${prow('5','سبتمبر','تسليم أول','نقدًا','1,000,000')}</div>`+hint('lock','ما يشوفه إلا من تسمح له يشوف المال.'),
+mSrcNew:sh('مصدر فلوس','')+sect('من وين؟')+wc([['مدخراتي',0],['دعم الأهل',1],['سلفة',0],['رفد ونقوط',0]])+fld('من مين؟','الوالد',{v:1,f:1})+fld('كم؟','1,000,000 ر.ي',{v:1,amt:1})+sect('وصلت؟')+chips([['وصلت',0],['وعد',1]])+`<div class="card" style="padding-block:4px">${kv('cal','يوم الوعد','1 ديسمبر')}</div>`+hint('alert','الموعود نحسبه في «تكفي ولا لا» من يوم وعده بس.'),
+mHow:SC.mSum+sheet('كيف حسبناها؟','نبدأ من اللي معك، وننقص كل دفعة بتاريخها',`<div style="margin-top:8px">${srow2('معك اليوم','','<span class="v">1.4 م</span>')}${srow2('25 أكتوبر · دفعة القاعة','','<span class="v" style="color:var(--danger)">- 500 ألف</span>')}${srow2('1 ديسمبر · وعد الوالد','','<span class="v" style="color:var(--mint)">+ 1 م</span>')}${srow2('1 ديسمبر · التصوير','','<span class="v" style="color:var(--danger)">- 450 ألف</span>')}${srow2('15 يناير · آخر دفعة للقاعة','','<span class="v" style="color:var(--danger)">- 700 ألف</span>')}${srow2('<b>يبقى معك يوم العرس</b>','','<span class="v">750 ألف</span>')}</div>`),
+mWho:sh('مين دفع ايش','9 دفعات · 2.4 مليون')+`<div class="card rowc"><div class="li" style="min-height:68px"><span class="ava lg">م</span><div class="t">أنت<small>6 دفعات</small></div><span class="v">1.5 م</span></div><div class="li" style="min-height:68px"><span class="ava lg">و</span><div class="t">الوالد<small>دفع عنك · دفعتين للقاعة</small></div><span class="v">400,000</span></div><div class="li" style="min-height:68px"><span class="ava lg">خ</span><div class="t">الخال سعيد<small>دفع عنك · الذهب</small></div><span class="v">500,000</span></div></div>`,
+/* tasks */
+tTime:th('المهام','باقي 12 · واحدة متأخرة',hbtn('share','شارك'))+segc(['القائمة','الوقت'],1)+sect('أكتوبر','3 مهام')+`<div class="card rowc">${prow('22','أكتوبر','حجز المصور','متأخرة · صالح','',{red:1})}${prow('25','أكتوبر','دفعة القاعة الثانية','أنت','')}${prow('27','أكتوبر','تذوّق الضيافة','الوالد','')}</div>`+sect('نوفمبر','4 مهام')+`<div class="card rowc">${prow('1','نوفمبر','شراء الشبكة والذهب','أنت','')}${prow('5','نوفمبر','الاتفاق مع الفنان','صالح','')}</div>`+sect('ديسمبر','3 مهام')+`<div class="card rowc">${prow('10','ديسمبر','طباعة بطاقات الدعوة','أنت','')}</div>`,
+tMenu:SC.tOne+menu('حجز المصور','',[['pen','عدّل المهمة'],['cal','أجّلها'],['users','غيّر المسؤول'],['trash','احذف المهمة','var(--danger)']]),
+tStart:SC.tasks+sheet('مهام جاهزة لعرسك','مرتبة على موعدك. شيل اللي ما يخصك',`<div style="margin-top:4px">${tk('ok','تحديد الميزانية وتوزيعها','قبل 3 أشهر')}${tk('ok','حجز القاعة','قبل 3 أشهر')}${tk('ok','حجز المصور','قبل شهرين')}${tk('','ترتيب القات والمقيل','قبل أسبوع')}</div><div class="btn wide">أضف 3 مهام</div>`),
+/* guests */
+gOne:sh('عبدالله الحمدي','آل الحمدي',`<div class="rb">${I('pen')}</div>`)+`<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st ok">أكّد الزفاف</span><span class="st wait">الغداء: ما ردّ</span></div><div class="fig4" style="margin-top:12px"><div><small>معه</small><b>1</b></div><div><small>المقاعد</small><b>2</b></div></div></div><div class="card" style="padding-block:4px">${kv('phone','الجوال','<span style="direction:ltr;display:inline-block">+967 771 555 010</span>')}${kv('users','العائلة','آل الحمدي')}</div><div class="card rowc">${row('send','ذكّره على واتساب','الغداء · من جوالك')}${row('mail','انسخ رابط دعوته','يرد منه بنفسه')}</div><div class="txl" style="color:var(--danger)">احذف الضيف</div>`,
+gImport:sh('من جهات الاتصال','اخترت 3')+`<div class="search">${I('search')}دوّر باسم</div><div class="card rowc">${[['أحمد الحمدي',1],['خالد السقاف',1],['سعيد العنسي',0],['صالح المطري',1],['عادل الحمدي',0,'مضاف من قبل']].map(g=>`<div class="li"><span class="ck ${g[1]?'ok':''}">${g[1]?I('check'):''}</span><div class="t" style="${g[2]?'color:var(--faint)':''}">${g[0]}${g[2]?`<small>${g[2]}</small>`:''}</div></div>`).join('')}</div>`,
+gPaste:sh('الصق قائمة','اسم في كل سطر، ورقمه لو عندك')+`<div class="field v" style="min-height:150px"><small>القائمة</small><div style="font-size:14.5px;line-height:1.9">أحمد الحمدي 771555010<br>خالد السقاف<br>سعيد العنسي 733000111</div></div>`+hint('check','قرينا 3 ضيوف، واحد بدون رقم.','ok')+sect('لأي عائلة؟')+wc([['آل الحمدي',1],['آل السقاف',0],['بدون',0]]),
+gGroups:SC.guests+sheet('المجموعات','',`<div style="margin-top:4px">${['آل الحمدي · 6','آل السقاف · 12','زملاء العمل · 20','الأصحاب · 30'].map(x=>`<div class="li" style="min-height:52px"><div class="t">${x}</div><span style="color:var(--faint);display:grid">${I('pen')}</span></div>`).join('')}</div><div class="btn wide" style="background:var(--accSoft);color:var(--acc)">+ مجموعة جديدة</div>`),
+gCount:sh('كم بيحضر؟','لكل مناسبة')+`<div class="card sum">${arcBig('143',70)}<div class="tx"><b>مقعد في الزفاف</b><small>86 أكدوا مع مرافقيهم · 20 ما ردّوا</small></div></div><div class="card rowc">${srow2('الزفاف','86 أكدوا من 124','<span class="v">143 مقعد</span>')}${srow2('الغداء','28 أكدوا من 40','<span class="v">31 مقعد</span>')}${srow2('المقيل','ما عزمت أحد بعد','<span class="tbtn">اعزم</span>')}</div>`+hint('alert','القاعة تبغى العدد قبل العرس بأسبوع.'),
+/* providers */
+pBook:SC.compare+sheet('نطلب الحجز؟','استوديو ضوء صنعاء · 550,000 ر.ي',`<div style="margin-top:8px">${kv('cal','اليوم','الخميس 21 يناير')}</div>`+hint('wallet','يصير اتفاق في المال الحين، والحجز يتأكد لما يوافقون.')+`<div class="btn wide">اطلب الحجز</div><div class="txl" style="color:var(--acc)">يوم ثاني</div>`),
+pBooks:sh('الحجوزات','الخميس 21 يناير')+`<div class="card rowc">${srow2('قاعة سبأ','أكدوا · نذكّركم قبل بأسبوع وبيوم','<span class="st ok">محجوز</span>')}${srow2('استوديو ضوء صنعاء','طلبت الحجز','<span class="st wait">ينتظر تأكيدهم</span>')}${srow2('فرقة الأفراح','اعتذروا: محجوزين ذاك اليوم','<span class="btn">شوف غيرهم</span>')}</div>`,
+pCancel:SC.pBooks+sheet('تلغي حجز قاعة سبأ؟','',hint('alert','الاتفاق في المال يبقى، ودفعاتك تبقى مسجّلة. استرجاع الفلوس بينك وبينهم.')+`<div class="btn wide" style="background:var(--danger)">الغِ الحجز</div><div class="txl" style="color:var(--acc)">خلّه</div>`),
+pChats:sh('المحادثات','واحدة ما قريتها')+`<div class="card rowc"><div class="li" style="min-height:68px"><span class="ava lg">ض</span><div class="t">استوديو ضوء صنعاء<small>نقدر نضيف ألبوم ثاني بـ 30 ألف</small></div><span class="un"></span></div><div class="li read" style="min-height:68px"><span class="ava lg">س</span><div class="t">قاعة سبأ<small>تم، نشوفكم يوم الخميس</small></div></div></div>`+hint('lock','المحادثة تبدأ من طلب عرض. رقمك ما يوصلهم إلا إذا شاركته.'),
+pChat:sh('استوديو ضوء صنعاء','عرض التصوير · 550,000 ر.ي')+`<div class="grow"></div>${bub('السلام عليكم، العرض يشمل تصوير الغداء؟',1,'9:40')}${bub('وعليكم السلام. الزفاف بس، ونقدر نضيف الغداء بـ 50 ألف.',0,'9:52')}${bub('نقدر نضيف ألبوم ثاني بـ 30 ألف',0,'9:53')}<div class="askbar" style="margin-top:4px;color:var(--faint)">اكتب رسالة…</div>`,
+pFav:sh('المفضلة','3 مزودين')+pv('b','','قاعة ليالي صنعاء',1,'قاعات · شارع الستين',rate('4.8',63),'2,200,000 <small>ر.ي</small>',{fav:1})+pv('a','','قاعة سبأ',1,'قاعات · حدة',rate('4.7',52),'1,500,000 <small>ر.ي</small>',{fav:1})+pv('c','','استوديو الورد',0,'تصوير · صنعاء',rate('4.5',29),'480,000 <small>ر.ي</small>',{fav:1}),
+/* account and team */
+aSet:sh('الإعدادات','')+`<div class="card" style="padding-block:0">${tg('أخفِ المبالغ','في كل الشاشات على هذا الجوال',0)}${tg('التاريخ الهجري','جنب الميلادي',1)}${tg('تذكير الدفعات','قبل الموعد بأسبوع وعند التأخر',1)}${tg('تنبيهات الضيوف والمزودين','ردود، عروض، حجوزات',1)}</div><div class="card rowc">${row('lock','قفل التطبيق','شغّال · بالبصمة')}${row('shield','الخصوصية','')}${row('wifi','فحص الاتصال','')}</div>`,
+aLock:sh('قفل التطبيق','')+`<div class="card" style="padding-block:0">${tg('اقفل التطبيق','يطلب البصمة أو الرمز كل ما تفتحه',1)}${tg('بالبصمة','',1)}</div><div class="card rowc">${row('lock','غيّر الرمز','4 أرقام')}</div>`+hint('lock','المبالغ ما تطلع في التنبيهات على شاشة القفل.'),
+aPriv:sh('الخصوصية','مين يشوف ايش')+`<div class="card rowc">${srow2('المال','أنت والوالد','<span class="tbtn">غيّر</span>')}${srow2('أرقام الضيوف','أنت ومن أضافهم','')}${srow2('اسم خطتك','المدعوين اللي اخترتهم. المزود ما يشوفه','')}</div><div class="card rowc">${row('clip','انسخ بياناتك','ملف فيه كل اللي سجلته')}</div><div class="txl" style="color:var(--danger)">احذف حسابي</div>`,
+aPhone:sh('تغيير رقم الجوال','')+`<p class="qs">نرسل رمز على الرقم الجديد. خططك ودعواتك تنتقل معك.</p>`+fld('الرقم الحالي','<span style="direction:ltr;display:inline-block">+967 777 123 456</span>',{v:1})+fld('الرقم الجديد','<span style="direction:ltr;display:inline-block">+967 7XX XXX XXX</span>',{f:1}),
+aDel:sh('حذف الحساب','')+`<div class="center" style="flex:none;padding:16px 8px"><div class="ring" style="background:var(--dangerSoft);color:var(--danger)">${I('trash')}</div><h4>تحذف حسابك؟</h4><p>عندك 30 يوم ترجع فيها. بعدها تنمسح خطتك وكل اللي سجلته.</p></div><div class="card rowc">${srow2('عرس محمد','تتوقف، ومشاركينك ما عاد يدخلونها','')}${srow2('حجوزاتك','تبقى عند المزودين، والتواصل معهم برّا التطبيق','')}</div>`,
+aPlans:sh('خططك','')+`<div class="card rowc"><div class="li" style="min-height:68px"><div class="ic">${I('home')}</div><div class="t">عرس محمد<small>خطتك · 93 يوم</small></div><span class="st acc">مفتوحة</span></div><div class="li" style="min-height:68px"><div class="ic">${I('users')}</div><div class="t">عرس أخوك علي<small>أنت مساعد فيها</small></div><span class="chev">${I('chev')}</span></div></div><div class="txl" style="color:var(--acc)">+ خطة جديدة</div>`,
+aSupport:sh('المساعدة','')+`<div class="card rowc">${row('msg','راسلنا على واتساب','نرد خلال يوم')}${row('help','أسئلة تتكرر','')}${row('shield','الخصوصية والشروط','')}${row('wifi','فحص الاتصال','لو التطبيق يقول بدون نت')}</div>`,
+aConn:sh('فحص الاتصال','')+`<div class="card ns"><div class="due acc">${I('check')}</div><div class="tx"><div class="eb">آخر رد قبل دقيقة</div><h4>الخادم يرد</h4><p>كل اللي سجلته محفوظ</p></div><div class="btn">افحص الآن</div></div><div class="card rowc">${srow2('النسخة','','<span class="v">1.0 · 2d88d9c</span>')}${srow2('تغييرات تنتظر الإرسال','','<span class="v">0</span>')}${srow2('آخر فشل','الخادم تأخر · أمس 21:14','')}</div><div class="txl" style="color:var(--acc)">انسخ التقرير</div>`,
+sAdd:sh('ادعُ أحد','')+sect('ايش يسوي؟')+`<div class="card rowc"><div class="li" style="min-height:64px"><span class="ck ok">${I('check')}</span><div class="t">مساعد<small>المهام والضيوف والمزودين</small></div></div><div class="li" style="min-height:64px"><span class="ck"></span><div class="t">أهل<small>مثل المساعد، ويشوف المال إذا سمحت</small></div></div><div class="li" style="min-height:64px"><span class="ck"></span><div class="t">يشوف بس<small>يتابع وما يعدّل شي</small></div></div></div>`+fld('اسمه','صالح المطري',{v:1})+fld('رقم جواله','<span style="direction:ltr;display:inline-block">+967 733 000 111</span>',{v:1})+hint('msg','نرسل له رابط الدعوة على واتساب، ويشتغل 7 أيام.'),
+sEdit:sh('صالح','مساعد · معك من 3 أكتوبر')+`<div class="card" style="padding-block:0">${tg('المهام','يضيف ويعدّل',1)}${tg('الضيوف','يضيف ويعدّل',1)}${tg('المزودين','يطلب عروض',1)}${tg('يشوف المال','الاتفاقات والدفعات',0)}${tg('يسجّل في المال','',0)}</div>`+hint('alert','مهامه المفتوحة: 3. لو شلته تبقى بدون مسؤول.')+`<div class="txl" style="color:var(--danger)">شيله من الخطة</div>`,
+sHist:sh('وش سوّى المشاركين','آخر أسبوع')+sect('اليوم')+`<div class="card rowc">${srow2('صالح خلّص «سؤال عن الأسعار»','مهمة · 9:20','')}${srow2('الوالد أضاف 4 ضيوف','آل السقاف · 8:05','')}</div>`+sect('أمس')+`<div class="card rowc">${srow2('صالح طلب عرض من فرقة الأفراح','المزودين · 20:40','')}${srow2('الوالد سجّل دفعة 400,000','القاعة · 17:10','')}</div>`,
+aOut:SC.acct+sheet('تخرج من حسابك؟','',hint('check','خطتك محفوظة في حسابك، وترجع لها برقمك.','ok')+`<div class="btn wide" style="background:var(--danger)">اخرج</div><div class="txl" style="color:var(--acc)">خلّني</div>`)
+});
+/* ---------- figures ---------- */
+let N=0;
+const cap=o=>`<figcaption><span class="n">${String(++N).padStart(2,'0')}</span><b>${o.t}</b>${o.d?`<span class="d">${o.d}</span>`:''}${o.from?`<span class="from">${o.from}</span>`:''}</figcaption>`;
+const F=o=>{let ph;
+  if(o.home){const s=S[o.home];const body=s.ask?s.h.replace(/(<div class="av">[^<]*<\/div><\/div>)/,'$1'+askbar(s.ask)):s.h;ph=`<div class="ph ${s.cls||''}"><div class="scr ${s.d?'docked':''}">${body}</div>${s.d||''}${tabsAt(0)}</div>`;}
+  else ph=`<div class="ph"><div class="scr ${o.night?'night':''} ${o.dock?'docked':''}">${o.body}</div>${o.dock?dock(''):''}${o.pin||''}${o.tab!=null?tabsAt(o.tab):''}</div>`;
+  return `<figure>${ph}${cap(o)}</figure>`;};
+const CH=[{id:'money',st:1,when:'الدفعة 1 من 7',t:'تبويب المال',p:'أربعة تبويبات، كل واحد يجاوب سؤال. الأرقام والقواعد كما في التطبيق اليوم (D102). الجديد هو الشكل فقط، بلغة الرئيسية اللي اعتمدتها.',f:[
+ {body:SC.mSum,tab:1,dock:1,t:'الملخص: كم عليّ وهل يكفي؟',d:'المتأخرة أولًا بزرها. ثم الرقم وحكمه ومتى، بنفس بطاقة الرئيسية.'},
+ {body:SC.mItems,tab:1,dock:1,t:'البنود: وين تروح؟',d:'الميزانية بشريط واحد. البند اللي عليه اتفاق بشريطه، واللي بالتقدير مكتوب عليه «تقدير».'},
+ {body:SC.mPay,tab:1,dock:1,t:'الدفعات: متى أدفع؟',d:'الأشهر أعمدة، نصيبك غامق ونصيب غيرك فاتح. ثم المتأخر، ثم شهر شهر.'},
+ {body:SC.mSrc,tab:1,dock:1,t:'من وين: هل معي ما يكفي؟',d:'معك، والموعود، والسلف. ثلاثة أرقام بثلاثة ألوان، ثم كل مصدر ومين ساعد.'}]}];
+document.getElementById('chapters').innerHTML=CH.map(c=>`<section class="ch" id="${c.id}"><div class="wrap"><div class="chh">${qsvg(c.st)}<div class="t"><div class="when">${c.when}</div><h2>${c.t}</h2><p>${c.p}</p></div></div></div><div class="flow">${c.f.map(F).join('')}</div></section>`).join('');
+document.getElementById('count').textContent=N;
+const rail=document.querySelector('.rail');
+const SHORT={prep:'يدوّر ويحجز',money:'المال',tasks:'المهام'};
+rail.querySelector('nav').innerHTML=CH.map(c=>`<a href="#${c.id}">${SHORT[c.id]||c.t}</a>`).join('');
+const railQ=rail.querySelector('.q'),links=[...rail.querySelectorAll('a')];
+const setOn=i=>{links.forEach((a,k)=>a.classList.toggle('on',k==i));railQ.innerHTML=qsvg(CH[i].st);const a=links[i],n=a.parentElement;n.scrollLeft+=a.getBoundingClientRect().left-n.getBoundingClientRect().left-n.clientWidth/2+a.offsetWidth/2;};
+setOn(0);
+if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)setOn(CH.findIndex(c=>c.id==e.target.id));});},{rootMargin:'-30% 0px -60% 0px'});document.querySelectorAll('.ch').forEach(s=>io.observe(s));}
+</script>

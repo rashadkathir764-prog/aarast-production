@@ -371,6 +371,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         ? null
         : moneyCoverWords(context, coverage, figure);
     final outstanding = money.outstanding;
+    final dueMonths = money.duesByMonth?.months ?? const [];
     return DashboardHomeFunding(
       inHand: value(funding.availableCash),
       pledged: value(funding.pledged),
@@ -378,6 +379,12 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       sourcesCount: funding.sourcesCount,
       ownerLeft: outstanding == null ? null : value(outstanding.owner),
       verdict: words == null ? null : (ok: words.ok, words: words.main),
+      // D102: the owner's share of the coming months, the nearest three.
+      dues: [
+        for (final due in dueMonths)
+          if (value(due.bucket.ownerAmount) > 0)
+            (month: due.month, amount: value(due.bucket.ownerAmount)),
+      ].take(3).toList(growable: false),
     );
   }
 

@@ -145,6 +145,7 @@ class JourneyBox extends StatelessWidget {
     this.padding = const EdgeInsets.all(AarastV3Space.x4),
     this.radius = AarastV3Radius.card,
     this.borderColor,
+    this.borderWidth = AarastV3Space.half,
     super.key,
   });
 
@@ -154,6 +155,10 @@ class JourneyBox extends StatelessWidget {
   final double radius;
   final Color? borderColor;
 
+  /// The edge's width when [borderColor] is set; a hairline
+  /// ([AarastV3Space.hair]) for a card that sits on the canvas.
+  final double borderWidth;
+
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
@@ -162,7 +167,7 @@ class JourneyBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         border: borderColor == null
             ? null
-            : Border.all(color: borderColor!, width: 2),
+            : Border.all(color: borderColor!, width: borderWidth),
       ),
       child: Padding(padding: padding, child: child),
     );

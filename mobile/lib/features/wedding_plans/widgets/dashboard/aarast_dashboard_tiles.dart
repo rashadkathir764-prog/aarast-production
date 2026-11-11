@@ -55,69 +55,82 @@ class _JourneyHomeTiles extends StatelessWidget {
             context.accent.primary,
           )
         : null;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _HomeTile(
-              key: const ValueKey('aarast-dashboard-tile-tasks'),
-              label: 'المهام',
-              icon: LucideIcons.listChecks,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              value: s.completedTasks,
-              of: s.totalTasks == 0
-                  ? 'ما في مهام بعد'
-                  : 'من ${arabicCount(s.totalTasks, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')}',
-              note: tasksNote,
-              progress: s.totalTasks == 0
-                  ? null
-                  : s.completedTasks / s.totalTasks,
-              onTap: onOpenTasks,
+    const divider = VerticalDivider(
+      width: AarastV3Space.x2,
+      thickness: AarastV3Space.hair,
+      color: AarastV3Color.line,
+    );
+    return JourneyBox(
+      borderColor: AarastV3Color.line,
+      borderWidth: AarastV3Space.hair,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x2,
+        vertical: AarastV3Space.x3,
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _HomeTile(
+                key: const ValueKey('aarast-dashboard-tile-tasks'),
+                label: 'المهام',
+                icon: LucideIcons.listChecks,
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                value: s.completedTasks,
+                of: s.totalTasks == 0
+                    ? 'ما في مهام بعد'
+                    : 'من ${arabicCount(s.totalTasks, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')}',
+                note: tasksNote,
+                progress: s.totalTasks == 0
+                    ? null
+                    : s.completedTasks / s.totalTasks,
+                onTap: onOpenTasks,
+              ),
             ),
-          ),
-          const SizedBox(width: AarastV3Space.x2),
-          Expanded(
-            child: _HomeTile(
-              key: const ValueKey('aarast-dashboard-tile-guests'),
-              label: JourneySection.guests.labelOf(context),
-              icon: LucideIcons.users,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              value: s.confirmedGuests,
-              of: s.guestCount == 0
-                  ? context.planWord('ما في ضيوف بعد', 'ما في ضيفات بعد')
-                  : '${context.say('أكدوا', 'أكدن')} من ${s.guestCount}',
-              note: guestsNote,
-              progress: s.guestCount == 0
-                  ? null
-                  : s.confirmedGuests / s.guestCount,
-              onTap: onOpenGuests,
+            divider,
+            Expanded(
+              child: _HomeTile(
+                key: const ValueKey('aarast-dashboard-tile-guests'),
+                label: JourneySection.guests.labelOf(context),
+                icon: LucideIcons.users,
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                value: s.confirmedGuests,
+                of: s.guestCount == 0
+                    ? context.planWord('ما في ضيوف بعد', 'ما في ضيفات بعد')
+                    : '${context.say('أكدوا', 'أكدن')} من ${s.guestCount}',
+                note: guestsNote,
+                progress: s.guestCount == 0
+                    ? null
+                    : s.confirmedGuests / s.guestCount,
+                onTap: onOpenGuests,
+              ),
             ),
-          ),
-          const SizedBox(width: AarastV3Space.x2),
-          Expanded(
-            child: _HomeTile(
-              key: const ValueKey('aarast-dashboard-tile-providers'),
-              label: 'المزودين',
-              icon: LucideIcons.store,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              // D60: the server's one count, the board's «محجوز N» too.
-              value: s.bookedServices.count,
-              // Its two neighbours say «ما في مهام بعد» and «ما في ضيوف
-              // بعد» at zero; this one left a bare «0 محجوز», a number
-              // that looks like data and tells nothing.
-              of: s.bookedServices.count == 0
-                  ? context.say('ما حجزت أحد بعد', 'ما حجزتِ أحد بعد')
-                  : 'محجوز',
-              note: providersNote,
-              progress: null,
-              onTap: onOpenProviders,
+            divider,
+            Expanded(
+              child: _HomeTile(
+                key: const ValueKey('aarast-dashboard-tile-providers'),
+                label: 'المزودين',
+                icon: LucideIcons.store,
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                // D60: the server's one count, the board's «محجوز N» too.
+                value: s.bookedServices.count,
+                // Its two neighbours say «ما في مهام بعد» and «ما في ضيوف
+                // بعد» at zero; this one left a bare «0 محجوز», a number
+                // that looks like data and tells nothing.
+                of: s.bookedServices.count == 0
+                    ? context.say('ما حجزت أحد بعد', 'ما حجزتِ أحد بعد')
+                    : 'محجوز',
+                note: providersNote,
+                progress: null,
+                onTap: onOpenProviders,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -156,19 +169,15 @@ class _HomeTile extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        child: Container(
-          padding: const EdgeInsets.all(AarastV3Space.x3),
-          decoration: BoxDecoration(
-            color: soft,
-            borderRadius: BorderRadius.circular(AarastV3Radius.card),
-          ),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 16, color: color),
+                  Icon(icon, size: AarastV3Icon.sm, color: color),
                   const SizedBox(width: AarastV3Space.x1),
                   Flexible(
                     child: Text(
@@ -178,23 +187,41 @@ class _HomeTile extends StatelessWidget {
                       style: JourneyType.of(
                         JourneyType.detail,
                         weight: JourneyType.bold,
-                        color: color,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AarastV3Space.x2),
-              Text(
-                '$value',
-                style: JourneyType.of(
-                  JourneyType.display,
-                  weight: JourneyType.bold,
-                  height: 1.1,
+              // The share done as an arch, the count inside it. Without a
+              // share (no total yet) the arch is its empty track.
+              SizedBox(
+                width: _archWidth,
+                height: _archHeight,
+                child: CustomPaint(
+                  painter: _ArchPainter(
+                    value: progress?.clamp(0.0, 1.0),
+                    color: color,
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: MediaQuery.withNoTextScaling(
+                      child: Text(
+                        '$value',
+                        style: JourneyType.of(
+                          JourneyType.figure,
+                          weight: JourneyType.bold,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: AarastV3Space.x1),
               Text(
                 of,
+                textAlign: TextAlign.center,
                 style: JourneyType.of(
                   JourneyType.label,
                   color: AarastV3Color.textMuted,
@@ -203,28 +230,57 @@ class _HomeTile extends StatelessWidget {
               if (note != null)
                 Text(
                   note!.$1,
+                  textAlign: TextAlign.center,
                   style: JourneyType.of(
                     JourneyType.caption,
                     weight: JourneyType.bold,
                     color: note!.$2,
                   ),
                 ),
-              const Spacer(),
-              if (progress != null) ...[
-                const SizedBox(height: AarastV3Space.x2),
-                JourneyBar(
-                  value: progress!.clamp(0.0, 1.0),
-                  color: color,
-                  track: AarastV3Color.paper,
-                  height: 5,
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The arch a tile's count sits in: a half circle, 64 by 36, its line 5.
+const _archWidth = AarastV3Space.x16;
+const _archHeight = AarastV3Space.x8 + AarastV3Space.x1;
+const _archStroke = AarastV3Space.x1 + AarastV3Space.hair;
+
+/// A half circle read from the right, like the text: the track, then the
+/// share done over it.
+class _ArchPainter extends CustomPainter {
+  const _ArchPainter({required this.value, required this.color});
+
+  final double? value;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = size.width / 2 - _archStroke / 2;
+    final rect = Rect.fromCircle(
+      center: Offset(size.width / 2, size.height - _archStroke / 2),
+      radius: radius,
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _archStroke
+      ..strokeCap = StrokeCap.round
+      ..color = AarastV3Color.line;
+    // From the right end (angle 0) over the top to the left end.
+    canvas.drawArc(rect, 0, -math.pi, false, paint);
+    final share = value;
+    if (share != null && share > 0) {
+      canvas.drawArc(rect, 0, -math.pi * share, false, paint..color = color);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ArchPainter old) =>
+      old.value != value || old.color != color;
 }
 
 /// «بعدها»: the server's other important items, after the next step.

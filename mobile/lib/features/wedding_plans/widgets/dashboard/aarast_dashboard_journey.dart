@@ -110,7 +110,7 @@ class _JourneyHomeHeader extends StatelessWidget {
               child: Center(
                 child: JourneyAvatar(
                   letter: name.isEmpty ? '' : name.characters.first,
-                  color: AarastV3Color.saffron,
+                  color: context.accent.primarySoft,
                   size: 40,
                 ),
               ),
@@ -360,125 +360,6 @@ class _JourneyHomeHero extends StatelessWidget {
           size: 20,
         ),
       ],
-    );
-  }
-}
-
-/// «الخطوة الجاية»: one honest next step. A due payment is named with its
-/// amount and day, and opens recording that payment.
-class _JourneyNextStep extends StatelessWidget {
-  const _JourneyNextStep({
-    required this.focus,
-    required this.payment,
-    required this.currency,
-    required this.now,
-    required this.amountsHidden,
-    required this.onOpen,
-  });
-
-  final AarastDashboardFocus focus;
-  final DashboardNextPaymentSchedule? payment;
-  final String currency;
-  final DateTime now;
-
-  /// G17: «أخفِ المبالغ» reaches the next step's amount too.
-  final bool amountsHidden;
-  final VoidCallback onOpen;
-
-  String _withAmount(String title, String? amount) {
-    final value = dashboardAmount(amount);
-    if (amountsHidden || value == null) return title;
-    return '$title: ${formatDashboardAmount(value)} ${_currencyLabel(currency)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final due = payment;
-    final String eyebrow;
-    final String title;
-    final String reason;
-    final String action;
-    final IconData icon;
-    if (due != null) {
-      // D11, RA-MO-25: from today in Sana'a, as the server counts.
-      final days = daysUntilPlanDay(due.dueDate, now: now);
-      final when = days > 1
-          ? 'بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}'
-          : days == 1
-          ? 'بكرة'
-          : days == 0
-          ? 'اليوم'
-          : 'متأخرة ${arabicCount(-days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
-      eyebrow = 'الخطوة الجاية · $when';
-      title = _withAmount(due.title, due.amount);
-      reason = 'موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
-      action = context.say('سجّل الدفعة', 'سجّلي الدفعة');
-      icon = LucideIcons.calendarClock;
-    } else {
-      eyebrow = 'الخطوة الجاية';
-      title = _withAmount(focus.title, focus.item?.amount);
-      reason = focus.reason;
-      action = focus.actionLabel;
-      icon = focus.icon;
-    }
-    final urgent = focus.tone == AarastDashboardFocusTone.urgent;
-    final accent = urgent
-        ? AarastV3Color.brandAccentStrong
-        : context.accent.primary;
-    final soft = urgent
-        ? AarastV3Color.brandAccentSoft
-        : context.accent.primarySoft;
-    return JourneyBox(
-      key: ValueKey('aarast-dashboard-next-step-${focus.target.name}'),
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              JourneyIconTile(icon: icon, color: accent, soft: soft),
-              const SizedBox(width: AarastV3Space.x3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: accent,
-                      ),
-                    ),
-                    const SizedBox(height: AarastV3Space.half),
-                    Text(
-                      title,
-                      style: JourneyType.of(
-                        JourneyType.title,
-                        weight: JourneyType.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AarastV3Space.half),
-                    Text(
-                      reason,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyButton(label: action, onPressed: onOpen),
-          ),
-        ],
-      ),
     );
   }
 }

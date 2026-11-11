@@ -240,14 +240,23 @@ void main() {
 
     await tester.pumpWidget(home(hidden: false));
     await tester.pumpAndSettle();
-    expect(find.text('القاعة: 500,000 ر.ي'), findsOneWidget);
-    expect(find.text('موعدها بعد 5 أيام'), findsOneWidget);
+    // The amount has its own line under the title, with the reason.
+    expect(find.text('القاعة'), findsOneWidget);
+    expect(find.textContaining('500,000', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('موعدها بعد 5 أيام', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('سجّل الدفعة'), findsOneWidget);
 
     await tester.pumpWidget(home(hidden: true));
     await tester.pumpAndSettle();
     expect(find.text('القاعة'), findsOneWidget);
-    expect(find.textContaining('500,000'), findsNothing);
+    expect(find.textContaining('500,000', findRichText: true), findsNothing);
+    expect(
+      find.textContaining('موعدها بعد 5 أيام', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   test('dashboard compact response does not require full entity lists', () {

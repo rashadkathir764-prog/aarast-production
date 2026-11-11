@@ -24,6 +24,8 @@ class _DashboardTeamStrip extends StatelessWidget {
     );
     return JourneyBox(
       key: const ValueKey('aarast-dashboard-sharing'),
+      borderColor: AarastV3Color.line,
+      borderWidth: AarastV3Space.hair,
       padding: EdgeInsets.zero,
       child: JourneyListRow(
         icon: LucideIcons.users,

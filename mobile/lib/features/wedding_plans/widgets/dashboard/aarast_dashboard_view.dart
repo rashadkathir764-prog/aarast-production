@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -7,6 +9,7 @@ import '../../../../core/utils/arabic_count.dart';
 import '../../../../core/utils/arabic_date_formatter.dart';
 import '../../../../core/utils/compact_money_figure.dart';
 import '../../../../core/utils/hijri_date.dart';
+import '../../../../core/utils/keep_currency_on_line.dart';
 import '../../../../core/utils/plan_day.dart';
 import '../../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
@@ -21,6 +24,7 @@ part 'aarast_dashboard_money_card.dart';
 part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
 part 'aarast_dashboard_journey.dart';
+part 'aarast_dashboard_next_step.dart';
 part 'aarast_dashboard_moments.dart';
 part 'aarast_dashboard_tiles.dart';
 part 'aarast_dashboard_mahr.dart';
@@ -212,7 +216,8 @@ class AarastDashboardView extends StatelessWidget {
                     const SizedBox(height: AarastV3Space.x3),
                     notice!,
                   ],
-                  const SizedBox(height: AarastV3Space.x4),
+                  ?assistantEntry,
+                  const SizedBox(height: AarastV3Space.x3),
                   if (window != null)
                     _WeddingSkyHero(
                       days: window,
@@ -235,7 +240,6 @@ class AarastDashboardView extends StatelessWidget {
                       onTap: onOpenPlan,
                       showHijri: showHijri,
                     ),
-                  ?assistantEntry,
                   if (window != null) ...[
                     if (window > 0) ...[
                       const SizedBox(height: AarastV3Space.x3),
@@ -289,13 +293,17 @@ class AarastDashboardView extends StatelessWidget {
                         icon: LucideIcons.cloudOff,
                         color: AarastV3Color.brandAccentStrong,
                         soft: AarastV3Color.brandAccentSoft,
-                        text: 'ما قدرنا نقرأ فلوسك الحين، فما نعرف كم باقي عليك.',
+                        text:
+                            'ما قدرنا نقرأ فلوسك الحين، فما نعرف كم باقي عليك.',
                       ),
                       if (onRetryMoney case final retry?)
                         Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: JourneyTextAction(
-                            label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+                            label: context.say(
+                              'جرّب مرة ثانية',
+                              'جرّبي مرة ثانية',
+                            ),
                             onPressed: retry,
                           ),
                         ),

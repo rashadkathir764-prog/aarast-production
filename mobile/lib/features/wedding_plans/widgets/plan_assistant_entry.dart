@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_pressable.dart';
 import '../data/plan_assistant_api.dart';
 import '../models/plan_assistant.dart';
 
@@ -58,24 +59,51 @@ class _PlanAssistantEntryState extends State<PlanAssistantEntry> {
   Widget build(BuildContext context) {
     final status = _status;
     if (status == null || !status.available) return const SizedBox.shrink();
+    final label = context.say('اسأل اعّرست عن عرسك', 'اسألي اعّرست عن عرسك');
+    void open() => context.push(AppRouter.planAssistant(widget.weddingPlanId));
+    // The home's field under the greeting: it reads as a place to ask, in
+    // one 48 line, and opens b11.
     return Padding(
-      padding: const EdgeInsets.only(top: AarastV3Space.x2),
-      child: JourneyBox(
-        padding: EdgeInsets.zero,
-        child: JourneyListRow(
-          key: const ValueKey('assistant-entry'),
-          icon: LucideIcons.sparkles,
-          color: context.accent.primary,
-          soft: context.accent.primarySoft,
-          title: context.say('اسأل اعّرست', 'اسألي اعّرست'),
-          subtitle: 'يجاوبك من خطتك أنت، وما يخترع أسعار',
-          trailing: const Icon(
-            LucideIcons.chevronLeft,
-            size: 18,
-            color: AarastV3Color.textFaint,
+      padding: const EdgeInsets.only(top: AarastV3Space.x3),
+      child: Semantics(
+        key: const ValueKey('assistant-entry'),
+        button: true,
+        label: '$label، يجاوبك من خطتك أنت، وما يخترع أسعار',
+        onTap: open,
+        excludeSemantics: true,
+        child: AarastPressable(
+          onTap: open,
+          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+          child: JourneyBox(
+            radius: AarastV3Radius.surface,
+            borderColor: AarastV3Color.line,
+            borderWidth: AarastV3Space.hair,
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.sparkles,
+                    size: AarastV3Icon.md,
+                    color: context.accent.primary,
+                  ),
+                  const SizedBox(width: AarastV3Space.x2),
+                  Expanded(
+                    child: Text(
+                      '$label…',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          onTap: () =>
-              context.push(AppRouter.planAssistant(widget.weddingPlanId)),
         ),
       ),
     );

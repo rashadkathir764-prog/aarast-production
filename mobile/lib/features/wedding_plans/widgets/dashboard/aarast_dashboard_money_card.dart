@@ -22,7 +22,12 @@ class DashboardHomeFunding {
     required this.sourcesCount,
     this.ownerLeft,
     this.verdict,
+    this.dues = const [],
   });
+
+  /// D102: what falls on the owner in the coming months, in order, at most
+  /// three; empty when the server names none.
+  final List<({DateTime month, double amount})> dues;
 
   /// D102: what is on the owner, the money tab's «عليك من العرس» (his
   /// share, the mahr with it); null from a server before D102.
@@ -140,15 +145,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           ),
           if (verdict != null) ...[
             const SizedBox(height: AarastV3Space.x1),
-            Text(
-              verdict.words,
-              key: const ValueKey('dashboard-money-verdict'),
-              style: JourneyType.of(
-                JourneyType.bodySmall,
-                weight: JourneyType.bold,
-                color: verdict.ok ? AarastV3Color.mint : AarastV3Color.danger,
-              ),
-            ),
+            _VerdictChip(ok: verdict.ok, words: verdict.words),
           ],
         ],
       );
@@ -229,8 +226,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         onTap: widget.onTap,
         borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: JourneyBox(
-          color: context.accent.primarySoft,
-          radius: 24,
+          borderColor: AarastV3Color.line,
+          borderWidth: AarastV3Space.hair,
           padding: const EdgeInsets.all(AarastV3Space.x4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,7 +237,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   Icon(
                     LucideIcons.wallet,
                     size: 17,
-                    color: context.accent.primary,
+                    color: AarastV3Color.textMuted,
                   ),
                   const SizedBox(width: AarastV3Space.x1),
                   Expanded(
@@ -249,7 +246,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                       style: JourneyType.of(
                         JourneyType.bodySmall,
                         weight: JourneyType.bold,
-                        color: context.accent.primary,
+                        color: AarastV3Color.textMuted,
                       ),
                     ),
                   ),
@@ -264,15 +261,30 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                         key: const ValueKey('dashboard-money-privacy-toggle'),
                         onTap: _toggleAmounts,
                         radius: 20,
+                        // The eye with its word: an icon alone did not say
+                        // what it does.
                         child: SizedBox(
-                          width: AarastV3Space.x10,
-                          height: 28,
-                          child: Icon(
-                            amountsHidden
-                                ? LucideIcons.eye
-                                : LucideIcons.eyeOff,
-                            color: AarastV3Color.textMuted,
-                            size: 17,
+                          height: AarastV3Space.x6 + AarastV3Space.x1,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                amountsHidden
+                                    ? LucideIcons.eye
+                                    : LucideIcons.eyeOff,
+                                color: context.accent.primary,
+                                size: 17,
+                              ),
+                              const SizedBox(width: AarastV3Space.x1),
+                              Text(
+                                amountsHidden ? 'أظهر' : 'أخفِ',
+                                style: JourneyType.of(
+                                  JourneyType.small,
+                                  weight: JourneyType.bold,
+                                  color: context.accent.primary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -297,7 +309,15 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ],
                 ],
               ),
-              if (pieces.any((piece) => piece.$1 > 0)) ...[
+              if (known && funding.dues.isNotEmpty) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                _DuesStrip(
+                  dues: funding.dues,
+                  figure: figure,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
+                ),
+              ] else if (pieces.any((piece) => piece.$1 > 0)) ...[
                 const SizedBox(height: AarastV3Space.x3),
                 _MoneySplitBar(pieces: pieces),
               ],
@@ -340,7 +360,7 @@ class _MoneyLead extends StatelessWidget {
             value,
             key: const ValueKey('dashboard-money-lead'),
             style: JourneyType.of(
-              JourneyType.amount,
+              JourneyType.headline,
               weight: JourneyType.bold,
               color: color,
               height: 1.2,
@@ -348,6 +368,51 @@ class _MoneyLead extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The money tab's verdict as a chip: a tick on the good news, a mark on
+/// the bad, the words beside it.
+class _VerdictChip extends StatelessWidget {
+  const _VerdictChip({required this.ok, required this.words});
+
+  final bool ok;
+  final String words;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = ok ? AarastV3Color.mint : AarastV3Color.danger;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: ok ? AarastV3Color.mintSoft : AarastV3Color.dangerSoft,
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
+      ),
+      child: Padding(
+        padding: AarastV3Density.tagInsets,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ok ? LucideIcons.check : LucideIcons.alertCircle,
+              size: AarastV3Icon.sm,
+              color: color,
+            ),
+            const SizedBox(width: AarastV3Space.x1),
+            Flexible(
+              child: Text(
+                words,
+                key: const ValueKey('dashboard-money-verdict'),
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -370,6 +435,95 @@ class _SideFigure extends StatelessWidget {
         weight: JourneyType.bold,
         color: color,
       ),
+    );
+  }
+}
+
+/// When the owner pays: one bar cut by the coming months' share, the
+/// nearest month in the plan's colour, and each month named under it.
+class _DuesStrip extends StatelessWidget {
+  const _DuesStrip({
+    required this.dues,
+    required this.figure,
+    required this.color,
+    required this.soft,
+  });
+
+  final List<({DateTime month, double amount})> dues;
+  final String Function(double) figure;
+  final Color color;
+  final Color soft;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = dues.fold<double>(0, (sum, due) => sum + due.amount);
+    return Column(
+      key: const ValueKey('dashboard-money-dues'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExcludeSemantics(
+          child: SizedBox(
+            height: AarastV3Space.x1 + AarastV3Space.hair,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < dues.length; index++) ...[
+                  if (index > 0) const SizedBox(width: AarastV3Space.x1),
+                  Expanded(
+                    flex: total <= 0
+                        ? 1
+                        : (dues[index].amount / total * 1000).round().clamp(
+                            1,
+                            1000,
+                          ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: index == 0 ? color : soft,
+                        borderRadius: BorderRadius.circular(AarastV3Radius.xs),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AarastV3Space.x1),
+        Row(
+          children: [
+            for (var index = 0; index < dues.length; index++)
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${arabicMonthName(dues[index].month.month)} ',
+                      ),
+                      TextSpan(
+                        text: figure(dues[index].amount),
+                        style: JourneyType.of(
+                          JourneyType.caption,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: index == 0
+                      ? TextAlign.start
+                      : index == dues.length - 1
+                      ? TextAlign.end
+                      : TextAlign.center,
+                  style: JourneyType.of(
+                    JourneyType.caption,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

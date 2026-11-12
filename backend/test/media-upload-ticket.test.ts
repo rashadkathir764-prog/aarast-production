@@ -452,10 +452,23 @@ test("GitHub media fixture runs the shared least-privilege initializer", () => {
     workflow,
     /docker compose run --rm --no-deps media-init/,
   );
+  // The initializer is still MinIO's own client at one pinned release, with
+  // the shared script and policy. Its image is built here from that
+  // release's source: `minio/mc` is no longer served by any registry
+  // (RA-OP-15), so the published name this test pinned cannot be pulled.
   assert.match(
     compose,
-    /  media-init:\r?\n    image: minio\/mc:[^\s]+\r?\n[\s\S]*?source: media_init_script[\s\S]*?source: media_backend_policy[\s\S]*?entrypoint: \["\/bin\/sh", "\/opt\/aarast\/media\/init\.sh"\]/,
+    /  media-init:\r?\n    image: aarast-media-client:RELEASE\.[^\s]+\r?\n    build:\r?\n      context: \.\/deploy\/media\r?\n      target: mc\r?\n[\s\S]*?source: media_init_script[\s\S]*?source: media_backend_policy[\s\S]*?entrypoint: \["\/bin\/sh", "\/opt\/aarast\/media\/init\.sh"\]/,
   );
+  const mediaImages = readFileSync(
+    join(process.cwd(), "../deploy/media/Dockerfile"),
+    "utf8",
+  );
+  assert.match(
+    mediaImages,
+    /^RUN go install [^\n]*github\.com\/minio\/mc@RELEASE\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$/m,
+  );
+  assert.match(mediaImages, /^FROM alpine:[^\s]+@sha256:[0-9a-f]{64} AS mc$/m);
 });
 
 test("cleanup skips when another replica owns the lock", async () => {

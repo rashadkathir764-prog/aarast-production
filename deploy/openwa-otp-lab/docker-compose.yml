@@ -150,7 +150,7 @@ services:
         set -a
         . /run/aarast/openwa.env
         set +a
-        npx prisma migrate deploy
+        ./node_modules/.bin/prisma migrate deploy
         exec node dist/main.js
     ports:
       - "127.0.0.1:${AARAST_BACKEND_PORT:-3116}:3000"

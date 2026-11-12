@@ -55,9 +55,11 @@ flutter test --no-pub
 
 Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails.
 
-CI (`.github/workflows/ci.yml`) is off while GitHub billing is stopped, so the
-list above is the whole gate: it carries every check CI ran (the staging
-contracts, the admin smokes, `npm audit`), and each is run here.
+CI (`.github/workflows/ci.yml`) runs on every push to `main` again since
+2026-11-12 (it was stopped by the account's billing). The list
+above carries every check CI runs (the staging contracts, the admin smokes,
+`npm audit`), so a red job on GitHub can be reproduced here; `gh run list`
+shows the last runs, and a push is not done until its run is green.
 `scripts/gates.mjs --full` adds the three CI checks that were missing from the
 list: `docker compose config`, the secrets scan (`gitleaks detect`, when
 gitleaks is installed) and the release Gradle guard. The image build and its
@@ -75,8 +77,8 @@ it runs, a command typed by hand does not.
 
 On Windows, `npm test` skips the one test that needs POSIX file modes
 (`openwa-credential-file.test.ts`: the OpenWA credential file must refuse
-broad permissions and symbolic links). While CI is off it runs nowhere else,
-so run it in a Linux container before a release (RA-TS-02):
+broad permissions and symbolic links). CI runs it on Linux; to run it here,
+use a Linux container (RA-TS-02):
 
 ```powershell
 docker run --rm -v "D:\projects\aarast\backend:/app:ro" -w /app node:24-alpine `

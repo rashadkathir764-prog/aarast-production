@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Every gate in docs/qa/README.md, in one command, on Windows or Linux.
 //
-// CI is off while GitHub billing is stopped, so this is the gate before a
-// commit (--quick) and before a merge or a release (--full). It never hides a
+// The gate before a commit (--quick) and before a merge or a release
+// (--full): what CI runs on GitHub, here first, and the golden images and
+// walks that only Windows draws. It never hides a
 // result: each gate is PASS, FAIL or SKIP (a tool this machine lacks, with
 // the reason), the table is printed at the end, and the exit code is 1 when
 // any gate failed (or, with --strict, was skipped).

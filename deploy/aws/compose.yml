@@ -115,7 +115,7 @@ services:
       - -ec
       - |
         node scripts/prod/assert-database-identity.cjs
-        npx prisma migrate deploy
+        ./node_modules/.bin/prisma migrate deploy
     logging: *logging
     networks: [internal]
 

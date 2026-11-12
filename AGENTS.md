@@ -39,6 +39,7 @@ These rules apply to every AI agent working on Aarast / اعّرست.
 - A subagent's worktree is merged or removed in the session that made it.
 - Commit or push only when the owner asks, or when the task he gave says so.
 - Commit only after the checks for the touched area pass: `node scripts/gates.mjs --quick` (or `--only` the area). `main` is pushed only after `node scripts/gates.mjs --full --strict` passes on Windows, where the golden images are drawn.
+- A push is not finished until its CI run on GitHub is green in every job (`gh run list --limit 3`, then `gh run view <id>`). A red job is fixed at its cause; no job, check or scan is removed, skipped or loosened to turn it green.
 - A list of tests known to fail is not a gate. The one that exists (`docs/qa/mobile-test-baseline-linux.txt`, a Linux box's 54) may only shrink, never excuses a failure on Windows, and a session that leans on it says so in `STATUS.md`.
 - Never commit secrets. Never read out `.env`, Meta/WhatsApp, SMTP, JWT, database or admin credentials.
 

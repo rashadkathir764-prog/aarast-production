@@ -52,6 +52,39 @@ void main() {
     expect(find.text('opened tasks'), findsOneWidget);
   });
 
+  // D112 (Q-21): a plan in the memories keeps reminding of its payment
+  // dates, and its owner reads it. The notice answered «خطة ما عاد توصل
+  // لها» and stayed unread; it now opens that plan to read, on its page.
+  testWidgets(
+    'a notice for the owner\'s plan in the memories opens it to read',
+    (tester) async {
+      final memory = accountContext(
+        role: AccountContextRole.owner,
+        planId: 'plan-2',
+        lifecycle: 'ARCHIVED',
+        accessMode: AccountContextAccessMode.readOnly,
+        isAvailable: false,
+        unavailableReason: 'PLAN_ARCHIVED',
+      );
+      final controller = await _pump(
+        tester,
+        _Api(target: '/wedding-plans/plan-2/tasks'),
+        others: [memory],
+      );
+
+      await tester.tap(find.text('محمد عطاك مهمة'));
+      await tester.pumpAndSettle();
+
+      expect(controller.selectedContext?.weddingPlanId, 'plan-2');
+      expect(controller.selectedContext?.isOwnerMemory, isTrue);
+      expect(find.text('opened tasks'), findsOneWidget);
+      expect(
+        find.text('هذا التنبيه لخطة ما عاد توصل لها من هذا الحساب.'),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('a notice for a plan no longer reachable says so', (
     tester,
   ) async {

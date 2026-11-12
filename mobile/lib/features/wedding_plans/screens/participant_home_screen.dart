@@ -229,11 +229,15 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       _Greeting(
         name: user?.name ?? '',
         planTitle: title,
-        // B5: the role is said to the participant as who they are.
-        roleTag: participantRoleTag(
-          role,
-          feminine: context.journeyProfile.feminine,
-        ),
+        // B5: the role is said to the participant as who they are. D112
+        // (Q-21): the plan's owner reading it in the memories is told the
+        // plan's state instead («أنت مشارك» was said to them).
+        roleTag: selected.isOwnerMemory
+            ? 'في الذكريات'
+            : participantRoleTag(
+                role,
+                feminine: context.journeyProfile.feminine,
+              ),
         voice: voice,
         unread: summary?.unreadNotificationsCount ?? 0,
         // As the owner's home: the bell's dot is the summary's count, so the

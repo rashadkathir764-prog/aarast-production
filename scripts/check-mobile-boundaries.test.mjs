@@ -3218,7 +3218,10 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController', 'AccountContextRole'],
+    // 2026-11-13 (D112 Q-21): one name fewer. Which pages a reader gets is
+    // the context's own word now (`readsThroughParticipantPages`), so the
+    // shell no longer compares roles itself.
+    show: ['AccountContextController'],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',

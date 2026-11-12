@@ -65,7 +65,9 @@ void main() {
     await _pump(tester, JourneyProfile.bride, _details());
 
     expect(find.text('غيّري الموعد'), findsOneWidget);
-    expect(find.text('حطي الخطة في الأرشيف'), findsOneWidget);
+    // RA-MO-159: one name for the state, «الذكريات» (it was «الأرشيف»
+    // here, «مؤرشفة» on the card and «في الذكريات» under it).
+    expect(find.text('حطي الخطة في الذكريات'), findsOneWidget);
     expect(
       find.text(
         'لو غيّرتِ الموعد، المهام تنتقل معه، والدفعات تبقى على مواعيدها.',
@@ -79,7 +81,7 @@ void main() {
     await _pump(tester, JourneyProfile.groom, _details());
 
     expect(find.text('غيّر الموعد'), findsOneWidget);
-    expect(find.text('حط الخطة في الأرشيف'), findsOneWidget);
+    expect(find.text('حط الخطة في الذكريات'), findsOneWidget);
   });
 
   testWidgets('g06: her sharing levels are in rose and spoken to her', (

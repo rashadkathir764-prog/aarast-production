@@ -98,7 +98,22 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   /// The budget and its items are the owner's: the server refuses every other
   /// member, even one who manages agreements and payments.
-  bool get canManageBudget => _access.isOwner;
+  ///
+  /// D112 (Q-21): the owner of a plan in the memories reads its money and
+  /// manages none of it (the server reports no write right there), so the
+  /// budget is theirs to read only.
+  bool get canManageBudget => _access.isOwner && _access.canManageMoney;
+
+  /// The owner reading the money of a plan in the memories.
+  bool get ownerReadsOnly => _access.isOwner && !_access.canManageMoney;
+
+  /// D112 (Q-21; the owner left this to me, 2026-11-13): settling what was
+  /// already agreed stays possible in a memory. The server keeps reminding
+  /// of an archived plan's payment dates and accepts a payment on an
+  /// agreement, a date paid and a payment taken back there (G15), and a
+  /// reminder with no way to act on it misleads. Nothing else of a memory's
+  /// money is changed: no new agreement, no edit, no budget.
+  bool get canSettleMoney => _access.canManageMoney || ownerReadsOnly;
   bool get hasMoreCosts => _costsPage < _costsTotalPages;
   bool get hasMorePayments => _paymentsPage < _paymentsTotalPages;
   bool get isLoadingMoreCosts => _isLoadingMoreCosts;

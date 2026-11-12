@@ -593,9 +593,21 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
     'money' =>
       _isReadOnlyMoneyPath(segments)
           ? WeddingPlanRouteAccess.viewMoney
+          : _isSettlementMoneyPath(segments)
+          ? WeddingPlanRouteAccess.settleMoney
           : WeddingPlanRouteAccess.manageMoney,
     _ => WeddingPlanRouteAccess.unknown,
   };
+}
+
+/// D112 (Q-21): the two pages that pay what was already agreed:
+/// `…/money/costs/:costId/payments/create` (a payment on an agreement) and
+/// `…/money/costs/:costId/schedules/:scheduleId/pay` (a date paid).
+bool _isSettlementMoneyPath(List<String> segments) {
+  if (segments.length < 7 || segments[3] != 'costs') return false;
+  final tail = segments.sublist(5);
+  return (tail.length == 2 && tail[0] == 'payments' && tail[1] == 'create') ||
+      (tail.length == 3 && tail[0] == 'schedules' && tail[2] == 'pay');
 }
 
 /// `/wedding-plans/:id/tasks/:taskId`: a task read, not `create` or `edit`.
@@ -604,6 +616,8 @@ bool _isTaskPage(List<String> segments) =>
 
 bool _isReadOnlyMoneyPath(List<String> segments) {
   if (segments.length == 3) return true;
+  // The mahr page is its form and nothing else (D112, Q-21).
+  if (segments.last == 'mahr') return false;
   final mutationMarkers = {'create', 'edit', 'pay'};
   return !segments.any(mutationMarkers.contains);
 }

@@ -83,7 +83,9 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
   }
 
   /// Archive stays reachable from w10 until the plan lifecycle screens
-  /// (w12 to w15) ship (D27). An archived plan cannot be opened again.
+  /// (w12 to w15) ship (D27). D112 (Q-21): the archived plan is read by its
+  /// owner and changed by no one; the sheet said it could not be opened
+  /// again. RA-MO-159: one name for it, «الذكريات».
   Future<void> _confirmArchive(WeddingPlan plan) async {
     // G15: say what is still owed before the plan closes. The server keeps
     // reminding of payment dates and loan repayments after archiving.
@@ -95,20 +97,24 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     // In the reader's words; the amount follows «أخفِ المبالغ» (G17).
     final owedLine = owed > 0
         ? '\n\nباقي عليك ${finance.shownAmount(formatCompactMoney(owed, currencyCode: money.currency))} من '
-              'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعد الأرشفة، '
+              'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعدها، '
               '${context.say('والأفضل تخليها مفتوحة لين تسدّد.', 'والأفضل تخلّينها مفتوحة لين تسدّدين.')}'
         : '';
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: context.say('تحط الخطة في الأرشيف؟', 'تحطين الخطة في الأرشيف؟'),
+        title: context.say(
+          'تحط الخطة في الذكريات؟',
+          'تحطين الخطة في الذكريات؟',
+        ),
         subtitle:
-            '«${plan.title}» تنتقل للأرشيف وبياناتها تبقى محفوظة، بس ما '
-            '${context.say('تقدر تفتحها', 'تقدرين تفتحينها')} بعدها من التطبيق.$owedLine',
+            '«${plan.title}» تنتقل للذكريات: تبقى محفوظة و'
+            '${context.say('تقدر تقرأها', 'تقدرين تقرئينها')} من «خططك»، '
+            'بس ما تنعدل بعدها.$owedLine',
         children: [
           JourneyButton(
             key: const ValueKey('plan-archive-confirm'),
-            label: context.say('حطها في الأرشيف', 'حطيها في الأرشيف'),
+            label: context.say('حطها في الذكريات', 'حطيها في الذكريات'),
             icon: LucideIcons.archive,
             background: AarastV3Color.danger,
             large: true,
@@ -132,9 +138,15 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     final archived = await provider.archiveWeddingPlan(plan.id);
     if (!mounted) return;
     if (archived == null) {
-      _showError(provider.errorMessage ?? 'ما قدرنا نأرشف الخطة.');
+      _showError(provider.errorMessage ?? 'ما قدرنا ننقل الخطة للذكريات.');
       return;
     }
-    context.go(AppRouter.weddingPlans);
+    // RA-MO-143: the account's paths are read again, so the plan is a
+    // memory on this phone from this moment (it stayed a live plan here,
+    // and its home opened with buttons the server refused). The home then
+    // shows it as its owner reads it.
+    final router = GoRouter.of(context);
+    await context.read<AccountContextController?>()?.refresh();
+    router.go(AppRouter.home);
   }
 }

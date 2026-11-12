@@ -221,6 +221,29 @@ class AccountContext {
   bool get isPlan => role != AccountContextRole.provider;
   bool get isProvider => role == AccountContextRole.provider;
 
+  /// D112 (Q-21), the owner's word: a plan its owner put in the memories is
+  /// read by them and changed by no one. The server lists it as an
+  /// unavailable, read-only path whose every write right is false; this is
+  /// that path, for its owner. A participant's archived path is not one:
+  /// they read its state card (q19).
+  bool get isOwnerMemory =>
+      role == AccountContextRole.owner &&
+      !isAvailable &&
+      lifecycle == 'ARCHIVED' &&
+      accessMode == AccountContextAccessMode.readOnly &&
+      permissions.canViewPlan;
+
+  /// The path opens to its reader: a live one, or the owner's memory to
+  /// read. Every place that asked [isAvailable] before opening a plan asks
+  /// this; what may be changed there stays with [permissions].
+  bool get opens => isAvailable || isOwnerMemory;
+
+  /// The plan is shown through the reading pages (the participant's): to a
+  /// participant, and to an owner reading a memory, where the owner's own
+  /// pages would offer what the plan no longer takes.
+  bool get readsThroughParticipantPages =>
+      role == AccountContextRole.contributor || isOwnerMemory;
+
   /// How a plan names its owner to a participant («العريس», «العروسة»):
   /// the server sends the plan's persona, not the owner's name.
   String get planOwnerWord => switch (persona) {

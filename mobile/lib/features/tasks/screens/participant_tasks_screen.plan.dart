@@ -10,11 +10,15 @@ class _PlanTasks extends StatelessWidget {
     required this.ownerWord,
     required this.readOnlyNote,
     required this.onRetry,
+    this.memoryNote,
   });
 
   final String weddingPlanId;
   final PlanReadViewProvider? provider;
   final String ownerWord;
+
+  /// D112 (Q-21): the owner reading the plan in the memories.
+  final String? memoryNote;
 
   /// «يشوف بس»: say once that the tasks are followed, not edited.
   final bool readOnlyNote;
@@ -47,10 +51,12 @@ class _PlanTasks extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('participant-tasks-read-only'),
-            text: context.say(
-              'تتابع المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
-              'تتابعين المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
-            ),
+            text:
+                memoryNote ??
+                context.say(
+                  'تتابع المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
+                  'تتابعين المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
+                ),
             icon: LucideIcons.eye,
             color: AarastV3Color.textMuted,
             soft: AarastV3Color.paper,

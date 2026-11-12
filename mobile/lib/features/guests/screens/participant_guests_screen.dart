@@ -20,10 +20,15 @@ class ParticipantGuestsScreen extends StatefulWidget {
   const ParticipantGuestsScreen({
     required this.weddingPlanId,
     required this.ownerWord,
+    this.memoryNote,
     super.key,
   });
 
   final String weddingPlanId;
+
+  /// D112 (Q-21): the plan's owner reading it in the memories. Said in
+  /// place of the note that sends the reader to the owner for changes.
+  final String? memoryNote;
 
   /// «العريس», «العروسة»: who keeps the numbers and edits.
   final String ownerWord;
@@ -89,10 +94,12 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
         ],
         JourneyNote(
           key: const ValueKey('participant-guests-read-only'),
-          text: voice.say(
-            'تشوف الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند ${widget.ownerWord}.',
-            'تشوفين الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند ${widget.ownerWord}.',
-          ),
+          text:
+              widget.memoryNote ??
+              voice.say(
+                'تشوف الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند ${widget.ownerWord}.',
+                'تشوفين الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند ${widget.ownerWord}.',
+              ),
           icon: LucideIcons.eye,
           color: AarastV3Color.textMuted,
           soft: AarastV3Color.paper,

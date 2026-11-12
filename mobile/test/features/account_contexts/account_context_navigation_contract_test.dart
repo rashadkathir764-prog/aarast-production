@@ -265,6 +265,22 @@ void main() {
           WeddingPlanRouteAccess.manageMoney,
       '/wedding-plans/plan-1/money/costs/cost-1/payments/pay':
           WeddingPlanRouteAccess.manageMoney,
+      // D112 (Q-21; left to me by the owner): settling what was agreed (a
+      // payment on an agreement, a date paid) is its own access, open to
+      // who manages the money and to the owner of a plan in the memories.
+      '/wedding-plans/plan-1/money/costs/cost-1/payments/create':
+          WeddingPlanRouteAccess.settleMoney,
+      '/wedding-plans/plan-1/money/costs/cost-1/schedules/s-1/pay':
+          WeddingPlanRouteAccess.settleMoney,
+      '/wedding-plans/plan-1/money/costs/cost-1/schedules/create':
+          WeddingPlanRouteAccess.manageMoney,
+      // D112 (Q-21): the mahr page is its form («احفظ المهر») and nothing
+      // else, so it is a write. It passed as a read, which showed the form
+      // to who reads the money without managing it, and to the owner of a
+      // plan in the memories. The moment after it is a read.
+      '/wedding-plans/plan-1/money/mahr': WeddingPlanRouteAccess.manageMoney,
+      '/wedding-plans/plan-1/money/mahr/moment':
+          WeddingPlanRouteAccess.viewMoney,
       '/wedding-plans/plan-1/unknown': WeddingPlanRouteAccess.unknown,
     };
 
@@ -299,9 +315,20 @@ void main() {
       'Widget? participantPlanTab(',
       'final permissions = selected.permissions;',
     );
+    // D112 (Q-21): the same pages are how an owner reads a plan in the
+    // memories, so the check is the context's own «reads through these
+    // pages»: a contributor, or the owner of a memory. A live plan's owner
+    // is neither, so the owner's home is never replaced for them.
+    expect(decides, contains('!selected.readsThroughParticipantPages'));
+    final model = File(
+      'lib/features/account_contexts/models/account_context.dart',
+    ).readAsStringSync();
     expect(
-      decides,
-      contains('selected.role != AccountContextRole.contributor'),
+      _sourceBetween(model, 'bool get readsThroughParticipantPages', ';'),
+      allOf(
+        contains('role == AccountContextRole.contributor'),
+        contains('isOwnerMemory'),
+      ),
     );
     expect(decides, contains('selected.weddingPlanId != weddingPlanId'));
   });

@@ -180,6 +180,16 @@ class AccountContextController extends ChangeNotifier {
             if (!_isCurrent(generation)) return false;
           }
           await _authStorage.clearActivePlanId();
+        } else if (selected.isOwnerMemory) {
+          // D112 (Q-21): a memory is read, never the active plan (the
+          // server refuses it as one), so none is asked for or kept. A plan
+          // that was live a moment ago starts afresh as a memory: what its
+          // pages held was read with rights it no longer has.
+          if (!stateReset && previousContext?.isAvailable == true) {
+            await _resetContextState(previousContext, selected);
+            if (!_isCurrent(generation)) return false;
+          }
+          await _authStorage.clearActivePlanId();
         } else if (selectedPlanId != null) {
           final serverActivePlanId = await _tryReadActiveWeddingPlanId();
           if (!_isCurrent(generation)) return false;
@@ -631,7 +641,7 @@ class AccountContextController extends ChangeNotifier {
     if (kept == null) return null;
     try {
       final context = AccountContext.fromJson(kept);
-      return context.isAvailable && _staysOpenOffline(context) ? context : null;
+      return context.opens && _staysOpenOffline(context) ? context : null;
     } on FormatException {
       return null;
     }
@@ -674,11 +684,14 @@ class AccountContextController extends ChangeNotifier {
     required String? persistedKey,
     required bool allowSingleContext,
   }) {
+    // D112 (Q-21): the owner's plan in the memories stays the open path,
+    // through a refresh and a restart, to be read. Nothing else that is
+    // unavailable does, and a memory is never picked on its own below.
     AccountContext? byKey(String? key) {
       if (key == null) return null;
       return _firstOrNull(
         availableContexts,
-        (context) => context.isAvailable && context.contextKey == key,
+        (context) => context.opens && context.contextKey == key,
       );
     }
 

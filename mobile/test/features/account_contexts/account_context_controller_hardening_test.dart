@@ -280,6 +280,113 @@ void main() {
       },
     );
 
+    // D112 (Q-21), the owner's word: the owner of an archived plan reads
+    // it. It closed on them at the first refresh, with «تغيّر المسار» and no
+    // way back in (RA-MO-143).
+    test(
+      'Q-21: the owner\'s plan put in the memories stays open to read',
+      () async {
+        final owner = accountContext(role: AccountContextRole.owner);
+        final provider = accountContext(role: AccountContextRole.provider);
+        final harness = await _Harness.create(
+          contexts: [owner, provider],
+          persistedContextKey: owner.contextKey,
+          serverActivePlanId: owner.weddingPlanId,
+        );
+        await harness.controller.refresh();
+        final setActiveBefore = harness.setActiveCalls.length;
+        final memory = accountContext(
+          role: AccountContextRole.owner,
+          lifecycle: 'ARCHIVED',
+          accessMode: AccountContextAccessMode.readOnly,
+          isAvailable: false,
+          unavailableReason: 'PLAN_ARCHIVED',
+        );
+        harness.api.onList = () async => [memory, provider];
+
+        await harness.controller.refresh();
+
+        expect(harness.controller.selectedContext, memory);
+        expect(harness.controller.needsSelection, isFalse);
+        expect(harness.controller.noticeMessage, isNull);
+        // The server refuses an archived plan as the active one; it is not
+        // asked, and the phone keeps none.
+        expect(harness.setActiveCalls.length, setActiveBefore);
+        expect(harness.storage.readActivePlanId(), isNull);
+        expect(harness.storage.readAccountContextKey(), memory.contextKey);
+      },
+    );
+
+    test(
+      'Q-21: a memory opened from the list survives a refresh and a restart',
+      () async {
+        final owner = accountContext(role: AccountContextRole.owner);
+        final memory = accountContext(
+          role: AccountContextRole.owner,
+          planId: 'plan-archived',
+          lifecycle: 'ARCHIVED',
+          accessMode: AccountContextAccessMode.readOnly,
+          isAvailable: false,
+          unavailableReason: 'PLAN_ARCHIVED',
+        );
+        final harness = await _Harness.create(
+          contexts: [owner, memory],
+          serverActivePlanId: owner.weddingPlanId,
+        );
+        await harness.controller.refresh(allowInitialSingleContext: true);
+        expect(harness.controller.selectedContext, owner);
+
+        expect(
+          await harness.controller.openReadOnlyContext(memory.contextKey),
+          isTrue,
+        );
+        await harness.controller.refresh();
+        expect(harness.controller.selectedContext, memory);
+
+        final restarted = await _Harness.create(
+          contexts: [owner, memory],
+          persistedContextKey: memory.contextKey,
+          serverActivePlanId: owner.weddingPlanId,
+        );
+        await restarted.controller.refresh(allowInitialSingleContext: true);
+        expect(restarted.controller.selectedContext, memory);
+        expect(restarted.setActiveCalls, isEmpty);
+      },
+    );
+
+    // The decision is the owner's plan. A participant's still closes: they
+    // read the q19 card («الخطة في الذكريات»), as before.
+    test('Q-21: a participant\'s archived plan does not stay open', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final helped = accountContext(
+        role: AccountContextRole.contributor,
+        planId: 'plan-helped',
+      );
+      final harness = await _Harness.create(
+        contexts: [owner, helped],
+        persistedContextKey: helped.contextKey,
+        serverActivePlanId: helped.weddingPlanId,
+      );
+      await harness.controller.refresh();
+      expect(harness.controller.selectedContext, helped);
+      harness.api.onList = () async => [
+        owner,
+        accountContext(
+          role: AccountContextRole.contributor,
+          planId: 'plan-helped',
+          lifecycle: 'ARCHIVED',
+          accessMode: AccountContextAccessMode.readOnly,
+          isAvailable: false,
+          unavailableReason: 'PLAN_ARCHIVED',
+        ),
+      ];
+
+      await harness.controller.refresh();
+
+      expect(harness.controller.selectedContext, isNull);
+      expect(harness.controller.noticeMessage, isNotNull);
+    });
+
     test('refuses a missing or still-writable context as read-only', () async {
       final owner = accountContext(role: AccountContextRole.owner);
       final harness = await _Harness.create(contexts: [owner]);

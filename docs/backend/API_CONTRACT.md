@@ -611,6 +611,16 @@ and adds:
 For an archived plan, readable historical permissions remain truthful while
 every plan write permission is `false`.
 
+D112 (Q-21): the same holds for every answer a screen reads its buttons from:
+`GET /api/v1/wedding-plans/:id/permissions/me`, the dashboard summary's
+`permissions` and the money summary's `permissions` report `canManageTasks`,
+`canManageGuests`, `canManageProviders`, `canManageMoney`, `canManagePlan`,
+`canManageMembers` and `canRecordPrivateCost` as `false` for an archived
+plan, to its owner too (they reported every right; the write then answered
+`409 PLAN_ARCHIVED_READ_ONLY`). `canViewMoney`, `isOwner` and `role` are
+unchanged: the owner reads the archived plan. Settling money already agreed
+(G15) stays accepted by the writes themselves; no summary advertises it.
+
 Owner example:
 
 ```json

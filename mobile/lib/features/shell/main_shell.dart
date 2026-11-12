@@ -27,8 +27,17 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = context.watch<AccountContextController>().selectedContext;
-    if (selected == null || !selected.isAvailable) {
+    if (selected == null || !selected.opens) {
       return const _InvalidShellContext(message: 'ما في مساحة مفتوحة نعرضها.');
+    }
+    // D112 (Q-21): the owner reads a plan in the memories through the
+    // reading pages. The owner's own shell offers «+», the money buttons
+    // and the plan's settings, none of which a memory takes.
+    if (selected.isOwnerMemory) {
+      return _ContributorMainShell(
+        key: ValueKey('memory-shell-${selected.contextKey}'),
+        accountContext: selected,
+      );
     }
 
     return switch (selected.role) {
@@ -316,7 +325,7 @@ class _ContributorMainShellState extends State<_ContributorMainShell> {
     final accountContext = widget.accountContext;
     final selected = context.watch<AccountContextController>().selectedContext;
     if (selected?.contextKey != accountContext.contextKey ||
-        selected?.role != AccountContextRole.contributor ||
+        selected?.readsThroughParticipantPages != true ||
         selected?.weddingPlanId != accountContext.weddingPlanId) {
       return const _InvalidShellContext(
         message: 'تغيّر حساب المشارك قبل ما تجهز الشاشة.',

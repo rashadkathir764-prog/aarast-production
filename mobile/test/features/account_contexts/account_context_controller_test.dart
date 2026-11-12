@@ -309,8 +309,12 @@ void main() {
     test(
       'invalid saved path requires selection unless one path remains',
       () async {
-        final archivedOwner = accountContext(
-          role: AccountContextRole.owner,
+        // D112 (Q-21): the owner's archived plan became a path that opens
+        // (to read), so it no longer stands for «an invalid saved path».
+        // A participant's archived plan still is one; the rule under test
+        // is unchanged.
+        final archivedHelped = accountContext(
+          role: AccountContextRole.contributor,
           lifecycle: 'ARCHIVED',
           accessMode: AccountContextAccessMode.readOnly,
           isAvailable: false,
@@ -322,16 +326,16 @@ void main() {
         );
         final provider = accountContext(role: AccountContextRole.provider);
         final harness = await _Harness.create(
-          contexts: [provider, contributor, archivedOwner],
+          contexts: [provider, contributor, archivedHelped],
         );
 
         await harness.controller.refresh();
         expect(harness.controller.selectedContext, isNull);
         expect(harness.controller.needsSelection, isTrue);
 
-        harness.api.onList = () async => [provider, archivedOwner];
+        harness.api.onList = () async => [provider, archivedHelped];
         await harness.controller.clearForLogout();
-        await harness.storage.saveAccountContextKey(archivedOwner.contextKey);
+        await harness.storage.saveAccountContextKey(archivedHelped.contextKey);
         await harness.controller.refresh();
         expect(
           harness.controller.selectedContext,
@@ -467,7 +471,10 @@ void main() {
     test(
       'archive or revocation clears selection with a generic notice',
       () async {
-        final owner = accountContext(role: AccountContextRole.owner);
+        // D112 (Q-21): the plan here is one the account helps in. Its owner
+        // archiving it still closes it on the participant; the owner's own
+        // archived plan stays open to read (the hardening tests).
+        final owner = accountContext(role: AccountContextRole.contributor);
         final provider = accountContext(role: AccountContextRole.provider);
         final harness = await _Harness.create(
           contexts: [owner, provider],
@@ -475,7 +482,7 @@ void main() {
         );
         await harness.controller.refresh();
         final archived = accountContext(
-          role: AccountContextRole.owner,
+          role: AccountContextRole.contributor,
           lifecycle: 'ARCHIVED',
           accessMode: AccountContextAccessMode.readOnly,
           isAvailable: false,

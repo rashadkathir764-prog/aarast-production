@@ -34,6 +34,55 @@ void main() {
     },
   );
 
+  // D112 (Q-21): the server reports the owner of an archived plan as its
+  // owner with no right to manage its money. They read it, and they settle
+  // what was already agreed (the owner left that part to me, 2026-11-13:
+  // the reminders of an archived plan keep coming and the server accepts
+  // their payment). Nothing else is theirs to change: not the budget, not
+  // a new agreement.
+  test('the owner of a plan in the memories settles, and changes nothing '
+      'else', () async {
+    final provider = FinanceProvider(
+      _CountingFinanceApi(withCost: true),
+      permissionsApi: _FakeSharingApi(
+        const PlanAccessPermissions(
+          weddingPlanId: 'plan-memory',
+          isOwner: true,
+          canViewMoney: true,
+          canManageMoney: false,
+        ),
+      ),
+    );
+
+    await provider.loadMoney('plan-memory');
+
+    expect(provider.ownerReadsOnly, isTrue);
+    expect(provider.canSettleMoney, isTrue);
+    expect(provider.canManageMoney, isFalse);
+    expect(provider.canManageBudget, isFalse);
+  });
+
+  test('settling follows managing the money everywhere else', () async {
+    final viewer = FinanceProvider(
+      _CountingFinanceApi(withCost: true),
+      permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
+    );
+    await viewer.loadMoney('plan-viewer');
+    expect(viewer.canSettleMoney, isFalse);
+    expect(viewer.ownerReadsOnly, isFalse);
+
+    final owner = FinanceProvider(
+      _CountingFinanceApi(withCost: true),
+      permissionsApi: _FakeSharingApi(
+        const PlanAccessPermissions.owner(weddingPlanId: 'plan-owner'),
+      ),
+    );
+    await owner.loadMoney('plan-owner');
+    expect(owner.canSettleMoney, isTrue);
+    expect(owner.canManageBudget, isTrue);
+    expect(owner.ownerReadsOnly, isFalse);
+  });
+
   // The money starter is gone (rule zero): an empty plan opens on «البنود».
   testWidgets('empty view-only money opens on the items with no add action', (
     tester,

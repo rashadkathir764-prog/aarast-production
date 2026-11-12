@@ -17,10 +17,15 @@ class ParticipantProvidersScreen extends StatefulWidget {
     required this.weddingPlanId,
     required this.planTitle,
     required this.ownerWord,
+    this.memoryNote,
     super.key,
   });
 
   final String weddingPlanId;
+
+  /// D112 (Q-21): the plan's owner reading it in the memories. Said in
+  /// place of the note that sends the reader to the owner for prices.
+  final String? memoryNote;
 
   /// «عرس محمد», for the status line.
   final String planTitle;
@@ -78,6 +83,7 @@ class _ParticipantProvidersScreenState
             JourneyNote(
               key: const ValueKey('participant-providers-read-only'),
               text:
+                  widget.memoryNote ??
                   'المواعيد ومين محجوز. الأسعار والعروض عند ${widget.ownerWord}.',
               icon: LucideIcons.eye,
               color: AarastV3Color.textMuted,

@@ -6,7 +6,7 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController, AccountContextRole;
+    show AccountContextController;
 import '../../finance/finance_api.dart'
     show FinanceProvider, MoneyOverviewScreen;
 import '../../guests/guests_api.dart'
@@ -22,6 +22,10 @@ import '../widgets/plan_quick_add_sheet.dart';
 import '../widgets/plan_shell_chrome.dart';
 import 'participant_locked_screen.dart';
 
+/// D112 (Q-21): said on each reading page to the owner of a plan in the
+/// memories. One name for the state (RA-MO-159).
+const planMemoryNote = 'الخطة في الذكريات، للقراءة فقط.';
+
 /// The page of tab [index] for the participant of plan [weddingPlanId], or
 /// null when the open path is not that plan's participant. A section the
 /// participant has no right to shows its lock (q07, q08) instead of the
@@ -32,8 +36,9 @@ Widget? participantPlanTab(
   int index,
 ) {
   final selected = context.read<AccountContextController?>()?.selectedContext;
+  // D112 (Q-21): an owner reading a memory reads these pages too.
   if (selected == null ||
-      selected.role != AccountContextRole.contributor ||
+      !selected.readsThroughParticipantPages ||
       selected.weddingPlanId != weddingPlanId) {
     return null;
   }
@@ -44,6 +49,9 @@ Widget? participantPlanTab(
   // B5: the participant is spoken to as who they are, in the plan's colours.
   final feminine = context.journeyProfile.feminine;
   final owner = selected.planOwnerWord;
+  // D112 (Q-21): the owner reading the plan in the memories is not sent to
+  // «the owner» for changes; the plan takes none.
+  final memoryNote = selected.isOwnerMemory ? planMemoryNote : null;
   // D52: reading is separate from editing. Every participant reads the
   // tasks, the guests and the bookings (`canViewPlan`); a section's manage
   // right opens its working page instead. Money keeps its own right. D80:
@@ -76,6 +84,7 @@ Widget? participantPlanTab(
               planTitle: title,
               canManage: permissions.canManageTasks,
               ownerWord: owner,
+              memoryNote: memoryNote,
             )
           : locked(JourneySection.tasks),
     3 =>
@@ -90,6 +99,7 @@ Widget? participantPlanTab(
               key: ValueKey('participant-guests-read-$weddingPlanId'),
               weddingPlanId: weddingPlanId,
               ownerWord: owner,
+              memoryNote: memoryNote,
             )
           : locked(JourneySection.guests),
     4 =>
@@ -105,6 +115,7 @@ Widget? participantPlanTab(
               weddingPlanId: weddingPlanId,
               planTitle: title,
               ownerWord: owner,
+              memoryNote: memoryNote,
             )
           : locked(JourneySection.providers),
     _ => ParticipantHomeScreen(

@@ -95,6 +95,14 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     final sources = funding.loadedPlanId == widget.weddingPlanId
         ? funding.sources
         : const <FundingSource>[];
+    // D112 (Q-21): the owner of a plan in the memories reads where the
+    // money came from. Every sheet behind a row and «أضف مصدر» change it,
+    // and the plan takes no change, so neither is offered.
+    final finance = context.watch<FinanceProvider?>();
+    final readsOnly =
+        finance != null &&
+        finance.loadedPlanId == widget.weddingPlanId &&
+        finance.ownerReadsOnly;
     num sum(
       Iterable<FundingSource> items,
       Object? Function(FundingSource) of,
@@ -166,7 +174,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                     fundingStateTag(source),
                   ],
                 ),
-                onTap: () => _openSource(source),
+                onTap: readsOnly ? null : () => _openSource(source),
               ),
           ],
         ),
@@ -243,14 +251,24 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           ),
           Padding(
             padding: AarastV3Density.actionInsets,
-            child: JourneyButton(
-              key: const ValueKey('funding-add'),
-              label: context.say('أضف مصدر', 'أضيفي مصدر'),
-              icon: LucideIcons.plus,
-              expand: true,
-              large: true,
-              onPressed: funding.isSaving ? null : () => _openSourceSheet(),
-            ),
+            child: readsOnly
+                ? const JourneyNote(
+                    key: ValueKey('funding-read-only'),
+                    text: 'الخطة في الذكريات، للقراءة فقط.',
+                    icon: LucideIcons.eye,
+                    color: AarastV3Color.textMuted,
+                    soft: AarastV3Color.paper,
+                  )
+                : JourneyButton(
+                    key: const ValueKey('funding-add'),
+                    label: context.say('أضف مصدر', 'أضيفي مصدر'),
+                    icon: LucideIcons.plus,
+                    expand: true,
+                    large: true,
+                    onPressed: funding.isSaving
+                        ? null
+                        : () => _openSourceSheet(),
+                  ),
           ),
         ],
       ),

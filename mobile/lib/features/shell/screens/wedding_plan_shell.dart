@@ -7,7 +7,7 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController, AccountContextRole;
+    show AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../home/home_api.dart' show LocalGuestDashboardSummarySource;
@@ -102,8 +102,9 @@ class WeddingPlanShell extends StatelessWidget {
     final routeState = GoRouterState.of(context);
     final location = routeState.uri.path;
     final selected = context.watch<AccountContextController>().selectedContext;
+    // D112 (Q-21): an owner reading a memory gets the reading pages too.
     final contributorView =
-        selected?.role == AccountContextRole.contributor &&
+        selected?.readsThroughParticipantPages == true &&
         selected?.weddingPlanId == weddingPlanId;
 
     // The selected account context is the only authority for shell shape.

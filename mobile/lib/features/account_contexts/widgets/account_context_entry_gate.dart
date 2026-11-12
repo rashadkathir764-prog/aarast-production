@@ -85,7 +85,7 @@ AccountContextEntryState resolveAccountContextEntry(
     final open = controller.selectedContext;
     if (controller.hasLoadedContexts &&
         open != null &&
-        open.isAvailable &&
+        open.opens &&
         open.isPlan) {
       return AccountContextEntryState.planDashboard;
     }
@@ -95,7 +95,8 @@ AccountContextEntryState resolveAccountContextEntry(
   if (!controller.hasLoadedContexts) return AccountContextEntryState.loading;
 
   final selected = controller.selectedContext;
-  if (selected != null && selected.isAvailable) {
+  // D112 (Q-21): the owner's plan in the memories opens, to be read.
+  if (selected != null && selected.opens) {
     return selected.isProvider
         ? AccountContextEntryState.providerDashboard
         : AccountContextEntryState.planDashboard;

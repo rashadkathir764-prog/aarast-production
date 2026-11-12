@@ -286,7 +286,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return null;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نأرشف خطة العرس.';
+      _errorMessage = 'ما قدرنا ننقل الخطة للذكريات.';
       return null;
     } finally {
       _isSubmitting = false;

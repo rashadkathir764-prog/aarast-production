@@ -223,8 +223,8 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                   child: JourneyTextAction(
                     key: const ValueKey('plan-details-archive'),
                     label: context.say(
-                      'حط الخطة في الأرشيف',
-                      'حطي الخطة في الأرشيف',
+                      'حط الخطة في الذكريات',
+                      'حطي الخطة في الذكريات',
                     ),
                     color: AarastV3Color.textMuted,
                     onPressed: widget.onArchive,

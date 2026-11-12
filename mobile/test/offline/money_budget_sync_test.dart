@@ -600,7 +600,6 @@ void main() {
     },
   );
 
-
   group('the money tab on the phone copy (D106, D107, RA-BE-109)', () {
     Future<(JsonLocalDatabase, FinanceApi)> offlineApi() async {
       final database = await _freshDatabase();
@@ -626,165 +625,219 @@ void main() {
       String id,
     ) => database.readCachedItem(table: table, id: id);
 
-    test('D106: paying less than a date asks lowers the date, and the reversal gives it back', () async {
-      final (database, api) = await offlineApi();
-      final cost = _cost(id: 'cost-1');
-      final schedule = dated(cost, '500', DateTime(2026, 12, 1));
+    test(
+      'D106: paying less than a date asks lowers the date, and the reversal gives it back',
+      () async {
+        final (database, api) = await offlineApi();
+        final cost = _cost(id: 'cost-1');
+        final schedule = dated(cost, '500', DateTime(2026, 12, 1));
 
-      final part = await api.paySchedule(schedule: schedule, cost: cost, amount: '200');
+        final part = await api.paySchedule(
+          schedule: schedule,
+          cost: cost,
+          amount: '200',
+        );
 
-      expect(part.lowersScheduleId, 'schedule-1');
-      expect(part.paymentScheduleId, isNull);
-      final lowered = await stored(database, OfflineTables.cachedPaymentSchedules, 'schedule-1');
-      expect(lowered?['status'], 'PENDING');
-      expect(moneyValue(lowered?['amount']), 300);
-      final paidCost = await stored(database, OfflineTables.cachedCosts, 'cost-1');
-      expect(moneyValue(paidCost?['paidAmount']), 200);
-      // The server is told what was paid.
-      final queued = await database.pendingSyncItems();
-      expect(queued.last.payload['amount'], '200');
+        expect(part.lowersScheduleId, 'schedule-1');
+        expect(part.paymentScheduleId, isNull);
+        final lowered = await stored(
+          database,
+          OfflineTables.cachedPaymentSchedules,
+          'schedule-1',
+        );
+        expect(lowered?['status'], 'PENDING');
+        expect(moneyValue(lowered?['amount']), 300);
+        final paidCost = await stored(
+          database,
+          OfflineTables.cachedCosts,
+          'cost-1',
+        );
+        expect(moneyValue(paidCost?['paidAmount']), 200);
+        // The server is told what was paid.
+        final queued = await database.pendingSyncItems();
+        expect(queued.last.payload['amount'], '200');
 
-      await api.reversePayment(
-        payment: part,
-        cost: WeddingCost.fromJson(paidCost!),
-        reason: 'سجلتها بالغلط',
-      );
-      final restored = await stored(database, OfflineTables.cachedPaymentSchedules, 'schedule-1');
-      expect(moneyValue(restored?['amount']), 500);
-      expect(restored?['status'], 'PENDING');
-    });
+        await api.reversePayment(
+          payment: part,
+          cost: WeddingCost.fromJson(paidCost!),
+          reason: 'سجلتها بالغلط',
+        );
+        final restored = await stored(
+          database,
+          OfflineTables.cachedPaymentSchedules,
+          'schedule-1',
+        );
+        expect(moneyValue(restored?['amount']), 500);
+        expect(restored?['status'], 'PENDING');
+      },
+    );
 
-    test('D106: paying more than a date asks pays it and records the rest; never more than is left', () async {
-      final (database, api) = await offlineApi();
-      final cost = _cost(id: 'cost-1');
-      final schedule = dated(cost, '500', DateTime(2026, 12, 1));
+    test(
+      'D106: paying more than a date asks pays it and records the rest; never more than is left',
+      () async {
+        final (database, api) = await offlineApi();
+        final cost = _cost(id: 'cost-1');
+        final schedule = dated(cost, '500', DateTime(2026, 12, 1));
 
-      await expectLater(
-        api.paySchedule(schedule: schedule, cost: cost, amount: '1200'),
-        throwsA(isA<ApiException>()),
-      );
-      final paid = await api.paySchedule(schedule: schedule, cost: cost, amount: '700');
+        await expectLater(
+          api.paySchedule(schedule: schedule, cost: cost, amount: '1200'),
+          throwsA(isA<ApiException>()),
+        );
+        final paid = await api.paySchedule(
+          schedule: schedule,
+          cost: cost,
+          amount: '700',
+        );
 
-      expect(moneyValue(paid.amount), 500);
-      final row = await stored(database, OfflineTables.cachedPaymentSchedules, 'schedule-1');
-      expect(row?['status'], 'PAID');
-      final costRow = await stored(database, OfflineTables.cachedCosts, 'cost-1');
-      expect(moneyValue(costRow?['paidAmount']), 700);
-      final payments = await database.readCachedList(table: OfflineTables.cachedCostPayments);
-      expect(
-        payments.where((payment) => payment['paymentScheduleId'] == null).map((payment) => moneyValue(payment['amount'])),
-        [200],
-      );
-    });
+        expect(moneyValue(paid.amount), 500);
+        final row = await stored(
+          database,
+          OfflineTables.cachedPaymentSchedules,
+          'schedule-1',
+        );
+        expect(row?['status'], 'PAID');
+        final costRow = await stored(
+          database,
+          OfflineTables.cachedCosts,
+          'cost-1',
+        );
+        expect(moneyValue(costRow?['paidAmount']), 700);
+        final payments = await database.readCachedList(
+          table: OfflineTables.cachedCostPayments,
+        );
+        expect(
+          payments
+              .where((payment) => payment['paymentScheduleId'] == null)
+              .map((payment) => moneyValue(payment['amount'])),
+          [200],
+        );
+      },
+    );
 
-    test('RA-BE-109: a date asking less than its amount moves, keeps its first day, and takes a reminder in range', () async {
-      final (database, api) = await offlineApi();
-      // 800 paid straight on the agreement: the 500 date asks 200.
-      final cost = _cost(id: 'cost-1', paidAmount: '800');
-      final schedule = dated(cost, '500', DateTime(2026, 12, 1));
-      await database.saveCachedItem(
-        table: OfflineTables.cachedPaymentSchedules,
-        json: {
-          'id': 'schedule-1',
-          'costId': 'cost-1',
-          'weddingPlanId': 'plan-1',
-          'amount': '500',
-          'dueDate': '2026-12-01',
-          'status': 'PENDING',
-        },
-        dirty: false,
-      );
+    test(
+      'RA-BE-109: a date asking less than its amount moves, keeps its first day, and takes a reminder in range',
+      () async {
+        final (database, api) = await offlineApi();
+        // 800 paid straight on the agreement: the 500 date asks 200.
+        final cost = _cost(id: 'cost-1', paidAmount: '800');
+        final schedule = dated(cost, '500', DateTime(2026, 12, 1));
+        await database.saveCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          json: {
+            'id': 'schedule-1',
+            'costId': 'cost-1',
+            'weddingPlanId': 'plan-1',
+            'amount': '500',
+            'dueDate': '2026-12-01',
+            'status': 'PENDING',
+          },
+          dirty: false,
+        );
 
-      final moved = await api.updateSchedule(
-        schedule: schedule,
-        cost: cost,
-        amount: '500',
-        dueDate: DateTime(2026, 12, 20),
-      );
-      expect(planDayToJson(planDayFromJson(moved.dueDate.toIso8601String())!), '2026-12-20');
-      expect(moved.rescheduledFrom, isNotNull);
-
-      await expectLater(
-        api.updateSchedule(
-          schedule: moved,
+        final moved = await api.updateSchedule(
+          schedule: schedule,
           cost: cost,
           amount: '500',
           dueDate: DateTime(2026, 12, 20),
-          remindAt: DateTime(2026, 12, 25),
-        ),
-        throwsA(isA<ApiException>()),
-      );
-      final back = await api.updateSchedule(
-        schedule: moved,
-        cost: cost,
-        amount: '500',
-        dueDate: DateTime(2026, 12, 1),
-      );
-      expect(back.rescheduledFrom, isNull);
-    });
+        );
+        expect(
+          planDayToJson(planDayFromJson(moved.dueDate.toIso8601String())!),
+          '2026-12-20',
+        );
+        expect(moved.rescheduledFrom, isNotNull);
 
-    test('the phone copy keeps the money tab fields when it rewrites a row', () {
-      final schedule = PaymentSchedule.fromJson({
-        'id': 's1',
-        'costId': 'c1',
-        'amount': '300',
-        'dueDate': '2026-12-01T00:00:00.000Z',
-        'status': 'PENDING',
-        'remindAt': '2026-11-28T00:00:00.000Z',
-        'rescheduledFrom': '2026-11-20T00:00:00.000Z',
-      });
-      final again = PaymentSchedule.fromJson(paymentScheduleToLocalJson(schedule));
-      expect(again.remindAt, schedule.remindAt);
-      expect(again.rescheduledFrom, schedule.rescheduledFrom);
-      final cost = WeddingCost.fromJson({
-        ...weddingCostToLocalJson(_cost(id: 'c1')),
-        'entryKind': 'EXPENSE',
-        'estimateCover': 'PART',
-        'estimatePart': '150',
-      });
-      final costAgain = WeddingCost.fromJson(weddingCostToLocalJson(cost));
-      expect(costAgain.entryKind, 'EXPENSE');
-      expect(costAgain.estimateCover, 'PART');
-      expect(costAgain.estimatePart, '150');
-      final payment = CostPayment.fromJson({
-        'id': 'p1',
-        'costId': 'c1',
-        'amount': '200',
-        'paidAt': '2026-11-01T00:00:00.000Z',
-        'lowersScheduleId': 's1',
-      });
-      expect(
-        CostPayment.fromJson(costPaymentToLocalJson(payment)).lowersScheduleId,
-        's1',
-      );
-    });
+        await expectLater(
+          api.updateSchedule(
+            schedule: moved,
+            cost: cost,
+            amount: '500',
+            dueDate: DateTime(2026, 12, 20),
+            remindAt: DateTime(2026, 12, 25),
+          ),
+          throwsA(isA<ApiException>()),
+        );
+        final back = await api.updateSchedule(
+          schedule: moved,
+          cost: cost,
+          amount: '500',
+          dueDate: DateTime(2026, 12, 1),
+        );
+        expect(back.rescheduledFrom, isNull);
+      },
+    );
 
-    test('D107: an expense on a phone plan is paid in full and settles a part of its item', () async {
-      final api = (await offlineApi()).$2;
-      final expense = await api.createCost(
-        planId: 'local-guest-plan',
-        budgetCategoryId: 'category-1',
-        title: 'فستان',
-        totalAmount: '150',
-        isExpense: true,
-      );
-      expect(expense.isExpense, isTrue);
-      expect(expense.status, 'PAID');
-      expect(moneyValue(expense.paidAmount), 150);
-      expect(expense.estimateCover, 'PART');
-      // RA-BE-120: its own amount, read when it counts (as on the server),
-      // never written as a figure that an edit could leave behind.
-      expect(expense.estimatePart, isNull);
-      await expectLater(
-        api.updateCost(
-          cost: expense,
+    test(
+      'the phone copy keeps the money tab fields when it rewrites a row',
+      () {
+        final schedule = PaymentSchedule.fromJson({
+          'id': 's1',
+          'costId': 'c1',
+          'amount': '300',
+          'dueDate': '2026-12-01T00:00:00.000Z',
+          'status': 'PENDING',
+          'remindAt': '2026-11-28T00:00:00.000Z',
+          'rescheduledFrom': '2026-11-20T00:00:00.000Z',
+        });
+        final again = PaymentSchedule.fromJson(
+          paymentScheduleToLocalJson(schedule),
+        );
+        expect(again.remindAt, schedule.remindAt);
+        expect(again.rescheduledFrom, schedule.rescheduledFrom);
+        final cost = WeddingCost.fromJson({
+          ...weddingCostToLocalJson(_cost(id: 'c1')),
+          'entryKind': 'EXPENSE',
+          'estimateCover': 'PART',
+          'estimatePart': '150',
+        });
+        final costAgain = WeddingCost.fromJson(weddingCostToLocalJson(cost));
+        expect(costAgain.entryKind, 'EXPENSE');
+        expect(costAgain.estimateCover, 'PART');
+        expect(costAgain.estimatePart, '150');
+        final payment = CostPayment.fromJson({
+          'id': 'p1',
+          'costId': 'c1',
+          'amount': '200',
+          'paidAt': '2026-11-01T00:00:00.000Z',
+          'lowersScheduleId': 's1',
+        });
+        expect(
+          CostPayment.fromJson(
+            costPaymentToLocalJson(payment),
+          ).lowersScheduleId,
+          's1',
+        );
+      },
+    );
+
+    test(
+      'D107: an expense on a phone plan is paid in full and settles a part of its item',
+      () async {
+        final api = (await offlineApi()).$2;
+        final expense = await api.createCost(
+          planId: 'local-guest-plan',
           budgetCategoryId: 'category-1',
           title: 'فستان',
-          totalAmount: '200',
-        ),
-        throwsA(isA<ApiException>()),
-      );
-    });
+          totalAmount: '150',
+          isExpense: true,
+        );
+        expect(expense.isExpense, isTrue);
+        expect(expense.status, 'PAID');
+        expect(moneyValue(expense.paidAmount), 150);
+        expect(expense.estimateCover, 'PART');
+        // RA-BE-120: its own amount, read when it counts (as on the server),
+        // never written as a figure that an edit could leave behind.
+        expect(expense.estimatePart, isNull);
+        await expectLater(
+          api.updateCost(
+            cost: expense,
+            budgetCategoryId: 'category-1',
+            title: 'فستان',
+            totalAmount: '200',
+          ),
+          throwsA(isA<ApiException>()),
+        );
+      },
+    );
   });
 
   test(

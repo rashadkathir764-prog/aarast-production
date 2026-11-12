@@ -125,21 +125,50 @@ void main() {
     );
   });
 
-  testWidgets('w11 lists plans you help in, and archived ones stay closed', (
+  // D112 (Q-21), the owner's word: the owner of an archived plan reads it.
+  // This test pinned the card as closed («archived ones stay closed»); the
+  // card now opens the plan to read, as the server lists it, and is never
+  // made the active plan. RA-MO-159: the card says «في الذكريات» once and
+  // what opening gives («للقراءة»), not a second name («مؤرشفة»).
+  testWidgets('w11 lists plans you help in, and a memory opens to be read', (
     tester,
   ) async {
     final mine = _plan('mine', 'عرس محمد');
     final archived = _plan('old', 'عرس عادل', status: 'ARCHIVED');
     final apiClient = ApiClient(tokenProvider: () async => null);
     final plans = _PlansWithActiveProvider(apiClient, [mine, archived], mine);
-    final accountContexts = await _accountContexts([
-      accountContext(role: AccountContextRole.owner, planId: mine.id),
-      accountContext(
-        role: AccountContextRole.contributor,
-        planId: 'helped',
-        displayName: 'عرس صالح',
-      ),
-    ], selectedPlanId: mine.id);
+    final setActive = <String>[];
+    final accountContexts = await _accountContexts(
+      [
+        accountContext(role: AccountContextRole.owner, planId: mine.id),
+        accountContext(
+          role: AccountContextRole.contributor,
+          planId: 'helped',
+          displayName: 'عرس صالح',
+        ),
+        accountContext(
+          role: AccountContextRole.owner,
+          planId: archived.id,
+          lifecycle: 'ARCHIVED',
+          accessMode: AccountContextAccessMode.readOnly,
+          isAvailable: false,
+          unavailableReason: 'PLAN_ARCHIVED',
+        ),
+      ],
+      selectedPlanId: mine.id,
+      onSetActive: setActive.add,
+    );
+    setActive.clear();
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const MyWeddingPlansScreen()),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(key: Key('memory-home')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -149,12 +178,9 @@ void main() {
             value: accountContexts,
           ),
         ],
-        child: MaterialApp(
+        child: MaterialApp.router(
           theme: AppTheme.light(),
-          home: const Directionality(
-            textDirection: TextDirection.rtl,
-            child: MyWeddingPlansScreen(),
-          ),
+          routerConfig: router,
         ),
       ),
     );
@@ -162,12 +188,19 @@ void main() {
 
     expect(find.text('عرس صالح'), findsOneWidget);
     expect(find.text('مشارك'), findsOneWidget);
-    expect(find.text('مؤرشفة'), findsOneWidget);
+    expect(find.text('مؤرشفة'), findsNothing);
+    expect(find.text('للقراءة'), findsOneWidget);
     expect(find.text('في الذكريات · 2026'), findsOneWidget);
 
     await tester.tap(find.text('عرس عادل'));
     await tester.pumpAndSettle();
-    expect(accountContexts.selectedContext?.weddingPlanId, mine.id);
+
+    final opened = accountContexts.selectedContext;
+    expect(opened?.weddingPlanId, archived.id);
+    expect(opened?.isOwnerMemory, isTrue);
+    expect(opened?.permissions.canManageMoney, isFalse);
+    expect(setActive, isEmpty);
+    expect(find.byKey(const Key('memory-home')), findsOneWidget);
   });
 
   testWidgets('a plan helped in opens on the participant tabs (D34)', (
@@ -292,12 +325,13 @@ Future<AuthController> _authController() async {
 Future<AccountContextController> _accountContexts(
   List<AccountContext> contexts, {
   String? selectedPlanId,
+  void Function(String planId)? onSetActive,
 }) async {
   final preferences = await SharedPreferences.getInstance();
   final controller = AccountContextController(
     contextsApi: _StaticAccountContextsGateway(contexts),
     authStorage: AuthStorage(preferences),
-    setActiveWeddingPlan: (_) async {},
+    setActiveWeddingPlan: (planId) async => onSetActive?.call(planId),
   );
   await controller.refresh();
   if (selectedPlanId != null) {

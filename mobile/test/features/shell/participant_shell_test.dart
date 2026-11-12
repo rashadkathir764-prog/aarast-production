@@ -11,6 +11,8 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
 import 'package:aarast_mobile/features/shell/screens/participant_locked_screen.dart';
+import 'package:aarast_mobile/features/shell/screens/participant_plan_shell.dart';
+import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
 import 'package:aarast_mobile/features/shell/widgets/aarast_plan_chrome.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_quick_add_sheet.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
@@ -286,6 +288,56 @@ void main() {
       await _openTab(tester, 'المال');
       expect(find.text('المال خاص بالعريس'), findsOneWidget);
       expect(find.textContaining('ر.ي'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  // D112 (Q-21), the owner's word: the owner of an archived plan reads it,
+  // read-only. It opens through the reading pages: nothing on them changes
+  // the plan, and none sends the owner to «the owner» for changes.
+  testWidgets(
+    'Q-21: the owner reads a plan in the memories, with nothing to change',
+    (tester) async {
+      final harness = await _Harness.create(
+        role: 'OWNER',
+        userName: 'محمد',
+        canManageTasks: false,
+        canManageGuests: false,
+        memory: true,
+      );
+      await harness.pump(tester);
+
+      // The reading home, not the owner's: no «+», no «خلصت», and the tag
+      // says the plan's state («أنت مشارك» was said to its owner).
+      expect(find.byType(ParticipantPlanShell), findsOneWidget);
+      expect(find.text('في الذكريات'), findsOneWidget);
+      expect(find.text('أنت مشارك'), findsNothing);
+      expect(find.byKey(const ValueKey('participant-next-done')), findsNothing);
+      expect(
+        tester.widget<PlanShellChrome>(find.byType(PlanShellChrome)).onQuickAdd,
+        isNull,
+      );
+      expect(harness.tasksApi.listCalls, 0);
+
+      await _openTab(tester, 'المهام');
+      expect(find.byType(ParticipantTasksScreen), findsOneWidget);
+      expect(find.text('الخطة في الذكريات، للقراءة فقط.'), findsOneWidget);
+      expect(find.textContaining('عند العريس'), findsNothing);
+      expect(find.byKey(const Key('participant-tasks-add')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('participant-task-toggle-p1')),
+        findsNothing,
+      );
+
+      await _openTab(tester, 'الضيوف');
+      expect(find.byType(ParticipantGuestsScreen), findsOneWidget);
+      expect(find.text('عبدالله الحمدي'), findsOneWidget);
+      expect(find.text('الخطة في الذكريات، للقراءة فقط.'), findsOneWidget);
+      expect(find.textContaining('عند العريس'), findsNothing);
+
+      await _openTab(tester, 'المزودين');
+      expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
+      expect(find.text('الخطة في الذكريات، للقراءة فقط.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -807,6 +859,7 @@ class _Harness {
     List<WeddingTask> tasks = const [],
     String? userPersona,
     List<Map<String, dynamic>>? events,
+    bool memory = false,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -853,8 +906,16 @@ class _Harness {
       authStorage: storage,
       setActiveWeddingPlan: (_) async {},
     );
+    gateway.memory = memory;
     await controller.refresh();
-    expect(await controller.select('plan:$_planId:contributor'), isTrue);
+    if (memory) {
+      expect(
+        await controller.openReadOnlyContext('plan:$_planId:owner'),
+        isTrue,
+      );
+    } else {
+      expect(await controller.select('plan:$_planId:contributor'), isTrue);
+    }
     final repository = _AuthRepository(apiClient, storage, user);
     final auth = AuthController(repository);
     await auth.restoreSession();
@@ -867,6 +928,7 @@ class _Harness {
         canManageTasks: canManageTasks,
         canManageGuests: canManageGuests,
         canViewMoney: keptCanViewMoney,
+        isOwner: memory,
       ),
     );
     final tasksApi = _TasksApi(apiClient, tasks);
@@ -936,6 +998,7 @@ DashboardSummary _summary({
   required bool canManageTasks,
   required bool canManageGuests,
   bool canViewMoney = false,
+  bool isOwner = false,
 }) {
   final today = DateUtils.dateOnly(DateTime.now());
   return DashboardSummary(
@@ -961,7 +1024,7 @@ DashboardSummary _summary({
     planProviders: const [],
     importantNotifications: const [],
     permissions: DashboardPermissionSummary(
-      isOwner: false,
+      isOwner: isOwner,
       role: role,
       canViewMoney: canViewMoney,
       canManageTasks: canManageTasks,
@@ -998,7 +1061,24 @@ class _Gateway implements AccountContextsGateway {
     this.canViewMoney = canViewMoney;
   }
 
+  /// D112 (Q-21): the plan is its owner's, put in the memories, as the
+  /// server lists it: unavailable, read-only, no write right.
+  bool memory = false;
+
   AccountContext get _context {
+    if (memory) {
+      return accountContext(
+        role: AccountContextRole.owner,
+        planId: _planId,
+        displayName: title,
+        persona: persona,
+        readerForm: readerForm,
+        lifecycle: 'ARCHIVED',
+        accessMode: AccountContextAccessMode.readOnly,
+        isAvailable: false,
+        unavailableReason: 'PLAN_ARCHIVED',
+      );
+    }
     final json = accountContextJson(
       role: AccountContextRole.contributor,
       planId: _planId,

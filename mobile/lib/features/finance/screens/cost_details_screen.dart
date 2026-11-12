@@ -162,7 +162,8 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     FinanceProvider provider,
     WeddingCost cost,
   ) {
-    if (!provider.canManageMoney ||
+    // Paying is settling: open to the owner of a plan in the memories too.
+    if (!provider.canSettleMoney ||
         cost.isCancelled ||
         moneyValue(cost.remainingAmount) <= 0) {
       return null;

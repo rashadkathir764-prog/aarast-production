@@ -358,7 +358,7 @@ String? paymentRefusal(
   FinanceProvider provider,
   WeddingCost cost,
 ) {
-  if (!provider.canManageMoney) return 'تسجيل الدفعات لمدير المال.';
+  if (!provider.canSettleMoney) return 'تسجيل الدفعات لمدير المال.';
   if (cost.isCancelled) return 'هذا الاتفاق ملغي، ما تنسجل عليه دفعات.';
   if (cost.isPaid || moneyValue(cost.remainingAmount) <= 0) {
     // D59: «عليك» is the owner's; a helper reads whose it is.

@@ -474,7 +474,10 @@ void main() {
         await tester.pumpAndSettle();
       },
     );
-    expect(find.text('تحط الخطة في الأرشيف؟'), findsOneWidget);
+    // RA-MO-159: one name, «الذكريات»; D112 (Q-21): it stays readable.
+    expect(find.text('تحط الخطة في الذكريات؟'), findsOneWidget);
+    expect(find.textContaining('من «خططك»'), findsOneWidget);
+    expect(find.textContaining('تفتحها'), findsNothing);
   });
 
   Future<List<SingleChildWidget>> sharingProviders(_SharingApi api) async {

@@ -7,6 +7,7 @@ import 'package:aarast_mobile/features/account_contexts/data/account_contexts_ap
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/account_contexts/widgets/account_context_entry_gate.dart';
+import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,6 +24,75 @@ void main() {
     expect(
       resolveAccountContextEntry(controller),
       AccountContextEntryState.planDashboard,
+    );
+  });
+
+  // D112 (Q-21), the owner's word: the owner of an archived plan reads it.
+  // The entry stayed on its loading page for good with a memory selected,
+  // and every plan route answered «هذا القسم مو مفتوح لك».
+  test('Q-21: the owner\'s memory opens the plan, to read', () async {
+    final live = accountContext(role: AccountContextRole.owner);
+    final memory = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-archived',
+      lifecycle: 'ARCHIVED',
+      accessMode: AccountContextAccessMode.readOnly,
+      isAvailable: false,
+      unavailableReason: 'PLAN_ARCHIVED',
+    );
+    final controller = await _controller([live, memory]);
+    expect(await controller.openReadOnlyContext(memory.contextKey), isTrue);
+
+    expect(
+      resolveAccountContextEntry(controller),
+      AccountContextEntryState.planDashboard,
+    );
+    // Reading, and its money; nothing that changes the plan, and not the
+    // owner's own home (its page offers what a memory no longer takes).
+    // And settling what was agreed (the owner left this to me): the server
+    // keeps reminding of a memory's payment dates and accepts their payment.
+    for (final reads in [
+      WeddingPlanRouteAccess.viewPlan,
+      WeddingPlanRouteAccess.viewMoney,
+      WeddingPlanRouteAccess.settleMoney,
+    ]) {
+      expect(accountContextAllowsPlanAccess(memory, reads), isTrue);
+    }
+    // On a live plan settling is for who manages the money, as before.
+    expect(
+      accountContextAllowsPlanAccess(live, WeddingPlanRouteAccess.settleMoney),
+      isTrue,
+    );
+    expect(
+      accountContextAllowsPlanAccess(
+        accountContext(role: AccountContextRole.contributor, planId: 'p-3'),
+        WeddingPlanRouteAccess.settleMoney,
+      ),
+      isFalse,
+    );
+    for (final changes in [
+      WeddingPlanRouteAccess.ownerDashboard,
+      WeddingPlanRouteAccess.manageMoney,
+      WeddingPlanRouteAccess.manageTasks,
+      WeddingPlanRouteAccess.manageGuests,
+      WeddingPlanRouteAccess.manageProviders,
+      WeddingPlanRouteAccess.inviteMembers,
+      WeddingPlanRouteAccess.unknown,
+    ]) {
+      expect(accountContextAllowsPlanAccess(memory, changes), isFalse);
+    }
+    // A participant's archived plan opens nothing, as before.
+    final helped = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-helped',
+      lifecycle: 'ARCHIVED',
+      accessMode: AccountContextAccessMode.readOnly,
+      isAvailable: false,
+      unavailableReason: 'PLAN_ARCHIVED',
+    );
+    expect(
+      accountContextAllowsPlanAccess(helped, WeddingPlanRouteAccess.viewPlan),
+      isFalse,
     );
   });
 

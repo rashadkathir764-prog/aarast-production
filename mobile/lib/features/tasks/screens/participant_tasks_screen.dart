@@ -36,10 +36,15 @@ class ParticipantTasksScreen extends StatefulWidget {
     required this.planTitle,
     required this.canManage,
     required this.ownerWord,
+    this.memoryNote,
     super.key,
   });
 
   final String weddingPlanId;
+
+  /// D112 (Q-21): the plan's owner reading it in the memories. Said in
+  /// place of the note that sends the reader to the owner for changes.
+  final String? memoryNote;
 
   /// «عرس محمد», for the status line.
   final String planTitle;
@@ -199,6 +204,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                 weddingPlanId: widget.weddingPlanId,
                 provider: plan,
                 ownerWord: widget.ownerWord,
+                memoryNote: widget.memoryNote,
                 readOnlyNote: !widget.canManage,
                 onRetry: _loadPlan,
               )

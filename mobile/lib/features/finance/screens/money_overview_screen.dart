@@ -260,7 +260,8 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                   provider: provider,
                   weddingDate: _weddingDay(context),
                   onOpen: _openDue,
-                  onPay: provider.canManageMoney ? _payDue : null,
+                  // Paying a date is settling: open in a memory too.
+                  onPay: provider.canSettleMoney ? _payDue : null,
                   onAgreement: provider.canManageMoney
                       ? () => context.push(
                           AppRouter.moneyCostCreate(widget.weddingPlanId),
@@ -540,6 +541,14 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   /// speaks (see _mahrToRecord), so nothing new crosses the context
   /// boundary either.
   String _readOnlyLine(BuildContext context) {
+    // D112 (Q-21): the owner of a plan in the memories was told the money
+    // «يحتاج صلاحية إضافية». It is theirs to read, and to settle.
+    if (context.read<FinanceProvider>().ownerReadsOnly) {
+      return context.say(
+        'الخطة في الذكريات: المال للقراءة، وتقدر تسجّل سداد الباقي عليك.',
+        'الخطة في الذكريات: المال للقراءة، وتقدرين تسجّلين سداد الباقي عليك.',
+      );
+    }
     final who = context.journeyProfile.readerIsOwner
         ? 'يحتاج صلاحية إضافية'
         : 'عند ${context.planWord('العريس', 'العروسة')}';

@@ -18,6 +18,11 @@ enum WeddingPlanRouteAccess {
   ownerDashboard,
   viewMoney,
   manageMoney,
+
+  /// Paying what was already agreed: a payment on an agreement, a date
+  /// paid. Who manages the money, and the owner of a plan in the memories
+  /// (D112, Q-21).
+  settleMoney,
   manageTasks,
   manageGuests,
   manageProviders,
@@ -151,7 +156,10 @@ bool accountContextAllowsPlanAccess(
   AccountContext selected,
   WeddingPlanRouteAccess requiredAccess,
 ) {
-  if (!selected.isAvailable ||
+  // D112 (Q-21): the owner's plan in the memories opens to read. Its write
+  // rights are all false (the server's word), so every route that changes
+  // the plan stays shut by the lines below.
+  if (!selected.opens ||
       !selected.isPlan ||
       !selected.permissions.canViewPlan) {
     return false;
@@ -159,10 +167,16 @@ bool accountContextAllowsPlanAccess(
   final permissions = selected.permissions;
   return switch (requiredAccess) {
     WeddingPlanRouteAccess.viewPlan => true,
+    // The owner's own home offers what a memory no longer takes; a memory
+    // is read through the reading pages.
     WeddingPlanRouteAccess.ownerDashboard =>
-      selected.role == AccountContextRole.owner,
+      selected.role == AccountContextRole.owner && selected.isAvailable,
     WeddingPlanRouteAccess.viewMoney => permissions.canViewMoney,
     WeddingPlanRouteAccess.manageMoney => permissions.canManageMoney,
+    // The server accepts a payment of what was agreed on an archived plan
+    // from who manages its money by role (G15); the owner always does.
+    WeddingPlanRouteAccess.settleMoney =>
+      permissions.canManageMoney || selected.isOwnerMemory,
     WeddingPlanRouteAccess.manageTasks => permissions.canManageTasks,
     WeddingPlanRouteAccess.manageGuests => permissions.canManageGuests,
     WeddingPlanRouteAccess.manageProviders => permissions.canManageProviders,

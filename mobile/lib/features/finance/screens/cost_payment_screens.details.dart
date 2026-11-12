@@ -150,8 +150,9 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
     final reversal = payment.reversedById == null
         ? null
         : provider.paymentById(payment.reversedById!);
+    // Taking a payment back is settling: open in a memory too (G15).
     final canReverse =
-        provider.canManageMoney &&
+        provider.canSettleMoney &&
         cost != null &&
         payment.reversible &&
         !payment.isReversal &&
@@ -283,7 +284,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
                   : () => _reverse(payment, cost),
             ),
           )
-        else if (!provider.canManageMoney)
+        else if (!provider.canSettleMoney)
           const JourneyNote(
             text: 'هذي الدفعة للعرض فقط. التعديل لمدير المال.',
             icon: LucideIcons.eye,

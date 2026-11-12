@@ -401,10 +401,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) async {
     final planId = _targetPlanId(target);
     final controller = context.read<AccountContextController?>();
+    // D112 (Q-21): the reminders of a plan in the memories keep coming
+    // (its payment dates and loan repayments), and its owner reads it. The
+    // notice said «خطة ما عاد توصل لها» and stayed unread for good.
     final path = planId == null || _isLocalPlanNotifications
         ? null
-        : controller?.availableContexts
-              .where((path) => path.isPlan && path.weddingPlanId == planId)
+        : controller?.contexts
+              .where(
+                (path) =>
+                    path.isPlan && path.opens && path.weddingPlanId == planId,
+              )
               .firstOrNull;
     if (controller == null || path == null) {
       AarastToast.showError(
@@ -417,7 +423,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await provider.markRead(notification);
     if (!mounted) return;
     final router = GoRouter.of(context);
-    final switched = await controller.select(path.contextKey);
+    // A memory opens as the server lists it, to be read; it is never made
+    // the active plan.
+    final switched = path.isOwnerMemory
+        ? await controller.openReadOnlyContext(path.contextKey)
+        : await controller.select(path.contextKey);
     if (!switched || controller.selectedContext?.weddingPlanId != planId) {
       if (mounted) {
         AarastToast.showError(
@@ -427,6 +437,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       return;
     }
+    // A memory's reminders point to pages that are read (the agreement, the
+    // loans); the server sends it no other kind after archiving.
     router.go(target);
   }
 

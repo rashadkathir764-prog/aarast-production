@@ -144,7 +144,8 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
             open: entry.plan != null
                 ? entry.plan!.id == openPlanId
                 : entry.contextKey == selected?.contextKey,
-            onTap: entry.archived || _opening ? null : () => _open(entry),
+            // D112 (Q-21): a plan in the memories opens too, to be read.
+            onTap: _opening ? null : () => _open(entry),
           ),
           const SizedBox(height: AarastV3Space.x2),
         ],
@@ -210,6 +211,10 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
       router.go(AppRouter.home);
       return;
     }
+    if (plan != null && entry.archived) {
+      await _openMemory(accounts, router, plan);
+      return;
+    }
     setState(() => _opening = true);
     var key = entry.contextKey;
     if (plan != null) {
@@ -243,6 +248,37 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
       plan != null ? AppRouter.weddingPlanDashboard(planId) : AppRouter.home,
     );
   }
+
+  /// D112 (Q-21), the owner's word: the owner of an archived plan reads it.
+  /// It opens as the server lists it, a read-only path with no write right,
+  /// through the reading pages; it is never made the active plan.
+  Future<void> _openMemory(
+    AccountContextController accounts,
+    GoRouter router,
+    WeddingPlan plan,
+  ) async {
+    String? memoryKey() => accounts.contexts
+        .where((path) => path.isOwnerMemory && path.weddingPlanId == plan.id)
+        .firstOrNull
+        ?.contextKey;
+
+    setState(() => _opening = true);
+    // The paths on the phone may be from before the plan was archived.
+    if (memoryKey() == null) await accounts.refresh();
+    final key = memoryKey();
+    final opened = key != null && await accounts.openReadOnlyContext(key);
+    if (!mounted) return;
+    setState(() => _opening = false);
+    if (!opened) {
+      AarastToast.showError(
+        context,
+        'ما قدرنا نفتح الخطة. ${context.say('جرّب', 'جرّبي')} مرة ثانية.',
+      );
+      return;
+    }
+    if (widget.inSheet) Navigator.of(context).pop();
+    router.go(AppRouter.home);
+  }
 }
 
 class _PlanCard extends StatelessWidget {
@@ -267,8 +303,14 @@ class _PlanCard extends StatelessWidget {
         : helped
         ? AarastV3Color.brandAccentStrong
         : context.accent.primary;
+    // RA-MO-159: one name for the state («في الذكريات», in the line under
+    // the name); the tag says what opening it gives.
     final (String? tag, Color tagColor, Color tagSoft) = archived
-        ? ('مؤرشفة', AarastV3Color.textMuted, AarastV3Color.line)
+        ? (
+            open ? 'مفتوحة' : 'للقراءة',
+            AarastV3Color.textMuted,
+            AarastV3Color.line,
+          )
         : helped
         ? (
             context.say('مشارك', 'مشاركة'),

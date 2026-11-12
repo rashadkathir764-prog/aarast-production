@@ -105,9 +105,12 @@ class _MoreScreenState extends State<MoreScreen> {
               busy: auth.isSubmitting,
               onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
             ),
-          // «عرسي» belongs to the plan's owner.
+          // «عرسي» belongs to the plan's owner. D112 (Q-21): not on a plan
+          // in the memories; its day, its participants and its postponing
+          // are all changes, and a memory takes none.
           if (planId != null &&
               planId.isNotEmpty &&
+              selected?.isOwnerMemory != true &&
               plan?.permissions.isOwner == true) ...[
             const _GroupTitle('عرسي'),
             JourneyList(

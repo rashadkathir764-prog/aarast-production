@@ -823,8 +823,15 @@ class _AarastSessionProviders extends StatelessWidget {
 const _unselectedPlanScope = 'context:none';
 
 String _planScope(AccountContextController accountContexts) {
-  final contextKey = accountContexts.selectedContext?.contextKey;
-  return contextKey == null ? _unselectedPlanScope : 'context:$contextKey';
+  final selected = accountContexts.selectedContext;
+  final contextKey = selected?.contextKey;
+  if (contextKey == null) return _unselectedPlanScope;
+  // D112 (Q-21): a plan put in the memories keeps its key and loses every
+  // write right. Its pages start afresh as a memory, so nothing read with
+  // the rights it had a moment ago (the money's «تقدر تسجّل») stays shown.
+  return selected!.isOwnerMemory
+      ? 'context:$contextKey:memory'
+      : 'context:$contextKey';
 }
 
 T _bindPlanScope<T extends ChangeNotifier>(T provider, Object identity) {

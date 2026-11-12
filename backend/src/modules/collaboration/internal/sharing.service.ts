@@ -88,6 +88,7 @@ import {
   assertWeddingPlanWritable,
   isPlanPartnerRole,
   PlanAccessContext,
+  planWriteRights,
 } from "../public/collaboration-permission.port";
 import { PermissionService } from "./permission.service";
 import {
@@ -2767,12 +2768,8 @@ export class SharingService {
         ? SharedMemberRole.OWNER
         : (context.sharedMember?.role ?? null),
       canViewMoney: this.permissions.canViewMoney(context),
-      canManageTasks: this.permissions.canManageTasks(context),
-      canManageGuests: this.permissions.canManageGuests(context),
-      canManageProviders: this.permissions.canManageProviders(context),
-      canManageMoney: this.permissions.canManageMoney(context),
-      canManagePlan: this.permissions.canManagePlan(context),
-      canManageMembers: this.permissions.canManageMembers(context),
+      // D112 (Q-21): none of these on an archived plan.
+      ...planWriteRights(context, this.permissions),
       receiveNotifications:
         context.isOwner || context.sharedMember?.receiveNotifications === true,
     };

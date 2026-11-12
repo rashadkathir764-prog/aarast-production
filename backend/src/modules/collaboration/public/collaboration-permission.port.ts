@@ -118,6 +118,49 @@ export function isWeddingPlanWritable(
   return plan.status !== WeddingPlanStatus.ARCHIVED;
 }
 
+/**
+ * D112 (Q-21): the write rights a response reports for a plan, the ones a
+ * screen reads its buttons from. An archived plan is read by who could read
+ * it and changed by no one, so each is false there whatever the role holds;
+ * read rights (`canViewMoney`, the role itself) are not touched. The
+ * contexts and the events answered this way already; `permissions/me`, the
+ * dashboard's and the money's summaries reported every right and showed
+ * buttons the write then refused (`PLAN_ARCHIVED_READ_ONLY`).
+ *
+ * Settling money already agreed stays accepted on an archived plan (G15):
+ * that is the write's own rule, not a right these summaries advertise.
+ */
+export function planWriteRights(
+  context: PlanAccessContext,
+  permissions: Pick<
+    CollaborationPermissionPort,
+    | 'canManageTasks'
+    | 'canManageGuests'
+    | 'canManageProviders'
+    | 'canManageMoney'
+    | 'canManagePlan'
+    | 'canManageMembers'
+  >,
+) {
+  const writable = isWeddingPlanWritable(context.plan);
+  return {
+    canManageTasks: writable && permissions.canManageTasks(context),
+    canManageGuests: writable && permissions.canManageGuests(context),
+    canManageProviders: writable && permissions.canManageProviders(context),
+    canManageMoney: writable && permissions.canManageMoney(context),
+    canManagePlan: writable && permissions.canManagePlan(context),
+    canManageMembers: writable && permissions.canManageMembers(context),
+  };
+}
+
+/** [planWriteRights] for the one right the money's own summary reports. */
+export function managesMoneyNow(
+  context: PlanAccessContext,
+  permissions: Pick<CollaborationPermissionPort, 'canManageMoney'>,
+): boolean {
+  return isWeddingPlanWritable(context.plan) && permissions.canManageMoney(context);
+}
+
 export function assertWeddingPlanWritable(
   plan: Pick<WeddingPlan, 'status'>,
 ): void {

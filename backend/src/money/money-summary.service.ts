@@ -26,6 +26,7 @@ import { budgetItemSearchCategories } from "../modules/finance/public/provider-c
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  managesMoneyNow,
   PlanAccessContext,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
@@ -164,10 +165,11 @@ export async function buildMoneySummaryInTransaction(
     })),
     permissions: {
       canViewMoney: permissions.canViewMoney(access),
-      canManageMoney: permissions.canManageMoney(access),
+      // D112 (Q-21): the money of an archived plan is read, not changed.
+      canManageMoney: managesMoneyNow(access, permissions),
       // V1 checklist 4.10: the owner or partner may record a private cost.
       canRecordPrivateCost:
-        permissions.canManageMoney(access) && seesWholePlan(access),
+        managesMoneyNow(access, permissions) && seesWholePlan(access),
     },
   };
 }

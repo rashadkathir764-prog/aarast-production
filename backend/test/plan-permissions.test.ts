@@ -8,7 +8,13 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
+import {
+  managesMoneyNow,
+  planWriteRights,
+} from "../src/modules/collaboration/public/collaboration-permission.port";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 
@@ -46,6 +52,71 @@ const assertArchivedConflict = (error: unknown) => {
   );
   return true;
 };
+
+// D112 (Q-21): the owner of an archived plan reads it, and changes nothing.
+// The contexts said so; the three summaries a screen reads its buttons from
+// (`permissions/me`, the dashboard's, the money's) still reported every
+// write right, so an archived plan opened to read showed «+» and «ادفع»
+// the server then refused.
+test("Q-21: an archived plan reports no write right to anyone, and keeps its read rights", () => {
+  const owner = new PermissionService({} as never, {} as never);
+  const context = (status: WeddingPlanStatus) =>
+    ({
+      plan: { ...archivedPlan, status },
+      isOwner: true,
+      sharedMember: null,
+    }) as never;
+
+  assert.deepEqual(planWriteRights(context(WeddingPlanStatus.ARCHIVED), owner), {
+    canManageTasks: false,
+    canManageGuests: false,
+    canManageProviders: false,
+    canManageMoney: false,
+    canManagePlan: false,
+    canManageMembers: false,
+  });
+  assert.equal(owner.canViewMoney(context(WeddingPlanStatus.ARCHIVED)), true);
+  // A plan still being planned is unchanged.
+  assert.deepEqual(planWriteRights(context(WeddingPlanStatus.PLANNING), owner), {
+    canManageTasks: true,
+    canManageGuests: true,
+    canManageProviders: true,
+    canManageMoney: true,
+    canManagePlan: true,
+    canManageMembers: true,
+  });
+});
+
+test("Q-21: the summaries a screen reads its buttons from all go through that rule", () => {
+  const read = (path: string) =>
+    readFileSync(join(__dirname, "..", "src", path), "utf8");
+  for (const path of [
+    "modules/collaboration/internal/sharing.service.ts",
+    "dashboard/dashboard.service.ts",
+  ]) {
+    assert.match(read(path), /planWriteRights\(/u, path);
+  }
+  // The money's summary reports one right, through the same rule.
+  assert.match(read("money/money-summary.service.ts"), /managesMoneyNow\(/u);
+  assert.doesNotMatch(
+    read("money/money-summary.service.ts"),
+    /permissions\.canManageMoney\(/u,
+  );
+  const archived = {
+    plan: { ...archivedPlan },
+    isOwner: true,
+    sharedMember: null,
+  } as never;
+  const owner = new PermissionService({} as never, {} as never);
+  assert.equal(managesMoneyNow(archived, owner), false);
+  assert.equal(
+    managesMoneyNow(
+      { plan: { ...archivedPlan, status: WeddingPlanStatus.PLANNING }, isOwner: true, sharedMember: null } as never,
+      owner,
+    ),
+    true,
+  );
+});
 
 test("groom and bride roles can operate the plan while retaining explicit money access", () => {
   for (const role of [SharedMemberRole.GROOM, SharedMemberRole.BRIDE]) {

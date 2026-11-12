@@ -25,6 +25,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  planWriteRights,
   readerAddressForm,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
@@ -409,8 +410,10 @@ export class DashboardService {
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
-      canManageMoney: this.permissions.canManageMoney(context),
-      canManageGuests: this.permissions.canManageGuests(context),
+      // D112 (Q-21): an archived plan is asked for no next step that
+      // changes it.
+      canManageMoney: planWriteRights(context, this.permissions).canManageMoney,
+      canManageGuests: planWriteRights(context, this.permissions).canManageGuests,
       form: readerAddressForm(currentUser, context),
       planPersona: context.plan.persona,
       // J1-04: the mahr step is the owner's (only he records it); the first
@@ -598,12 +601,8 @@ export class DashboardService {
       isOwner: context.isOwner,
       role,
       canViewMoney: this.permissions.canViewMoney(context),
-      canManageMoney: this.permissions.canManageMoney(context),
-      canManageTasks: this.permissions.canManageTasks(context),
-      canManageGuests: this.permissions.canManageGuests(context),
-      canManageProviders: this.permissions.canManageProviders(context),
-      canManageMembers: this.permissions.canManageMembers(context),
-      canManagePlan: this.permissions.canManagePlan(context),
+      // D112 (Q-21): none of these on an archived plan.
+      ...planWriteRights(context, this.permissions),
     };
   }
 }

@@ -66,8 +66,10 @@ void main() {
         'lib/features/shell/main_shell.dart',
       ).readAsStringSync();
       // D34: a participant gets the plan's five tabs (x06, q05, q07,
-      // q08) on the same chrome, never the old one-page workspace, and no
-      // floating «+» (the design draws none).
+      // q08) on the same chrome, never the old one-page workspace. D34 gave
+      // them no floating «+»; D112 (Q-19, the owner's word on 2026-11-12)
+      // gives the «+» their rights give them, which is the money's for
+      // whoever manages it, through the one rule checked below.
       expect(mainShell, contains('class _ContributorMainShell'));
       expect(mainShell, contains('ParticipantPlanShell('));
       expect(mainShell, isNot(contains('contributor-workspace-')));
@@ -75,7 +77,11 @@ void main() {
         'lib/features/shell/screens/participant_plan_shell.dart',
       ).readAsStringSync();
       expect(participantShell, contains('PlanShellChrome('));
-      expect(participantShell, isNot(contains('onQuickAdd')));
+      expect(participantShell, contains('shouldShowParticipantQuickAdd('));
+      expect(
+        participantShell,
+        contains('onQuickAdd: showQuickAdd ? () => _quickAdd().open(context)'),
+      );
       expect(routeShell, contains('participant-route-shell-'));
     });
 

@@ -175,6 +175,18 @@ bool shouldShowPlanQuickAdd({
       (tabIndex != _moneyTab || isRootDestination);
 }
 
+/// D112 (Q-19): the «+» in a participant's shell, by their rights. Their
+/// tasks and guests pages carry their own add button and their home is
+/// their tasks, so the shell's «+» is the money's: for whoever sees the
+/// money and may manage it.
+bool shouldShowParticipantQuickAdd({
+  required int tabIndex,
+  required bool canViewMoney,
+  required bool canManageMoney,
+}) {
+  return tabIndex == _moneyTab && canViewMoney && canManageMoney;
+}
+
 IconData planQuickAddIconForTab(int tabIndex) {
   return switch (tabIndex) {
     _moneyTab => LucideIcons.wallet,

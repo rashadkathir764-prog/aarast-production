@@ -7,7 +7,8 @@ import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
-import '../../finance/finance_api.dart' show MoneyOverviewScreen;
+import '../../finance/finance_api.dart'
+    show FinanceProvider, MoneyOverviewScreen;
 import '../../guests/guests_api.dart'
     show GuestListScreen, ParticipantGuestsScreen;
 import '../../marketplace/marketplace_api.dart'
@@ -16,6 +17,8 @@ import '../../sharing/sharing_api.dart' show participantRoleTag;
 import '../../tasks/tasks_api.dart' show ParticipantTasksScreen;
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, ParticipantHomeScreen;
+import '../widgets/plan_quick_add.dart';
+import '../widgets/plan_quick_add_sheet.dart';
 import '../widgets/plan_shell_chrome.dart';
 import 'participant_locked_screen.dart';
 
@@ -152,11 +155,43 @@ class _ParticipantPlanShellState extends State<ParticipantPlanShell>
     _visited.add(index);
   });
 
+  /// D112 (Q-19): the money's «+» for a participant who manages it. The
+  /// guests' sheet and the providers open on their own tabs.
+  PlanQuickAddFlow _quickAdd() {
+    final planId = widget.weddingPlanId;
+    final dashboard = context.read<DashboardSummaryProvider?>();
+    final summary = dashboard?.summary;
+    final finance = context.read<FinanceProvider?>();
+    return PlanQuickAddFlow(
+      planId: planId,
+      tabIndex: _index,
+      canManageMoney: true,
+      // Known once the money is read; the server decides either way.
+      canManageBudget:
+          finance?.loadedPlanId == planId && finance!.canManageBudget,
+      offerAgreementActions: true,
+      signals: summary?.planId == planId
+          ? PlanQuickAddSignals.fromDashboard(summary!)
+          : null,
+      onAddGuest: () => _select(3),
+      onFindProviders: () => _select(4),
+      onChanged: () async => dashboard?.loadDashboard(planId),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // The tabs follow the live rights and the plan's name.
-    context.watch<AccountContextController>();
+    final selected = context.watch<AccountContextController>().selectedContext;
     context.watch<DashboardSummaryProvider?>();
+    final rights = selected?.weddingPlanId == widget.weddingPlanId
+        ? selected?.permissions
+        : null;
+    final showQuickAdd = shouldShowParticipantQuickAdd(
+      tabIndex: _index,
+      canViewMoney: rights?.canViewMoney ?? false,
+      canManageMoney: rights?.canManageMoney ?? false,
+    );
     return RootTabBackScope(
       activeIndex: _index,
       onReturnToRoot: () => _select(0),
@@ -164,6 +199,10 @@ class _ParticipantPlanShellState extends State<ParticipantPlanShell>
         key: ValueKey('participant-shell-${widget.weddingPlanId}'),
         activeIndex: _index,
         onTabSelected: _select,
+        onQuickAdd: showQuickAdd ? () => _quickAdd().open(context) : null,
+        onQuickAddLongPress: showQuickAdd
+            ? () => _quickAdd().repeatLast(context)
+            : null,
         topStatus: const OfflineStatusBanner(),
         backgroundColor: AppTheme.canvas,
         // Each tab's page carries its own key, so a lock and the page it
@@ -175,7 +214,11 @@ class _ParticipantPlanShellState extends State<ParticipantPlanShell>
               RootTabBackScope.tab(
                 index: index,
                 child: _visited.contains(index)
-                    ? participantPlanTab(context, widget.weddingPlanId, index) ??
+                    ? participantPlanTab(
+                            context,
+                            widget.weddingPlanId,
+                            index,
+                          ) ??
                           const SizedBox.shrink()
                     : const SizedBox.shrink(),
               ),

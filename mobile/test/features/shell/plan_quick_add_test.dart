@@ -43,6 +43,28 @@ void main() {
       expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
     });
 
+    // D112 (Q-19), the owner's word: a participant gets the «+» their rights
+    // give them. Their tasks and guests pages carry their own add button;
+    // the money had none, so a father who manages the money could not add
+    // an agreement from its root.
+    test('a participant gets the money «+» only with the right to manage '
+        'the money they can see', () {
+      bool shows(int tab, {bool view = true, bool manage = true}) =>
+          shouldShowParticipantQuickAdd(
+            tabIndex: tab,
+            canViewMoney: view,
+            canManageMoney: manage,
+          );
+
+      expect(shows(1), isTrue);
+      expect(shows(1, manage: false), isFalse);
+      // A locked money page has nothing to add to.
+      expect(shows(1, view: false), isFalse);
+      for (final tab in [0, 2, 3, 4]) {
+        expect(shows(tab), isFalse, reason: 'tab $tab');
+      }
+    });
+
     test('each tab names its «+»', () {
       const groom = JourneyProfile.groom;
       expect(planQuickAddLabelForTab(0, groom), 'إضافة');

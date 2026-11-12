@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/security/screen_protection.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart'
     show AarastInlineSpinner, AarastScreenFrame;
@@ -83,7 +84,19 @@ class WeddingPlanContextGate extends StatelessWidget {
       return ContextGateHeldPage(
         covered: false,
         cover: const _GateLoading(),
-        child: child,
+        // D112 (Q-8): every money page passes this gate by a money access,
+        // so this is where it is protected from a screenshot while the
+        // account's lock is on. Always in the tree, so a page keeps its
+        // state when the access asked of the same route changes.
+        child: MoneyScreenShield(
+          active: switch (requiredAccess) {
+            WeddingPlanRouteAccess.viewMoney ||
+            WeddingPlanRouteAccess.manageMoney ||
+            WeddingPlanRouteAccess.settleMoney => true,
+            _ => false,
+          },
+          child: child,
+        ),
       );
     }
     if (controller.isRefreshing) {

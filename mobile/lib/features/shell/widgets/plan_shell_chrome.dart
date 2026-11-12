@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/experience_v3/aarast_journey.dart';
 import '../../../core/experience_v3/aarast_journey_profile.dart';
+import '../../../core/security/screen_protection.dart';
 import '../../../core/theme/app_theme.dart';
 import 'aarast_plan_chrome.dart';
 import 'plan_quick_add.dart';
@@ -137,7 +138,12 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
                   removeTop: true,
                   child: NotificationListener<ScrollMetricsNotification>(
                     onNotification: _handleMetrics,
-                    child: KeyedSubtree(key: _bodyKey, child: widget.body),
+                    // D112 (Q-8): the money tab is a money screen; with
+                    // the lock on it takes no screenshot.
+                    child: MoneyScreenShield(
+                      active: section == JourneySection.money,
+                      child: KeyedSubtree(key: _bodyKey, child: widget.body),
+                    ),
                   ),
                 ),
               ),

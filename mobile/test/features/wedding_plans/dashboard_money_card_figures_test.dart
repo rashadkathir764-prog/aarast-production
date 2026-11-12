@@ -58,8 +58,9 @@ Future<void> _pump(
   DashboardHomeFunding? funding,
   DashboardHomeMahr? mahr,
   bool hidden = false,
+  double width = 320,
 }) async {
-  tester.view.physicalSize = const Size(320, 1400);
+  tester.view.physicalSize = Size(width, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -250,6 +251,83 @@ void main() {
 
       expect(find.text('اتفقتِ على 3$_nbspمليون'), findsOneWidget);
       expect(find.textContaining('مع المهر'), findsNothing);
+    });
+  });
+
+  group('RA-MO-130 the mahr sentence never breaks at its «·»', () {
+    final mahr = DashboardHomeMahr(
+      side: MahrHomeSide.pays,
+      recorded: true,
+      total: 3000000,
+      settled: 2000000,
+      nextDueAt: DateTime(2026, 12, 3),
+    );
+
+    testWidgets('on a narrow phone each half takes its own line', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _summary(agreed: '3000000', paid: '250000', outstanding: '2750000'),
+        mahr: mahr,
+      );
+
+      expect(find.text('سلّمت 2 من 3 مليون'), findsOneWidget);
+      expect(find.text('الباقي 3 ديسمبر'), findsOneWidget);
+      expect(find.textContaining(' · الباقي'), findsNothing);
+      // The reader still hears it as one sentence.
+      expect(
+        find.bySemanticsLabel(
+          'الاتفاق مع أهل العروسة، سلّمت 2 من 3 مليون · الباقي 3 ديسمبر',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('RA-MO-136: «أخفِ المبالغ» hides the mahr and its share too', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _summary(agreed: '3000000', paid: '250000', outstanding: '2750000'),
+        mahr: mahr,
+        hidden: true,
+      );
+
+      final card = find.byKey(const ValueKey('aarast-dashboard-mahr-card'));
+      expect(card, findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text('سلّمت ••••')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('من 3 مليون'), findsNothing);
+      // The bar would say two thirds.
+      expect(
+        find.descendant(of: card, matching: find.byType(JourneyBar)),
+        findsNothing,
+      );
+      // The date is not an amount.
+      expect(
+        find.descendant(of: card, matching: find.text('الباقي 3 ديسمبر')),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel(RegExp('من 3 مليون')), findsNothing);
+    });
+
+    testWidgets('where it fits it stays one line', (tester) async {
+      // The test font draws every letter a full square wide, so the room a
+      // real phone has is given here by a smaller text scale.
+      tester.platformDispatcher.textScaleFactorTestValue = 0.6;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pump(
+        tester,
+        _summary(agreed: '3000000', paid: '250000', outstanding: '2750000'),
+        mahr: mahr,
+        width: 1000,
+      );
+
+      expect(find.text('سلّمت 2 من 3 مليون · الباقي 3 ديسمبر'), findsOneWidget);
     });
   });
 }

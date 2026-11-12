@@ -55,7 +55,7 @@ class _ShareSheetState extends State<_ShareSheet> {
     if (opened) {
       Navigator.of(context).pop();
     } else {
-      AarastToast.showError(context, 'تعذر فتح واتساب على هذا الجهاز.');
+      AarastToast.showError(context, 'ما قدرنا نفتح واتساب على هذا الجوال.');
     }
   }
 

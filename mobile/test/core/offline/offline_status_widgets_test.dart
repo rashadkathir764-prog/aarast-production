@@ -59,7 +59,7 @@ void main() {
       // w41: the refused change is named and says why in plain words.
       expect(find.text('تغيير واحد ينتظر'), findsOneWidget);
       expect(find.text('إضافة مهمة'), findsOneWidget);
-      expect(find.textContaining('السيرفر رفضه'), findsOneWidget);
+      expect(find.textContaining('الخادم رفضه'), findsOneWidget);
       expect(find.textContaining('title should'), findsNothing);
       expect(find.byKey(const Key('sync-issues-retry')), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -106,7 +106,7 @@ void main() {
 
     expect(find.text('تغيير واحد ينتظر'), findsOneWidget);
     expect(find.text('مهمة: احجز القاعة'), findsOneWidget);
-    expect(find.textContaining('السيرفر رفضه'), findsNothing);
+    expect(find.textContaining('الخادم رفضه'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

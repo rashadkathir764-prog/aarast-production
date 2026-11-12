@@ -99,7 +99,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       },
       describe: (error) => error is ApiException
           ? _guestErrorMessage(error)
-          : 'تعذر تحميل قائمة الضيوف.',
+          : 'ما قدرنا نجيب قائمة الضيوف.',
     );
   }
 
@@ -146,7 +146,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = _guestErrorMessage(error, savingGuest: true);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إضافة الضيف.';
+      _errorMessage = 'ما قدرنا نضيف الضيف.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -247,7 +247,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = _guestErrorMessage(error, savingGuest: true);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث الضيف.';
+      _errorMessage = 'ما قدرنا نحدّث الضيف.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -273,7 +273,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حذف الضيف.';
+      _errorMessage = 'ما قدرنا نحذف الضيف.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -332,7 +332,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _groupsErrorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
-      _groupsErrorMessage = 'تعذر حفظ المجموعة. حاول مرة أخرى.';
+      _groupsErrorMessage = 'ما قدرنا نحفظ المجموعة. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSavingGroups = false;
@@ -402,5 +402,5 @@ String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
       normalized.contains('phone must')) {
     return 'رقم الجوال غير صحيح';
   }
-  return normalized.isEmpty ? 'تعذر تنفيذ طلب الضيوف.' : normalized;
+  return normalized.isEmpty ? 'ما قدرنا نكمل طلب الضيوف.' : normalized;
 }

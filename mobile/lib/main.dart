@@ -431,7 +431,7 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
                     Icon(LucideIcons.shieldCheck, size: 52),
                     SizedBox(height: AarastV3Space.x5),
                     Text(
-                      'تعذر فتح التخزين الآمن',
+                      'ما قدرنا نفتح التطبيق بأمان',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: JourneyType.sheetTitle,
@@ -440,7 +440,7 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
                     ),
                     SizedBox(height: AarastV3Space.x3),
                     Text(
-                      'لم يتم حفظ أي بيانات بشكل غير مشفّر. أغلق التطبيق وافتحه مجددًا، وتأكد من تفعيل قفل الشاشة على الجهاز.',
+                      'ما حفظنا أي شي بدون حماية. سكّر التطبيق وافتحه مرة ثانية، وتأكد إن قفل الشاشة شغّال في الجوال.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: JourneyType.bodyLarge,
@@ -789,7 +789,7 @@ class _AarastSessionProviders extends StatelessWidget {
         final active = await plans.setActiveWeddingPlan(planId);
         if (active == null) {
           throw const ApiException(
-            'تعذر تأكيد الخطة النشطة.',
+            'ما قدرنا نتأكد من الخطة المفتوحة.',
             isNetworkFailure: true,
           );
         }

@@ -14,7 +14,10 @@ void main() {
         ),
       );
 
-      expect(exception.message, aarastBackendConnectionErrorMessage);
+      expect(
+        exception.message,
+        'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
+      );
       expect(exception.isNetworkFailure, isTrue);
       expect(exception.isAmbiguousMutationFailure, isTrue);
     });
@@ -165,7 +168,7 @@ void main() {
       expect(exception.statusCode, 503);
       expect(
         exception.message,
-        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
       );
       expect(exception.message, isNot(contains('OTP delivery')));
     });
@@ -195,7 +198,7 @@ void main() {
       expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
       expect(
         exception.message,
-        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
       );
     });
 
@@ -215,7 +218,7 @@ void main() {
 
       expect(exception.statusCode, 401);
       expect(exception.serverCode, isNull);
-      expect(exception.message, 'بيانات الدخول غير صحيحة أو انتهت الجلسة.');
+      expect(exception.message, 'بيانات الدخول غلط أو انتهى دخولك.');
       expect(exception.message, isNot(contains('Invalid')));
     });
 
@@ -315,7 +318,7 @@ void main() {
 
       expect(exception.statusCode, 403);
       expect(exception.serverCode, 'TASK_PERMISSION_REVOKED');
-      expect(exception.message, 'لم تعد لديك صلاحية لتنفيذ هذه المهمة');
+      expect(exception.message, 'ما عاد عندك صلاحية على هذي المهمة');
       expect(exception.message, isNot(contains('permission')));
     });
 
@@ -337,12 +340,12 @@ void main() {
 
     test('untyped English errors become Arabic with a next step', () {
       final cases = <int, String>{
-        400: 'راجع البيانات المدخلة',
-        403: 'لا تملك صلاحية',
-        404: 'غير موجود',
-        409: 'حدّث الصفحة',
-        429: 'انتظر قليلًا',
-        500: 'خطأ في الخادم',
+        400: 'راجع اللي كتبته',
+        403: 'ما عندك صلاحية',
+        404: 'ما عاد موجود',
+        409: 'حدّث الشاشة',
+        429: 'انتظر شوي',
+        500: 'الخادم ما رد',
       };
       for (final entry in cases.entries) {
         final exception = failure(entry.key, const {

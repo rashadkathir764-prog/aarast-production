@@ -281,7 +281,7 @@ class PlanInvite {
   String? get deliverySummaryLabel => switch (deliveryStatus) {
     'DELIVERED' => 'تم تسليم الرابط',
     'UNCERTAIN' => 'الوصول غير مؤكد',
-    'UNAVAILABLE' => 'تعذر الإرسال',
+    'UNAVAILABLE' => 'ما قدرنا نرسل',
     'PENDING' => 'جارٍ تثبيت التسليم',
     'UNKNOWN' => 'حالة الإرسال غير معروفة',
     _ => null,

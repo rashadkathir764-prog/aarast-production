@@ -96,7 +96,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         id: costId,
       );
       if (cached == null) {
-        throw const ApiException('تعذر العثور على التكلفة.');
+        throw const ApiException('ما لقينا التكلفة.');
       }
       return WeddingCost.fromJson(cached);
     }

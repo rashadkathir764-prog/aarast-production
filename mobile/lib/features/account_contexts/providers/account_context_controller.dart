@@ -37,15 +37,15 @@ class AccountContextController extends ChangeNotifier {
        _beforeRefresh = beforeRefresh,
        _afterRefresh = afterRefresh;
 
-  static const _contextChangedNotice = 'تم تحديث المسار المتاح لحماية بياناتك.';
-  static const _genericLoadFailure =
-      'تعذر تحديث المسارات المتاحة الآن. حاول مرة أخرى.';
+  static const _contextChangedNotice =
+      'تغيّر اللي مفتوح لك، وحدّثناه عشان نحمي بياناتك.';
+  static const _genericLoadFailure = 'ما قدرنا نفتح حسابك. جرّب مرة ثانية.';
   static const _genericSelectionFailure =
-      'تعذر فتح المسار المختار. حاول مرة أخرى.';
+      'ما قدرنا نفتح المسار اللي اخترته. جرّب مرة ثانية.';
   static const _offlineNotice =
-      'ما في اتصال الآن. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
+      'أنت بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
   static const _offlineLoadFailure =
-      'ما قدرنا نوصل للسيرفر. تأكد من النت وحاول مرة ثانية.';
+      'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.';
 
   final AccountContextsGateway _contextsApi;
   final AuthStorage _authStorage;

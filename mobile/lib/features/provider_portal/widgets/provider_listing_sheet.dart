@@ -101,7 +101,7 @@ class _ListingSheetState extends State<_ListingSheet> {
       if (ok) {
         _active = value;
       } else {
-        _error = dashboard.errorMessage ?? 'ما قدرنا نغيّرها، جرب مرة ثانية.';
+        _error = dashboard.errorMessage ?? 'ما قدرنا نغيّرها، جرّب مرة ثانية.';
       }
     });
   }
@@ -144,7 +144,7 @@ class _ListingSheetState extends State<_ListingSheet> {
     }
     setState(() {
       _saving = false;
-      _error = dashboard.errorMessage ?? 'ما قدرنا نحفظ، جرب مرة ثانية.';
+      _error = dashboard.errorMessage ?? 'ما قدرنا نحفظ، جرّب مرة ثانية.';
     });
   }
 

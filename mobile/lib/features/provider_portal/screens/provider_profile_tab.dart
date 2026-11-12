@@ -413,7 +413,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
       if (mounted) AarastToast.showError(context, error.message);
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرب مرة ثانية.');
+        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرّب مرة ثانية.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);

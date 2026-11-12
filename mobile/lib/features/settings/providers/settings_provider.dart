@@ -48,7 +48,7 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
         notifyListeners();
       },
       describe: (error) =>
-          error is ApiException ? error.message : 'تعذر تحميل الإعدادات.',
+          error is ApiException ? error.message : 'ما قدرنا نجيب الإعدادات.',
     );
   }
 
@@ -62,7 +62,7 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
     final draft = _draft;
     if (draft == null) return false;
     if (!hasChanges) {
-      _successMessage = 'لا توجد تغييرات للحفظ.';
+      _successMessage = 'ما في تغييرات نحفظها.';
       notifyListeners();
       return true;
     }

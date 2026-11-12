@@ -246,8 +246,8 @@ class _Effects extends StatelessWidget {
             _Effect(
               icon: LucideIcons.users,
               text: names.length == 1
-                  ? '${names.single} يطلع من الخطة، ويوصله إشعار'
-                  : '${_joined(names)} يطلعون من الخطة، ويوصلهم إشعار',
+                  ? '${names.single} يطلع من الخطة، ويوصله تنبيه'
+                  : '${_joined(names)} يطلعون من الخطة، ويوصلهم تنبيه',
             ),
           if (impact.upcomingBookings > 0)
             const _Effect(
@@ -359,7 +359,7 @@ class _LoadFailed extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: const ValueKey('delete-account-retry'),
-          label: 'حاول مرة ثانية',
+          label: 'جرّب مرة ثانية',
           icon: LucideIcons.refreshCw,
           expand: true,
           onPressed: onRetry,

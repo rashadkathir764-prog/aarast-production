@@ -34,13 +34,13 @@ Future<void> downloadAccountData(
         ),
       );
     } else {
-      AarastToast.showError(context, 'ما قدرنا نفتح المتصفح. حاول مرة ثانية.');
+      AarastToast.showError(context, 'ما قدرنا نفتح المتصفح. جرّب مرة ثانية.');
     }
   } on ApiException catch (error) {
     if (context.mounted) AarastToast.showError(context, error.message);
   } on FormatException {
     if (context.mounted) {
-      AarastToast.showError(context, 'ما وصلنا رابط الملف. حاول مرة ثانية.');
+      AarastToast.showError(context, 'ما وصلنا رابط الملف. جرّب مرة ثانية.');
     }
   }
 }

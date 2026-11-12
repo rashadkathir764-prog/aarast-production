@@ -50,8 +50,8 @@ class OtpRequestResult {
           !_containsUnconfirmedDeliveryClaim(normalized)) {
         return normalized;
       }
-      return 'طلبنا إرسال الرمز عبر واتساب، لكن لم نتأكد من وصوله. '
-          'أدخله إذا وصلك، أو أعد المحاولة بعد انتهاء المهلة.';
+      return 'طلبنا نرسل الرمز على واتساب، بس ما تأكدنا إنه وصل. '
+          'اكتبه لو وصلك، أو اطلبه مرة ثانية لما يخلص الوقت.';
     }
     if (normalized != null && normalized.isNotEmpty) return normalized;
     return null;

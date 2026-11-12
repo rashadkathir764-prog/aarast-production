@@ -88,7 +88,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
-      expect(find.text('حاول مرة ثانية'), findsOneWidget);
+      expect(find.text('جرّب مرة ثانية'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -106,7 +106,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(EditProviderProfileScreen), findsOneWidget);
-      expect(find.text('لا يوجد ملف مزود'), findsNothing);
+      expect(find.text('ما في ملف مزود'), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _pumpProviderProfile(
@@ -115,7 +115,7 @@ void main() {
         dashboard: _FakeProviderDashboardProvider(),
       );
       await tester.pumpAndSettle();
-      expect(find.text('لا يوجد ملف مزود'), findsOneWidget);
+      expect(find.text('ما في ملف مزود'), findsOneWidget);
       expect(find.text('طلب الانضمام كمزود'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -124,7 +124,7 @@ void main() {
       'load failure is truthful and retryable instead of looking empty',
       (tester) async {
         final dashboard = _FakeProviderDashboardProvider(
-          errorMessage: 'تعذر تحميل ملف المزود.',
+          errorMessage: 'ما قدرنا نجيب ملف المزود.',
         );
         await _pumpProviderProfile(
           tester,
@@ -133,10 +133,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('تعذر تحميل ملف المزود'), findsOneWidget);
-        expect(find.text('تعذر تحميل ملف المزود.'), findsOneWidget);
-        expect(find.text('لا يوجد ملف مزود'), findsNothing);
-        await tester.tap(find.text('حاول مرة أخرى'));
+        expect(find.text('ما قدرنا نجيب ملف المزود'), findsOneWidget);
+        expect(find.text('ما قدرنا نجيب ملف المزود.'), findsOneWidget);
+        expect(find.text('ما في ملف مزود'), findsNothing);
+        await tester.tap(find.text('جرّب مرة ثانية'));
         await tester.pump();
         expect(dashboard.loadCalls, 2);
         expect(tester.takeException(), isNull);

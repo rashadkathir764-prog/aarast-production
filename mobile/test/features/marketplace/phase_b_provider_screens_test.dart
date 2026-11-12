@@ -168,7 +168,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      final retry = find.widgetWithText(JourneyTextAction, 'حاول مرة ثانية');
+      final retry = find.widgetWithText(JourneyTextAction, 'جرّب مرة ثانية');
       expect(retry, findsNothing);
       // The notice stays, but its retry waits for the running refresh.
       expect(

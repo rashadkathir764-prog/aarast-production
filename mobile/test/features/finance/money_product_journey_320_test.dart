@@ -229,7 +229,7 @@ void main() {
           findsNothing,
         );
 
-        await tester.tap(find.text('حاول مرة أخرى'));
+        await tester.tap(find.text('جرّب مرة ثانية'));
         await tester.pumpAndSettle();
 
         // The budget lives behind the «موزّع / احتياط» box (w19).
@@ -795,7 +795,7 @@ void main() {
 
         expect(find.text('ما قدرنا نتأكد من صلاحيتك'), findsOneWidget);
         expect(find.textContaining('العرض بعملة'), findsNothing);
-        await tester.tap(find.text('حاول مرة أخرى'));
+        await tester.tap(find.text('جرّب مرة ثانية'));
         await tester.pumpAndSettle();
 
         // Same currency once loaded: the quote's amount stays agreed.
@@ -826,7 +826,7 @@ void main() {
 
       expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
       expect(find.text('ما في بنود بعد'), findsNothing);
-      await tester.tap(find.text('حاول مرة ثانية'));
+      await tester.tap(find.text('جرّب مرة ثانية'));
       await tester.pumpAndSettle();
 
       expect(find.text('ما قدرنا نجيبها'), findsNothing);

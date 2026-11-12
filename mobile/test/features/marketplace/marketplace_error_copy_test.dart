@@ -17,10 +17,10 @@ void main() {
 
     test('auth errors are neutral, not feminine-only', () {
       final message = marketplaceErrorMessage(
-        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        'بيانات الدخول غلط أو انتهى دخولك.',
       );
 
-      expect(message, 'تحتاج إلى تسجيل الدخول للمتابعة.');
+      expect(message, 'سجّل دخول عشان تكمل.');
       expect(message, isNot(contains('تحتاجين')));
     });
     test('structured location errors are shown as Arabic user guidance', () {
@@ -28,7 +28,7 @@ void main() {
         'location governorate and cityOrDistrict are required for structured location',
       );
 
-      expect(message, contains('أكمل موقع الزفاف'));
+      expect(message, contains('كمّل موقع العرس'));
       expect(message, isNot(contains('governorate')));
       expect(message, isNot(contains('cityOrDistrict')));
     });

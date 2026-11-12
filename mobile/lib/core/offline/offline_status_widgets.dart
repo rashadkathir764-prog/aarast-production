@@ -58,7 +58,7 @@ class OfflineStatusBanner extends StatelessWidget {
             ? 'بدون نت. $kept تنحفظ في جوالك لين يرجع'
             : 'ما نقدر نوصل للخادم الحين. $kept تنحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
-      SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
+      SyncState.syncError => 'ما قدرنا نرسل تغييراتك',
       _ => 'تغييراتك تنرسل لما يرجع النت',
     };
     // RA-MO-23: a cause that only repeats the line above («ما قدرنا نوصل
@@ -281,7 +281,7 @@ class OfflineSyncNowTile extends StatelessWidget {
       ),
       subtitle: Text(
         service.blockedCount > 0
-            ? 'السيرفر رفض ${service.blockedCount}، راجعها'
+            ? 'الخادم رفض ${service.blockedCount}، راجعها'
             : service.pendingCount > 0
             ? '${service.pendingCount} تنتظر النت'
             : 'كل تغييراتك وصلت',
@@ -361,7 +361,7 @@ class _PendingChangesSheet extends StatelessWidget {
               )
             else if (snapshot.hasError)
               Text(
-                'ما قدرنا نقرأ التغييرات الآن.',
+                'ما قدرنا نقرأ التغييرات.',
                 style: JourneyType.of(JourneyType.body),
               )
             else if (changes.isNotEmpty)

@@ -368,7 +368,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                   const SizedBox(height: AarastV3Space.x5),
                   JourneyButton(
                     key: const Key('session-termination-retry'),
-                    label: 'حاول مرة ثانية',
+                    label: 'جرّب مرة ثانية',
                     icon: LucideIcons.refreshCw,
                     large: true,
                     onPressed: () {
@@ -501,7 +501,7 @@ class AarastBuildErrorScreen extends StatelessWidget {
                 const Icon(LucideIcons.alertTriangle, size: 52),
                 const SizedBox(height: AarastV3Space.x4),
                 const Text(
-                  'تعذر بناء الصفحة',
+                  'ما قدرنا نعرض الصفحة',
                   style: TextStyle(
                     fontSize: JourneyType.pageTitle,
                     fontWeight: FontWeight.w700,
@@ -509,7 +509,7 @@ class AarastBuildErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AarastV3Space.x2),
                 const Text(
-                  'حدث خطأ غير متوقع في الواجهة. يمكنك العودة إلى اختيار المسار.',
+                  'صار خطأ ما توقعناه. ارجع للبداية وكمّل من هناك.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AarastV3Space.x5),

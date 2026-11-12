@@ -57,12 +57,12 @@ class MediaUploadApi {
           });
       final ticket = MediaUploadTicket.fromJson(ticketJson);
       if (ticket.key.isEmpty || ticket.uploadUrl.isEmpty) {
-        throw const ApiException('تعذر تجهيز رفع الصورة.');
+        throw const ApiException('ما قدرنا نجهّز الصورة للرفع.');
       }
       final bytes = await file.readAsBytes();
       if (bytes.length != ticket.byteSize) {
         throw const ApiException(
-          'تغيّر حجم الصورة أثناء تجهيزها. اختر الصورة مرة أخرى.',
+          'تغيّر حجم الصورة وإحنا نجهّزها. اختر الصورة مرة ثانية.',
         );
       }
       await _apiClient.putBytes(
@@ -84,14 +84,14 @@ class MediaUploadApi {
           ? verifiedTicket.attachmentRef.isNotEmpty
           : verifiedTicket.publicUrl.isNotEmpty;
       if (!hasVerifiedReference) {
-        throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
+        throw const ApiException('ما قدرنا نتأكد من الصورة اللي رفعتها.');
       }
       return verifiedTicket;
     } on ApiException catch (error) {
       if (error.statusCode == 503 ||
           error.message.toLowerCase().contains('media storage')) {
         throw const ApiException(
-          'خدمة رفع الصور غير متاحة الآن. يرجى المحاولة مرة أخرى لاحقًا.',
+          'رفع الصور مو متاح الحين. جرّب بعد شوي.',
           statusCode: 503,
         );
       }

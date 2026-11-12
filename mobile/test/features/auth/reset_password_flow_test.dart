@@ -273,10 +273,10 @@ void main() {
 
     expect(repository.requestCalls, 1);
     expect(
-      find.text('تعذر إرسال رمز الاستعادة الآن. تحقق من الاتصال وحاول مجددًا.'),
+      find.text('ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.'),
       findsOneWidget,
     );
-    expect(find.textContaining('تعذر تسجيل الدخول'), findsNothing);
+    expect(find.textContaining('ما قدرنا نسجّل دخولك'), findsNothing);
   });
 
   testWidgets('reset request reports unavailable OTP as a service failure', (
@@ -284,7 +284,7 @@ void main() {
   ) async {
     final repository = await _fakeRepository()
       ..requestFailure = const ApiException(
-        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
         statusCode: 503,
         serverCode: 'OTP_DELIVERY_UNAVAILABLE',
       );
@@ -295,7 +295,7 @@ void main() {
     expect(repository.requestCalls, 1);
     expect(
       find.text(
-        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
       ),
       findsOneWidget,
     );
@@ -390,7 +390,7 @@ void main() {
       await _typeCode(tester, '123456');
       await _savePassword(tester, 'ك' * 37);
 
-      expect(find.textContaining('كلمة المرور طويلة جدًا'), findsOneWidget);
+      expect(find.textContaining('كلمة المرور طويلة زيادة'), findsOneWidget);
       expect(repository.lastConfirmPassword, isNull);
       expect(tester.takeException(), isNull);
     },

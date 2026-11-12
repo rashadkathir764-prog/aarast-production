@@ -109,16 +109,16 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             AarastSkeleton.form(fields: 4, inline: true)
           else if (profile == null && dashboard.errorMessage != null)
             AarastErrorState(
-              title: 'تعذر تحميل ملف المزود',
+              title: 'ما قدرنا نجيب ملف المزود',
               message: dashboard.errorMessage!,
               onRetry: dashboard.loadDashboard,
             )
           else if (profile == null)
             AarastEmptyState(
               icon: LucideIcons.store,
-              title: 'لا يوجد ملف مزود',
+              title: 'ما في ملف مزود',
               message:
-                  'أرسل طلب الانضمام أولاً حتى تتمكن من تعديل بيانات المزود.',
+                  'أرسل طلب الانضمام أول، وبعدها تقدر تعدّل بيانات المزود.',
               action: FilledButton.icon(
                 onPressed: () => context.go(AppRouter.providerApply),
                 icon: const Icon(LucideIcons.contact),
@@ -359,7 +359,7 @@ class _ReferenceDataWarning extends StatelessWidget {
     return const AarastCard(
       color: AppTheme.brandMuted,
       child: Text(
-        'تعذر تحميل المدن الآن. تحقق من الاتصال وحاول مرة أخرى.',
+        'ما قدرنا نجيب المدن. جرّب مرة ثانية.',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
       ),

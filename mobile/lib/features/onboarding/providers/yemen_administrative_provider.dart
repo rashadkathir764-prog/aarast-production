@@ -48,7 +48,7 @@ class YemenAdministrativeProvider extends ChangeNotifier {
       _hasAttemptedGovernorateRefresh = false;
       if (_governorates.isEmpty) {
         _governorates = yemenFallbackGovernorates;
-        _errorMessage = 'تعذر تحميل محافظات اليمن الآن.';
+        _errorMessage = 'ما قدرنا نجيب محافظات اليمن.';
       }
     } finally {
       _isLoadingGovernorates = false;
@@ -96,7 +96,7 @@ class YemenAdministrativeProvider extends ChangeNotifier {
     } catch (_) {
       _districtFetchAttempts.remove(governorate.id);
       if ((_districts[governorate.id] ?? const []).isEmpty) {
-        _errorMessage = 'تعذر تحميل مديريات ${governorate.nameAr} الآن.';
+        _errorMessage = 'ما قدرنا نجيب مديريات ${governorate.nameAr}.';
       }
     } finally {
       _districtLoads.remove(governorate.id);
@@ -140,7 +140,7 @@ class YemenAdministrativeProvider extends ChangeNotifier {
       _errorMessage = null;
     } catch (_) {
       _localityFetchAttempts.remove(district.id);
-      _errorMessage = 'تعذر تحديث مناطق وأحياء ${district.nameAr} الآن.';
+      _errorMessage = 'ما قدرنا نحدّث مناطق وأحياء ${district.nameAr}.';
     } finally {
       _localityLoads.remove(district.id);
       notifyListeners();

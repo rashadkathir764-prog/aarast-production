@@ -14,7 +14,7 @@ typedef TokenProvider = Future<String?> Function();
 typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
-    'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
+    'ما قدرنا نجيب البيانات. جرّب مرة ثانية.';
 
 /// D88: the server answered that it does not know the route («Cannot GET
 /// …»): the app is newer than the server. Retrying changes nothing; the
@@ -25,7 +25,7 @@ const aarastServerOlderCode = 'SERVER_OLDER_THAN_APP';
 // A number without WhatsApp and a channel outage look the same to the server
 // (field test Q07), so the message names what the user can check.
 const aarastOtpDeliveryUnavailableMessage =
-    'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.';
+    'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.';
 const _requestSessionGenerationKey = 'aarast_request_session_generation';
 const _requestContextGenerationKey = 'aarast_request_context_generation';
 const _requestClientIdKey = 'aarast_client_request_id';
@@ -812,7 +812,7 @@ class ApiException implements Exception {
 
     if (statusCode == 401) {
       return ApiException(
-        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        'بيانات الدخول غلط أو انتهى دخولك.',
         statusCode: 401,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
@@ -826,7 +826,7 @@ class ApiException implements Exception {
     if (transportCause != null) {
       return ApiException(
         transportCause == ReachabilityCause.unknown
-            ? aarastBackendConnectionErrorMessage
+            ? 'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.'
             : '${reachabilityCauseLabel(transportCause)}. '
                   '${reachabilityCauseAdvice(transportCause)}',
         isNetworkFailure: true,
@@ -920,15 +920,14 @@ class ApiException implements Exception {
   /// An Arabic message with a clear next step, by what kind of failure it is.
   static String _arabicMessageForStatus(int? statusCode) {
     return switch (statusCode) {
-      400 || 422 => 'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.',
-      403 => 'لا تملك صلاحية لهذا الإجراء. اطلب الصلاحية من صاحب الخطة.',
-      404 => 'العنصر غير موجود أو لم يعد متاحًا. حدّث الصفحة.',
-      409 => 'تغيّرت البيانات قبل الحفظ. حدّث الصفحة ثم حاول مرة أخرى.',
-      413 => 'الملف أكبر من المسموح. اختر ملفًا أصغر.',
-      429 => 'طلبات كثيرة في وقت قصير. انتظر قليلًا ثم حاول مرة أخرى.',
-      final code? when code >= 500 =>
-        'حدث خطأ في الخادم. حاول بعد قليل، وإن تكرر فتواصل مع الدعم.',
-      _ => 'حدث خطأ، يرجى المحاولة مرة أخرى.',
+      400 || 422 => 'ما قدرنا نحفظ. راجع اللي كتبته وجرّب مرة ثانية.',
+      403 => 'ما عندك صلاحية لهذي. اطلبها من صاحب الخطة.',
+      404 => 'هذا ما عاد موجود. ارجع وحدّث الشاشة.',
+      409 => 'تغيّرت البيانات قبل ما نحفظ. حدّث الشاشة وجرّب مرة ثانية.',
+      413 => 'الملف أكبر من المسموح. اختر ملف أصغر.',
+      429 => 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.',
+      final code? when code >= 500 => 'الخادم ما رد زي ما لازم. جرّب بعد شوي.',
+      _ => 'صار خطأ عندنا. جرّب مرة ثانية.',
     };
   }
 
@@ -992,7 +991,7 @@ class ApiException implements Exception {
 
   static String? _localizedServerMessage(String? code) {
     return switch (code) {
-      'TASK_PERMISSION_REVOKED' => 'لم تعد لديك صلاحية لتنفيذ هذه المهمة',
+      'TASK_PERMISSION_REVOKED' => 'ما عاد عندك صلاحية على هذي المهمة',
       // B-01, B-02, B-10, B-12: the provider lifecycle.
       'PROVIDER_SERVICE_REQUIRED' => 'اكتب خدمتك وسعرها قبل ما ترسل.',
       'PROVIDER_NOT_AWAITING_CHANGES' =>
@@ -1024,11 +1023,11 @@ class ApiException implements Exception {
       'COST_PRIVACY_NOT_ALLOWED' =>
         'التكلفة الخاصة متاحة لصاحب الخطة والشريك فقط.',
       'COST_PRIVACY_AT_CREATION_ONLY' =>
-        'التكلفة المشتركة لا تصبح خاصة. اختر "تكلفة خاصة بي" عند إضافتها.',
+        'التكلفة المشتركة ما تصير خاصة. اختر "تكلفة خاصة بي" وأنت تضيفها.',
       'TASK_PRIVACY_NOT_ALLOWED' =>
         'المهمة الخاصة متاحة لصاحب الخطة والشريك فقط.',
       'TASK_PRIVACY_AT_CREATION_ONLY' =>
-        'المهمة المشتركة لا تصبح خاصة. اختر "مهمة خاصة بي" عند إضافتها.',
+        'المهمة المشتركة ما تصير خاصة. اختر "مهمة خاصة بي" وأنت تضيفها.',
       'TASK_PRIVATE_ASSIGNMENT' =>
         'المهمة الخاصة تبقى لك وحدك. شاركها مع الخطة أولًا ثم اختر المسؤول.',
       // D65: the wedding's events.
@@ -1046,18 +1045,17 @@ class ApiException implements Exception {
         'وافق على إرسال بيانات خطتك للمساعد أولًا.',
       'ASSISTANT_OWNER_OR_PARTNER_ONLY' =>
         'المساعد متاح لصاحب الخطة وشريكه فقط.',
-      'ASSISTANT_DAILY_LIMIT' => 'انتهت أسئلة اليوم. عد غدًا.',
-      'ASSISTANT_DISABLED' => 'المساعد غير مفعّل بعد.',
+      'ASSISTANT_DAILY_LIMIT' => 'خلصت أسئلة اليوم. ارجع بكرة.',
+      'ASSISTANT_DISABLED' => 'المساعد ما اشتغل لسا.',
       'ASSISTANT_BUDGET_EXHAUSTED' =>
-        'المساعد متوقف مؤقتًا هذا الشهر. جرّب الشهر القادم.',
-      'ASSISTANT_BUSY' => 'المساعد مشغول الآن. حاول بعد قليل.',
+        'المساعد واقف هذا الشهر. جرّب الشهر الجاي.',
+      'ASSISTANT_BUSY' => 'المساعد مشغول الحين. جرّب بعد شوي.',
       'ASSISTANT_UNAVAILABLE' =>
-        'المساعد غير متاح الآن. حاول لاحقًا، وإن تكرر فتواصل مع الدعم.',
+        'المساعد مو متاح الحين. جرّب بعدين، ولو تكرر كلّم الدعم.',
       // RA-MO-116, 117: the app's dialect, no technical word.
       'INVALID_CREDENTIALS' => 'الرقم أو كلمة المرور غلط.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
-      'PHONE_VERIFICATION_REQUIRED' =>
-        'حساب التطبيق يحتاج تأكيد رقم الجوال.',
+      'PHONE_VERIFICATION_REQUIRED' => 'حساب التطبيق يحتاج تأكيد رقم الجوال.',
       'ACCOUNT_ALREADY_EXISTS' =>
         'هذا الرقم عليه حساب من قبل. سجّل دخول، أو استرجع كلمة المرور.',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>

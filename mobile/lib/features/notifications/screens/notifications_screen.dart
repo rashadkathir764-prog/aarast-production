@@ -192,7 +192,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: [
           const SizedBox(height: _notificationsEmptyTop),
           AarastErrorState(
-            title: 'تعذر تحميل التنبيهات',
+            title: 'ما قدرنا نجيب التنبيهات',
             message: provider.errorMessage!,
             onRetry: _load,
           ),
@@ -365,7 +365,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر قراءة كل التنبيهات.',
+        provider.errorMessage ?? 'ما قدرنا نعلّم كل التنبيهات مقروءة.',
       );
     }
   }

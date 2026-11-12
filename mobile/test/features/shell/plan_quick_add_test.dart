@@ -83,6 +83,44 @@ void main() {
       expect(actions.skip(1).every((action) => !action.recommended), isTrue);
     });
 
+    // RA-MO-140: recording a payment is the money act done most, and the
+    // home's «+» did not offer it: with a payment due it marked «إضافة
+    // اتفاق» as «الأنسب الآن», and the payment itself was four taps away.
+    test('the home offers recording a payment, first when one is due', () {
+      List<PlanQuickAction> home({int due = 0}) => planQuickAddActions(
+        planId: 'plan-home-pay-$due',
+        tabIndex: 0,
+        canManageMoney: true,
+        offerAgreementActions: true,
+        signals: PlanQuickAddSignals(
+          duePaymentSchedules: due,
+          providerCount: 1,
+        ),
+      );
+
+      expect(_labels(home()), [
+        'إضافة اتفاق',
+        'تسجيل دفعة',
+        'إضافة مهمة',
+        'إضافة ضيف',
+        'طلب عرض سعر',
+      ]);
+      expect(home(due: 1).first.kind, PlanQuickAddKind.payment);
+      expect(home(due: 1).first.recommended, isTrue);
+
+      // Never to someone who may not manage the money.
+      final helper = planQuickAddActions(
+        planId: 'plan-home-helper',
+        tabIndex: 0,
+        canManageMoney: false,
+        offerAgreementActions: true,
+      );
+      expect(
+        helper.map((action) => action.kind),
+        isNot(contains(PlanQuickAddKind.payment)),
+      );
+    });
+
     test('a new item is offered to the owner only (R20)', () {
       final actions = planQuickAddActions(
         planId: 'plan-member',
@@ -198,18 +236,21 @@ void main() {
       expect(actions.first.recommended, isTrue);
     });
 
-    test('a payment due puts the agreement first where no payment is offered', () {
-      final actions = planQuickAddActions(
-        planId: 'due-plan',
-        tabIndex: 2,
-        canManageMoney: true,
-        signals: const PlanQuickAddSignals(
-          duePaymentSchedules: 1,
-          providerCount: 1,
-        ),
-      );
-      expect(actions.first.kind, PlanQuickAddKind.cost);
-    });
+    test(
+      'a payment due puts the agreement first where no payment is offered',
+      () {
+        final actions = planQuickAddActions(
+          planId: 'due-plan',
+          tabIndex: 2,
+          canManageMoney: true,
+          signals: const PlanQuickAddSignals(
+            duePaymentSchedules: 1,
+            providerCount: 1,
+          ),
+        );
+        expect(actions.first.kind, PlanQuickAddKind.cost);
+      },
+    );
 
     test('the wedding stage adapts the recommended choice', () {
       PlanQuickAddKind first(String planId, WeddingPlanStage stage, int n) =>

@@ -758,7 +758,7 @@ void main() {
 
     expect(find.text('opened:/home'), findsNothing);
     expect(
-      find.text('ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.'),
+      find.text('ما قدرنا نحفظ الخطة على جوالك. جرّب مرة ثانية.'),
       findsOneWidget,
     );
     expect(await storage.loadDraft(), isNull);

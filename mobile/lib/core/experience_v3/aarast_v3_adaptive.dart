@@ -253,7 +253,7 @@ abstract final class AarastV3ScreenCatalog {
 
   static const notifications = AarastV3ScreenContract(
     id: 'notifications',
-    location: 'الإشعارات',
+    location: 'التنبيهات',
     purpose: 'عرض ما يحتاج الانتباه دون كشف تفاصيل حساسة',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,

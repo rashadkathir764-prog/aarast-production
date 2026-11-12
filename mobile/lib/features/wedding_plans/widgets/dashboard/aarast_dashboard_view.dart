@@ -179,6 +179,11 @@ class AarastDashboardView extends StatelessWidget {
     // providers to rate; the planning cards are done with.
     final married = planStage.stage == WeddingPlanStage.wrapUp;
     final debt = married ? afterWedding : null;
+    // After the day no step of the server's is drawn, so the payment still
+    // owed does not step aside for one (RA-MO-137).
+    final owedAfter = married && summary.canViewMoney
+        ? summary.nextPaymentScheduleDue
+        : null;
     final afterwards = [
       for (final item in summary.importantItems)
         if (!identical(item, focus.item)) item,
@@ -308,15 +313,32 @@ class AarastDashboardView extends StatelessWidget {
                           ),
                         ),
                     ],
-                    if (payment != null) ...[
+                    // Everything agreed is paid and every loan is back: the
+                    // home says so, where it used to be the date strip over
+                    // an empty page (RA-MO-132). Said only from the money
+                    // that was read, and only when something was agreed.
+                    if (debt != null && debt.total > 0 && debt.left <= 0) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      JourneyNote(
+                        key: const ValueKey('aarast-home-after-settled'),
+                        icon: LucideIcons.check,
+                        color: AarastV3Color.mint,
+                        soft: AarastV3Color.mintSoft,
+                        text: context.say(
+                          'ما عاد عليك شي من العرس. كل اللي اتفقت عليه مدفوع.',
+                          'ما عاد عليكِ شي من العرس. كل اللي اتفقتِ عليه مدفوع.',
+                        ),
+                      ),
+                    ],
+                    if (owedAfter != null) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _JourneyNextStep(
                         focus: focus,
-                        payment: payment,
+                        payment: owedAfter,
                         currency: summary.currency,
                         now: now ?? appNow(),
                         amountsHidden: amountsHidden,
-                        onOpen: () => onOpenPayment?.call(payment),
+                        onOpen: () => onOpenPayment?.call(owedAfter),
                       ),
                     ],
                     if (onOpenReviews != null) ...[
@@ -350,7 +372,11 @@ class AarastDashboardView extends StatelessWidget {
                     if (mahr case final mahr?
                         when mahr.recorded && !mahr.complete) ...[
                       const SizedBox(height: AarastV3Space.x3),
-                      _MahrAgreementCard(mahr: mahr, onTap: onOpenMoney),
+                      _MahrAgreementCard(
+                        mahr: mahr,
+                        onTap: onOpenMoney,
+                        hidden: amountsHidden,
+                      ),
                     ],
                     if (summary.canViewMoney) ...[
                       const SizedBox(height: AarastV3Space.x3),
@@ -380,7 +406,7 @@ class AarastDashboardView extends StatelessWidget {
                               key: const ValueKey(
                                 'aarast-home-money-unread-retry',
                               ),
-                              label: 'حاول مرة ثانية',
+                              label: 'جرّب مرة ثانية',
                               icon: LucideIcons.refreshCw,
                               color: AarastV3Color.brandAccentStrong,
                               onPressed: retry,

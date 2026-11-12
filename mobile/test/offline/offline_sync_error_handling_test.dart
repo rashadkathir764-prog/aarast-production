@@ -113,34 +113,37 @@ void main() {
 
   // D93 (RA-BE-01): «حدّث التطبيق» is not a rejection of the change. The
   // queue stops and keeps every write, for the updated app to send.
-  test('426 APP_UPDATE_REQUIRED stops the queue and keeps its writes', () async {
-    final database = await _freshDb();
-    for (final title in ['مهمة أولى', 'مهمة ثانية']) {
-      await database.enqueueSync(
-        entityType: 'task',
-        operation: 'create',
-        endpoint: '/wedding-plans/plan-1/tasks',
-        method: 'POST',
-        payload: {'title': title},
-        planId: 'plan-1',
-      );
-    }
-    final adapter = _ScriptedAdapter([
-      (_) => _status(
-        426,
-        '{"statusCode":426,"code":"APP_UPDATE_REQUIRED","message":"حدّث"}',
-      ),
-    ]);
-    final service = _service(database, adapter);
-    await service.ensureCacheOwner('user-A');
+  test(
+    '426 APP_UPDATE_REQUIRED stops the queue and keeps its writes',
+    () async {
+      final database = await _freshDb();
+      for (final title in ['مهمة أولى', 'مهمة ثانية']) {
+        await database.enqueueSync(
+          entityType: 'task',
+          operation: 'create',
+          endpoint: '/wedding-plans/plan-1/tasks',
+          method: 'POST',
+          payload: {'title': title},
+          planId: 'plan-1',
+        );
+      }
+      final adapter = _ScriptedAdapter([
+        (_) => _status(
+          426,
+          '{"statusCode":426,"code":"APP_UPDATE_REQUIRED","message":"حدّث"}',
+        ),
+      ]);
+      final service = _service(database, adapter);
+      await service.ensureCacheOwner('user-A');
 
-    await service.syncPendingChanges();
+      await service.syncPendingChanges();
 
-    expect(adapter.received, hasLength(1), reason: 'stops at the first');
-    expect(await database.pendingSyncCount(), 2);
-    expect(service.blockedCount, 0);
-    expect(await database.blockedSyncItems(), isEmpty);
-  });
+      expect(adapter.received, hasLength(1), reason: 'stops at the first');
+      expect(await database.pendingSyncCount(), 2);
+      expect(service.blockedCount, 0);
+      expect(await database.blockedSyncItems(), isEmpty);
+    },
+  );
 
   test('a 400 rejection blocks the item immediately (no retry spin)', () async {
     final database = await _freshDb();
@@ -178,7 +181,7 @@ void main() {
     expect(restartedService.pendingCount, 0);
     // The reason survives the restart, in Arabic: the server's English
     // validation detail never reaches the user (V1 checklist 5.4).
-    expect(restartedService.lastError, contains('راجع البيانات المدخلة'));
+    expect(restartedService.lastError, contains('راجع اللي كتبته'));
     expect(
       restartedService.lastError,
       isNot(contains('title should not be empty')),
@@ -209,7 +212,7 @@ void main() {
       expect(issues, hasLength(1));
       expect(issues.single.entityLabel, 'مهمة');
       expect(issues.single.operationLabel, 'إضافة');
-      expect(issues.single.message, contains('رفض الخادم التغيير'));
+      expect(issues.single.message, contains('الخادم رفض التغيير'));
       expect(issues.single.message, isNot(contains('title should')));
       expect(issues.single.message, isNot(contains('/api/')));
       expect(issues.single.canRetry, isTrue);

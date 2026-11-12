@@ -52,8 +52,8 @@ void main() {
     final rect = tester.getRect(card);
     expect(rect.top, lessThan(80));
     expect(rect.height, lessThan(150));
-    expect(find.text('تعذر تحميل المسارات'), findsOneWidget);
-    expect(find.text('حاول مرة أخرى'), findsOneWidget);
+    expect(find.text('ما قدرنا نفتح حسابك'), findsOneWidget);
+    expect(find.text('جرّب مرة ثانية'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byType(Scaffold),

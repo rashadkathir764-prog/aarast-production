@@ -17,7 +17,7 @@ void main() {
       for (final status in const ['PENDING', 'UNCERTAIN']) {
         final result = _result(status, message: 'تم إرسال الرمز وتسليمه.');
 
-        expect(result.noticeMessage, contains('لم نتأكد من وصوله'));
+        expect(result.noticeMessage, contains('ما تأكدنا إنه وصل'));
         expect(result.noticeMessage, isNot(contains('تم إرسال')));
         expect(result.noticeMessage, isNot(contains('تسليمه')));
       }
@@ -33,7 +33,7 @@ void main() {
 
       expect(result.deliveryStatus, 'PENDING');
       expect(result.isDeliveryConfirmed, isFalse);
-      expect(result.noticeMessage, contains('لم نتأكد من وصوله'));
+      expect(result.noticeMessage, contains('ما تأكدنا إنه وصل'));
     });
 
     test(

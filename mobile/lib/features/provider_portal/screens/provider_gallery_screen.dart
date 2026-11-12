@@ -278,7 +278,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     } else {
       AarastToast.showError(
         context,
-        dashboard.portfolioError ?? 'ما انحفظ معرضك، جرب مرة ثانية.',
+        dashboard.portfolioError ?? 'ما انحفظ معرضك، جرّب مرة ثانية.',
       );
     }
   }
@@ -376,7 +376,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
       if (mounted) {
         AarastToast.showError(
           context,
-          'ما قدرنا نفتح الصور. تأكد من الإذن وجرب مرة ثانية.',
+          'ما قدرنا نفتح الصور. تأكد من الإذن وجرّب مرة ثانية.',
         );
       }
       return;
@@ -412,7 +412,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
       if (keys.isEmpty) {
         AarastToast.showError(
           context,
-          lastError ?? 'ما قدرنا نرفع الصور، جرب مرة ثانية.',
+          lastError ?? 'ما قدرنا نرفع الصور، جرّب مرة ثانية.',
         );
         return;
       }

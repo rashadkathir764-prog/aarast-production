@@ -269,7 +269,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   return 'قصيرة. خلّها 6 أحرف أو أكثر';
                 }
                 if (!isApplicationPasswordWithinByteLimit(value)) {
-                  return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
+                  return 'كلمة المرور طويلة زيادة. اختصرها وجرّب مرة ثانية';
                 }
                 return null;
               },
@@ -432,14 +432,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _errorMessage = error.isNetworkFailure
-            ? 'تعذر إرسال رمز الاستعادة الآن. تحقق من الاتصال وحاول مجددًا.'
+            ? 'ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.'
             : error.message;
         _errorCode = error.serverCode;
       });
     } on Object {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'تعذر إرسال الرمز الآن. تحقق من الاتصال وحاول مجددًا.';
+        _errorMessage = 'ما قدرنا نرسل الرمز. جرّب مرة ثانية.';
       });
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -493,7 +493,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } on Object {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'تعذر تغيير كلمة المرور الآن. حاول مرة ثانية.';
+        _errorMessage = 'ما قدرنا نغيّر كلمة المرور. جرّب مرة ثانية.';
       });
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

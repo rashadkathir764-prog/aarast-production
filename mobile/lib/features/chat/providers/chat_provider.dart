@@ -194,7 +194,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _upsertConversation(conversation);
       return conversation;
     } on TimeoutException {
-      _errorMessage = 'استغرق فتح المحادثة وقتًا أطول من المتوقع. حاول مجددًا.';
+      _errorMessage = 'فتح المحادثة طوّل أكثر من اللازم. جرّب مرة ثانية.';
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -292,8 +292,8 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     final conversation = _conversation(conversationId);
     if (conversation?.canSend != true) {
       _errorMessage = conversation?.providerJoined == false
-          ? 'المزود لم ينضم للمحادثة بعد'
-          : 'لا يمكن إرسال رسائل في هذه المحادثة الآن.';
+          ? 'المزود ما دخل المحادثة لسا'
+          : 'ما تقدر ترسل رسائل في هذي المحادثة الحين.';
       notifyListeners();
       return false;
     }
@@ -614,7 +614,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _counterpartReadAt.remove(conversationId);
     _conversationLoadErrors.add(conversationId);
     if (_activeConversationId == conversationId) {
-      _errorMessage = 'تم سحب صلاحية الوصول إلى هذه المحادثة.';
+      _errorMessage = 'انشالت صلاحيتك على هذي المحادثة.';
     }
     notifyListeners();
   }

@@ -162,7 +162,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     if (before != null) settings.updateDraft(before);
     AarastToast.showError(
       context,
-      settings.errorMessage ?? 'ما قدرنا نحفظ، جرب مرة ثانية.',
+      settings.errorMessage ?? 'ما قدرنا نحفظ، جرّب مرة ثانية.',
     );
   }
 
@@ -208,7 +208,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     try {
       error = await action();
     } on Object {
-      error = 'ما قدرنا نكمّل، جرب مرة ثانية.';
+      error = 'ما قدرنا نكمّل، جرّب مرة ثانية.';
     }
     if (!mounted) return;
     setState(() {

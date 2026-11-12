@@ -97,7 +97,7 @@ void main() {
     test('a full day reads in Arabic', () {
       expect(
         bookingErrorMessage('BOOKING_DAY_FULL'),
-        'المزوّد محجوز بالكامل في هذا اليوم. اختر يومًا آخر.',
+        'المزوّد محجوز كامل في هذا اليوم. اختر يوم ثاني.',
       );
     });
   });

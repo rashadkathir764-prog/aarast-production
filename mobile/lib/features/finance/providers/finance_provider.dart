@@ -208,7 +208,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       _access = access;
       if (!access.canViewMoney) {
         _clear(planId);
-        _loadErrorMessage = 'لا تملك صلاحية عرض المال في هذه الخطة.';
+        _loadErrorMessage = 'ما عندك صلاحية تشوف المال في هذي الخطة.';
         _isLoading = false;
         notifyListeners();
         return;
@@ -217,7 +217,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (!_isCurrent(generation)) return;
       _clear(planId);
       _loadErrorMessage = _isPrivateAccessFailure(error)
-          ? 'لم يعد لديك وصول إلى المال في هذه الخطة.'
+          ? 'ما عاد عندك وصول للمال في هذي الخطة.'
           : error.message;
       _isLoading = false;
       notifyListeners();
@@ -287,7 +287,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         if (error is ApiException) {
           if (_isPrivateAccessFailure(error)) {
             _clear(planId);
-            return 'لم يعد لديك وصول إلى المال في هذه الخطة.';
+            return 'ما عاد عندك وصول للمال في هذي الخطة.';
           }
           return error.message;
         }
@@ -389,7 +389,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;
       if (_isPrivateAccessFailure(error)) {
         _clear(planId);
-        _loadErrorMessage = 'لم يعد لديك وصول إلى المال في هذه الخطة.';
+        _loadErrorMessage = 'ما عاد عندك وصول للمال في هذي الخطة.';
       } else {
         _loadErrorMessage = error.message;
       }
@@ -941,7 +941,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     Future<void> Function()? refresh,
   }) async {
     if (!_access.canManageMoney && !_isLocalPlan(planId)) {
-      _errorMessage = 'لا تملك صلاحية إدارة المال في هذه الخطة.';
+      _errorMessage = 'ما عندك صلاحية تدير المال في هذي الخطة.';
       notifyListeners();
       return false;
     }

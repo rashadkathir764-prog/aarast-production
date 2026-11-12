@@ -19,6 +19,7 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/more/screens/more_screen.dart';
+import 'package:aarast_mobile/features/more/widgets/participant_account_sections.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
 import 'package:aarast_mobile/features/sharing/screens/participant_plan_state_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
@@ -196,6 +197,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('q10 says the role once: in the tag, not again in the line', (
+    tester,
+  ) async {
+    // RA-MO-131: the open plan's line read «مساعد · المهام والضيوف
+    // والمزودين» beside a tag «مساعد», and the doubled word pushed the line
+    // past the row («…والمز…»).
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    final current = harness.contexts.contexts.firstWhere(
+      (path) => path.contextKey == 'plan:shared-plan:contributor',
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: harness.contexts,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ParticipantAccountSections(
+                  current: current,
+                  roleLabel: 'مساعد',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('مساعد'), findsOneWidget);
+    expect(find.text('المهام والضيوف'), findsOneWidget);
+    expect(find.textContaining('مساعد · '), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('without a plan of their own q10 offers to start one', (
     tester,
   ) async {
@@ -249,10 +292,7 @@ void main() {
     expect(find.text('لما الخطة تتغير'), findsOneWidget);
     expect(find.text('الخطة في الذكريات'), findsOneWidget);
     // J2-20: the owner by the plan's word; the wedding is not assumed done.
-    expect(
-      find.text('الخطة في الذكريات: العريس حفظها هناك.'),
-      findsOneWidget,
-    );
+    expect(find.text('الخطة في الذكريات: العريس حفظها هناك.'), findsOneWidget);
     expect(find.textContaining('صاحب الخطة'), findsNothing);
     expect(find.textContaining('العرس تم'), findsNothing);
     // Paused, postponed and deleted wait for the plan states (q19).
@@ -266,35 +306,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'J2-07: a participant taken off the plan is told so, by name',
-    (tester) async {
-      final harness = await _ContributorActionHarness.create();
-      addTearDown(harness.dispose);
-      await harness.pump(tester);
+  testWidgets('J2-07: a participant taken off the plan is told so, by name', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
 
-      // The owner took them off; the phone still holds the old path when
-      // the notice opens.
-      harness.contextsGateway.contexts.removeWhere(
-        (context) => context.weddingPlanId == 'shared-plan',
-      );
-      harness.router.go('/shared/wedding-plans/shared-plan');
-      await tester.pumpAndSettle();
+    // The owner took them off; the phone still holds the old path when
+    // the notice opens.
+    harness.contextsGateway.contexts.removeWhere(
+      (context) => context.weddingPlanId == 'shared-plan',
+    );
+    harness.router.go('/shared/wedding-plans/shared-plan');
+    await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('participant-plan-removed')),
-        findsOneWidget,
-      );
-      expect(
-        find.text('العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك.'),
-        findsOneWidget,
-      );
-      expect(find.text('ما فيه تغيير على هذي الخطة'), findsNothing);
-      // The path is gone from the phone too.
-      expect(harness.contexts.selectedContext, isNull);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(
+      find.byKey(const ValueKey('participant-plan-removed')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك.'),
+      findsOneWidget,
+    );
+    expect(find.text('ما فيه تغيير على هذي الخطة'), findsNothing);
+    // The path is gone from the phone too.
+    expect(harness.contexts.selectedContext, isNull);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'J2-07: a notice for a plan the phone never knew still says it plainly',

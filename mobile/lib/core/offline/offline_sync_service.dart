@@ -100,10 +100,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             entityLabel: entityLabel,
             operationLabel: _syncOperationLabel(item.operation),
             message: ownershipQuarantined
-                ? 'تعذر التأكد من ملكية الخطة لهذا التغيير. لن يُعاد إرساله تلقائيًا لحماية بياناتك.'
+                ? 'ما قدرنا نتأكد إن هذا التغيير لخطتك، فما راح نرسله من نفسنا عشان نحمي بياناتك.'
                 : item.retryCount >= SyncQueueItem.maxAutoRetries
-                ? 'تعذر إرسال التغيير بعد عدة محاولات. تحقق من الاتصال ثم حاول مرة أخرى.'
-                : 'رفض الخادم التغيير. راجع بيانات $entityLabel في شاشته الأصلية ثم حاول مرة أخرى.',
+                ? 'ما قدرنا نرسل التغيير بعد كم محاولة. جرّب مرة ثانية.'
+                : 'الخادم رفض التغيير. راجع بيانات $entityLabel في شاشته وجرّب مرة ثانية.',
             retryCount: item.retryCount,
             canRetry: !ownershipQuarantined,
           );
@@ -1197,8 +1197,8 @@ String _pendingChangeTitle(SyncQueueItem item) {
 String _refusalReason(String? lastError) {
   final reason = lastError?.trim() ?? '';
   return ApiException.hasArabic(reason)
-      ? 'السيرفر رفضه: $reason'
-      : 'السيرفر رفضه، راجعه وحاول مرة ثانية';
+      ? 'الخادم رفضه: $reason'
+      : 'الخادم رفضه، راجعه وجرّب مرة ثانية';
 }
 
 String _syncEntityLabel(String entityType) {

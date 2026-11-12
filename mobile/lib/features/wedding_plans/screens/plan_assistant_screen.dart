@@ -194,7 +194,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       if (!mounted) return;
       setState(() {
         _exchanges.remove(exchange);
-        _askError = 'ما وصلتنا إجابة. حاول مرة ثانية.';
+        _askError = 'ما وصلتنا إجابة. جرّب مرة ثانية.';
       });
     } finally {
       if (mounted) setState(() => _asking = false);
@@ -234,7 +234,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       );
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرسل البلاغ. حاول مرة ثانية.');
+        AarastToast.showError(context, 'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.');
       }
     }
   }

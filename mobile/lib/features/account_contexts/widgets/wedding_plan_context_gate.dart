@@ -60,15 +60,28 @@ class WeddingPlanContextGate extends StatelessWidget {
         message: controller.errorMessage!,
       );
     }
-    if (!controller.hasLoadedContexts || controller.isRefreshing) {
+    if (!controller.hasLoadedContexts) {
       return const _GateLoading();
     }
+    // While the contexts are read again (each return to the app, each pull
+    // to refresh) the page stays closed to the eye, as before, and is kept
+    // alive under the spinner: drawing the spinner in its place tore the
+    // page down with whatever was being typed in it (RA-MO-135). The answer
+    // then decides: confirmed, the page is shown as it was left; withdrawn,
+    // it is removed.
     if (isWeddingPlanRouteCompatible(
       controller,
       weddingPlanId,
       requiredAccess: requiredAccess,
     )) {
-      return child;
+      return ContextGateHeldPage(
+        covered: controller.isRefreshing,
+        cover: const _GateLoading(),
+        child: child,
+      );
+    }
+    if (controller.isRefreshing) {
+      return const _GateLoading();
     }
 
     final selected = controller.selectedContext;
@@ -86,6 +99,37 @@ class WeddingPlanContextGate extends StatelessWidget {
       message: samePlan
           ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
           : 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
+    );
+  }
+}
+
+/// A page the gates keep alive while they cannot show it: [child] stays in
+/// the tree with its state, unpainted, untouchable and silent to the screen
+/// reader, under [cover], for as long as [covered]. Both gates always put
+/// their page here, covered or not, so it is the same element either way.
+class ContextGateHeldPage extends StatelessWidget {
+  const ContextGateHeldPage({
+    required this.covered,
+    required this.cover,
+    required this.child,
+    super.key,
+  });
+
+  final bool covered;
+  final Widget cover;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Offstage(
+          offstage: covered,
+          child: TickerMode(enabled: !covered, child: child),
+        ),
+        if (covered) cover,
+      ],
     );
   }
 }
@@ -163,13 +207,22 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
         message: controller.errorMessage!,
       );
     }
-    if (!controller.hasLoadedContexts || controller.isRefreshing) {
+    if (!controller.hasLoadedContexts) {
       return const _GateLoading();
     }
+    // As above: the open page is kept alive, unseen, while the contexts
+    // are read again.
     final selected = controller.selectedContext;
     if (selected != null &&
         accountContextAllowsPlanAccess(selected, requiredAccess)) {
-      return child;
+      return ContextGateHeldPage(
+        covered: controller.isRefreshing,
+        cover: const _GateLoading(),
+        child: child,
+      );
+    }
+    if (controller.isRefreshing) {
+      return const _GateLoading();
     }
     appLogEvent(
       'ROUTE_BLOCKED',

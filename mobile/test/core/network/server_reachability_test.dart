@@ -85,19 +85,25 @@ void main() {
       );
     });
 
-    test('a server answer, whatever its status, is not a transport failure', () {
-      final options = RequestOptions(path: '/x');
-      expect(
-        classifyTransportFailure(
-          _dio(
-            DioExceptionType.badResponse,
-            response: Response<Object?>(requestOptions: options, statusCode: 500),
+    test(
+      'a server answer, whatever its status, is not a transport failure',
+      () {
+        final options = RequestOptions(path: '/x');
+        expect(
+          classifyTransportFailure(
+            _dio(
+              DioExceptionType.badResponse,
+              response: Response<Object?>(
+                requestOptions: options,
+                statusCode: 500,
+              ),
+            ),
           ),
-        ),
-        isNull,
-      );
-      expect(classifyTransportFailure(_dio(DioExceptionType.cancel)), isNull);
-    });
+          isNull,
+        );
+        expect(classifyTransportFailure(_dio(DioExceptionType.cancel)), isNull);
+      },
+    );
   });
 
   group('ApiException wording follows the cause', () {
@@ -121,21 +127,32 @@ void main() {
         ),
       );
       expect(exception.transportCause, ReachabilityCause.noNetwork);
-      expect(exception.message, 'ما فيه نت في الجوال الحين. شغّل النت وجرّب مرة ثانية.');
+      expect(
+        exception.message,
+        'ما فيه نت في الجوال الحين. شغّل النت وجرّب مرة ثانية.',
+      );
     });
 
     test('an unrecognised transport failure keeps the generic wording', () {
       final exception = ApiException.fromDio(
-        _dio(DioExceptionType.connectionError, error: Exception('Socket closed')),
+        _dio(
+          DioExceptionType.connectionError,
+          error: Exception('Socket closed'),
+        ),
       );
       expect(exception.transportCause, ReachabilityCause.unknown);
-      expect(exception.message, aarastBackendConnectionErrorMessage);
+      expect(
+        exception.message,
+        'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
+      );
     });
   });
 
   group('ServerReachability', () {
     test('a transport failure marks it unreachable with the cause', () {
-      final reachability = ServerReachability(clock: () => DateTime(2026, 11, 3));
+      final reachability = ServerReachability(
+        clock: () => DateTime(2026, 11, 3),
+      );
       var notified = 0;
       reachability.addListener(() => notified++);
 
@@ -148,7 +165,9 @@ void main() {
     });
 
     test('any answer from the server makes it reachable again', () {
-      final reachability = ServerReachability(clock: () => DateTime(2026, 11, 3));
+      final reachability = ServerReachability(
+        clock: () => DateTime(2026, 11, 3),
+      );
       reachability.observe(_dio(DioExceptionType.connectionTimeout));
       var notified = 0;
       reachability.addListener(() => notified++);

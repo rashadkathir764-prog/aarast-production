@@ -347,7 +347,7 @@ void main() {
       final api = _PortalApi(denyOperations: true);
       await _pumpPortal(tester, api, initialTab: 'requests');
 
-      expect(find.text('عمليات المزود غير متاحة'), findsOneWidget);
+      expect(find.text('عمليات المزود مو متاحة'), findsOneWidget);
       expect(
         find.text('اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.'),
         findsOneWidget,

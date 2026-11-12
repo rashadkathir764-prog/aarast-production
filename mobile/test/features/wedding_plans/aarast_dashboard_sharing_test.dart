@@ -47,12 +47,55 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('فريق الخطة'), findsOneWidget);
-    expect(find.text('4 مشاركين · دعوتين تنتظر الرد'), findsOneWidget);
+    // RA-MO-148: the server's count is the members and the owner
+    // (`participantMembersCount + 1`); the row counts the people the owner
+    // brought in. It used to read «4 مشاركين» for three.
+    expect(find.text('3 مشاركين · دعوتين تنتظر الرد'), findsOneWidget);
 
     await tester.tap(sharing);
     await tester.pump();
     expect(sharingOpens, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an owner alone is not counted as a participant', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: AarastDashboardView(
+              summary: _summary(participantCount: 1, pendingInvites: 0),
+              userName: 'رشاد',
+              bottomPadding: 24,
+              now: DateTime(2026, 7, 7, 9),
+              onNotifications: () {},
+              onProfile: () {},
+              onOpenPlan: () {},
+              onOpenMoney: () {},
+              onOpenTasks: () {},
+              onOpenProviders: () {},
+              onOpenGuests: () {},
+              onOpenSharing: () {},
+              onOpenNextStep: () {},
+              onOpenImportantItem: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('aarast-dashboard-sharing')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('لسا ما أضفت أحد'), findsOneWidget);
+    expect(find.text('مشارك واحد'), findsNothing);
   });
 
   testWidgets(
@@ -198,7 +241,11 @@ void main() {
   });
 }
 
-DashboardSummary _summary({DateTime? weddingDate}) {
+DashboardSummary _summary({
+  DateTime? weddingDate,
+  int participantCount = 4,
+  int pendingInvites = 2,
+}) {
   return DashboardSummary(
     planId: 'plan-1',
     title: 'خطة الزفاف',
@@ -222,8 +269,8 @@ DashboardSummary _summary({DateTime? weddingDate}) {
     confirmedGuests: 10,
     providerCount: 1,
     quoteRequestsCount: 1,
-    participantCount: 4,
-    pendingInvites: 2,
+    participantCount: participantCount,
+    pendingInvites: pendingInvites,
     currentUserRole: 'OWNER',
     unreadNotificationsCount: 0,
     importantItems: const [],

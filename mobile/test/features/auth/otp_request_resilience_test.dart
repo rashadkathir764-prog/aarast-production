@@ -56,7 +56,7 @@ void main() {
     expect(result, isNull);
     expect(
       controller.errorMessage,
-      'تعذر إرسال رمز إنشاء الحساب الآن. تحقق من الاتصال وحاول مرة أخرى.',
+      'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
     );
   });
 
@@ -72,7 +72,7 @@ void main() {
     expect(result, isNull);
     expect(
       controller.errorMessage,
-      'تعذر إرسال رمز التحقق الآن. تحقق من الاتصال وحاول مرة أخرى.',
+      'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
     );
   });
 
@@ -89,7 +89,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
     );
   });
 
@@ -106,7 +106,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
     );
   });
 }

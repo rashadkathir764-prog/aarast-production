@@ -103,8 +103,8 @@ class _MahrScreenState extends State<MahrScreen> {
     if (!saved) {
       setState(
         () => _error ??= context.say(
-          'ما قدرنا نحفظ المهر. حاول مرة ثانية.',
-          'ما قدرنا نحفظ المهر. حاولي مرة ثانية.',
+          'ما قدرنا نحفظ المهر. جرّب مرة ثانية.',
+          'ما قدرنا نحفظ المهر. جرّبي مرة ثانية.',
         ),
       );
       return;

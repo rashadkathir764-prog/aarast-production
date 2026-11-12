@@ -154,7 +154,7 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
     final body = rawMessage?.trim() ?? '';
     if (title.isEmpty && body.isEmpty) return null;
     return PushForegroundNotification(
-      title: title.isEmpty ? 'إشعار جديد' : title,
+      title: title.isEmpty ? 'تنبيه جديد' : title,
       message: body.isEmpty ? 'لديك تحديث جديد في اعّرست.' : body,
     );
   }

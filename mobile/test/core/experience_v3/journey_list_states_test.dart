@@ -82,7 +82,7 @@ void main() {
       ),
     );
     expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     expect(retried, 1);
     expect(tester.takeException(), isNull);
   });
@@ -122,7 +122,7 @@ void main() {
   testWidgets('offline over kept rows reads as view only', (tester) async {
     await _pump(tester, const JourneyListNotice(offline: true));
     expect(find.text('آخر نسخة محفوظة · تشوف بس'), findsOneWidget);
-    expect(find.text('حاول مرة ثانية'), findsNothing);
+    expect(find.text('جرّب مرة ثانية'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

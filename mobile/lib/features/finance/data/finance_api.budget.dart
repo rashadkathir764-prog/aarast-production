@@ -471,7 +471,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       final clientId = _nullableTrimmed(category['clientId']?.toString());
       if ((id == null) == (clientId == null)) {
         throw const ApiException(
-          'تعذر حفظ التصنيفات: لكل تصنيف معرّف واحد فقط.',
+          'ما قدرنا نحفظ التصنيفات. صار خطأ عندنا، جرّب مرة ثانية.',
         );
       }
       if (clientId != null && !_uuidV4Pattern.hasMatch(clientId)) {

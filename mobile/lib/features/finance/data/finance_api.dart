@@ -398,7 +398,7 @@ String _localCategoryId(String? clientId) {
   final value = _nullableTrimmed(clientId);
   if (value == null || !_uuidV4Pattern.hasMatch(value)) {
     throw const ApiException(
-      'تعذر حفظ التصنيف الجديد: معرّف المزامنة غير صالح.',
+      'ما قدرنا نحفظ التصنيف الجديد. صار خطأ عندنا، جرّب مرة ثانية.',
     );
   }
   return '$_localCategoryPrefix$value';

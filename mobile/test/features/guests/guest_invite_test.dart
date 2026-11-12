@@ -421,7 +421,7 @@ void main() {
     expect(find.byKey(const ValueKey('invite-host')), findsNothing);
     api.cardFails = false;
     api.card = const InvitationCard(hostLine: 'أم سلمى');
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     await tester.pumpAndSettle();
     expect(find.text('أم سلمى'), findsWidgets);
   });
@@ -490,11 +490,11 @@ void main() {
 
     expect(find.text('ما فيه أحد ما وصلته دعوة.'), findsNothing);
     expect(find.textContaining('لـ 0'), findsNothing);
-    expect(find.text('حاول مرة ثانية'), findsOneWidget);
+    expect(find.text('جرّب مرة ثانية'), findsOneWidget);
 
     // Retrying reads the list and offers the guest.
     api.fail = false;
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     await tester.pumpAndSettle();
     expect(find.text('ياسر'), findsOneWidget);
     expect(find.text('أرسل لـ ضيف واحد'), findsOneWidget);

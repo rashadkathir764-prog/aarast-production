@@ -161,13 +161,7 @@ class _ParticipantAccountSectionsState
               _PlanRow(
                 key: ValueKey('participant-plan-${path.contextKey}'),
                 path: path,
-                line: _helpedLine(
-                  path,
-                  reader,
-                  role: path.contextKey == current.contextKey
-                      ? widget.roleLabel
-                      : null,
-                ),
+                line: _helpedLine(path, reader),
                 tag: !path.isAvailable
                     ? 'في الذكريات'
                     : path.contextKey == current.contextKey
@@ -247,13 +241,14 @@ class _ParticipantAccountSectionsState
 }
 
 /// «المهام والضيوف»: the sections a plan opens to you, from its flags.
-String _helpedLine(AccountContext path, JourneyProfile reader, {String? role}) {
+/// What the plan opens to the reader. The role is the row's tag and is not
+/// said again here (RA-MO-131).
+String _helpedLine(AccountContext path, JourneyProfile reader) {
   if (!path.isAvailable) return 'العرس تم';
   final sections = _openSections(path.permissions);
-  final line = sections.isEmpty
+  return sections.isEmpty
       ? reader.say('تتابع الخطة بس', 'تتابعين الخطة بس')
       : sections.join(' و');
-  return role == null ? line : '$role · $line';
 }
 
 List<String> _openSections(AccountContextPermissions permissions) => [
@@ -315,7 +310,9 @@ class _PlanRow extends StatelessWidget {
                   ),
                   Text(
                     line,
-                    maxLines: 1,
+                    // Four sections do not fit one line on a small phone;
+                    // what the plan opens is never cut.
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(
                       JourneyType.label,

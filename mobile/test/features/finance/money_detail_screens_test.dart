@@ -93,7 +93,7 @@ void main() {
           );
           expect(find.text(item.errorTitle), findsOneWidget, reason: '$item');
           expect(find.text(item.absentTitle), findsNothing, reason: '$item');
-          expect(find.text('حاول مرة ثانية'), findsOneWidget, reason: '$item');
+          expect(find.text('جرّب مرة ثانية'), findsOneWidget, reason: '$item');
           expect(tester.takeException(), isNull, reason: '$item');
         }
       },

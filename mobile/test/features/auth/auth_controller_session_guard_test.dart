@@ -229,6 +229,25 @@ void main() {
       expect(harness.controller.loginRequestedAfterLogout, isTrue);
     });
 
+    // RA-MO-134: the account moves to a new number and stays the same
+    // account, under a sheet that says «خطتك ومشاركينك يبقون مثل ما هم».
+    // The sign-out it forces was wiping what had not been sent.
+    test('changing the number signs out and keeps what was not sent', () async {
+      final harness = await _AuthHarness.authenticated(unsentChanges: 2);
+      addTearDown(harness.dispose);
+
+      final error = await harness.controller.confirmPhoneChange(
+        '777000999',
+        '123456',
+      );
+
+      expect(error, isNull);
+      expect(harness.localClears, ['keeping unsent']);
+      expect(harness.controller.status, AuthStatus.unauthenticated);
+      expect(harness.controller.loginRequestedAfterLogout, isTrue);
+      expect(harness.controller.sessionExpired, isFalse);
+    });
+
     // RA-MO-98: an invite opened with another number signs the phone in as
     // that account, and the phone then drops the first account's unsent
     // changes without a word.
@@ -436,6 +455,9 @@ class _ControlledAuthRepository extends AuthRepository {
 
   @override
   Future<SafeUser> me() async => _user;
+
+  @override
+  Future<void> confirmPhoneChange(String newPhone, String code) async {}
 
   @override
   Future<AuthResponse> login({

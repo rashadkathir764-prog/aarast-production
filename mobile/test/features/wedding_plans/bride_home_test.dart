@@ -422,10 +422,10 @@ void main() {
     expect(find.text('معك 5 مليون'), findsOneWidget);
   });
 
-  testWidgets('a failed load asks her «حاولي مرة ثانية»', (tester) async {
+  testWidgets('a failed load asks her «جرّبي مرة ثانية»', (tester) async {
     for (final (profile, words) in [
-      (JourneyProfile.bride, 'حاولي مرة ثانية'),
-      (JourneyProfile.groom, 'حاول مرة ثانية'),
+      (JourneyProfile.bride, 'جرّبي مرة ثانية'),
+      (JourneyProfile.groom, 'جرّب مرة ثانية'),
     ]) {
       await tester.pumpWidget(
         MaterialApp(

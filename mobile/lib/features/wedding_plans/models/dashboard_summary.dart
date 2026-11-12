@@ -317,6 +317,11 @@ class DashboardSummary {
 
   bool get canViewMoney => permissions.canViewMoney;
 
+  /// The people in the plan beside its owner. The server's
+  /// [participantCount] counts the owner too, and it was shown as
+  /// «مشاركين»: a groom alone read «مشارك واحد» (RA-MO-148).
+  int get otherParticipants => participantCount > 1 ? participantCount - 1 : 0;
+
   DashboardSummary copyWithPulse({
     int? progressPercentage,
     int? totalTasks,

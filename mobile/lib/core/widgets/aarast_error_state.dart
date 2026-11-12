@@ -8,7 +8,7 @@ class AarastErrorState extends StatelessWidget {
     required this.title,
     required this.message,
     this.onRetry,
-    this.retryLabel = 'حاول مرة أخرى',
+    this.retryLabel = 'جرّب مرة ثانية',
     super.key,
   });
 

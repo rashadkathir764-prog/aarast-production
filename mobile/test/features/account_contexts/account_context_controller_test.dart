@@ -81,7 +81,7 @@ void main() {
         expect(controller.errorMessage, isNull);
         expect(controller.selectedContext?.contextKey, owner.contextKey);
         expect(controller.hasLoadedContexts, isTrue);
-        expect(controller.noticeMessage, contains('ما في اتصال'));
+        expect(controller.noticeMessage, contains('أنت بدون نت'));
       },
     );
 
@@ -92,7 +92,7 @@ void main() {
       await controller.refresh(allowInitialSingleContext: true);
 
       expect(controller.selectedContext, isNull);
-      expect(controller.errorMessage, contains('ما قدرنا نوصل للسيرفر'));
+      expect(controller.errorMessage, contains('ما وصلنا للخادم'));
     });
 
     test('a contributor copy is never opened offline', () async {
@@ -391,7 +391,7 @@ void main() {
         expect(harness.controller.contexts, [owner]);
         expect(harness.controller.selectedContext, owner);
         expect(harness.controller.errorMessage, isNull);
-        expect(harness.controller.noticeMessage, contains('ما في اتصال'));
+        expect(harness.controller.noticeMessage, contains('أنت بدون نت'));
       },
     );
 

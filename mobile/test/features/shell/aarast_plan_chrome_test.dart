@@ -45,7 +45,7 @@ void main() {
     );
 
     expect(
-      find.bySemanticsLabel('الرسائل، إشعارات غير مقروءة: 12'),
+      find.bySemanticsLabel('الرسائل، تنبيهات غير مقروءة: 12'),
       findsOneWidget,
     );
     expect(find.bySemanticsLabel('الرسائل'), findsNothing);
@@ -181,6 +181,30 @@ void main() {
               as BoxDecoration;
       expect(decoration.color, AarastV3Color.primary, reason: label);
     }
+  });
+
+  testWidgets('the home «+» is the sign alone, and still says «إضافة» aloud', (
+    tester,
+  ) async {
+    // RA-MO-129: on a 390-wide phone the labelled «+ إضافة» sat on the money
+    // card's verdict and cut it mid-word. Its word named nothing: the sheet
+    // it opens names the choices.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: PlanShellChrome(
+          activeIndex: 0,
+          onTabSelected: (_) {},
+          onQuickAdd: () {},
+          body: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    final fab = find.byKey(const ValueKey('aarast-quick-action'));
+    expect(find.text('إضافة'), findsNothing);
+    expect(find.bySemanticsLabel('إضافة'), findsOneWidget);
+    expect(tester.getSize(fab), const Size(52, 52));
   });
 
   testWidgets('no «+» without a handler, and none over the keyboard', (

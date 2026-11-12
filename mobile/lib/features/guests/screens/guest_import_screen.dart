@@ -266,7 +266,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               key: const ValueKey('import-retry'),
-              label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
+              label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
               icon: LucideIcons.refreshCw,
               onPressed: _loadContacts,
             ),

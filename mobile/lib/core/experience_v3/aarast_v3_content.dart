@@ -4,24 +4,23 @@
 /// database language such as "0 items" and never claims a state the product
 /// cannot derive from real data.
 abstract final class AarastV3Copy {
-  static const retry = 'حاول مرة أخرى';
+  static const retry = 'جرّب مرة ثانية';
   static const refresh = 'تحديث';
   static const showAll = 'عرض الكل';
   static const addFirst = 'إضافة أول عنصر';
 
   static const loadingTitle = 'نرتّب التفاصيل';
   static const loadingMessage = 'ستظهر البيانات هنا فور اكتمال التحميل.';
-  static const offlineTitle = 'أنت دون اتصال الآن';
-  static const offlineMessage =
-      'نعرض آخر بيانات محفوظة، وسنحدّثها عند عودة الاتصال.';
-  static const lockedTitle = 'هذه البيانات خاصة';
-  static const lockedMessage = 'لا تملك صلاحية عرض هذا الجزء من الخطة.';
+  static const offlineTitle = 'أنت بدون نت الحين';
+  static const offlineMessage = 'نعرض آخر نسخة محفوظة، ونحدّثها لما يرجع النت.';
+  static const lockedTitle = 'هذي البيانات خاصة';
+  static const lockedMessage = 'ما عندك صلاحية تشوف هذا الجزء من الخطة.';
   static const readOnlyTitle = 'يمكنك الاطلاع فقط';
   static const readOnlyMessage =
       'تستطيع مراجعة البيانات، بينما التعديل يحتاج صلاحية إضافية.';
   static const pendingTitle = 'بانتظار المزامنة';
   static const pendingMessage =
-      'حُفظ التغيير على هذا الجهاز وسنرسله عند توفر الاتصال.';
+      'انحفظ التغيير على هذا الجوال، ونرسله لما يرجع النت.';
 
   static const calmEyebrow = 'اليوم هادئ';
   // «خطتك تحت السيطرة» was removed: the home's calm step says only what it

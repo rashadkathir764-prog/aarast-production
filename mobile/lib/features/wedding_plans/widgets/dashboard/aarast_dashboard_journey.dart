@@ -438,36 +438,52 @@ class _AfterWeddingHero extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        hidden ? '••••' : left.number,
-                        style: JourneyType.of(
-                          JourneyType.count,
-                          weight: JourneyType.bold,
-                          color: AarastV3Color.onPrimary,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(width: AarastV3Space.x2),
-                      Expanded(
-                        child: Text(
-                          hidden
-                              ? 'باقي عليك'
-                              : '${left.millionUnit ?? left.currency} باقي عليك${debt.loansLeft > 0 ? ' مع السلف' : ''}',
-                          style: JourneyType.of(
-                            JourneyType.title,
-                            weight: JourneyType.bold,
-                            color: AarastV3Color.onPrimary,
+                  LayoutBuilder(
+                    builder: (context, row) => Row(
+                      children: [
+                        // Under a million the figure is written in full
+                        // («500,000»): at the count's size it pushed the row
+                        // past a narrow phone (RA-MO-138). It keeps to under
+                        // half the row and shrinks to fit.
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: row.maxWidth * 0.45,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              hidden ? '••••' : left.number,
+                              maxLines: 1,
+                              style: JourneyType.of(
+                                JourneyType.count,
+                                weight: JourneyType.bold,
+                                color: AarastV3Color.onPrimary,
+                                height: 1,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const JourneyTag(
-                        label: 'بعد العرس',
-                        color: AarastV3Color.ink,
-                        soft: AarastV3Color.saffron,
-                      ),
-                    ],
+                        const SizedBox(width: AarastV3Space.x2),
+                        Expanded(
+                          child: Text(
+                            hidden
+                                ? 'باقي عليك'
+                                : '${left.millionUnit ?? left.currency} باقي عليك${debt.loansLeft > 0 ? ' مع السلف' : ''}',
+                            style: JourneyType.of(
+                              JourneyType.title,
+                              weight: JourneyType.bold,
+                              color: AarastV3Color.onPrimary,
+                            ),
+                          ),
+                        ),
+                        const JourneyTag(
+                          label: 'بعد العرس',
+                          color: AarastV3Color.ink,
+                          soft: AarastV3Color.saffron,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AarastV3Space.x3),
                   Row(

@@ -173,7 +173,7 @@ void main() {
       find.byKey(const ValueKey('journey-list-notice-error')),
       findsOneWidget,
     );
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     expect(retries, 1);
   });
 

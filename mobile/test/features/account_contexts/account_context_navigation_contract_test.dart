@@ -227,7 +227,12 @@ void main() {
 
   test('plan route access classification is explicit and fail-closed', () {
     final cases = <String, WeddingPlanRouteAccess>{
-      '/wedding-plans/plan-1/dashboard': WeddingPlanRouteAccess.ownerDashboard,
+      // RA-MO-96: the home is a tab's root like the others. Its route gives
+      // a participant the participant's home (the test below holds that), so
+      // the gate asks for the plan only. It used to ask for the owner, and a
+      // participant who opened a reminder, pressed the shell's «الرئيسية» or
+      // the phone's back button met «هذا القسم مو مفتوح لك» with no tabs.
+      '/wedding-plans/plan-1/dashboard': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/plan-center': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/events': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/moments/day': WeddingPlanRouteAccess.viewPlan,
@@ -270,6 +275,35 @@ void main() {
         reason: entry.key,
       );
     }
+  });
+
+  test('the home route never builds the owner home for a participant', () {
+    final router = readLibrarySource('lib/core/routing/app_router.dart');
+    final start = router.indexOf("path: '/wedding-plans/:id/dashboard'");
+    expect(start, greaterThanOrEqualTo(0));
+    final block = router.substring(start, router.indexOf('GoRoute(', start));
+    final participant = block.indexOf('participantPlanTab(context, id, 0)');
+    final owner = block.indexOf('WeddingPlanDashboardScreen(');
+    expect(participant, greaterThanOrEqualTo(0));
+    expect(block, contains('if (participant != null) return participant;'));
+    expect(owner, greaterThan(participant));
+
+    // And the page a participant gets there is decided by the open context,
+    // the one the gate checked: any contributor of that plan, whatever their
+    // rights.
+    final tab = File(
+      'lib/features/shell/screens/participant_plan_shell.dart',
+    ).readAsStringSync();
+    final decides = _sourceBetween(
+      tab,
+      'Widget? participantPlanTab(',
+      'final permissions = selected.permissions;',
+    );
+    expect(
+      decides,
+      contains('selected.role != AccountContextRole.contributor'),
+    );
+    expect(decides, contains('selected.weddingPlanId != weddingPlanId'));
   });
 }
 

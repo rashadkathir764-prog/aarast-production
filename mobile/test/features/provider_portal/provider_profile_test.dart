@@ -596,7 +596,7 @@ void main() {
       await _pump(tester, api, () => ProviderServicesScreen(now: _now));
 
       expect(find.byKey(const Key('provider-services-empty')), findsNothing);
-      expect(find.text('حاول مرة ثانية'), findsOneWidget);
+      expect(find.text('جرّب مرة ثانية'), findsOneWidget);
     });
 
     testWidgets('a package opens its edit; showing it applies at once and '

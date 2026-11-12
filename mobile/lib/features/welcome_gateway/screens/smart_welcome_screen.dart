@@ -572,8 +572,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       setState(() {
         _saving = false;
         _error = _profile.say(
-          'ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.',
-          'ما قدرنا نحفظ الخطة على جوالك. حاولي مرة ثانية.',
+          'ما قدرنا نحفظ الخطة على جوالك. جرّب مرة ثانية.',
+          'ما قدرنا نحفظ الخطة على جوالك. جرّبي مرة ثانية.',
         );
       });
       return false;
@@ -611,8 +611,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     if (plans == null) {
       setState(
         () => _error = _profile.say(
-          'ما قدرنا ننشئ الخطة الآن. حاول مرة ثانية.',
-          'ما قدرنا ننشئ الخطة الآن. حاولي مرة ثانية.',
+          'ما قدرنا نسوي الخطة. جرّب مرة ثانية.',
+          'ما قدرنا نسوي الخطة. جرّبي مرة ثانية.',
         ),
       );
       return;
@@ -646,8 +646,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         _error =
             plans.errorMessage ??
             _profile.say(
-              'ما قدرنا ننشئ الخطة. تأكد من النت وحاول مرة ثانية.',
-              'ما قدرنا ننشئ الخطة. تأكدي من النت وحاولي مرة ثانية.',
+              'ما قدرنا نسوي الخطة. تأكد من النت وجرّب مرة ثانية.',
+              'ما قدرنا نسوي الخطة. تأكدي من النت وجرّبي مرة ثانية.',
             );
       });
       return;

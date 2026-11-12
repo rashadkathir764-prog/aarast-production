@@ -8,13 +8,17 @@ class _DashboardTeamStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final people = arabicCount(
-      summary.participantCount,
-      one: 'مشارك واحد',
-      two: 'مشاركَين',
-      few: 'مشاركين',
-      many: 'مشارك',
-    );
+    // The row counts the people the owner brought in, not the owner.
+    final others = summary.otherParticipants;
+    final people = others == 0
+        ? context.say('لسا ما أضفت أحد', 'لسا ما أضفتِ أحد')
+        : arabicCount(
+            others,
+            one: 'مشارك واحد',
+            two: 'مشاركَين',
+            few: 'مشاركين',
+            many: 'مشارك',
+          );
     final invites = arabicCount(
       summary.pendingInvites,
       one: 'دعوة تنتظر الرد',

@@ -173,7 +173,7 @@ class _PlanNavigationItem extends StatelessWidget {
     return AarastPressable(
       onTap: onTap,
       semanticLabel: item.badge > 0
-          ? '${item.label}، إشعارات غير مقروءة: ${item.badge}'
+          ? '${item.label}، تنبيهات غير مقروءة: ${item.badge}'
           : item.label,
       selected: active,
       borderRadius: BorderRadius.circular(AarastV3Radius.surface),

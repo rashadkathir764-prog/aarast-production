@@ -94,7 +94,7 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
       ];
       if (failedSections.isNotEmpty) {
         _errorMessage =
-            'تعذر تحديث ${failedSections.join('، ')}. أعد المحاولة.';
+            'ما قدرنا نحدّث ${failedSections.join('، ')}. جرّب مرة ثانية.';
       }
       if (canLoadPlanQuotes) {
         _mergeQuotes(results[4] as List<QuoteRequest>);
@@ -127,7 +127,7 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     } on ApiException catch (error) {
       return marketplaceErrorMessage(error.message);
     } catch (_) {
-      return 'ما قدرنا نرسل البلاغ. حاول مرة ثانية.';
+      return 'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.';
     }
   }
 

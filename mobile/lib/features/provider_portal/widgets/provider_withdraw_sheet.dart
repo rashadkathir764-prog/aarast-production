@@ -90,7 +90,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
       setState(() {
         _busy = false;
         _error =
-            dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
+            dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. جرّب مرة ثانية.';
       });
       return;
     }

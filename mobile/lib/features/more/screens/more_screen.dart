@@ -126,7 +126,9 @@ class _MoreScreenState extends State<MoreScreen> {
                   key: const ValueKey('account-participants'),
                   icon: LucideIcons.users,
                   title: 'المشاركين',
-                  value: plan == null ? null : '${plan.participantCount}',
+                  value: plan == null || plan.otherParticipants == 0
+                      ? null
+                      : '${plan.otherParticipants}',
                   onTap: () => context.push(AppRouter.sharing(planId)),
                 ),
                 // g03 moves a set day; without one, w10 picks it.
@@ -531,4 +533,3 @@ class _ProfileCard extends StatelessWidget {
     );
   }
 }
-

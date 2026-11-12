@@ -75,7 +75,7 @@ void main() {
     expect(harness.controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       harness.controller.errorMessage,
-      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
     );
     expect(harness.controller.errorMessage, isNot(contains('كلمة المرور')));
   });
@@ -166,7 +166,10 @@ void main() {
         'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
       );
       // Still says the number was checked, and offers the new account.
-      expect(missingHarness.controller.errorMessage, contains('تأكدنا من رقمك'));
+      expect(
+        missingHarness.controller.errorMessage,
+        contains('تأكدنا من رقمك'),
+      );
       expect(missingHarness.controller.errorMessage, contains('حساب جديد'));
     },
   );

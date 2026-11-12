@@ -189,8 +189,8 @@ AarastDashboardFocus resolveDashboardFocus(
       eyebrow: 'خطوتك الجاية',
       title: say('أضف أول مهمة', 'أضيفي أول مهمة'),
       reason: say(
-        'حوّل أول قرار لمهمة واضحة بموعد ومسؤول.',
-        'حوّلي أول قرار لمهمة واضحة بموعد ومسؤول.',
+        'اكتب أول شي لازم يتسوى: متى، وعلى مين.',
+        'اكتبي أول شي لازم يتسوى: متى، وعلى مين.',
       ),
       actionLabel: say('أضف مهمة', 'أضيفي مهمة'),
       icon: LucideIcons.listChecks,

@@ -275,11 +275,11 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     } on ApiException catch (error) {
       if (error.statusCode == 409) return 'قيّمت هذا المزوّد من قبل.';
       if (error.serverCode == 'REVIEW_REQUIRES_COMPLETED_BOOKING') {
-        return 'يمكنك التقييم بعد يوم الحجز.';
+        return 'تقدر تقيّم بعد يوم الحجز.';
       }
       return marketplaceErrorMessage(error.message);
     } catch (_) {
-      return 'تعذر إرسال التقييم. حاول مرة أخرى.';
+      return 'ما قدرنا نرسل التقييم. جرّب مرة ثانية.';
     }
   }
 

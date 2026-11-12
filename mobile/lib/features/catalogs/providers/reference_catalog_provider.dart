@@ -31,7 +31,7 @@ class ReferenceCatalogProvider extends ChangeNotifier {
       final next = await _api.load();
       if (next != null) _bootstrap = next;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث القوائم الآن. نعرض النسخة المحفوظة.';
+      _errorMessage = 'ما قدرنا نحدّث القوائم. نعرض النسخة المحفوظة.';
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -23,13 +23,32 @@ class AccountContextEntryGate extends StatelessWidget {
 
     switch (resolveAccountContextEntry(controller)) {
       case AccountContextEntryState.loading:
+        // A plan shell already open is kept alive under the loading page
+        // while its contexts are read again (each return to the app):
+        // unseen and untouchable until the server confirms, and not
+        // rebuilt, so the tab and what was being typed in it are still
+        // there when it does (RA-MO-135).
+        final open = controller.selectedContext;
+        if (controller.isRefreshing &&
+            controller.hasLoadedContexts &&
+            open != null &&
+            open.isAvailable &&
+            !open.isProvider) {
+          return ContextGateHeldPage(
+            covered: true,
+            cover: const AarastScaffold(child: AarastScreenLoading()),
+            child: MainShell(
+              key: ValueKey('account-context-shell-${open.contextKey}'),
+            ),
+          );
+        }
         return const AarastScaffold(child: AarastScreenLoading());
       case AccountContextEntryState.error:
         return AarastScaffold(
           child: Align(
             alignment: Alignment.topCenter,
             child: AarastErrorState(
-              title: 'تعذر تحميل المسارات',
+              title: 'ما قدرنا نفتح حسابك',
               message: controller.errorMessage!,
               onRetry: controller.refresh,
             ),
@@ -53,8 +72,12 @@ class AccountContextEntryGate extends StatelessWidget {
     if (selected.isProvider) {
       return const _ReplaceRoute(location: AppRouter.providerDashboard);
     }
-    return MainShell(
-      key: ValueKey('account-context-shell-${selected.contextKey}'),
+    return ContextGateHeldPage(
+      covered: false,
+      cover: const AarastScaffold(child: AarastScreenLoading()),
+      child: MainShell(
+        key: ValueKey('account-context-shell-${selected.contextKey}'),
+      ),
     );
   }
 }
@@ -177,6 +200,13 @@ String? compatibleAccountContextResume(
   if (planId == null) return null;
   final encodedPlanId = Uri.encodeComponent(planId);
   if (!path.startsWith('/wedding-plans/$encodedPlanId/')) return null;
+  // A participant's home is the entry's own shell: a resume to the plan's
+  // home adds nothing to it, so none is made (as before RA-MO-96 opened
+  // that route to them).
+  if (selected.role == AccountContextRole.contributor &&
+      path == AppRouter.weddingPlanDashboard(planId)) {
+    return null;
+  }
   final requiredAccess = weddingPlanRouteAccessForPath(path);
   return accountContextAllowsPlanAccess(selected, requiredAccess)
       ? location

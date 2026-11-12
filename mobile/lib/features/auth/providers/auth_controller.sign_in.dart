@@ -139,7 +139,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         _otpRequest = result;
       },
       networkFailureMessage:
-          'تعذر إرسال رمز إنشاء الحساب الآن. تحقق من الاتصال وحاول مرة أخرى.',
+          'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
     );
     return success ? result : null;
   }
@@ -158,7 +158,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         _otpRequest = result;
       },
       networkFailureMessage:
-          'تعذر إرسال رمز التحقق الآن. تحقق من الاتصال وحاول مرة أخرى.',
+          'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
     );
     return success ? result : null;
   }
@@ -206,7 +206,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         _otpRequest = result;
       },
       networkFailureMessage:
-          'تعذر التحقق من الدعوة الآن. تحقق من الاتصال وحاول مرة أخرى.',
+          'ما قدرنا نتأكد من الدعوة. تأكد من النت وجرّب مرة ثانية.',
     );
     return success ? result : null;
   }
@@ -347,7 +347,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         _failedOffline = true;
         _errorMessage =
             networkFailureMessage ??
-            'تعذر تسجيل الدخول الآن. تحقق من الاتصال وحاول مرة أخرى.';
+            'ما قدرنا نسجّل دخولك. تأكد من النت وجرّب مرة ثانية.';
       } else {
         _errorMessage = error.message;
       }

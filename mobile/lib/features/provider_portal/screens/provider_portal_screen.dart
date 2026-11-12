@@ -407,7 +407,7 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const copy = (
-      'عمليات المزود غير متاحة',
+      'عمليات المزود مو متاحة',
       'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
     );
     return RefreshIndicator(

@@ -565,7 +565,12 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   // need the section's right. The shell and a resume both read this one map.
   final tabRoot = segments.length == 3;
   return switch (section) {
-    'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
+    // The home is a tab's root too: its route hands a participant the
+    // participant's home (`participantPlanTab`), never the owner's. Asking
+    // for the owner here stopped a participant at «هذا القسم مو مفتوح لك»
+    // from a reminder, from the shell's «الرئيسية» and from the phone's
+    // back button (RA-MO-96).
+    'dashboard' ||
     'plan-center' ||
     'events' ||
     'moments' ||
@@ -626,7 +631,7 @@ class RouterErrorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       key: const Key('router-error-boundary'),
-      appBar: AppBar(title: const Text('تعذر فتح الصفحة')),
+      appBar: AppBar(title: const Text('ما قدرنا نفتح الصفحة')),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: Center(
@@ -638,7 +643,7 @@ class RouterErrorScreen extends StatelessWidget {
                 const Icon(LucideIcons.navigation, size: 52),
                 const SizedBox(height: AarastV3Space.x4),
                 const Text(
-                  'حدث خطأ في مسار التنقل.',
+                  'صار خطأ وإحنا ننقلك للصفحة.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: JourneyType.pageTitle,
@@ -647,7 +652,7 @@ class RouterErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AarastV3Space.x2),
                 const Text(
-                  'لم نغيّر مسار الحساب تلقائيًا. عد إلى اختيار المسار وحاول مرة أخرى.',
+                  'ما غيّرنا شي في حسابك. ارجع لاختيار المسار وجرّب مرة ثانية.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AarastV3Space.x5),

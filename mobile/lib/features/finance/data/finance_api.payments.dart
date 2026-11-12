@@ -79,7 +79,7 @@ mixin _FinancePaymentsApi on _FinanceApiCore {
         id: paymentId,
       );
       if (cached == null) {
-        throw const ApiException('تعذر العثور على الدفعة.');
+        throw const ApiException('ما لقينا الدفعة.');
       }
       return CostPayment.fromJson(cached);
     }

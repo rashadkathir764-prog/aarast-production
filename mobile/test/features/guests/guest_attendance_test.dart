@@ -126,7 +126,7 @@ void main() {
 
     expect(find.text('62 أكدوا من 124'), findsNothing);
     api.fails = false;
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     await tester.pumpAndSettle();
     expect(find.text('62 أكدوا من 124'), findsOneWidget);
   });

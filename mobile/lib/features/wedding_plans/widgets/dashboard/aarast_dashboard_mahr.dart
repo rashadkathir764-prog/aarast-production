@@ -61,23 +61,57 @@ String mahrSettledNumber(double settled, double total) {
   return mahrHomeNumber((settled / step).floor() * step.toDouble());
 }
 
+bool _fitsOneLine(
+  BuildContext context,
+  String text,
+  TextStyle style,
+  BoxConstraints box,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout(maxWidth: box.maxWidth);
+  final fits = !painter.didExceedMaxLines;
+  painter.dispose();
+  return fits;
+}
+
 /// b02 «الاتفاق مع أهل العروسة · سلّمت 2 من 3 مليون · الباقي 15 نوفمبر»,
 /// or the bride's «الاتفاق مع العريس · استلمتِ 2 من 3 مليون».
 class _MahrAgreementCard extends StatelessWidget {
-  const _MahrAgreementCard({required this.mahr, required this.onTap});
+  const _MahrAgreementCard({
+    required this.mahr,
+    required this.onTap,
+    this.hidden = false,
+  });
 
   final DashboardHomeMahr mahr;
   final VoidCallback onTap;
+
+  /// «أخفِ المبالغ»: the mahr is an amount like the others. The card used
+  /// to show it, and its bar the share handed over, beside a money card
+  /// reading «••••» (RA-MO-136).
+  final bool hidden;
 
   @override
   Widget build(BuildContext context) {
     final pays = mahr.side == MahrHomeSide.pays;
     final due = mahr.nextDueAt;
-    final line = [
-      '${pays ? context.say('سلّمت', 'سلّمتِ') : context.say('استلمت', 'استلمتِ')} '
-          '${mahrSettledNumber(mahr.settled, mahr.total)} من ${mahrHomeWords(mahr.total)}',
-      if (due != null) 'الباقي ${formatArabicDayMonth(due)}',
-    ].join(' · ');
+    final verb = pays
+        ? context.say('سلّمت', 'سلّمتِ')
+        : context.say('استلمت', 'استلمتِ');
+    final settled = hidden
+        ? '$verb ••••'
+        : '$verb ${mahrSettledNumber(mahr.settled, mahr.total)} '
+              'من ${mahrHomeWords(mahr.total)}';
+    final rest = due == null ? null : 'الباقي ${formatArabicDayMonth(due)}';
+    final line = rest == null ? settled : '$settled · $rest';
+    final lineStyle = JourneyType.of(
+      JourneyType.body,
+      weight: JourneyType.bold,
+    );
     final label = pays ? 'الاتفاق مع أهل العروسة' : 'الاتفاق مع العريس';
     final ratio = mahr.total <= 0
         ? 0.0
@@ -112,25 +146,38 @@ class _MahrAgreementCard extends StatelessWidget {
                         color: AarastV3Color.textMuted,
                       ),
                     ),
-                    Text(
-                      line,
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        weight: JourneyType.bold,
-                      ),
+                    // One line where it fits; where it does not, each
+                    // half takes its own line, so the «·» never dangles
+                    // at a line's end (RA-MO-130).
+                    LayoutBuilder(
+                      builder: (context, box) {
+                        if (rest == null ||
+                            _fitsOneLine(context, line, lineStyle, box)) {
+                          return Text(line, style: lineStyle);
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(settled, style: lineStyle),
+                            Text(rest, style: lineStyle),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AarastV3Space.x3),
-              SizedBox(
-                width: _mahrShareWidth,
-                child: JourneyBar(
-                  value: ratio,
-                  color: context.accent.primary,
-                  height: 6,
+              if (!hidden) ...[
+                const SizedBox(width: AarastV3Space.x3),
+                SizedBox(
+                  width: _mahrShareWidth,
+                  child: JourneyBar(
+                    value: ratio,
+                    color: context.accent.primary,
+                    height: 6,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

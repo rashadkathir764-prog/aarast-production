@@ -587,7 +587,7 @@ void main() {
     );
     expect(find.byKey(const ValueKey('requests-empty')), findsNothing);
 
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
   });

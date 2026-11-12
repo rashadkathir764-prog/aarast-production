@@ -37,7 +37,7 @@ String portfolioErrorMessage(ApiException error) => switch (error.serverCode) {
     'صور «حفلات النساء» لازم تكون بدون وجوه.',
   'PORTFOLIO_WOMEN_ALBUM_NOT_SERVED' =>
     'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
-  'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرب مرة ثانية.',
+  'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرّب مرة ثانية.',
   'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
   _ => marketplaceErrorMessage(error.message),
 };
@@ -871,7 +871,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       _portfolioError = portfolioErrorMessage(error);
     } catch (_) {
-      _portfolioError = 'ما قدرنا نقرأ معرضك، جرب مرة ثانية.';
+      _portfolioError = 'ما قدرنا نقرأ معرضك، جرّب مرة ثانية.';
     } finally {
       notifyListeners();
     }
@@ -900,7 +900,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _portfolioError = portfolioErrorMessage(error);
       return false;
     } catch (_) {
-      _portfolioError = 'ما انحفظ معرضك، جرب مرة ثانية.';
+      _portfolioError = 'ما انحفظ معرضك، جرّب مرة ثانية.';
       return false;
     } finally {
       notifyListeners();
@@ -1286,7 +1286,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'سحب العرض يحتاج الخادم');
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
+      _errorMessage = 'ما قدرنا نسحب العرض. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;

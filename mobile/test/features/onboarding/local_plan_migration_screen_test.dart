@@ -388,7 +388,7 @@ void main() {
       plans: const [],
       onImport: () => Future.error(
         const ApiException(
-          'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.',
+          'ما قدرنا نحفظ. راجع اللي كتبته وجرّب مرة ثانية.',
           statusCode: 400,
         ),
       ),
@@ -398,7 +398,7 @@ void main() {
       find.textContaining('فيه شي في خطتك ما قبله الحساب'),
       findsOneWidget,
     );
-    expect(find.textContaining('راجع البيانات المدخلة'), findsNothing);
+    expect(find.textContaining('راجع اللي كتبته'), findsNothing);
     expect(find.text('افتح خطتك على الجوال الحين'), findsOneWidget);
   });
 
@@ -474,7 +474,7 @@ void main() {
 }
 
 const _offline = ApiException(
-  'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+  'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
   isNetworkFailure: true,
 );
 

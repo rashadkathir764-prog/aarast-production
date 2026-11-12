@@ -322,7 +322,7 @@ void main() {
 
     expect(chat.conversations, isEmpty);
     expect(chat.timelineFor('conversation-1'), isEmpty);
-    expect(chat.errorMessage, 'تم سحب صلاحية الوصول إلى هذه المحادثة.');
+    expect(chat.errorMessage, 'انشالت صلاحيتك على هذي المحادثة.');
     chat.dispose();
   });
 
@@ -671,9 +671,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
-    expect(find.text('حاول مرة ثانية'), findsOneWidget);
+    expect(find.text('جرّب مرة ثانية'), findsOneWidget);
 
-    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.tap(find.text('جرّب مرة ثانية'));
     await tester.pumpAndSettle();
 
     expect(find.text('طلبت عرض سعر'), findsOneWidget);

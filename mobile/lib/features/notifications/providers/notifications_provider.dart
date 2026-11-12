@@ -63,7 +63,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
         notifyListeners();
       },
       describe: (error) =>
-          error is ApiException ? error.message : 'تعذر تحميل التنبيهات.',
+          error is ApiException ? error.message : 'ما قدرنا نجيب التنبيهات.',
     );
   }
 
@@ -88,7 +88,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
-      _errorMessage = 'تعذر تحميل المزيد من التنبيهات.';
+      _errorMessage = 'ما قدرنا نجيب تنبيهات أكثر.';
     } finally {
       _isLoadingMore = false;
       notifyListeners();
@@ -131,7 +131,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث التنبيه.';
+      _errorMessage = 'ما قدرنا نحدّث التنبيه.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -157,7 +157,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر قراءة كل التنبيهات.';
+      _errorMessage = 'ما قدرنا نعلّم كل التنبيهات مقروءة.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -181,7 +181,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حذف التنبيه.';
+      _errorMessage = 'ما قدرنا نحذف التنبيه.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -205,7 +205,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر أرشفة التنبيه.';
+      _errorMessage = 'ما قدرنا نأرشف التنبيه.';
       return false;
     } finally {
       _isSubmitting = false;

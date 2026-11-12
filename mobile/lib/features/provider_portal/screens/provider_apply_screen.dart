@@ -446,7 +446,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         alignment: AlignmentDirectional.centerStart,
         child: JourneyTextAction(
           key: const Key('provider-apply-retry'),
-          label: 'حاول مرة ثانية',
+          label: 'جرّب مرة ثانية',
           color: AarastV3Color.primary,
           onPressed: marketplace.loadReferenceData,
         ),

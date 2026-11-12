@@ -400,12 +400,16 @@ void main() {
     Widget? assistant,
     PlanEventsView? events,
     DashboardHomeFunding? funding,
+    DashboardAfterWedding? afterWedding,
+    VoidCallback? onOpenReviews,
   }) => AarastDashboardView(
     summary: s,
     userName: 'محمد',
     bottomPadding: 158,
     now: now,
     funding: funding,
+    afterWedding: afterWedding,
+    onOpenReviews: onOpenReviews,
     assistantEntry: assistant,
     events: events,
     onOpenEvents: () {},
@@ -593,6 +597,47 @@ void main() {
     );
   });
 
+  // b07 as the app shows it once the money is read: what is still owed and
+  // the providers to rate, then the same home with everything paid
+  // (RA-MO-132). `home_after` above is the rarer moment before the money
+  // arrives.
+  testWidgets('home after the wedding, owing and settled', (tester) async {
+    await _shot(
+      tester,
+      'home_after_owing',
+      shell(
+        dash(
+          _stage(-20, _wedding),
+          DateTime(2027, 2, 10, 10),
+          afterWedding: const DashboardAfterWedding(
+            left: 1900000,
+            paid: 2300000,
+            total: 4200000,
+          ),
+          onOpenReviews: () {},
+        ),
+      ),
+      h: 1000,
+    );
+    await _shot(
+      tester,
+      'home_after_settled',
+      shell(
+        dash(
+          _stage(-20, _wedding),
+          DateTime(2027, 2, 10, 10),
+          afterWedding: const DashboardAfterWedding(
+            left: 0,
+            paid: 4200000,
+            total: 4200000,
+          ),
+          onOpenReviews: () {},
+        ),
+      ),
+      h: 1000,
+    );
+  });
+
   testWidgets('home loading', (tester) async {
     await _shot(
       tester,
@@ -609,11 +654,13 @@ void main() {
         AarastDashboardState(
           bottomPadding: 158,
           icon: LucideIcons.cloudOff,
-          title: 'تعذر تحميل الرئيسية',
-          message: 'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
-          actionLabel: 'إعادة المحاولة',
+          // The screen's own words and colour (wedding_plan_dashboard_screen
+          // `aarast-home-error`); this shot used to draw a red state with
+          // words the app never shows (RA-TS-16).
+          title: 'ما قدرنا نجيب خطتك',
+          message: aarastBackendConnectionErrorMessage,
+          actionLabel: 'جرّب مرة ثانية',
           onAction: () {},
-          danger: true,
         ),
       ),
     );

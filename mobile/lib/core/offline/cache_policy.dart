@@ -1,16 +1,14 @@
-﻿import '../network/api_client.dart';
+import '../network/api_client.dart';
 
 class CachePolicy {
   const CachePolicy._();
 
   static const offlineReadMessage =
-      'أنت تعمل الآن بدون اتصال، سيتم عرض آخر بيانات محفوظة';
-  static const offlineWriteMessage =
-      'تم الحفظ على الجهاز، وسيتم المزامنة عند عودة الاتصال';
+      'أنت بدون نت الحين، نعرض لك آخر نسخة محفوظة';
+  static const offlineWriteMessage = 'انحفظ على الجوال، ونرسله لما يرجع النت';
   static const localPlanningSaveMessage =
-      'تم الحفظ محليًا. سجّل الدخول لاحقًا لمزامنة خطتك.';
-  static const firstLoginNeedsInternet =
-      'تحتاج للاتصال بالإنترنت لتسجيل الدخول أول مرة';
+      'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';
+  static const firstLoginNeedsInternet = 'أول دخول يحتاج نت';
 
   static bool shouldUseCache(Object error) {
     return error is ApiException && error.isNetworkFailure;

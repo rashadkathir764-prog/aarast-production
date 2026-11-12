@@ -12,6 +12,7 @@ import 'plan_quick_add_sheet.dart';
 /// floating «+» the owner asked to keep (D33) when [onQuickAdd] is given. It
 /// takes the tab's colour and name («إضافة مهمة»، «إضافة ضيف»), hides while
 /// the keyboard is open, and folds to its icon while the page scrolls down.
+/// On the home it is the sign alone ([planQuickAddShowsLabel]).
 class PlanShellChrome extends StatefulWidget {
   const PlanShellChrome({
     required this.body,
@@ -101,7 +102,9 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
                   widget.activeIndex,
                   context.journeyProfile,
                 ),
-                expanded: _quickAddExpanded,
+                expanded:
+                    _quickAddExpanded &&
+                    planQuickAddShowsLabel(widget.activeIndex),
                 onPressed: quickAdd,
                 onLongPress: widget.onQuickAddLongPress,
               )

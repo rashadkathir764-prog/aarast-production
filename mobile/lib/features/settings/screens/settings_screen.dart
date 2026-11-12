@@ -175,8 +175,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       provider.errorMessage ??
           context.say(
-            'ما قدرنا نحفظ، جرب مرة ثانية.',
-            'ما قدرنا نحفظ، جربي مرة ثانية.',
+            'ما قدرنا نحفظ، جرّب مرة ثانية.',
+            'ما قدرنا نحفظ، جرّبي مرة ثانية.',
           ),
     );
   }

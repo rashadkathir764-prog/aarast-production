@@ -250,7 +250,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           failure = error.message;
           break;
         } catch (_) {
-          failure = 'تعذر حفظ المهمة.';
+          failure = 'ما قدرنا نحفظ المهمة.';
           break;
         }
       }
@@ -259,7 +259,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       if (failure != null) {
         _errorMessage = added == 0
             ? failure
-            : 'أُضيفت $added من ${pending.length} مهام، وتعذر حفظ الباقي: $failure';
+            : 'انضافت $added من ${pending.length} مهام، وما قدرنا نحفظ الباقي: $failure';
       } else if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       } else if (queuedOffline) {
@@ -471,7 +471,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           _replaceTask(fieldsSaved);
           final reason = error is ApiException
               ? error.message
-              : 'تعذر تغيير المسؤول.';
+              : 'ما قدرنا نغيّر المسؤول.';
           await _refreshTaskData(weddingPlanId);
           _errorMessage = 'انحفظت تفاصيل المهمة، بس المسؤول ما تغيّر: $reason';
           return false;

@@ -564,7 +564,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: JourneyTextAction(
-                label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
+                label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
                 color: AarastV3Color.danger,
                 onPressed: provider.loadMarketplace,
               ),

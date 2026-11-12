@@ -524,7 +524,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
             icon: LucideIcons.cloudOff,
             title: 'ما قدرنا نجيب خطتك',
             message: errorMessage,
-            actionLabel: 'حاول مرة ثانية',
+            actionLabel: 'جرّب مرة ثانية',
             onAction: _load,
           ),
         ),

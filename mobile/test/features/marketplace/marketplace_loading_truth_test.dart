@@ -87,7 +87,7 @@ void main() {
     api.portfolioError = const ApiException('تعذر تحميل الصور.');
     await marketplace.loadProviderDetails('provider-1');
     expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
-    expect(marketplace.errorMessage, 'تعذر تحديث الصور. أعد المحاولة.');
+    expect(marketplace.errorMessage, 'ما قدرنا نحدّث الصور. جرّب مرة ثانية.');
   });
 
   test(

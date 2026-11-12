@@ -14,6 +14,7 @@ Future<int Function()> _pump(
   DashboardAfterWedding? debt,
   bool showHijri = true,
   bool moneyReadFailed = false,
+  DashboardSummary? summary,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1100);
@@ -26,7 +27,7 @@ Future<int Function()> _pump(
         textDirection: TextDirection.rtl,
         child: Scaffold(
           body: AarastDashboardView(
-            summary: _summary(weddingDate ?? DateTime(2027, 1, 21)),
+            summary: summary ?? _summary(weddingDate ?? DateTime(2027, 1, 21)),
             userName: 'رشاد',
             bottomPadding: 24,
             now: _now,
@@ -130,6 +131,81 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('قيّم مزودينك'), findsOneWidget);
+    // RA-MO-132: and it says the debt is done, where the home used to be
+    // the date strip over an empty page.
+    expect(
+      find.text('ما عاد عليك شي من العرس. كل اللي اتفقت عليه مدفوع.'),
+      findsOneWidget,
+    );
+  });
+
+  // RA-MO-137: before the wedding a due payment steps aside when the
+  // server names a step of its own, because that step is drawn. After the
+  // wedding no step is drawn, and the server nearly always names one (a
+  // provider of the plan), so the payment still owed was shown nowhere.
+  testWidgets('after the day the payment still owed is shown whatever step '
+      'the server names', (tester) async {
+    await _pump(
+      tester,
+      debt: const DashboardAfterWedding(
+        left: 500000,
+        paid: 3700000,
+        total: 4200000,
+      ),
+      summary: _summary(
+        DateTime(2027, 1, 21),
+        importantItems: const [
+          DashboardImportantItem(
+            id: 'provider-1',
+            type: 'PLAN_PROVIDER',
+            title: 'مزود في خطتك',
+            subtitle: 'قاعة سبأ',
+            icon: 'store',
+            tone: 'neutral',
+            actionLabel: 'عرض الملف',
+            data: {},
+          ),
+        ],
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 'schedule-1',
+          weddingCostId: 'cost-1',
+          title: 'قاعة سبأ',
+          amount: '500000',
+          status: 'PENDING',
+          dueDate: DateTime(2027, 1, 25),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('قاعة سبأ'), findsWidgets);
+    expect(find.text('سجّل الدفعة'), findsOneWidget);
+    // The server's step is still not a card of this home.
+    expect(find.text('مزود في خطتك'), findsNothing);
+  });
+
+  testWidgets('nothing was ever agreed: the home claims nothing settled', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      debt: const DashboardAfterWedding(left: 0, paid: 0, total: 0),
+    );
+
+    expect(
+      find.byKey(const ValueKey('aarast-home-after-settled')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('money not read yet: the home claims nothing settled', (
+    tester,
+  ) async {
+    await _pump(tester);
+
+    expect(
+      find.byKey(const ValueKey('aarast-home-after-settled')),
+      findsNothing,
+    );
   });
 
   testWidgets('g02 turns the Hijri date off on the home', (tester) async {
@@ -154,7 +230,11 @@ void main() {
   });
 }
 
-DashboardSummary _summary(DateTime weddingDate) {
+DashboardSummary _summary(
+  DateTime weddingDate, {
+  List<DashboardImportantItem> importantItems = const [],
+  DashboardNextPaymentSchedule? nextPayment,
+}) {
   return DashboardSummary(
     planId: 'plan-1',
     title: 'عرس رشاد',
@@ -181,7 +261,8 @@ DashboardSummary _summary(DateTime weddingDate) {
     pendingInvites: 2,
     currentUserRole: 'OWNER',
     unreadNotificationsCount: 0,
-    importantItems: const [],
+    importantItems: importantItems,
+    nextPaymentScheduleDue: nextPayment,
     planProviders: const [],
     importantNotifications: const [],
     permissions: const DashboardPermissionSummary(

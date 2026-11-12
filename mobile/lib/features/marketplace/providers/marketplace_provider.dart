@@ -255,7 +255,7 @@ String marketplaceErrorMessage(String message) {
   if (normalized.contains(
     'location governorate and cityOrDistrict are required for structured location',
   )) {
-    return 'أكمل موقع الزفاف: المحافظة والمدينة أو المديرية مطلوبة قبل إرسال الطلب.';
+    return 'كمّل موقع العرس: المحافظة والمدينة أو المديرية، قبل ما ترسل الطلب.';
   }
   // D88: a route the server does not know is an older server, not a
   // connection to retry.
@@ -270,7 +270,7 @@ String marketplaceErrorMessage(String message) {
   }
   if (normalized.contains('انتهت الجلسة') ||
       normalized.contains('بيانات الدخول')) {
-    return 'تحتاج إلى تسجيل الدخول للمتابعة.';
+    return 'سجّل دخول عشان تكمل.';
   }
   return normalized;
 }
@@ -286,4 +286,4 @@ const providerReferenceDataErrorMessage = 'ما قدرنا نجيب المدن �
 const providerDirectoryGenericErrorMessage =
     'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.';
 const providerDetailsStaleErrorMessage =
-    'تعذر تحديث بيانات المزود؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';
+    'ما قدرنا نحدّث بيانات المزود. نعرض لك آخر نسخة محفوظة.';

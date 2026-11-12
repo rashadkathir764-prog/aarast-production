@@ -73,7 +73,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
-      expect(find.text('حاول مرة ثانية'), findsOneWidget);
+      expect(find.text('جرّب مرة ثانية'), findsOneWidget);
       expect(find.text('ابدأ تنظيم مال الزفاف'), findsNothing);
       expect(find.text('مواعيد الدفع'), findsNothing);
       expect(find.text('التصنيفات'), findsNothing);

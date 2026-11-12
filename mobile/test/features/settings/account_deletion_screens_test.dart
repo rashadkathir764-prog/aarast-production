@@ -60,7 +60,7 @@ void main() {
       expect(find.text('متأكد يا محمد؟'), findsOneWidget);
       expect(find.text('خطتك ومالك ومهامك وضيوفك تنحذف كلها'), findsOneWidget);
       expect(
-        find.text('صالح والوالد يطلعون من الخطة، ويوصلهم إشعار'),
+        find.text('صالح والوالد يطلعون من الخطة، ويوصلهم تنبيه'),
         findsOneWidget,
       );
       expect(

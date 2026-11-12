@@ -319,9 +319,7 @@ class WeddingPlansApi {
   Map<String, dynamic> _asJsonMap(Object? data) {
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
-    throw const ApiException(
-      'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
-    );
+    throw const ApiException('ما قدرنا نجيب البيانات. جرّب مرة ثانية.');
   }
 
   Map<String, dynamic> _activePlanToCacheJson(ActiveWeddingPlan plan) {

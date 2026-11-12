@@ -17,7 +17,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('router-error-boundary')), findsOneWidget);
-    expect(find.text('تعذر فتح الصفحة'), findsOneWidget);
+    expect(find.text('ما قدرنا نفتح الصفحة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -41,7 +41,7 @@ void main() {
 
     expect(tester.takeException(), isA<StateError>());
     expect(find.byKey(const Key('app-build-error-boundary')), findsOneWidget);
-    expect(find.text('تعذر بناء الصفحة'), findsOneWidget);
+    expect(find.text('ما قدرنا نعرض الصفحة'), findsOneWidget);
   });
 
   test('router error location never exposes identifiers or query values', () {

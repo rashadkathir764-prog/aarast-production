@@ -32,7 +32,7 @@ class ContactPickerService {
       PermissionType.read,
     );
     if (!_isGranted(permission)) {
-      throw const ContactPickerException('تم رفض صلاحية جهات الاتصال');
+      throw const ContactPickerException('ما سمحت لنا نشوف جهات الاتصال');
     }
 
     final contact = await FlutterContacts.native.showPicker(
@@ -42,7 +42,7 @@ class ContactPickerService {
 
     final phones = _phoneNumbers(contact);
     if (phones.isEmpty) {
-      throw const ContactPickerException('لا يوجد رقم هاتف لهذه الجهة');
+      throw const ContactPickerException('ما في رقم جوال لهذا الاسم');
     }
 
     String? selectedPhone;
@@ -68,7 +68,7 @@ class ContactPickerService {
       PermissionType.read,
     );
     if (!_isGranted(permission)) {
-      throw const ContactPickerException('تم رفض صلاحية جهات الاتصال');
+      throw const ContactPickerException('ما سمحت لنا نشوف جهات الاتصال');
     }
     final contacts = await FlutterContacts.getAll(
       properties: {ContactProperty.name, ContactProperty.phone},
@@ -154,7 +154,7 @@ class ContactPickerService {
 String contactPickerErrorMessage(Object error) {
   if (error is ContactPickerException) return error.message;
   if (error is PlatformException) {
-    return 'تعذر فتح جهات الاتصال';
+    return 'ما قدرنا نفتح جهات الاتصال';
   }
-  return 'تعذر اختيار رقم من جهات الاتصال';
+  return 'ما قدرنا ناخذ رقم من جهات الاتصال';
 }

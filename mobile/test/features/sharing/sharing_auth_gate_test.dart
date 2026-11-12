@@ -19,7 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   const localPlanId = 'guest-plan-sharing';
   const accountPlanId = 'plan-account-1';
-  const rawAuthError = 'بيانات الدخول غير صحيحة أو انتهت الجلسة.';
+  const rawAuthError = 'بيانات الدخول غلط أو انتهى دخولك.';
 
   testWidgets(
     'local/no-login opening sharing shows login gate without protected API retry',
@@ -242,7 +242,7 @@ void main() {
       expect(fakeApi.getSharedMembersCalls, 0);
       expect(fakeApi.getPlanInvitesCalls, 0);
 
-      await tester.tap(find.text('حاول مرة ثانية'));
+      await tester.tap(find.text('جرّب مرة ثانية'));
       await tester.pumpAndSettle();
 
       expect(fakeApi.getMyPlanPermissionsCalls, 2);
@@ -407,7 +407,7 @@ class _FakeSharingApi extends SharingApi {
   void _throwIfUnauthorized() {
     if (throwUnauthorized) {
       throw const ApiException(
-        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        'بيانات الدخول غلط أو انتهى دخولك.',
         statusCode: 401,
       );
     }

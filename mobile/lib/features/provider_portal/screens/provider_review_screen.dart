@@ -67,7 +67,7 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
     } else {
       AarastToast.showError(
         context,
-        dashboard.errorMessage ?? 'ما قدرنا ننشر ردك. حاول مرة ثانية.',
+        dashboard.errorMessage ?? 'ما قدرنا ننشر ردك. جرّب مرة ثانية.',
       );
     }
   }

@@ -180,7 +180,7 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
 
   Future<void> deleteSchedule(PaymentSchedule schedule) async {
     if (!schedule.isPending) {
-      throw const ApiException('لا يمكن حذف موعد مدفوع أو ملغي.');
+      throw const ApiException('الموعد المدفوع أو الملغي ما ينحذف.');
     }
     final mutation = _mutation(
       'DELETE',

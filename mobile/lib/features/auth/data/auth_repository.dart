@@ -160,9 +160,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       receiveTimeout: _otpDeliveryReceiveTimeout,
     );
     if (json['accountSetupRequired'] is! bool) {
-      throw const ApiException(
-        'تعذر تحديد حالة حساب المساهم. حدّث خدمة المصادقة ثم حاول مرة أخرى.',
-      );
+      throw const ApiException('صار خطأ عندنا. جرّب مرة ثانية.');
     }
     return OtpRequestResult.fromJson(json);
   }
@@ -187,7 +185,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       if (establishesSession) {
         if (!response.hasDurableSession) {
           throw const ApiException(
-            'تعذر إنشاء جلسة دخول دائمة. لم تُحفظ جلسة مؤقتة على الجهاز.',
+            'ما قدرنا نكمل دخولك، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
           );
         }
         final saved = await _saveOtpSession(
@@ -197,7 +195,7 @@ class AuthRepository implements SessionAuthTeardownPort {
         );
         if (!saved) {
           throw const ApiException(
-            'تغيّرت جلسة الحساب قبل اكتمال الحفظ. أعد المحاولة بأمان.',
+            'تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.',
           );
         }
       } else if (response.accessToken != null &&
@@ -243,7 +241,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       final response = OtpVerifyResult.fromJson(json);
       if (!response.hasDurableSession) {
         throw const ApiException(
-          'تعذر إنشاء جلسة مساهم دائمة. لم تُحفظ جلسة مؤقتة على الجهاز.',
+          'ما قدرنا نكمل دخولك للخطة، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
         );
       }
       final saved = await _saveOtpSession(
@@ -252,9 +250,7 @@ class AuthRepository implements SessionAuthTeardownPort {
         reservedEpoch: true,
       );
       if (!saved) {
-        throw const ApiException(
-          'تغيّرت جلسة الحساب قبل اكتمال الحفظ. أعد المحاولة بأمان.',
-        );
+        throw const ApiException('تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.');
       }
       return response;
     } on Object {
@@ -370,7 +366,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       final uploadUrl = ticket['uploadUrl']?.toString() ?? '';
       final key = ticket['key']?.toString() ?? '';
       if (uploadUrl.isEmpty || key.isEmpty) {
-        throw const ApiException('تعذر تجهيز رفع الصورة.');
+        throw const ApiException('ما قدرنا نجهّز الصورة للرفع.');
       }
       await _apiClient.putBytes(uploadUrl, bytes, contentType: contentType);
       final verified = await _apiClient.postJson(
@@ -379,7 +375,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       );
       final publicUrl = verified['publicUrl']?.toString() ?? '';
       if (publicUrl.isEmpty) {
-        throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
+        throw const ApiException('ما قدرنا نتأكد من الصورة اللي رفعتها.');
       }
       final user = SafeUser.fromJson(
         await _apiClient.patchJson('/api/v1/users/me', {
@@ -392,7 +388,7 @@ class AuthRepository implements SessionAuthTeardownPort {
       if (error.statusCode == 503 ||
           error.message.toLowerCase().contains('media storage')) {
         throw const ApiException(
-          'خدمة رفع الصور غير متاحة الآن. يرجى المحاولة مرة أخرى لاحقًا.',
+          'رفع الصور مو متاح الحين. جرّب بعد شوي.',
           statusCode: 503,
         );
       }
@@ -529,9 +525,7 @@ class AuthRepository implements SessionAuthTeardownPort {
           'errorType': error.runtimeType.toString(),
         },
       );
-      throw const ApiException(
-        'تعذر قراءة جلسة تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى.',
-      );
+      throw const ApiException('ما قدرنا نقرأ رد الدخول. جرّب مرة ثانية.');
     }
   }
 }

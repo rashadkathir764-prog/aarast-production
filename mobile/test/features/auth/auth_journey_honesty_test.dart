@@ -461,7 +461,7 @@ void main() {
         find.text('ما قدرنا ننشئ حسابك الحين، تأكدي من النت وجرّبي.'),
         findsOneWidget,
       );
-      expect(find.textContaining('تعذر تسجيل الدخول'), findsNothing);
+      expect(find.textContaining('ما قدرنا نسجّل دخولك'), findsNothing);
       await _drain(tester);
     });
 

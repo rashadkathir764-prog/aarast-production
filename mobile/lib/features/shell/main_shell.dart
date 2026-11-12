@@ -27,9 +27,7 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = context.watch<AccountContextController>().selectedContext;
     if (selected == null || !selected.isAvailable) {
-      return const _InvalidShellContext(
-        message: 'لا توجد مساحة نشطة لبناء واجهة التطبيق.',
-      );
+      return const _InvalidShellContext(message: 'ما في مساحة مفتوحة نعرضها.');
     }
 
     return switch (selected.role) {
@@ -43,7 +41,7 @@ class MainShell extends StatelessWidget {
         accountContext: selected,
       ),
       AccountContextRole.provider => const _InvalidShellContext(
-        message: 'مساحة المزود لها واجهة مستقلة ولا تُفتح من واجهة الخطط.',
+        message: 'مساحة المزود لها شاشاتها، ما تنفتح من هنا.',
       ),
     };
   }
@@ -137,7 +135,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
         selected?.role != AccountContextRole.owner ||
         selected?.weddingPlanId != widget.weddingPlanId) {
       return const _InvalidShellContext(
-        message: 'تغيّر سياق المالك قبل اكتمال بناء الواجهة.',
+        message: 'تغيّر حساب صاحب الخطة قبل ما تجهز الشاشة.',
       );
     }
     final selectedPlanId = widget.weddingPlanId;
@@ -316,7 +314,7 @@ class _ContributorMainShellState extends State<_ContributorMainShell> {
         selected?.role != AccountContextRole.contributor ||
         selected?.weddingPlanId != accountContext.weddingPlanId) {
       return const _InvalidShellContext(
-        message: 'تغيّر سياق المساهم قبل اكتمال بناء الواجهة.',
+        message: 'تغيّر حساب المشارك قبل ما تجهز الشاشة.',
       );
     }
 
@@ -339,7 +337,7 @@ class _InvalidShellContext extends StatelessWidget {
         child: AarastEmptyState(
           key: const ValueKey('invalid-shell-context'),
           icon: LucideIcons.shieldAlert,
-          title: 'تعذر فتح مساحة الحساب',
+          title: 'ما قدرنا نفتح مساحة الحساب',
           message: message,
         ),
       ),

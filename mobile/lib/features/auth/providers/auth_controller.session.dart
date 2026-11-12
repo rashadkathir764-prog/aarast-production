@@ -230,7 +230,7 @@ mixin _AuthSession on _AuthControllerCore {
     _user = null;
     _status = AuthStatus.terminating;
     _errorMessage = markSessionExpired
-        ? 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.'
+        ? 'انتهى دخولك. سجّل دخول مرة ثانية عشان تكمل.'
         : null;
     _errorCode = null;
     notifyListeners();
@@ -239,7 +239,7 @@ mixin _AuthSession on _AuthControllerCore {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.terminationFailed;
       _errorMessage =
-          'تعذر تنظيف بيانات الجلسة المحلية بأمان. حاول تسجيل الخروج مرة أخرى.';
+          'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.';
       _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
       appLogEvent(
         'LOGOUT_FAILED',
@@ -279,7 +279,7 @@ mixin _AuthSession on _AuthControllerCore {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.terminationFailed;
       _errorMessage =
-          'تعذر تنظيف بيانات الجلسة المحلية بأمان. حاول تسجيل الخروج مرة أخرى.';
+          'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.';
       _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
       appLogEvent(
         'LOGOUT_FAILED',
@@ -372,10 +372,14 @@ mixin _AuthSession on _AuthControllerCore {
     } on ApiException catch (error) {
       return phoneChangeErrorMessage(error.serverCode) ?? error.message;
     }
+    // The same account under a new number: what it had not sent stays for
+    // it (C58), as the sheet promises («خطتك ومشاركينك يبقون مثل ما هم»).
+    // It used to be wiped like a chosen sign-out (RA-MO-134).
     await _startSessionTermination(
       reason: 'phone_changed',
       requestLoginAfterCompletion: true,
       markSessionExpired: false,
+      keepUnsentChanges: true,
     );
     return null;
   }
@@ -397,7 +401,7 @@ mixin _AuthSession on _AuthControllerCore {
   Future<String?> _changeAccountDeletion({required bool request}) async {
     final user = _user;
     if (_status != AuthStatus.authenticated || user == null || _isSubmitting) {
-      return 'ما قدرنا الحين. حاول مرة ثانية.';
+      return 'ما قدرنا الحين. جرّب مرة ثانية.';
     }
     final operation = _sessionOperationGeneration;
     final source =
@@ -449,7 +453,7 @@ mixin _AuthSession on _AuthControllerCore {
       }
       return error.message;
     } on FormatException {
-      return 'ما قدرنا نتأكد من الطلب. حاول مرة ثانية.';
+      return 'ما قدرنا نتأكد من الطلب. جرّب مرة ثانية.';
     } finally {
       _isSubmitting = false;
       notifyListeners();

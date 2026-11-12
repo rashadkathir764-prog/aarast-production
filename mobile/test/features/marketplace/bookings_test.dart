@@ -71,7 +71,7 @@ void main() {
   test('booking errors read as Arabic actions', () {
     expect(
       bookingErrorMessage('BOOKING_DATE_UNAVAILABLE'),
-      'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
+      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
     );
     expect(bookingErrorMessage('SOMETHING_ELSE'), isNull);
   });
@@ -102,7 +102,7 @@ void main() {
     );
     expect(
       dashboard.errorMessage,
-      'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
+      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
     );
   });
 

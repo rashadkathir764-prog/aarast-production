@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -60,8 +60,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   /// too and clears the copy.
   Future<void> loadActiveWeddingPlan() async {
     final generation = ++_selectionGeneration;
-    bool current() =>
-        generation == _selectionGeneration && !isSessionDisposed;
+    bool current() => generation == _selectionGeneration && !isSessionDisposed;
     await readCachedFirst<_ActivePlanAnswer>(
       cached: () async {
         final copy = await _api.cachedActiveWeddingPlan();
@@ -88,7 +87,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         notifyListeners();
       },
       describe: (error) =>
-          error is ApiException ? error.message : 'تعذر تحميل الخطة الحالية.',
+          error is ApiException ? error.message : 'ما قدرنا نجيب خطتك الحالية.',
     );
   }
 
@@ -107,14 +106,13 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         notifyListeners();
       },
       describe: (error) =>
-          error is ApiException ? error.message : 'تعذر تحميل خطط الزفاف.',
+          error is ApiException ? error.message : 'ما قدرنا نجيب خطط العرس.',
     );
   }
 
   Future<void> loadWeddingPlan(String id) async {
     final generation = ++_selectionGeneration;
-    bool current() =>
-        generation == _selectionGeneration && !isSessionDisposed;
+    bool current() => generation == _selectionGeneration && !isSessionDisposed;
     await readCachedFirst<WeddingPlan>(
       cached: () => _api.cachedWeddingPlan(id),
       remote: () => _api.getWeddingPlan(id),
@@ -129,7 +127,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         notifyListeners();
       },
       describe: (error) =>
-          error is ApiException ? error.message : 'تعذر تحميل خطة الزفاف.',
+          error is ApiException ? error.message : 'ما قدرنا نجيب خطة العرس.',
     );
   }
 
@@ -166,7 +164,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر إنشاء خطة الزفاف.';
+      _errorMessage = 'ما قدرنا نسوي خطة العرس.';
       return null;
     } finally {
       _isSubmitting = false;
@@ -196,7 +194,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       return null;
     } catch (_) {
       if (generation == _selectionGeneration && !isSessionDisposed) {
-        _errorMessage = 'تعذر فتح الخطة المختارة.';
+        _errorMessage = 'ما قدرنا نفتح الخطة اللي اخترتها.';
       }
       return null;
     } finally {
@@ -262,7 +260,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر تحديث خطة الزفاف.';
+      _errorMessage = 'ما قدرنا نحدّث خطة العرس.';
       return null;
     } finally {
       _isSubmitting = false;
@@ -288,7 +286,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر أرشفة خطة الزفاف.';
+      _errorMessage = 'ما قدرنا نأرشف خطة العرس.';
       return null;
     } finally {
       _isSubmitting = false;

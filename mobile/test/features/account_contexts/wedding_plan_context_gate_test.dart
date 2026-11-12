@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
@@ -210,6 +212,124 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-135: a participant's contexts are read again each time the app
+  // comes back to the front and on each pull to refresh. The gate drew its
+  // spinner in place of the page for that long, so the page under it was
+  // torn down: a task being written was gone when the person came back
+  // from copying a number out of WhatsApp.
+  // The page stays closed to the eye for that long, as it always did (a
+  // participant's rights can be withdrawn by someone else); it is kept
+  // alive under the spinner instead of being rebuilt.
+  testWidgets('a page already open keeps what was typed in it while the '
+      'contexts are read again, unseen until they are confirmed', (
+    tester,
+  ) async {
+    final plan = accountContext(role: AccountContextRole.contributor);
+    final harness = await _Harness.create([plan]);
+    await harness.controller.refresh();
+    await harness.controller.select(plan.contextKey);
+
+    await tester.pumpWidget(
+      harness.wrap(
+        WeddingPlanContextGate(
+          weddingPlanId: plan.weddingPlanId!,
+          child: const Material(child: TextField()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'رتّب الغداء');
+
+    harness.gateway.hold = Completer<void>();
+    final refresh = harness.controller.refresh();
+    await tester.pump();
+    expect(harness.controller.isRefreshing, isTrue);
+    // Unseen and untouchable while the answer is awaited.
+    expect(find.text('رتّب الغداء'), findsNothing);
+    expect(find.text('رتّب الغداء', skipOffstage: false), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-loading')),
+      findsOneWidget,
+    );
+
+    harness.gateway.hold!.complete();
+    await refresh;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // The same page, as it was left.
+    expect(find.text('رتّب الغداء'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-loading')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a right withdrawn while the page was held removes the page', (
+    tester,
+  ) async {
+    final plan1 = accountContext(role: AccountContextRole.owner);
+    final plan2 = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-2',
+    );
+    final harness = await _Harness.create([plan1, plan2]);
+    await harness.controller.refresh();
+    await harness.controller.select(plan2.contextKey);
+    await tester.pumpWidget(
+      harness.wrap(
+        const WeddingPlanContextGate(
+          weddingPlanId: 'plan-2',
+          child: Material(child: TextField()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'سر الخطة');
+
+    harness.gateway.contexts = [plan1];
+    harness.gateway.hold = Completer<void>();
+    final refresh = harness.controller.refresh();
+    await tester.pump();
+    harness.gateway.hold!.complete();
+    await refresh;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('سر الخطة', skipOffstage: false), findsNothing);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-mismatch')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('nothing loaded yet: the gate waits, it does not open', (
+    tester,
+  ) async {
+    final plan = accountContext(role: AccountContextRole.contributor);
+    final harness = await _Harness.create([plan]);
+    harness.gateway.hold = Completer<void>();
+    final refresh = harness.controller.refresh();
+
+    await tester.pumpWidget(
+      harness.wrap(
+        WeddingPlanContextGate(
+          weddingPlanId: plan.weddingPlanId!,
+          child: const Text('private-content'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('private-content'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-loading')),
+      findsOneWidget,
+    );
+    harness.gateway.hold!.complete();
+    await refresh;
+  });
+
   testWidgets('missing context is truthful, RTL, and safe at 320 pixels', (
     tester,
   ) async {
@@ -313,8 +433,12 @@ class _MutableGateway implements AccountContextsGateway {
   List<AccountContext> contexts;
   final Object? listError;
 
+  /// Holds the next answers until completed: a slow server.
+  Completer<void>? hold;
+
   @override
   Future<List<AccountContext>> listContexts() async {
+    await hold?.future;
     final error = listError;
     if (error != null) throw error;
     return contexts;

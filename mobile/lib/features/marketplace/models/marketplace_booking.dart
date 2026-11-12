@@ -351,14 +351,14 @@ String bookingStatusLabel(
 String? bookingErrorMessage(String? code) {
   return switch (code) {
     'BOOKING_DATE_UNAVAILABLE' =>
-      'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
-    'BOOKING_DAY_FULL' => 'المزوّد محجوز بالكامل في هذا اليوم. اختر يومًا آخر.',
-    'BOOKING_DATE_HAS_BOOKING' => 'لديك حجز مؤكد في هذا اليوم.',
-    'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يومًا قادمًا.',
+      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
+    'BOOKING_DAY_FULL' => 'المزوّد محجوز كامل في هذا اليوم. اختر يوم ثاني.',
+    'BOOKING_DATE_HAS_BOOKING' => 'عندك حجز مؤكد في هذا اليوم.',
+    'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يوم جاي.',
     'BOOKING_INVALID_DATE' => 'اختر يوم العرس أولًا.',
-    'BOOKING_ALREADY_OPEN' => 'لديك طلب حجز قائم مع هذا المزوّد.',
+    'BOOKING_ALREADY_OPEN' => 'عندك طلب حجز مفتوح مع هذا المزوّد.',
     'BOOKING_QUOTE_NOT_ACCEPTED' => 'اقبل عرض السعر أولًا ثم اطلب الحجز.',
-    'BOOKING_NOT_ALLOWED' => 'تغيّر الحجز. حدّث الصفحة ثم حاول مرة أخرى.',
+    'BOOKING_NOT_ALLOWED' => 'تغيّر الحجز. حدّث الشاشة وجرّب مرة ثانية.',
     _ => null,
   };
 }

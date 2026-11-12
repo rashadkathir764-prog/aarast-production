@@ -193,6 +193,16 @@ String planQuickAddLabelForTab(int tabIndex, JourneyProfile profile) {
   };
 }
 
+/// Whether the tab's «+» shows its words beside the sign. The home's does
+/// not: «إضافة» names nothing the sign does not, and on a 390-wide phone the
+/// labelled button sat on the money card's verdict (RA-MO-129). The other
+/// tabs say what they add, and fold while the page scrolls.
+bool planQuickAddShowsLabel(int tabIndex) {
+  return tabIndex == _moneyTab ||
+      tabIndex == _tasksTab ||
+      tabIndex == _guestsTab;
+}
+
 /// On the tasks and the guests the «+» adds a task or a guest straight away
 /// (d01, e01); elsewhere it opens the sheet.
 PlanQuickAddKind? planQuickAddDirectKind(int tabIndex) {
@@ -237,7 +247,15 @@ List<PlanQuickAction> planQuickAddActions({
     _tasksTab => [task, if (canManageMoney) cost, guest, quote],
     _guestsTab => [guest, task, if (canManageMoney) cost, quote],
     _providersTab => [quote, if (canManageMoney) cost, task, guest],
-    _ => [if (canManageMoney) cost, task, guest, quote],
+    // The home: recording a payment sits beside the new agreement, and
+    // comes first when one is due (RA-MO-140).
+    _ => [
+      if (canManageMoney) cost,
+      if (canManageMoney && offerAgreementActions) PlanQuickAddKind.payment,
+      task,
+      guest,
+      quote,
+    ],
   };
   if (ordered.isEmpty) return const [];
 
@@ -268,13 +286,13 @@ List<PlanQuickAction> planQuickAddActions({
 int _signalBoost(PlanQuickAddSignals signals, PlanQuickAddKind kind) {
   final state = switch (kind) {
     // A payment falling due asks for that payment to be recorded. On the
-    // money tab «تسجيل دفعة» is offered, and it has to beat «إضافة اتفاق»
-    // there: writing another agreement is not what a due date asks for.
-    // Its boost clears the one-step index penalty, so 130 against 100.
+    // money tab and the home «تسجيل دفعة» is offered, and it has to beat
+    // «إضافة اتفاق» there: writing another agreement is not what a due date
+    // asks for. Its boost clears the one-step index penalty, so 130
+    // against 100.
     PlanQuickAddKind.payment when signals.duePaymentSchedules > 0 => 130,
-    // Elsewhere (the tasks, guests and home tabs) «تسجيل دفعة» is not on
-    // the sheet at all, so the agreement stays the money door that a due
-    // date points at.
+    // On the tasks and the guests tabs «تسجيل دفعة» is not on the sheet,
+    // so the agreement stays the money door that a due date points at.
     PlanQuickAddKind.cost when signals.duePaymentSchedules > 0 => 100,
     PlanQuickAddKind.task when signals.overdueTasks > 0 => 100,
     PlanQuickAddKind.guest when signals.incompleteGuests > 0 => 90,

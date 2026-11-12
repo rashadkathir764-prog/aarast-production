@@ -15,14 +15,14 @@ class AuthActionGuard {
   static const sharingLoginGateTitle = 'سجّل الدخول لمشاركة الخطة';
   static const sharingLoginGateBody =
       'تسجيل الدخول يتيح لك دعوة العائلة وتحديد الصلاحيات ومزامنة الخطة.';
-  static const sessionExpiredTitle = 'انتهت الجلسة';
+  static const sessionExpiredTitle = 'انتهى دخولك';
   static const sharingSessionExpiredBody =
-      'سجّل الدخول مرة أخرى لمتابعة مشاركة الخطة.';
+      'سجّل دخول مرة ثانية عشان تكمل مشاركة الخطة.';
   static const protectedActionMessage =
       'سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.';
   static const quoteSubmitMessage = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
   static const localPlanningSaveMessage =
-      'تم الحفظ محليًا. سجّل الدخول لاحقًا لمزامنة خطتك.';
+      'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';
 
   static bool isLocalGuestPlanId(String? planId) {
     final value = planId?.trim() ?? '';

@@ -128,7 +128,7 @@ void main() {
       expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
       expect(find.text('عضو قديم'), findsNothing);
       expect(find.text('احفظ'), findsNothing);
-      expect(find.text('حاول مرة ثانية'), findsOneWidget);
+      expect(find.text('جرّب مرة ثانية'), findsOneWidget);
       expect(api.getSharedMembersCalls, 0);
       expect(tester.takeException(), isNull);
     });

@@ -82,7 +82,7 @@ class JourneyListState extends StatelessWidget {
         'ما قدرنا نجيبها',
         onRetry == null
             ? null
-            : context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
+            : context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
         onRetry,
       ),
       _ => (
@@ -220,7 +220,7 @@ class JourneyListNotice extends StatelessWidget {
             ),
             if (onRetry != null && !offline)
               JourneyTextAction(
-                label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
+                label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
                 color: color,
                 onPressed: onRetry,
               ),

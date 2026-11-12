@@ -467,7 +467,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرب مرة ثانية.');
+        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرّب مرة ثانية.');
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);

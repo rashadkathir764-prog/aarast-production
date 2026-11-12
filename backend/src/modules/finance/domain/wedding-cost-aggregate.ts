@@ -41,6 +41,21 @@ export function deriveCostStatus(totalAmount: Amount, paidAmount: Amount): Weddi
   return 'OPEN';
 }
 
+/**
+ * D107: an expense is its payment. Once that payment is taken back nothing
+ * of the expense stands, so it is cancelled; it is never left owed
+ * (RA-BE-130). An agreement owes again what was taken back.
+ */
+export function statusAfterReversal(
+  entryKind: 'AGREEMENT' | 'EXPENSE',
+  totalAmount: Amount,
+  paidAmount: Amount,
+): WeddingCostStatus {
+  return entryKind === 'EXPENSE' && !paidAmount.gt(0)
+    ? 'CANCELLED'
+    : deriveCostStatus(totalAmount, paidAmount);
+}
+
 /** Only an open or partially paid cost receives a payment or a schedule. */
 export function payableViolation(status: WeddingCostStatus): FinanceViolation | null {
   if (status === 'CANCELLED') return conflict('Cancelled costs cannot receive payments');

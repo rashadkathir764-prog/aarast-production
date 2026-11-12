@@ -88,6 +88,7 @@ import {
   paymentAmountViolation,
   positiveAmountViolation,
   reversalViolation,
+  statusAfterReversal,
   totalAmountViolation,
 } from "../modules/finance/domain/wedding-cost-aggregate";
 import {
@@ -1056,6 +1057,13 @@ export class WeddingCostsService {
         ),
       );
       const paidAmount = cost.paidAmount.minus(payment.amount);
+      // D107 (RA-BE-130): an expense whose payment is taken back is taken
+      // back with it, not left owed.
+      const status = statusAfterReversal(
+        cost.entryKind ?? CostEntryKind.AGREEMENT,
+        cost.totalAmount,
+        paidAmount,
+      );
       const reversal = await insertCostPayment(tx, {
         data: {
           weddingCostId: cost.id,
@@ -1069,15 +1077,12 @@ export class WeddingCostsService {
       });
       await updateWeddingCost(tx, {
         where: { id: cost.id },
-        data: {
-          paidAmount,
-          status: deriveCostStatus(cost.totalAmount, paidAmount),
-        },
+        data: { paidAmount, status },
       });
       await this.restoreSchedulesWhenOwedAgain(
         tx,
         cost.id,
-        deriveCostStatus(cost.totalAmount, paidAmount),
+        status,
         cost.totalAmount.minus(paidAmount),
       );
       // D106: a partial payment gives its amount back to its date while the

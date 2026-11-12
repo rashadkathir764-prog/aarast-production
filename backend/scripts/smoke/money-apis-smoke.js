@@ -745,6 +745,21 @@ async function run() {
         && dress.body?.paidAmount === '150' && dress.body?.estimateCover === 'PART' && dress.body?.estimatePart === null);
     const lockedExpense = await request('PATCH', `/api/v1/costs/${dress.body?.id}`, { totalAmount: '200' }, owner.token);
     check('D107: an expense\'s amount is its payment', lockedExpense.status === 400 && lockedExpense.body?.code === 'FINANCE_EXPENSE_AMOUNT_LOCKED');
+    // RA-BE-130 (D107): an expense is its payment. Taking the payment back
+    // takes the expense back; it used to be left open with its whole amount
+    // owed. The checks below on what is left and expected hold with it gone.
+    const flowers = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
+      budgetCategoryId: cat('dress'), title: 'Flowers', totalAmount: '50', entryKind: 'EXPENSE',
+    }, owner.token);
+    const flowerPayments = await request('GET', `/api/v1/costs/${flowers.body?.id}/payments`, null, owner.token);
+    const flowerPayment = (Array.isArray(flowerPayments.body) ? flowerPayments.body : flowerPayments.body?.items)?.[0];
+    const flowersUndone = await request('POST', `/api/v1/cost-payments/${flowerPayment?.id}/reverse`, { reason: 'Recorded twice' }, owner.token);
+    const flowersAfter = await request('GET', `/api/v1/costs/${flowers.body?.id}`, null, owner.token);
+    const afterFlowers = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    check('RA-BE-130: an expense whose payment is taken back is cancelled, and nothing is owed for it',
+      flowers.status === 201 && flowersUndone.status === 201
+        && flowersAfter.body?.status === 'CANCELLED' && flowersAfter.body?.paidAmount === '0'
+        && !afterFlowers.body?.obligations?.some((line) => line.weddingCostId === flowers.body?.id || line.costId === flowers.body?.id));
     const hall = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
       budgetCategoryId: cat('hall'), title: 'Hall', totalAmount: '1800',
     }, owner.token);

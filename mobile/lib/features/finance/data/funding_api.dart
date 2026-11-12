@@ -286,12 +286,12 @@ class FundingApi {
     // and nothing is shown that will not last.
     if (OfflineWrites.isLocalId(loan.id)) {
       throw const ApiException(
-        'السلفة لسا ما وصلت حسابك. سجّل قسطها بعد ما ترجع النت وتنحفظ.',
+        'السلفة لسا ما وصلت حسابك. سدادها يتسجل بعد ما يرجع النت وتنحفظ.',
       );
     }
     if (queueKey != null && OfflineWrites.isLocalId(queueKey)) {
       throw const ApiException(
-        'هذا القسط لسا ما وصل حسابك. غيّره بعد ما ترجع النت وينحفظ.',
+        'هذا السداد لسا ما وصل حسابك. يتغيّر بعد ما يرجع النت وينحفظ.',
       );
     }
     return _writes.queued(

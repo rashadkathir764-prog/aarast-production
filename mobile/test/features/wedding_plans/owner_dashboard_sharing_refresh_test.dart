@@ -70,6 +70,18 @@ void main() {
               ),
             ),
           ),
+          GoRoute(
+            path: '/wedding-plans/:id/notifications',
+            builder: (context, _) => Scaffold(
+              body: Center(
+                child: FilledButton(
+                  key: const Key('close-notifications'),
+                  onPressed: context.pop,
+                  child: const Text('إغلاق التنبيهات'),
+                ),
+              ),
+            ),
+          ),
         ],
       );
       addTearDown(() {
@@ -113,6 +125,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(dashboard.loadCalls, 2);
+
+      // RA-MO-149: the bell's dot is the summary's unread count, and reading
+      // the notices is not a write that rereads the summary: back from the
+      // list the dot stayed red until the next pull to refresh.
+      final bell = find.byTooltip('التنبيهات');
+      await tester.ensureVisible(bell);
+      await tester.pumpAndSettle();
+      await tester.tap(bell);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('close-notifications')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('close-notifications')));
+      await tester.pumpAndSettle();
+
+      expect(dashboard.loadCalls, 3);
       expect(tester.takeException(), isNull);
     },
   );

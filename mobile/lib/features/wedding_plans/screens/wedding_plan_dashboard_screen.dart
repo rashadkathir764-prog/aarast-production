@@ -633,8 +633,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                       weddingPlanId: selectedPlanId,
                     ),
               bottomPadding: bottomPadding,
-              onNotifications: () =>
-                  context.push(AppRouter.planNotifications(selectedPlanId)),
+              onNotifications: () => _openNotifications(selectedPlanId),
               onProfile: () => context.push(AppRouter.more),
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(selectedPlanId)),
@@ -708,6 +707,15 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     } else {
       await context.read<FinanceProvider?>()?.loadMoney(weddingPlanId);
     }
+  }
+
+  /// The bell's dot is the summary's unread count, and reading the notices
+  /// is not a write that reads the summary again: the home rereads when the
+  /// person comes back from the list (RA-MO-149).
+  Future<void> _openNotifications(String weddingPlanId) async {
+    await context.push(AppRouter.planNotifications(weddingPlanId));
+    if (!mounted) return;
+    await _load();
   }
 
   Future<void> _openSharing(String weddingPlanId) async {

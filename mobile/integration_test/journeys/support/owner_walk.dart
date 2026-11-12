@@ -278,10 +278,14 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // B5: the mahr agreement stays on the home until it is complete.
     if (!walk.sees(p.mahr.homeCard)) await walk.scroll(pixels: 300);
     walk.expectSee(p.mahr.homeCard, why: 'كرت المهر في b02');
-    walk.expectSee(
-      '${p.mahr.homeLine} $mahrRestDay',
-      why: 'سلّم 2 من 3 مليون والباقي يوم العقد',
-    );
+    // RA-MO-130: one line where it fits; on a narrow phone each half takes
+    // its own line, without the «·».
+    final whole = '${p.mahr.homeLine} $mahrRestDay';
+    if (!walk.sees(whole)) {
+      for (final half in whole.split(' · ')) {
+        walk.expectSee(half, why: 'سلّم 2 من 3 مليون والباقي يوم العقد');
+      }
+    }
   });
   await walk.scroll(pixels: 600);
   await walk.step('b02_home_more', 'الرئيسية تحت: بعدها وفريق الخطة', () async {

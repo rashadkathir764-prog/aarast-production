@@ -87,4 +87,13 @@ abstract final class FinanceMoneyRules {
     if (paid >= total) return 'PAID';
     return 'PARTIALLY_PAID';
   }
+
+  /// The status once the balance moved. D107, as the server's
+  /// `statusAfterReversal`: an expense is its payment, so with nothing paid
+  /// it is cancelled, never left owed (RA-BE-130).
+  static String balanceStatus({
+    required bool expense,
+    required num total,
+    required num paid,
+  }) => expense && paid <= 0 ? 'CANCELLED' : costStatus(total, paid);
 }

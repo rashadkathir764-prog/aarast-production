@@ -21,6 +21,7 @@ import {
   paymentAmountViolation,
   positiveAmountViolation,
   reversalViolation,
+  statusAfterReversal,
   totalAmountViolation,
 } from '../src/modules/finance/domain/wedding-cost-aggregate';
 import {
@@ -66,6 +67,21 @@ test('WeddingCostAggregate: status derivation and payability', () => {
   assert.equal(payableViolation('PARTIALLY_PAID'), null);
   assert.deepEqual(payableViolation('CANCELLED'), conflict('Cancelled costs cannot receive payments'));
   assert.deepEqual(payableViolation('PAID'), conflict('Cost is already fully paid'));
+});
+
+// RA-BE-130 (D107): an expense is money paid in full the day it is recorded.
+// Taking its payment back used to leave it OPEN with its whole amount owed:
+// it entered «عليك من العرس» with no date, and recording it again counted it
+// twice. The phone itself advises the reversal to correct an expense.
+test('WeddingCostAggregate: taking an expense\'s payment back takes the expense back', () => {
+  assert.equal(statusAfterReversal('EXPENSE', d(50_000), d(0)), 'CANCELLED');
+  // An agreement owes again, as before.
+  assert.equal(statusAfterReversal('AGREEMENT', d(50_000), d(0)), 'OPEN');
+  assert.equal(statusAfterReversal('AGREEMENT', d(50_000), d(20_000)), 'PARTIALLY_PAID');
+  // An expense with something still standing against it is not cancelled
+  // from under that payment.
+  assert.equal(statusAfterReversal('EXPENSE', d(50_000), d(50_000)), 'PAID');
+  assert.equal(statusAfterReversal('EXPENSE', d(50_000), d(10_000)), 'PARTIALLY_PAID');
 });
 
 test('WeddingCostAggregate: one reversal per payment, and ledger-backed deletion/cancellation', () => {

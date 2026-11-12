@@ -232,8 +232,14 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ),
         voice: voice,
         unread: summary?.unreadNotificationsCount ?? 0,
-        onNotifications: () =>
-            context.push(AppRouter.planNotifications(widget.weddingPlanId)),
+        // As the owner's home: the bell's dot is the summary's count, so the
+        // summary is read again on the way back (RA-MO-149).
+        onNotifications: () async {
+          final summaries = context.read<DashboardSummaryProvider>();
+          await context.push(AppRouter.planNotifications(widget.weddingPlanId));
+          if (!mounted) return;
+          await summaries.loadDashboard(widget.weddingPlanId);
+        },
         onProfile: () => context.push(AppRouter.more),
       ),
       const SizedBox(height: AarastV3Space.x3),

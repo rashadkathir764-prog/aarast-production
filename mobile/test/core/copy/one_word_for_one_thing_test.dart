@@ -26,6 +26,27 @@ void main() {
     expect(offenders, isEmpty, reason: offenders.join('\n'));
   });
 
+  // The app offers no financing, and «أقساط» is banned in what it says: a
+  // loan is paid back by «سداد», an agreement by «دفعات». The ban was held
+  // screen by screen for the plural only, and the singular came in with two
+  // refusals written in this audit («سجّل قسطها», «هذا القسط»: RA-MO-169).
+  test('no instalment word, singular or plural, in any string', () {
+    final banned = RegExp('قسط|[أا]قساط');
+    final offenders = <String>[];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final lines = entity.readAsLinesSync();
+      for (var index = 0; index < lines.length; index++) {
+        final code = lines[index].trimLeft();
+        if (code.startsWith('//')) continue;
+        if (banned.hasMatch(code)) {
+          offenders.add('${entity.path}:${index + 1}: ${code.trim()}');
+        }
+      }
+    }
+    expect(offenders, isEmpty, reason: offenders.join('\n'));
+  });
+
   // «الخادم» is the app's word (D88's own sentence, the connection check).
   // «السيرفر» had stayed in the offline banner and in what a participant
   // read when the app could not be reached (RA-MO-139).

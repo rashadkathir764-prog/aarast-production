@@ -121,6 +121,40 @@ void main() {
     },
   );
 
+  // RA-BE-130 on the phone (D107): an expense is its payment. Taking the
+  // payment back used to leave the expense open with its whole amount owed.
+  test('taking an expense\'s payment back takes the expense back, and '
+      'nothing is owed for it', () async {
+    final provider = await _provider();
+    final owedBefore = moneyValue(provider.summary.costs.outstanding);
+    final expense = await provider.createCost(
+      planId: _planId,
+      budgetCategoryId: 'c-hall',
+      title: 'ورد',
+      totalAmount: '50000',
+      isExpense: true,
+    );
+    expect(expense, isNotNull, reason: provider.errorMessage);
+    await provider.loadCostDetails(expense!.id);
+    final payment = provider.paymentsForCost(expense.id).single;
+
+    final reversed = await provider.reversePayment(
+      payment: payment,
+      cost: provider.costById(expense.id)!,
+      reason: 'سجلته مرتين',
+    );
+
+    expect(reversed, isTrue, reason: provider.errorMessage);
+    expect(provider.costById(expense.id)!.status, 'CANCELLED');
+    expect(moneyValue(provider.summary.costs.outstanding), owedBefore);
+    expect(
+      provider.summary.obligations.where(
+        (line) => line.weddingCostId == expense.id,
+      ),
+      isEmpty,
+    );
+  });
+
   test('a raised total brings them back, never above what is left', () async {
     final provider = await _provider();
     await provider.recordPayment(cost: _hall(provider), amount: '1200000');

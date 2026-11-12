@@ -595,7 +595,11 @@ class FinanceLocalDataSource {
       ),
       'status': cost.isCancelled
           ? 'CANCELLED'
-          : FinanceMoneyRules.costStatus(total, paid),
+          : FinanceMoneyRules.balanceStatus(
+              expense: cost.isExpense,
+              total: total,
+              paid: paid,
+            ),
       'paymentsCount': (cost.paymentsCount ?? 0) + 1,
       'updatedAt': DateTime.now().toIso8601String(),
     }..remove('dueDate');

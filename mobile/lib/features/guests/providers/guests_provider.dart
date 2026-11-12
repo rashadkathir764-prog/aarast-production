@@ -400,7 +400,7 @@ String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
   }
   if (normalized.contains('valid Yemeni phone') ||
       normalized.contains('phone must')) {
-    return 'رقم الهاتف غير صحيح';
+    return 'رقم الجوال غير صحيح';
   }
   return normalized.isEmpty ? 'تعذر تنفيذ طلب الضيوف.' : normalized;
 }

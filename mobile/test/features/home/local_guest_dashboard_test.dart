@@ -185,11 +185,19 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
       }
 
+      // RA-MO-108: the sheet says why, and leads with a new account (the
+      // person has none yet); signing in is the second way.
       expect(
-        find.text('الحفظ والمشاركة يبغين حساب، عشان نحفظ خطتك ومين يشوف ايش.'),
+        find.text(
+          'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
+        ),
         findsOneWidget,
       );
-      expect(find.text('تسجيل الدخول'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('account-needed-register')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('account-needed-login')), findsOneWidget);
     },
   );
 
@@ -450,7 +458,7 @@ void main() {
     }
 
     expect(find.text('guests-opened'), findsOneWidget);
-    expect(find.text('تسجيل الدخول'), findsNothing);
+    expect(find.text('هذي تحتاج حساب'), findsNothing);
   });
 
   testWidgets('guest «+» opens the guest form without a login blocker', (
@@ -497,7 +505,7 @@ void main() {
     }
 
     expect(find.text('guest-add-opened'), findsOneWidget);
-    expect(find.text('تسجيل الدخول'), findsNothing);
+    expect(find.text('هذي تحتاج حساب'), findsNothing);
   });
 
   testWidgets('guest «+» quote request remains account-gated', (tester) async {
@@ -523,7 +531,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('هذي تحتاج حساب'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-needed-register')),
+      findsOneWidget,
+    );
   });
 
   // RA-MO-20 (D11): a plan kept on the phone counts its days from today in

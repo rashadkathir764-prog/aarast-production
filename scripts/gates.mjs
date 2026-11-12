@@ -83,6 +83,10 @@ const gates = [
     cwd: '.',
     cmd: 'node',
     args: () => ['--test', ...trackedFiles('deploy/**/*.test.mjs'), 'scripts/check-deploy-encoding.test.mjs', 'scripts/supply-chain-contract.test.mjs'],
+    // deploy/aws/direct-ip-contract.test.mjs renders its Caddy file in a
+    // container. With Docker stopped the gate failed on a pipe error that
+    // read like a broken contract (2026-11-12); it is said as a missing tool.
+    needs: ['docker'],
   },
   { area: 'root', name: 'admin staging build origin', cwd: '.', cmd: 'node', args: ['--test', 'admin-web/scripts/staging-build-origin.contract.mjs'] },
   { area: 'root', name: 'android release config (Gradle)', cwd: '.', cmd: 'node', args: ['scripts/test-android-release-config.mjs'], full: true, needs: ['java'] },

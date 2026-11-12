@@ -38,5 +38,5 @@ abstract final class AarastV3Copy {
 
   static const firstGuestTitle = 'مين بتعزم؟';
   static const firstGuestMessage =
-      'أضف الاسم أولًا، ثم أكمل الهاتف والرد عندما تتوفر لديك البيانات.';
+      'أضف الاسم أول، وبعدين رقم الجوال والرد لما يصيرون عندك.';
 }

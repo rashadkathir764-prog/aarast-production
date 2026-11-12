@@ -162,7 +162,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
   Future<bool> _requireAccountForQuote(BuildContext context) {
     return AuthActionGuard.requireAccount(
       context,
-      reason: 'طلب عرض السعر يبغى حساب، عشان نربطه بخطتك ونحفظ ردود المزودين.',
+      reason: 'طلب عرض السعر يحتاج حساب، عشان نربطه بخطتك ونحفظ ردود المزودين.',
     );
   }
 
@@ -289,14 +289,14 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     }
     return AuthActionGuard.requireAccount(
       context,
-      reason: 'الحفظ والمشاركة يبغين حساب، عشان نحفظ خطتك ومين يشوف ايش.',
+      reason: 'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
     );
   }
 
   Future<bool> _requireAccountForNotifications(BuildContext context) {
     return AuthActionGuard.requireAccount(
       context,
-      reason: 'التنبيهات تبغى حساب، عشان نربطها بخطتك.',
+      reason: 'التنبيهات تحتاج حساب، عشان نربطها بخطتك.',
     );
   }
 

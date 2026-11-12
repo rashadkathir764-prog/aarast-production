@@ -540,7 +540,9 @@ class _PlaceBudgetStep extends StatelessWidget {
           label: 'ميزانية عرسك',
           controller: budgetController,
           large: true,
-          hint: '7,000,000',
+          // Said as an example, as the budget screens say it: a bare figure
+          // read as a budget already written, under a greyed «التالي».
+          hint: 'مثلًا: 7,000,000',
           suffix: 'ر.ي',
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,

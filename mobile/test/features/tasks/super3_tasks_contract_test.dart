@@ -708,7 +708,13 @@ void main() {
     await tester.tap(invite);
     await tester.pumpAndSettle();
 
-    expect(find.text('هذه الخطوة تحتاج حساباً'), findsOneWidget);
+    // RA-MO-108: the sheet in the app's own words, a new account first.
+    expect(find.text('هذي تحتاج حساب'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-needed-register')),
+      findsOneWidget,
+    );
+    expect(find.text('عندي حساب، أدخل'), findsOneWidget);
     expect(sharingProvider.invites, isEmpty);
     expect(provider.tasks, isEmpty);
     expect(tester.takeException(), isNull);

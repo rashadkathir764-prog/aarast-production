@@ -117,7 +117,14 @@ final _primary = find.byKey(const ValueKey('reset-primary-action'));
 /// «رقمك»: the number, then «أرسل الرمز».
 Future<void> _sendCode(WidgetTester tester, {bool typePhone = true}) async {
   if (typePhone) {
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    // RA-MO-128: the account's number in sign-in's own phone field.
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('reset-phone')),
+        matching: find.byType(EditableText),
+      ),
+      '777123456',
+    );
   }
   await tester.tap(find.text('أرسل الرمز'));
   await tester.pumpAndSettle();

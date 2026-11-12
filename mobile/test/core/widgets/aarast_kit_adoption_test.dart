@@ -51,7 +51,7 @@ const _baseline = <String, int>{
   'lib/core/widgets/aarast_share_sheet.dart': 1,
   'lib/core/widgets/aarast_toast.dart': 2,
   'lib/core/widgets/aarast_ui.dart': 1,
-  'lib/features/auth/utils/auth_action_guard.dart': 4,
+  'lib/features/auth/utils/auth_action_guard.dart': 2,
   'lib/features/auth/widgets/auth_wedding_widgets.dart': 2,
   'lib/features/chat/screens/chat_screen.dart': 2,
   'lib/features/finance/screens/funding_sources_screen.dart': 2,

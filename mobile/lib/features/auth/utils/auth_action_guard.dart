@@ -7,8 +7,6 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_bottom_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 
 class AuthActionGuard {
@@ -61,72 +59,40 @@ class AuthActionGuard {
     if (await hasAccount(context)) return true;
     if (!context.mounted) return false;
 
-    await showAarastBottomSheet<void>(
+    // RA-MO-108: whoever meets this has no account yet (a plan kept on the
+    // phone), so the way that leads the sheet makes one with their number,
+    // as «احفظ خطتي برقم جوالي» does. «تسجيل الدخول» led it before: a new
+    // person took it, went through a code, and was told the number had no
+    // account. In the kit's sheet and the app's dialect, as every other.
+    await showJourneySheet<void>(
       context: context,
-      backgroundColor: AppTheme.surfaceRaised,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AarastV3Radius.feature),
-        ),
-      ),
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AarastV3Space.x5),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(
-                    LucideIcons.refreshCw,
-                    size: 42,
-                    color: AppTheme.brand,
-                  ),
-                  const SizedBox(height: AarastV3Space.x3),
-                  Text(
-                    'هذه الخطوة تحتاج حساباً',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: AarastV3Space.x2),
-                  Text(
-                    reason,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w700,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: AarastV3Space.x4),
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      context.go(_withResume(AppRouter.login, context));
-                    },
-                    icon: const Icon(LucideIcons.logIn),
-                    label: const Text('تسجيل الدخول'),
-                  ),
-                  const SizedBox(height: AarastV3Space.x2),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      context.go(_withResume(AppRouter.register, context));
-                    },
-                    icon: const Icon(LucideIcons.userPlus),
-                    label: const Text('إنشاء حساب'),
-                  ),
-                ],
-              ),
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'هذي تحتاج حساب',
+        subtitle: reason,
+        children: [
+          JourneyButton(
+            key: const ValueKey('account-needed-register'),
+            label: 'حساب جديد برقم جوالي',
+            icon: LucideIcons.smartphone,
+            expand: true,
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              context.go(_withResume(AppRouter.register, context));
+            },
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('account-needed-login'),
+              label: 'عندي حساب، أدخل',
+              onPressed: () {
+                Navigator.of(sheetContext).pop();
+                context.go(_withResume(AppRouter.login, context));
+              },
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
     return false;
   }

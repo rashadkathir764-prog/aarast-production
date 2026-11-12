@@ -444,7 +444,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Future<void> _inviteResponsibleAsParticipant() async {
     final allowed = await AuthActionGuard.requireAccount(
       context,
-      reason: 'دعوة مسؤول المهمة كمشارك في الخطة تحتاج حساباً وصلاحيات مشاركة.',
+      reason: 'دعوة المسؤول عن المهمة كمشارك في خطتك تحتاج حساب.',
     );
     if (!allowed || !mounted) return;
     context.push(AppRouter.addSharedMember(widget.weddingPlanId));

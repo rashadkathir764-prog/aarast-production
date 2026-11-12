@@ -74,7 +74,7 @@ class MahrFields extends StatelessWidget {
           label: 'المهر',
           controller: totalController,
           large: true,
-          hint: '3,000,000',
+          hint: 'مثلًا: 3,000,000',
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,

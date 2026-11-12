@@ -17,6 +17,8 @@ import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/register_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/reset_password_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/splash_screen.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
@@ -172,6 +174,47 @@ void main() {
     );
   });
 
+  // The city and budget step and the mahr step had no picture: the walk
+  // shoots them after it has typed in them.
+  Future<void> toBudget(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('door-plan')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('persona-groom')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'سامي');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ما حددنا الموعد بعد'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('n04b budget', (tester) async {
+    await _shot(
+      tester,
+      'n04b_budget',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () => toBudget(tester),
+    );
+  });
+
+  testWidgets('n04c mahr', (tester) async {
+    await _shot(
+      tester,
+      'n04c_mahr',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await toBudget(tester);
+        await tester.tap(find.text('صنعاء'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('أكمل بدون ميزانية'));
+        await tester.pumpAndSettle();
+      },
+    );
+  });
+
   List<SingleChildWidget> authProviders(AuthController auth) => [
     ChangeNotifierProvider<AuthController>.value(value: auth),
     ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: _Market()),
@@ -251,6 +294,36 @@ void main() {
           ),
         ),
       ],
+    );
+  });
+
+  // RA-MO-108: what a plan kept on the phone meets when an action needs an
+  // account.
+  testWidgets('n13 needs account', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await _shot(
+      tester,
+      'n13_needs_account',
+      Scaffold(
+        body: Builder(
+          builder: (context) => Center(
+            child: JourneyButton(
+              label: 'احفظ خطتي',
+              onPressed: () => AuthActionGuard.requireAccount(
+                context,
+                reason:
+                    'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
+              ),
+            ),
+          ),
+        ),
+      ),
+      providers: [Provider<AuthStorage>.value(value: AuthStorage(prefs))],
+      act: () async {
+        await tester.tap(find.text('احفظ خطتي'));
+        await tester.pumpAndSettle();
+      },
     );
   });
 

@@ -5,7 +5,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/phone/phone_number_utils.dart';
@@ -38,7 +37,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   static const _resendCooldown = 60;
   static const _codeLength = 6;
 
-  final _phoneFormKey = GlobalKey<FormState>();
+  /// The number's error shows once the code was asked for, as in sign-in.
+  bool _phoneAsked = false;
   final _passwordFormKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
@@ -134,27 +134,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         subtitle: 'نرسل لك رمز على واتساب، وبعده تختار كلمة مرور جديدة.',
       ),
       const SizedBox(height: AarastV3Space.x4),
-      Form(
-        key: _phoneFormKey,
-        child: AuthTextField(
-          controller: _phoneController,
-          label: 'رقم الهاتف',
-          hint: '777 123 456',
-          icon: LucideIcons.phone,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.done,
-          onFieldSubmitted: (_) => _requestCode(),
-          suffixIcon: ContactPhoneFieldSuffix(controller: _phoneController),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'رقم الهاتف مطلوب';
-            }
-            if (!isValidYemeniPhoneInput(value)) {
-              return 'رقم الهاتف غير صحيح';
-            }
-            return null;
-          },
-        ),
+      // RA-MO-128: the account's own number, in the field sign-in and
+      // sign-up ask for it with (the +967 prefix, one hint, one error). It
+      // was the contacts field: a picker of other people's numbers and
+      // another hint, on the way back into one's own account.
+      JourneyPhoneField(
+        key: const ValueKey('reset-phone'),
+        controller: _phoneController,
+        errorText: _phoneAsked
+            ? yemeniPhoneInputError(_phoneController.text)
+            : null,
+        onChanged: (_) {
+          if (_phoneAsked) setState(() {});
+        },
+        onSubmitted: (_) => _requestCode(),
       ),
       if (_errorMessage != null) ...[
         const SizedBox(height: AarastV3Space.x2),
@@ -391,7 +384,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _requestCode() async {
     if (_isSubmitting) return;
-    if (!_phoneFormKey.currentState!.validate()) return;
+    setState(() => _phoneAsked = true);
+    if (yemeniPhoneInputError(_phoneController.text) != null) return;
     await _sendResetCode(
       onSuccess: () {
         _codeController.clear();

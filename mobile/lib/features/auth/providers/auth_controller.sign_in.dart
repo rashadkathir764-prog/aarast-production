@@ -331,7 +331,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         source: 'AuthController.submit',
         attributes: {'errorType': error.runtimeType.toString()},
       );
-      _errorMessage = 'رقم الهاتف غير صحيح';
+      _errorMessage = 'رقم الجوال غير صحيح';
       return false;
     } on ApiException catch (error) {
       _errorCode = error.serverCode;
@@ -377,7 +377,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       'INVALID_CREDENTIALS' => _safeLoginFailureMessage,
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
-        'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف. استخدم «الدخول برمز تحقق» للمتابعة.',
+        'يحتاج حساب التطبيق إلى تأكيد رقم الجوال. استخدم «الدخول برمز تحقق» للمتابعة.',
       'ACCOUNT_ALREADY_EXISTS' =>
         'هذا الرقم عليه حساب من قبل. الدخول له برمز واتساب من «تسجيل الدخول».',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>

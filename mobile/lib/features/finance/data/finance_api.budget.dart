@@ -329,6 +329,14 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     }
   }
 
+  /// The budget total a plan kept on the phone holds now, as its money
+  /// screens read it; null when it was never set or changed there.
+  Future<String?> localBudgetTotal(String planId) async {
+    final total = (await _local.readBudget(planId))?['totalBudget'];
+    final text = total?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
   Future<MoneyBudgetReplaceResult> _localBudgetResult(String planId) async {
     final context = await _localPlanContextLoader?.call(planId);
     final summary = await _local.moneySummary(

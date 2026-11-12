@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart'
@@ -193,7 +195,12 @@ void main() {
     return LocalPlanMigrationService(
       guestStorage: guestStorage,
       weddingPlansApi: WeddingPlansApi(apiClient),
-      financeApi: FinanceApi(apiClient),
+      // On the same store, as the app wires it: the plan's money reads and
+      // writes there.
+      financeApi: FinanceApi(
+        apiClient,
+        offline: OfflineSyncService(database: database, apiClient: apiClient),
+      ),
       database: database,
     );
   }
@@ -269,6 +276,31 @@ void main() {
     final guest = guests.single as Map<String, dynamic>;
     expect(guest['name'], 'أحمد صالح');
     expect(guest['side'], 'GROOM');
+  });
+
+  // RA-MO-106: the budget is changed in the plan's money (kept there), not
+  // in the draft. The import sent the draft's, so a budget raised to 8
+  // million reached the account as the 1.5 million the plan began with, and
+  // the server dropped every item's allocation that no longer fitted.
+  test('the import carries the budget the plan\'s money holds now', () async {
+    final service = await buildService();
+    await service.database!.setMeta(
+      'money_budget:$guestPlanId',
+      jsonEncode({'totalBudget': '8000000', 'currency': 'YER'}),
+    );
+    final snapshot = await service.loadSnapshot();
+
+    final payload = service.buildImportPayload(snapshot!);
+
+    expect(payload['estimatedBudget'], '8000000');
+  });
+
+  test('a budget never changed in the money is the one the plan began '
+      'with', () async {
+    final service = await buildService();
+    final snapshot = await service.loadSnapshot();
+
+    expect(service.buildImportPayload(snapshot!)['estimatedBudget'], '1500000');
   });
 
   // The server refuses a field it does not declare (`forbidNonWhitelisted`),

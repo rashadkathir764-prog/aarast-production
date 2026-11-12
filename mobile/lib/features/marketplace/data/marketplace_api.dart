@@ -1425,7 +1425,7 @@ class ProviderDashboardApi {
     try {
       return normalizeYemeniPhone(phone);
     } on FormatException {
-      throw const ApiException('رقم الهاتف غير صحيح');
+      throw const ApiException('رقم الجوال غير صحيح');
     }
   }
 }

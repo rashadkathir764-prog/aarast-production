@@ -1056,7 +1056,7 @@ class ApiException implements Exception {
       'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
-        'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف.',
+        'يحتاج حساب التطبيق إلى تأكيد رقم الجوال.',
       'ACCOUNT_ALREADY_EXISTS' =>
         'هذا الرقم مسجل بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة المرور.',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>

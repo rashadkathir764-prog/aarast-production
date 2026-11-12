@@ -23,9 +23,14 @@ class LocalPlanSnapshot {
     this.migrationId,
     this.categories = const [],
     this.fundingSources = const [],
+    this.budgetTotal,
   });
 
   final GuestOnboardingDraft draft;
+
+  /// RA-MO-106: the budget as the plan's money holds it now. It is changed
+  /// there, not in the draft, so the draft's figure is only where it began.
+  final String? budgetTotal;
 
   /// RA-BE-65: the id the account knows this save by; the plan's phone id
   /// unless the person chose to keep it as a second plan.
@@ -147,6 +152,9 @@ class LocalPlanMigrationService {
       },
       categories: categories,
       fundingSources: await _rows(OfflineTables.cachedFundingSources, planId),
+      budgetTotal: planId == null
+          ? null
+          : await financeApi.localBudgetTotal(planId),
     );
   }
 
@@ -244,7 +252,9 @@ class LocalPlanMigrationService {
       if (draft.weddingDate != null)
         'weddingDate': planDayToJson(draft.weddingDate!),
       if (draft.priorities.isNotEmpty) 'priorities': draft.priorities,
-      if (_budget(draft) != null) 'estimatedBudget': _budget(draft),
+      // The budget the plan's money shows now: what was changed there, else
+      // what the plan began with (the same order the phone reads it in).
+      'estimatedBudget': ?(_amount(snapshot.budgetTotal) ?? _budget(draft)),
       'currency': draft.currency ?? 'YER',
       // The items as they are in the plan's money now (added, renamed or
       // removed there), not the list the plan started with.

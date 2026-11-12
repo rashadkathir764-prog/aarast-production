@@ -204,6 +204,73 @@ test('the day limit names ten codes and the hours left', async () => {
   );
 });
 
+// D112 (Q-5), my choice where the owner left it to me: a number's 5 an hour
+// and 10 a day were counted for whoever asked, with no sign-in. One stranger
+// asking ten times closed a victim out of their own account for a day. The
+// allowance is now per number per address, under a higher ceiling for the
+// number itself (the WhatsApp sender still has to be kept from a ban).
+test('Q-5: a stranger using up a number does not close its owner out', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
+    },
+    async () => {
+      const harness = createHarness();
+      const victim = '+967777123456';
+      for (let sent = 0; sent < 10; sent += 1) {
+        await harness.service.consume(victim, { ip: '203.0.113.10' });
+        harness.advance(61 * 60_000);
+      }
+      // The stranger's own allowance for this number is spent, by its limit.
+      const said = refusal(
+        await harness.service.consume(victim, { ip: '203.0.113.10' }).then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      );
+      assert.equal(said.code, 'OTP_LIMIT_PHONE_DAY');
+      // The owner, from their own address, still gets a code.
+      await assert.doesNotReject(() =>
+        harness.service.consume(victim, { ip: '198.51.100.7' }),
+      );
+    },
+  );
+});
+
+test('Q-5: the number keeps a ceiling across every address', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
+    },
+    async () => {
+      const harness = createHarness();
+      const victim = '+967777123456';
+      // Fifteen codes in half an hour, each from another address: none of
+      // them near its own allowance.
+      for (let sent = 0; sent < 15; sent += 1) {
+        await harness.service.consume(victim, { ip: `203.0.113.${sent + 1}` });
+        harness.advance(2 * 60_000);
+      }
+      const said = refusal(
+        await harness.service.consume(victim, { ip: '198.51.100.7' }).then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      );
+      assert.equal(said.code, 'OTP_LIMIT_PHONE_CEILING');
+      assert.equal(said.retryAfterSeconds, 30 * 60);
+      assert.equal(
+        said.message,
+        'طلبات رموز كثيرة على هذا الرقم. يتاح رمز جديد بعد 30 دقيقة.',
+      );
+    },
+  );
+});
+
 test('OTP quota hashes every phone and IP subject before persistence', async () => {
   await withEnvironment(
     {
@@ -217,7 +284,9 @@ test('OTP quota hashes every phone and IP subject before persistence', async () 
       const keys = [...harness.rows.keys()].join('|');
       assert.equal(keys.includes('967777123456'), false);
       assert.equal(keys.includes('203.0.113.10'), false);
-      assert.equal(harness.rows.size, 6);
+      // D112 (Q-5): two more rows, the number's allowance at this address
+      // (an hour's and a day's) beside the number's own ceilings.
+      assert.equal(harness.rows.size, 8);
     },
   );
 });

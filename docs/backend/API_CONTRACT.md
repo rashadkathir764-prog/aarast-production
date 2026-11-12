@@ -83,9 +83,13 @@ below.
 D112 (Q-14): a code-quota `429` says which limit was reached and how long is
 left: `{ statusCode: 429, code, message, retryAfterSeconds }`. `code` is one
 of `OTP_LIMIT_COOLDOWN` (a minute between two codes), `OTP_LIMIT_PHONE_HOUR`
-(5 an hour for the number), `OTP_LIMIT_PHONE_DAY` (10 a day for the number),
-`OTP_LIMIT_NETWORK` (the sender's address) and `OTP_LIMIT_SERVICE_DAY` (the
-whole app's day). `retryAfterSeconds` runs to the turn of that limit's window;
+(5 an hour for the number from the asking address), `OTP_LIMIT_PHONE_DAY` (10
+a day for the number from the asking address), `OTP_LIMIT_PHONE_CEILING` (the
+number across every address: 15 an hour, 30 a day), `OTP_LIMIT_NETWORK` (the
+sender's address) and `OTP_LIMIT_SERVICE_DAY` (the whole app's day). D112
+(Q-5): the number's allowance is counted per address, so codes a stranger
+asks for someone's number do not use up what its owner may ask from their
+own address; the ceiling keeps the WhatsApp sender safe. `retryAfterSeconds` runs to the turn of that limit's window;
 `message` is the Arabic sentence the phone shows as is, with the wait rounded
 up («هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.»). The refused
 request is not counted.

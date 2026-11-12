@@ -140,7 +140,33 @@ export class OtpDispatchQuotaService {
     }
   }
 
+  /**
+   * D112 (Q-5), chosen where the owner left it to me: a number's allowance
+   * (5 an hour, 10 a day) is counted per address that asks, so a stranger
+   * asking for someone's number spends the stranger's allowance and not its
+   * owner's; it used to close the owner out for a day. The number itself
+   * keeps a higher ceiling across every address, because each code is a
+   * WhatsApp message from one sender that must not be banned, and a code
+   * nobody asked for is a nuisance to the number's owner.
+   *
+   * This raises the cost of closing a number from one address to three; it
+   * does not end it. A separate allowance for whoever already holds a
+   * session or proved their password would (recorded as a recommendation).
+   */
+  static readonly phoneHourlyLimit = 5;
+  static readonly phoneDailyLimit = 10;
+  static readonly phoneHourlyCeiling = 15;
+  static readonly phoneDailyCeiling = 30;
+
   private policies(phone: string, rawIp?: string | null): OtpQuotaPolicy[] {
+    const ip = otpIpSubject(rawIp);
+    // No address known (a caller behind nothing that reports one): one
+    // shared allowance, the number's own as before.
+    const atAddress = `${phone}|${ip ?? 'no-address'}`;
+    const ceiling = otpLimitRefusal(
+      'OTP_LIMIT_PHONE_CEILING',
+      'طلبات رموز كثيرة على هذا الرقم.',
+    );
     const policies: OtpQuotaPolicy[] = [
       {
         scope: 'PHONE_COOLDOWN',
@@ -150,24 +176,38 @@ export class OtpDispatchQuotaService {
         refusal: otpLimitRefusal('OTP_LIMIT_COOLDOWN', null),
       },
       {
-        scope: 'PHONE_HOUR',
-        subject: phone,
-        limit: 5,
+        scope: 'PHONE_IP_HOUR',
+        subject: atAddress,
+        limit: OtpDispatchQuotaService.phoneHourlyLimit,
         windowMs: 60 * 60_000,
         refusal: otpLimitRefusal(
           'OTP_LIMIT_PHONE_HOUR',
-          `هذا الرقم طلب ${codesWords(5)} في ساعة.`,
+          `هذا الرقم طلب ${codesWords(OtpDispatchQuotaService.phoneHourlyLimit)} في ساعة.`,
         ),
+      },
+      {
+        scope: 'PHONE_IP_DAY',
+        subject: atAddress,
+        limit: OtpDispatchQuotaService.phoneDailyLimit,
+        windowMs: 24 * 60 * 60_000,
+        refusal: otpLimitRefusal(
+          'OTP_LIMIT_PHONE_DAY',
+          `هذا الرقم طلب ${codesWords(OtpDispatchQuotaService.phoneDailyLimit)} اليوم.`,
+        ),
+      },
+      {
+        scope: 'PHONE_HOUR',
+        subject: phone,
+        limit: OtpDispatchQuotaService.phoneHourlyCeiling,
+        windowMs: 60 * 60_000,
+        refusal: ceiling,
       },
       {
         scope: 'PHONE_DAY',
         subject: phone,
-        limit: 10,
+        limit: OtpDispatchQuotaService.phoneDailyCeiling,
         windowMs: 24 * 60 * 60_000,
-        refusal: otpLimitRefusal(
-          'OTP_LIMIT_PHONE_DAY',
-          `هذا الرقم طلب ${codesWords(10)} اليوم.`,
-        ),
+        refusal: ceiling,
       },
       {
         scope: GLOBAL_SCOPE,
@@ -182,7 +222,6 @@ export class OtpDispatchQuotaService {
         ),
       },
     ];
-    const ip = otpIpSubject(rawIp);
     if (ip) {
       const network = otpLimitRefusal(
         'OTP_LIMIT_NETWORK',

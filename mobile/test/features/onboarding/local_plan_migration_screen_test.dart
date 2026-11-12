@@ -87,6 +87,9 @@ void main() {
       expect(harness.plans.importCalls, 0);
       expect(harness.finished, [null]);
       expect(await harness.storage.loadGuestPlan(), isNotNull);
+      // D112 (Q-13): the answer is told, so it can be remembered and the
+      // question not asked again at every open.
+      expect(harness.keptForOwner, 1);
     },
   );
 
@@ -505,6 +508,9 @@ class _Harness {
   final JsonLocalDatabase? database;
   final List<String?> finished = [];
 
+  /// How many times the screen told that the plan stays for its owner.
+  int keptForOwner = 0;
+
   /// How many times the plan was opened on the phone instead (D77).
   int openedLocally = 0;
 
@@ -575,6 +581,7 @@ class _Harness {
                   ),
             migrationService: service,
             onFinished: harness.finished.add,
+            onKeptForOwner: () => harness.keptForOwner += 1,
             startLocally: startLocally,
             onOpenedLocally: () => harness.openedLocally += 1,
             // The entry screen's own phone home (D77).

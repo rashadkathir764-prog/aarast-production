@@ -54,6 +54,55 @@ void main() {
       expect(vault.values, isEmpty);
     });
 
+    // D112 (Q-13), the owner's word: the other side's plan kept on a phone
+    // is asked about once; the answer is remembered for that account and
+    // that plan, and a quiet strip stands in for the question.
+    test('remembers that the phone plan is kept for its owner, for this '
+        'account and this plan only', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      var told = 0;
+      storage.keptForOwner.addListener(() => told += 1);
+
+      expect(storage.keptForOwnerBy('user-1'), isNull);
+      await storage.keepForOwner(
+        accountUserId: 'user-1',
+        guestPlanId: 'local-1',
+        ownerPersona: GuestPersona.bride,
+      );
+
+      expect(storage.keptForOwnerBy('user-1')?.guestPlanId, 'local-1');
+      expect(
+        storage.keptForOwnerBy('user-1')?.ownerPersona,
+        GuestPersona.bride,
+      );
+      expect(storage.keptForOwnerBy('user-2'), isNull);
+      expect(told, 1);
+      // A new storage on the same phone (the app opened again) still knows.
+      expect(
+        GuestOnboardingStorage(preferences).keptForOwnerBy('user-1'),
+        isNotNull,
+      );
+
+      await storage.askAgainAboutKeptPlan();
+      expect(storage.keptForOwnerBy('user-1'), isNull);
+      expect(told, 2);
+    });
+
+    test('a plan that leaves the phone takes that answer with it', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      await storage.keepForOwner(
+        accountUserId: 'user-1',
+        guestPlanId: 'local-1',
+        ownerPersona: GuestPersona.groom,
+      );
+
+      await storage.clearDraft();
+
+      expect(storage.keptForOwnerBy('user-1'), isNull);
+    });
+
     test('clears saved draft', () async {
       final preferences = await SharedPreferences.getInstance();
       final storage = GuestOnboardingStorage(preferences);
@@ -125,10 +174,7 @@ void main() {
       expect(progress?.step, 'placeBudget');
       expect(progress?.draft, answers);
       // Names and amounts stay out of plain preferences.
-      expect(
-        preferences.getString(GuestOnboardingStorage.progressKey),
-        isNull,
-      );
+      expect(preferences.getString(GuestOnboardingStorage.progressKey), isNull);
 
       await storage.clearProgress();
       expect(await storage.loadProgress(), isNull);

@@ -119,8 +119,62 @@ class GuestOnboardingStorage {
     await _sensitiveValueVault?.delete(draftKey);
     await _preferences.remove(draftKey);
     await _preferences.remove(importKey);
+    await _preferences.remove(keptForOwnerKey);
     await clearProgress();
     _announce(null);
+    keptForOwner.value += 1;
+  }
+
+  /// D112 (Q-13): the account on this phone answered that the plan kept on
+  /// it is the other side's («خلّها على الجوال لصاحبتها»). The question was
+  /// asked again at every open because nothing remembered the answer; it is
+  /// remembered here, for that account and that plan, until the plan leaves
+  /// the phone or the person asks to choose again.
+  static const keptForOwnerKey = 'aarast.local_plan_kept_for_owner.v1';
+
+  /// Changes whenever that answer is given, taken back, or the plan goes.
+  final ValueNotifier<int> keptForOwner = ValueNotifier(0);
+
+  Future<void> keepForOwner({
+    required String accountUserId,
+    required String guestPlanId,
+    required GuestPersona ownerPersona,
+  }) async {
+    await _preferences.setString(
+      keptForOwnerKey,
+      jsonEncode({
+        'accountUserId': accountUserId,
+        'guestPlanId': guestPlanId,
+        'ownerPersona': ownerPersona.name,
+      }),
+    );
+    keptForOwner.value += 1;
+  }
+
+  /// The plan [accountUserId] left on this phone for its owner, or null.
+  ({String guestPlanId, GuestPersona ownerPersona})? keptForOwnerBy(
+    String? accountUserId,
+  ) {
+    final raw = _preferences.getString(keptForOwnerKey);
+    if (raw == null || accountUserId == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map || decoded['accountUserId'] != accountUserId) {
+        return null;
+      }
+      final guestPlanId = decoded['guestPlanId'];
+      final persona = GuestPersona.values.asNameMap()[decoded['ownerPersona']];
+      if (guestPlanId is! String || persona == null) return null;
+      return (guestPlanId: guestPlanId, ownerPersona: persona);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// The person wants the question again (the strip's «غيّر»).
+  Future<void> askAgainAboutKeptPlan() async {
+    await _preferences.remove(keptForOwnerKey);
+    keptForOwner.value += 1;
   }
 
   /// RA-BE-65: which save into the account the plan on this phone is on. The

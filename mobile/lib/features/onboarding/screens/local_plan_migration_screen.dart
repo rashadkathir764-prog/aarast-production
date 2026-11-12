@@ -34,7 +34,13 @@ class LocalPlanMigrationScreen extends StatefulWidget {
     this.localPlan,
     this.startLocally = false,
     this.onOpenedLocally,
+    this.onKeptForOwner,
   });
+
+  /// D112 (Q-13): the person answered that the plan is the other side's and
+  /// stays on the phone for them. Told before [onFinished], so the answer
+  /// can be remembered and the question not asked at every open.
+  final VoidCallback? onKeptForOwner;
 
   final LocalPlanSnapshot snapshot;
   final LocalPlanMigrationService migrationService;
@@ -268,32 +274,31 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       _phase = _Phase.choosing;
       _sheetOpen = true;
     });
-    final outcome =
-        await showJourneySheet<({String? planId, bool savedBefore})>(
-          context: context,
-          profile: _owner,
-          isDismissible: false,
-          enableDrag: false,
-          builder: (_) => _LocalPlanChoiceSheet(
-            local: _localTitle.isEmpty
-                ? _counts(
-                    widget.snapshot.itemNames.length,
-                    widget.snapshot.tasks.length,
-                  )
-                : _localTitle,
-            account: account.title.isEmpty
-                ? _counts(account.items, account.tasks)
-                : account.title,
-            otherSide: _otherSide,
-            accountHasPlan:
-                account.items > 0 ||
-                account.tasks > 0 ||
-                account.title != _noAccountPlan,
-            save: _save,
-            confirmDrop: _confirmDrop,
-            drop: _drop,
-          ),
-        );
+    final outcome = await showJourneySheet<_ChoiceOutcome>(
+      context: context,
+      profile: _owner,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => _LocalPlanChoiceSheet(
+        local: _localTitle.isEmpty
+            ? _counts(
+                widget.snapshot.itemNames.length,
+                widget.snapshot.tasks.length,
+              )
+            : _localTitle,
+        account: account.title.isEmpty
+            ? _counts(account.items, account.tasks)
+            : account.title,
+        otherSide: _otherSide,
+        accountHasPlan:
+            account.items > 0 ||
+            account.tasks > 0 ||
+            account.title != _noAccountPlan,
+        save: _save,
+        confirmDrop: _confirmDrop,
+        drop: _drop,
+      ),
+    );
     if (!mounted) return;
     if (outcome == null) {
       setState(() => _sheetOpen = false);
@@ -304,6 +309,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       _showFailure(_SaveFailure(_savedBeforeMessage ?? '', savedBefore: true));
       return;
     }
+    if (outcome.keptForOwner) widget.onKeptForOwner?.call();
     widget.onFinished(outcome.planId);
   }
 
@@ -624,6 +630,15 @@ String _counts(int items, int tasks) {
 
 enum _Choice { secondPlan, keepForOwner, drop }
 
+/// What the choice sheet closed with. [keptForOwner]: the plan stays on the
+/// phone for the other side, and the question is not asked again (D112,
+/// Q-13).
+typedef _ChoiceOutcome = ({
+  String? planId,
+  bool savedBefore,
+  bool keptForOwner,
+});
+
 /// The account side of the sheet when the account holds no plan yet.
 const _noAccountPlan = 'ما فيه خطة بعد';
 
@@ -672,12 +687,20 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       });
       await widget.drop();
       if (!mounted) return;
-      Navigator.of(context).pop((planId: null, savedBefore: false));
+      Navigator.of(context).pop<_ChoiceOutcome>((
+        planId: null,
+        savedBefore: false,
+        keptForOwner: false,
+      ));
       return;
     }
     if (_choice == null) return;
     if (_choice == _Choice.keepForOwner) {
-      Navigator.of(context).pop((planId: null, savedBefore: false));
+      Navigator.of(context).pop<_ChoiceOutcome>((
+        planId: null,
+        savedBefore: false,
+        keptForOwner: true,
+      ));
       return;
     }
     setState(() {
@@ -687,12 +710,20 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
     try {
       final planId = await widget.save();
       if (!mounted) return;
-      Navigator.of(context).pop((planId: planId, savedBefore: false));
+      Navigator.of(context).pop<_ChoiceOutcome>((
+        planId: planId,
+        savedBefore: false,
+        keptForOwner: false,
+      ));
     } on _SaveFailure catch (failure) {
       if (!mounted) return;
       // RA-BE-65: the choice it needs is the page's, not this sheet's.
       if (failure.savedBefore) {
-        Navigator.of(context).pop((planId: null, savedBefore: true));
+        Navigator.of(context).pop<_ChoiceOutcome>((
+          planId: null,
+          savedBefore: true,
+          keptForOwner: false,
+        ));
         return;
       }
       setState(() {

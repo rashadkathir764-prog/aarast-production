@@ -50,6 +50,27 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
     _migrationService ??= _buildMigrationService();
     _migrationSnapshot ??=
         _migrationService?.loadSnapshot() ?? Future.value(null);
+    _keptForOwner ??= context.read<GuestOnboardingStorage>().keptForOwner
+      ..addListener(_onKeptForOwnerChanged);
+  }
+
+  ValueNotifier<int>? _keptForOwner;
+
+  /// D112 (Q-13): the answer «خلّها على الجوال لصاحبتها» was given, or taken
+  /// back from the shell's strip. The phone's plan is read again, so taking
+  /// it back brings the question up without waiting for the next open.
+  void _onKeptForOwnerChanged() {
+    if (!mounted) return;
+    setState(() {
+      _migrationSnapshot =
+          _migrationService?.loadSnapshot() ?? Future.value(null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _keptForOwner?.removeListener(_onKeptForOwnerChanged);
+    super.dispose();
   }
 
   @override
@@ -75,13 +96,38 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
           // this phone stays there untouched and is offered on the next
           // plain open (D75).
           final toProvider = resume?.startsWith('/provider/') == true;
-          final pending = toProvider ? null : snapshot.data;
+          final found = toProvider ? null : snapshot.data;
+          // D112 (Q-13): a plan this account already left on the phone for
+          // its owner is not asked about again at every open; the shell's
+          // quiet strip stands in for the question until they choose again.
+          final storage = context.read<GuestOnboardingStorage>();
+          final keptId = storage.keptForOwnerBy(auth.user?.id)?.guestPlanId;
+          final pending =
+              found != null &&
+                  keptId != null &&
+                  found.draft.guestPlanId == keptId
+              ? null
+              : found;
           final service = _migrationService;
           if (pending != null && service != null) {
             final phoneId = pending.draft.guestPlanId ?? '';
+            final accountUserId = auth.user?.id;
+            final ownerPersona = pending.draft.persona;
             return LocalPlanMigrationScreen(
               snapshot: pending,
               migrationService: service,
+              onKeptForOwner:
+                  accountUserId == null ||
+                      phoneId.isEmpty ||
+                      ownerPersona == null
+                  ? null
+                  : () => unawaited(
+                      storage.keepForOwner(
+                        accountUserId: accountUserId,
+                        guestPlanId: phoneId,
+                        ownerPersona: ownerPersona,
+                      ),
+                    ),
               autoSave: auth.accountJustCreated,
               // D77: a failure never locks the app; the plan opens on the
               // phone, and this session keeps opening it there.

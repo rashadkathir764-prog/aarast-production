@@ -16,6 +16,7 @@ import '../tasks/tasks_api.dart' show TaskTimelineScreen;
 import '../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlanDashboardScreen;
 import 'screens/participant_plan_shell.dart';
+import 'widgets/phone_plan_kept_strip.dart';
 import 'widgets/plan_quick_add.dart';
 import 'widgets/plan_quick_add_sheet.dart';
 import 'widgets/plan_shell_chrome.dart';
@@ -158,8 +159,12 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
           key: ValueKey('owner-shell-chrome-${widget.contextKey}'),
           activeIndex: _index,
           onTabSelected: _onItemTapped,
-          // The same offline line as the plan-route shell (c04, w29).
-          topStatus: const OfflineStatusBanner(),
+          // The same offline line as the plan-route shell (c04, w29), and
+          // the other side's plan kept on this phone (D112, Q-13).
+          topStatus: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [OfflineStatusBanner(), PhonePlanKeptStrip()],
+          ),
           onQuickAdd: showQuickAdd ? () => _quickAdd().open(context) : null,
           onQuickAddLongPress: showQuickAdd
               ? () => _quickAdd().repeatLast(context)

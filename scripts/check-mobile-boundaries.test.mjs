@@ -1739,7 +1739,10 @@ const r19ProviderPortalApi = Object.freeze({
 // +2 (RA-MO-57, 2026-11-09): the task page names the member a task is given
 // to, as the list does: both read the plan's members from the sharing owner
 // API through one helper (task_people.dart).
-const r19LegalRecordCount = 266;
+// +2 (D112 Q-13, 2026-11-12): the shell's quiet strip for the other side's
+// plan kept on the phone reads who is signed in (the auth owner API) and
+// what was kept (the onboarding owner API); no new export on either.
+const r19LegalRecordCount = 268;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

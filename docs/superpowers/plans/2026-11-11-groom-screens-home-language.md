@@ -29,7 +29,7 @@
 - A test is changed only when it pins the old layout, never to hide a broken rule; the commit says which and why.
 - Checks before every commit: `node scripts/gates.mjs --quick --only mobile` green on Windows (all 2414 tests passed there on 2026-11-12, golden images included). On the Linux box 54 tests fail for the box, not the code (`docs/qa/mobile-test-baseline-linux.txt`); a session there may show no failure outside that list, may not add to it, says in `STATUS.md` that it leaned on it, and cannot redraw golden images: the session that merges runs the whole suite on Windows, looks at every redrawn image, and only then pushes `main` (`AGENTS.md`, Git).
 - One screen, one commit, with its screen card in the message. Work lands on `main`; a cloud session works on its one branch, and the next session on the owner's machine merges it before any new work (`AGENTS.md`, Git).
-- One batch per session, and a session stops after each screen for the owner's word. This keeps the token use small.
+- **Superseded in part by D111 (2026-11-12), which governs where the two differ:** work does not stop after each screen for the owner's word; the professional decision is taken and the owner is shown each batch (before and after, with the reasons). The home's pieces do not move into the kit up front (Task 0): a piece is extracted when a second screen needs it, after its present state is recorded. Every screen is judged on function, experience and looks, and this plan's inventory is carried in `docs/project/DESIGN_STATUS.md`, which is the record of progress.
 
 ## Review Focus
 

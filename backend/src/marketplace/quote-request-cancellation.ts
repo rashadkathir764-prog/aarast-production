@@ -109,12 +109,13 @@ export function cancelQuoteRequestInTransaction(
       ) {
         throw new NotFoundException("Quote request not found");
       }
-      if (seed.userId !== currentUser.id) {
-        visibility = {
-          budget: permissions.canViewMoney(context),
-          contact: permissions.canManageProviders(context),
-        };
-      }
+      // D112 (Q-7): the answer hides the plan's money from who does not read
+      // it, the requester included; providers are managed here (checked
+      // above), so the contact shows.
+      visibility = {
+        budget: permissions.canViewMoney(context),
+        contact: true,
+      };
     } else if (
       access === "PLAN_OR_REQUESTER" &&
       seed.userId !== currentUser.id

@@ -50,11 +50,42 @@ export function quoteVisibilityForPlan(
   currentUserId: string,
   quote: Pick<QuoteRequest, "userId">,
 ): QuoteVisibility {
-  if (quote.userId === currentUserId) return FULL_QUOTE_VISIBILITY;
+  // D112 (Q-7): the plan's money is read by who reads the plan's money, in
+  // the request as in its chat (D52). A helper who asked for the offer and
+  // does not read the money sees the request and its state, not the budget
+  // or the provider's price; the contact they typed stays theirs.
   return {
     budget: permissions.canViewMoney(context),
-    contact: permissions.canManageProviders(context),
+    contact:
+      quote.userId === currentUserId || permissions.canManageProviders(context),
   };
+}
+
+/**
+ * D112 (Q-7): the plans whose money the user does not read, for the user's
+ * own requests («طلباتي»): a request of such a plan is shown without its
+ * budget and the provider's price. A plan-less request and a request of a
+ * plan the user owns are the user's own money.
+ */
+export async function findMoneyHiddenPlanIds(
+  client: Prisma.TransactionClient,
+  ports: QuoteScopePorts,
+  userId: string,
+): Promise<ReadonlySet<string>> {
+  return new Set(
+    (await ports.permissions.listMemberships(client, userId))
+      .filter((membership) => !membership.canViewMoney)
+      .map((membership) => membership.weddingPlanId),
+  );
+}
+
+export function myQuoteVisibility(
+  quote: Pick<QuoteRequest, "weddingPlanId">,
+  moneyHiddenPlanIds: ReadonlySet<string>,
+): QuoteVisibility {
+  return quote.weddingPlanId && moneyHiddenPlanIds.has(quote.weddingPlanId)
+    ? { budget: false, contact: true }
+    : FULL_QUOTE_VISIBILITY;
 }
 
 /** The quote requests the contributor created in the plan, by collaboration's contribution history. */

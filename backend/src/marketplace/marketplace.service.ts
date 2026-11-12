@@ -86,6 +86,8 @@ import {
 import {
   assertProviderSectionLive,
   buildMyQuoteAccessWhere,
+  findMoneyHiddenPlanIds,
+  myQuoteVisibility,
   findAccessiblePlanQuoteRequest,
   findContributorProviderQuoteIds,
   type QuoteScopePorts,
@@ -683,28 +685,39 @@ export class MarketplaceService {
   }
 
   async findMyQuoteRequests(currentUser: AuthenticatedUser) {
-    const quotes = await runSerializableTransaction(this.prisma, async (tx) =>
-      this.relations.attachQuoteRelations(
+    const { quotes, moneyHidden } = await runSerializableTransaction(this.prisma, async (tx) => ({
+      quotes: await this.relations.attachQuoteRelations(
         tx,
         await core.listMyQuoteRequests(tx, await buildMyQuoteAccessWhere(tx, this.quoteScopePorts, currentUser.id)),
       ),
-    );
+      // D112 (Q-7): read in the same snapshot as the requests.
+      moneyHidden: await findMoneyHiddenPlanIds(tx, this.quoteScopePorts, currentUser.id),
+    }));
 
-    return quotes.map((quote) => MarketplacePresenter.toQuoteResponse(quote));
+    return quotes.map((quote) =>
+      MarketplacePresenter.toQuoteResponse(quote, myQuoteVisibility(quote, moneyHidden)),
+    );
   }
 
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
+    const found = await runSerializableTransaction(this.prisma, async (tx) => {
       const row = await core.findMyQuoteRequest(tx, await buildMyQuoteAccessWhere(tx, this.quoteScopePorts, currentUser.id, id));
-      return row ? this.relations.attachQuoteRelation(tx, row) : null;
+      if (!row) return null;
+      return {
+        quote: await this.relations.attachQuoteRelation(tx, row),
+        moneyHidden: await findMoneyHiddenPlanIds(tx, this.quoteScopePorts, currentUser.id),
+      };
     });
 
-    if (!quote) {
+    if (!found) {
       throw new NotFoundException("Quote request not found");
     }
 
-    return MarketplacePresenter.toQuoteResponse(quote);
+    return MarketplacePresenter.toQuoteResponse(
+      found.quote,
+      myQuoteVisibility(found.quote, found.moneyHidden),
+    );
   }
 
   async cancelMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
@@ -720,7 +733,7 @@ export class MarketplaceService {
       "REQUESTER_ONLY",
       this.contributionHistory,
     );
-    return MarketplacePresenter.toQuoteResponse(result.quote);
+    return MarketplacePresenter.toQuoteResponse(result.quote, result.visibility);
   }
 
   async createReview(

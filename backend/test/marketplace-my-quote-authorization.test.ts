@@ -24,6 +24,11 @@ import {
 import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
+import {
+  findMoneyHiddenPlanIds,
+  myQuoteVisibility,
+  quoteVisibilityForPlan,
+} from "../src/marketplace/marketplace-contributor-quote-scope";
 
 const contributorAId = "11111111-1111-4111-8111-111111111111";
 const contributorBId = "22222222-2222-4222-8222-222222222222";
@@ -521,4 +526,65 @@ test("plan-or-requester cancellation keeps the plan owner authorized for a contr
   assert.equal(result.status, QuoteRequestStatus.CANCELLED);
   assert.equal(harness.planAuthorizationChecks(), 1);
   assert.equal(harness.quoteWrites(), 1);
+});
+
+// D112 (Q-7): the plan's money is read by who reads the plan's money, in a
+// request as in its chat (D52). The requester read the budget and the
+// provider's price of their own request whatever their money permission
+// (`/me/quote-requests` and the plan's list both), while the same person's
+// chat about it hid the amount.
+const moneyRule = (member: { canViewMoney: boolean; canManageProviders: boolean } | null) => ({
+  context: { isOwner: member === null, sharedMember: member } as any,
+  permissions: {
+    canViewMoney: (context: any) => context.isOwner || context.sharedMember.canViewMoney,
+    canManageProviders: (context: any) => context.isOwner || context.sharedMember.canManageProviders,
+  } as any,
+});
+
+test("Q-7: a helper who asked for an offer and does not read the money sees no budget or price", () => {
+  const helper = moneyRule({ canViewMoney: false, canManageProviders: true });
+  assert.deepEqual(
+    quoteVisibilityForPlan(helper.context, helper.permissions, contributorAId, { userId: contributorAId }),
+    { budget: false, contact: true },
+  );
+  // Another helper's request: the same money rule; the contact follows the
+  // providers permission, as before.
+  assert.deepEqual(
+    quoteVisibilityForPlan(helper.context, helper.permissions, contributorAId, { userId: contributorBId }),
+    { budget: false, contact: true },
+  );
+  const reader = moneyRule({ canViewMoney: true, canManageProviders: true });
+  assert.deepEqual(
+    quoteVisibilityForPlan(reader.context, reader.permissions, contributorAId, { userId: contributorAId }),
+    { budget: true, contact: true },
+  );
+  const owner = moneyRule(null);
+  assert.deepEqual(
+    quoteVisibilityForPlan(owner.context, owner.permissions, ownerId, { userId: contributorAId }),
+    { budget: true, contact: true },
+  );
+});
+
+test("Q-7: «طلباتي» hides the money of a plan the member does not read the money of, and of no other", async () => {
+  const hidden = await findMoneyHiddenPlanIds(
+    {} as any,
+    {
+      permissions: {
+        listMemberships: async (_client: unknown, userId: string) => {
+          assert.equal(userId, contributorAId);
+          return [
+            { weddingPlanId: planId, canViewMoney: false },
+            { weddingPlanId: otherPlanId, canViewMoney: true },
+          ];
+        },
+      },
+    } as any,
+    contributorAId,
+  );
+  assert.deepEqual([...hidden], [planId]);
+  assert.deepEqual(myQuoteVisibility({ weddingPlanId: planId }, hidden), { budget: false, contact: true });
+  assert.deepEqual(myQuoteVisibility({ weddingPlanId: otherPlanId }, hidden), { budget: true, contact: true });
+  // A request of an owned plan, or of no plan: the user's own money.
+  assert.deepEqual(myQuoteVisibility({ weddingPlanId: ownedPlanId }, hidden), { budget: true, contact: true });
+  assert.deepEqual(myQuoteVisibility({ weddingPlanId: null }, hidden), { budget: true, contact: true });
 });

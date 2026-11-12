@@ -2472,6 +2472,13 @@ Authenticated user routes:
 - `PATCH /api/v1/reviews/:id`
 - `DELETE /api/v1/reviews/:id`
 
+D112 (Q-7): a quote request of a wedding plan carries its money (`budgetMin`,
+`budgetMax`, each offer's amounts and `costSuggestion`) only for a reader who
+reads that plan's money: its owner, or a member with `canViewMoney`. This
+holds for the requester too, in `/api/v1/me/quote-requests`, its `:id` and `cancel`,
+and in the plan's quote list and detail, as in the request's conversation
+(D52). A plan-less request is its requester's own and stays whole.
+
 Every review response uses a privacy-safe reviewer identity containing only
 `id` and `name`. Reviewer phone and email are never returned by public review,
 review create/update, provider-dashboard review, or admin-review responses.
@@ -3596,7 +3603,9 @@ Every money rule a request can break answers `400` or `409` with
 `{ statusCode, code, message, detail }`: `code` is stable
 (`FINANCE_PAYMENT_EXCEEDS_REMAINING`, `FINANCE_FUNDING_HAS_PAID_REPAYMENTS`, …),
 `message` is the reason in Arabic for the person, and `detail` keeps the rule
-in English for logs. `DELETE /api/v1/funding-sources/:id` refuses a source with
+in English for logs. D112 (Q-3): `FINANCE_PAYMENT_EXCEEDS_REMAINING` names
+what is left in its `message` («الدفعة أكبر من الباقي على الاتفاق. الباقي عليه
+20,000.»); the payment is never cut to fit. `DELETE /api/v1/funding-sources/:id` refuses a source with
 a paid repayment (`409 FINANCE_FUNDING_HAS_PAID_REPAYMENTS`).
 
 An archived plan still accepts settlement of money already agreed: a cost

@@ -14,6 +14,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
+import '../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -31,6 +32,7 @@ import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/plan_read_view_provider.dart';
 import '../utils/plan_pulse_sync.dart';
+import '../widgets/plan_assistant_entry.dart';
 
 part 'participant_home_screen.cards.dart';
 
@@ -220,6 +222,8 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     final weddingDay = date != null && days == 0;
     final title = (summary?.title ?? selected.displayName).trim();
     final role = summary?.permissions.role;
+    // The other side of the couple taking part in this plan (D112, Q-18).
+    final partner = role == 'GROOM' || role == 'BRIDE';
 
     final children = <Widget>[
       _Greeting(
@@ -243,6 +247,13 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         onProfile: () => context.push(AppRouter.more),
       ),
       const SizedBox(height: AarastV3Space.x3),
+      // D112 (Q-18): the partner asks the assistant from their home, as the
+      // owner does. The entry takes no room unless the server allows it.
+      if (summary != null && partner)
+        PlanAssistantEntry(
+          key: const ValueKey('participant-assistant-entry'),
+          weddingPlanId: widget.weddingPlanId,
+        ),
       // D91, D112 (Q-17): the phone's copy, and said so, as on the owner's
       // home (RA-MO-144). Whoever may change something reads that their
       // changes are kept; whoever only follows reads «تشوف بس».
@@ -396,6 +407,39 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
             ),
           ]);
         }
+      }
+      // D112 (Q-18): the partner reads the money from their home, one line
+      // that opens the money. Its figure is what is still unpaid in the
+      // plan, said so («باقي ما اندفع»), not a share of it.
+      if (partner && selected.permissions.canViewMoney) {
+        final unpaid = double.tryParse(summary.outstandingForDisplay ?? '');
+        final hidden =
+            context.watch<DevicePreferences?>()?.hideAmounts ?? false;
+        children.addAll([
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyList(
+            children: [
+              JourneyListRow(
+                key: const ValueKey('participant-partner-money'),
+                icon: LucideIcons.wallet,
+                color: voice.accent,
+                soft: voice.soft,
+                title: 'المال',
+                subtitle: unpaid == null
+                    ? context.say('افتح المال', 'افتحي المال')
+                    : hidden
+                    ? 'باقي ما اندفع ••••'
+                    : 'باقي ما اندفع ${compactMoneyParts(unpaid, currencyCode: summary.currency).plainText}',
+                trailing: const Icon(
+                  LucideIcons.chevronLeft,
+                  size: 18,
+                  color: AarastV3Color.textFaint,
+                ),
+                onTap: () => context.go(AppRouter.money(widget.weddingPlanId)),
+              ),
+            ],
+          ),
+        ]);
       }
       // q17 (the bride's plan) and q09 (the groom's plan read by a woman):
       // the plan keeps its owner's colours, the reader has her own plan.

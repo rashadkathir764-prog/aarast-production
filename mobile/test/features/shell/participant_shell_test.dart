@@ -567,6 +567,46 @@ void main() {
     );
   });
 
+  // D112 (Q-18), the owner's word: the partner (the bride in the groom's
+  // plan, or the other way) keeps the participant's home and gets the money
+  // and the way to the assistant on it. She used to read the helper's home:
+  // no money, and no door to an assistant the server lets her ask.
+  testWidgets(
+    'Q-18: the partner\'s home carries the money and the assistant\'s '
+    'place; a helper\'s does not',
+    (tester) async {
+      final partner = await _Harness.create(
+        role: 'BRIDE',
+        keptCanViewMoney: true,
+      );
+      await partner.pump(tester);
+
+      final money = find.byKey(const ValueKey('participant-partner-money'));
+      expect(money, findsOneWidget);
+      expect(
+        find.descendant(of: money, matching: find.textContaining('1.5')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('participant-assistant-entry')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      final helper = await _Harness.create(keptCanViewMoney: true);
+      await helper.pump(tester);
+      expect(
+        find.byKey(const ValueKey('participant-partner-money')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('participant-assistant-entry')),
+        findsNothing,
+      );
+    },
+  );
+
   // D91, D112 (Q-17): a participant reads the phone's copy when the server
   // is out of reach, and the home says it is the copy (RA-MO-144: only the
   // owner's home said so).
@@ -826,6 +866,7 @@ class _Harness {
         daysRemaining: daysRemaining,
         canManageTasks: canManageTasks,
         canManageGuests: canManageGuests,
+        canViewMoney: keptCanViewMoney,
       ),
     );
     final tasksApi = _TasksApi(apiClient, tasks);
@@ -894,6 +935,7 @@ DashboardSummary _summary({
   required int daysRemaining,
   required bool canManageTasks,
   required bool canManageGuests,
+  bool canViewMoney = false,
 }) {
   final today = DateUtils.dateOnly(DateTime.now());
   return DashboardSummary(
@@ -904,6 +946,7 @@ DashboardSummary _summary({
     weddingDate: today.add(Duration(days: daysRemaining)),
     daysRemaining: daysRemaining,
     currency: 'YER',
+    outstandingTotal: canViewMoney ? '1500000' : null,
     totalTasks: 3,
     completedTasks: 0,
     overdueTasks: 0,
@@ -920,7 +963,7 @@ DashboardSummary _summary({
     permissions: DashboardPermissionSummary(
       isOwner: false,
       role: role,
-      canViewMoney: false,
+      canViewMoney: canViewMoney,
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,
       canManageProviders: false,

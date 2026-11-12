@@ -464,13 +464,32 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           expectedAt: source.expectedAt,
         );
       case PledgeAnswer.notComing:
-        ok = await funding.delete(source);
+        // D112 (Q-26): the rest of the mahr stays owed and loses its day
+        // (it then counts in no day's cover). Deleting it shrank the mahr
+        // to what had been received and the app celebrated it as complete
+        // (RA-MO-165).
+        ok = source.isMahr
+            ? await funding.update(
+                source,
+                kind: source.kind,
+                sourceName: source.sourceName,
+                amount: source.amount,
+                status: FundingStatus.pledged,
+                sourcePhone: source.sourcePhone,
+                note: source.note,
+                expectedAt: null,
+              )
+            : await funding.delete(source);
     }
     if (!mounted) return;
     if (ok) {
       AarastToast.showSuccess(
         context,
-        answer == PledgeAnswer.arrived ? 'صارت معك' : 'انشالت من الموعود',
+        answer == PledgeAnswer.arrived
+            ? 'صارت معك'
+            : source.isMahr
+            ? 'بقي من مهرك، بدون موعد'
+            : 'انشالت من الموعود',
       );
       unawaited(_refreshMoneySummary());
     } else {

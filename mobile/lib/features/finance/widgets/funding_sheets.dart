@@ -476,7 +476,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
       title: 'وصلت فلوس ${source.sourceName}؟',
       subtitle: 'وعدك بـ ${_plain(amount)}',
       children: [
-        for (final (answer, title, line, icon, color) in const [
+        for (final (answer, title, line, icon, color) in [
           (
             PledgeAnswer.arrived,
             'وصلت كلها',
@@ -491,13 +491,25 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
             LucideIcons.clock,
             AarastV3Color.brandAccentStrong,
           ),
-          (
-            PledgeAnswer.notComing,
-            'ما بتوصل',
-            'تنشال من الموعود',
-            LucideIcons.xCircle,
-            AarastV3Color.danger,
-          ),
+          // D112 (Q-26): the rest of the mahr is owed whether it comes on
+          // its day or not, so this answer keeps it and takes its day away;
+          // other promised money that will not come is taken off.
+          if (source.isMahr)
+            (
+              PledgeAnswer.notComing,
+              'ما وصل',
+              'يبقى من مهرك، بدون موعد',
+              LucideIcons.clock,
+              AarastV3Color.danger,
+            )
+          else
+            (
+              PledgeAnswer.notComing,
+              'ما بتوصل',
+              'تنشال من الموعود',
+              LucideIcons.xCircle,
+              AarastV3Color.danger,
+            ),
         ]) ...[
           JourneyChoiceCard(
             key: ValueKey('pledge-${answer.name}'),

@@ -281,6 +281,35 @@ async function availablePort() {
   });
 }
 
+function canListen(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.unref();
+    server.once('error', () => resolve(false));
+    server.listen(port, '127.0.0.1', () => server.close(() => resolve(true)));
+  });
+}
+
+/**
+ * A free port for something that will listen later in the run.
+ *
+ * `availablePort()` asks the system for a free port, and the system takes it
+ * from the range it also hands to outgoing connections. The backend listens
+ * on its port at once; the model stand-in listens minutes later, and in
+ * between one of the backend's own connections could be given that port
+ * (CI, 2026-11-12: "listen EADDRINUSE 127.0.0.1:43883", smoke:assistant
+ * failed on code that did not touch it). These ports are taken below that
+ * range on Linux (32768 up) and on Windows (49152 up), so nothing borrows
+ * them in the meantime.
+ */
+async function availablePortForLater() {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const candidate = 20000 + Math.floor(Math.random() * 10000);
+    if (await canListen(candidate)) return candidate;
+  }
+  throw new Error('Could not find a free port for a later listener.');
+}
+
 function buildManagedEnvironment(discovery, identity, backendPort) {
   const databaseUrl = postgresUrl(discovery, identity.databaseName);
   const baseUrl = `http://127.0.0.1:${backendPort}`;
@@ -760,7 +789,7 @@ async function main(args = process.argv.slice(2)) {
     if (scripts.includes('assistant-smoke.js') || scripts.includes('all-smoke.js')) {
       // V1 checklist 4.12: the planning assistant answers through the smoke's
       // local stand-in for the Claude API (never the real one, never a real key).
-      const modelPort = await availablePort();
+      const modelPort = await availablePortForLater();
       environment.ANTHROPIC_API_KEY = 'smoke-assistant-key';
       environment.ANTHROPIC_BASE_URL = `http://127.0.0.1:${modelPort}`;
       environment.AARAST_ASSISTANT_DAILY_LIMIT = '2';

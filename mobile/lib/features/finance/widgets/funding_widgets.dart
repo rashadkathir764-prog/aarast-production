@@ -92,6 +92,16 @@ Widget fundingStateTag(FundingSource source) {
       soft: AarastV3Color.dangerSoft,
     );
   }
+  // D112 (Q-26): the rest of the mahr with no day left is owed and has not
+  // come; «موعود» would say a day is still expected.
+  if (source.isMahr && source.expectedAt == null) {
+    return const JourneyTag(
+      key: ValueKey('funding-not-arrived'),
+      label: 'ما وصل',
+      color: AarastV3Color.danger,
+      soft: AarastV3Color.dangerSoft,
+    );
+  }
   return const JourneyTag(
     label: 'موعود',
     color: AarastV3Color.lilac,

@@ -433,6 +433,44 @@ void main() {
     expect(find.text('الوالد'), findsNothing);
   });
 
+  // D112 (Q-26), the owner's word: the rest of the bride's mahr that «ما
+  // وصل» stays owed to her and is marked so. The answer used to delete the
+  // source: her mahr shrank to what she had received and the app
+  // congratulated her on receiving all of it (RA-MO-165).
+  testWidgets('the rest of the mahr that did not come stays in her mahr, '
+      'marked «ما وصل»', (tester) async {
+    final api = _FakeFundingApi()
+      ..seed(
+        FundingSource.fromJson({
+          'id': 'mahr-rest',
+          'weddingPlanId': 'plan-1',
+          'kind': 'MAHR',
+          'sourceName': 'باقي المهر',
+          'amount': '1000000',
+          'status': 'PLEDGED',
+          'expectedAt': '2026-12-03T00:00:00.000Z',
+        }),
+      );
+    await _pumpFunding(tester, api);
+
+    await tester.tap(find.byKey(const ValueKey('funding-row-mahr-rest')));
+    await tester.pumpAndSettle();
+    // The mahr is not offered «ما بتوصل · تنشال من الموعود».
+    expect(find.text('تنشال من الموعود'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('pledge-notComing')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('pledge-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(api.deleted, isEmpty);
+    final rest = api.sourceNamed('باقي المهر');
+    expect(rest.amount, '1000000');
+    expect(rest.status, FundingStatus.pledged);
+    expect(rest.expectedAt, isNull);
+    expect(find.byKey(const ValueKey('funding-not-arrived')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a new loan saves its monthly repayments (c12, c13)', (
     tester,
   ) async {

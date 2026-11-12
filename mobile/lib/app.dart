@@ -144,7 +144,7 @@ class _AarastAppState extends State<AarastApp> {
                       child: AarastAuthFlowRedirector(
                         router: _router,
                         child: AppLockGate(
-                          onForgotCode: auth.logout,
+                          onForgotCode: auth.signOutForgottenAppLockCode,
                           name: auth.user?.name,
                           child: AarastDeletionPendingGate(
                             // D93: «حدّث التطبيق» once the server stops

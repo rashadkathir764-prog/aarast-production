@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -207,6 +209,78 @@ void main() {
         expect(harness.controller.loginRequestedAfterLogout, isFalse);
       },
     );
+
+    // RA-MO-99: «نسيت الرمز» on the app lock was a chosen sign-out, which
+    // wipes what was not sent, under a sheet that says «بياناتك محفوظة».
+    test('forgetting the app lock code signs out and keeps what was not '
+        'sent', () async {
+      final harness = await _AuthHarness.authenticated();
+      addTearDown(harness.dispose);
+
+      await harness.controller.signOutForgottenAppLockCode();
+
+      expect(harness.localClears, ['keeping unsent']);
+      expect(harness.controller.status, AuthStatus.unauthenticated);
+      expect(harness.controller.user, isNull);
+      // Not an expired session: no «انتهت جلستك», and the door asks to
+      // sign in.
+      expect(harness.controller.sessionExpired, isFalse);
+      expect(harness.controller.errorMessage, isNull);
+      expect(harness.controller.loginRequestedAfterLogout, isTrue);
+    });
+
+    // RA-MO-98: an invite opened with another number signs the phone in as
+    // that account, and the phone then drops the first account's unsent
+    // changes without a word.
+    test('an invite with another number is refused while this account has '
+        'unsent changes, before any code is sent or checked', () async {
+      final harness = await _AuthHarness.authenticated(unsentChanges: 1);
+      addTearDown(harness.dispose);
+      final token = List.filled(43, 'a').join();
+
+      final sent = await harness.controller.requestInviteOtp(
+        token: token,
+        phone: '+967700000009',
+      );
+      expect(sent, isNull);
+      expect(harness.repository.inviteOtpRequestCalls, 0);
+      expect(harness.controller.errorCode, 'INVITE_SWITCH_WOULD_DROP_UNSENT');
+      expect(harness.controller.errorMessage, contains('لسا ما انرسلت'));
+
+      final verified = await harness.controller.verifyOtp(
+        phone: '+967700000009',
+        purpose: 'LOGIN',
+        code: '123456',
+        resumeInviteToken: token,
+      );
+      expect(verified, isFalse);
+      expect(harness.repository.inviteOtpVerifyCalls, 0);
+      expect(harness.controller.user?.id, 'user-a', reason: 'still signed in');
+    });
+
+    test('with nothing unsent the invite goes on as before', () async {
+      final harness = await _AuthHarness.authenticated();
+      addTearDown(harness.dispose);
+
+      final verified = await harness.controller.verifyOtp(
+        phone: '+967700000009',
+        purpose: 'LOGIN',
+        code: '123456',
+        resumeInviteToken: List.filled(43, 'a').join(),
+      );
+
+      expect(verified, isTrue);
+      expect(harness.repository.inviteOtpVerifyCalls, 1);
+    });
+
+    test('a sign-out the person chose still clears everything', () async {
+      final harness = await _AuthHarness.authenticated();
+      addTearDown(harness.dispose);
+
+      await harness.controller.logout();
+
+      expect(harness.localClears, ['everything']);
+    });
   });
 }
 
@@ -224,19 +298,28 @@ enum _RemoteBehavior {
 }
 
 class _AuthHarness {
-  _AuthHarness._({required this.controller, required this.repository});
+  _AuthHarness._({
+    required this.controller,
+    required this.repository,
+    required this.localClears,
+  });
 
   final AuthController controller;
   final _ControlledAuthRepository repository;
 
+  /// Which clearing of the phone's account data each sign-out ran.
+  final List<String> localClears;
+
   static Future<_AuthHarness> authenticated({
     _RemoteBehavior remoteBehavior = _RemoteBehavior.completeImmediately,
     Duration remoteTimeout = const Duration(seconds: 2),
+    int unsentChanges = 0,
   }) async {
     return _create(
       hasRestoredSession: true,
       remoteBehavior: remoteBehavior,
       remoteTimeout: remoteTimeout,
+      unsentChanges: unsentChanges,
     );
   }
 
@@ -252,26 +335,49 @@ class _AuthHarness {
     required bool hasRestoredSession,
     required _RemoteBehavior remoteBehavior,
     required Duration remoteTimeout,
+    int unsentChanges = 0,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final storage = AuthStorage(preferences);
     final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+    OfflineSyncService? offline;
+    if (unsentChanges > 0) {
+      final database = JsonLocalDatabase(preferences);
+      await database.initialize();
+      offline = OfflineSyncService(database: database, apiClient: apiClient);
+      for (var index = 0; index < unsentChanges; index++) {
+        await database.enqueueSync(
+          entityType: 'guest',
+          operation: 'create',
+          endpoint: '/api/v1/wedding-plans/p1/guests',
+          method: 'POST',
+          payload: {'name': 'ضيف $index'},
+          planId: 'p1',
+          localEntityId: 'queued-guest-$index',
+        );
+      }
+      await offline.refreshStatus();
+    }
     final repository = _ControlledAuthRepository(
       apiClient,
       storage,
       hasRestoredSession: hasRestoredSession,
       remoteBehavior: remoteBehavior,
     );
+    final localClears = <String>[];
     final coordinator = SessionTeardownCoordinator(
       auth: repository,
-      clearLocalAccountData: () async {},
+      clearLocalAccountData: () async => localClears.add('everything'),
+      clearLocalAccountDataKeepingUnsent: () async =>
+          localClears.add('keeping unsent'),
       clearGuestDraft: () async {},
       remoteTimeout: remoteTimeout,
     );
     final controller = AuthController(
       repository,
       sessionTeardownCoordinator: coordinator,
+      offlineSyncService: offline,
     );
     await controller.restoreSession();
     expect(
@@ -280,7 +386,11 @@ class _AuthHarness {
           ? AuthStatus.authenticated
           : AuthStatus.unauthenticated,
     );
-    return _AuthHarness._(controller: controller, repository: repository);
+    return _AuthHarness._(
+      controller: controller,
+      repository: repository,
+      localClears: localClears,
+    );
   }
 
   void dispose() {
@@ -311,6 +421,7 @@ class _ControlledAuthRepository extends AuthRepository {
   int registerCalls = 0;
   int loginOtpVerifyCalls = 0;
   int inviteOtpVerifyCalls = 0;
+  int inviteOtpRequestCalls = 0;
   bool localSessionCleared = false;
   bool remoteCancellationObserved = false;
   ApiException? loginFailure;
@@ -363,6 +474,15 @@ class _ControlledAuthRepository extends AuthRepository {
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
     );
+  }
+
+  @override
+  Future<OtpRequestResult> requestInviteOtp({
+    required String token,
+    required String phone,
+  }) async {
+    inviteOtpRequestCalls += 1;
+    throw StateError('no invite code should be requested in this test');
   }
 
   @override

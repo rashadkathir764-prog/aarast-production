@@ -139,11 +139,27 @@ mixin _AuthSession on _AuthControllerCore {
     );
   }
 
+  /// «نسيت الرمز» on the app lock (RA-MO-99): the person signs in again to
+  /// prove who they are, but chose to drop nothing. What was not sent stays
+  /// for the same account, as an expired session's does (C58), and as the
+  /// sheet promises («بياناتك محفوظة في حسابك»). It is not an expired
+  /// session, so nothing says «انتهت جلستك».
+  Future<void> signOutForgottenAppLockCode() => _startSessionTermination(
+    reason: 'app_lock_code_forgotten',
+    requestLoginAfterCompletion: true,
+    markSessionExpired: false,
+    keepUnsentChanges: true,
+  );
+
   Future<void> _startSessionTermination({
     required String reason,
     required bool requestLoginAfterCompletion,
     required bool markSessionExpired,
     bool allowChecking = false,
+
+    /// Defaults to [markSessionExpired]: an expired session keeps its
+    /// unsent changes, a sign-out the person chose wipes them (C58).
+    bool? keepUnsentChanges,
   }) {
     final inFlight = _logoutInFlight;
     if (inFlight != null) return inFlight;
@@ -156,11 +172,14 @@ mixin _AuthSession on _AuthControllerCore {
       _pendingLogoutReason = reason;
       _pendingLogoutRequestsLogin = requestLoginAfterCompletion;
       _pendingLogoutMarksSessionExpired = markSessionExpired;
+      _pendingLogoutKeepsUnsentChanges =
+          keepUnsentChanges ?? markSessionExpired;
     }
     final operation = _performLogout(
       reason: _pendingLogoutReason,
       requestLoginAfterCompletion: _pendingLogoutRequestsLogin,
       markSessionExpired: _pendingLogoutMarksSessionExpired,
+      keepUnsentChanges: _pendingLogoutKeepsUnsentChanges,
     );
     _logoutInFlight = operation;
     return operation.whenComplete(() {
@@ -174,6 +193,7 @@ mixin _AuthSession on _AuthControllerCore {
     required String reason,
     required bool requestLoginAfterCompletion,
     required bool markSessionExpired,
+    required bool keepUnsentChanges,
   }) async {
     final operation = ++_sessionOperationGeneration;
     final outgoingUserId = _pendingLogoutUserId ?? _user?.id;
@@ -239,8 +259,9 @@ mixin _AuthSession on _AuthControllerCore {
         teardownLease,
         remoteSessionAlreadyDestroyed: reason == 'phone_changed',
         // C58: an expired session keeps its unsent changes for the same
-        // account; a sign-out the person chose wipes them.
-        keepUnsentChanges: markSessionExpired,
+        // account; a sign-out the person chose wipes them. A forgotten
+        // lock code is not a choice to drop them (RA-MO-99).
+        keepUnsentChanges: keepUnsentChanges,
       );
       if (!_isCurrentSessionOperation(operation)) return;
 

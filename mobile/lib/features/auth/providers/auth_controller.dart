@@ -268,6 +268,7 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   String _pendingLogoutReason = 'explicit_account_logout';
   bool _pendingLogoutRequestsLogin = true;
   bool _pendingLogoutMarksSessionExpired = false;
+  bool _pendingLogoutKeepsUnsentChanges = false;
   Future<void>? _logoutInFlight;
 
   void _clearPendingInviteResume() {

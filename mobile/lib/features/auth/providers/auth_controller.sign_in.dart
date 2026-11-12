@@ -163,10 +163,39 @@ mixin _AuthSignIn on _AuthControllerCore {
     return success ? result : null;
   }
 
+  /// RA-MO-98: an invite opened with another number, on a phone signed in to
+  /// an account, signs the phone in as that other account, and the phone
+  /// then drops everything of the first account, its unsent changes with it.
+  /// While such changes wait, the switch is refused with its reason, before
+  /// any code is sent; null when nothing would be lost.
+  String? _inviteSwitchRefusal(String phone) {
+    if (_status != AuthStatus.authenticated) return null;
+    if ((_offlineSyncService?.unsyncedCount ?? 0) == 0) return null;
+    String digits(String? value) =>
+        (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final current = digits(_user?.phone);
+    final entered = digits(phone);
+    // The same person, written with or without the country code.
+    final same =
+        current.isNotEmpty &&
+        entered.isNotEmpty &&
+        (current.endsWith(entered) || entered.endsWith(current));
+    if (same) return null;
+    return 'على هذا الجوال تغييرات لحسابك لسا ما انرسلت، والدخول برقم ثاني '
+        'يمسحها. خلّها تنرسل أول، أو اطلع من حسابك من «المزيد» ثم افتح الدعوة.';
+  }
+
   Future<OtpRequestResult?> requestInviteOtp({
     required String token,
     required String phone,
   }) async {
+    final refusal = _inviteSwitchRefusal(phone);
+    if (refusal != null) {
+      _errorMessage = refusal;
+      _errorCode = 'INVITE_SWITCH_WOULD_DROP_UNSENT';
+      notifyListeners();
+      return null;
+    }
     OtpRequestResult? result;
     final success = await _submit(
       () async {
@@ -199,6 +228,15 @@ mixin _AuthSignIn on _AuthControllerCore {
         _status != AuthStatus.unauthenticated &&
         !privateInviteAccountSwitch) {
       return false;
+    }
+    if (privateInviteAccountSwitch) {
+      final refusal = _inviteSwitchRefusal(phone);
+      if (refusal != null) {
+        _errorMessage = refusal;
+        _errorCode = 'INVITE_SWITCH_WOULD_DROP_UNSENT';
+        notifyListeners();
+        return false;
+      }
     }
     if (establishesSession) {
       AppLogger.global?.startSessionCorrelation();

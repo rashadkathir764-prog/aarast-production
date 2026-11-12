@@ -314,6 +314,55 @@ test("delivery disables push when every registered installation is permanently i
   assert.deepEqual(disabledUsers, ["user-2"]);
 });
 
+// D112 (Q-11), RA-BE-128: ending an account's sessions lets go of the push
+// registrations it made before then, and only those.
+test("ended sessions release the registrations made before them; one made since stays", async () => {
+  const revokedAt = new Date("2026-11-12T10:00:00.000Z");
+  const deletes: unknown[] = [];
+  const disabledUsers: string[] = [];
+  let enabledLeft = 1;
+  const transaction = {
+    pushInstallation: {
+      deleteMany: async ({ where }: any) => {
+        deletes.push(where);
+        return { count: 2 };
+      },
+      count: async ({ where }: any) => {
+        assert.deepEqual(where, { userId: "user-3", enabled: true });
+        return enabledLeft;
+      },
+    },
+    notificationPreference: {
+      updateMany: async ({ where, data }: any) => {
+        assert.equal(data.pushEnabled, false);
+        disabledUsers.push(where.userId);
+      },
+    },
+  };
+  const service = new PushDeliveryService(
+    {
+      $transaction: async (operation: (tx: any) => Promise<unknown>) =>
+        operation(transaction),
+    } as never,
+    // Releasing registrations is the server's own record; it does not wait
+    // on Firebase being set up.
+    { enabled: false } as never,
+  );
+
+  // A phone signed in again since: its registration is newer and stays, so
+  // the account's push stays on.
+  await service.releaseUserInstallations("user-3", revokedAt);
+  assert.deepEqual(deletes, [
+    { userId: "user-3", lastSeenAt: { lt: revokedAt } },
+  ]);
+  assert.deepEqual(disabledUsers, []);
+
+  // No phone left: push is off until one registers again.
+  enabledLeft = 0;
+  await service.releaseUserInstallations("user-3", revokedAt);
+  assert.deepEqual(disabledUsers, ["user-3"]);
+});
+
 // RA-BE-99: the lock screen says what the notice says: a late task is late,
 // not coming, and the wedding day is the day, not near.
 test("an overdue task and the wedding day have their own lock-screen words", () => {

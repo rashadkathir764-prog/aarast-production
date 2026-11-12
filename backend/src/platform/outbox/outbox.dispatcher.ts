@@ -78,8 +78,13 @@ export class OutboxDispatcher {
         return;
       }
       case OutboxEventTypes.userSessionsRevoked: {
-        await this.realtime.dispatchUserSessionsRevoked(
-          requiredText(payload, "userId"),
+        const userId = requiredText(payload, "userId");
+        await this.realtime.dispatchUserSessionsRevoked(userId);
+        // D112 (Q-11): the phones signed out with the sessions stop
+        // receiving the account's notifications (RA-BE-128).
+        await this.pushDelivery?.releaseUserInstallations(
+          userId,
+          event.createdAt,
         );
         return;
       }

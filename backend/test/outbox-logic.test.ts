@@ -67,6 +67,47 @@ for (const [type, payload] of durableRealtimeEvents) {
   });
 }
 
+// D112 (Q-11), the owner's word: when an account's sessions are all ended
+// (a new password, «اخرج من كل الأجهزة», a new number) the server lets go of
+// its phones' push registrations too. The phones stayed bound, so a phone
+// signed out by the server kept receiving the account's notifications
+// (RA-BE-128). Only what was registered before the sessions ended goes: a
+// phone that signed in again since has registered again.
+test("ending an account's sessions releases its push registrations made before then", async () => {
+  const released: Array<[string, string]> = [];
+  const realtime = {
+    dispatchUserSessionsRevoked: async () => {},
+  } as unknown as ConversationRealtimePublisher;
+  const push = {
+    dispatchNotification: async () => {},
+    releaseUserInstallations: async (userId: string, revokedAt: Date) => {
+      released.push([userId, revokedAt.toISOString()]);
+    },
+  };
+  const dispatcher = new OutboxDispatcher(realtime, push);
+
+  await dispatcher.dispatch(
+    event(OutboxEventTypes.userSessionsRevoked, { userId: "user-1" }),
+  );
+
+  assert.deepEqual(released, [["user-1", "2026-07-10T10:00:00.000Z"]]);
+});
+
+test("without a push sink, ending sessions still reaches the sockets", async () => {
+  const calls: string[] = [];
+  const realtime = {
+    dispatchUserSessionsRevoked: async (id: string) => {
+      calls.push(id);
+    },
+  } as unknown as ConversationRealtimePublisher;
+
+  await new OutboxDispatcher(realtime).dispatch(
+    event(OutboxEventTypes.userSessionsRevoked, { userId: "user-1" }),
+  );
+
+  assert.deepEqual(calls, ["user-1"]);
+});
+
 test("unattached realtime delivery remains retryable instead of processed", async () => {
   let updateData: Record<string, unknown> | undefined;
   const prisma = {

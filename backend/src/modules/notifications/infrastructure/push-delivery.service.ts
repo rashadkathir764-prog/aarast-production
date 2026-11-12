@@ -24,6 +24,31 @@ export class PushDeliveryService implements PushDeliveryPort {
     private readonly firebase: FirebasePushClient,
   ) {}
 
+  /**
+   * D112 (Q-11): every session of the account was ended at [revokedAt] (a
+   * new password, «اخرج من كل الأجهزة», a new number), so the phones it was
+   * signed in on are no longer its phones. Their registrations go, as a
+   * sign-out's own does; one made since then belongs to a phone that signed
+   * in again and stays. With none left the account's push is off until a
+   * phone registers again, as after any last sign-out.
+   */
+  async releaseUserInstallations(userId: string, revokedAt: Date): Promise<void> {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await tx.pushInstallation.deleteMany({
+        where: { userId, lastSeenAt: { lt: revokedAt } },
+      });
+      const remaining = await tx.pushInstallation.count({
+        where: { userId, enabled: true },
+      });
+      if (remaining === 0) {
+        await tx.notificationPreference.updateMany({
+          where: { userId },
+          data: { pushEnabled: false },
+        });
+      }
+    });
+  }
+
   async dispatchNotification(notificationId: string): Promise<void> {
     if (!this.firebase.enabled) return;
 

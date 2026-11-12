@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing of the app leaves this phone by a cloud backup or by a
+  phone-to-phone transfer (RA-MO-97).
+
+  Its account, its drafts and its offline database are encrypted with keys
+  that live in this phone's keystore and never travel. `allowBackup="false"`
+  stops cloud backup, but from Android 12 a direct transfer to a new phone
+  still copies the files; there they arrive without their keys, cannot be
+  read, and the app stops at its first screen. The person signs in again on
+  the new phone and the account brings everything back.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

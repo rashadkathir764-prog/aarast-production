@@ -43,6 +43,46 @@ void main() {
     );
   });
 
+  // RA-MO-97: the app's files are encrypted with keys that stay in the
+  // phone's keystore. A copy on another phone cannot be opened and stopped
+  // the app at its first screen, so nothing is copied: no cloud backup, and
+  // from Android 12 no phone-to-phone transfer either.
+  test('nothing of the app is backed up or transferred to another phone', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    final rules = File(
+      'android/app/src/main/res/xml/data_extraction_rules.xml',
+    ).readAsStringSync();
+
+    expect(manifest, contains('android:allowBackup="false"'));
+    expect(
+      manifest,
+      contains('android:dataExtractionRules="@xml/data_extraction_rules"'),
+    );
+    for (final section in ['cloud-backup', 'device-transfer']) {
+      final start = rules.indexOf('<$section>');
+      final end = rules.indexOf('</$section>');
+      expect(start, isNonNegative, reason: section);
+      expect(end, greaterThan(start), reason: section);
+      final body = rules.substring(start, end);
+      expect(body, isNot(contains('<include')), reason: section);
+      for (final domain in [
+        'root',
+        'file',
+        'database',
+        'sharedpref',
+        'external',
+      ]) {
+        expect(
+          body,
+          contains('<exclude domain="$domain" />'),
+          reason: '$section keeps $domain on this phone',
+        );
+      }
+    }
+  });
+
   test('Android QA release can coexist without changing production identity', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     final manifest = File(

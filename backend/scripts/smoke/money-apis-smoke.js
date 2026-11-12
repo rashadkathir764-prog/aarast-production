@@ -808,6 +808,10 @@ async function run() {
         && over.body?.extraPayment?.amount === '200' && over.body?.extraPayment?.paymentScheduleId === null);
     const tooMuch = await request('POST', `/api/v1/payment-schedules/${s2.body?.id}/pay`, { amount: '700' }, owner.token, randomUUID());
     check('D106: never more than what is left on the agreement', tooMuch.status === 400 && tooMuch.body?.code === 'FINANCE_PAYMENT_EXCEEDS_REMAINING');
+    // D112 (Q-3): the refusal names what is left, so a payment kept on a
+    // phone and refused later tells its owner by how much it was over.
+    check('D112 Q-3: the refusal says what is left on the agreement',
+      /^الدفعة أكبر من الباقي على الاتفاق\. الباقي عليه [\d,]+\.$/u.test(tooMuch.body?.message ?? ''));
 
     // RA-BE-109: the second date asks 600 of its 800 now; moving its day was refused.
     const s2Due = new Date(s2.body?.dueDate).toISOString();

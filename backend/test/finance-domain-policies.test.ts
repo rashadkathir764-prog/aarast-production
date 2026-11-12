@@ -55,8 +55,32 @@ test('WeddingCostAggregate: positive amounts and the paid <= total invariant', (
   assert.equal(totalAmountViolation(d(100), d(100)), null);
   assert.deepEqual(totalAmountViolation(d(99), d(100)), invalid('totalAmount cannot be less than paidAmount'));
   assert.equal(paymentAmountViolation(d(40), d(100), d(60)), null);
+  // D112 (Q-3): the refusal says what is left on the agreement. A payment
+  // kept on a phone without a connection is refused when someone else paid
+  // meanwhile, and «الدفعة أكبر من الباقي» alone left its owner guessing
+  // by how much; the rule and its code are unchanged.
+  const over = paymentAmountViolation(d('40.01'), d(100), d(60));
   assert.deepEqual(
-    paymentAmountViolation(d('40.01'), d(100), d(60)),
+    { kind: over?.kind, message: over?.message, code: over?.code },
+    {
+      kind: 'invalid',
+      message: 'Payment amount cannot exceed the remaining cost',
+      code: 'FINANCE_PAYMENT_EXCEEDS_REMAINING',
+    },
+  );
+  assert.equal(over?.userMessage, 'الدفعة أكبر من الباقي على الاتفاق. الباقي عليه 40.');
+  assert.equal(
+    paymentAmountViolation(d(50000), d(1250000), d(1230000))?.userMessage,
+    'الدفعة أكبر من الباقي على الاتفاق. الباقي عليه 20,000.',
+  );
+  // Fractions kept from before whole riyals (D112 Q-25) are said as they are.
+  assert.equal(
+    paymentAmountViolation(d(900), d(1000), d('499.5'))?.userMessage,
+    'الدفعة أكبر من الباقي على الاتفاق. الباقي عليه 500.50.',
+  );
+  // Nothing left: there is no amount to name.
+  assert.deepEqual(
+    paymentAmountViolation(d(1), d(100), d(100)),
     invalid('Payment amount cannot exceed the remaining cost'),
   );
 });

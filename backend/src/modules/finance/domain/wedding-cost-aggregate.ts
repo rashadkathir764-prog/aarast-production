@@ -30,9 +30,26 @@ export function paymentAmountViolation(
   totalAmount: Amount,
   paidAmount: Amount,
 ): FinanceViolation | null {
-  return amount.gt(totalAmount.minus(paidAmount))
-    ? invalid('Payment amount cannot exceed the remaining cost')
-    : null;
+  const remaining = totalAmount.minus(paidAmount);
+  if (!amount.gt(remaining)) return null;
+  const violation = invalid('Payment amount cannot exceed the remaining cost');
+  // D112 (Q-3): what is left is said with the refusal. A payment kept on a
+  // phone without a connection meets it when someone else paid meanwhile;
+  // the amount is never cut to fit, its owner reads what is left and
+  // records what was really paid.
+  return remaining.gt(0)
+    ? {
+        ...violation,
+        userMessage: `${violation.userMessage} الباقي عليه ${amountWords(remaining)}.`,
+      }
+    : violation;
+}
+
+/** «20,000», or «500.50» for an amount kept from before whole riyals. */
+function amountWords(amount: Amount): string {
+  const [whole, fraction] = amount.toFixed(amount.isInteger() ? 0 : 2).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/gu, ',');
+  return fraction ? `${grouped}.${fraction}` : grouped;
 }
 
 export function deriveCostStatus(totalAmount: Amount, paidAmount: Amount): WeddingCostStatus {

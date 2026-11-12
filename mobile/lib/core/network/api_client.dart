@@ -838,8 +838,17 @@ class ApiException implements Exception {
     // Stable codes above are translated precisely; every other auth failure
     // stays deliberately generic and Arabic-only at the network boundary.
     if (_isAuthRequest(error.requestOptions.path)) {
+      // D112 (Q-14): the code limits are the one auth refusal whose words
+      // are the server's own: it names the limit that was reached and how
+      // long is left, which the phone cannot know («انتظر شوي» was said for
+      // a minute's wait and for a day's alike, RA-MO-110).
+      final saysTheLimit =
+          serverCode != null &&
+          serverCode.startsWith('OTP_LIMIT_') &&
+          serverMessage != null &&
+          hasArabic(serverMessage);
       return ApiException(
-        _genericAuthMessage(statusCode),
+        saysTheLimit ? serverMessage.trim() : _genericAuthMessage(statusCode),
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,

@@ -42,7 +42,7 @@ function createHarness(startedAt = new Date('2026-07-12T12:00:00.000Z')) {
         windowStartedAt: reset ? now : existing.windowStartedAt,
       };
       rows.set(key, next);
-      return [{ count: next.count }];
+      return [{ count: next.count, windowStartedAt: next.windowStartedAt }];
     },
   };
   const prisma = {
@@ -112,6 +112,93 @@ test('OTP quota blocks an immediate resend and allows it after 60 seconds', asyn
       harness.advance(OtpDispatchQuotaService.phoneCooldownMs + 1);
       await assert.doesNotReject(() =>
         harness.service.consume('+967777123456', { ip: '203.0.113.10' }),
+      );
+    },
+  );
+});
+
+// D112 (Q-14), the owner's word: the refusal says which limit was reached
+// and how long is left. It said «طلبات رمز التحقق كثيرة. حاول لاحقًا» for a
+// minute's wait and for a day's alike, and the phone could only say «انتظر
+// شوي» (RA-MO-110).
+function refusal(error: unknown) {
+  assert.ok(error instanceof HttpException);
+  assert.equal(error.getStatus(), 429);
+  return error.getResponse() as {
+    code: string;
+    message: string;
+    retryAfterSeconds: number;
+  };
+}
+
+test('the minute between two codes is said as a minute', async () => {
+  await withEnvironment(
+    { NODE_ENV: 'test', OTP_GLOBAL_DAILY_LIMIT: '150' },
+    async () => {
+      const harness = createHarness();
+      await harness.service.consume('+967777123456');
+      harness.advance(20_000);
+      const said = refusal(
+        await harness.service.consume('+967777123456').then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      );
+      assert.equal(said.code, 'OTP_LIMIT_COOLDOWN');
+      assert.equal(said.retryAfterSeconds, 40);
+      assert.equal(said.message, 'يتاح رمز جديد بعد دقيقة.');
+    },
+  );
+});
+
+test('the hour limit names five codes and the minutes left', async () => {
+  await withEnvironment(
+    { NODE_ENV: 'test', OTP_GLOBAL_DAILY_LIMIT: '150' },
+    async () => {
+      const harness = createHarness();
+      for (let sent = 0; sent < 5; sent += 1) {
+        await harness.service.consume('+967777123456');
+        harness.advance(2 * 60_000);
+      }
+      // Ten minutes in; the hour's window began with the first code.
+      const said = refusal(
+        await harness.service.consume('+967777123456').then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      );
+      assert.equal(said.code, 'OTP_LIMIT_PHONE_HOUR');
+      assert.equal(said.retryAfterSeconds, 50 * 60);
+      assert.equal(
+        said.message,
+        'هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.',
+      );
+    },
+  );
+});
+
+test('the day limit names ten codes and the hours left', async () => {
+  await withEnvironment(
+    { NODE_ENV: 'test', OTP_GLOBAL_DAILY_LIMIT: '150' },
+    async () => {
+      const harness = createHarness();
+      for (let sent = 0; sent < 10; sent += 1) {
+        await harness.service.consume('+967777123456');
+        // Past the hour's window each time, so only the day's count grows.
+        harness.advance(61 * 60_000);
+      }
+      const said = refusal(
+        await harness.service.consume('+967777123456').then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      );
+      assert.equal(said.code, 'OTP_LIMIT_PHONE_DAY');
+      // 610 minutes in: 13 hours and 50 minutes left, said as 14 hours.
+      assert.equal(said.retryAfterSeconds, (24 * 60 - 610) * 60);
+      assert.equal(
+        said.message,
+        'هذا الرقم طلب 10 رموز اليوم. يتاح رمز جديد بعد 14 ساعة.',
       );
     },
   );

@@ -7,10 +7,17 @@ export interface OtpQuotaPolicy {
   subject: string;
   limit: number;
   windowMs: number;
+  /**
+   * D112 (Q-14): what the refusal says when this limit is the one reached,
+   * given the seconds left until its window turns. Without it the refusal
+   * stays the bare 429 (the invites' budget, which is never shown as is).
+   */
+  refusal?: (retryAfterSeconds: number) => { code: string; message: string };
 }
 
 interface QuotaRow {
   count: number;
+  windowStartedAt: Date;
 }
 
 /**
@@ -59,7 +66,7 @@ export function consumeOtpDispatchQuotaAttempt(
                 ELSE "OtpDispatchQuota"."windowStartedAt"
               END,
               "updatedAt" = $3
-            RETURNING "count"
+            RETURNING "count", "windowStartedAt"
           `,
           policy.scope,
           hash,
@@ -67,8 +74,26 @@ export function consumeOtpDispatchQuotaAttempt(
           resetBefore,
         );
         if (!row || row.count > policy.limit) {
+          // The window turns [windowMs] after it began; the refused attempt
+          // itself is rolled back with this transaction, so it does not
+          // push the wait further.
+          const turnsAt =
+            (row ? new Date(row.windowStartedAt).getTime() : current.getTime()) +
+            policy.windowMs;
+          const retryAfterSeconds = Math.max(
+            1,
+            Math.ceil((turnsAt - current.getTime()) / 1000),
+          );
+          const said = policy.refusal?.(retryAfterSeconds);
           throw new HttpException(
-            'طلبات رمز التحقق كثيرة. حاول لاحقًا.',
+            said
+              ? {
+                  statusCode: HttpStatus.TOO_MANY_REQUESTS,
+                  code: said.code,
+                  message: said.message,
+                  retryAfterSeconds,
+                }
+              : 'طلبات رمز التحقق كثيرة. حاول لاحقًا.',
             HttpStatus.TOO_MANY_REQUESTS,
           );
         }

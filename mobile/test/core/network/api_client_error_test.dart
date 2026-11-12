@@ -100,6 +100,73 @@ void main() {
       expect(exception.isAmbiguousMutationFailure, isFalse);
     });
 
+    // D112 (Q-14), the owner's word: the server says which code limit was
+    // reached and how long is left, and the phone shows that sentence. It
+    // showed «انتظر شوي» for a minute's wait and a day's alike (RA-MO-110).
+    test('a code limit is said in the server\'s own words', () {
+      final requestOptions = RequestOptions(path: '/api/v1/auth/otp/request');
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 429,
+            data: const {
+              'statusCode': 429,
+              'code': 'OTP_LIMIT_PHONE_HOUR',
+              'message':
+                  'هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.',
+              'retryAfterSeconds': 3000,
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(
+        exception.message,
+        'هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.',
+      );
+      expect(exception.serverCode, 'OTP_LIMIT_PHONE_HOUR');
+      expect(exception.retryAfterSeconds, 3000);
+    });
+
+    // Only the code limits: any other auth refusal keeps the phone's own
+    // words, and a limit that arrives without Arabic never shows English.
+    test('another auth 429, or a limit without Arabic, stays generic', () {
+      ApiException refused(Map<String, Object?> data) {
+        final requestOptions = RequestOptions(path: '/api/v1/auth/otp/request');
+        return ApiException.fromDio(
+          DioException(
+            requestOptions: requestOptions,
+            response: Response<Object?>(
+              requestOptions: requestOptions,
+              statusCode: 429,
+              data: data,
+            ),
+            type: DioExceptionType.badResponse,
+          ),
+        );
+      }
+
+      const generic = 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.';
+      expect(
+        refused(const {
+          'statusCode': 429,
+          'message': 'طلبات رمز التحقق كثيرة. حاول لاحقًا.',
+        }).message,
+        generic,
+      );
+      expect(
+        refused(const {
+          'statusCode': 429,
+          'code': 'OTP_LIMIT_PHONE_DAY',
+          'message': 'Too many codes.',
+        }).message,
+        generic,
+      );
+    });
+
     test('401 keeps the typed server code and hides credential details', () {
       final requestOptions = RequestOptions(path: '/api/v1/auth/login');
       final exception = ApiException.fromDio(

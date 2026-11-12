@@ -55,6 +55,53 @@ export function otpIpSubject(rawIp?: string | null): string | null {
   return `${network.join(':')}::/64`;
 }
 
+/** «دقيقة», «دقيقتين», «5 دقائق», «50 دقيقة»: the count the way it is said. */
+function counted(
+  count: number,
+  one: string,
+  two: string,
+  few: string,
+  many: string,
+): string {
+  if (count === 1) return one;
+  if (count === 2) return two;
+  return count <= 10 ? `${count} ${few}` : `${count} ${many}`;
+}
+
+/**
+ * D112 (Q-14): the wait as a person says it, never shorter than it is: a
+ * minute for anything under one, minutes up to an hour, whole hours past it
+ * (13 hours and 50 minutes is «14 ساعة», so nobody comes back to a second
+ * refusal).
+ */
+export function otpWaitWords(retryAfterSeconds: number): string {
+  const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+  if (minutes < 60) {
+    return counted(minutes, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة');
+  }
+  return counted(Math.ceil(minutes / 60), 'ساعة', 'ساعتين', 'ساعات', 'ساعة');
+}
+
+/**
+ * D112 (Q-14), the owner's word: the refusal names the limit that was
+ * reached and how long is left. A sentence about the number or the network,
+ * with no «حاول» in either gender: who asks for a code has not said yet
+ * whether they are the groom or the bride.
+ */
+function otpLimitRefusal(
+  code: string,
+  reached: string | null,
+): (retryAfterSeconds: number) => { code: string; message: string } {
+  return (retryAfterSeconds) => {
+    const wait = `يتاح رمز جديد بعد ${otpWaitWords(retryAfterSeconds)}.`;
+    return { code, message: reached ? `${reached} ${wait}` : wait };
+  };
+}
+
+function codesWords(limit: number): string {
+  return counted(limit, 'رمز', 'رمزين', 'رموز', 'رمز');
+}
+
 @Injectable()
 export class OtpDispatchQuotaService {
   static readonly phoneCooldownMs = 60_000;
@@ -100,21 +147,62 @@ export class OtpDispatchQuotaService {
         subject: phone,
         limit: 1,
         windowMs: OtpDispatchQuotaService.phoneCooldownMs,
+        refusal: otpLimitRefusal('OTP_LIMIT_COOLDOWN', null),
       },
-      { scope: 'PHONE_HOUR', subject: phone, limit: 5, windowMs: 60 * 60_000 },
-      { scope: 'PHONE_DAY', subject: phone, limit: 10, windowMs: 24 * 60 * 60_000 },
+      {
+        scope: 'PHONE_HOUR',
+        subject: phone,
+        limit: 5,
+        windowMs: 60 * 60_000,
+        refusal: otpLimitRefusal(
+          'OTP_LIMIT_PHONE_HOUR',
+          `هذا الرقم طلب ${codesWords(5)} في ساعة.`,
+        ),
+      },
+      {
+        scope: 'PHONE_DAY',
+        subject: phone,
+        limit: 10,
+        windowMs: 24 * 60 * 60_000,
+        refusal: otpLimitRefusal(
+          'OTP_LIMIT_PHONE_DAY',
+          `هذا الرقم طلب ${codesWords(10)} اليوم.`,
+        ),
+      },
       {
         scope: GLOBAL_SCOPE,
         subject: GLOBAL_SUBJECT,
         limit: this.globalDailyLimit(),
         windowMs: GLOBAL_WINDOW_MS,
+        // The whole app's day of codes: nothing this person did, and the
+        // count itself is not theirs to know.
+        refusal: otpLimitRefusal(
+          'OTP_LIMIT_SERVICE_DAY',
+          'رموز اليوم خلصت عندنا لكل الناس.',
+        ),
       },
     ];
     const ip = otpIpSubject(rawIp);
     if (ip) {
+      const network = otpLimitRefusal(
+        'OTP_LIMIT_NETWORK',
+        'طلبات رموز كثيرة من هذي الشبكة.',
+      );
       policies.push(
-        { scope: 'IP_TEN_MIN', subject: ip, limit: 10, windowMs: 10 * 60_000 },
-        { scope: 'IP_DAY', subject: ip, limit: 50, windowMs: 24 * 60 * 60_000 },
+        {
+          scope: 'IP_TEN_MIN',
+          subject: ip,
+          limit: 10,
+          windowMs: 10 * 60_000,
+          refusal: network,
+        },
+        {
+          scope: 'IP_DAY',
+          subject: ip,
+          limit: 50,
+          windowMs: 24 * 60 * 60_000,
+          refusal: network,
+        },
       );
     }
     return policies;

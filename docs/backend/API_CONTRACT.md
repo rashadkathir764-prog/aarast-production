@@ -80,6 +80,16 @@ exhaustion remains HTTP `429`, and an explicitly uncertain delivery keeps the
 issued code active and follows the separate `200` notice contract documented
 below.
 
+D112 (Q-14): a code-quota `429` says which limit was reached and how long is
+left: `{ statusCode: 429, code, message, retryAfterSeconds }`. `code` is one
+of `OTP_LIMIT_COOLDOWN` (a minute between two codes), `OTP_LIMIT_PHONE_HOUR`
+(5 an hour for the number), `OTP_LIMIT_PHONE_DAY` (10 a day for the number),
+`OTP_LIMIT_NETWORK` (the sender's address) and `OTP_LIMIT_SERVICE_DAY` (the
+whole app's day). `retryAfterSeconds` runs to the turn of that limit's window;
+`message` is the Arabic sentence the phone shows as is, with the wait rounded
+up («هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.»). The refused
+request is not counted.
+
 ### `POST /api/v1/auth/register`
 
 Registration is a two-call verified-phone flow. The first call sends a

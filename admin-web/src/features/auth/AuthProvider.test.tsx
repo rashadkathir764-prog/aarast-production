@@ -120,10 +120,14 @@ describe('AuthProvider session expiry', () => {
         <Harness />
       </AuthProvider>,
     );
-    await waitFor(() => expect(screen.getByText('signed-out')).toBeInTheDocument());
+    // RA-TS-17: «signed-out» is on the page from the first render, so
+    // waiting for it waited for nothing, and the message was read before the
+    // refused restore had settled: the test failed once in three full runs.
+    // It waits for the message itself.
     expect(
-      screen.getByText('تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.'),
+      await screen.findByText('تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.'),
     ).toBeInTheDocument();
+    expect(screen.getByText('signed-out')).toBeInTheDocument();
   });
 
   it('opens signed out without a word when there is no session', async () => {

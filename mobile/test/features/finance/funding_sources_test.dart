@@ -11,6 +11,8 @@ import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/finance/screens/funding_sources_screen.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/finance/widgets/funding_sheets.dart';
 import 'package:aarast_mobile/features/finance/widgets/funding_widgets.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -482,6 +484,64 @@ void main() {
       hasLength(1),
     );
     expect(find.text('سجّل الدفعة الثانية'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // D112 (Q-2), the owner's word: money that has not arrived is not paid
+  // back. The sheet of a promised loan offered «سجّل الدفعة الأولى» and a
+  // tap on a row marked it paid; the server now refuses both.
+  testWidgets('a promised loan shows its dates and offers no repayment', (
+    tester,
+  ) async {
+    var toggles = 0;
+    Widget sheet(String status) => MaterialApp(
+      theme: AppTheme.light(),
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: SingleChildScrollView(
+            child: LoanRepaymentsSheet(
+              loan: FundingSource(
+                id: 'loan-1',
+                weddingPlanId: 'plan-1',
+                kind: FundingKind.loan,
+                sourceName: 'خالي أحمد',
+                amount: '600000',
+                status: status,
+                repayments: const [
+                  LoanRepayment(
+                    id: 'r1',
+                    fundingSourceId: 'loan-1',
+                    amount: '300000',
+                    status: RepaymentStatus.planned,
+                  ),
+                ],
+              ),
+              currency: 'YER',
+              saving: false,
+              onAdd: (_, _) async => true,
+              onTogglePaid: (_, _) => toggles += 1,
+              onDelete: (_) {},
+              onEdit: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(sheet(FundingStatus.pledged));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('loan-pay-next')), findsNothing);
+    expect(find.byKey(const ValueKey('loan-not-arrived')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('loan-repayment-r1')));
+    await tester.pump();
+    expect(toggles, 0);
+
+    // Once it arrived the sheet is as before.
+    await tester.pumpWidget(sheet(FundingStatus.received));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('loan-pay-next')), findsOneWidget);
+    expect(find.byKey(const ValueKey('loan-not-arrived')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

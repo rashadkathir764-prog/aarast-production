@@ -61,7 +61,7 @@ class MahrFields extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = amountOf(totalController);
     final remaining = remainingOf(totalController, settledController);
-    const formatters = [MoneyInputFormatter(wholeOnly: true)];
+    const formatters = [MoneyInputFormatter()];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

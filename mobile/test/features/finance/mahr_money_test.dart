@@ -512,6 +512,33 @@ void main() {
       expect(find.text('الرئيسية'), findsOneWidget);
     });
 
+    // D112 (Q-27): a mahr typed while the plan's own «المهر» item holds an
+    // agreement was dropped without a word, the form closing as if saved.
+    testWidgets('a mahr the plan did not record is said so, and the money is '
+        'read again', (tester) async {
+      final api = _KeptItemApi();
+      await _pumpMahr(tester, JourneyProfile.groom, withApi: api);
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('mahr-total')),
+          matching: find.byType(EditableText),
+        ),
+        '3500000',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('احفظ المهر'));
+      await tester.pumpAndSettle();
+
+      // The form stays, with the server's reason.
+      expect(find.text('احفظ المهر'), findsOneWidget);
+      expect(find.textContaining('ما انسجّل المبلغ المكتوب'), findsOneWidget);
+      expect(find.text('الرئيسية'), findsNothing);
+      // The item became the mahr on the server: the phone reads it.
+      expect(api.readsAtRefusal, isNotNull);
+      expect(api.summaryReads, greaterThan(api.readsAtRefusal!));
+    });
+
     testWidgets('no mahr typed, nothing is sent', (tester) async {
       final api = await _pumpMahr(tester, JourneyProfile.groom);
 
@@ -665,11 +692,45 @@ void main() {
   });
 }
 
-Future<_Api> _pumpMahr(WidgetTester tester, JourneyProfile profile) async {
+/// D112 (Q-27): the server kept the plan's own «المهر» item as the mahr and
+/// refused the amounts typed.
+class _KeptItemApi extends _Api {
+  int summaryReads = 0;
+
+  /// How many reads had happened when the mahr was refused.
+  int? readsAtRefusal;
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) {
+    summaryReads += 1;
+    return super.getMoneySummary(planId);
+  }
+
+  @override
+  Future<MoneySummary> recordMahr(
+    String planId, {
+    required String total,
+    required String settled,
+    DateTime? remainingDueDate,
+  }) async {
+    readsAtRefusal = summaryReads;
+    throw const ApiException(
+      'في الخطة بند «المهر» وعليه اتفاق من قبل، فانحسب هو المهر وما انسجّل المبلغ المكتوب.',
+      statusCode: 409,
+      serverCode: 'MAHR_ITEM_HAS_AGREEMENTS',
+    );
+  }
+}
+
+Future<_Api> _pumpMahr(
+  WidgetTester tester,
+  JourneyProfile profile, {
+  _Api? withApi,
+}) async {
   tester.view.physicalSize = const Size(390, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final api = _Api();
+  final api = withApi ?? _Api();
   final router = GoRouter(
     initialLocation: '/mahr',
     routes: [

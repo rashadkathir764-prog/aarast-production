@@ -35,7 +35,11 @@ import {
 } from "./dto/replace-money-budget.dto";
 import { RecordMahrDto } from "./dto/record-mahr.dto";
 import { parseMahrAgreement } from "../modules/finance/public/mahr-agreement";
-import { recordPlanMahrInTransaction } from "../modules/finance/infrastructure/mahr.repository";
+import {
+  type MahrRecording,
+  mahrKeptItemAgreements,
+  recordPlanMahrInTransaction,
+} from "../modules/finance/infrastructure/mahr.repository";
 import {
   buildMoneySummaryInTransaction,
   MoneySummaryResult,
@@ -239,7 +243,8 @@ export class MoneyBudgetService {
     dto: RecordMahrDto,
   ): Promise<MoneySummaryResult> {
     const agreement = parseMahrAgreement(dto);
-    return runSerializableTransaction(this.prisma, async (tx) => {
+    let recording: MahrRecording = "RECORDED";
+    const summary = await runSerializableTransaction(this.prisma, async (tx) => {
       const context =
         await this.permissions.assertMoneyManageableForUpdateInTransaction(
           tx,
@@ -249,7 +254,7 @@ export class MoneyBudgetService {
       if (!context.isOwner) {
         throw new NotFoundException("Wedding plan not found");
       }
-      await recordPlanMahrInTransaction(
+      recording = await recordPlanMahrInTransaction(
         tx,
         weddingPlanId,
         context.plan.persona,
@@ -264,6 +269,13 @@ export class MoneyBudgetService {
         context,
       );
     });
+    // D112 (Q-27): the item named «المهر» and its agreements became the
+    // mahr, and that is kept; the amounts typed were not recorded, and the
+    // person is told instead of being sent on as if they were.
+    if ((recording as MahrRecording) === "KEPT_ITEM_AGREEMENTS") {
+      throw mahrKeptItemAgreements();
+    }
+    return summary;
   }
 
   private totalBudget(value: string | number | null | undefined) {

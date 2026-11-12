@@ -129,10 +129,13 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     final allDated =
         repayments.isNotEmpty && dueDates.length == repayments.length;
     final owed = loan.loanLeft;
+    // D112 (Q-2): money that has not arrived is not paid back. A promised
+    // loan shows its dates; marking one paid waits for «وصلت».
+    final promised = loan.isPledged;
 
     return JourneySheetBody(
       title: 'سلفة ${loan.sourceName}',
-      subtitle: 'خاصة بك',
+      subtitle: context.say('خاصة بك', 'خاصة بكِ'),
       trailing: JourneyRoundButton(
         icon: LucideIcons.pencil,
         tooltip: 'تعديل السلفة',
@@ -147,7 +150,11 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                owed > 0 ? 'باقي عليك' : context.say('خلصت منها', 'خلصتِ منها'),
+                promised
+                    ? context.say('لسا ما وصلتك', 'لسا ما وصلتكِ')
+                    : owed > 0
+                    ? context.say('باقي عليك', 'باقي عليكِ')
+                    : context.say('خلصت منها', 'خلصتِ منها'),
                 style: JourneyType.of(
                   JourneyType.small,
                   color: context.accent.onPrimaryMuted,
@@ -219,7 +226,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                     amount: _plain(repayments[index].amount),
                     paid: repayments[index].isPaid,
                     current: index == nextIndex,
-                    onToggle: widget.saving
+                    onToggle: widget.saving || promised
                         ? null
                         : () => widget.onTogglePaid(
                             repayments[index],
@@ -297,7 +304,16 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
             ),
           ),
         ],
-        if (nextIndex >= 0) ...[
+        if (promised) ...[
+          const SizedBox(height: AarastV3Space.x4),
+          JourneyNote(
+            key: const ValueKey('loan-not-arrived'),
+            text: context.say(
+              'السلفة لسا ما وصلت. لما توصل علّمها «وصلت» من القلم فوق، وبعدها يتسجل سدادها.',
+              'السلفة لسا ما وصلت. لما توصل علّميها «وصلت» من القلم فوق، وبعدها يتسجل سدادها.',
+            ),
+          ),
+        ] else if (nextIndex >= 0) ...[
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const ValueKey('loan-pay-next'),

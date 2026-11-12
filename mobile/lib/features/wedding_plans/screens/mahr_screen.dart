@@ -96,7 +96,13 @@ class _MahrScreenState extends State<MahrScreen> {
         settled: '$settled',
         remainingDueDate: due,
       );
-      if (!saved) _error = finance.errorMessage;
+      if (!saved) {
+        _error = finance.errorMessage;
+        // D112 (Q-27): a refusal may leave the plan changed (its own
+        // «المهر» item became the mahr), so the money is read again and the
+        // home shows what the server holds.
+        await finance.loadMoney(widget.weddingPlanId);
+      }
     }
     if (!mounted) return;
     setState(() => _saving = false);

@@ -745,6 +745,16 @@ async function run() {
         && dress.body?.paidAmount === '150' && dress.body?.estimateCover === 'PART' && dress.body?.estimatePart === null);
     const lockedExpense = await request('PATCH', `/api/v1/costs/${dress.body?.id}`, { totalAmount: '200' }, owner.token);
     check('D107: an expense\'s amount is its payment', lockedExpense.status === 400 && lockedExpense.body?.code === 'FINANCE_EXPENSE_AMOUNT_LOCKED');
+    // D112 (Q-1): whose wedding the plan is cannot change once money is
+    // recorded in it; saying the same persona again is not a change.
+    const tabPlan = await request('GET', `/api/v1/wedding-plans/${tabId}`, null, owner.token);
+    const otherPersona = tabPlan.body?.persona === 'BRIDE' ? 'GROOM' : 'BRIDE';
+    const flippedPersona = await request('PATCH', `/api/v1/wedding-plans/${tabId}`, { persona: otherPersona }, owner.token);
+    const samePersona = tabPlan.body?.persona
+      ? await request('PATCH', `/api/v1/wedding-plans/${tabId}`, { persona: tabPlan.body.persona }, owner.token)
+      : { status: 200 };
+    check('D112 Q-1: groom or bride is fixed by the first money recorded',
+      flippedPersona.status === 409 && flippedPersona.body?.code === 'PLAN_PERSONA_LOCKED' && samePersona.status === 200);
     // RA-BE-130 (D107): an expense is its payment. Taking the payment back
     // takes the expense back; it used to be left open with its whole amount
     // owed. The checks below on what is left and expected hold with it gone.
@@ -827,7 +837,21 @@ async function run() {
     const loan = await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, { kind: 'LOAN', sourceName: 'Uncle', amount: '400' }, owner.token);
     const r1 = await request('POST', `/api/v1/funding-sources/${loan.body?.id}/repayments`, { amount: '100', dueDate: dateOffsetIso(5) }, owner.token);
     await request('POST', `/api/v1/funding-sources/${loan.body?.id}/repayments`, { amount: '200', dueDate: dateOffsetIso(60) }, owner.token);
+    // D112 (Q-2): a promised loan is planned, not paid back; and a loan
+    // paid back in part does not go back to promised.
+    const promisedLoan = await request('POST', `/api/v1/wedding-plans/${tabId}/funding-sources`, {
+      kind: 'LOAN', sourceName: 'Cousin', amount: '300', status: 'PLEDGED', expectedAt: dateOffsetIso(90),
+    }, owner.token);
+    const promisedPlan = await request('POST', `/api/v1/funding-sources/${promisedLoan.body?.id}/repayments`, { amount: '300', dueDate: dateOffsetIso(120) }, owner.token);
+    const promisedPaid = await request('PATCH', `/api/v1/loan-repayments/${promisedPlan.body?.repayments?.[0]?.id}`, { status: 'PAID' }, owner.token);
+    check('D112 Q-2: a promised loan takes a planned repayment and refuses a paid one, in Arabic',
+      promisedLoan.status === 201 && promisedPlan.status === 201
+        && promisedPaid.status === 409 && promisedPaid.body?.code === 'FINANCE_LOAN_NOT_RECEIVED');
+    await request('DELETE', `/api/v1/funding-sources/${promisedLoan.body?.id}`, null, owner.token);
     await request('PATCH', `/api/v1/loan-repayments/${r1.body?.repayments?.[0]?.id}`, { status: 'PAID' }, owner.token);
+    const backToPromised = await request('PATCH', `/api/v1/funding-sources/${loan.body?.id}`, { status: 'PLEDGED' }, owner.token);
+    check('D112 Q-2: a loan paid back in part does not go back to promised',
+      backToPromised.status === 409 && backToPromised.body?.code === 'FINANCE_LOAN_HAS_PAID_REPAYMENTS');
     tabSummary = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
     // Received 1,900; his money paid 1,350 (the hall's 1,200, the dress 150);
     // he repaid 100 of the loan.

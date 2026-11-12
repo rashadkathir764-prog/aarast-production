@@ -270,6 +270,16 @@ export interface FinancePort {
     weddingPlanId: string,
   ): Promise<PlanImportCounts>;
   /**
+   * Whether money is recorded in the plan: an agreement in any state, or a
+   * funding source (the bride's mahr and the loans included). The one rule
+   * that fixes the plan's currency (RA-BE-23) and whose wedding it is
+   * (D112, Q-1).
+   */
+  hasRecordedMoney(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<boolean>;
+  /**
    * Records a06's mahr once: the groom's agreement with the bride's family
    * (a MAHR item outside the budget) or the bride's mahr coming in (MAHR
    * funding sources), by the plan's persona. 409 `MAHR_NOT_FOR_PLAN` without

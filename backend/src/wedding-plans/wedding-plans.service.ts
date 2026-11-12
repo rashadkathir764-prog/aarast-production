@@ -307,6 +307,22 @@ export class WeddingPlansService {
           message: "صاحب الخطة بس يغيّر هذا.",
         });
       }
+      // D112 (Q-1): the persona decides which side of the mahr the plan
+      // holds and what «معك» counts. Changed after money was recorded, a
+      // mahr the groom owes became a mahr the bride receives and the
+      // figures jumped. It is fixed by the first money, as the currency is.
+      if (
+        dto.persona !== undefined &&
+        dto.persona !== context.plan.persona &&
+        (await this.finance.hasRecordedMoney(tx, id))
+      ) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "PLAN_PERSONA_LOCKED",
+          message:
+            "ما يتغير عريس أو عروسة بعد ما يتسجّل في الخطة مال أو مهر.",
+        });
+      }
       const location =
         dto.location !== undefined
           ? normalizeWeddingLocationInput(

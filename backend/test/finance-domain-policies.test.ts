@@ -28,7 +28,11 @@ import {
   conflict as domainConflict,
   invalid as domainInvalid,
 } from '../src/modules/finance/domain/finance-violation';
-import { fundingSourceDeletionViolation } from '../src/modules/finance/domain/funding-policy';
+import {
+  fundingSourceDeletionViolation,
+  loanBackToPromisedViolation,
+  repaymentOnPromisedLoanViolation,
+} from '../src/modules/finance/domain/funding-policy';
 import { raiseFinanceViolation } from '../src/modules/finance/internal/finance-violation.http';
 
 // O3 / R11 target item 4: the money invariants live in Finance's pure
@@ -205,6 +209,28 @@ test('G22: the HTTP error carries the code, the Arabic reason and the rule', () 
         body.detail === 'Cost is already fully paid'
       );
     },
+  );
+});
+
+// D112 (Q-2), the owner's word: money that has not arrived is not paid back.
+// The server took a repayment marked paid on a promised loan, «معك» ignored
+// it, and a loan that had arrived went back to promised with its paid
+// repayments. Planning the dates of a promised loan stays allowed.
+test('D112 Q-2: a promised loan is not paid back, and a loan paid back in part does not go back to promised', () => {
+  assert.equal(repaymentOnPromisedLoanViolation('RECEIVED', 'PAID'), null);
+  assert.equal(repaymentOnPromisedLoanViolation('PLEDGED', 'PLANNED'), null);
+  assert.equal(repaymentOnPromisedLoanViolation('PLEDGED', undefined), null);
+  assert.deepEqual(
+    repaymentOnPromisedLoanViolation('PLEDGED', 'PAID'),
+    domainConflict('A loan that has not arrived cannot be repaid'),
+  );
+
+  assert.equal(loanBackToPromisedViolation('RECEIVED', 'PLEDGED', [{ status: 'PLANNED' }]), null);
+  assert.equal(loanBackToPromisedViolation('RECEIVED', 'RECEIVED', [{ status: 'PAID' }]), null);
+  assert.equal(loanBackToPromisedViolation('PLEDGED', 'PLEDGED', [{ status: 'PAID' }]), null);
+  assert.deepEqual(
+    loanBackToPromisedViolation('RECEIVED', 'PLEDGED', [{ status: 'PLANNED' }, { status: 'PAID' }]),
+    domainConflict('A loan with paid repayments cannot go back to promised'),
   );
 });
 

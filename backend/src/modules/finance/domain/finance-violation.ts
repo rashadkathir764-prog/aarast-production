@@ -126,6 +126,15 @@ const WORDING: Readonly<Record<string, Wording>> = {
     code: 'FINANCE_REPAYMENT_CANCELLED',
     ar: 'الدفعة ملغية، ما تنسجّل مدفوعة.',
   },
+  // D112 (Q-2).
+  'A loan that has not arrived cannot be repaid': {
+    code: 'FINANCE_LOAN_NOT_RECEIVED',
+    ar: 'السلفة لسا ما وصلت، فما يتسجل لها سداد. علّمها «وصلت» أول.',
+  },
+  'A loan with paid repayments cannot go back to promised': {
+    code: 'FINANCE_LOAN_HAS_PAID_REPAYMENTS',
+    ar: 'السلفة لها سداد مدفوع، فما ترجع «موعودة». رجّع السداد «غير مدفوع» أول.',
+  },
   'A funding source with paid repayments cannot be deleted': {
     code: 'FINANCE_FUNDING_HAS_PAID_REPAYMENTS',
     ar: 'السلفة عليها سداد مدفوع، ما تنحذف. رجّع الدفعات «غير مدفوعة» أول.',

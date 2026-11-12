@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../../../core/experience_v3/aarast_journey.dart';
 import '../../../core/experience_v3/aarast_journey_profile.dart';
@@ -10,9 +9,10 @@ import 'plan_quick_add_sheet.dart';
 
 /// The plan's tabs around one tab's page (b02, c01, d01, e01, f01), with the
 /// floating «+» the owner asked to keep (D33) when [onQuickAdd] is given. It
-/// takes the tab's colour and name («إضافة مهمة»، «إضافة ضيف»), hides while
-/// the keyboard is open, and folds to its icon while the page scrolls down.
-/// On the home it is the sign alone ([planQuickAddShowsLabel]).
+/// takes the tab's colour and name («إضافة مهمة»، «إضافة ضيف») and hides
+/// while the keyboard is open. Its word shows only where the page is short
+/// enough to have nothing under the button (D112, Q-23); on the home it is
+/// always the sign alone ([planQuickAddShowsLabel]).
 class PlanShellChrome extends StatefulWidget {
   const PlanShellChrome({
     required this.body,
@@ -42,19 +42,69 @@ class PlanShellChrome extends StatefulWidget {
 }
 
 class _PlanShellChromeState extends State<PlanShellChrome> {
-  bool _quickAddExpanded = true;
+  final _bodyKey = GlobalKey();
 
-  bool _handleUserScroll(UserScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    final expand = switch (notification.direction) {
-      ScrollDirection.forward => true,
-      ScrollDirection.reverse => false,
-      ScrollDirection.idle =>
-        notification.metrics.pixels <= 12 ? true : _quickAddExpanded,
-    };
-    if (_quickAddExpanded != expand) {
-      setState(() => _quickAddExpanded = expand);
+  /// Whether the page in front runs under the «+». D112 (Q-23): the «+»
+  /// then is the sign alone, because a row's amount sits on the side the
+  /// button floats on and its word covered it. A page short enough to have
+  /// nothing under the button keeps the word.
+  bool _pageRunsUnder = false;
+  bool _checkScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleCheck();
+  }
+
+  @override
+  void didUpdateWidget(PlanShellChrome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Another tab in front, or another page in the same tab.
+    _scheduleCheck();
+  }
+
+  void _scheduleCheck() {
+    if (_checkScheduled) return;
+    _checkScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkScheduled = false;
+      if (!mounted) return;
+      final runsUnder = _visiblePageScrolls();
+      if (runsUnder != _pageRunsUnder) {
+        setState(() => _pageRunsUnder = runsUnder);
+      }
+    });
+  }
+
+  /// Whether a vertical list of the page in front holds more than fits.
+  /// Tabs kept alive behind it (an [IndexedStack], a held page) are not
+  /// read: their length says nothing about what the button covers now.
+  bool _visiblePageScrolls() {
+    var scrolls = false;
+    void visit(Element element) {
+      if (scrolls) return;
+      final widget = element.widget;
+      if (widget is Visibility && !widget.visible) return;
+      if (widget is Offstage && widget.offstage) return;
+      if (widget is Scrollable &&
+          axisDirectionToAxis(widget.axisDirection) == Axis.vertical) {
+        final position =
+            ((element as StatefulElement).state as ScrollableState).position;
+        if (position.hasContentDimensions && position.maxScrollExtent > 0) {
+          scrolls = true;
+        }
+        return;
+      }
+      element.visitChildren(visit);
     }
+
+    _bodyKey.currentContext?.visitChildElements(visit);
+    return scrolls;
+  }
+
+  bool _handleMetrics(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis == Axis.vertical) _scheduleCheck();
     return false;
   }
 
@@ -85,9 +135,9 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
                 child: MediaQuery.removePadding(
                   context: context,
                   removeTop: true,
-                  child: NotificationListener<UserScrollNotification>(
-                    onNotification: _handleUserScroll,
-                    child: widget.body,
+                  child: NotificationListener<ScrollMetricsNotification>(
+                    onNotification: _handleMetrics,
+                    child: KeyedSubtree(key: _bodyKey, child: widget.body),
                   ),
                 ),
               ),
@@ -103,7 +153,7 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
                   context.journeyProfile,
                 ),
                 expanded:
-                    _quickAddExpanded &&
+                    !_pageRunsUnder &&
                     planQuickAddShowsLabel(widget.activeIndex),
                 onPressed: quickAdd,
                 onLongPress: widget.onQuickAddLongPress,

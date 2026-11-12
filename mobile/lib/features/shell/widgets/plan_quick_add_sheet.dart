@@ -117,9 +117,9 @@ Future<PlanQuickAddKind?> showPlanQuickAddSheet(
   );
 }
 
-/// The floating «+» over a plan tab, in the tab's own colour: the tasks'
-/// amber, the guests' lilac. It shows its label at the top of the page and
-/// folds to the icon while the page scrolls down.
+/// The floating «+» over a plan tab, in the tab's colour. [expanded] shows
+/// its word beside the sign; the shell gives it only where nothing lies
+/// under the button (D112, Q-23).
 class PlanQuickAddButton extends StatelessWidget {
   const PlanQuickAddButton({
     required this.label,

@@ -1,4 +1,9 @@
-import type { FundingSourceKind, LoanRepaymentStatus, Prisma } from '@prisma/client';
+import type {
+  FundingSourceKind,
+  FundingSourceStatus,
+  LoanRepaymentStatus,
+  Prisma,
+} from '@prisma/client';
 import { conflict, type FinanceViolation, invalid } from './finance-violation';
 
 type Amount = Prisma.Decimal;
@@ -30,6 +35,35 @@ export function fundingSourceDeletionViolation(
 ): FinanceViolation | null {
   return repayments.some((repayment) => repayment.status === 'PAID')
     ? conflict('A funding source with paid repayments cannot be deleted')
+    : null;
+}
+
+/**
+ * D112 (Q-2): money that has not arrived is not paid back. A repayment of a
+ * promised loan may be planned, never marked paid.
+ */
+export function repaymentOnPromisedLoanViolation(
+  loanStatus: FundingSourceStatus,
+  nextRepaymentStatus: LoanRepaymentStatus | undefined,
+): FinanceViolation | null {
+  return loanStatus === 'PLEDGED' && nextRepaymentStatus === 'PAID'
+    ? conflict('A loan that has not arrived cannot be repaid')
+    : null;
+}
+
+/**
+ * D112 (Q-2), the other door to the same state: a loan that arrived and was
+ * paid back in part does not go back to promised.
+ */
+export function loanBackToPromisedViolation(
+  currentStatus: FundingSourceStatus,
+  nextStatus: FundingSourceStatus,
+  repayments: ReadonlyArray<{ status: LoanRepaymentStatus }>,
+): FinanceViolation | null {
+  return currentStatus === 'RECEIVED' &&
+    nextStatus === 'PLEDGED' &&
+    repayments.some((repayment) => repayment.status === 'PAID')
+    ? conflict('A loan with paid repayments cannot go back to promised')
     : null;
 }
 

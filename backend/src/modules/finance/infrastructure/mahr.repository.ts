@@ -55,13 +55,22 @@ function mahrAlreadyRecorded(): ConflictException {
  * RECEIVED and the rest PLEDGED with its expected day; deleting them all
  * lets it be recorded again.
  */
+/**
+ * What recording did. `KEPT_ITEM_AGREEMENTS`: the plan already had an item
+ * named «المهر» with agreements, which became the mahr as they are; the
+ * amounts just typed were not recorded (RA-BE-18: adding them counted the
+ * mahr twice). An import takes that as done; the mahr form says so to the
+ * person who typed them (D112, Q-27).
+ */
+export type MahrRecording = 'RECORDED' | 'KEPT_ITEM_AGREEMENTS';
+
 export async function recordMahrInTransaction(
   tx: Prisma.TransactionClient,
   weddingPlanId: string,
   side: MahrSide,
   agreement: MahrAgreement,
   recordedAt: Date,
-): Promise<void> {
+): Promise<MahrRecording> {
   const rest = mahrRemaining(agreement);
   if (side === 'RECEIVES') {
     const existing = await tx.fundingSource.count({
@@ -94,7 +103,7 @@ export async function recordMahrInTransaction(
         },
       });
     }
-    return;
+    return 'RECORDED';
   }
 
   // Recorded means a live agreement in the MAHR item: an item whose
@@ -141,7 +150,7 @@ export async function recordMahrInTransaction(
   // RA-BE-18: those agreements were the mahr, so it is recorded now. Adding
   // the one just typed as well counted it twice (3,000,000 read 6,000,000);
   // changing its amount is the money's (MAHR_ALREADY_RECORDED's words).
-  if (named && named._count.weddingCosts > 0) return;
+  if (named && named._count.weddingCosts > 0) return 'KEPT_ITEM_AGREEMENTS';
   await tx.weddingCost.create({
     data: {
       weddingPlanId,
@@ -160,6 +169,7 @@ export async function recordMahrInTransaction(
         : {}),
     },
   });
+  return 'RECORDED';
 }
 
 /**
@@ -172,9 +182,21 @@ export async function recordPlanMahrInTransaction(
   persona: string | null,
   agreement: MahrAgreement,
   recordedAt: Date,
-): Promise<void> {
+): Promise<MahrRecording> {
   const side = mahrSideOf(persona);
   if (!side) throw mahrNotForPlan();
   raiseFinanceViolation(mahrAgreementViolation(agreement));
-  await recordMahrInTransaction(tx, weddingPlanId, side, agreement, recordedAt);
+  return recordMahrInTransaction(tx, weddingPlanId, side, agreement, recordedAt);
+}
+
+/**
+ * D112 (Q-27): said to whoever typed a mahr the plan did not record because
+ * its «المهر» item already holds agreements. D55: a statement, in no gender.
+ */
+export function mahrKeptItemAgreements(): ConflictException {
+  return new ConflictException({
+    code: 'MAHR_ITEM_HAS_AGREEMENTS',
+    message:
+      'في الخطة بند «المهر» وعليه اتفاق من قبل، فانحسب هو المهر وما انسجّل المبلغ المكتوب. لو المبلغ غير، يتعدّل من المال.',
+  });
 }

@@ -389,12 +389,18 @@ async function run() {
       ownItem.status === 201 && ownAgreement.status === 201);
     const asked = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/money-summary`, null, third.token);
     check('and is still asked to record the mahr', asked.status === 200 && asked.body?.mahr === null);
-    const recorded = await request('POST', `/api/v1/wedding-plans/${thirdPlanId}/mahr`, { total: '3000000' }, third.token);
+    // D112 (Q-27): he types another amount. His item's agreement stays the
+    // mahr, and he is told the typed amount was not recorded (it used to be
+    // dropped without a word, the form closing as if it had been saved).
+    const recorded = await request('POST', `/api/v1/wedding-plans/${thirdPlanId}/mahr`, { total: '3500000' }, third.token);
     const after = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/money-summary`, null, third.token);
     const thirdCosts = await request('GET', `/api/v1/wedding-plans/${thirdPlanId}/costs`, null, third.token);
     const agreements = thirdCosts.body?.items ?? thirdCosts.body ?? [];
-    check(`recording it counts his agreement once: the mahr is 3,000,000, not 6,000,000 (read ${after.body?.mahr?.total}, ${agreements.length} agreements)`,
-      recorded.status === 201 && after.body?.mahr?.total === '3000000' &&
+    check('D112 Q-27: the typed mahr is refused with its reason, in Arabic',
+      recorded.status === 409 && recorded.body?.code === 'MAHR_ITEM_HAS_AGREEMENTS'
+        && /[؀-ۿ]/.test(String(recorded.body?.message ?? '')));
+    check(`his agreement is counted once and is the mahr: 3,000,000, not 6,000,000 nor 3,500,000 (read ${after.body?.mahr?.total}, ${agreements.length} agreements)`,
+      after.body?.mahr?.total === '3000000' &&
       after.body?.costs?.total === '3000000' && agreements.length === 1);
     check('his item is the mahr item now, outside the budget (C1)',
       (after.body?.categories ?? []).some((item) => item.kind === 'MAHR' && item.categoryId === ownItem.body?.id));

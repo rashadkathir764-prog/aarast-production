@@ -4,15 +4,16 @@ import 'package:flutter/services.dart';
 
 import '../../../core/forms/latin_digits_formatter.dart' show latinDigitOf;
 
+/// Every amount typed in the app is whole riyals (D112, Q-25): grouped as
+/// typed, never a fraction. A fraction of one or two digits at the end is
+/// dropped with its point («5000000.00» is five million); any other point
+/// is a grouping mark and goes («1.500.000» is a million and a half).
+///
+/// The fields used to differ: most read a point as a decimal point, so that
+/// paste became «1.50» and an agreement was saved at two riyals, while the
+/// payment form refused the same text as empty (RA-MO-113, RA-MO-166).
 class MoneyInputFormatter extends TextInputFormatter {
-  const MoneyInputFormatter({this.wholeOnly = false});
-
-  /// A field that takes whole riyals (the first run's budget, the mahr):
-  /// grouped as typed, never a fraction (RA-MO-113). A fraction of one or
-  /// two digits at the end is dropped with its point («5000000.00» is five
-  /// million); any other point is a grouping mark and goes. Deleting every
-  /// point alone turned that paste into five hundred million.
-  final bool wholeOnly;
+  const MoneyInputFormatter();
 
   /// The most digits an amount has (`FinanceMoneyRules.serverAmount`).
   static const maxWholeDigits = 12;
@@ -26,7 +27,7 @@ class MoneyInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     if (!newValue.composing.isCollapsed) return newValue;
-    if (wholeOnly && newValue.text.contains(_point)) {
+    if (newValue.text.contains(_point)) {
       final whole = newValue.text
           .replaceFirst(_fraction, '')
           .replaceAll(_point, '');
@@ -46,7 +47,7 @@ class MoneyInputFormatter extends TextInputFormatter {
     // D86: an amount has at most twelve digits, the server's own bound. A
     // longer one was taken here and refused later, at the save, under a
     // message about something else.
-    if (wholeOnly && sanitized.length > maxWholeDigits) return oldValue;
+    if (sanitized.length > maxWholeDigits) return oldValue;
     final formatted = formatMoneyInputValue(sanitized);
 
     var formattedOffset = 0;

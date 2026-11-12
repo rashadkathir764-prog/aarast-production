@@ -20,6 +20,7 @@ import {
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
 import { listPlanItemsForProviderSearch } from './budget-item-search.repository';
+import { isPlanCurrencyLocked } from './budget-category.repository';
 import {
   CATALOG_READ_PORT,
   type CatalogReadPort,
@@ -422,6 +423,13 @@ export class FinancePortService implements FinancePort {
     if (repayments.length > 0) {
       await tx.loanRepayment.createMany({ data: repayments });
     }
+  }
+
+  hasRecordedMoney(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<boolean> {
+    return isPlanCurrencyLocked(client, weddingPlanId);
   }
 
   async getPlanImportCounts(

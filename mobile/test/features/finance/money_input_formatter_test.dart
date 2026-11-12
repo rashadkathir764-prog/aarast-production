@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const formatter = MoneyInputFormatter();
 
-  test('groups money input while preserving two decimal places', () {
+  // What is shown of an amount already stored keeps its fraction; only
+  // typing is whole riyals.
+  test('groups a stored amount, keeping the fraction it has', () {
     expect(formatMoneyInputValue('10000000'), '10,000,000');
     expect(formatMoneyInputValue('1250000.50'), '1,250,000.50');
   });
@@ -16,11 +18,13 @@ void main() {
     expect(formatMoneyInputValue('۱۲۰۰۰۰۰'), '1,200,000');
   });
 
-  // RA-MO-113: the whole-riyal fields (the first run's budget and the mahr)
-  // deleted the decimal point, so a pasted «5000000.00» became 500,000,000.
+  // D112 (Q-25): every amount typed is whole riyals. RA-MO-113: the first
+  // run's fields deleted the decimal point, so a pasted «5000000.00» became
+  // 500,000,000. RA-MO-166: the other fields read a point as a decimal
+  // point, so a pasted «1.500.000» was saved as two riyals.
   group('whole amounts', () {
     String typed(String text) {
-      return const MoneyInputFormatter(wholeOnly: true)
+      return const MoneyInputFormatter()
           .formatEditUpdate(
             TextEditingValue.empty,
             TextEditingValue(
@@ -60,7 +64,14 @@ void main() {
         'grouping', () {
       expect(typed('5000000.'), '5,000,000');
       expect(typed('5.000.000'), '5,000,000');
+      expect(typed('1.500.000'), '1,500,000');
       expect(typed('7000000'), '7,000,000');
+    });
+
+    test('a fraction typed by hand is not taken', () {
+      expect(typed('1500.5'), '1,500');
+      expect(typed('1500.50'), '1,500');
+      expect(typed('0.5'), '0');
     });
   });
 

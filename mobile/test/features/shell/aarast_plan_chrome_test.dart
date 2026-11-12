@@ -89,8 +89,28 @@ void main() {
     },
   );
 
+  Widget tasksChrome({
+    required int rows,
+    VoidCallback? onTap,
+    VoidCallback? onLongPress,
+  }) => MaterialApp(
+    theme: AppTheme.light(),
+    home: PlanShellChrome(
+      activeIndex: 2,
+      onTabSelected: (_) {},
+      onQuickAdd: onTap ?? () {},
+      onQuickAddLongPress: onLongPress,
+      body: ListView.builder(
+        itemExtent: 72,
+        itemCount: rows,
+        itemBuilder: (context, index) => Text('مهمة $index'),
+      ),
+    ),
+  );
+
   testWidgets(
-    'the «+» floats at the RTL side in the tab colour and folds while scrolling down',
+    'the «+» floats at the RTL side in the tab colour, with its word while '
+    'nothing lies under it',
     (tester) async {
       // D33: the owner keeps the floating button.
       tester.view.physicalSize = const Size(320, 760);
@@ -100,21 +120,13 @@ void main() {
       var longPresses = 0;
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light(),
-          home: PlanShellChrome(
-            activeIndex: 2,
-            onTabSelected: (_) {},
-            onQuickAdd: () => taps += 1,
-            onQuickAddLongPress: () => longPresses += 1,
-            body: ListView.builder(
-              itemExtent: 72,
-              itemCount: 20,
-              itemBuilder: (context, index) => Text('مهمة $index'),
-            ),
-          ),
+        tasksChrome(
+          rows: 3,
+          onTap: () => taps += 1,
+          onLongPress: () => longPresses += 1,
         ),
       );
+      await tester.pumpAndSettle();
 
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
       expect(scaffold.extendBody, isFalse);
@@ -136,18 +148,71 @@ void main() {
       await tester.longPress(fab);
       expect(taps, 1);
       expect(longPresses, 1);
-
-      await tester.drag(find.byType(ListView), const Offset(0, -260));
-      await tester.pumpAndSettle();
-      expect(find.text('إضافة مهمة'), findsNothing);
-      expect(find.bySemanticsLabel('إضافة مهمة'), findsOneWidget);
-
-      await tester.drag(find.byType(ListView), const Offset(0, 180));
-      await tester.pumpAndSettle();
-      expect(find.text('إضافة مهمة'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  // D112 (Q-23), the owner's word: the amounts of a row sit at the same
+  // side as the button, and its word covered them on the money, tasks and
+  // guests tabs. The word shows only where the page is short enough to have
+  // nothing under it; a page that runs under the button gets the sign alone.
+  testWidgets('a page that runs under the «+» gets the sign alone, and the '
+      'word comes back when the page is short again', (tester) async {
+    tester.view.physicalSize = const Size(320, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(tasksChrome(rows: 20));
+    await tester.pumpAndSettle();
+    final fab = find.byKey(const ValueKey('aarast-quick-action'));
+    expect(find.text('إضافة مهمة'), findsNothing);
+    expect(find.bySemanticsLabel('إضافة مهمة'), findsOneWidget);
+    expect(tester.getSize(fab), const Size(52, 52));
+
+    // Scrolling does not bring the word back over the rows.
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, 400));
+    await tester.pumpAndSettle();
+    expect(find.text('إضافة مهمة'), findsNothing);
+
+    await tester.pumpWidget(tasksChrome(rows: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('إضافة مهمة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a long tab kept behind does not take the word from the short '
+      'tab in front', (tester) async {
+    tester.view.physicalSize = const Size(320, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: PlanShellChrome(
+          activeIndex: 2,
+          onTabSelected: (_) {},
+          onQuickAdd: () {},
+          body: IndexedStack(
+            index: 0,
+            children: [
+              ListView(children: const [Text('مهمة وحيدة')]),
+              ListView.builder(
+                itemExtent: 72,
+                itemCount: 40,
+                itemBuilder: (context, index) => Text('ضيف $index'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('إضافة مهمة'), findsOneWidget);
+  });
 
   testWidgets('each tab names its «+» and all wear the plan colour', (
     tester,

@@ -19,6 +19,8 @@ import {
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
   fundingSourceChangeViolation,
+  loanBackToPromisedViolation,
+  repaymentOnPromisedLoanViolation,
   fundingSourceDeletionViolation,
   repaymentDeletionViolation,
   repaymentEditViolation,
@@ -186,6 +188,9 @@ export class FundingSourcesService {
         }),
       );
       const nextStatus = dto.status ?? source.status;
+      raiseFinanceViolation(
+        loanBackToPromisedViolation(source.status, nextStatus, source.repayments),
+      );
       return updateFundingSource(tx, id, {
         kind: nextKind,
         ...(dto.sourceName !== undefined
@@ -265,6 +270,9 @@ export class FundingSourcesService {
             amountOrDueDate: dto.amount !== undefined || dto.dueDate !== undefined,
             nextStatus: dto.status,
           }),
+        );
+        raiseFinanceViolation(
+          repaymentOnPromisedLoanViolation(source.status, dto.status),
         );
         const nextAmount =
           dto.amount !== undefined ? this.amount(dto.amount, "amount") : current.amount;

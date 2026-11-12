@@ -63,6 +63,16 @@ list: `docker compose config`, the secrets scan (`gitleaks detect`, when
 gitleaks is installed) and the release Gradle guard. The image build and its
 Trivy scan stay in CI only.
 
+`--full --strict` needs three tools on this machine, or it fails on the skip:
+Docker Desktop running (with `aarast-db` and `aarast-redis` started), Java on
+the path (the two lines above for Android Studio's), and gitleaks
+(`winget install --id Gitleaks.Gitleaks --exact`; a new terminal sees it).
+
+Run a single backend or admin command from `D:\projects\aarast\…` with the
+capital drive letter. Several checks compare paths letter for letter and fail
+from `d:\…` on the same code; `scripts/gates.mjs` corrects this for the gates
+it runs, a command typed by hand does not.
+
 On Windows, `npm test` skips the one test that needs POSIX file modes
 (`openwa-credential-file.test.ts`: the OpenWA credential file must refuse
 broad permissions and symbolic links). While CI is off it runs nowhere else,

@@ -15,12 +15,15 @@ These rules apply to every AI agent working on Aarast / اعّرست.
 - Do not restore, recreate or summarise anything from Git history as a plan. Read history only to answer one specific question.
 - Do not open a new direction, redesign, audit or roadmap unless the owner asks for it. Take the next item in `STATUS.md`.
 - Do not add plan, report, inventory or tracking files. Progress goes in `STATUS.md`, a decision goes in `DECISIONS.md` as one line.
-- One exception, by the owner's order on 2026-11-06: `docs/project/RELEASE_AUDIT.md` is the pre-release closing round's inventory, coverage and issue log. Update it after every batch; `STATUS.md` points to it and holds the resume point.
+- Two exceptions, by the owner's order:
+  - 2026-11-06: `docs/project/RELEASE_AUDIT.md` is the pre-release closing round's inventory, coverage and issue log. Update it after every batch; `STATUS.md` points to it and holds the resume point.
+  - 2026-11-11: `docs/superpowers/plans/2026-11-11-groom-screens-home-language.md` and the mockups under `docs/superpowers/specs/2026-11-11-mockups/` are the plan of the UI work the owner opened (D110). No other plan file is added beside them.
 - The seven files under `docs/superpowers/{plans,specs,reports}` dated 2026-08 and 2026-09 are pinned by the architecture gates. They are fixtures, not plans. Do not read them for direction.
 
 ## Frontend freeze (D67, D68)
 
 - The look is frozen on «فيروز», with one colour per plan. No new palette, visual direction or redesign before real users are on the app. The `frontend-design` skill stays off until then.
+- The owner opened the freeze twice, and only this far: the money tab on its approved concept (D102), and the couple's screens in the layout he approved on the plan's home (D110), one screen at a time, each after his word. Colours, type and the kit stay as they are in both.
 - No new screen or feature unless it completes a broken journey.
 - Every frontend change needs one of three reasons: a proven defect, a journey that stops, or a real user who stumbled. The owner may overrule after seeing the cost.
 - Anything drawn uses the app's own widgets.
@@ -31,8 +34,12 @@ These rules apply to every AI agent working on Aarast / اعّرست.
 ## Git
 
 - All work lands on `main` in `D:\projects\aarast`. No branch or worktree stays behind.
+- Every session starts by looking for work that is not on `main`: `git fetch --all --prune`, then `git branch -a --no-merged main` and `git worktree list`. Anything listed is merged, or its fate decided with the owner, before new work starts. (On 2026-11-07 a local session and a cloud session fixed RA-BE-63, 64, 65 and 83 on the same night, each without seeing the other; one of the two fixes had to be thrown away.)
+- A session that cannot write to this folder (a cloud session) works on one branch cut from the current `origin/main`, never from another unmerged branch's work it has not read, and writes in the first lines of `STATUS.md`: the branch, that it is not merged, and what it could not check there. The next session on this machine merges it first, runs the gates on Windows, and deletes the branch.
+- A subagent's worktree is merged or removed in the session that made it.
 - Commit or push only when the owner asks, or when the task he gave says so.
-- Commit only after the checks for the touched area pass.
+- Commit only after the checks for the touched area pass: `node scripts/gates.mjs --quick` (or `--only` the area). `main` is pushed only after `node scripts/gates.mjs --full --strict` passes on Windows, where the golden images are drawn.
+- A list of tests known to fail is not a gate. The one that exists (`docs/qa/mobile-test-baseline-linux.txt`, a Linux box's 54) may only shrink, never excuses a failure on Windows, and a session that leans on it says so in `STATUS.md`.
 - Never commit secrets. Never read out `.env`, Meta/WhatsApp, SMTP, JWT, database or admin credentials.
 
 ## Architecture

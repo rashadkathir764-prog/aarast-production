@@ -15,11 +15,16 @@
 // Areas: backend, admin, mobile, root. Each command is the README's own.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// The folder as the disk spells it. A terminal opened on `d:\…` (an editor's
+// lower-case drive letter) gave every gate that path, and four of them
+// compare paths letter for letter: the Prisma config check, the governance
+// tests, the smokes and the admin tests failed there and passed on `D:\…`,
+// on the same code (found 2026-11-12).
+const root = realpathSync.native(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const isWindows = process.platform === 'win32';
 const args = process.argv.slice(2);
 const full = args.includes('--full');

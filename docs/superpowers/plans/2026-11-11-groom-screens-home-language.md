@@ -27,8 +27,8 @@
 - Cross-feature imports only through a feature's `*_api.dart`. No file under `widgets/dashboard` over 700 lines.
 - Decisions in force are not changed by layout work (for example D59, D79, D102 to D109). A task that needs one changed stops and asks the owner.
 - A test is changed only when it pins the old layout, never to hide a broken rule; the commit says which and why.
-- Checks before every commit: `flutter analyze` clean, and `flutter test --exclude-tags golden` with no failure that is not in the baseline list (54 on the Linux box on 2026-11-11, saved by Task 0).
-- One screen, one commit, with its screen card in the message. Work lands on the session's branch; the owner merges.
+- Checks before every commit: `node scripts/gates.mjs --quick --only mobile` green on Windows (all 2414 tests passed there on 2026-11-12, golden images included). On the Linux box 54 tests fail for the box, not the code (`docs/qa/mobile-test-baseline-linux.txt`); a session there may show no failure outside that list, may not add to it, says in `STATUS.md` that it leaned on it, and cannot redraw golden images: the session that merges runs the whole suite on Windows, looks at every redrawn image, and only then pushes `main` (`AGENTS.md`, Git).
+- One screen, one commit, with its screen card in the message. Work lands on `main`; a cloud session works on its one branch, and the next session on the owner's machine merges it before any new work (`AGENTS.md`, Git).
 - One batch per session, and a session stops after each screen for the owner's word. This keeps the token use small.
 
 ## Review Focus
@@ -117,7 +117,7 @@ Expected: analyze clean; failures only from the baseline list.
 
 - [ ] **Step 5: Record and commit**
 
-Save the baseline list to `docs/qa/mobile-test-baseline-linux.txt` (one failing test per line, from `flutter test --exclude-tags golden --reporter=failures-only`). Add one line to `DECISIONS.md`: «D110: الرئيسية وباقي شاشات العريس تأخذ لغة الرئيسية المعتمدة (2026-11-11) شاشة شاشة، وهذا استثناء من التجميد (D67). بطاقة العد تبقى». Add the resume point to `STATUS.md`. Commit: `refactor(kit): the home's pieces become kit widgets`.
+The baseline list (`docs/qa/mobile-test-baseline-linux.txt`) and D110 in `DECISIONS.md` are already written (2026-11-11 and 2026-11-12). Add the resume point to `STATUS.md`. Commit: `refactor(kit): the home's pieces become kit widgets`.
 
 ---
 

@@ -1009,19 +1009,23 @@ export class WeddingPlansService {
    * the same id and other content means the first save reached the account
    * and its answer was lost, then the plan changed on the phone: answering
    * with the first plan would let the phone drop what changed since. It is
-   * refused with its code, and the phone keeps its plan and asks.
+   * refused with its code, and the phone keeps its plan and asks. A plan
+   * imported before the fingerprint was kept is refused the same way: what
+   * it held is not known, and the phone must not clear on a guess.
    */
   private async replayImport(
     plan: WeddingPlan,
     currentUser: AuthenticatedUser,
     payloadHash: string,
   ): Promise<LocalPlanImportResponse> {
-    if (plan.importPayloadHash !== null && plan.importPayloadHash !== payloadHash) {
+    if (!isSameLocalPlanImport(plan.importPayloadHash, payloadHash)) {
       throw new ConflictException({
         statusCode: 409,
         code: "LOCAL_PLAN_SAVED_BEFORE",
         message:
-          "خطتك انحفظت في حسابك من محاولة قبل، وتغيّرت على الجوال بعدها.",
+          plan.importPayloadHash === null
+            ? "خطتك انحفظت في حسابك من محاولة قبل، وما نقدر نتأكد إنها نفس اللي على الجوال الحين."
+            : "خطتك انحفظت في حسابك من محاولة قبل، وتغيّرت على الجوال بعدها.",
       });
     }
     return this.buildImportResponse(plan, currentUser, true);
@@ -1324,6 +1328,18 @@ export class WeddingPlansService {
 export function localPlanImportHash(dto: ImportLocalPlanDto): string {
   const { clientMigrationId: _migrationId, ...content } = dto;
   return createHash("sha256").update(canonicalJson(content)).digest("hex");
+}
+
+/**
+ * RA-BE-65: whether a save sent again holds what the plan was made from. A
+ * plan imported before the fingerprint was kept has none: what it held is
+ * not known, so it is never taken for the same save.
+ */
+export function isSameLocalPlanImport(
+  storedHash: string | null,
+  payloadHash: string,
+): boolean {
+  return storedHash !== null && storedHash === payloadHash;
 }
 
 function canonicalJson(value: unknown): string {

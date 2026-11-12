@@ -406,8 +406,14 @@ async function importMoneyTabChecks(accessToken) {
   const lunch = list.find((cost) => cost.title === 'الغداء');
   const dress = list.find((cost) => cost.title === 'الفستان');
   check('D59: who pays an agreement comes over', lunch?.payer === 'FAMILY' && lunch?.payerName === 'الوالد');
+  // RA-BE-120: a part with no figure typed is the expense's own amount, read
+  // at the time (kept as null, not as a copy of the amount), so the item
+  // expects what the expense cost.
   check('D107: an expense paid in full comes over as an expense',
-    dress?.entryKind === 'EXPENSE' && dress?.status === 'PAID' && dress?.estimatePart === '150');
+    dress?.entryKind === 'EXPENSE' && dress?.status === 'PAID'
+      && dress?.estimateCover === 'PART' && dress?.estimatePart === null);
+  check('D107, RA-BE-120: the expense settles its own amount of its item',
+    item('الفستان')?.expectedCost === '150');
   const due = (summary.body?.obligations ?? []).filter((line) => line.kind === 'DUE');
   const first = due.find((line) => line.amount === '700');
   const second = due.find((line) => Number(line.scheduledAmount) === 800);

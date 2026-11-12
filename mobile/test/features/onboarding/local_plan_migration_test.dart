@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -267,6 +269,122 @@ void main() {
     final guest = guests.single as Map<String, dynamic>;
     expect(guest['name'], 'أحمد صالح');
     expect(guest['side'], 'GROOM');
+  });
+
+  // The server refuses a field it does not declare (`forbidNonWhitelisted`),
+  // so one extra key refuses the whole plan on every try. These read the
+  // server's own source and fail when the phone sends, or allows, anything
+  // the server does not take.
+  group('the import is what the server declares', () {
+    final backend = '${Directory.current.parent.path}/backend/src';
+    String read(String path) => File('$backend/$path').readAsStringSync();
+    final dto = read('onboarding/dto/import-local-plan.dto.ts');
+
+    Set<String> fieldsOf(String className) {
+      final start = dto.indexOf('export class $className ');
+      expect(start, isNonNegative, reason: '$className is declared');
+      final body = dto.substring(start, dto.indexOf('\n}\n', start));
+      return {
+        for (final match in RegExp(
+          r'^  (\w+)[!?]?:',
+          multiLine: true,
+        ).allMatches(body))
+          match.group(1)!,
+      };
+    }
+
+    int constant(String source, String name) {
+      final match = RegExp(
+        'export const $name = ([0-9 *]+);',
+      ).firstMatch(source);
+      expect(match, isNotNull, reason: '$name is declared');
+      return match!
+          .group(1)!
+          .split('*')
+          .map((factor) => int.parse(factor.trim()))
+          .reduce((a, b) => a * b);
+    }
+
+    test('an agreement row kept from an older build sends no field the '
+        'server refuses', () async {
+      final service = await buildService();
+      // Builds before 2026-07-15 wrote the agreement's `dueDate` on the row;
+      // only an edit or a payment removes it.
+      await service.database!.saveCachedItem(
+        table: OfflineTables.cachedCosts,
+        json: {
+          'id': 'local-cost-1',
+          'weddingPlanId': guestPlanId,
+          'title': 'تكلفة المصور',
+          'totalAmount': '100000',
+          'paidAmount': '40000',
+          'budgetCategoryId': 'local-budget-category-9',
+          'partyName': 'استديو النور',
+          'partyPhone': '+967777000111',
+          'agreementDate': '2026-01-05',
+          'dueDate': '2026-09-01',
+          'note': 'ملاحظة',
+          'payer': 'FAMILY',
+          'payerName': 'الوالد',
+          'estimateCover': 'PART',
+          'estimatePart': '60000',
+          'status': 'PARTIALLY_PAID',
+        },
+        dirty: true,
+      );
+      final snapshot = await service.loadSnapshot();
+
+      final payload = service.buildImportPayload(snapshot!);
+
+      final cost = (payload['costs'] as List).single as Map<String, dynamic>;
+      expect(
+        cost.keys.toSet().difference(fieldsOf('ImportLocalCostDto')),
+        isEmpty,
+        reason: 'every agreement field is one the server declares',
+      );
+      for (final payment in cost['payments'] as List) {
+        expect(
+          (payment as Map).keys.toSet().difference(
+            fieldsOf('ImportLocalCostPaymentDto'),
+          ),
+          isEmpty,
+        );
+      }
+      for (final schedule in cost['paymentSchedules'] as List) {
+        expect(
+          (schedule as Map).keys.toSet().difference(
+            fieldsOf('ImportLocalPaymentScheduleDto'),
+          ),
+          isEmpty,
+        );
+      }
+      // What the row does hold still goes.
+      expect(cost['agreementDate'], '2026-01-05');
+      expect(cost['payerName'], 'الوالد');
+      expect(cost['estimatePart'], '60000');
+    });
+
+    test('the phone stops a plan where the server does', () {
+      expect(
+        LocalPlanMigrationService.maxImportGuests,
+        constant(
+          read('modules/guests/public/guest-text-limits.ts'),
+          'PLAN_GUESTS_MAX',
+        ),
+      );
+      expect(
+        LocalPlanMigrationService.maxImportTasks,
+        constant(dto, 'LOCAL_PLAN_IMPORT_TASKS_MAX'),
+      );
+      expect(
+        LocalPlanMigrationService.maxImportCosts,
+        constant(dto, 'LOCAL_PLAN_IMPORT_COSTS_MAX'),
+      );
+      expect(
+        LocalPlanMigrationService.maxImportBytes,
+        constant(dto, 'LOCAL_PLAN_IMPORT_BODY_LIMIT'),
+      );
+    });
   });
 
   // J1-13: the server takes at most so many starting items; a phone plan

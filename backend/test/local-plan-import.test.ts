@@ -12,7 +12,10 @@ import {
 } from "../src/onboarding/dto/import-local-plan.dto";
 import { PLAN_GUESTS_MAX } from "../src/modules/guests/public/guest-text-limits";
 import { largeJsonBody } from "../src/platform/http/large-json-body";
-import { localPlanImportHash } from "../src/wedding-plans/wedding-plans.service";
+import {
+  isSameLocalPlanImport,
+  localPlanImportHash,
+} from "../src/wedding-plans/wedding-plans.service";
 
 const dto = (value: Record<string, unknown>) =>
   plainToInstance(ImportLocalPlanDto, { clientMigrationId: "guest-plan-1", ...value });
@@ -33,6 +36,20 @@ test("a local plan's fingerprint is its content, in any order, without its id", 
   assert.equal(localPlanImportHash(dto({ ...plan, clientMigrationId: "guest-plan-1~2" })), base);
   assert.notEqual(localPlanImportHash(dto({ ...plan, guests: [...plan.guests, { name: "جديد" }] })), base);
   assert.notEqual(localPlanImportHash(dto({ ...plan, title: "عرس أحمد" })), base);
+});
+
+// RA-BE-65: a replay answers with the plan it made only when it is known to
+// hold what that plan was made from. A plan imported before the fingerprint
+// was kept (the column is null) cannot say, and answering it as the same save
+// lets the phone clear a plan that changed since.
+test("a replay is the same save only when the stored fingerprint says so", () => {
+  const sent = localPlanImportHash(dto({ title: "عرس محمد" }));
+  assert.equal(isSameLocalPlanImport(sent, sent), true);
+  assert.equal(
+    isSameLocalPlanImport(localPlanImportHash(dto({ title: "عرس أحمد" })), sent),
+    false,
+  );
+  assert.equal(isSameLocalPlanImport(null, sent), false);
 });
 
 // RA-BE-64: one save takes what a plan holds.

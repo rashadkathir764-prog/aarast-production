@@ -349,7 +349,9 @@ class LocalPlanMigrationService {
       'partyName': ?(_text(row['partyName']) ?? _text(row['providerName'])),
       'partyPhone': ?_text(row['partyPhone']),
       'agreementDate': ?_text(row['agreementDate']),
-      'dueDate': ?_text(row['dueDate']),
+      // An agreement has no due day of its own: its dates are its reminders.
+      // A row from an older build may still hold one, and the server refuses
+      // a field it does not declare.
       'note': ?_text(row['note']),
       if (activePayments.isNotEmpty)
         'payments': [

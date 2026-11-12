@@ -88,6 +88,11 @@ class _JourneyNextStep extends StatelessWidget {
       children: [
         Text(
           eyebrow,
+          // The days are drawn in the tile, which a screen reader skips;
+          // it hears them here, as the card said them before.
+          semanticsLabel: days == null
+              ? null
+              : '$eyebrow · بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}',
           style: JourneyType.of(
             JourneyType.caption,
             weight: JourneyType.bold,

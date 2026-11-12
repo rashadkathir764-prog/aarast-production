@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/utils/keep_currency_on_line.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
@@ -242,9 +243,13 @@ void main() {
     await tester.pumpAndSettle();
     // The amount has its own line under the title, with the reason.
     expect(find.text('القاعة'), findsOneWidget);
-    expect(find.textContaining('500,000', findRichText: true), findsOneWidget);
+    // Whole, as it is written: the figure with its currency kept on its
+    // line, then the reason.
     expect(
-      find.textContaining('موعدها بعد 5 أيام', findRichText: true),
+      find.text(
+        '${keepCurrencyOnLine('500,000 ر.ي')} · موعدها بعد 5 أيام',
+        findRichText: true,
+      ),
       findsOneWidget,
     );
     expect(find.text('سجّل الدفعة'), findsOneWidget);
@@ -253,10 +258,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('القاعة'), findsOneWidget);
     expect(find.textContaining('500,000', findRichText: true), findsNothing);
-    expect(
-      find.textContaining('موعدها بعد 5 أيام', findRichText: true),
-      findsOneWidget,
-    );
+    expect(find.text('موعدها بعد 5 أيام', findRichText: true), findsOneWidget);
   });
 
   test('dashboard compact response does not require full entity lists', () {

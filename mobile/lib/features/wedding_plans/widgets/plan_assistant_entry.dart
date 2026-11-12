@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_pressable.dart';
 import '../data/plan_assistant_api.dart';
@@ -42,17 +43,47 @@ class _PlanAssistantEntryState extends State<PlanAssistantEntry> {
     }
   }
 
+  /// The phone's last answer first, so the door is there with the home and
+  /// the cards under it do not move when the server answers; then the
+  /// server's. Out of reach, the door stays as it was last known (asking
+  /// says it needs the server).
   Future<void> _load() async {
     final weddingPlanId = widget.weddingPlanId;
+    final PlanAssistantApi api;
     try {
-      final api = widget.api ?? PlanAssistantApi(context.read<ApiClient>());
-      final status = await api.status(weddingPlanId);
+      api =
+          widget.api ??
+          PlanAssistantApi(
+            context.read<ApiClient>(),
+            offline: context.read<OfflineSyncService?>(),
+          );
+    } on ProviderNotFoundException {
+      // A home drawn without the app's client (a preview) has no door.
+      return;
+    }
+    void show(PlanAssistantStatus status) {
       if (mounted && weddingPlanId == widget.weddingPlanId) {
         setState(() => _status = status);
       }
-    } catch (_) {
-      // Offline or unavailable: the home simply shows no door.
     }
+
+    var answered = false;
+    final server = api
+        .status(weddingPlanId)
+        .then((status) {
+          answered = true;
+          show(status);
+        })
+        .catchError((Object _) {
+          // Offline or unavailable: the door stays as last known.
+        });
+    try {
+      final known = await api.knownStatus(weddingPlanId);
+      if (known != null && !answered) show(known);
+    } catch (_) {
+      // No copy to read: the server's answer decides.
+    }
+    await server;
   }
 
   @override

@@ -399,11 +399,13 @@ void main() {
     DateTime now, {
     Widget? assistant,
     PlanEventsView? events,
+    DashboardHomeFunding? funding,
   }) => AarastDashboardView(
     summary: s,
     userName: 'محمد',
     bottomPadding: 158,
     now: now,
+    funding: funding,
     assistantEntry: assistant,
     events: events,
     onOpenEvents: () {},
@@ -489,6 +491,42 @@ void main() {
           assistant: PlanAssistantEntry(
             weddingPlanId: _planId,
             api: _FakeAssistantApi(),
+          ),
+        ),
+        stage: 'التخطيط',
+      ),
+      h: 1000,
+    );
+  });
+
+  // The money card once the money in is known and the server names dues:
+  // the verdict chip and the strip (late, a month of next year, after the
+  // wedding), which no picture drew before.
+  testWidgets('home dues', (tester) async {
+    await _shot(
+      tester,
+      'home_dues',
+      shell(
+        dash(
+          _active,
+          now,
+          funding: const DashboardHomeFunding(
+            inHand: 2900000,
+            pledged: 250000,
+            shortfall: null,
+            sourcesCount: 2,
+            ownerLeft: 3350000,
+            // The money tab's sentence at its real length (D103).
+            verdict: (
+              ok: true,
+              words:
+                  'معك 2.9 مليون يكفي دفعاتك وسداد السلفة بمواعيدها لين 1 فبراير، ويبقى 250 ألف',
+            ),
+            dues: [
+              DashboardHomeDue(label: 'متأخرة', amount: 400000, overdue: true),
+              DashboardHomeDue(label: 'يناير 2027', amount: 1250000),
+              DashboardHomeDue(label: 'بعد العرس', amount: 1700000),
+            ],
           ),
         ),
         stage: 'التخطيط',

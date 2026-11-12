@@ -354,6 +354,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   });
 
   await walk.step('c01_money_whole', 'المال: الصورة كاملة', () async {
+    // The summary's last part is under the fold on a short window (the
+    // Windows walk's; the Linux box's taller one drew it without a scroll).
+    if (!walk.sees('باقي على العرس كله')) await walk.scroll(pixels: 1500);
     walk.expectSee('باقي على العرس كله');
     walk.expectSee(p.wholeLeft, why: 'الباقي على كل الاتفاقات، عليه وعلى أهله');
     // D59: what the family pays is theirs, not the owner's.

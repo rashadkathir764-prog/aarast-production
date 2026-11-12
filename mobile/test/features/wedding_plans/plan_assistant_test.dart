@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
@@ -408,6 +410,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('assistant-entry')), findsNothing);
   });
+
+  // The door sits above the countdown: drawn only when the server answered,
+  // it pushed the whole home down on every open, and never showed offline.
+  testWidgets('the home door is drawn from the phone\'s last answer, before '
+      'the server\'s and when it does not come', (tester) async {
+    final waiting = _KnownAssistantApi(serverAnswers: false);
+    await tester.pumpWidget(
+      app(PlanAssistantEntry(weddingPlanId: 'plan-1', api: waiting)),
+    );
+    // No server answer yet: one turn of the phone's own read is enough.
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const ValueKey('assistant-entry')), findsOneWidget);
+
+    // The server is out of reach: the door stays as last known.
+    waiting.fail();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('assistant-entry')), findsOneWidget);
+  });
+
+  testWidgets('the server\'s answer is the last word on the home door', (
+    tester,
+  ) async {
+    // The phone remembers an open door; the server now says it is closed.
+    final api = _KnownAssistantApi(serverAnswers: true, allowedNow: false);
+    await tester.pumpWidget(
+      app(PlanAssistantEntry(weddingPlanId: 'plan-1', api: api)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('assistant-entry')), findsNothing);
+  });
+}
+
+/// An assistant whose last answer the phone kept (open to the reader), and
+/// a server that answers, waits or fails.
+class _KnownAssistantApi extends PlanAssistantApi {
+  _KnownAssistantApi({required this.serverAnswers, this.allowedNow = true})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final bool serverAnswers;
+  final bool allowedNow;
+  final _server = Completer<PlanAssistantStatus>();
+
+  void fail() => _server.completeError(
+    ApiException('الخادم ما يرد', isNetworkFailure: true),
+  );
+
+  PlanAssistantStatus _status({required bool allowed}) => PlanAssistantStatus(
+    enabled: true,
+    allowed: allowed,
+    dailyLimit: 3,
+    remainingToday: 2,
+  );
+
+  @override
+  Future<PlanAssistantStatus?> knownStatus(String weddingPlanId) async =>
+      _status(allowed: true);
+
+  @override
+  Future<PlanAssistantStatus> status(String weddingPlanId) => serverAnswers
+      ? Future.value(_status(allowed: allowedNow))
+      : _server.future;
 }
 
 class _FakeAssistantApi extends PlanAssistantApi {

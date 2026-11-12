@@ -331,7 +331,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
       ],
       for (final entry in months.entries) ...[
         title(
-          '${arabicMonthName(entry.key.month)}${entry.key.year != sanaaToday().year ? ' ${entry.key.year}' : ''}${entry.key == weddingMonth ? ' · شهر العرس' : ''}',
+          '${arabicMonthInYear(entry.key, thisYear: sanaaToday().year)}${entry.key == weddingMonth ? ' · شهر العرس' : ''}',
           sum(entry.value),
         ),
         lines(

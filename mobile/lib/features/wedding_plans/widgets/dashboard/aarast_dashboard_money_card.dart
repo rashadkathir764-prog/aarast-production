@@ -25,9 +25,9 @@ class DashboardHomeFunding {
     this.dues = const [],
   });
 
-  /// D102: what falls on the owner in the coming months, in order, at most
-  /// three; empty when the server names none.
-  final List<({DateTime month, double amount})> dues;
+  /// D102: what falls on the owner next ([dashboardHomeDues]); empty when
+  /// the server names none.
+  final List<DashboardHomeDue> dues;
 
   /// D102: what is on the owner, the money tab's «عليك من العرس» (his
   /// share, the mahr with it); null from a server before D102.
@@ -47,6 +47,59 @@ class DashboardHomeFunding {
 
   /// The server knows the money in only once a source is recorded.
   bool get isKnown => sourcesCount > 0 || shortfall != null;
+}
+
+/// One piece of the home's dues strip: what is late, a coming month, or
+/// everything after the wedding.
+class DashboardHomeDue {
+  const DashboardHomeDue({
+    required this.label,
+    required this.amount,
+    this.overdue = false,
+  });
+
+  final String label;
+  final double amount;
+  final bool overdue;
+}
+
+/// The pieces the strip shows at most.
+const _homeDuesShown = 3;
+
+/// D102: what falls on the owner next, named as the money tab's «الدفعات»
+/// names it: what is late first, then each coming month (with its year
+/// when it is not this one), and everything after the wedding as one
+/// piece. The nearest [_homeDuesShown].
+List<DashboardHomeDue> dashboardHomeDues({
+  required double overdue,
+  required List<({DateTime month, double amount})> months,
+  required DateTime? weddingDate,
+  required DateTime today,
+}) {
+  int order(DateTime day) => day.year * 12 + day.month;
+  final weddingMonth = weddingDate == null ? null : order(weddingDate);
+  var afterWedding = 0.0;
+  final dues = <DashboardHomeDue>[
+    if (overdue > 0)
+      DashboardHomeDue(label: 'متأخرة', amount: overdue, overdue: true),
+  ];
+  for (final due in months) {
+    if (due.amount <= 0) continue;
+    if (weddingMonth != null && order(due.month) > weddingMonth) {
+      afterWedding += due.amount;
+      continue;
+    }
+    dues.add(
+      DashboardHomeDue(
+        label: arabicMonthInYear(due.month, thisYear: today.year),
+        amount: due.amount,
+      ),
+    );
+  }
+  if (afterWedding > 0) {
+    dues.add(DashboardHomeDue(label: 'بعد العرس', amount: afterWedding));
+  }
+  return dues.take(_homeDuesShown).toList(growable: false);
 }
 
 class _DashboardMoneyCard extends StatefulWidget {
@@ -133,22 +186,19 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final ownerLeft = funding?.ownerLeft;
     final verdict = known ? funding.verdict : null;
     final Widget lead;
+    // D103's verdict is the money tab's whole sentence («معك 4.2 مليون يكفي
+    // دفعاتك وسداد السلفة بمواعيدها لين 1 مايو، ويبقى 2 مليون»), so its chip
+    // takes the card's width under the figures; beside them it stood five
+    // lines tall.
+    ({bool ok, String words})? verdictShown;
     if (ownerLeft != null && (agreed > 0 || ownerLeft > 0)) {
       // D102, D103: the owner reads what «الملخص» says, in its words.
-      lead = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _MoneyLead(
-            label: context.say('عليك من العرس', 'عليكِ من العرس'),
-            value: amount(ownerLeft),
-            color: AarastV3Color.ink,
-          ),
-          if (verdict != null) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            _VerdictChip(ok: verdict.ok, words: verdict.words),
-          ],
-        ],
+      lead = _MoneyLead(
+        label: context.say('عليك من العرس', 'عليكِ من العرس'),
+        value: amount(ownerLeft),
+        color: AarastV3Color.ink,
       );
+      verdictShown = verdict;
     } else if (agreed <= 0) {
       lead = Text(
         context.say(
@@ -224,11 +274,18 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
             ].join('، '),
       child: AarastPressable(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: JourneyBox(
           borderColor: AarastV3Color.line,
           borderWidth: AarastV3Space.hair,
-          padding: const EdgeInsets.all(AarastV3Space.x4),
+          // The title row is 48 high for its switch (D74), so the card's
+          // top inset is the smaller one and the row sits where it did.
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            AarastV3Space.x4,
+            AarastV3Space.x2,
+            AarastV3Space.x4,
+            AarastV3Space.x4,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -250,7 +307,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                       ),
                     ),
                   ),
-                  // b02 draws a bare eye; the tap area is wider than it.
+                  // The eye with its word, in a 48 target of its own (D74):
+                  // a miss around it opened the money tab instead.
                   Semantics(
                     button: true,
                     label: amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
@@ -263,9 +321,13 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                         radius: 20,
                         // The eye with its word: an icon alone did not say
                         // what it does.
-                        child: SizedBox(
-                          height: AarastV3Space.x6 + AarastV3Space.x1,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minWidth: AarastV3Space.x12,
+                            minHeight: AarastV3Space.x12,
+                          ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -292,7 +354,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: AarastV3Space.x1),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -309,11 +370,22 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ],
                 ],
               ),
+              if (verdictShown != null) ...[
+                const SizedBox(height: AarastV3Space.x2),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: _VerdictChip(
+                    ok: verdictShown.ok,
+                    words: verdictShown.words,
+                  ),
+                ),
+              ],
               if (known && funding.dues.isNotEmpty) ...[
                 const SizedBox(height: AarastV3Space.x3),
                 _DuesStrip(
                   dues: funding.dues,
                   figure: figure,
+                  hidden: amountsHidden,
                   color: context.accent.primary,
                   soft: context.accent.primarySoft,
                 ),
@@ -439,38 +511,46 @@ class _SideFigure extends StatelessWidget {
   }
 }
 
-/// When the owner pays: one bar cut by the coming months' share, the
-/// nearest month in the plan's colour, and each month named under it.
+/// When the owner pays: one bar cut by each piece's share, what is late in
+/// the warning colour and the nearest month in the plan's, and each piece
+/// named under it with its figure on a line of its own (side by side they
+/// were cut on a narrow phone, and the cut fell on the figure).
 class _DuesStrip extends StatelessWidget {
   const _DuesStrip({
     required this.dues,
     required this.figure,
+    required this.hidden,
     required this.color,
     required this.soft,
   });
 
-  final List<({DateTime month, double amount})> dues;
+  final List<DashboardHomeDue> dues;
   final String Function(double) figure;
+
+  /// G17: with the amounts hidden the bar is cut evenly, so the pieces'
+  /// widths say nothing of how the amounts compare.
+  final bool hidden;
   final Color color;
   final Color soft;
 
   @override
   Widget build(BuildContext context) {
     final total = dues.fold<double>(0, (sum, due) => sum + due.amount);
+    final nearest = dues.indexWhere((due) => !due.overdue);
     return Column(
       key: const ValueKey('dashboard-money-dues'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ExcludeSemantics(
           child: SizedBox(
-            height: AarastV3Space.x1 + AarastV3Space.hair,
+            height: AarastV3Space.x1,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (var index = 0; index < dues.length; index++) ...[
                   if (index > 0) const SizedBox(width: AarastV3Space.x1),
                   Expanded(
-                    flex: total <= 0
+                    flex: hidden || total <= 0
                         ? 1
                         : (dues[index].amount / total * 1000).round().clamp(
                             1,
@@ -478,7 +558,11 @@ class _DuesStrip extends StatelessWidget {
                           ),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: index == 0 ? color : soft,
+                        color: dues[index].overdue
+                            ? AarastV3Color.danger
+                            : index == nearest
+                            ? color
+                            : soft,
                         borderRadius: BorderRadius.circular(AarastV3Radius.xs),
                       ),
                     ),
@@ -490,34 +574,48 @@ class _DuesStrip extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x1),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (var index = 0; index < dues.length; index++)
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '${arabicMonthName(dues[index].month.month)} ',
-                      ),
-                      TextSpan(
-                        text: figure(dues[index].amount),
-                        style: JourneyType.of(
-                          JourneyType.caption,
-                          weight: JourneyType.bold,
+                child: MergeSemantics(
+                  // A line too long for its third (a year, millions,
+                  // enlarged text) is drawn smaller, whole, like the
+                  // card's own figure; it is never cut.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: index == 0
+                        ? AlignmentDirectional.centerStart
+                        : index == dues.length - 1
+                        ? AlignmentDirectional.centerEnd
+                        : Alignment.center,
+                    child: Column(
+                      crossAxisAlignment: index == 0
+                          ? CrossAxisAlignment.start
+                          : index == dues.length - 1
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          dues[index].label,
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            color: dues[index].overdue
+                                ? AarastV3Color.danger
+                                : AarastV3Color.textMuted,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: index == 0
-                      ? TextAlign.start
-                      : index == dues.length - 1
-                      ? TextAlign.end
-                      : TextAlign.center,
-                  style: JourneyType.of(
-                    JourneyType.caption,
-                    color: AarastV3Color.textMuted,
+                        Text(
+                          figure(dues[index].amount),
+                          key: ValueKey('dashboard-money-due-$index'),
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            weight: JourneyType.bold,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

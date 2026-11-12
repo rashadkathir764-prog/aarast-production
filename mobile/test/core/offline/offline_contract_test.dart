@@ -8,8 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 // that will spin or fail when the server is slow, so the count of raw
 // calls per file may only shrink, down to zero.
 
+// Any receiver: the client is not always named `apiClient` (the assistant's
+// `_client` went uncounted until 2026-11-12).
 final _rawCall = RegExp(
-  r'\b\w*[aA]piClient\w*\.(getJson|getJsonList|postJson|postJsonWithReceiveTimeout|postJsonWithBearer|patchJson|putJson|deleteJson|deleteJsonWithData)\(|\.dio\.(get|post|patch|put|delete|request)<',
+  r'\b\w+\.(getJson|getJsonList|postJson|postJsonWithReceiveTimeout|postJsonWithBearer|patchJson|putJson|deleteJson|deleteJsonWithData)\(|\.dio\.(get|post|patch|put|delete|request)<',
 );
 
 /// Raw calls still allowed per data file. Shrink only; never add a file.
@@ -23,6 +25,10 @@ const _baseline = <String, int>{
   // reach another person and plan-side requests, each said so.
   'marketplace/data/marketplace_api.dart': 35,
   'tasks/data/task_timeline_api.dart': 6,
+  // Found, not added: the pattern above missed this file. A question needs
+  // the model now, with its own long wait; the status is asked fresh for
+  // what is left today, and kept on the phone for the home's door.
+  'wedding_plans/data/plan_assistant_api.dart': 2,
   'wedding_plans/data/wedding_plans_api.dart': 10,
 };
 

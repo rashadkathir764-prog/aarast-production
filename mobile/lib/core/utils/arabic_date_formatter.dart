@@ -37,6 +37,13 @@ String formatArabicCompactDate(DateTime date) {
 /// «يناير».
 String arabicMonthName(int month) => _arabicMonths[month - 1];
 
+/// «نوفمبر», or «نوفمبر 2027» when the month is not in [thisYear]: a bare
+/// month name reads as the nearest one.
+String arabicMonthInYear(DateTime month, {required int thisYear}) =>
+    month.year == thisYear
+    ? arabicMonthName(month.month)
+    : '${arabicMonthName(month.month)} ${month.year}';
+
 /// «21 يناير».
 String formatArabicDayMonth(DateTime date) =>
     '${date.day} ${_arabicMonths[date.month - 1]}';

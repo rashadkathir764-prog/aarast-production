@@ -96,8 +96,10 @@ void main() {
     // again as a number (the screen card's «لا تكرار», e19c2da). The number
     // stays only over the budget, where the bar is pinned full.
     expect(find.textContaining('26%'), findsNothing);
-    expect(find.text('دفعة متأخرة'), findsOneWidget);
-    expect(find.text('سجّل الدفعة'), findsOneWidget);
+    // D102: the root opens on «الملخص», which leads with what is on the
+    // owner. (The old root's «دفعة متأخرة» card is gone with it.)
+    expect(find.text('الملخص'), findsOneWidget);
+    expect(find.text('عليك من العرس'), findsOneWidget);
     await expectLater(
       find.byType(MoneyOverviewScreen),
       matchesGoldenFile('goldens/money_overview.png'),

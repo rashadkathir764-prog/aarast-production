@@ -14,6 +14,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/compact_money_figure.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
@@ -371,7 +372,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         ? null
         : moneyCoverWords(context, coverage, figure);
     final outstanding = money.outstanding;
-    final dueMonths = money.duesByMonth?.months ?? const [];
+    final duesByMonth = money.duesByMonth;
     return DashboardHomeFunding(
       inHand: value(funding.availableCash),
       pledged: value(funding.pledged),
@@ -379,12 +380,18 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       sourcesCount: funding.sourcesCount,
       ownerLeft: outstanding == null ? null : value(outstanding.owner),
       verdict: words == null ? null : (ok: words.ok, words: words.main),
-      // D102: the owner's share of the coming months, the nearest three.
-      dues: [
-        for (final due in dueMonths)
-          if (value(due.bucket.ownerAmount) > 0)
-            (month: due.month, amount: value(due.bucket.ownerAmount)),
-      ].take(3).toList(growable: false),
+      // D102: the owner's share of what is late and of the coming months.
+      dues: duesByMonth == null
+          ? const []
+          : dashboardHomeDues(
+              overdue: value(duesByMonth.overdue.ownerAmount),
+              months: [
+                for (final due in duesByMonth.months)
+                  (month: due.month, amount: value(due.bucket.ownerAmount)),
+              ],
+              weddingDate: summary.weddingDate,
+              today: sanaaToday(),
+            ),
     );
   }
 
@@ -620,7 +627,11 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               // has nothing there to answer from.
               assistantEntry: _isLocalGuestPlan
                   ? null
-                  : PlanAssistantEntry(weddingPlanId: selectedPlanId),
+                  : PlanAssistantEntry(
+                      // Kept when the notice above it comes or goes.
+                      key: const ValueKey('home-assistant-entry'),
+                      weddingPlanId: selectedPlanId,
+                    ),
               bottomPadding: bottomPadding,
               onNotifications: () =>
                   context.push(AppRouter.planNotifications(selectedPlanId)),

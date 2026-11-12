@@ -117,7 +117,7 @@ void main() {
 
       expect(exception.statusCode, 401);
       expect(exception.serverCode, 'INVALID_CREDENTIALS');
-      expect(exception.message, 'تعذر تسجيل الدخول بهذه البيانات.');
+      expect(exception.message, 'الرقم أو كلمة المرور غلط.');
       expect(exception.message, isNot(contains('Invalid')));
     });
 
@@ -240,7 +240,8 @@ void main() {
       );
 
       expect(exception.statusCode, 400);
-      expect(exception.message, contains('تحقق من البيانات'));
+      // In the app's dialect (RA-MO-116): asks to check what was typed.
+      expect(exception.message, contains('تأكد من اللي كتبته'));
       expect(exception.message, isNot(contains('newPassword')));
       expect(exception.message, isNot(contains('characters')));
     });
@@ -266,8 +267,10 @@ void main() {
       );
 
       expect(exception.serverCode, 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF');
-      expect(exception.message, contains('لا يوجد حساب تطبيق'));
-      expect(exception.message, contains('أنشئ حسابًا'));
+      // In the app's dialect (RA-MO-117): no account on the number, and the
+      // way to a new one.
+      expect(exception.message, contains('ما عليه حساب في التطبيق'));
+      expect(exception.message, contains('حساب جديد'));
       expect(exception.message, isNot(contains('No account')));
     });
 

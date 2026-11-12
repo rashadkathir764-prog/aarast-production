@@ -740,12 +740,12 @@ void main() {
       );
       expect(find.byKey(const Key('invite-closed')), findsOneWidget);
       expect(find.byKey(const Key('invite-ask-new')), findsOneWidget);
-      expect(find.textContaining('لا توجد دعوة فعّالة'), findsNothing);
+      expect(find.textContaining('ما في دعوة شغالة'), findsNothing);
 
       await _tapVisible(tester, find.text('تغيير الرقم'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
-      expect(find.textContaining('لا توجد دعوة فعّالة'), findsNothing);
+      expect(find.textContaining('ما في دعوة شغالة'), findsNothing);
     },
   );
 

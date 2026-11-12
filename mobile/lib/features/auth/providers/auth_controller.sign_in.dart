@@ -361,7 +361,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         source: 'AuthController.submit',
         attributes: {'errorType': error.runtimeType.toString()},
       );
-      _errorMessage = 'حدث خطأ، يرجى المحاولة مرة أخرى.';
+      _errorMessage = 'صار خطأ عندنا. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -370,26 +370,28 @@ mixin _AuthSignIn on _AuthControllerCore {
   }
 
   static const _safeLoginFailureMessage =
-      'تعذر تسجيل الدخول بهذه البيانات. تأكد منها، أو استخدم «نسيت كلمة المرور؟» أو أنشئ حسابًا جديدًا.';
+      'الرقم أو كلمة المرور غلط. تأكد منهم، أو استعمل «نسيت كلمة المرور؟»، أو سوّ حساب جديد.';
 
   static String? _messageForServerCode(String? code) {
     return switch (code) {
       'INVALID_CREDENTIALS' => _safeLoginFailureMessage,
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
-        'يحتاج حساب التطبيق إلى تأكيد رقم الجوال. استخدم «الدخول برمز تحقق» للمتابعة.',
+        // The button's own name on the sign-in screen («الدخول برمز
+        // تحقق», which this said before, is on no screen).
+        'حساب التطبيق يحتاج تأكيد رقم الجوال. استعمل «الدخول برمز واتساب» وكمّل.',
       'ACCOUNT_ALREADY_EXISTS' =>
         'هذا الرقم عليه حساب من قبل. الدخول له برمز واتساب من «تسجيل الدخول».',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>
-        'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
+        'حساب التطبيق لهذا الرقم جاهز من قبل. سجّل دخول، أو استرجع كلمة مرور التطبيق.',
       'OTP_INVALID_OR_EXPIRED' =>
         'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
       'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
-        'تم التحقق من الرقم، ولا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
+        'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّ حساب جديد وكمّل.',
       'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
-        'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
+        'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصل مع الدعم.',
       'INVITE_NOT_FOUND_FOR_PHONE' =>
-        'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
+        'ما في دعوة شغالة على هذا الرقم. تأكد من الرقم، أو اطلب دعوة جديدة.',
       'INVITE_ACCOUNT_SETUP_REQUIRED' =>
         'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
       'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,

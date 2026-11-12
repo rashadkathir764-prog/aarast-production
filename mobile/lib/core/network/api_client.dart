@@ -1053,22 +1053,23 @@ class ApiException implements Exception {
       'ASSISTANT_BUSY' => 'المساعد مشغول الآن. حاول بعد قليل.',
       'ASSISTANT_UNAVAILABLE' =>
         'المساعد غير متاح الآن. حاول لاحقًا، وإن تكرر فتواصل مع الدعم.',
-      'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
+      // RA-MO-116, 117: the app's dialect, no technical word.
+      'INVALID_CREDENTIALS' => 'الرقم أو كلمة المرور غلط.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
-        'يحتاج حساب التطبيق إلى تأكيد رقم الجوال.',
+        'حساب التطبيق يحتاج تأكيد رقم الجوال.',
       'ACCOUNT_ALREADY_EXISTS' =>
-        'هذا الرقم مسجل بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة المرور.',
+        'هذا الرقم عليه حساب من قبل. سجّل دخول، أو استرجع كلمة المرور.',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>
-        'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
+        'حساب التطبيق لهذا الرقم جاهز من قبل. سجّل دخول، أو استرجع كلمة مرور التطبيق.',
       'OTP_INVALID_OR_EXPIRED' =>
         'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
       'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
-        'تم التحقق من الرقم، لكن لا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
+        'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّ حساب جديد وكمّل.',
       'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
-        'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
+        'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصل مع الدعم.',
       'INVITE_NOT_FOUND_FOR_PHONE' =>
-        'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
+        'ما في دعوة شغالة على هذا الرقم. تأكد من الرقم، أو اطلب دعوة جديدة.',
       'INVITE_ACCOUNT_SETUP_REQUIRED' =>
         'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
       'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
@@ -1092,16 +1093,17 @@ class ApiException implements Exception {
   }
 
   static String _genericAuthMessage(int? statusCode) {
+    // RA-MO-116: «المصادقة» is the developer's word. Said as what happened.
     if (statusCode == 400 || statusCode == 422) {
-      return 'تعذر إكمال طلب المصادقة. تحقق من البيانات وحاول مرة أخرى.';
+      return 'ما قدرنا نكمل الطلب. تأكد من اللي كتبته وجرّب مرة ثانية.';
     }
     if (statusCode == 429) {
-      return 'طلبات كثيرة خلال وقت قصير. انتظر قليلًا ثم حاول مرة أخرى.';
+      return 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.';
     }
     if (statusCode != null && statusCode >= 500) {
-      return 'تعذر إكمال طلب المصادقة الآن. حاول مرة أخرى بعد قليل.';
+      return 'الخادم ما رد زي ما لازم. جرّب بعد شوي.';
     }
-    return 'تعذر إكمال طلب المصادقة. حاول مرة أخرى.';
+    return 'ما قدرنا نكمل الطلب. جرّب مرة ثانية.';
   }
 }
 

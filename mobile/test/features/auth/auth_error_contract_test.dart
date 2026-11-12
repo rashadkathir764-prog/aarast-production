@@ -25,9 +25,13 @@ void main() {
 
     expect(success, isFalse);
     expect(harness.controller.errorCode, 'INVALID_CREDENTIALS');
+    // The same three things, in the app's dialect (RA-MO-117): the way back
+    // by a forgotten password, the way to a new account, and never whether
+    // the number has an account.
     expect(harness.controller.errorMessage, contains('نسيت كلمة المرور'));
-    expect(harness.controller.errorMessage, contains('أنشئ حسابًا جديدًا'));
+    expect(harness.controller.errorMessage, contains('حساب جديد'));
     expect(harness.controller.errorMessage, isNot(contains('لا يوجد حساب')));
+    expect(harness.controller.errorMessage, isNot(contains('ما عليه حساب')));
   });
 
   test(
@@ -47,7 +51,9 @@ void main() {
 
       expect(success, isFalse);
       expect(harness.controller.errorCode, 'PHONE_VERIFICATION_REQUIRED');
-      expect(harness.controller.errorMessage, contains('الدخول برمز تحقق'));
+      // The sign-in screen's own button name (RA-MO-117: the message
+      // named «الدخول برمز تحقق», a button no screen has).
+      expect(harness.controller.errorMessage, contains('الدخول برمز واتساب'));
       expect(harness.controller.errorMessage, isNot(contains('غير صحيحة')));
     },
   );
@@ -159,8 +165,9 @@ void main() {
         missingHarness.controller.errorCode,
         'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
       );
-      expect(missingHarness.controller.errorMessage, contains('تم التحقق'));
-      expect(missingHarness.controller.errorMessage, contains('أنشئ حسابًا'));
+      // Still says the number was checked, and offers the new account.
+      expect(missingHarness.controller.errorMessage, contains('تأكدنا من رقمك'));
+      expect(missingHarness.controller.errorMessage, contains('حساب جديد'));
     },
   );
 }

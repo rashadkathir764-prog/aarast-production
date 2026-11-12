@@ -217,13 +217,11 @@ void main() {
   // spinner in place of the page for that long, so the page under it was
   // torn down: a task being written was gone when the person came back
   // from copying a number out of WhatsApp.
-  // The page stays closed to the eye for that long, as it always did (a
-  // participant's rights can be withdrawn by someone else); it is kept
-  // alive under the spinner instead of being rebuilt.
-  testWidgets('a page already open keeps what was typed in it while the '
-      'contexts are read again, unseen until they are confirmed', (
-    tester,
-  ) async {
+  // D112 (Q-17): the page stays in front on the right last confirmed while
+  // the server is asked; it closes only on the server's refusal (the test
+  // after this one).
+  testWidgets('a page already open stays in front, with what was typed in '
+      'it, while the contexts are read again', (tester) async {
     final plan = accountContext(role: AccountContextRole.contributor);
     final harness = await _Harness.create([plan]);
     await harness.controller.refresh();
@@ -244,12 +242,10 @@ void main() {
     final refresh = harness.controller.refresh();
     await tester.pump();
     expect(harness.controller.isRefreshing, isTrue);
-    // Unseen and untouchable while the answer is awaited.
-    expect(find.text('رتّب الغداء'), findsNothing);
-    expect(find.text('رتّب الغداء', skipOffstage: false), findsOneWidget);
+    expect(find.text('رتّب الغداء'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('wedding-plan-context-loading')),
-      findsOneWidget,
+      findsNothing,
     );
 
     harness.gateway.hold!.complete();

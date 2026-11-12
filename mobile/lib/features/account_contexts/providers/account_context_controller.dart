@@ -225,13 +225,16 @@ class AccountContextController extends ChangeNotifier {
       await _afterRefresh?.call();
     } on ApiException catch (error) {
       if (_isCurrent(generation)) {
-        // Only the owner's own plan stays open without a connection. A
-        // contributor's or provider's authority can be withdrawn by someone
-        // else, so those fail closed until the server answers.
+        // D112 (Q-17), the owner's word: a plan stays open without a
+        // connection for its owner and for its participants, on the copy
+        // the phone holds and marked old; it closes only when the server
+        // answers that the right was withdrawn. (Participants used to be
+        // closed out until the server answered, since 2026-08-01.) A
+        // provider's portal still waits for the server.
         if (!error.isNetworkFailure) {
           _errorMessage = _genericLoadFailure;
         } else if (_hasLoadedContexts) {
-          if (_selectedContext?.role == AccountContextRole.owner) {
+          if (_staysOpenOffline(_selectedContext)) {
             _noticeMessage = _offlineNotice;
           } else {
             _errorMessage = _offlineLoadFailure;
@@ -612,16 +615,23 @@ class AccountContextController extends ChangeNotifier {
     }
   }
 
-  /// Without a connection, the plan this user owns and last opened, as the
-  /// server last returned it; null when there is none or it no longer reads.
+  /// D112 (Q-17): a plan, the owner's or a participant's, reads from the
+  /// phone's copy without a connection. A provider's portal does not.
+  static bool _staysOpenOffline(AccountContext? context) =>
+      context != null &&
+      context.isPlan &&
+      (context.role == AccountContextRole.owner ||
+          context.role == AccountContextRole.contributor);
+
+  /// Without a connection, the plan last opened (the user's own, or one
+  /// they take part in), as the server last returned it; null when there is
+  /// none or it no longer reads.
   AccountContext? _keptContext() {
     final kept = _authStorage.readAccountContextSnapshot();
     if (kept == null) return null;
     try {
       final context = AccountContext.fromJson(kept);
-      return context.isAvailable && context.role == AccountContextRole.owner
-          ? context
-          : null;
+      return context.isAvailable && _staysOpenOffline(context) ? context : null;
     } on FormatException {
       return null;
     }

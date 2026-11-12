@@ -64,18 +64,19 @@ class WeddingPlanContextGate extends StatelessWidget {
       return const _GateLoading();
     }
     // While the contexts are read again (each return to the app, each pull
-    // to refresh) the page stays closed to the eye, as before, and is kept
-    // alive under the spinner: drawing the spinner in its place tore the
-    // page down with whatever was being typed in it (RA-MO-135). The answer
-    // then decides: confirmed, the page is shown as it was left; withdrawn,
-    // it is removed.
+    // to refresh) the page stays as it is, on the right last confirmed.
+    // D112 (Q-17): the page closes only when the server answers that the
+    // right was withdrawn, not while it is being asked; without a
+    // connection that question takes the whole timeout. Drawing a spinner
+    // in the page's place also tore it down with whatever was being typed
+    // in it (RA-MO-135).
     if (isWeddingPlanRouteCompatible(
       controller,
       weddingPlanId,
       requiredAccess: requiredAccess,
     )) {
       return ContextGateHeldPage(
-        covered: controller.isRefreshing,
+        covered: false,
         cover: const _GateLoading(),
         child: child,
       );
@@ -210,13 +211,12 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
     if (!controller.hasLoadedContexts) {
       return const _GateLoading();
     }
-    // As above: the open page is kept alive, unseen, while the contexts
-    // are read again.
+    // As above: the open page stays while the contexts are read again.
     final selected = controller.selectedContext;
     if (selected != null &&
         accountContextAllowsPlanAccess(selected, requiredAccess)) {
       return ContextGateHeldPage(
-        covered: controller.isRefreshing,
+        covered: false,
         cover: const _GateLoading(),
         child: child,
       );

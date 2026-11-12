@@ -447,16 +447,24 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     if (!mounted) return;
     final answers = progress?.draft ?? draft;
     if (answers == null || !answers.hasPersona) return;
-    _restore(answers);
+    final dayPassed = _restore(answers);
     final step = _WelcomeStep.values.asNameMap()[progress?.step];
     setState(
-      () => _resumeStep = _resumable.contains(step)
+      // A day that passed is asked for again, at its own step.
+      () => _resumeStep = !dayPassed && _resumable.contains(step)
           ? step
           : _WelcomeStep.nameDate,
     );
   }
 
-  void _restore(GuestOnboardingDraft draft) {
+  /// Puts the kept answers back; true when the wedding day among them has
+  /// passed and was left out (D112, Q-16: the progress stays, a past day
+  /// does not; it came back as it was, a plan dated in the past).
+  bool _restore(GuestOnboardingDraft draft) {
+    final kept = draft.weddingDate;
+    final dayPassed =
+        kept != null &&
+        DateUtils.dateOnly(kept).isBefore(DateUtils.dateOnly(appNow()));
     final name = draft.planName?.trim() ?? '';
     _nameController.text = name.startsWith('عرس ') ? name.substring(4) : name;
     _budgetController.text = formatMoneyInputValue(draft.estimatedBudget);
@@ -464,7 +472,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _persona = draft.persona == GuestPersona.bride
           ? GuestPersona.bride
           : GuestPersona.groom;
-      _date = draft.weddingDate;
+      _date = dayPassed ? null : kept;
       _dateUnknown = draft.weddingDateUnknown;
       _city = draft.city;
       _budgetSkipped = draft.budgetSkipped;
@@ -475,6 +483,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         _mahrDueDate = mahr.remainingDueDate;
       }
     });
+    return dayPassed;
   }
 
   ReferenceCatalogData _catalogs() {

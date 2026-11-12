@@ -95,7 +95,12 @@ void main() {
       expect(controller.errorMessage, contains('ما وصلنا للخادم'));
     });
 
-    test('a contributor copy is never opened offline', () async {
+    // D112 (Q-17), the owner's word (2026-11-12): a participant reads the
+    // phone's copy without a connection, marked old, and is closed out only
+    // when the server answers that the right was withdrawn. This test held
+    // the rule it replaces («a contributor copy is never opened offline»).
+    test('a participant opens the plan last opened, with an offline '
+        'notice', () async {
       final contributor = accountContext(
         role: AccountContextRole.contributor,
         membershipId: 'membership-1',
@@ -103,6 +108,21 @@ void main() {
       final storage = await _signedInStorage(
         userId: 'user-1',
         opened: contributor,
+      );
+      final controller = _offlineController(storage);
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext?.contextKey, contributor.contextKey);
+      expect(controller.errorMessage, isNull);
+      expect(controller.noticeMessage, contains('أنت بدون نت'));
+    });
+
+    test('a provider portal is still not opened offline', () async {
+      final provider = accountContext(role: AccountContextRole.provider);
+      final storage = await _signedInStorage(
+        userId: 'user-1',
+        opened: provider,
       );
       final controller = _offlineController(storage);
 
@@ -395,12 +415,47 @@ void main() {
       },
     );
 
-    test('network refresh failure still fails a contributor closed', () async {
+    // D112 (Q-17): as the owner's plan above. It replaced «network refresh
+    // failure still fails a contributor closed».
+    test('network refresh failure keeps a participant plan open and says '
+        'offline', () async {
       final contributor = accountContext(
         role: AccountContextRole.contributor,
         membershipId: 'membership-1',
       );
       final harness = await _Harness.create(contexts: [contributor]);
+      await harness.controller.refresh(allowInitialSingleContext: true);
+      harness.api.onList = () async => throw _offline;
+
+      await harness.controller.refresh();
+
+      expect(harness.controller.errorMessage, isNull);
+      expect(
+        harness.controller.selectedContext?.contextKey,
+        contributor.contextKey,
+      );
+      expect(harness.controller.noticeMessage, contains('أنت بدون نت'));
+    });
+
+    test('a refusal that is not the network still closes a participant '
+        'plan', () async {
+      final contributor = accountContext(
+        role: AccountContextRole.contributor,
+        membershipId: 'membership-1',
+      );
+      final harness = await _Harness.create(contexts: [contributor]);
+      await harness.controller.refresh(allowInitialSingleContext: true);
+      harness.api.onList = () async =>
+          throw const ApiException('Forbidden', statusCode: 403);
+
+      await harness.controller.refresh();
+
+      expect(harness.controller.errorMessage, isNotNull);
+    });
+
+    test('network refresh failure still closes a provider portal', () async {
+      final provider = accountContext(role: AccountContextRole.provider);
+      final harness = await _Harness.create(contexts: [provider]);
       await harness.controller.refresh(allowInitialSingleContext: true);
       harness.api.onList = () async => throw _offline;
 

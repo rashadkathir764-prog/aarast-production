@@ -49,46 +49,58 @@ void main() {
     );
   });
 
-  test(
-    'a loaded contributor path fails closed while authority refreshes or fails',
-    () async {
-      final contributor = accountContext(role: AccountContextRole.contributor);
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      final gateway = _ControlledGateway([contributor]);
-      final controller = AccountContextController(
-        contextsApi: gateway,
-        authStorage: AuthStorage(preferences),
-        setActiveWeddingPlan: (_) async {},
-      );
-      await controller.refresh(allowInitialSingleContext: true);
-      expect(
-        resolveAccountContextEntry(controller),
-        AccountContextEntryState.planDashboard,
-      );
+  // D112 (Q-17), the owner's word (2026-11-12): a participant's plan stays
+  // open while the server is asked again and when it cannot be reached; it
+  // closes when the server answers that the right was withdrawn. This test
+  // held the rule it replaces («fails closed while authority refreshes or
+  // fails»).
+  test('a loaded participant path stays open while the server is asked and '
+      'when it is out of reach, and closes on its refusal', () async {
+    final contributor = accountContext(role: AccountContextRole.contributor);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final gateway = _ControlledGateway([contributor]);
+    final controller = AccountContextController(
+      contextsApi: gateway,
+      authStorage: AuthStorage(preferences),
+      setActiveWeddingPlan: (_) async {},
+    );
+    await controller.refresh(allowInitialSingleContext: true);
+    expect(
+      resolveAccountContextEntry(controller),
+      AccountContextEntryState.planDashboard,
+    );
 
-      final pending = Completer<List<AccountContext>>();
-      gateway.next = pending.future;
-      final refresh = controller.refresh();
+    final pending = Completer<List<AccountContext>>();
+    gateway.next = pending.future;
+    final refresh = controller.refresh();
 
-      expect(controller.isRefreshing, isTrue);
-      expect(
-        resolveAccountContextEntry(controller),
-        AccountContextEntryState.loading,
-      );
+    expect(controller.isRefreshing, isTrue);
+    expect(
+      resolveAccountContextEntry(controller),
+      AccountContextEntryState.planDashboard,
+    );
 
-      pending.completeError(
-        const ApiException('authority unavailable', isNetworkFailure: true),
-      );
-      await refresh;
+    pending.completeError(
+      const ApiException('authority unavailable', isNetworkFailure: true),
+    );
+    await refresh;
 
-      expect(controller.errorMessage, isNotNull);
-      expect(
-        resolveAccountContextEntry(controller),
-        AccountContextEntryState.error,
-      );
-    },
-  );
+    expect(controller.errorMessage, isNull);
+    expect(controller.noticeMessage, isNotNull);
+    expect(
+      resolveAccountContextEntry(controller),
+      AccountContextEntryState.planDashboard,
+    );
+
+    // The server answers, and the plan is no longer theirs.
+    gateway.next = Future.value(const <AccountContext>[]);
+    await controller.refresh();
+    expect(
+      resolveAccountContextEntry(controller),
+      isNot(AccountContextEntryState.planDashboard),
+    );
+  });
 
   test(
     'owner and contributor require the standalone selection screen',

@@ -498,8 +498,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // D112 (Q-9), the owner's word (2026-11-12): the phone never changes its
+  // account under the person. This flow used to sign the phone in as the
+  // invited number over the account already open («survives an account
+  // switch»); it is now refused until that account is signed out.
   testWidgets(
-    'a private invite survives an account switch and waits for explicit acceptance',
+    'a private invite for another number asks the open account to sign out first',
     (tester) async {
       final token = _testInviteToken();
       final harness = await _authHarness();
@@ -523,6 +527,35 @@ void main() {
         harness,
         token: token,
         sharingApi: sharingApi,
+      );
+      await _openOtpStep(tester);
+
+      // No code is asked for, and the account open on the phone stays.
+      expect(harness.repository.inviteRequestCalls, 0);
+      expect(harness.controller.errorCode, 'INVITE_NEEDS_SIGN_OUT');
+      expect(harness.controller.user?.id, 'old-account');
+      expect(sharingApi.acceptCalls, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a private invite opened on a signed-out phone waits for explicit acceptance',
+    (tester) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      final sharingApi = _FakeSharingApi(
+        invites: [_invite(token: token)],
+        currentUserId: () => harness.controller.user?.id,
+      );
+
+      await _pumpBoundaryLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+        startGuestAtInvite: true,
       );
       await _openOtpStep(tester);
 
@@ -562,14 +595,8 @@ void main() {
       final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
-      expect(
-        await harness.controller.verifyOtp(
-          phone: '777000000',
-          purpose: 'LOGIN',
-          code: '123456',
-        ),
-        isTrue,
-      );
+      // D112 (Q-9): from a signed-out phone; an open account for another
+      // number is asked to sign out first (the test above).
       final sharingApi = _FakeSharingApi(
         invites: [_invite(token: token, status: 'ACCEPTED')],
         currentUserId: () => harness.controller.user?.id,
@@ -580,6 +607,7 @@ void main() {
         harness,
         token: token,
         sharingApi: sharingApi,
+        startGuestAtInvite: true,
       );
       await _openOtpStep(tester);
       await tester.enterText(

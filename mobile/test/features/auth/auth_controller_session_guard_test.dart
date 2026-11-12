@@ -277,19 +277,33 @@ void main() {
       expect(harness.controller.user?.id, 'user-a', reason: 'still signed in');
     });
 
-    test('with nothing unsent the invite goes on as before', () async {
+    // D112 (Q-9), the owner's word: an invite for another number always
+    // asks for the sign-out first. It used to go on when nothing waited, and
+    // the phone became the other account under the person.
+    test('with nothing unsent an invite for another number still asks to '
+        'sign out first', () async {
       final harness = await _AuthHarness.authenticated();
       addTearDown(harness.dispose);
+      final token = List.filled(43, 'a').join();
+
+      final sent = await harness.controller.requestInviteOtp(
+        token: token,
+        phone: '+967700000009',
+      );
+      expect(sent, isNull);
+      expect(harness.repository.inviteOtpRequestCalls, 0);
+      expect(harness.controller.errorCode, 'INVITE_NEEDS_SIGN_OUT');
+      expect(harness.controller.errorMessage, contains('اطلع من الحساب'));
 
       final verified = await harness.controller.verifyOtp(
         phone: '+967700000009',
         purpose: 'LOGIN',
         code: '123456',
-        resumeInviteToken: List.filled(43, 'a').join(),
+        resumeInviteToken: token,
       );
-
-      expect(verified, isTrue);
-      expect(harness.repository.inviteOtpVerifyCalls, 1);
+      expect(verified, isFalse);
+      expect(harness.repository.inviteOtpVerifyCalls, 0);
+      expect(harness.controller.user?.id, 'user-a', reason: 'still signed in');
     });
 
     test('a sign-out the person chose still clears everything', () async {

@@ -1058,6 +1058,40 @@ void main() {
     expect(find.text('اختاري المدينة واكتبي الميزانية'), findsOneWidget);
   });
 
+  // D112 (Q-16), the owner's word: progress kept from an unfinished start
+  // stays, and a wedding day that has passed since is dropped from it. It
+  // used to come back as it was, a plan dated in the past (RA-MO-121).
+  testWidgets('progress kept with a day now past comes back without the day, '
+      'at the step that asks for it', (tester) async {
+    final preferences = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    await GuestOnboardingStorage(preferences).saveProgress(
+      GuestOnboardingDraft.quickLocalPlanSetup(
+        planName: 'عرس سامي',
+        persona: GuestPersona.groom,
+        location: WeddingLocationDraft.fromLegacyFields(
+          governorate: 'صنعاء',
+          city: 'صنعاء',
+        ),
+        weddingDate: DateTime(today.year, today.month, today.day - 20),
+        currency: 'YER',
+      ),
+      step: 'mahr',
+    );
+    await _pump(tester);
+
+    expect(find.text('كمّل خطتي'), findsOneWidget);
+    await _tapKey(tester, 'door-plan');
+
+    // Back at the name and the day, with the name kept and no day chosen.
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'سامي',
+    );
+    expect(find.text('اتفقتوا على المهر؟'), findsNothing);
+  });
+
   // J1-16: only the groom's rest of the mahr becomes a payment the server
   // reminds of; the bride is promised no reminder.
   testWidgets('J1-16: the mahr\'s reminder is promised to the groom only', (

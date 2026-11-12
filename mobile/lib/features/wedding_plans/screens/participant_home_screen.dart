@@ -243,6 +243,21 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         onProfile: () => context.push(AppRouter.more),
       ),
       const SizedBox(height: AarastV3Space.x3),
+      // D91, D112 (Q-17): the phone's copy, and said so, as on the owner's
+      // home (RA-MO-144). Whoever may change something reads that their
+      // changes are kept; whoever only follows reads «تشوف بس».
+      if (summary != null && dashboard.isStale) ...[
+        JourneyListNotice(
+          key: const ValueKey('participant-home-stale'),
+          offline: true,
+          keepsChanges:
+              selected.permissions.canManageTasks ||
+              selected.permissions.canManageGuests ||
+              selected.permissions.canManageProviders ||
+              selected.permissions.canManageMoney,
+        ),
+        const SizedBox(height: AarastV3Space.x3),
+      ],
     ];
 
     if (summary == null) {

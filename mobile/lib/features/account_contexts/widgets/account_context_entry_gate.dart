@@ -23,25 +23,6 @@ class AccountContextEntryGate extends StatelessWidget {
 
     switch (resolveAccountContextEntry(controller)) {
       case AccountContextEntryState.loading:
-        // A plan shell already open is kept alive under the loading page
-        // while its contexts are read again (each return to the app):
-        // unseen and untouchable until the server confirms, and not
-        // rebuilt, so the tab and what was being typed in it are still
-        // there when it does (RA-MO-135).
-        final open = controller.selectedContext;
-        if (controller.isRefreshing &&
-            controller.hasLoadedContexts &&
-            open != null &&
-            open.isAvailable &&
-            !open.isProvider) {
-          return ContextGateHeldPage(
-            covered: true,
-            cover: const AarastScaffold(child: AarastScreenLoading()),
-            child: MainShell(
-              key: ValueKey('account-context-shell-${open.contextKey}'),
-            ),
-          );
-        }
         return const AarastScaffold(child: AarastScreenLoading());
       case AccountContextEntryState.error:
         return AarastScaffold(
@@ -94,7 +75,22 @@ enum AccountContextEntryState {
 AccountContextEntryState resolveAccountContextEntry(
   AccountContextController controller,
 ) {
-  if (controller.isRefreshing) return AccountContextEntryState.loading;
+  if (controller.isRefreshing) {
+    // D112 (Q-17): a plan already open stays open while its contexts are
+    // read again, on the right last confirmed; it closes only when the
+    // server answers that the right was withdrawn. The loading page in its
+    // place rebuilt the shell on every return to the app (back on the first
+    // tab, what was open in it gone: RA-MO-135), and without a connection
+    // stayed for the whole timeout. A provider's portal still waits.
+    final open = controller.selectedContext;
+    if (controller.hasLoadedContexts &&
+        open != null &&
+        open.isAvailable &&
+        open.isPlan) {
+      return AccountContextEntryState.planDashboard;
+    }
+    return AccountContextEntryState.loading;
+  }
   if (controller.errorMessage != null) return AccountContextEntryState.error;
   if (!controller.hasLoadedContexts) return AccountContextEntryState.loading;
 

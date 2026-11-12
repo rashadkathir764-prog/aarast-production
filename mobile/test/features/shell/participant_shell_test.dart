@@ -567,6 +567,32 @@ void main() {
     );
   });
 
+  // D91, D112 (Q-17): a participant reads the phone's copy when the server
+  // is out of reach, and the home says it is the copy (RA-MO-144: only the
+  // owner's home said so).
+  testWidgets('the participant home says when it shows the phone\'s copy', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    harness.wedding.serverOutOfReach = true;
+    await harness.pump(tester);
+
+    expect(
+      find.byKey(const ValueKey('participant-home-stale')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('and says nothing of it when the server answered', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    await harness.pump(tester);
+
+    expect(find.byKey(const ValueKey('participant-home-stale')), findsNothing);
+  });
+
   testWidgets('the participant home fits 320px at 1.3 text', (tester) async {
     tester.view.physicalSize = const Size(320, 720);
     tester.view.devicePixelRatio = 1;
@@ -958,8 +984,20 @@ class _WeddingPlansApi extends WeddingPlansApi {
   int moneyRequests = 0;
   int readViewCalls = 0;
 
+  /// The server is out of reach and the phone holds a copy of the home.
+  bool serverOutOfReach = false;
+
   @override
-  Future<DashboardSummary> getDashboardSummary(String planId) async => summary;
+  Future<DashboardSummary> getDashboardSummary(String planId) async {
+    if (serverOutOfReach) {
+      throw const ApiException('offline', isNetworkFailure: true);
+    }
+    return summary;
+  }
+
+  @override
+  Future<DashboardSummary?> cachedDashboardSummary(String planId) async =>
+      serverOutOfReach ? summary : null;
 
   @override
   Future<PlanReadView> getPlanReadView(String planId) async {

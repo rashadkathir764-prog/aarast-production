@@ -177,6 +177,18 @@ class AarastDashboardView extends StatelessWidget {
         : null;
     // b07: after the day the home is the debt, the next repayment and the
     // providers to rate; the planning cards are done with.
+    // D112 (Q-20): in the wedding's week and on its day, what is due today.
+    // The payment is left out where the next step already names it.
+    final dueSoon = window != null && summary.canViewMoney
+        ? summary.nextPaymentScheduleDue
+        : null;
+    final payToday =
+        dueSoon != null &&
+            daysUntilPlanDay(dueSoon.dueDate, now: now ?? appNow()) == 0 &&
+            !(window! > 0 && identical(payment, dueSoon))
+        ? dueSoon
+        : null;
+    final tasksToday = window != null ? summary.todayTasks : 0;
     final married = planStage.stage == WeddingPlanStage.wrapUp;
     final debt = married ? afterWedding : null;
     // After the day no step of the server's is drawn, so the payment still
@@ -246,6 +258,19 @@ class AarastDashboardView extends StatelessWidget {
                       showHijri: showHijri,
                     ),
                   if (window != null) ...[
+                    if (payToday != null || tasksToday > 0) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      _TodayDue(
+                        payment: payToday,
+                        tasks: tasksToday,
+                        currency: summary.currency,
+                        amountsHidden: amountsHidden,
+                        onOpenPayment: payToday == null || onOpenPayment == null
+                            ? null
+                            : () => onOpenPayment!(payToday),
+                        onOpenTasks: onOpenTasks,
+                      ),
+                    ],
                     if (window > 0) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _JourneyNextStep(

@@ -78,3 +78,65 @@ class _StagePath extends StatelessWidget {
     );
   }
 }
+
+/// D112 (Q-20): the wedding's week and day hide the money and the tasks;
+/// what is due today still shows, one line each: the payment whose day is
+/// today, and today's tasks.
+class _TodayDue extends StatelessWidget {
+  const _TodayDue({
+    required this.payment,
+    required this.tasks,
+    required this.currency,
+    required this.amountsHidden,
+    required this.onOpenPayment,
+    required this.onOpenTasks,
+  });
+
+  final DashboardNextPaymentSchedule? payment;
+  final int tasks;
+  final String currency;
+  final bool amountsHidden;
+  final VoidCallback? onOpenPayment;
+  final VoidCallback onOpenTasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final due = payment;
+    return JourneyList(
+      key: const ValueKey('aarast-home-today'),
+      children: [
+        if (due != null)
+          JourneyListRow(
+            key: const ValueKey('aarast-home-today-payment'),
+            icon: LucideIcons.wallet,
+            color: AarastV3Color.brandAccentStrong,
+            soft: AarastV3Color.brandAccentSoft,
+            title: 'دفعة اليوم',
+            subtitle: [
+              if (due.title.trim().isNotEmpty) due.title.trim(),
+              amountsHidden
+                  ? '••••'
+                  : _money(dashboardAmount(due.amount) ?? 0, currency),
+            ].join(' · '),
+            onTap: onOpenPayment,
+          ),
+        if (tasks > 0)
+          JourneyListRow(
+            key: const ValueKey('aarast-home-today-tasks'),
+            icon: LucideIcons.listChecks,
+            color: context.accent.primary,
+            soft: context.accent.primarySoft,
+            title: 'مهام اليوم',
+            subtitle: arabicCount(
+              tasks,
+              one: 'مهمة وحدة',
+              two: 'مهمتين',
+              few: 'مهام',
+              many: 'مهمة',
+            ),
+            onTap: onOpenTasks,
+          ),
+      ],
+    );
+  }
+}

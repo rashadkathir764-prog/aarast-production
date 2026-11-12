@@ -160,6 +160,60 @@ void main() {
     },
   );
 
+  testWidgets('Q-20: on the wedding day a payment and tasks due today show, '
+      'one line each, and open', (tester) async {
+    final day = DateTime(2026, 7, 7);
+    final taps = await _pumpWeddingDays(
+      tester,
+      now: DateTime(2026, 7, 7, 13),
+      summary: _summary(
+        weddingDate: day,
+        todayTasks: 2,
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 's1',
+          weddingCostId: 'c1',
+          title: 'قاعة سبأ',
+          amount: '500000',
+          status: 'PENDING',
+          dueDate: day,
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('aarast-home-today')), findsOneWidget);
+    expect(find.text('دفعة اليوم'), findsOneWidget);
+    expect(find.textContaining('قاعة سبأ'), findsOneWidget);
+    expect(find.text('مهام اليوم'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('aarast-home-today-payment')));
+    await tester.tap(find.byKey(const ValueKey('aarast-home-today-tasks')));
+    expect(taps.payments(), 1);
+    expect(taps.tasks(), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Q-20: nothing due today, no line; a payment of another day '
+      'is not today\'s', (tester) async {
+    final day = DateTime(2026, 7, 7);
+    await _pumpWeddingDays(
+      tester,
+      now: DateTime(2026, 7, 7, 13),
+      summary: _summary(
+        weddingDate: day,
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 's1',
+          weddingCostId: 'c1',
+          title: 'قاعة سبأ',
+          amount: '500000',
+          status: 'PENDING',
+          dueDate: DateTime(2026, 7, 20),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('aarast-home-today')), findsNothing);
+  });
+
   testWidgets('the wedding day home is the day\'s programme (b05, D65)', (
     tester,
   ) async {
@@ -241,10 +295,56 @@ void main() {
   });
 }
 
+// D112 (Q-20), the owner's word: the wedding's week and day hide the money
+// and the tasks, and a payment or a task whose day is today still shows, in
+// one line each.
+Future<({int Function() payments, int Function() tasks})> _pumpWeddingDays(
+  WidgetTester tester, {
+  required DateTime now,
+  required DashboardSummary summary,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(390, 1600);
+  addTearDown(tester.view.reset);
+  var payments = 0;
+  var tasks = 0;
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light(),
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: AarastDashboardView(
+            summary: summary,
+            userName: 'رشاد',
+            bottomPadding: 24,
+            now: now,
+            onNotifications: () {},
+            onProfile: () {},
+            onOpenPlan: () {},
+            onOpenMoney: () {},
+            onOpenTasks: () => tasks += 1,
+            onOpenProviders: () {},
+            onOpenGuests: () {},
+            onOpenSharing: () {},
+            onOpenNextStep: () {},
+            onOpenImportantItem: (_) {},
+            onOpenPayment: (_) => payments += 1,
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return (payments: () => payments, tasks: () => tasks);
+}
+
 DashboardSummary _summary({
   DateTime? weddingDate,
   int participantCount = 4,
   int pendingInvites = 2,
+  int todayTasks = 0,
+  DashboardNextPaymentSchedule? nextPayment,
 }) {
   return DashboardSummary(
     planId: 'plan-1',
@@ -262,7 +362,8 @@ DashboardSummary _summary({
     totalTasks: 3,
     completedTasks: 1,
     overdueTasks: 0,
-    todayTasks: 0,
+    todayTasks: todayTasks,
+    nextPaymentScheduleDue: nextPayment,
     guestCount: 25,
     // A running plan: its first steps are done (b01).
     venueSecured: true,

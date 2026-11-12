@@ -313,14 +313,21 @@ class OfflineWrites {
         );
       }
     }
+    if (!const {'POST', 'PATCH', 'PUT', 'DELETE'}.contains(method)) {
+      throw ArgumentError.value(method, 'method');
+    }
+    // RA-MO-86: one request id from this first try to the queue's resend.
+    // A try that fails in transport (a timeout after the server wrote, a
+    // reset) may have reached the server, which tells a resend from a new
+    // request only by this id; under a new one the row was made twice.
+    final requestId = ApiClient.newClientRequestId();
     try {
-      final json = switch (method) {
-        'POST' => await _api.postJson(endpoint, payload),
-        'PATCH' => await _api.patchJson(endpoint, payload),
-        'PUT' => await _api.putJson(endpoint, payload),
-        'DELETE' => await _api.deleteJson(endpoint),
-        _ => throw ArgumentError.value(method, 'method'),
-      };
+      final json = await _api.mutateJson(
+        endpoint,
+        payload,
+        method: method,
+        clientRequestId: requestId,
+      );
       final row = json.isEmpty ? localJson : json;
       if (operation == 'delete') {
         if (table != null) {
@@ -354,6 +361,7 @@ class OfflineWrites {
         planId: planId,
         localEntityId: localEntityId,
         replacePendingForEntity: replacePendingForEntity,
+        sentRequestId: requestId,
       );
     }
   }
@@ -371,6 +379,10 @@ class OfflineWrites {
     required String? planId,
     required String? localEntityId,
     required bool replacePendingForEntity,
+
+    /// The id a try of exactly this change was already sent under, when one
+    /// was; the queue resends under it.
+    String? sentRequestId,
   }) async {
     if (table != null) {
       await database.saveCachedItem(
@@ -399,6 +411,10 @@ class OfflineWrites {
             ...payload,
           }
         : payload;
+    // The sent id stands only for the body that was sent: a body that took
+    // a waiting edit's fields is another request (the server refuses one id
+    // for two bodies).
+    final sameBody = jsonEncode(sentPayload) == jsonEncode(payload);
     await database.enqueueSync(
       entityType: entityType,
       operation: operation,
@@ -408,6 +424,7 @@ class OfflineWrites {
       planId: planId,
       localEntityId: localEntityId,
       replacePendingForEntity: replacePendingForEntity,
+      clientRequestId: sameBody ? sentRequestId : null,
     );
     await _offline?.refreshStatus();
     return localJson;

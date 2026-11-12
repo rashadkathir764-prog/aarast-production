@@ -1,115 +1,463 @@
-# حالة التصاميم حسب كل مسار
+# سجل الشاشات: الجرد والحكم (D111)
 
-التاريخ: 2026-11-01. هذا هو الجرد الوحيد لحالة التصاميم.
+بدأ 2026-11-12 على الفرع `phase/pre-release-audit`. هذا هو سجل جرد كل شاشة قبل النشر ورفع جودتها، ونقطة الاستئناف لأي جلسة. قواعده في `AGENTS.md` والقرار D111 وبطاقة الشاشة (`.claude/skills/aarast-screen/SKILL.md`).
 
-**المصدر:** الجرد القديم للرسومات، وصُحّح من الكود الحالي. الرسومات نفسها حُذفت من المشروع، وتبقى في تاريخ git عند `2492d244` داخل `mobile/test/prototype/` لمن يحتاج الرجوع لشاشة بعينها.
+## كيف يُقرأ
 
-**مهم:** «منفذة» تعني أن الشاشة موجودة في التطبيق، وأغلبها بفروق مقصودة عن الرسمة. لا تعني أنها جُرّبت على جوال حقيقي. والشكل المعتمد هو ما في التطبيق اليوم، لا الرسمة.
+- **الجرد** (الأقسام 2 إلى 9 و«أخرى» تحت): كل سطح يراه المستخدم، 277 سطحًا: 140 شاشة وحالة، 15 تبويبًا، 122 نافذة. استُخرج من جداول المسارات ومواضع فتح النوافذ في 2026-11-12. هو هوية السطوح، لا حكم عليها.
+- **الحكم** في «سجل الحكم» تحت، دفعة دفعة. لكل سطح حُكم عليه صف فيه: حاله قبل (الصورة والوصف)، مشاكله المثبتة في كل بُعد بمعرّفاتها (`RA-*` في القسم 4 من [RELEASE_AUDIT.md](RELEASE_AUDIT.md))، ما أُصلح، ما شُغّل فعلًا ونتيجته، وصورته بعد.
+- حكم كل بُعد (الوظيفة، التجربة، الشكل) واحد من: «فُحص»، «أُصلح»، «تحقق». **سطح ليس له صف في «سجل الحكم» لم يُفحص.** لا يُكتب «تحقق» لفحص لم يُشغَّل، وما تعذّر فحصه يُكتب سببه.
+- الصور: «قبل» في `D:\projects\aarast-audit-2026-11-12\before`، و«بعد» في `…\after` (خارج git). 78 شاشة وتبويبًا و115 نافذة بلا صورة «قبل» بعد (القائمة في آخر الملف)؛ تُصوَّر حين يبدأ الحكم على دفعتها.
 
-## شاشات البداية (D75، 2026-11-02)
+## التقدم
 
-أعيد بناؤها حسب الموك اب المعتمد (عقد: لا تنفيذ مختلف). مصوَّرة جنب الموك اب، ومراجَعة، ومجرَّبة على نسخة الويب. ما جُرّبت على جوال حقيقي بعد.
+| الدفعة | السطوح | حُكم عليها | ملاحظات |
+|---|---|---|---|
+| 1. المخاطر الحرجة (ليست شاشات) | — | جارية | نتائجها في [RELEASE_AUDIT.md](RELEASE_AUDIT.md)، «نتائج المرحلة 1 من جرد D111» |
+| 2. البداية | 28 | 0 | |
+| 3. الرئيسية والهيكل | 44 | 0 | |
+| 4. المال | 52 | 0 | |
+| 5. المهام واليوم | 22 | 0 | |
+| 6. الضيوف | 18 | 0 | |
+| 7. المزودون (جهة العرسان) والدردشة | 32 | 0 | |
+| 8. المشاركون | 12 | 0 | |
+| 9. بوابة المزود | 58 | 0 | كلها بلا صورة «قبل» |
+| أخرى | 11 | 0 | |
 
-| الشاشة | الملف | الحالة |
-|---|---|---|
-| الباب «أهلًا فيك، من وين نبدأ؟» | `welcome_gateway/screens/smart_welcome_screen.start.dart` | منفذة |
-| «أنت العريس ولا العروسة؟» | نفس الملف | منفذة |
-| الاسم والموعد، المدينة والميزانية، المهر | `smart_welcome_screen.plan.dart` و`mahr_fields.dart` | منفذة |
-| «خطتك جاهزة يا X» | `smart_welcome_screen.plan.dart` | منفذة |
-| «احفظ خطتك» بالرقم | `auth/screens/register_screen.dart` | منفذة، تنتظر نشر السيرفر |
-| الرمز، «الرمز ما وصل؟»، الرمز غلط | `auth/screens/otp_screen.dart` | منفذة |
-| عندك خطة على هذا الجوال، نحفظ خطتك، ما قدرنا نحفظها | `onboarding/screens/local_plan_migration_screen.dart` | منفذة |
-| تسجيل الدخول (رمز أولًا، كلمة مرور اختيارية) | `auth/screens/login_screen.dart` | منفذة |
-| معك رابط دعوة، الدعوة، الدعوة ما تفتح بهذا الرقم | `sharing/screens/from_family_screen.dart` و`invite_decision_screen.dart` | منفذة. «منتهية» و«لرقم ثاني» شاشة وحدة لأن السيرفر ما يفرق بينهما |
-| استقبال طلبات العرسان (المزود) | `auth/screens/provider_register_screen.dart` | منفذة. «الرقم عليه حساب» ملاحظة في طلب الانضمام لا نافذة |
-| كلمة المرور في «حسابي» | `settings/widgets/set_password_sheet.dart` | منفذة، خارج الموك اب بقرار المراجعة |
+## أسئلة قواعد العمل (تنتظر رشاد)
 
-فروق مقصودة عن الموك اب: تلاشي السماء بالتمويه لا بالتدرج (D3)، «ثلاثة مليون» (قاعدة اللهجة)، المقاسات أصغر بطلب رشاد، ونافذة تاريخ المهر من النظام بلون الخطة.
+قواعد مال أو صلاحية أو عملية حساسة لا يحسمها النظام. لا تُخترع؛ الشغل المستقل عنها يكمل. لكل سؤال: أين يظهر، وخياراته وعواقبها.
 
-## الملخص
+| # | السؤال | أين يظهر | الخيارات |
+|---|---|---|---|
+| Q-1 | هل يتغير «عريس/عروسة» للخطة بعد ما سُجّل فيها مال أو مهر؟ اليوم يتغير بلا قيد، فمهر مسجّل على خطة عريس يصير «على العريس» في خطة عروسة و«معك» يقفز | `backend/src/wedding-plans/wedding-plans.service.ts` (تعديل `persona`)؛ المهر يُقرأ من `persona` وقت القراءة | (أ) يُقفل بعد أول مال أو مهر، مثل العملة (RA-BE-23). (ب) يُنقل سجل المهر عند التبديل. (ج) يبقى مسموحًا والأرقام تتغير بصمت |
+| Q-2 | هل يُسدَّد قسط على سلفة «موعودة» لم تصل؟ اليوم الخادم يقبله ويقبل «مدفوع»، وحساب «معك» يتجاهله، وسلفة وصلت ولها أقساط مدفوعة ترجع «موعودة» | `backend/src/modules/finance` (مصادر الفلوس والأقساط) و`money-picture.ts` | (أ) يُرفض القسط أو «مدفوع» على سلفة موعودة. (ب) الأقساط المدفوعة تُحسب في «معك» أيًّا كانت حالة السلفة. (ج) يُرفض الرجوع إلى «موعودة» ما دام لها أقساط |
+| Q-3 | دفعة موعد سُجّلت بدون نت بلا مبلغ: حين تُرسل، أي مبلغ يُسجَّل لو دفع عضو آخر في الأثناء؟ اليوم الخادم يسجّل ما بقي عنده الآن (مثلًا 200 ألف بدل 500 ألف التي رآها المستخدم) | `mobile/lib/features/finance/data/finance_api.schedules.dart`؛ الخادم `wedding-costs.service.ts` | (أ) يُرسل دائمًا المبلغ الذي رآه المستخدم. (ب) يُدفع ما بقي عند الخادم. (ج) يُرفض حين يتغير المبلغ ويُسأل المستخدم |
+| Q-4 | حفظ الميزانية كلها مرة واحدة بلا رقم نسخة: حفظ قديم من جهاز يرجّع أسماء ومخصصات غُيّرت من جهاز آخر ويحذف بنودًا أُضيفت هناك | `backend/src/modules/finance/.../money-budget.service.ts`، يبنيه `finance_provider.dart` | (أ) رقم نسخة و409 عند الاختلاف. (ب) دمج في الخادم (يُحذف فقط ما حذفه المستخدم صراحة). (ج) آخر من كتب يفوز (صاحب الخطة وحده يحفظ) |
 
-| المسار | المجموع | منفذة | باقية من الإصدار الأول | مؤجلة | صور مساعدة |
-|---|---|---|---|---|---|
-| العريس | 161 | 122 | 8 | 29 | 2 |
-| العروسة | 160 | 122 | 9 | 29 | 0 |
-| المشارك | 26 | 18 | 7 | 1 | 0 |
-| المزود | 54 | 40 | 4 | 10 | 0 |
-| الإدارة | 26 | 17 | 4 | 5 | 0 |
+| Q-5 | حد الرموز لكل رقم (10 في اليوم) يُحسب لأي طالب بلا دخول، وكل طلب يلغي رمز صاحب الرقم: غريب يقفل ضحية عن حسابه يومًا كاملًا | `backend/src/modules/identity` (`otp-dispatch-quota.service.ts`، `auth-otp.repository.ts`) | (أ) يبقى: يحمي رقم واتساب من الحظر. (ب) حد لكل رقم من كل عنوان مع سقف أعلى للرقم. (ج) حصة مستقلة لمن معه جلسة قائمة أو أثبت كلمة سره |
+| Q-6 | ألبوم «حفلات النساء» يُعرض لمن حسابه «عروسة»، وهذه صفة يغيّرها أي حساب بنفسه؛ وصوره في المسار العام الذي ينتظر قرار فتحه للقراءة | `marketplace.service.ts`؛ `update-profile.dto.ts`؛ مسار `provider-portfolio` | (أ) صور النساء في مسار خاص بروابط موقّعة قصيرة. (ب) قبول الصفة المعلنة مع شرط «بلا وجوه». (ج) منع تغيير الصفة بعد أول اختيار |
+| Q-7 | هل يرى المساعد الذي طلب عرضًا سعر المزود وهو بلا صلاحية المال؟ اليوم `/me/quote-requests` يرد بالمبلغ والميزانية، والدردشة للشخص نفسه تخفي المبلغ (D52: المال خاص إلا بصلاحية) | `marketplace-contributor-quote-scope.ts`، `marketplace.service.ts`، `conversations.service.ts` | (أ) صاحب الطلب يرى سعر طلبه، وتُعدَّل الدردشة لتتفق. (ب) المال لمن يقرأ المال فقط في المسارين |
+| Q-8 | حماية الشاشة والقفل مفعّل: لا منع للقطة ولا غطاء في قائمة التطبيقات الأخيرة، فتظهر شاشات المال | `app_lock_controller.dart`، بيان أندرويد | (أ) منع اللقطات كلها حين القفل مفعّل. (ب) على شاشات المال فقط. (ج) يبقى |
+| Q-9 | ما لم يُرسل حين يتبدل الحساب أو يُنسى رمز القفل (RA-MO-98، RA-MO-99): اليوم يُمسح بصمت | `invite_decision_screen.dart`، `app.dart`، `offline_sync_service.dart` | «نسيت الرمز»: يُعامل كانتهاء جلسة فيبقى للحساب نفسه، أو يُحذَّر بالعدد. قبول دعوة بحساب آخر: يُمنع بعبارة «اطلع أولًا»، أو يُبقى طابور الحساب الأول جانبًا، أو يُحذَّر ثم يُبدَّل |
+| Q-10 | إذن جهات الاتصال `READ_CONTACTS` لاستيراد الضيوف يقرأ الدفتر كله | بيان أندرويد، `contact_picker_service.dart` | (أ) يبقى الاستيراد الجماعي: يحتاج إفصاحًا ظاهرًا في التطبيق وبند «جهات الاتصال» في أمان البيانات، وإلا يُرفض في Play. (ب) منتقي النظام وحده ويُحذف الإذن |
+| Q-11 | من يفك ربط الإشعارات حين تُلغى جلسات الحساب (RA-BE-128)؟ | `push-installations.service.ts`، `session_teardown_coordinator.dart` | (أ) الجوال يحذف رمز الإشعارات عنده عند الخروج. (ب) الخادم يفك الربط مع إلغاء الجلسات |
 
-## الباقي من الإصدار الأول
+## سجل الحكم
 
-هذه الشاشات لم تُبنَ، وكلها تحتاج عملًا في الخادم أو قرارًا. لا شيء منها يوقف رحلة أساسية اليوم.
+لم يبدأ الحكم على الشاشات بعد. الدفعة 1 (المخاطر الحرجة): المراجعتان انتهتا (المال وبدون نت؛ الهوية والصلاحيات وأندرويد)، ونتائجهما وما أُصلح منها في [RELEASE_AUDIT.md](RELEASE_AUDIT.md). خط الأساس: الرحلات الست عشرة كلها تمر على نقطة بداية الفرع (2026-11-12)، و255 صورة «قبل» محفوظة.
 
-### العريس والعروسة
+---
 
-| الرمز | الشاشة | الوضع الحالي |
-|---|---|---|
-| `f12` | ماسكين لك الليلة | لا يوجد حجز مبدئي |
-| `w04` | الأجهزة | لا توجد قائمة أجهزة |
-| `w12` | تم العرس؟ | لا توجد حالة «تم العرس» للخطة |
-| `w13` | الذكريات | الأرشفة سطر واحد في بيانات الخطة |
-| `w14` | خطة في الذكريات | الخطة المؤرشفة لا تُفتح |
-| `w15` | حذف الخطة | غير موجود، وحذف الحساب موجود |
-| `w21` | رجع لك جزء | الاسترجاع كامل فقط |
-| `x02` | تقريبًا متى؟ | الموعد يوم كامل فقط |
-| `x05` | محمد يبغاك معه | لا معاينة للدعوة قبل الرمز. تخص العروسة والمشارك |
+# الجرد (2026-11-12)
 
-### المشارك
+المصدر الأول جداول المسارات في `mobile/lib/core/routing/` (`app_router.dart` وأجزاؤه السبعة و`plan_shell_router.dart`)، ثم ملفات الشاشات والنوافذ تحت `mobile/lib/features/`. الصور من `D:\projects\aarast-audit-2026-11-12\before\`. الجرد بدون حكم على الجودة.
 
-| الرمز | الشاشة | الوضع الحالي |
-|---|---|---|
-| `q06` | المال: يشوف بس | لا يوجد مستوى قراءة للمال |
-| `q11` | اطلع من الخطة | ورقة صغيرة بدل الشاشة، وبدون توضيح مصير مهامه |
-| `q13` | الطلب يوصل صاحب الخطة | لا يوجد طلب صلاحية |
-| `q14` | طلبك وصل | نفس السبب |
-| `q20` | انشال من الخطة | لا توجد شاشة لهذه الحالة |
-| `w16` | الدعوة ما تفتح | كل أخطاء الدعوة ترجع رسالة واحدة |
-| `x05` | محمد يبغاك معه | لا معاينة للدعوة قبل الرمز |
+اختصارات «من يفتحها»:
+- **صاحب** = صاحب الخطة (`AccountContextRole.owner`).
+- **مشارك** = عضو الخطة (`contributor`)؛ الشريك (`GROOM`/`BRIDE`) والأهل (`FAMILY`) والمساعد (`HELPER`) و«يشوف بس» (`VIEWER`) كلهم مشاركين، والفرق بينهم في الصلاحيات: `canViewPlan`، `canViewMoney`، `canManageMoney`، `canManageBudget`، `canManageTasks`، `canManageGuests`، `canManageProviders`، `canInviteMembers`، `canManagePlan`.
+- حارس المسار `WeddingPlanContextGate` يطلب واحد من: `viewPlan` (أي عضو)، `ownerDashboard` (الصاحب فقط)، `viewMoney`، `manageMoney`، `manageTasks`، `manageGuests`، `manageProviders`، `inviteMembers`. الخريطة في `weddingPlanRouteAccessForPath` (`app_router.dart` سطر 556). خطة الجوال (معرّف `local-*`) تفتح بدون حساب.
+- **مزود** = حساب مزود، والحارس `ProviderAuthGate` بثلاث درجات: `providerAccountRequired` (عنده ملف مزود)، `providerOperationsRequired` (ملفه مفعّل)، `providerProfileManageRequired`.
+- **بلا حساب** = لم يسجّل دخول.
 
-### المزود
+اختصار الصور: `rs/` = `route_sweep/`، `g/` = `groom/`، `b/` = `bride/`، `og/` = `offline_groom/`، `op/` = `offline_prime/`، `or/` = `offline_resume/`. «غالبًا» = ربط الصورة بالشاشة استنتاج من عنوان الخطوة في `report.json` وليس من النص المحفوظ.
 
-| الرمز | الشاشة | الوضع الحالي |
-|---|---|---|
-| `p30` | حجز من برا | غير موجود |
-| `p31` | امسك الليلة | لا يوجد حجز مبدئي |
-| `p32` | تقويمك صحيح؟ والإجازة | غير موجود |
-| `p38` | التوثيق | زر يكتب تاريخًا، بدون مستندات |
+---
 
-### الإدارة
+## 2. البداية
 
-| الرمز | الشاشة | الوضع الحالي |
-|---|---|---|
-| `a14` | فريق الإدارة | لا توجد واجهة لإضافة مدراء |
-| `a16` | القواعد | لا توجد صفحة إعدادات |
-| `n05` | ابحث برقم | غير موجود |
-| `n09` | صحة المنصة | غير موجود |
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 2.01 | شاشة الإقلاع | `/` | `features/auth/screens/splash_screen.dart` · `SplashScreen` | حالة | الكل | لا صورة |
+| 2.02 | الباب «أهلًا فيك، من وين نبدأ؟» (خطة جديدة / «معي رابط دعوة» / «أقدّم خدمة للأعراس» / «كمّل خطتي») | `/welcome`؛ و`/onboarding` يحوّل له؛ و`/dev/guest-onboarding` في نسخة التطوير فقط | `features/welcome_gateway/screens/smart_welcome_screen.start.dart` · `SmartWelcomeScreen` (`_StartStep`) | قرار | بلا حساب، أو حساب بلا أي مسار (`AccountContextEntryGate` حالة `noPaths`) | لا صورة |
+| 2.03 | «تبدأ خطة جديدة بدل X؟» | نافذة من الباب | `smart_welcome_screen.dart` · `_replacePhonePlan` | نافذة | من عنده خطة مكتملة على الجوال | لا صورة |
+| 2.04 | «أنت العريس ولا العروسة؟» (a02b) | خطوة في `/welcome`، وأول خطوة في `/wedding-plans/create` | `smart_welcome_screen.start.dart` · `_WhoseStep` | قرار | بلا حساب؛ أو صاحب حساب يضيف خطة | rs/20__wedding-plans_create.png |
+| 2.05 | «ايش اسمك، ومتى العرس؟» | خطوة في `/welcome` | `smart_welcome_screen.plan.dart` · `_NameDateStep` | نموذج | نفس 2.04 | لا صورة |
+| 2.06 | «يوم العرس في <الشهر>» | نافذة من 2.05 | `smart_welcome_screen.day.dart` · `_DaySheet` | نافذة | نفس 2.04 | لا صورة |
+| 2.07 | «اختر شهر العرس» («موعدنا بعد ...») | نافذة من 2.05 | `smart_welcome_screen.plan.dart` · `_LaterMonthsSheet` | نافذة | نفس 2.04 | لا صورة |
+| 2.08 | «وين العرس، وكم ميزانيتك تقريبًا؟» | خطوة في `/welcome` | `smart_welcome_screen.plan.dart` · `_PlaceBudgetStep` | نموذج | نفس 2.04 | لا صورة |
+| 2.09 | «اختر المدينة» (مدينة ثانية) | نافذة من 2.08 | `smart_welcome_screen.plan.dart` · `_CitySheet` | نافذة | نفس 2.04 | لا صورة |
+| 2.10 | «اتفقتوا على المهر؟» (a06) | خطوة في `/welcome` | `smart_welcome_screen.dart` (`_WelcomeStep.mahr`) + `features/finance/widgets/mahr_fields.dart` · `MahrFields` | نموذج | نفس 2.04 | لا صورة |
+| 2.11 | منتقي موعد باقي المهر (تقويم النظام) | نافذة من 2.10 | `features/finance/widgets/mahr_fields.dart` · `pickMahrDueDate` | نافذة | نفس 2.04 | لا صورة |
+| 2.12 | «خطتك جاهزة يا X» («احفظ خطتي برقم جوالي» / «بعدين، خلني أشوف أول» / «افتح خطتي») | خطوة في `/welcome` | `smart_welcome_screen.plan.dart` · `_ReadyStep` | حالة | نفس 2.04 | لا صورة |
+| 2.13 | «احفظ خطتك» / حساب جديد | `/register` (بدون `type=provider`) | `features/auth/screens/register_screen.dart` · `RegisterScreen` | نموذج | بلا حساب | لا صورة |
+| 2.14 | رمز التحقق («أرسلنا لك رمز…»، الرمز غلط، اطلب رمز جديد) | `/otp` (المعطيات في `extra`) | `features/auth/screens/otp_screen.dart` · `OtpScreen` | نموذج | بلا حساب أثناء التسجيل أو الدخول | لا صورة |
+| 2.15 | «الرمز ما وصل؟» | نافذة من 2.14 | `core/experience_v3/aarast_journey_entry.dart` · `JourneyCodeHelpSheet` | نافذة | نفس 2.14 | لا صورة |
+| 2.16 | «تسجيل الدخول» / «ادخل مرة ثانية» (`?expired=1`) | `/login` | `features/auth/screens/login_screen.dart` · `LoginScreen` | نموذج | بلا حساب | rs/01_auth-login.png، op/01_auth-login.png |
+| 2.17 | «نسيت كلمة المرور» (اكتب رقمك ← الرمز ← كلمة جديدة) | `/reset-password` | `features/auth/screens/reset_password_screen.dart` · `ResetPasswordScreen` | نموذج | بلا حساب | لا صورة |
+| 2.18 | حفظ خطة الجوال في الحساب (نحفظ خطتك، ما قدرنا نحفظها، امسحها/متابعة) | داخل `/home` لما يكون مسجّلًا ومعه خطة جوال مكتملة | `features/onboarding/screens/local_plan_migration_screen.dart` · `LocalPlanMigrationScreen` (يبنيها `DashboardEntryScreen`) | قرار | صاحب حساب سجّل للتو ومعه خطة جوال | لا صورة |
+| 2.19 | «عندك خطة على هذا الجوال» («خلّها خطة ثانية» / «تجاهلها») | نافذة من 2.18 | `local_plan_migration_screen.dart` · `_LocalPlanChoiceSheet` | نافذة | نفس 2.18 لما الحساب فيه خطة أصلًا | لا صورة |
+| 2.20 | «تمسح الخطة اللي على الجوال؟» | نافذة من 2.18 | `local_plan_migration_screen.dart` (سطر 394) | نافذة | نفس 2.18 | لا صورة |
+| 2.21 | «معك رابط دعوة؟» | `/invites` | `features/sharing/screens/from_family_screen.dart` · `FromFamilyScreen` | نموذج | الكل | rs/05__invites.png |
+| 2.22 | الدعوة: قرار القبول («<عنوان الدعوة>») | `/invites/:token` | `features/sharing/screens/invite_decision_screen.dart` (+ `.cards.dart`) · `InviteDecisionScreen` | قرار | المدعو (بلا حساب أو مسجّل) | لا صورة |
+| 2.23 | الدعوة: «دعوة للمشاركة» (الاسم والرقم) | حالة في `/invites/:token` | `invite_decision_screen.dart` (سطر 514) | نموذج | المدعو بلا حساب | لا صورة |
+| 2.24 | الدعوة: «أرسلنا لك رمز على واتساب» | حالة في `/invites/:token` | `invite_decision_screen.dart` (سطر 564) | نموذج | نفس 2.23 | لا صورة |
+| 2.25 | الدعوة: «هذي الدعوة لحسابك» | حالة في `/invites/:token` | `invite_decision_screen.dart` (سطر 635) | حالة | مسجّل بحساب غير اللي انرسلت له | لا صورة |
+| 2.26 | الدعوة: «الدعوة ما تفتح بهذا الرقم» | حالة في `/invites/:token` | `invite_decision_screen.dart` (سطر 649) | حالة | رابط منتهٍ أو لرقم ثاني | لا صورة |
+| 2.27 | «رفض الدعوة؟» | نافذة من 2.22 | `invite_decision_screen.dart` (سطر 352) | نافذة | المدعو | لا صورة |
+| 2.28 | «الرمز ما وصل؟» | نافذة من 2.24 | `JourneyCodeHelpSheet` (من `invite_decision_screen.dart` سطر 449) | نافذة | المدعو | لا صورة |
 
-## المؤجلة لما بعد الإصدار الأول
+## 3. الرئيسية والهيكل
 
-**مؤجلة بقرار، ولا تُبنى قبل تجربة ناس حقيقيين.**
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 3.01 | مدخل الرئيسية (يوزّع: تحميل، خطة الجوال، حفظ خطة الجوال، البوابة) | `/home` (`?resume=` يكمّل لمسار محفوظ) | `features/home/screens/dashboard_entry_screen.dart` · `DashboardEntryScreen` | حالة | الكل | rs/02__home.png |
+| 3.02 | «اختر المسار» | داخل `/home` (`AccountContextEntryGate` حالة `choosePath`) | `features/account_contexts/screens/account_context_selection_screen.dart` · `AccountContextSelectionScreen` | قرار | حساب له أكثر من مسار ولم يختر | g/01_a02b_whose.png، b/01_a02b_whose.png |
+| 3.03 | «تعذر تحميل المسارات» | داخل `/home` | `features/account_contexts/widgets/account_context_entry_gate.dart` (حالة `error`) | حالة | مسجّل | لا صورة |
+| 3.04 | هيكل الصاحب: شريط الأقسام الخمسة (الرئيسية، المال، المهام، الضيوف، المزودين) وزر «+» | داخل `/home` | `features/shell/main_shell.dart` · `MainShell` → `_OwnerMainShell` + `shell/widgets/plan_shell_chrome.dart` · `PlanShellChrome` | نظرة عامة | صاحب | rs/02__home.png |
+| 3.05 | هيكل مسارات الخطة (نفس الشريط حول `/wedding-plans/:id/{dashboard,money,tasks,guests,providers}`؛ يختفي في النماذج وصفحات المال الفرعية) | `ShellRoute` في `app_router.plan_shell.dart` | `features/shell/screens/wedding_plan_shell.dart` · `WeddingPlanShell` | نظرة عامة | صاحب؛ المشارك بدون «+» | rs/21…rs/64 (كل مسارات الخطة) |
+| 3.06 | هيكل المشارك (نفس الأقسام الخمسة، كل قسم صفحته أو قفله) | داخل `/home` | `features/shell/screens/participant_plan_shell.dart` · `ParticipantPlanShell` | نظرة عامة | مشارك | لا صورة |
+| 3.07 | «تعذر فتح مساحة الحساب» | داخل `/home` | `main_shell.dart` · `_InvalidShellContext` | حالة | حالة سياق غير صالح | لا صورة |
+| 3.08 | «ايش تضيف؟» (زر +: اتفاق، دفعة، موعد دفع، بند، مهمة، ضيف، طلب عرض سعر) | نافذة من الهيكل 3.04/3.05/3.14 | `features/shell/widgets/plan_quick_add_sheet.dart` · `showPlanQuickAddSheet` (+ `plan_quick_add.dart`) | نافذة | صاحب (يظهر في المال لمن معه `canManageMoney`) | لا صورة |
+| 3.09 | «الدفعة على أي اتفاق؟» / «موعد الدفع لأي اتفاق؟» | نافذة من 3.08 | `features/finance/widgets/money_cost_action_picker.dart` · `showMoneyCostActionPicker` | نافذة | صاحب | لا صورة |
+| 3.10 | الرئيسية (لوحة الخطة: العدّاد، كرت المال، المهر، الخطوة الجاية، الأقسام، فريق الخطة) | `/wedding-plans/:id/dashboard`، وتبويب 0 في `/home` | `features/wedding_plans/screens/wedding_plan_dashboard_screen.dart` · `WeddingPlanDashboardScreen` + `widgets/dashboard/aarast_dashboard_view.dart` | نظرة عامة | صاحب (الحارس `ownerDashboard`) | rs/21__wedding-plans_planId_dashboard.png، g/02_b02_home.png، g/03_b02_home_mahr.png، g/04_b02_home_more.png، b/02_b02_home.png، b/03_b02_home_mahr.png، b/04_b02_home_more.png، og/01_o01_home.png، op/06_p__.png، or/01_r01_home.png |
+| 3.11 | الرئيسية: هيكل التحميل | حالة في 3.10 | `widgets/dashboard/aarast_dashboard_states.dart` · `AarastDashboardSkeleton` | حالة | صاحب | لا صورة |
+| 3.12 | الرئيسية: خطأ أو فارغة | حالة في 3.10 | `aarast_dashboard_states.dart` · `AarastDashboardState` | حالة | صاحب | لا صورة |
+| 3.13 | الرئيسية في أسبوع العرس ويوم العرس (برنامج الأسبوع، برنامج اليوم، مزودين الأسبوع) | حالة في 3.10 | `widgets/dashboard/aarast_dashboard_week.dart` | حالة | صاحب | لا صورة |
+| 3.14 | رئيسية خطة الجوال (مع شريط «احفظ خطتك») | داخل `/home` | `features/home/screens/local_guest_dashboard_screen.dart` · `LocalGuestDashboardScreen` | نظرة عامة | بلا حساب؛ أو مسجّل فشل حفظ خطته (D77) | لا صورة |
+| 3.15 | رئيسية المشارك | تبويب 0 في 3.06 | `features/wedding_plans/screens/participant_home_screen.dart` (+ `.cards.dart`) · `ParticipantHomeScreen` | نظرة عامة | مشارك | لا صورة |
+| 3.16 | قفل القسم للمشارك (المال/المهام/الضيوف/المزودين) | تبويب في 3.06 | `features/shell/screens/participant_locked_screen.dart` · `ParticipantLockedScreen` | حالة | مشارك بلا صلاحية القسم | لا صورة |
+| 3.17 | «خططك» | `/wedding-plans` | `features/wedding_plans/screens/my_wedding_plans_screen.dart` · `MyWeddingPlansScreen` | قائمة | مسجّل | rs/19__wedding-plans.png |
+| 3.18 | «خططك» (تبديل الخطة) | نافذة من «حسابي» | `my_wedding_plans_screen.dart` · `showPlanSwitcherSheet` | نافذة | صاحب (غير المشارك) | g/35_q10_account_plans.png، b/31_q10_account_plans.png (غالبًا) |
+| 3.19 | خطة جديدة (تبدأ من «خطة مين؟») | `/wedding-plans/create` | `SmartWelcomeScreen(newPlan: true)` | نموذج | مسجّل | rs/20__wedding-plans_create.png |
+| 3.20 | «بيانات الخطة» (الاسم، الموعد، الميزانية، تأجيل، أرشفة) | `/wedding-plans/:id/plan-center` | `features/wedding_plans/screens/plan_management_screen.dart` · `PlanCenterScreen` + `widgets/plan_details_view.dart` · `PlanDetailsView` | نموذج | أي عضو (`viewPlan`)؛ التعديل لـ`canManagePlan` أو الصاحب | rs/51__wedding-plans_planId_plan-center.png |
+| 3.21 | منتقي يوم العرس (خطة الجوال) | نافذة من 3.20 | `plan_details_view.dart` (سطر 109) | نافذة | صاحب خطة الجوال | لا صورة |
+| 3.22 | «تحط الخطة في الأرشيف؟» | نافذة من 3.20 | `plan_management_screen.plan_edit.dart` (سطر 101) | نافذة | الصاحب فقط، خطة حساب | لا صورة |
+| 3.23 | «تأجيل العرس» | نافذة من 3.20، ومن «حسابي»، ومن «مناسبات عرسك» | `features/wedding_plans/widgets/postpone_sheet.dart` · `showPostponeSheet` | نافذة | صاحب / `canManagePlan` | g/36_g03_postpone.png، b/32_g03_postpone.png |
+| 3.24 | منتقي الموعد الجديد | نافذة من 3.23 | `postpone_sheet.dart` (سطر 96) | نافذة | نفس 3.23 | لا صورة |
+| 3.25 | «اسأل اعّرست» (المساعد) | `/wedding-plans/:id/assistant` | `features/wedding_plans/screens/plan_assistant_screen.dart` · `PlanAssistantScreen` | نموذج | أي عضو يدخل؛ الشاشة تقول لغير الصاحب والشريك إنها مو له | rs/22__wedding-plans_planId_assistant.png |
+| 3.26 | «المساعد الذكي» (الموافقة) | نافذة من 3.25 | `plan_assistant_screen.dart` · `_ConsentSheet` | نافذة | صاحب/شريك | لا صورة |
+| 3.27 | «بلّغ عن الإجابة» | نافذة من 3.25 | `core/widgets/report_reason_sheet.dart` · `showReportReasonSheet` | نافذة | صاحب/شريك | لا صورة |
+| 3.28 | «التنبيهات» (الحساب) | `/notifications` | `features/notifications/screens/notifications_screen.dart` · `NotificationsScreen` | قائمة | مسجّل (بلا حساب: «سجّل الدخول لعرض التنبيهات») | rs/04__notifications.png |
+| 3.29 | «التنبيهات» (الخطة، من الجرس) | `/wedding-plans/:id/notifications` | `NotificationsScreen(weddingPlanId)` | قائمة | أي عضو (`viewPlan`) | rs/50__wedding-plans_planId_notifications.png، g/05_b08_notifications.png، g/08_b08_open_each.png، b/05_b08_notifications.png، b/07_b08_open_each.png |
+| 3.30 | «حسابي» (عرسي، شكل التطبيق، الأمان والخصوصية، الحساب) | `/more` | `features/more/screens/more_screen.dart` (+ `.rows.dart`) · `MoreScreen` | قائمة | الكل (بلا حساب يظهر «تسجيل الدخول»)؛ قسم «عرسي» للصاحب | rs/03__more.png، g/34_g02_account.png، b/30_g02_account.png |
+| 3.31 | صورة الحساب («صوّر» / «اختر صورة») | نافذة من 3.30 | `more_screen.dart` · `_changeAvatar` | نافذة | مسجّل | لا صورة |
+| 3.32 | «تغيير رقم الجوال» | نافذة من 3.30 | `features/settings/widgets/change_phone_sheet.dart` · `showChangePhoneSheet` | نافذة | مسجّل | لا صورة |
+| 3.33 | «إضافة كلمة مرور» / «تغيير كلمة المرور» | نافذة من 3.30 | `features/settings/widgets/set_password_sheet.dart` · `showSetPasswordSheet` | نافذة | مسجّل | لا صورة |
+| 3.34 | «الخروج» (خروج من الجوال أو حذف الحساب، مع التغييرات اللي ما وصلت) | نافذة من 3.30 | `features/more/widgets/logout_sheet.dart` · `LogoutSheet` | نافذة | مسجّل | g/40_g11_logout.png، b/36_g11_logout.png |
+| 3.35 | «التنبيهات» (إعدادات: المهام، الدفعات، العروض والمحادثات) | `/settings` | `features/settings/screens/settings_screen.dart` · `SettingsScreen` | نموذج | مسجّل (بلا حساب: لوحة دخول) | rs/08__settings.png، g/38_g07_notif.png، b/34_g07_notif.png |
+| 3.36 | قفل التطبيق (اختر رمز، أكّده، غيّر، شيل) | `/settings/lock` | `features/settings/screens/lock_settings_screen.dart` · `LockSettingsScreen` | نموذج | مسجّل | rs/09__settings_lock.png، g/37_g08_lock.png، b/33_g08_lock.png |
+| 3.37 | «الخصوصية» (تقارير الأعطال، المساعد، اسمي في التقييمات، نزّل بياناتي، حذف الحساب) | `/settings/privacy` | `features/settings/screens/privacy_screen.dart` · `PrivacyScreen` | نموذج | مسجّل | rs/10__settings_privacy.png |
+| 3.38 | «فحص الاتصال» | `/settings/connection` | `features/settings/screens/connection_check_screen.dart` · `ConnectionCheckScreen` | تفصيل | الكل | rs/11__settings_connection.png |
+| 3.39 | «حذف الحساب» | `/settings/delete-account` | `features/settings/screens/delete_account_screen.dart` · `DeleteAccountScreen` | قرار | مسجّل (صاحب أو مزود) | rs/12__settings_delete-account.png |
+| 3.40 | الحساب ينتظر الحذف («تراجعت، رجّع حسابي») | بوابة فوق كل الشاشات (`AarastDeletionPendingGate` في `app.dart`) | `features/settings/screens/deletion_pending_screen.dart` · `DeletionPendingScreen` | حالة | حساب طلب الحذف | لا صورة |
+| 3.41 | «المساعدة» | `/support` | `features/support/screens/support_screen.dart` · `SupportScreen` | قائمة | الكل | rs/13__support.png، g/39_g10_support.png، b/35_g10_support.png |
+| 3.42 | «ترسل تقرير عطل؟» | نافذة من 3.41 | `support_screen.dart` (سطر 367، `showDialog`) | نافذة | الكل | لا صورة |
+| 3.43 | سطر حالة الاتصال (فوق الهيكل) | حالة في 3.04/3.05/3.06 وبوابة المزود | `core/offline/offline_status_widgets.dart` · `OfflineStatusBanner` | حالة | الكل | og/01…og/07 (غالبًا يظهر فيها) |
+| 3.44 | «كل تغييراتك وصلت» / التغييرات المنتظرة | نافذة من 3.43 | `offline_status_widgets.dart` · `showPendingChangesSheet` | نافذة | الكل | og/07_o07_pending.png (غالبًا) |
 
-### العريس والعروسة
+## 4. المال
 
-| المجموعة | الشاشات |
-|---|---|
-| دفتر الرفد (D66) | `b06` سجّل رفد، `e09` دفتر الرفد، `e10` رسالة الشكر، `x13` الرفد بعد العرس |
-| المغترب والعهدة | `y01` في اليمن ولا برا؟، `y02` رئيسية المغترب، `y03` حوالة، `y04` العهدة، `y05` سلّم كاش |
-| الذكاء والتوقعات | `b03` اكتب وش صار، `c08` لو خففت، `z01` سلسلة التأثير، `z02` ملخص الجمعة، `z03` المال شهر بشهر، `z04` صوّر الإيصال، `z05` مهام تجي لحالها، `z06` كم بيحضر فعلًا، `z07` اللي اتفقنا عليه |
-| المزودين (D41) | `f10` أي قاعة؟، `f11` الدفعات المقدمة، `f13` المزودين الليلة |
-| عام | `b09` ودجت الجوال، `b10` الوضع الليلي، `c14` شارك الملخص، `g05` كتاب عرسك، `x19` تعديلين على نفس البند، `x23` إيقاف الخطة، `x24` خطتك متوقفة، `y11` بحث واحد |
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 4.01 | المال (رأس المال + أربعة تبويبات) | `/wedding-plans/:id/money`، وتبويب 1 في `/home` | `features/finance/screens/money_overview_screen.dart` (+ `.pieces/.summary/.answer/.items/.items_view/.payments/.funding.dart`) · `MoneyOverviewScreen` | نظرة عامة | `viewMoney`؛ التعديل `canManageMoney`؛ مشارك بلا صلاحية: قفل 3.16 داخل `/home`، وحجب الحارس على المسار | rs/33__wedding-plans_planId_money.png، og/02_o02_money.png، op/02_p__.png |
+| 4.02 | «الملخص» | تبويب في 4.01 | `money_overview_screen.answer.dart`، `.summary.dart` | نظرة عامة | نفس 4.01 | g/09_c01_money_summary.png، g/10_c01_money_whole.png، b/08_c01_money_summary.png، b/09_c01_money_whole.png |
+| 4.03 | «البنود» | تبويب في 4.01 | `money_overview_screen.items.dart`، `.items_view.dart` · `_MoneyItemsTab` | قائمة | نفس 4.01 | g/11_c02_money_items.png، b/10_c02_money_items.png |
+| 4.04 | «الدفعات» (قادمة / تمت) | تبويب في 4.01 | `money_overview_screen.payments.dart` · `_MoneyPaymentsTab` | قائمة | نفس 4.01 | g/13_c03_money_payments.png، b/12_c03_money_payments.png |
+| 4.05 | «من وين» | تبويب في 4.01 (يظهر لما فيه تمويل، للصاحب) | `money_overview_screen.funding.dart` · `_MoneyFundingTab` | قائمة | صاحب | g/16_c05_money_funding.png، b/15_c05_money_funding.png (غالبًا؛ قد تكون 4.44) |
+| 4.06 | المال: تحميل أو خطأ | حالة في 4.01 | `money_overview_screen.dart` · `_MoneyRootStateList` | حالة | نفس 4.01 | لا صورة |
+| 4.07 | «كيف حسبناها؟» | نافذة من «الملخص» | `money_overview_screen.answer.dart` · `_HowWeCountedSheet` | نافذة | نفس 4.01 | لا صورة |
+| 4.08 | «ايش الفرق؟» | نافذة من «البنود» | `money_overview_screen.items_view.dart` · `_ItemsExplainSheet` | نافذة | نفس 4.01 | لا صورة |
+| 4.09 | «مشاركة ملخص الميزانية» (مع «إخفاء المبالغ») | نافذة من رأس المال | `core/widgets/aarast_share_sheet.dart` · `showAarastShareSheet` | نافذة | الصاحب فقط (`readerIsOwner`) | لا صورة |
+| 4.10 | قائمة ⋮ المال (توزيع الميزانية، الإيصالات) | قائمة منبثقة من رأس المال | `money_overview_screen.pieces.dart` · `_MoneySettingsMenu` | نافذة | نفس 4.01 | لا صورة |
+| 4.11 | «وصلت <المصدر>؟» | نافذة من «من وين» | `money_overview_screen.funding.dart` (سطر 48) | نافذة | صاحب | لا صورة |
+| 4.12 | «اتفقتوا على موعد ثاني؟» (+ منتقي تاريخ) | نافذة من «الدفعات» | `features/finance/widgets/due_date_sheets.dart` · `MoveDueDateSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.13 | «توزيع الميزانية» | `/wedding-plans/:id/money/budget` | `features/finance/screens/money_budget_screen.dart` (+ `.rows.dart`) · `MoneyBudgetScreen` | نموذج | `viewMoney`؛ الحفظ `canManageBudget` | rs/34__wedding-plans_planId_money_budget.png |
+| 4.14 | «ميزانية عرسك» | نافذة من 4.13 | `money_budget_screen.dart` (سطر 235) | نافذة | `canManageBudget` | لا صورة |
+| 4.15 | «<اسم البند>» (مبلغ البند في التوزيع) | نافذة من 4.13 | `money_budget_screen.dart` (سطر 311) | نافذة | `canManageBudget` | لا صورة |
+| 4.16 | صفحة البند («<اسم البند>») | `/wedding-plans/:id/money/categories/:categoryId` | `features/finance/screens/budget_category_details_screen.dart` (+ `.item/.sheets.dart`) · `BudgetCategoryDetailsScreen` | تفصيل | `viewMoney` | rs/35__wedding-plans_planId_money_categories_categoryId.png، g/12_c07_item_detail.png، b/11_c07_item_detail.png |
+| 4.17 | «الدفعة لأي اتفاق؟» | نافذة من 4.16 | `budget_category_details_screen.item.dart` · `_PickAgreementSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.18 | «تقدير <البند>» | نافذة من 4.16 | `budget_category_details_screen.item.dart` · `_EstimateSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.19 | إزالة البند («ما تقدر تشيل…» أو الخيارات) | نافذة من 4.16 | `budget_category_details_screen.sheets.dart` · `_RemoveCategorySheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.20 | قائمة ⋮ البند (تعديل، إزالة) | قائمة منبثقة من 4.16 | `budget_category_details_screen.sheets.dart` · `_CategoryMenu` | نافذة | `canManageMoney` | لا صورة |
+| 4.21 | «بند جديد» | `/wedding-plans/:id/money/categories/create` | `features/finance/screens/budget_category_form_screen.dart` · `BudgetCategoryFormScreen` | نموذج | `manageMoney` | rs/37__wedding-plans_planId_money_categories_create.png |
+| 4.22 | «تعديل البند» | `/wedding-plans/:id/money/categories/:categoryId/edit` | `BudgetCategoryFormScreen(category:)` (بدون بند محمّل يرجع لـ4.16) | نموذج | `manageMoney` | rs/36__wedding-plans_planId_money_categories_categoryId_edit.png |
+| 4.23 | «اتفاق جديد» / «مصروف بدون اتفاق» (`?kind=expense`، `?categoryId=`) | `/wedding-plans/:id/money/costs/create` | `features/finance/screens/cost_form_screen.dart` (+ `.pieces/.plan/.save.dart`) · `CostFormScreen` | نموذج | `manageMoney` | rs/43__wedding-plans_planId_money_costs_create.png |
+| 4.24 | «تعديل الاتفاق» / «تعديل المصروف» | `/wedding-plans/:id/money/costs/:costId/edit` | `CostFormScreen(cost:)` (بدون اتفاق محمّل يرجع لـ4.27) | نموذج | `manageMoney` | rs/39__wedding-plans_planId_money_costs_costId_edit.png |
+| 4.25 | «مع مين اتفقت؟» | نافذة من 4.23/4.24 | `cost_form_screen.pieces.dart` · `_ProviderPicker` | نافذة | `manageMoney` | لا صورة |
+| 4.26 | منتقي تاريخ الاتفاق | نافذة من 4.23/4.24 | `cost_form_screen.dart` (سطر 650) | نافذة | `manageMoney` | لا صورة |
+| 4.27 | صفحة الاتفاق («<عنوان الاتفاق>»: جدول الدفعات، الإيصالات، التفاصيل) | `/wedding-plans/:id/money/costs/:costId`؛ و`…/schedules/:scheduleId` يحوّل لها | `features/finance/screens/cost_details_screen.dart` (+ `.parts.dart`) · `CostDetailsScreen` | تفصيل | `viewMoney` | rs/38__wedding-plans_planId_money_costs_costId.png، rs/41__wedding-plans_planId_money_costs_costId_schedules_scheduleId.png |
+| 4.28 | «تشاركها مع الخطة؟» (اتفاق خاص) | نافذة من 4.27 | `cost_details_screen.dart` (سطر 396) | نافذة | صاحب الاتفاق الخاص | لا صورة |
+| 4.29 | إزالة الاتفاق («ما تقدر تشيل…» / اعكس أول / ألغِ / احذف) | نافذة من 4.27 | `cost_details_screen.parts.dart` · `_RemoveCostSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.30 | قائمة ⋮ الاتفاق | قائمة منبثقة من 4.27 | `cost_details_screen.parts.dart` · `_CostMoreMenu` | نافذة | `canManageMoney` | لا صورة |
+| 4.31 | «موعد دفع جديد» / «موعد الدفعة» (+ منتقي تاريخ) | نافذة من 4.27، ومن 3.09 | `features/finance/widgets/payment_schedule_sheet.dart` · `showPaymentScheduleSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.32 | «تشيل موعد <التاريخ>؟» | نافذة من 4.31 | `payment_schedule_sheet.dart` (سطر 184) | نافذة | `canManageMoney` | لا صورة |
+| 4.33 | مصدر صورة الإيصال (كاميرا/معرض) | نافذة من قسم الإيصالات في 4.27، ومن 4.36/4.37، ومن 4.43 | `features/finance/widgets/receipt_flows.dart` · `pickReceiptImage` | نافذة | `canManageMoney` | لا صورة |
+| 4.34 | عارض الإيصال (استبدال/حذف) | نافذة (`showDialog`) من 4.27 و4.43 | `receipt_flows.dart` · `showReceiptViewer` | نافذة | `viewMoney` | لا صورة |
+| 4.35 | تأكيد حذف الإيصال | نافذة (`showDialog`) من 4.34 | `receipt_flows.dart` · `confirmRemoveReceipt` | نافذة | `canManageMoney` | لا صورة |
+| 4.36 | «تسجيل دفعة» / «دفعة <الاتفاق>» | `/wedding-plans/:id/money/costs/:costId/payments/create` | `features/finance/screens/cost_payment_screens.dart` · `RecordCostPaymentScreen` + `widgets/payment_entry_form.dart` | نموذج | `manageMoney` | rs/40__wedding-plans_planId_money_costs_costId_payments_create.png |
+| 4.37 | دفع موعد («دفعة <الاتفاق>») | `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay` | `cost_payment_screens.dart` · `PayPaymentScheduleScreen` | نموذج | `manageMoney` | rs/42__wedding-plans_planId_money_costs_costId_schedules_scheduleId_pay.png، g/15_c06_pay_sheet.png، b/14_c06_pay_sheet.png (غالبًا) |
+| 4.38 | «اتفقتوا على موعد ثاني؟» | نافذة من 4.37 | `due_date_sheets.dart` · `MoveDueDateSheet` (من `cost_payment_screens.dart` سطر 186) | نافذة | `manageMoney` | لا صورة |
+| 4.39 | «متى نذكّرك؟» (+ منتقي تاريخ) | نافذة من 4.37 | `due_date_sheets.dart` · `DueReminderSheet` | نافذة | `manageMoney` | لا صورة |
+| 4.40 | منتقي تاريخ الدفعة | نافذة من 4.36/4.37 | `payment_entry_form.dart` (سطر 178) | نافذة | `manageMoney` | لا صورة |
+| 4.41 | صفحة الدفعة («دفعة <الاتفاق>» / «تفاصيل الدفعة») | `/wedding-plans/:id/money/payments/:paymentId` (`?costId=`) | `cost_payment_screens.details.dart` · `CostPaymentDetailsScreen` | تفصيل | `viewMoney` | rs/48__wedding-plans_planId_money_payments_paymentId.png |
+| 4.42 | «تعكس الدفعة؟» | نافذة من 4.41 | `cost_payment_screens.details.dart` · `_ReverseSheet` | نافذة | `canManageMoney` | لا صورة |
+| 4.43 | «الإيصالات» | `/wedding-plans/:id/money/receipts` | `features/finance/screens/money_receipts_screen.dart` · `MoneyReceiptsScreen` | قائمة | `viewMoney` (الزر مخفي لخطة الجوال) | rs/49__wedding-plans_planId_money_receipts.png |
+| 4.44 | «من وين» (مصادر الفلوس، `?source=` يفتح مصدرًا) | `/wedding-plans/:id/money/funding` | `features/finance/screens/funding_sources_screen.dart` · `FundingSourcesScreen` | قائمة | `viewMoney` على المسار؛ المحتوى للصاحب | rs/44__wedding-plans_planId_money_funding.png |
+| 4.45 | «مصدر فلوس» / «تعديل المصدر» (+ منتقيا تاريخ) | نافذة من 4.44 | `features/finance/widgets/funding_widgets.dart` · `FundingSourceFormSheet` | نافذة | صاحب | لا صورة |
+| 4.46 | «وصلت فلوس <المصدر>؟» | نافذة من 4.44 | `features/finance/widgets/funding_sheets.dart` · `PledgeCheckSheet` | نافذة | صاحب | لا صورة |
+| 4.47 | «سلفة <الاسم>» (السداد، + منتقي تاريخ) | نافذة من 4.44 | `funding_sheets.dart` · `LoanRepaymentsSheet` | نافذة | صاحب | g/17_c13_loan.png، b/16_c13_loan.png |
+| 4.48 | «تشيل «<المصدر>»؟» | نافذة (`showDialog`) من 4.44 | `funding_sources_screen.dart` (سطر 275) | نافذة | صاحب | لا صورة |
+| 4.49 | «اتفقتوا على المهر؟» (المهر لخطة قائمة) | `/wedding-plans/:id/money/mahr` | `features/wedding_plans/screens/mahr_screen.dart` · `MahrScreen` | نموذج | `viewMoney` (المسار بلا علامة كتابة، انظر الملاحظة) | rs/45__wedding-plans_planId_money_mahr.png |
+| 4.50 | منتقي موعد باقي المهر | نافذة من 4.49 | `mahr_fields.dart` · `pickMahrDueDate` | نافذة | نفس 4.49 | لا صورة |
+| 4.51 | «سلّمت المهر كامل» / «استلمتِ المهر كامل» | `/wedding-plans/:id/money/mahr/moment` (مرة لكل جوال من الرئيسية) | `features/wedding_plans/screens/mahr_moment_screen.dart` · `MahrMomentScreen` | حالة | صاحب | rs/46__wedding-plans_planId_money_mahr_moment.png |
+| 4.52 | «الدفعات · مين دفع ايش» | `/wedding-plans/:id/money/payers` | `features/finance/screens/payer_payments_screen.dart` · `PayerPaymentsScreen` | قائمة | `viewMoney` | rs/47__wedding-plans_planId_money_payers.png، g/14_w20_payers.png، b/13_w20_payers.png |
 
-### المشارك
+## 5. المهام واليوم
 
-`q15` كاتب الرفد.
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 5.01 | «المهام» | `/wedding-plans/:id/tasks`، وتبويب 2 في `/home` | `features/tasks/screens/task_timeline_screen.dart` (+ `.logic/.months/.starter.dart`) · `TaskTimelineScreen(showHeaderAdd: false)` | قائمة | أي عضو (`viewPlan`)؛ للمشارك يُبنى 5.08 | rs/60__wedding-plans_planId_tasks.png، og/03_o03_tasks.png، op/03_p__.png |
+| 5.02 | «القائمة» | تبويب في 5.01 | `task_timeline_screen.dart` | قائمة | نفس 5.01 | g/18_d01_tasks.png، b/17_d01_tasks.png |
+| 5.03 | «الوقت» (بالأشهر) | تبويب في 5.01 | `task_timeline_screen.months.dart` | قائمة | نفس 5.01 | g/20_w24_timeline.png، b/19_w24_timeline.png |
+| 5.04 | «مهام جاهزة لعرسك» | نافذة من 5.01 | `features/tasks/widgets/task_starter_sheet.dart` · `TaskStarterSheet` | نافذة | `canManageTasks` | لا صورة |
+| 5.05 | «لمتى تأجلها؟» (+ منتقي تاريخ) | نافذة من 5.01 و5.09 | `features/tasks/widgets/task_postpone.dart` · `showTaskPostponeSheet`، `pickTaskDate` | نافذة | `canManageTasks` | لا صورة |
+| 5.06 | مشاركة المهام | نافذة من 5.01 | `aarast_share_sheet.dart` · `showAarastShareSheet` (`task_timeline_screen.dart` سطر 479) | نافذة | غير واضح | لا صورة |
+| 5.07 | الجدول الزمني (نفس المهام مع زر إضافة في الرأس) | `/wedding-plans/:id/timeline` | `TaskTimelineScreen(weddingPlanId)` | قائمة | `manageTasks` | rs/64__wedding-plans_planId_timeline.png |
+| 5.08 | «المهام» للمشارك | تبويب 2 في 3.06، ومسار 5.01 للمشارك | `features/tasks/screens/participant_tasks_screen.dart` (+ `.plan.dart`) · `ParticipantTasksScreen` | قائمة | مشارك (`canViewPlan`؛ الإضافة `canManageTasks`) | لا صورة |
+| 5.09 | صفحة المهمة («<عنوان المهمة>») | `/wedding-plans/:id/tasks/:taskId` | `features/tasks/screens/task_details_screen.dart` (+ `.sheets.dart`) · `TaskDetailsScreen` | تفصيل | أي عضو (`viewPlan`) | rs/61__wedding-plans_planId_tasks_taskId.png، g/19_w26_overdue_task.png، b/18_w26_overdue_task.png |
+| 5.10 | قائمة ⋮ المهمة (إعادة فتح، إلغاء، حذف…) | قائمة منبثقة من 5.09 | `task_details_screen.sheets.dart` · `PopupMenuButton<_TaskAction>` | نافذة | `canManageTasks` | لا صورة |
+| 5.11 | «تحذف «<المهمة>»؟» | نافذة من 5.10 | `task_details_screen.sheets.dart` · `_DeleteSheet` | نافذة | `canManageTasks` | لا صورة |
+| 5.12 | «وين تنتهي المهمة؟» | نافذة من 5.09 | `features/tasks/widgets/task_link_sheet.dart` · `showTaskLinkSheet` | نافذة | `canManageTasks` | لا صورة |
+| 5.13 | «تعديل الخطوة» | نافذة من قائمة الخطوات في 5.09 | `features/tasks/widgets/task_checklist_section.dart` · `_RenameStepSheet` | نافذة | `canManageTasks` | لا صورة |
+| 5.14 | منتقيا الوقت والتاريخ (تذكير المهمة) | نافذة من 5.09 | `task_details_screen.dart` (سطر 488، 490، 521) | نافذة | `canManageTasks` | لا صورة |
+| 5.15 | «مهمة جديدة» | `/wedding-plans/:id/tasks/create` | `features/tasks/screens/create_task_screen.dart` (+ `_draft/_privacy/_who.dart`) · `CreateTaskScreen` | نموذج | `manageTasks` | rs/63__wedding-plans_planId_tasks_create.png |
+| 5.16 | «تعديل المهمة» / «لمين تحوّلها؟» (`?focus=who`) | `/wedding-plans/:id/tasks/:taskId/edit` | `CreateTaskScreen(taskId:)` | نموذج | `manageTasks` | rs/62__wedding-plans_planId_tasks_taskId_edit.png |
+| 5.17 | «تشاركها مع الخطة؟» (مهمة خاصة) | نافذة (`showDialog`) من 5.15/5.16 | `create_task_screen_privacy.dart` (سطر 80) | نافذة | صاحب المهمة الخاصة | لا صورة |
+| 5.18 | منتقي موعد المهمة | نافذة من 5.15/5.16 | `create_task_screen.dart` (سطر 327) | نافذة | `manageTasks` | لا صورة |
+| 5.19 | «مناسبات عرسك» | `/wedding-plans/:id/events` | `features/wedding_day/screens/plan_events_screen.dart` · `PlanEventsScreen` | قائمة | أي عضو (`viewPlan`)؛ التعديل لمن يعدّل الخطة | rs/24__wedding-plans_planId_events.png، g/23_e06_lunch_event.png (غالبًا) |
+| 5.20 | «<اسم المناسبة>» (+ منتقيا التاريخ والوقت) | نافذة من 5.19 | `features/wedding_day/widgets/plan_event_sheet.dart` · `showPlanEventSheet` | نافذة | من يعدّل الخطة | g/23_e06_lunch_event.png (غالبًا) |
+| 5.21 | «دخلت أسبوع عرسك» (y06) | `/wedding-plans/:id/moments/week` | `features/wedding_plans/screens/wedding_moment_screen.dart` · `WeddingMomentScreen` | حالة | أي عضو (`viewPlan`)؛ تفتحها رئيسية الصاحب مرة لكل جوال | rs/31__wedding-plans_planId_moments_week.png |
+| 5.22 | «اليوم عرسك يا X» (y07) | `/wedding-plans/:id/moments/day` | `WeddingMomentScreen(moment: day)` | حالة | نفس 5.21 | rs/32__wedding-plans_planId_moments_day.png |
 
-### المزود
+«تأجيل العرس» من «مناسبات عرسك» هو 3.23 نفسه.
 
-| المجموعة | الشاشات |
-|---|---|
-| الانضمام (D41) | `p05` وريهم شغلك، `p05b` كيف تشتغل؟، `p41` استلم ملفك من رابط واتساب |
-| كتالوج المحلات (D42) | `p06c` اللي تبيعه، `p16c` طلب بيع، `p26c` طلب محلات الأناقة |
-| التشغيل (D41) | `p23` وصلتك الدفعة المقدمة؟، `p44` شغل الليلة، `p46` ليالي فاضية، `p49` فريق العمل |
+## 6. الضيوف
 
-### الإدارة
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 6.01 | «الضيوف» / «الضيفات» (الأرقام، فلتر العائلات والردود، بطاقة الدعوة، من جهات الاتصال، الصق قائمة) | `/wedding-plans/:id/guests`، وتبويب 3 في `/home` | `features/guests/screens/guest_list_screen.dart` (+ `_helpers.dart`) · `GuestListScreen` | قائمة | أي عضو على المسار؛ للمشارك بدون `canManageGuests` يُبنى 6.08 داخل `/home` | rs/25__wedding-plans_planId_guests.png، g/21_e01_guests.png، g/22_e01_guests_all.png، b/20_e01_guests.png، b/21_e01_guests_all.png، og/04_o04_guests.png، op/04_p__.png، or/02_r02_guest_synced.png |
+| 6.02 | إضافة ضيف (القائمة مع النافذة مفتوحة) | `/wedding-plans/:id/guests/add` | `GuestListScreen(openAddOnStart: true)` | نموذج | `manageGuests` | rs/26__wedding-plans_planId_guests_add.png |
+| 6.03 | «إضافة ضيف» / «تعديل ضيف» | نافذة من 6.01 و6.02 و6.09 | `features/guests/widgets/guest_form_sheet.dart` · `GuestFormSheet` | نافذة | `canManageGuests` | og/05_o05_add_guest.png، g/24_e06_guest_lunch.png (غالبًا) |
+| 6.04 | «عائلة جديدة» | نافذة من 6.03 | `guest_form_sheet.dart` (سطر 244، 599) | نافذة | `canManageGuests` | لا صورة |
+| 6.05 | «المجموعات» | نافذة من 6.01 | `features/guests/widgets/guest_groups_sheet.dart` · `GuestGroupsSheet` | نافذة | `canManageGuests` (لا مجموعات لخطة الجوال) | لا صورة |
+| 6.06 | اسم المجموعة | نافذة (`showDialog`) من 6.05 | `guest_groups_sheet.dart` · `_GroupNameDialog` | نافذة | `canManageGuests` | لا صورة |
+| 6.07 | «حذف مجموعة «<الاسم>»؟» | نافذة (`showDialog`) من 6.05 | `guest_groups_sheet.dart` (سطر 70) | نافذة | `canManageGuests` | لا صورة |
+| 6.08 | الضيوف للمشارك (قراءة) | تبويب 3 في 3.06 | `features/guests/screens/participant_guests_screen.dart` · `ParticipantGuestsScreen` | قائمة | مشارك بلا `canManageGuests` | لا صورة |
+| 6.09 | صفحة الضيف | `/wedding-plans/:id/guests/view/:guestId` | `features/guests/screens/guest_details_screen.dart` · `GuestDetailsScreen` | تفصيل | `manageGuests` | rs/30__wedding-plans_planId_guests_view_guestId.png |
+| 6.10 | قائمة ⋮ الضيف | قائمة منبثقة من 6.09 | `guest_details_screen.dart` (سطر 121) | نافذة | `manageGuests` | لا صورة |
+| 6.11 | «تشيل <الضيف>؟» | نافذة من 6.10 | `guest_details_screen.dart` (سطر 518) | نافذة | `manageGuests` | لا صورة |
+| 6.12 | «من جهات الاتصال» | `/wedding-plans/:id/guests/import?from=contacts` | `features/guests/screens/guest_import_screen.dart` · `GuestImportScreen` | نموذج | `manageGuests`؛ ويفتحها خطة الجوال أيضًا | لا صورة |
+| 6.13 | «أضف مجموعة ضيوف» (الصق قائمة) | `/wedding-plans/:id/guests/import` (`from=paste` أو بدون) | `GuestImportScreen(source: paste)` | نموذج | `manageGuests` | rs/28__wedding-plans_planId_guests_import.png |
+| 6.14 | «كم بيحضر؟» | `/wedding-plans/:id/guests/attendance` | `features/guests/screens/guest_attendance_screen.dart` · `GuestAttendanceScreen` | قائمة | `manageGuests` | rs/27__wedding-plans_planId_guests_attendance.png |
+| 6.15 | «بطاقة الدعوة» | `/wedding-plans/:id/guests/invite` | `features/guests/screens/guest_invite_screen.dart` (+ `.card.dart`) · `GuestInviteScreen` | نموذج | `manageGuests` | rs/29__wedding-plans_planId_guests_invite.png |
+| 6.16 | «تذكير اللي <ما ردّوا>» | `/wedding-plans/:id/guests/invite?mode=remind` | `GuestInviteScreen(reminder: true)` | نموذج | `manageGuests` | لا صورة |
+| 6.17 | صورة البطاقة (كاميرا/معرض) | نافذة من 6.15 | `guest_invite_screen.card.dart` · `showImageSourceSheet` | نافذة | `manageGuests` | لا صورة |
+| 6.18 | نافذة الإرسال (واحد واحد على واتساب) | نافذة من 6.15/6.16 | `features/guests/widgets/guest_send_sheet.dart` · `GuestSendSheet` | نافذة | `manageGuests` | لا صورة |
 
-`n02` نظرة السوق، `n03` مسار العريس، `n04` تقويم الأعراس، `n08` إشارات الاحتيال، `n10` الميزات والإعلانات.
+## 7. المزودون (جهة العرسان) والدردشة
+
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 7.01 | «المزودين» داخل الخطة (أربعة تبويبات) | `/wedding-plans/:id/providers` (`?quoteId=`)، وتبويب 4 في `/home` | `features/marketplace/screens/provider_marketplace_screen.dart` (+ `.labels/.participant/.results/.sections/.tabs.dart`) · `ProviderMarketplaceScreen(embedded)` | نظرة عامة | أي عضو على المسار؛ بدون `canManageProviders` يُبنى 7.10 | rs/52__wedding-plans_planId_providers.png، og/06_o06_providers.png، op/05_p__.png |
+| 7.02 | دليل المزودين بلا خطة (تبويب «استكشف» فقط) | `/providers` (`?quoteId=`) | `ProviderMarketplaceScreen` | قائمة | الكل، حتى بلا حساب | rs/14__providers.png |
+| 7.03 | «استكشف» (مع البحث) | تبويب في 7.01 | `provider_marketplace_screen.tabs.dart`، `.results.dart` | قائمة | نفس 7.01 | g/28_f02_prov_explore.png، g/31_f02_item_search.png، b/24_f02_prov_explore.png، b/27_f02_item_search.png |
+| 7.04 | «طلباتي» (لوحة الخدمات) | تبويب في 7.01 | `features/marketplace/widgets/provider_board_view.dart` · `ProviderBoardView` | قائمة | نفس 7.01 | g/25_f01_prov_requests.png، b/22_f01_prov_requests.png |
+| 7.05 | «ما طلبت من أحد بعد» (أول زيارة) | حالة في «طلباتي» | `provider_marketplace_screen.dart` · `_firstVisitView` | حالة | نفس 7.01 | لا صورة |
+| 7.06 | «المحادثات» | تبويب في 7.01 | `features/chat/widgets/conversation_list_view.dart` · `ConversationListView(embedded)` | قائمة | نفس 7.01 | g/33_f08_chats.png، b/29_f08_chats.png |
+| 7.07 | «المفضلة» | تبويب في 7.01 | `provider_marketplace_screen.dart` · `_favoritesTab` | قائمة | نفس 7.01 | لا صورة |
+| 7.08 | «فلتر» (المدينة) | نافذة من «استكشف» | `provider_marketplace_screen.sections.dart` · `_DirectoryFilterSheet` | نافذة | الكل | لا صورة |
+| 7.09 | «مميز» | نافذة من بطاقة مزود | `features/marketplace/widgets/provider_result_card.dart` · `showProviderFeaturedSheet` | نافذة | الكل | لا صورة |
+| 7.10 | «المزودين» للمشارك (قراءة الحجوزات) | تبويب 4 في 3.06، ومسار 7.01 للمشارك | `features/marketplace/screens/participant_providers_screen.dart` · `ParticipantProvidersScreen` | قائمة | مشارك بلا `canManageProviders` | لا صورة |
+| 7.11 | «قارن الملفين» | `/providers/favorites?compare=a,b` | `features/marketplace/screens/favorite_providers_screen.dart` · `FavoriteProvidersScreen` | تفصيل | الكل (بدون حارس) | rs/15__providers_favorites.png (بلا مقارنة) |
+| 7.12 | صفحة المزود | `/providers/:id` (`?weddingPlanId=` يضيف حارس `manageProviders`) | `features/marketplace/screens/provider_details_screen.dart` (+ `.widgets.dart`) + `widgets/provider_details_view.dart` · `ProviderDetailsScreen` | تفصيل | الكل، حتى بلا حساب | rs/16__providers_providerId.png، g/29_f03_prov_page.png، g/30_f03_prov_page_action.png، b/25_f03_prov_page.png، b/26_f03_prov_page_action.png |
+| 7.13 | معرض صور المزود | نافذة (`showDialog`) من 7.12 | `features/marketplace/widgets/provider_photo_gallery.dart` · `showProviderPhotoGallery` | نافذة | الكل | لا صورة |
+| 7.14 | الإبلاغ عن تقييم | نافذة من 7.12 | `features/marketplace/widgets/review_report_sheet.dart` · `reportProviderReview` ← `showReportReasonSheet` | نافذة | مسجّل (بلا حساب: 10.06 أولًا) | لا صورة |
+| 7.15 | «اطلب عرض سعر» («إلى <المزود>») | `/providers/:id/quote`؛ و`/providers/:id/quote-request` يحوّل لها | `features/marketplace/screens/quote_request_screen.dart` · `QuoteRequestScreen` | نموذج | `ProviderAuthGate` + `SelectedWeddingPlanContextGate(manageProviders)` | rs/17__providers_providerId_quote.png، g/32_f07_quote.png، b/28_f07_quote.png |
+| 7.16 | عدد الضيوف | نافذة من 7.15 | `quote_request_screen.dart` · `_GuestsSheet` | نافذة | نفس 7.15 | لا صورة |
+| 7.17 | «الفترة» | نافذة من 7.15 | `quote_request_screen.dart` · `_choose` | نافذة | نفس 7.15 | لا صورة |
+| 7.18 | «المكان» | نافذة من 7.15 | `quote_request_screen.dart` · `_choose` | نافذة | نفس 7.15 | لا صورة |
+| 7.19 | منتقي تاريخ المناسبة | نافذة من 7.15 | `quote_request_screen.dart` (سطر 589) | نافذة | نفس 7.15 | لا صورة |
+| 7.20 | الخدمة وعروضها / «قارن عروض <الخدمة>» | `/wedding-plans/:id/providers/requests` (`?item=`، `?quote=`) | `features/marketplace/screens/provider_requests_screen.dart` (+ `.cards.dart`) · `ProviderRequestsScreen` | تفصيل | `manageProviders` | rs/55__wedding-plans_planId_providers_requests.png، g/06_notice_1.png، g/07_notice_2.png، g/26_f04_compare.png، g/27_f05_booked.png، b/06_notice_1.png، b/23_f05_booked.png |
+| 7.21 | «نطلب الحجز؟» (+ منتقي تاريخ) | نافذة من 7.20 | `features/marketplace/widgets/quote_decision_sheets.dart` · `BookingRequestSheet` | نافذة | `manageProviders` | لا صورة |
+| 7.22 | «ما يناسبك العرض؟» | نافذة من 7.20 | `quote_decision_sheets.dart` · `DeclineOfferSheet` | نافذة | `manageProviders` | لا صورة |
+| 7.23 | «إلغاء حجز <المزود>» | نافذة من 7.20 | `provider_requests_screen.cards.dart` · `_CancelBookingSheet` | نافذة | صاحب الطلب | لا صورة |
+| 7.24 | منتقي تاريخ (طلب الخدمة) | نافذة من 7.20 | `provider_requests_screen.dart` (سطر 486) | نافذة | `manageProviders` | لا صورة |
+| 7.25 | «ليلتك محجوزة عند <المزود>» | `/wedding-plans/:id/providers/booked/:quoteId` | `features/marketplace/screens/booking_moment_screen.dart` · `BookingMomentScreen` | حالة | `manageProviders` | rs/53__wedding-plans_planId_providers_booked_bookedQuoteId.png |
+| 7.26 | «الحجوزات» | `/wedding-plans/:id/providers/bookings` | `features/marketplace/screens/plan_bookings_screen.dart` · `PlanBookingsScreen` | قائمة | `manageProviders` | rs/54__wedding-plans_planId_providers_bookings.png |
+| 7.27 | «قيّم مزودينك» / «تقييمك» (`?provider=`) | `/wedding-plans/:id/providers/reviews` | `features/marketplace/screens/provider_reviews_screen.dart` · `ProviderReviewsScreen` | نموذج | `manageProviders` | rs/56__wedding-plans_planId_providers_reviews.png |
+| 7.28 | «المحادثات» (مستقلة) | `/conversations` | `ConversationListView` داخل `ProviderAuthGate` | قائمة | مسجّل | rs/06__conversations.png |
+| 7.29 | المحادثة («<اسم الطرف>») | `/conversations/:id` | `features/chat/screens/chat_screen.dart` · `ChatScreen` | تفصيل | مسجّل، طرف في الطلب (العريس/العروسة أو المزود) | rs/07__conversations_conversationId.png |
+| 7.30 | خيارات المحادثة («<اسم الطرف>»: كتم، إبلاغ، حظر) | نافذة من 7.29 | `chat_screen.dart` · `_OptionsSheet` | نافذة | نفس 7.29 | لا صورة |
+| 7.31 | «ايش المشكلة؟» | نافذة من 7.30 | `chat_screen.dart` · `_ReportSheet` | نافذة | نفس 7.29 | لا صورة |
+| 7.32 | فتح محادثة الطلب (تحميل ثم المحادثة) | `/quotes/:id/conversation` | `features/chat/screens/quote_conversation_entry_screen.dart` · `QuoteConversationEntryScreen` | حالة | مسجّل | rs/18__quotes_quoteId_conversation.png |
+
+## 8. المشاركون
+
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 8.01 | «المشاركين» | `/wedding-plans/:id/sharing` | `features/sharing/screens/sharing_screen.dart` · `SharingScreen` | قائمة | `inviteMembers` | rs/57__wedding-plans_planId_sharing.png |
+| 8.02 | إضافة مشارك (المشاركين مع النافذة) | `/wedding-plans/:id/sharing/add` | `SharingScreen(startAdding: true)` | نموذج | `inviteMembers` | rs/59__wedding-plans_planId_sharing_add.png |
+| 8.03 | «أضف <الاسم>» (إضافة مشارك واختيار دوره) | نافذة من 8.01/8.02 | `features/sharing/widgets/add_participant_sheet.dart` · `showAddParticipantSheet` | نافذة | `canInviteMembers` | لا صورة |
+| 8.04 | «الدعوة جاهزة» | نافذة (العرض الثاني في 8.03) | `add_participant_sheet.dart` (سطر 254) | نافذة | `canInviteMembers` | لا صورة |
+| 8.05 | «انسخ الرابط بنفسك» | نافذة من 8.01/8.04 | `features/sharing/widgets/invite_link_copy.dart` · `copyInviteText` | نافذة | `canInviteMembers` | لا صورة |
+| 8.06 | «تلغي دعوة <الاسم>؟» | نافذة من 8.01 | `sharing_screen.dart` (سطر 293) | نافذة | `canInviteMembers` | لا صورة |
+| 8.07 | المشارك («<الاسم>»: الدور والصلاحيات) | `/wedding-plans/:id/sharing/:memberId/edit` | `features/sharing/screens/edit_shared_member_screen.dart` · `EditSharedMemberScreen` + `widgets/participant_access_editor.dart` | نموذج | `inviteMembers` | rs/58__wedding-plans_planId_sharing_memberId_edit.png |
+| 8.08 | «تشيل <الاسم> من الخطة؟» | نافذة من 8.07 | `edit_shared_member_screen.dart` (سطر 341) | نافذة | `inviteMembers` | لا صورة |
+| 8.09 | «وش سوّى المشاركين» (للصاحب) / «اللي سجّلته» (للمشارك) | `/wedding-plans/:id/contributions` | `features/sharing/screens/contribution_history_screen.dart` · `ContributionHistoryScreen` | قائمة | أي عضو (`viewPlan`) | rs/23__wedding-plans_planId_contributions.png |
+| 8.10 | «<اسم الخطة>: لما الخطة تتغير» (q19، خطة أُرشفت أو انشال منها) | `/shared/wedding-plans/:id`؛ و`/shared/wedding-plans` يحوّل لـ`/more` | `features/sharing/screens/participant_plan_state_screen.dart` · `ParticipantPlanStateScreen` | حالة | مشارك (بدون حارس على المسار) | لا صورة |
+| 8.11 | «حسابي» للمشارك (خططه، اللي سجّله، المشاركين) | جزء من `/more` للمشارك | `features/more/widgets/participant_account_sections.dart` · `ParticipantAccountSections` | قائمة | مشارك | لا صورة |
+| 8.12 | «تطلع من <الخطة>؟» | نافذة من 8.11 | `participant_account_sections.dart` · `_LeaveSheet` | نافذة | مشارك | لا صورة |
+
+## 9. بوابة المزود
+
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 9.01 | «استقبال طلبات العرسان» (تسجيل المزود) | `/register?type=provider` (أو `resume` يبدأ بـ`/provider`) | `features/auth/screens/provider_register_screen.dart` · `ProviderRegisterScreen` | نموذج | بلا حساب | لا صورة |
+| 9.02 | رمز التحقق للمزود (بلون التطبيق المحايد) | `/otp` مع `successLocation` يبدأ بـ`/provider/` | `OtpScreen` داخل `_providerEntry` | نموذج | بلا حساب | لا صورة |
+| 9.03 | «طلب الانضمام»: «نشاطك» | خطوة 1 في `/provider/apply` | `features/provider_portal/screens/provider_apply_screen.dart` (+ `.steps.dart`) · `ProviderApplyScreen` | نموذج | مسجّل (`ProviderAuthGate`، `registerAsProvider`) | لا صورة |
+| 9.04 | «وين تشتغل؟» | خطوة 2 في `/provider/apply` | نفس الملف | نموذج | نفس 9.03 | لا صورة |
+| 9.05 | «خدمتك…» | خطوة 3 في `/provider/apply` | نفس الملف (سطر 304) | نموذج | نفس 9.03 | لا صورة |
+| 9.06 | «كذا بيشوفك العرسان» (أرسل) | خطوة 4 في `/provider/apply` | نفس الملف (سطر 368) | قرار | نفس 9.03 | لا صورة |
+| 9.07 | «القسم» / «المدينة» / «ايش تبي تعدّل؟» | نافذة من 9.03/9.04 ومن 9.11/9.14 | `features/provider_portal/widgets/provider_join_parts.dart` · `providerPickOption` | نافذة | نفس 9.03 / مزود | لا صورة |
+| 9.08 | استلام ملف موجود (claim) | حالة في `/provider/apply` | `features/provider_portal/screens/provider_claim_screen.dart` · `ProviderClaimScreen` | قرار | مسجّل له ملف قابل للاستلام | لا صورة |
+| 9.09 | «طلب الاستلام قيد المراجعة» | حالة في `/provider/apply` | `provider_claim_screen.dart` · `ProviderClaimPendingScreen` | حالة | نفس 9.08 | لا صورة |
+| 9.10 | البوابة: شريط الأقسام (الرئيسية، الطلبات، التقويم، الرسائل، ملفي) | `/provider/dashboard` (`?tab=requests`، `?tab=profile`) | `features/provider_portal/screens/provider_portal_screen.dart` (+ `provider_portal_tabs.dart`) · `ProviderPortalScreen` + `widgets/provider_portal_bottom_nav.dart` | نظرة عامة | مزود (`providerAccountRequired`) | لا صورة |
+| 9.11 | «طلبك قيد المراجعة» (PENDING) | حالة في 9.10 | `features/provider_portal/screens/provider_pending_screen.dart` · `ProviderPendingScreen` | حالة | مزود قيد المراجعة | لا صورة |
+| 9.12 | «كذا بيشوفك العرسان» (معاينة) | نافذة من 9.11 | `provider_pending_screen.dart` (سطر 113) | نافذة | نفس 9.11 | لا صورة |
+| 9.13 | «خدمتك وسعرها» | نافذة من 9.11 و9.14 | `features/provider_portal/widgets/provider_joining_service_sheet.dart` · `showProviderJoiningServiceSheet` | نافذة | مزود قبل الاعتماد | لا صورة |
+| 9.14 | «يحتاج تعديل بسيط» (NEEDS_CHANGES) | حالة في 9.10 | `features/provider_portal/screens/provider_changes_screen.dart` · `ProviderChangesScreen` | نموذج | مزود مطلوب منه تعديل | لا صورة |
+| 9.15 | «ما قدرنا نوافق الآن» (REJECTED) | حالة في 9.10 | `features/provider_portal/screens/provider_rejected_screen.dart` · `ProviderRejectedScreen` | حالة | مزود مرفوض | لا صورة |
+| 9.16 | «حسابك موقوف مؤقتًا» (SUSPENDED) | حالة في 9.10 | `features/provider_portal/screens/provider_suspended_screen.dart` · `ProviderSuspendedScreen` | حالة | مزود موقوف | لا صورة |
+| 9.17 | «مبروك، صرت في اعّرست» (أول دخول بعد القبول) | حالة في 9.10 | `features/provider_portal/screens/provider_approved_screen.dart` · `ProviderApprovedScreen` + `widgets/provider_first_steps.dart` | حالة | مزود مفعّل لأول مرة | لا صورة |
+| 9.18 | «الرئيسية» (ينتظرونك، هذا الأسبوع) | تبويب في 9.10 | `features/provider_portal/screens/provider_home_tab.dart` · `ProviderHomeTab` | نظرة عامة | مزود | لا صورة |
+| 9.19 | «الطلبات» | تبويب في 9.10 | `features/provider_portal/screens/provider_requests_tab.dart` · `ProviderRequestsTab` | قائمة | مزود مفعّل | لا صورة |
+| 9.20 | «رد سريع» | نافذة من 9.19 | `features/provider_portal/widgets/provider_quick_offer_sheet.dart` · `showProviderQuickOffer` | نافذة | مزود مفعّل | لا صورة |
+| 9.21 | «التقويم» | تبويب في 9.10 | `features/provider_portal/screens/provider_calendar_tab.dart` · `ProviderCalendarTab` (+ `widgets/provider_calendar_parts.dart`) | قائمة | مزود مفعّل | لا صورة |
+| 9.22 | «<اليوم>» (حالة اليوم وحجوزاته) | نافذة من 9.21 | `features/provider_portal/widgets/provider_day_sheet.dart` · `showProviderDaySheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.23 | «الرسائل» (مع العرسان) | تبويب في 9.10 | `features/provider_portal/screens/provider_chats_tab.dart` · `ProviderChatsTab` | قائمة | مزود مفعّل | لا صورة |
+| 9.24 | «ملفي» | تبويب في 9.10 | `features/provider_portal/screens/provider_profile_tab.dart` · `ProviderProfileTab` + `widgets/provider_profile_parts.dart` | نظرة عامة | مزود | لا صورة |
+| 9.25 | «التقييمات» | نافذة من 9.24 | `provider_profile_parts.dart` · `ProviderReviewsSheet` | نافذة | مزود | لا صورة |
+| 9.26 | «كم عرس تاخذ في اليوم» | نافذة من 9.24 | `provider_profile_parts.dart` · `ProviderCapacitySheet` | نافذة | مزود | لا صورة |
+| 9.27 | «عدّل ملفك» | نافذة من 9.24 | `provider_profile_tab.dart` (سطر 334) | نافذة | مزود | لا صورة |
+| 9.28 | تبويب مقفل قبل التفعيل | حالة في تبويبات 9.19/9.21/9.23 | `provider_portal_screen.dart` · `_ProviderOperationsUnavailable` | حالة | مزود غير مفعّل | لا صورة |
+| 9.29 | «الطلب» (طلب واحد كما يراه المزود) | `/provider/requests/:id` | `features/provider_portal/screens/provider_request_screen.dart` · `ProviderRequestScreen` (+ `widgets/provider_request_cards.dart`، `provider_request_parts.dart`) | تفصيل | مزود مفعّل (`providerOperationsRequired`) | لا صورة |
+| 9.30 | «<الاسم> قبل عرضك» / «تعتذر من <الاسم>؟» | نافذة من 9.29 | `features/provider_portal/widgets/provider_booking_sheets.dart` · `showProviderConfirmSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.31 | «تعتذر من <الاسم>؟» (عن الطلب) | نافذة من 9.29 | `features/provider_portal/widgets/provider_decline_sheet.dart` · `showProviderDeclineSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.32 | «تسحب عرضك ل<الاسم>؟» | نافذة من 9.29 | `features/provider_portal/widgets/provider_withdraw_sheet.dart` · `showProviderWithdrawSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.33 | «حجز <الاسم>» | حالة في `/provider/requests/:id` لما فيه حجز | `features/provider_portal/screens/provider_booking_screen.dart` · `ProviderBookingScreen` + `widgets/provider_booking_aftercare.dart` | تفصيل | مزود مفعّل | لا صورة |
+| 9.34 | «تلغي حجز <الاسم>؟» | نافذة من 9.33 | `provider_booking_sheets.dart` · `showProviderCancelSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.35 | «ليش ما تقدر؟» | نافذة من 9.33 | `provider_booking_aftercare.dart` · `_askText` | نافذة | مزود مفعّل | لا صورة |
+| 9.36 | «ليش ما صار؟» | نافذة من 9.33 | `provider_booking_aftercare.dart` (سطر 230) | نافذة | مزود مفعّل | لا صورة |
+| 9.37 | «رابط التسليم» | نافذة من 9.33 | `provider_booking_aftercare.dart` · `_askText` | نافذة | مزود مفعّل | لا صورة |
+| 9.38 | «عرضك ل<الاسم>» (إرسال، تعديل، تجديد) | `/provider/requests/:id/offer` | `features/provider_portal/screens/provider_offer_screen.dart` · `ProviderOfferScreen` (+ `widgets/provider_offer_lines.dart`) | نموذج | مزود مفعّل | لا صورة |
+| 9.39 | «كذا يوصل <الاسم>» (معاينة العرض) | نافذة من 9.38 | `provider_offer_screen.dart` · `_OfferPreviewSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.40 | «تقييم جديد» / «التقييم» (ورده الواحد) | `/provider/reviews/:id` | `features/provider_portal/screens/provider_review_screen.dart` · `ProviderReviewScreen` | تفصيل | مزود مفعّل | لا صورة |
+| 9.41 | الإبلاغ عن التقييم | نافذة من 9.40 | `reportProviderReview` ← `showReportReasonSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.42 | «تعديل ملف المزود» | `/provider/profile/edit` | `features/provider_portal/screens/edit_provider_profile_screen.dart` · `EditProviderProfileScreen` | نموذج | مزود (`providerProfileManageRequired`) | لا صورة |
+| 9.43 | «التنبيهات» (كل واحد يفتح طلبه) | `/provider/notifications` | `features/provider_portal/screens/provider_notifications_screen.dart` · `ProviderNotificationsScreen` | قائمة | مزود | لا صورة |
+| 9.44 | «خدماتك» (الخدمات والباقات) | `/provider/services` | `features/provider_portal/screens/provider_services_screen.dart` · `ProviderServicesScreen` | قائمة | مزود مفعّل | لا صورة |
+| 9.45 | «عدّل الخدمة» / «عدّل الباقة» | نافذة من 9.44 | `features/provider_portal/widgets/provider_listing_sheet.dart` · `showProviderListingSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.46 | «إضافة خدمة» | `/provider/services/new` | `features/provider_portal/screens/add_provider_service_screen.dart` · `AddProviderServiceScreen` | نموذج | مزود مفعّل | لا صورة |
+| 9.47 | «إضافة باقة» | `/provider/packages/new` | `features/provider_portal/screens/add_provider_package_screen.dart` · `AddProviderPackageScreen` | نموذج | مزود مفعّل | لا صورة |
+| 9.48 | «معرض الشغل» | `/provider/gallery` | `features/provider_portal/screens/provider_gallery_screen.dart` · `ProviderGalleryScreen` | قائمة | مزود مفعّل | لا صورة |
+| 9.49 | «<الألبوم>» (الصورة: نقل/حذف) | نافذة من 9.48 | `provider_gallery_screen.dart` (سطر 291) | نافذة | مزود مفعّل | لا صورة |
+| 9.50 | «وين تحط الصور؟» | نافذة من 9.48 | `provider_gallery_screen.dart` · `_AlbumSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.51 | «روابط شغلك» | نافذة من 9.48 | `provider_gallery_screen.dart` · `_LinksSheet` | نافذة | مزود مفعّل | لا صورة |
+| 9.52 | «أداؤك» (آخر 30 يوم) | `/provider/performance` | `features/provider_portal/screens/provider_performance_screen.dart` · `ProviderPerformanceScreen` | نظرة عامة | مزود مفعّل | لا صورة |
+| 9.53 | «حساباتك» (الشهر) | `/provider/ledger` | `features/provider_portal/screens/provider_ledger_screen.dart` · `ProviderLedgerScreen` | قائمة | مزود مفعّل | لا صورة |
+| 9.54 | «الإعدادات» (التنبيهات، افتح خطة عرسي، تسجيل الخروج، حذف الحساب) | `/provider/settings` | `features/provider_portal/screens/provider_settings_screen.dart` · `ProviderSettingsScreen` | نموذج | مزود | لا صورة |
+| 9.55 | «تفتح خطة عرسك؟» | نافذة من 9.54 | `provider_settings_screen.dart` · `_confirm` | نافذة | مزود | لا صورة |
+| 9.56 | «تسجّل خروج؟» | نافذة من 9.54 | `provider_settings_screen.dart` · `_confirm` | نافذة | مزود | لا صورة |
+| 9.57 | «شارك ملفك» | `/provider/share` | `features/provider_portal/screens/provider_share_screen.dart` · `ProviderShareScreen` | تفصيل | مزود مفعّل | لا صورة |
+| 9.58 | المحادثة من جهة المزود (مع كرت الطلب) | `/conversations/:id` | `ChatScreen` + `features/provider_portal/widgets/provider_chat_case.dart` · `providerChatCase` | تفصيل | مزود طرف في الطلب | لا صورة (rs/07 من جهة العريس) |
+
+## أخرى
+
+| # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
+|---|---|---|---|---|---|---|
+| 10.01 | «تعذر فتح الصفحة» | أي مسار غير معروف (`errorBuilder`) | `core/routing/app_router.dart` · `RouterErrorScreen` | حالة | الكل | لا صورة |
+| 10.02 | شاشة خطأ البناء | بدل أي ودجت يفشل بناؤه | `app.dart` · `AarastBuildErrorScreen` | حالة | الكل | لا صورة |
+| 10.03 | انتظار الجلسة (فحص الدخول / إنهاء الجلسة) | فوق كل شيء أثناء تحول الجلسة | `app.dart` · `_SessionWait` (`AarastSessionTransitionGate`) | حالة | الكل | لا صورة |
+| 10.04 | قفل التطبيق (إدخال الرمز) | بوابة فوق كل شيء | `core/security/app_lock_gate.dart` · `AppLockScreen` | نموذج | من فعّل القفل | لا صورة |
+| 10.05 | «حدّث اعّرست» | بوابة فوق كل شيء | `core/widgets/app_update_gate.dart` · `AppUpdateGate` | حالة | الكل لما الخادم يرفض النسخة | لا صورة |
+| 10.06 | «هذه الخطوة تحتاج حساباً» | نافذة من رئيسية خطة الجوال، و«حسابي»، وصفحة المزود، ومهمة جديدة، والرئيسية | `features/auth/utils/auth_action_guard.dart` · `AuthActionGuard.requireAccount` | نافذة | بلا حساب | لا صورة |
+| 10.07 | لوحة «سجّل الدخول…» داخل الشاشة | حالة في 3.28، 3.35، 8.01، 8.07 | `auth_action_guard.dart` · `AuthGatePanel` | حالة | بلا حساب أو جلسة منتهية | لا صورة |
+| 10.08 | حجب الخطة: «هذا القسم مو مفتوح لك» / «هذي الخطة ما عادت لك» / «ما قدرنا نتأكد من الخطة» / «سجّل الدخول» | حالة في كل مسار `/wedding-plans/:id/*` | `features/account_contexts/widgets/wedding_plan_context_gate.dart` · `_MismatchedPlanContext`، `_LoginRequiredPlanContext` | حالة | من لا يملك الصلاحية المطلوبة | لا صورة |
+| 10.09 | حجب المزود والمحادثات (دخول/تسجيل مزود/غير مفعّل) | حالة في `/conversations*`، `/quotes/*`، `/providers/:id/quote`، `/provider/*` | `features/marketplace/widgets/provider_auth_gate.dart` · `ProviderAuthGate` | حالة | بلا حساب، أو بلا ملف مزود | لا صورة |
+| 10.10 | جهة اتصال من الخطة | نافذة من حقل الرقم (نموذج الضيف، مهمة جديدة «لمين؟»، تعديل ملف المزود) | `shared/widgets/contact_phone_field.dart` · `_pickPlanContact` | نافذة | من يملأ النموذج | لا صورة |
+| 10.11 | اختيار رقم من جهة اتصال لها أكثر من رقم | نافذة من 10.10 ومن 8.01/8.03 | `core/contacts/contact_picker_service.dart` · `_selectPhone` | نافذة | من يملأ النموذج | لا صورة |
+
+---
+
+## مسارات بلا صورة
+
+الشاشات والتبويبات المرئية بلا صورة (78):
+
+- **البداية (15):** 2.01 `/`، 2.02 الباب `/welcome`، 2.05، 2.08، 2.10، 2.12 «خطتك جاهزة»، 2.13 `/register`، 2.14 `/otp`، 2.17 `/reset-password`، 2.18 حفظ خطة الجوال، 2.22 إلى 2.26 `/invites/:token` بحالاته الخمس.
+- **الرئيسية والهيكل (10):** 3.03، 3.06 هيكل المشارك، 3.07، 3.11، 3.12، 3.13 الرئيسية في أسبوع العرس ويومه، 3.14 رئيسية خطة الجوال، 3.15 رئيسية المشارك، 3.16 قفل القسم، 3.40 الحساب ينتظر الحذف.
+- **المال (1):** 4.06 حالة التحميل/الخطأ.
+- **المهام (1):** 5.08 مهام المشارك.
+- **الضيوف (3):** 6.08 ضيوف المشارك، 6.12 `/guests/import?from=contacts`، 6.16 `/guests/invite?mode=remind`.
+- **المزودون (3):** 7.05 أول زيارة، 7.07 تبويب «المفضلة»، 7.10 مزودين المشارك.
+- **المشاركون (2):** 8.10 `/shared/wedding-plans/:id`، 8.11 «حسابي» للمشارك.
+- **بوابة المزود (35):** كل شاشات القسم 9 وتبويباته الخمسة، يعني كل `/provider/*` (14 مسارًا) و`/register?type=provider` وحالات البوابة.
+- **أخرى (8):** 10.01 إلى 10.05، 10.07 إلى 10.09.
+
+النوافذ: 115 من 122 بلا صورة. اللي لها صورة سبع: 3.18، 3.23، 3.34، 3.44 (غالبًا)، 4.47، 5.20 (غالبًا)، 6.03.
+
+الربط اللي يحتاج تأكيد من الصورة: `g/16_c05_money_funding.png` (تبويب «من وين» 4.05 أو شاشة 4.44)، و`g/15_c06_pay_sheet.png` (4.37)، و`g/23_e06_lunch_event.png` (5.19/5.20)، و`g/24_e06_guest_lunch.png` (6.03)، و`g/35_q10_account_plans.png` (نافذة 3.18 وليست مسار `/wedding-plans`).
+
+## شاشات بلا مسار أو لا يوصل لها أحد
+
+**ما لقيت أي فئة شاشة ميتة.** كل فئة `*Screen` و`*Tab` تحت `features/` يبنيها مسار أو بوابة أو شاشة ثانية: `AccountContextSelectionScreen` و`LocalGuestDashboardScreen` و`LocalPlanMigrationScreen` و`MainShell` يبنيها مدخل `/home`؛ `Participant*Screen` يبنيها `participantPlanTab`؛ حالات البوابة يبنيها `ProviderPortalScreen`؛ `ProviderClaim*` يبنيها `ProviderApplyScreen`؛ `ProviderBookingScreen` يبنيها `ProviderRequestScreen`؛ `DeletionPendingScreen` يبنيها `app.dart`. و`money_item_market.dart` دالة وليس شاشة.
+
+**مسارات وفروع ما يوصل لها أحد من داخل التطبيق (6):**
+1. `/wedding-plans/:id/timeline` (5.07): ما لها أي زر في الكود، توصل فقط من رابط خارجي أو مسح المسارات.
+2. `/providers/:id/quote-request`: تحويل قديم، و`AppRouter.providerQuoteRequest` ما ينادى في أي مكان.
+3. `/dev/guest-onboarding`: للتطوير، ونسخة الإصدار تحوّله للباب.
+4. الفرع `participantPlanTab(context, id, 0)` في بانٍ `/wedding-plans/:id/dashboard` غالبًا ميت: حارس الهيكل يطلب `ownerDashboard` (الصاحب فقط) قبل البناء، فالمشارك يشوف «هذا القسم مو مفتوح لك» بدل رئيسيته. ومع هذا `WeddingPlanShell._onNavigate` يودّي المشارك لنفس المسار لما يضغط «الرئيسية».
+5. قفل المال للمشارك (3.16 بقسم المال) ما يوصل من المسار `/money`: الحارس يطلب `viewMoney` ويحجب قبل ما يُبنى القفل. يظهر فقط داخل `/home` (`ParticipantPlanShell`).
+6. مسارات ما لها نداء إلا من مكان واحد غير عادي: `/conversations` (رجوع احتياطي من المحادثة واستكمال بعد الدخول فقط)، `/notifications` على مستوى الحساب (من الإشعار الخارجي فقط)، `/wedding-plans` (بعد الأرشفة وزر الرجوع فقط).
+
+## اختلافات عن الوثائق
+
+خطة `2026-11-11-groom-screens-home-language.md` (قسم Inventory):
+1. تقول المهام «القائمة، الوقت، الأشهر». الكود فيه تبويبان فقط (`'القائمة', 'الوقت'`)، والأشهر هي طريقة عرض «الوقت» (`task_timeline_screen.months.dart`).
+2. نوافذ دفعة المال الأولى «كيف حسبناها، مشاركة» ناقصة: «ايش الفرق؟» (4.08)، «وصلت <المصدر>؟» (4.11)، «اتفقتوا على موعد ثاني؟» (4.12)، وقائمة ⋮ (4.10).
+3. دفعة «الباب» تذكر «date picker» فقط. الكود فيه نوافذ اليوم والشهر والمدينة و«تبدأ خطة جديدة بدل…» ومنتقي المهر و«الرمز ما وصل؟» ونافذتا الحفظ (2.03، 2.06، 2.07، 2.09، 2.11، 2.15، 2.19، 2.20).
+4. ناقص من الخطة: `DashboardEntryScreen` و`AccountContextSelectionScreen` و`LocalGuestDashboardScreen` و`FromFamilyScreen` و`InviteDecisionScreen` و`QuoteConversationEntryScreen` و`ParticipantPlanStateScreen` ومسار `/conversations` ومسار `/timeline` والبوابات العامة (قفل التطبيق، التحديث، خطأ المسار). (مشاركو الخطة وبوابة المزود مستثنون فيها عن قصد).
+5. `MahrMomentScreen` موضوعة في دفعة «الحساب»، ومسارها تحت المال (`/money/mahr/moment`).
+6. الخطة تقول «About 60 screen files and 57 sheets». هذا الجرد يعدّ للعرسان وحدهم (الأقسام 2 إلى 8 مع أخرى) 110 شاشة وحالة و99 نافذة، لأنه يحسب الحالات والقوائم المنبثقة ومنتقيات التاريخ.
+
+`docs/project/DESIGN_STATUS.md` (بتاريخ 2026-11-01):
+7. `q06` «المال: يشوف بس» مكتوبة «لا يوجد مستوى قراءة للمال». الكود فيه الآن `canViewMoney` منفصلة عن `canManageMoney` وملاحظة القراءة فقط (`money-read-only`) في 4.01.
+8. `c14` «شارك الملخص» مكتوبة مؤجلة، والكود فيه «مشاركة ملخص الميزانية» (4.09).
+9. `p41` «استلم ملفك» مكتوبة مؤجلة، والكود فيه `ProviderClaimScreen` و`ProviderClaimPendingScreen` (9.08، 9.09).
+10. `w16` «كل أخطاء الدعوة ترجع رسالة واحدة»، والكود فيه حالتان: «الدعوة ما تفتح بهذا الرقم» و«هذي الدعوة لحسابك» (2.25، 2.26).
+11. جدول شاشات البداية ما فيه «نسيت كلمة المرور» (`/reset-password`) ولا «اختر المسار» ولا «فحص الاتصال» (D84 أحدث من تاريخ الوثيقة).
+12. `w14` «الخطة المؤرشفة لا تُفتح»: للمشارك صارت لها صفحة q19 (8.10). للصاحب ما لقيت شاشة.
+
+`mobile/integration_test/journeys/route_sweep_walk_test.dart`:
+13. القائمة تطابق كل مسارات العريس في جداول المسارات. ناقص منها (وهذا مقصود حسب رأس الملف): `/`، `/welcome`، `/register`، `/otp`، `/reset-password`، `/invites/:token`، `/shared/wedding-plans/:id`، و`/provider/*` كلها (14). و`…/schedules/:scheduleId` فيها تحويل وليس شاشة، وصورتها (rs/41) هي صفحة الاتفاق.
+
+## المجاميع
+
+| الدفعة | شاشات وحالات | تبويبات | نوافذ | المجموع |
+|---|---|---|---|---|
+| 2. البداية | 18 | 0 | 10 | 28 |
+| 3. الرئيسية والهيكل | 29 | 0 | 15 | 44 |
+| 4. المال | 17 | 4 | 31 | 52 |
+| 5. المهام واليوم | 9 | 2 | 11 | 22 |
+| 6. الضيوف | 9 | 0 | 9 | 18 |
+| 7. المزودون والدردشة | 14 | 4 | 14 | 32 |
+| 8. المشاركون | 6 | 0 | 6 | 12 |
+| 9. بوابة المزود | 30 | 5 | 23 | 58 |
+| أخرى | 8 | 0 | 3 | 11 |
+| **الكل** | **140** | **15** | **122** | **277** |
+
+طريقة العد: خطوات الباب وطلب الانضمام محسوبة شاشات لأن كل وحدة تملأ الشاشة. وأقسام الشريط السفلي (الرئيسية، المال، المهام، الضيوف، المزودين) محسوبة شاشات لا تبويبات، لأن لكل واحد مساره. «نافذة» تشمل الأوراق السفلية والحوارات والقوائم المنبثقة (⋮) ومنتقيات التاريخ والوقت.
+
+## اللي ما قدرت أحدده من الكود وحده
+
+العناوين اللي تُبنى من البيانات (اسم البند، اسم الطرف، اسم الضيف) مكتوبة كقوالب، وبعض الشاشات ما لها عنوان نصي ثابت في الكود (رئيسية المزود، صفحة المزود، شاشة الإقلاع، رئيسية المشارك، رئيسية خطة الجوال)، فسمّيتها بوظيفتها. ربط بعض صور الرحلات (من وين، «سجّل» على دفعة، الغداء، خططك) استنتاج من عناوين الخطوات في `report.json` بدون فتح الصور. «من يفتحها» في النوافذ مأخوذ من صلاحية الشاشة اللي تفتحها، وما تتبعت كل شرط إظهار للأزرار داخلها. ولما ذكرت صلاحية مثل `canManagePlan` فهي اسم الصلاحية في الكود، وما تحققت أي دور (شريك، أهل، مساعد) يأخذها افتراضيًا، لأن هذا يقرره الخادم. ثلاث نقاط تحتاج تأكيد في التطبيق الحقيقي: هل المشارك يُحجب فعلًا على `/dashboard` و`/money` (البند 4 و5 في القائمة الثانية)، وهل `/money/mahr` (نموذج كتابة) مقصود أن يكفيه `viewMoney` لأن المسار ما فيه كلمة `create` أو `edit` أو `pay`، وهل صورة `og/07_o07_pending.png` هي نافذة التغييرات المنتظرة أو سطر الحالة فقط.

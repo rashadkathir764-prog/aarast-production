@@ -10,6 +10,8 @@ import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/offline/sync_status.dart';
+import 'package:aarast_mobile/features/finance/data/funding_api.dart';
+import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +26,13 @@ class _Server implements HttpClientAdapter {
   bool down = false;
   final calls = <String>[];
 
+  /// The `X-Client-Request-Id` of every write, in order: the key the server
+  /// tells a resend from a new request by.
+  final writeRequestIds = <String>[];
+
+  /// The server does the write, then the answer is lost on the way back.
+  bool losesAnswers = false;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -31,6 +40,17 @@ class _Server implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     calls.add('${options.method} ${options.path}');
+    if (options.method != 'GET' && !down) {
+      writeRequestIds.add(
+        '${options.headers[ApiClient.clientRequestIdHeader]}',
+      );
+    }
+    if (losesAnswers) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+    }
     if (down) {
       throw DioException(
         requestOptions: options,
@@ -136,6 +156,96 @@ void main() {
     });
   });
 
+  group('loan repayments while the server is out of reach', () {
+    Map<String, dynamic> loan({String id = 'f1', List<Object> repayments = const []}) => {
+      'id': id,
+      'weddingPlanId': 'p1',
+      'kind': 'LOAN',
+      'sourceName': 'خالي',
+      'amount': '1000000',
+      'status': 'RECEIVED',
+      'repayments': repayments,
+    };
+    const planned = {
+      'id': 'r1',
+      'fundingSourceId': 'f1',
+      'amount': '300000',
+      'status': 'PLANNED',
+    };
+
+    // RA-MO-87: it was written on the phone's copy alone, looked saved, and
+    // the loan's answer wiped it.
+    test('a repayment of a loan the server has not named yet is refused '
+        'with its reason, and nothing is written', () async {
+      final (api, offline, server, _) = await _setUpSimple({});
+      server.down = true;
+      final funding = FundingApi(api, offline: offline);
+
+      final created = await funding.createFundingSource(
+        weddingPlanId: 'p1',
+        kind: 'LOAN',
+        sourceName: 'خالي',
+        amount: '1000000',
+        status: 'RECEIVED',
+      );
+      expect(OfflineWrites.isLocalId(created.id), isTrue);
+
+      await expectLater(
+        funding.addRepayment(created, amount: '300000'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('السلفة لسا ما وصلت حسابك'),
+          ),
+        ),
+      );
+      final kept = (await funding.cachedFundingSources('p1')).single;
+      expect(kept.repayments, isEmpty);
+      expect(await offline.database.pendingSyncCount(), 1);
+    });
+
+    // RA-MO-88: keyed by the repayment, the first answer (the loan) read as
+    // an id swap and re-pointed the second change at the loan's id (404).
+    test('two waiting changes of one repayment both reach its own path', () async {
+      final (api, offline, server, reachability) = await _setUpSimple({
+        'PATCH /api/v1/loan-repayments/r1': loan(
+          repayments: [
+            {...planned, 'status': 'PAID'},
+          ],
+        ),
+        'DELETE /api/v1/loan-repayments/r1': loan(),
+      });
+      await offline.database.saveCachedItem(
+        table: OfflineTables.cachedFundingSources,
+        json: loan(repayments: [planned]),
+      );
+      server.down = true;
+      final funding = FundingApi(api, offline: offline);
+      final repayment = LoanRepayment.fromJson(planned);
+
+      await funding.setRepaymentStatus(repayment, 'PAID');
+      await funding.deleteRepayment(repayment);
+      final waiting = await offline.database.pendingSyncItems();
+      expect(waiting, hasLength(2));
+      expect(waiting.map((item) => item.localEntityId).toSet(), {'f1'});
+
+      server.down = false;
+      reachability.noteReached();
+      await offline.syncPendingChanges();
+
+      expect(await offline.database.pendingSyncCount(), 0);
+      expect(await offline.database.blockedSyncItems(), isEmpty);
+      expect(
+        server.calls.where((call) => !call.startsWith('GET')).skip(2),
+        [
+          'PATCH /api/v1/loan-repayments/r1',
+          'DELETE /api/v1/loan-repayments/r1',
+        ],
+      );
+    });
+  });
+
   group('OfflineWrites.queued', () {
     test('sends now when the server answers and keeps the row', () async {
       final (api, offline, server, _) = await _setUpSimple({
@@ -225,6 +335,84 @@ void main() {
         expect(server.calls.where((c) => c.startsWith('POST')).length, 2);
       },
     );
+
+    // RA-MO-86: the server may have done a write whose answer was lost. It
+    // knows the resend only by its request id, so the queue must send the
+    // id the first try carried: a new one made «دعم الأهل 500 ألف» twice.
+    test('a write whose answer was lost is resent under the same request '
+        'id', () async {
+      final (api, offline, server, reachability) = await _setUpSimple({
+        'POST /api/v1/wedding-plans/p1/funding-sources': {
+          'id': 'f-server',
+          'weddingPlanId': 'p1',
+          'kind': 'FAMILY_SUPPORT',
+          'amount': '500000',
+        },
+      });
+      server.losesAnswers = true;
+      final writes = OfflineWrites(api, offline);
+      final localId = OfflineWrites.localId('funding');
+
+      final row = await writes.queued(
+        entityType: 'funding_source',
+        operation: 'create',
+        method: 'POST',
+        endpoint: '/api/v1/wedding-plans/p1/funding-sources',
+        payload: {'kind': 'FAMILY_SUPPORT', 'amount': '500000'},
+        table: OfflineTables.cachedFundingSources,
+        localJson: {
+          'id': localId,
+          'weddingPlanId': 'p1',
+          'kind': 'FAMILY_SUPPORT',
+          'amount': '500000',
+        },
+        planId: 'p1',
+        localEntityId: localId,
+      );
+      expect(row['id'], localId, reason: 'kept on the phone meanwhile');
+      expect(await offline.database.pendingSyncCount(), 1);
+
+      server.losesAnswers = false;
+      reachability.noteReached();
+      await offline.syncPendingChanges();
+
+      expect(await offline.database.pendingSyncCount(), 0);
+      expect(server.writeRequestIds, hasLength(2));
+      expect(
+        server.writeRequestIds.last,
+        server.writeRequestIds.first,
+        reason: 'the resend is the same request to the server',
+      );
+    });
+
+    // RA-MO-31 still holds: an edit merged with a waiting edit is another
+    // body, so it is another request.
+    test('an edit that takes a waiting edit\'s fields goes under its own '
+        'request id', () async {
+      final (api, offline, server, _) = await _setUpSimple({});
+      server.down = true;
+      final writes = OfflineWrites(api, offline);
+      Future<void> edit(Map<String, dynamic> payload) => writes.queued(
+        entityType: 'guest_group',
+        operation: 'update',
+        method: 'PATCH',
+        endpoint: '/api/v1/guest-groups/g1',
+        payload: payload,
+        table: OfflineTables.cachedGuestGroups,
+        localJson: {'id': 'g1', 'weddingPlanId': 'p1', ...payload},
+        planId: 'p1',
+        localEntityId: 'g1',
+        replacePendingForEntity: true,
+      );
+
+      await edit({'name': 'آل الحمدي'});
+      final first = (await offline.database.pendingSyncItems()).single;
+      await edit({'note': 'من جهة العريس'});
+      final merged = (await offline.database.pendingSyncItems()).single;
+
+      expect(merged.payload, {'name': 'آل الحمدي', 'note': 'من جهة العريس'});
+      expect(merged.id, isNot(first.id));
+    });
 
     test('serverOnly names the cause and why it cannot wait', () async {
       final (api, offline, server, _) = await _setUpSimple({});

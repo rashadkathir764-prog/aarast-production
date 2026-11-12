@@ -8,9 +8,9 @@ import 'finance_local_data_source.dart';
 /// Funding sources and loan repayments.
 ///
 /// D85: the list is the phone's copy when the server is out of reach, and
-/// every change is kept on the phone and sent when the server answers. A
-/// repayment on a loan the server has not named yet stays on the phone
-/// with its loan's create; its own status waits for that create.
+/// every change is kept on the phone and sent when the server answers. One
+/// thing waits for the server and says so: a repayment of a loan, or a
+/// change to a repayment, that the server has not named yet (RA-MO-87).
 ///
 /// A plan kept on the phone (a guest's, before an account) has no plan on
 /// the server: its sources are the phone's alone, read and written there,
@@ -279,12 +279,20 @@ class FundingApi {
     String? queueKey,
   }) async {
     if (_onPhone(loan.weddingPlanId)) return _keep(localJson);
-    if (OfflineWrites.isLocalId(loan.id) ||
-        (queueKey != null && OfflineWrites.isLocalId(queueKey))) {
-      // The loan (or the repayment) is still the phone's: its create carries
-      // what it can when it is sent; only the phone's copy changes now.
-      await _reads.putRow(_table, localJson);
-      return localJson;
+    // RA-MO-87: a repayment has nowhere to go until the server has named
+    // its loan, and a repayment added while waiting has no name of its own
+    // to be changed by. Writing it on the phone's copy alone looked saved
+    // and was wiped by the loan's answer; it is refused with its reason,
+    // and nothing is shown that will not last.
+    if (OfflineWrites.isLocalId(loan.id)) {
+      throw const ApiException(
+        'السلفة لسا ما وصلت حسابك. سجّل قسطها بعد ما ترجع النت وتنحفظ.',
+      );
+    }
+    if (queueKey != null && OfflineWrites.isLocalId(queueKey)) {
+      throw const ApiException(
+        'هذا القسط لسا ما وصل حسابك. غيّره بعد ما ترجع النت وينحفظ.',
+      );
     }
     return _writes.queued(
       entityType: 'funding_source',
@@ -295,7 +303,11 @@ class FundingApi {
       table: _table,
       localJson: localJson,
       planId: loan.weddingPlanId,
-      localEntityId: queueKey ?? loan.id,
+      // RA-MO-88: the answer is the loan, so the change is the loan's. Keyed
+      // by the repayment, the answer read as «the phone's row got its server
+      // id» and every other waiting change of that repayment was re-pointed
+      // at the loan's id.
+      localEntityId: loan.id,
     );
   }
 

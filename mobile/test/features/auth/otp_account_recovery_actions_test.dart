@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -17,6 +19,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  _backButtonCases();
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
@@ -356,6 +360,51 @@ void main() {
       expect(find.byKey(const ValueKey('otp-go-to-login')), findsNothing);
     },
   );
+}
+
+// RA-MO-112: only the arrow on screen cleared the code screen's error. Left
+// by the phone's back button, «الرمز غلط…» stayed and showed on the number
+// screen, over «أرسل الرمز».
+void _backButtonCases() {
+  testWidgets('leaving the code screen by the phone\'s back button takes its '
+      'error with it', (tester) async {
+    final controller = await _controller(
+      verifyErrorCode: 'OTP_INVALID_OR_EXPIRED',
+    );
+    final router = GoRouter(
+      initialLocation: '/register',
+      routes: [
+        GoRoute(
+          path: '/register',
+          builder: (context, state) => const Text('the number screen'),
+        ),
+        GoRoute(
+          path: '/otp',
+          builder: (context, state) => const OtpScreen(
+            phone: '+967777123456',
+            purpose: 'LOGIN',
+            successLocation: '/home',
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await _pump(tester, controller: controller, router: router);
+    unawaited(router.push('/otp'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.pumpAndSettle();
+    expect(controller.errorMessage, isNotNull, reason: 'the code was refused');
+
+    // The system's back, not the arrow on screen.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('the number screen'), findsOneWidget);
+    expect(controller.errorMessage, isNull);
+  });
 }
 
 /// The page scrolls at 320 px and 1.3x text; back is at its top.

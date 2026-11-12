@@ -346,7 +346,17 @@ class _OtpScreenState extends State<OtpScreen> {
   Widget build(BuildContext context) {
     // The colour and voice come from above: the kept plan's owner (the
     // app root), or the app's own on a provider's route (D75).
-    return _page(context);
+    //
+    // RA-MO-112: this screen's error is this screen's. Left by the phone's
+    // back button, «الرمز غلط…» stayed and showed over «أرسل الرمز» on the
+    // number screen; only the arrow on screen cleared it.
+    final auth = context.read<AuthController>();
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop && auth.errorMessage != null) auth.clearError();
+      },
+      child: _page(context),
+    );
   }
 
   Widget _page(BuildContext context) {

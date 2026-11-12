@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/amount_words.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
@@ -560,11 +561,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(typed(), '7,000,000');
 
-    // A decimal point never turns 1500.5 into 15005 riyals unnoticed.
+    // A decimal point never turns 1500.5 into 15005 riyals. (It used to,
+    // with the words under the field to notice it by; RA-MO-113: a pasted
+    // «5000000.00» became five hundred million the same way. The fraction
+    // goes with its point: whole riyals.)
     await tester.enterText(find.byType(TextField).first, '1500.5');
     await tester.pumpAndSettle();
-    expect(typed(), '15,005');
-    expect(find.text('خمسة عشر ألف وخمسة ريال'), findsOneWidget);
+    expect(typed(), '1,500');
+    expect(find.text(amountInWords(1500)), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, '5000000.00');
+    await tester.pumpAndSettle();
+    expect(typed(), '5,000,000');
+    expect(find.text(amountInWords(5000000)), findsOneWidget);
   });
 
   testWidgets('a05 takes any city typed by name', (tester) async {

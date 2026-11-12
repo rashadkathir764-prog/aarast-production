@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
@@ -62,10 +61,7 @@ class MahrFields extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = amountOf(totalController);
     final remaining = remainingOf(totalController, settledController);
-    final formatters = [
-      FilteringTextInputFormatter.deny(RegExp(r'[.٫]')),
-      const MoneyInputFormatter(),
-    ];
+    const formatters = [MoneyInputFormatter(wholeOnly: true)];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

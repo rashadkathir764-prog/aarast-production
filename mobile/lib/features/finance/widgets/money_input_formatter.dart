@@ -5,7 +5,20 @@ import 'package:flutter/services.dart';
 import '../../../core/forms/latin_digits_formatter.dart' show latinDigitOf;
 
 class MoneyInputFormatter extends TextInputFormatter {
-  const MoneyInputFormatter();
+  const MoneyInputFormatter({this.wholeOnly = false});
+
+  /// A field that takes whole riyals (the first run's budget, the mahr):
+  /// grouped as typed, never a fraction (RA-MO-113). A fraction of one or
+  /// two digits at the end is dropped with its point («5000000.00» is five
+  /// million); any other point is a grouping mark and goes. Deleting every
+  /// point alone turned that paste into five hundred million.
+  final bool wholeOnly;
+
+  /// The most digits an amount has (`FinanceMoneyRules.serverAmount`).
+  static const maxWholeDigits = 12;
+
+  static final _fraction = RegExp(r'[.٫][0-9٠-٩۰-۹]{0,2}$');
+  static final _point = RegExp(r'[.٫]');
 
   @override
   TextEditingValue formatEditUpdate(
@@ -13,6 +26,15 @@ class MoneyInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     if (!newValue.composing.isCollapsed) return newValue;
+    if (wholeOnly && newValue.text.contains(_point)) {
+      final whole = newValue.text
+          .replaceFirst(_fraction, '')
+          .replaceAll(_point, '');
+      newValue = TextEditingValue(
+        text: whole,
+        selection: TextSelection.collapsed(offset: whole.length),
+      );
+    }
 
     final selectionEnd = newValue.selection.end < 0
         ? newValue.text.length
@@ -21,6 +43,10 @@ class MoneyInputFormatter extends TextInputFormatter {
       newValue.text.substring(0, selectionEnd),
     ).length;
     final sanitized = _sanitize(newValue.text);
+    // D86: an amount has at most twelve digits, the server's own bound. A
+    // longer one was taken here and refused later, at the save, under a
+    // message about something else.
+    if (wholeOnly && sanitized.length > maxWholeDigits) return oldValue;
     final formatted = formatMoneyInputValue(sanitized);
 
     var formattedOffset = 0;

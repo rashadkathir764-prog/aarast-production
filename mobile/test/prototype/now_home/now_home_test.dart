@@ -164,8 +164,46 @@ Map<String, dynamic> _base({
   };
 }
 
+/// D78 (RA-MO-147): what the server sends a new plan with its budget set, in
+/// its order; the home draws these and orders nothing of its own.
+const _freshSteps = [
+  {
+    'id': 'setup:ADD_FIRST_COST',
+    'type': 'ADD_FIRST_COST',
+    'title': 'سجّل أول اتفاق',
+    'subtitle': 'القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان',
+    'icon': 'wallet',
+    'tone': 'info',
+    'priority': 'NORMAL',
+    'actionLabel': 'أضف اتفاق',
+    'routeTarget': '/wedding-plans/$_planId/money/costs/create',
+  },
+  {
+    'id': 'setup:ADD_GUESTS',
+    'type': 'ADD_GUESTS',
+    'title': 'ابدأ قائمة الضيوف',
+    'subtitle': 'العدد يحدد حجم القاعة وتكلفة الضيافة',
+    'icon': 'people',
+    'tone': 'info',
+    'priority': 'NORMAL',
+    'actionLabel': 'أضف أول ضيف',
+    'routeTarget': '/wedding-plans/$_planId/guests/add',
+  },
+  {
+    'id': 'setup:REQUEST_QUOTE',
+    'type': 'REQUEST_QUOTE',
+    'title': 'اطلب أول عرض سعر',
+    'subtitle': 'الليالي تنحجز بدري، والعرض يعطيك سعر حقيقي بدل التخمين',
+    'icon': 'provider',
+    'tone': 'info',
+    'priority': 'NORMAL',
+    'actionLabel': 'شوف المزودين',
+    'routeTarget': '/wedding-plans/$_planId/providers',
+  },
+];
+
 final _fresh = DashboardSummary.fromJson(
-  _base(days: 93, date: _wedding, progress: 0),
+  _base(days: 93, date: _wedding, progress: 0, actions: _freshSteps),
 );
 
 final _active = DashboardSummary.fromJson(
@@ -540,7 +578,9 @@ void main() {
   });
 
   testWidgets('home no date', (tester) async {
-    final s = DashboardSummary.fromJson(_base(days: null, date: null));
+    final s = DashboardSummary.fromJson(
+      _base(days: null, date: null, actions: _freshSteps),
+    );
     await _shot(
       tester,
       'home_no_date',

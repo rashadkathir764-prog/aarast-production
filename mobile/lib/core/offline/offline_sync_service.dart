@@ -1079,6 +1079,12 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );
+    // D112 (Q-4): the reply is the server's picture after this save, with
+    // the budget's new version. Kept as the phone's copy, so the next save
+    // made without a connection is made from it; the copy from before this
+    // save would have it refused as «changed on another phone» by the
+    // phone's own save.
+    await database.setMeta('money-summary:$planId', jsonEncode(summary));
     await database.replaceCachedList(
       table: OfflineTables.cachedBudgetCategories,
       items: categories,

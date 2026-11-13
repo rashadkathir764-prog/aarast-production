@@ -739,6 +739,42 @@ async function run() {
       oldPhone.status === 200
         && oldPhone.body?.categories?.find((item) => item.id === cat('food'))?.estimatedAmount === '1600');
 
+    // D112 (Q-4): a budget saved from an older read is refused. Two phones
+    // read the same budget; the first saves, the second's save is stale.
+    const sameBudget = (carAmount) => ({
+      totalBudget: '5000',
+      currency: 'YER',
+      categories: ['hall', 'food', 'dress', 'photo', 'car'].map((key) => ({
+        id: cat(key),
+        name: key[0].toUpperCase() + key.slice(1),
+        ...(key === 'dress' ? { allocatedAmount: '300' } : {}),
+        ...(key === 'car' && carAmount ? { allocatedAmount: carAmount } : {}),
+      })),
+    });
+    const readBoth = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    const readVersion = readBoth.body?.budgetVersion;
+    check('D112 Q-4: the owner reads the budget version in the money summary',
+      typeof readVersion === 'string' && /^[0-9a-f]{24}$/.test(readVersion));
+    const firstPhone = await request('PUT', `/api/v1/wedding-plans/${tabId}/money-budget`,
+      { ...sameBudget('100'), expectedBudgetVersion: readVersion }, owner.token);
+    check('D112 Q-4: a save from the budget as it is passes, and returns the new version',
+      firstPhone.status === 200
+        && typeof firstPhone.body?.summary?.budgetVersion === 'string'
+        && firstPhone.body.summary.budgetVersion !== readVersion);
+    const secondPhone = await request('PUT', `/api/v1/wedding-plans/${tabId}/money-budget`,
+      { ...sameBudget('200'), expectedBudgetVersion: readVersion }, owner.token);
+    const afterStale = await request('GET', `/api/v1/wedding-plans/${tabId}/money-summary`, null, owner.token);
+    check('D112 Q-4: a save from an older read is refused in Arabic and changes nothing',
+      secondPhone.status === 409
+        && secondPhone.body?.code === 'BUDGET_CHANGED_ELSEWHERE'
+        && secondPhone.body?.message === 'الميزانية تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.'
+        && afterStale.body?.budgetVersion === firstPhone.body?.summary?.budgetVersion
+        && afterStale.body?.categories?.find((item) => item.categoryId === cat('car'))?.allocatedAmount === '100');
+    // Put the car back as it was, for the checks below.
+    const restoreCar = await request('PUT', `/api/v1/wedding-plans/${tabId}/money-budget`,
+      { ...sameBudget(null), expectedBudgetVersion: afterStale.body?.budgetVersion }, owner.token);
+    check('D112 Q-4: the next save from the current version passes', restoreCar.status === 200);
+
     // D105: an agreement for a part keeps the rest of its item's estimate.
     const food = await request('POST', `/api/v1/wedding-plans/${tabId}/costs`, {
       budgetCategoryId: cat('food'), title: 'Lunch', totalAmount: '700', estimateCover: 'PART', estimatePart: '600',

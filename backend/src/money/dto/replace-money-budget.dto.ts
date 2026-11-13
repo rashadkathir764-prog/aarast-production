@@ -51,4 +51,14 @@ export class ReplaceMoneyBudgetDto {
   @ValidateNested({ each: true })
   @Type(() => MoneyBudgetCategoryDto)
   categories!: MoneyBudgetCategoryDto[];
+
+  /**
+   * D112 (Q-4): the money summary's `budgetVersion` this save was made
+   * from. When the budget changed since, the save is refused
+   * (`409 BUDGET_CHANGED_ELSEWHERE`). Omitted: the save is taken as before.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  expectedBudgetVersion?: string;
 }

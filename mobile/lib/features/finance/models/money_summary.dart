@@ -9,6 +9,7 @@ class MoneySummary {
     required this.planId,
     this.currency = 'YER',
     this.currencyLocked,
+    this.budgetVersion,
     this.budget = const MoneyBudgetSummary(),
     this.costs = const MoneyCostsSummary(),
     this.paymentSchedules = const MoneySchedulesSummary(),
@@ -38,6 +39,10 @@ class MoneySummary {
       currencyLocked: json['currencyLocked'] is bool
           ? json['currencyLocked'] as bool
           : null,
+      budgetVersion: switch (json['budgetVersion']) {
+        final String version when version.isNotEmpty => version,
+        _ => null,
+      },
       budget: MoneyBudgetSummary.fromJson(_map(json['budget'])),
       costs: MoneyCostsSummary.fromJson(_map(json['costs'])),
       paymentSchedules: MoneySchedulesSummary.fromJson(
@@ -87,6 +92,12 @@ class MoneySummary {
   /// before it, for a reader who is not the owner, or for a plan kept on the
   /// phone; see [currencyFixed].
   final bool? currencyLocked;
+
+  /// D112 (Q-4): what the budget held when the server answered (its total,
+  /// currency and items), for the plan's owner. A budget save sends it back
+  /// and is refused when the budget changed since. Null for any other
+  /// reader, an older server, and a picture the phone worked out itself.
+  final String? budgetVersion;
 
   /// Whether the currency is fixed: the server's word, else (an older
   /// server, a phone-only plan) whether an agreement exists.

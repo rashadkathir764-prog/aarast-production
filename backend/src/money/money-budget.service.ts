@@ -10,6 +10,10 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { budgetAllocationViolation } from "../modules/finance/domain/budget-allocation-policy";
+import {
+  BUDGET_CHANGED_ELSEWHERE,
+  budgetVersionOf,
+} from "../modules/finance/public/budget-version";
 import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
@@ -122,6 +126,30 @@ export class MoneyBudgetService {
         }
 
         const existing = await findBudgetCategoriesForReplacement(tx, weddingPlanId);
+        // D112 (Q-4): a save made from an older read of the budget is
+        // refused before anything is written. The plan row is locked by the
+        // permission check above, so the budget read here is the one this
+        // save would replace.
+        if (
+          dto.expectedBudgetVersion &&
+          dto.expectedBudgetVersion !==
+            budgetVersionOf({
+              totalBudget: context.plan.estimatedBudget?.toString() ?? null,
+              currency: context.plan.currency,
+              categories: existing.map((item) => ({
+                id: item.id,
+                name: item.name,
+                allocatedAmount: item.allocatedAmount?.toString() ?? null,
+                estimatedAmount: item.estimatedAmount?.toString() ?? null,
+              })),
+            })
+        ) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: BUDGET_CHANGED_ELSEWHERE,
+            message: "الميزانية تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
+          });
+        }
         const existingById = new Map(existing.map((item) => [item.id, item]));
         const submittedIds = new Set(
           categories.flatMap((item) => (item.id ? [item.id] : [])),

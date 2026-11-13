@@ -1235,6 +1235,7 @@ class _RecordingFinance extends FinanceApi {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    String? expectedBudgetVersion,
   }) async {
     if (fail) throw StateError('disk full');
     planIds.add(planId);

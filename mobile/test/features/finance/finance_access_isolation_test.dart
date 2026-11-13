@@ -83,6 +83,41 @@ void main() {
     expect(owner.ownerReadsOnly, isFalse);
   });
 
+  // D112 (Q-4): the server refused a budget saved from an older read. The
+  // phone reads the money again at once, so what is shown is the budget as
+  // it is and the next save is made from it; left as it was, every save
+  // after it would be refused the same way.
+  test(
+    'a budget refused as changed elsewhere is read again, and said so',
+    () async {
+      final api = _ChangedElsewhereApi();
+      final provider = FinanceProvider(
+        api,
+        permissionsApi: _FakeSharingApi(
+          const PlanAccessPermissions.owner(weddingPlanId: 'plan-owner'),
+        ),
+      );
+      await provider.loadMoney('plan-owner');
+      final readsBefore = api.summaryCalls;
+
+      final saved = await provider.setTotalBudget(
+        planId: 'plan-owner',
+        totalBudget: '20000',
+      );
+
+      expect(saved, isFalse);
+      expect(api.sentVersions, ['version-1']);
+      expect(api.summaryCalls, readsBefore + 1);
+      expect(
+        provider.errorMessage,
+        'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. هذي هي الآن، عدّل عليها.',
+      );
+      // The next save is made from the budget just read.
+      await provider.setTotalBudget(planId: 'plan-owner', totalBudget: '20000');
+      expect(api.sentVersions, ['version-1', 'version-2']);
+    },
+  );
+
   // The money starter is gone (rule zero): an empty plan opens on «البنود».
   testWidgets('empty view-only money opens on the items with no add action', (
     tester,
@@ -292,6 +327,44 @@ class _FakeSharingApi extends SharingApi {
     final error = failure;
     if (error != null) throw error;
     return permissions;
+  }
+}
+
+/// The budget was changed on another phone: each read gives a newer version
+/// and the save is refused as made from an older one.
+class _ChangedElsewhereApi extends _CountingFinanceApi {
+  _ChangedElsewhereApi() : super(withCost: true);
+
+  final sentVersions = <String?>[];
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    final summary = await super.getMoneySummary(planId);
+    return MoneySummary(
+      planId: summary.planId,
+      currency: summary.currency,
+      budgetVersion: 'version-$summaryCalls',
+      budget: summary.budget,
+      costs: summary.costs,
+      categories: summary.categories,
+    );
+  }
+
+  @override
+  Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
+    required String planId,
+    required String? totalBudget,
+    required String currency,
+    required List<({String? id, String name, String? allocatedAmount})>
+    categories,
+    String? expectedBudgetVersion,
+  }) async {
+    sentVersions.add(expectedBudgetVersion);
+    throw const ApiException(
+      'الميزانية تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.',
+      statusCode: 409,
+      serverCode: 'BUDGET_CHANGED_ELSEWHERE',
+    );
   }
 }
 

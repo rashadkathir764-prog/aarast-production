@@ -23,6 +23,7 @@ import {
 import { listPlanItemsForProviderSearch } from "../modules/finance/infrastructure/budget-item-search.repository";
 import { isPlanCurrencyLocked } from "../modules/finance/infrastructure/budget-category.repository";
 import { budgetItemSearchCategories } from "../modules/finance/public/provider-category-budget-item";
+import { budgetVersionOf } from "../modules/finance/public/budget-version";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -157,6 +158,23 @@ export async function buildMoneySummaryInTransaction(
     weddingPlanId,
     currency: plan.currency,
     currencyLocked,
+    // D112 (Q-4): what the budget holds now, for the one reader who saves
+    // it; the save sends it back and is refused when the budget changed.
+    budgetVersion:
+      access.isOwner && contributionScope === null
+        ? budgetVersionOf({
+            totalBudget: plan.estimatedBudget?.toString() ?? null,
+            currency: plan.currency,
+            categories: picture.categories
+              .filter((category) => category.kind === 'WEDDING')
+              .map((category) => ({
+                id: category.categoryId,
+                name: category.name,
+                allocatedAmount: category.allocatedAmount,
+                estimatedAmount: category.estimatedAmount,
+              })),
+          })
+        : null,
     ...picture,
     categories: picture.categories.map((category) => ({
       ...category,

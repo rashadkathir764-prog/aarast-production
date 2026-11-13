@@ -1115,6 +1115,17 @@ money setup write is the protected atomic route:
 
 - `PUT /api/v1/wedding-plans/:planId/money-budget`
 
+D112 (Q-4): the budget is saved whole, so a save made from an older read
+would undo what another phone changed. The money summary carries
+`budgetVersion` to the plan's owner (null for any other reader): 24 hex
+characters over what the budget holds (its total, its currency, and each
+item's id, name, allocation and estimate), so it changes exactly when the
+budget does. The save may send it back as `expectedBudgetVersion`; when the
+budget changed since, the save is refused before anything is written with
+`409 { statusCode, code: "BUDGET_CHANGED_ELSEWHERE", message }` (Arabic). The
+reply's `summary` carries the new version. Without `expectedBudgetVersion` the
+save is taken as before.
+
 Browser clients are allowed to preflight this route with `PUT`; the canonical
 CORS method list includes `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and
 `OPTIONS`, while the origin and credential restrictions remain unchanged.

@@ -967,6 +967,24 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       try {
         await write();
       } on ApiException catch (error) {
+        // D112 (Q-4): the budget changed on another phone since this one
+        // read it, and the server kept that budget. It is read again here,
+        // so the screen shows it and the next save is made from it; left
+        // as it was, every save after would be refused the same way.
+        if (error.serverCode == 'BUDGET_CHANGED_ELSEWHERE') {
+          var reread = false;
+          _loadErrorMessage = null;
+          try {
+            await _reloadData(planId);
+            reread = _loadErrorMessage == null;
+          } catch (_) {}
+          _loadErrorMessage = null;
+          _errorMessage = reread
+              ? 'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
+                    'هذي هي الآن، عدّل عليها.'
+              : error.message;
+          return false;
+        }
         _errorMessage = error.message;
         return false;
       } catch (_) {
@@ -1080,6 +1098,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       totalBudget: totalBudget,
       currency: currency,
       categories: categories,
+      // D112 (Q-4): the budget this save is made from, as the server told
+      // it; null for a picture the phone worked out itself.
+      expectedBudgetVersion: _summary.budgetVersion,
     );
     if (_loadedPlanId != planId || isSessionDisposed) return;
     _summary = result.summary;

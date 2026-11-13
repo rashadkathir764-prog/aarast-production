@@ -52,8 +52,14 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    String? expectedBudgetVersion,
   }) async {
+    final version = _nullableTrimmed(expectedBudgetVersion);
     final payload = {
+      // D112 (Q-4): the budget this save was made from, as the server last
+      // told it. A budget changed on another phone since refuses the save
+      // instead of being overwritten by it.
+      'expectedBudgetVersion': ?version,
       'totalBudget': _nullableTrimmed(totalBudget),
       'currency': currency.trim().toUpperCase(),
       'categories': [
@@ -88,6 +94,15 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       final json = await mutation.send();
       final result = MoneyBudgetReplaceResult.fromJson(json);
       await _cacheSummary(result.summary, planId);
+      // The server's answer is the phone's copy of the picture (D86), with
+      // the budget's new version: a save made later without a connection is
+      // made from this one, not from the version before it.
+      if (json['summary'] case final Map<String, dynamic> summaryJson) {
+        await _offline?.database.setMeta(
+          FinanceApi._summaryKey(planId),
+          jsonEncode(summaryJson),
+        );
+      }
       await _applyBudgetIdMap(result);
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedBudgetCategories,
@@ -506,12 +521,29 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
   ) async {
     final offline = _offline;
     if (offline == null) return;
+    // D112 (Q-4): several saves made without a connection go as one, the
+    // last. It was made from the budget the first of them read (what the
+    // phone shows since is its own unsent work), so it keeps that version.
+    var payload = mutation.payload;
+    if (payload['expectedBudgetVersion'] == null) {
+      final waiting = (await offline.database.pendingSyncItems())
+          .where(
+            (item) =>
+                item.entityType == 'money_budget' &&
+                item.localEntityId == planId,
+          )
+          .firstOrNull;
+      final inherited = waiting?.payload['expectedBudgetVersion'];
+      if (inherited is String && inherited.isNotEmpty) {
+        payload = {...payload, 'expectedBudgetVersion': inherited};
+      }
+    }
     await offline.database.enqueueSync(
       entityType: 'money_budget',
       operation: 'replace',
       endpoint: mutation.endpoint,
       method: mutation.method,
-      payload: mutation.payload,
+      payload: payload,
       planId: planId,
       localEntityId: planId,
       replacePendingForEntity: true,

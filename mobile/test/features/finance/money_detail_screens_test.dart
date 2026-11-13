@@ -1105,6 +1105,7 @@ class _RefusedCategoryApi extends _MoneyDetailsApi {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    String? expectedBudgetVersion,
   }) async {
     throw const ApiException(refusal);
   }

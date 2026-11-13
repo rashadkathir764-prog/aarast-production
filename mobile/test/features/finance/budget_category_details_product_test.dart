@@ -113,6 +113,7 @@ class _CategoryFinanceApi extends FinanceApi {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    String? expectedBudgetVersion,
   }) async {
     savedTotalBudget = totalBudget;
     savedAllocations = {

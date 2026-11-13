@@ -452,6 +452,95 @@ void main() {
     expect(cached.single['name'], 'قاعة الحفل');
   });
 
+  // D112 (Q-4), the owner's word: a budget saved from an older read is
+  // refused by the server. The phone sends the version its save was made
+  // from, and several saves made without a connection go as one made from
+  // the version the first of them read.
+  test('Q-4: the save carries the budget version it was made from', () async {
+    final database = await _freshDatabase();
+    final client = _OfflineFinanceClient();
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+
+    final first = await api.replaceMoneyBudget(
+      planId: 'plan-1',
+      totalBudget: '1000',
+      currency: 'YER',
+      categories: const [(id: null, name: 'القاعة', allocatedAmount: '400')],
+      expectedBudgetVersion: 'version-read',
+    );
+    expect(
+      (await database.pendingSyncItems()).single.payload,
+      containsPair('expectedBudgetVersion', 'version-read'),
+    );
+
+    // What the phone shows now is its own unsent work: it has no version,
+    // and the coalesced save keeps the one the first save was made from.
+    await api.replaceMoneyBudget(
+      planId: 'plan-1',
+      totalBudget: '1200',
+      currency: 'YER',
+      categories: [
+        (
+          id: first.categories.single.id,
+          name: 'قاعة الحفل',
+          allocatedAmount: '500',
+        ),
+      ],
+    );
+    final queued = await database.pendingSyncItems();
+    expect(queued, hasLength(1));
+    expect(queued.single.payload['totalBudget'], '1200');
+    expect(queued.single.payload['expectedBudgetVersion'], 'version-read');
+  });
+
+  test('Q-4: a save with no version read sends none', () async {
+    final database = await _freshDatabase();
+    final client = _OfflineFinanceClient();
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+
+    await FinanceApi(client, offline: offline).replaceMoneyBudget(
+      planId: 'plan-1',
+      totalBudget: '1000',
+      currency: 'YER',
+      categories: const [(id: null, name: 'القاعة', allocatedAmount: '400')],
+    );
+
+    expect(
+      (await database.pendingSyncItems()).single.payload.containsKey(
+        'expectedBudgetVersion',
+      ),
+      isFalse,
+    );
+  });
+
+  test('Q-4: the server\'s answer to a save is the phone\'s copy, with the '
+      'new version', () async {
+    final database = await _freshDatabase();
+    final client = _OnlineBudgetClient(budgetVersion: 'version-after');
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+
+    final saved = await api.replaceMoneyBudget(
+      planId: 'plan-1',
+      totalBudget: '1000',
+      currency: 'YER',
+      categories: const [(id: null, name: 'القاعة', allocatedAmount: '400')],
+      expectedBudgetVersion: 'version-read',
+    );
+
+    expect(client.sent.single['expectedBudgetVersion'], 'version-read');
+    expect(saved.summary.budgetVersion, 'version-after');
+    // Read back without a connection, the copy is the one after the save.
+    expect(
+      (await api.cachedMoneySummary('plan-1'))?.budgetVersion,
+      'version-after',
+    );
+  });
+
   test('online budget idMap rewrites cached dependent category ids', () async {
     final database = await _freshDatabase();
     await database.saveCachedItem(
@@ -1600,7 +1689,12 @@ class _OfflineFinanceClient extends ApiClient {
 }
 
 class _OnlineBudgetClient extends ApiClient {
-  _OnlineBudgetClient() : super(tokenProvider: () async => null);
+  _OnlineBudgetClient({this.budgetVersion})
+    : super(tokenProvider: () async => null);
+
+  /// D112 (Q-4): the version the server answers with, when the test has one.
+  final String? budgetVersion;
+  final sent = <Map<String, dynamic>>[];
 
   @override
   Future<Map<String, dynamic>> mutateJson(
@@ -1615,9 +1709,11 @@ class _OnlineBudgetClient extends ApiClient {
     String path,
     Map<String, dynamic> data,
   ) async {
+    sent.add(data);
     return {
       'summary': {
         'planId': 'plan-1',
+        'budgetVersion': ?budgetVersion,
         'currency': 'YER',
         'budget': {
           'total': '1000',

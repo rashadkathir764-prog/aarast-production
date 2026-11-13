@@ -62,6 +62,64 @@ void main() {
     expect(provider.canManageBudget, isFalse);
   });
 
+  // RA-MO-306: the settle actions were shown to the memory's owner, and the
+  // save refused each of them on the right to manage the money.
+  test('the owner of a plan in the memories saves a settlement, and only '
+      'that', () async {
+    final api = _SettlementApi();
+    final provider = FinanceProvider(
+      api,
+      permissionsApi: _FakeSharingApi(
+        const PlanAccessPermissions(
+          weddingPlanId: 'plan-memory',
+          isOwner: true,
+          canViewMoney: true,
+          canManageMoney: false,
+        ),
+      ),
+    );
+    await provider.loadMoney('plan-memory');
+    final cost = api._cost('plan-memory');
+    final payment = CostPayment(
+      id: 'payment-1',
+      costId: cost.id,
+      amount: '100',
+      paidAt: DateTime.utc(2026, 7, 12),
+    );
+    final schedule = PaymentSchedule(
+      id: 'schedule-1',
+      costId: cost.id,
+      amount: '100',
+      dueDate: DateTime.utc(2026, 8, 1),
+      status: 'PENDING',
+    );
+
+    expect(await provider.recordPayment(cost: cost, amount: '100'), isNotNull);
+    expect(
+      await provider.paySchedule(schedule: schedule, cost: cost),
+      isNotNull,
+    );
+    expect(
+      await provider.reversePayment(
+        payment: payment,
+        cost: cost,
+        reason: 'غلط',
+      ),
+      isTrue,
+    );
+    expect(api.writes, ['createPayment', 'paySchedule', 'reversePayment']);
+
+    expect(
+      await provider.createSchedule(
+        cost: cost,
+        amount: '100',
+        dueDate: DateTime.utc(2026, 9, 1),
+      ),
+      isNull,
+    );
+    expect(api.writes, ['createPayment', 'paySchedule', 'reversePayment']);
+  });
+
   test('settling follows managing the money everywhere else', () async {
     final viewer = FinanceProvider(
       _CountingFinanceApi(withCost: true),
@@ -367,6 +425,72 @@ class _ChangedElsewhereApi extends _CountingFinanceApi {
       'الميزانية تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.',
       statusCode: 409,
       serverCode: 'BUDGET_CHANGED_ELSEWHERE',
+    );
+  }
+}
+
+/// Records the money writes that reach the API.
+class _SettlementApi extends _CountingFinanceApi {
+  _SettlementApi() : super(withCost: true);
+
+  final writes = <String>[];
+
+  CostPayment _payment(String costId) => CostPayment(
+    id: 'payment-new',
+    costId: costId,
+    amount: '100',
+    paidAt: DateTime.utc(2026, 7, 12),
+  );
+
+  @override
+  Future<CostPayment> createPayment({
+    required WeddingCost cost,
+    required String amount,
+    DateTime? paidAt,
+    String? method,
+    String? note,
+  }) async {
+    writes.add('createPayment');
+    return _payment(cost.id);
+  }
+
+  @override
+  Future<CostPayment> paySchedule({
+    required PaymentSchedule schedule,
+    required WeddingCost cost,
+    DateTime? paidAt,
+    String? method,
+    String? note,
+    String? amount,
+  }) async {
+    writes.add('paySchedule');
+    return _payment(cost.id);
+  }
+
+  @override
+  Future<CostPayment> reversePayment({
+    required CostPayment payment,
+    required WeddingCost cost,
+    required String reason,
+  }) async {
+    writes.add('reversePayment');
+    return _payment(cost.id);
+  }
+
+  @override
+  Future<PaymentSchedule> createSchedule({
+    required WeddingCost cost,
+    required String amount,
+    required DateTime dueDate,
+    String? note,
+  }) async {
+    writes.add('createSchedule');
+    return PaymentSchedule(
+      id: 'schedule-new',
+      costId: cost.id,
+      amount: amount,
+      dueDate: dueDate,
+      status: 'PENDING',
     );
   }
 }

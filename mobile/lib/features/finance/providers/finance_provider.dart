@@ -769,15 +769,20 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? note,
   }) async {
     CostPayment? result;
-    final ok = await _submit(cost.weddingPlanId, () async {
-      result = await _api.createPayment(
-        cost: cost,
-        amount: amount,
-        paidAt: paidAt,
-        method: method,
-        note: note,
-      );
-    }, refresh: () => _reloadCost(cost));
+    final ok = await _submit(
+      cost.weddingPlanId,
+      () async {
+        result = await _api.createPayment(
+          cost: cost,
+          amount: amount,
+          paidAt: paidAt,
+          method: method,
+          note: note,
+        );
+      },
+      refresh: () => _reloadCost(cost),
+      settlement: true,
+    );
     return ok ? result : null;
   }
 
@@ -790,6 +795,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       cost.weddingPlanId,
       () => _api.reversePayment(payment: payment, cost: cost, reason: reason),
       refresh: () => _reloadCost(cost),
+      settlement: true,
     );
   }
 
@@ -892,16 +898,21 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? amount,
   }) async {
     CostPayment? result;
-    final ok = await _submit(cost.weddingPlanId, () async {
-      result = await _api.paySchedule(
-        schedule: schedule,
-        cost: cost,
-        paidAt: paidAt,
-        method: method,
-        note: note,
-        amount: amount,
-      );
-    }, refresh: () => _reloadCost(cost));
+    final ok = await _submit(
+      cost.weddingPlanId,
+      () async {
+        result = await _api.paySchedule(
+          schedule: schedule,
+          cost: cost,
+          paidAt: paidAt,
+          method: method,
+          note: note,
+          amount: amount,
+        );
+      },
+      refresh: () => _reloadCost(cost),
+      settlement: true,
+    );
     return ok ? result : null;
   }
 
@@ -979,12 +990,20 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   /// ran meanwhile (pull to refresh, the screen's own load) changes what is
   /// shown, never whether the server saved; and the busy state is released on
   /// every path, independent of those reads.
+  ///
+  /// [settlement]: a payment on an agreement, a date paid or a payment taken
+  /// back, which [canSettleMoney] allows; every other write needs
+  /// [canManageMoney].
   Future<bool> _submit(
     String planId,
     Future<void> Function() write, {
     Future<void> Function()? refresh,
+    bool settlement = false,
   }) async {
-    if (!_access.canManageMoney && !_isLocalPlan(planId)) {
+    // RA-MO-306: the memory's owner was shown the settle actions (D112 Q-21)
+    // and the server takes them (G15), but this gate refused every one.
+    final allowed = settlement ? canSettleMoney : _access.canManageMoney;
+    if (!allowed && !_isLocalPlan(planId)) {
       // RA-MO-182: one name for the right, as its level reads («يعدّل»).
       _errorMessage = 'ما عندك صلاحية تعدّل المال في هذي الخطة.';
       notifyListeners();

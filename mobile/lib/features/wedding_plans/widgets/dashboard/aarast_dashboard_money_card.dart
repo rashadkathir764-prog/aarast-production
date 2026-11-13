@@ -200,15 +200,30 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
       );
       verdictShown = verdict;
     } else if (agreed <= 0) {
-      lead = Text(
-        context.say(
-          'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونحسب لك الباقي.',
-          'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونحسب لك الباقي.',
-        ),
-        style: JourneyType.of(
-          JourneyType.bodySmall,
-          color: AarastV3Color.textMuted,
-        ),
+      // RA-MO-115: «جاهزة» promised «نقول لك كم باقي من الميزانية», and the
+      // card then never named the budget that was just typed.
+      final budget = dashboardAmount(summary.totalBudgetForDisplay) ?? 0;
+      lead = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (budget > 0)
+            _MoneyLead(
+              key: const ValueKey('aarast-money-budget-before-agreements'),
+              label: 'ميزانيتك',
+              value: amount(budget),
+              color: AarastV3Color.ink,
+            ),
+          Text(
+            context.say(
+              'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونقول لك كم باقي.',
+              'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونقول لك كم باقي.',
+            ),
+            style: JourneyType.of(
+              JourneyType.bodySmall,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
       );
     } else {
       lead = _MoneyLead(
@@ -404,6 +419,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
 /// «ومع الموعود ناقصك» over its 28 figure.
 class _MoneyLead extends StatelessWidget {
   const _MoneyLead({
+    super.key,
     required this.label,
     required this.value,
     required this.color,

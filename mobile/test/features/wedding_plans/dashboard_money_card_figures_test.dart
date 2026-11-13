@@ -102,6 +102,31 @@ const _groomMahr = DashboardHomeMahr(
 );
 
 void main() {
+  // RA-MO-115: «جاهزة» promised «نقول لك كم باقي من الميزانية», and the card
+  // never named the budget just typed until the first agreement.
+  testWidgets('before any agreement the card names the budget', (tester) async {
+    await _pump(tester, _summary(agreed: '0', paid: '0', outstanding: '0'));
+
+    expect(
+      find.byKey(const ValueKey('aarast-money-budget-before-agreements')),
+      findsOneWidget,
+    );
+    expect(find.text('ميزانيتك'), findsOneWidget);
+    expect(
+      find.text(
+        'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونقول لك كم باقي.',
+      ),
+      findsOneWidget,
+    );
+
+    await _pump(
+      tester,
+      _summary(agreed: '0', paid: '0', outstanding: '0'),
+      hidden: true,
+    );
+    expect(find.textContaining('8,000,000'), findsNothing);
+  });
+
   group('V-01 one unit convention on the far side', () {
     testWidgets('millions and thousands each carry their unit', (tester) async {
       await _pump(

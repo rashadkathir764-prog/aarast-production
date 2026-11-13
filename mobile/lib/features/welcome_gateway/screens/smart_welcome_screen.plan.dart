@@ -704,14 +704,17 @@ class _ReadyStep extends StatelessWidget {
                               soft: context.accent.primarySoft,
                               title:
                                   '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
+                              // RA-MO-115: suggested, not made. They wait
+                              // in «المهام», and the home counts only the
+                              // ones chosen, so it says «0» first.
                               subtitle: hasDate
                                   ? context.say(
-                                      'تختار منها اللي يناسبك',
-                                      'تختارين منها اللي يناسبك',
+                                      'تلقاها في المهام، وتختار منها اللي يناسبك',
+                                      'تلقينها في المهام، وتختارين منها اللي يناسبك',
                                     )
                                   : context.say(
-                                      'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
-                                      'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
+                                      'تلقاها في المهام، تختار منها اللي يناسبك وترتبها لما تحدد الموعد',
+                                      'تلقينها في المهام، تختارين منها اللي يناسبك وترتبينها لما تحددين الموعد',
                                     ),
                               subtitleMaxLines: 3,
                             ),

@@ -8,6 +8,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../finance/finance_api.dart' show FinanceProvider;
+import '../models/marketplace_models.dart' show bookingStatusLabel;
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_board_view.dart' show providerServiceIcon;
 import '../widgets/provider_details_view.dart' show providerMoneyLabel;
@@ -75,15 +76,46 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
           ),
         );
       }
+      // RA-MO-253: with no booking found (deleted, another plan's, the
+      // server out of reach with no copy) this still said «طلب الحجز انقبل
+      // · ليلتك محجوزة». The page says what it knows.
+      final failed = context
+          .watch<ProviderMarketplaceProvider>()
+          .quoteRequestsErrorMessage;
       return _framed(
         JourneyMoment(
           color: context.accent.primary,
-          eyebrow: 'طلب الحجز انقبل',
-          title: 'ليلتك محجوزة',
-          subtitle: '',
+          eyebrow: failed == null ? 'الحجز' : 'ما وصلنا',
+          title: failed == null ? 'ما لقينا هذا الحجز' : 'ما قدرنا نقرأ الحجز',
+          subtitle: failed ?? 'يمكن انلغى، أو هو لخطة ثانية غير المفتوحة الآن.',
           body: const SizedBox.shrink(),
-          action: 'تمام',
-          onAction: _close,
+          action: failed == null
+              ? 'تمام'
+              : context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
+          onAction: failed == null
+              ? _close
+              : () {
+                  setState(() => _loading = true);
+                  _load();
+                },
+        ),
+      );
+    }
+    // The same notification, opened after the booking was cancelled or
+    // declined, said «ليلتك محجوزة» of a night that is not.
+    if (booking.lifecycleStatus != 'CONFIRMED') {
+      final who = quote.provider?.businessName ?? '';
+      return _framed(
+        JourneyMoment(
+          color: context.accent.primary,
+          eyebrow: 'تغيّر الحجز',
+          title: who.isEmpty
+              ? 'هذا الحجز ما عاد مؤكد'
+              : 'الحجز عند $who\nما عاد مؤكد',
+          subtitle: bookingStatusLabel(booking),
+          body: const SizedBox.shrink(),
+          action: context.say('شوف الحجوزات', 'شوفي الحجوزات'),
+          onAction: () => _go(AppRouter.planBookings(widget.weddingPlanId)),
         ),
       );
     }
@@ -119,7 +151,12 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
         : 'العربون';
     final name = quote.provider?.businessName ?? service ?? '';
 
-    final (String action, VoidCallback onAction) = schedule != null
+    // Recording a payment needs the right to; a reader who only sees the
+    // money was sent to a page that says «هذا القسم مو مفتوح لك».
+    final records = money?.canSettleMoney ?? false;
+    final (String action, VoidCallback onAction) = !records
+        ? ('تمام', _close)
+        : schedule != null
         ? (
             '${context.say('سجّل', 'سجّلي')} $scheduleName',
             () => _go(

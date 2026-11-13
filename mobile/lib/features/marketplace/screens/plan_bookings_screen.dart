@@ -87,6 +87,14 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
             title: 'الحجوزات',
             subtitle: day == null ? null : formatArabicDayMonth(day),
           ),
+          // D87 (RA-MO-260): a copy on the phone is shown as what it is.
+          if (booked.isNotEmpty && marketplace.quoteRequestsStale) ...[
+            JourneyListNotice(
+              offline: true,
+              onRetry: marketplace.loadScopedQuoteRequests,
+            ),
+            const SizedBox(height: AarastV3Space.x2),
+          ],
           if (booked.isEmpty)
             JourneyListState(
               phase: marketplace.isLoadingQuoteRequests

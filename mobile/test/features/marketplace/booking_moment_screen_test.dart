@@ -152,6 +152,63 @@ void main() {
     ]);
   });
 
+  // RA-MO-253 (batch 7): the page claimed a booked night it had not found,
+  // and one that had been cancelled since; and it sent a reader who only
+  // sees the money to a payment page that is closed to them.
+  testWidgets('a booking that is not there is not «ليلتك محجوزة»', (
+    tester,
+  ) async {
+    await _pump(tester, marketplace: _Marketplace(const []));
+
+    expect(find.textContaining('ليلتك محجوزة'), findsNothing);
+    expect(find.text('طلب الحجز انقبل'), findsNothing);
+    expect(find.text('ما لقينا هذا الحجز'), findsOneWidget);
+  });
+
+  testWidgets('a booking cancelled since says so, and leads to the bookings', (
+    tester,
+  ) async {
+    final cancelled = QuoteRequest(
+      id: _band.id,
+      providerId: _band.providerId,
+      weddingPlanId: _band.weddingPlanId,
+      status: _band.status,
+      lifecycleStatus: _band.lifecycleStatus,
+      provider: _band.provider,
+      service: _band.service,
+      offers: _band.offers,
+      booking: MarketplaceBooking.fromJson({
+        'id': 'booking-band',
+        'quoteRequestId': 'quote-band',
+        'providerId': 'provider-band',
+        'eventDate': '2027-01-21',
+        'status': 'CANCELLED',
+        'cancelledBy': 'PROVIDER',
+      }),
+    );
+    final opened = await _pump(tester, marketplace: _Marketplace([cancelled]));
+
+    expect(find.textContaining('ليلتك محجوزة'), findsNothing);
+    expect(find.text('الحجز عند فرقة الأفراح\nما عاد مؤكد'), findsOneWidget);
+    expect(find.text('ألغاه المزوّد'), findsOneWidget);
+    await tester.tap(find.text('شوف الحجوزات'));
+    await tester.pumpAndSettle();
+    expect(opened, ['/wedding-plans/plan-1/providers/bookings']);
+  });
+
+  testWidgets('a reader who only sees the money is not sent to record', (
+    tester,
+  ) async {
+    final finance = FinanceProvider(_Finance());
+    await finance.loadMoney('plan-1', canManageMoney: false);
+
+    await _pump(tester, finance: finance);
+
+    expect(find.text('ليلتك محجوزة\nعند فرقة الأفراح'), findsOneWidget);
+    expect(find.text('سجّل العربون'), findsNothing);
+    expect(find.text('تمام'), findsOneWidget);
+  });
+
   testWidgets('«أخفِ المبالغ» hides the price and the deposit', (tester) async {
     final finance = FinanceProvider(_Finance());
     await finance.loadMoney('plan-1');

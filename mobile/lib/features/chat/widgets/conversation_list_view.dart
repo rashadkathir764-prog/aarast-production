@@ -93,7 +93,17 @@ class _ConversationListViewState extends State<ConversationListView> {
               emptyTitle: 'ما في محادثات بعد',
               emptyMessage: 'أول ما تطلب عرض من مزود، تبدأ محادثتكم هنا.',
             )
-          else
+          else ...[
+            // D87 (RA-MO-260): a copy on the phone is shown as what it is.
+            if (chat.isStale) ...[
+              // A text written now waits on the phone and goes later (G38).
+              JourneyListNotice(
+                offline: true,
+                keepsChanges: true,
+                onRetry: chat.initialize,
+              ),
+              const SizedBox(height: AarastV3Space.x2),
+            ],
             JourneyBox(
               padding: EdgeInsets.zero,
               child: JourneyList(
@@ -118,6 +128,7 @@ class _ConversationListViewState extends State<ConversationListView> {
                 ],
               ),
             ),
+          ],
           if (chat.canLoadMoreConversations)
             Center(
               child: JourneyTextAction(

@@ -108,6 +108,28 @@ class PlanEventsApi {
   ) async {
     final id = event.id!;
     final payload = draft.toJson(isMain: event.isMain);
+    // RA-MO-286: the sheet (and the invitation card, which saves the
+    // wedding's place here) sent every field as the phone had read it, so
+    // a save from a copy a little old undid what the partner had changed
+    // meanwhile: a place corrected on one phone took back the time set on
+    // the other. The server is sent what this edit changed; it keeps the
+    // rest as it is. The phone's copy, and an event the server has not
+    // named yet, still take the whole event.
+    final held = PlanEventDraft(
+      title: event.title,
+      date: event.date,
+      slot: event.slot,
+      exactTime: event.exactTime,
+      placeLabel: event.placeLabel,
+      responsibleName: event.responsibleName,
+      note: event.note,
+    ).toJson(isMain: event.isMain);
+    final unsent = OfflineWrites.isLocalId(id);
+    final changes = <String, dynamic>{
+      for (final entry in payload.entries)
+        if (unsent || entry.value != held[entry.key]) entry.key: entry.value,
+    };
+    if (!unsent && changes.isEmpty) return event;
     final cached =
         await _reads.cachedItem(OfflineTables.cachedPlanEvents, id) ??
         {'id': id, 'weddingPlanId': weddingPlanId, 'type': event.type.wire};
@@ -117,7 +139,7 @@ class PlanEventsApi {
       operation: 'update',
       method: 'PATCH',
       endpoint: '${_base(weddingPlanId)}/$id',
-      payload: payload,
+      payload: changes,
       table: OfflineTables.cachedPlanEvents,
       localJson: localJson,
       planId: weddingPlanId,

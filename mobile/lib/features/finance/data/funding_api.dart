@@ -141,12 +141,25 @@ class FundingApi {
     if (_onPhone(source.weddingPlanId)) {
       return FundingSource.fromJson(await _keep(localJson));
     }
+    // RA-MO-241: the form sent the whole source as the phone had read it,
+    // so a save from a copy a little old (the owner's other phone) undid a
+    // change made meanwhile: «وصلت؟» answered on one phone took back the
+    // amount corrected on the other. The server keeps what it is not sent;
+    // the phone's copy, and a source the server has not named yet, still
+    // take the whole source.
+    final unsent = OfflineWrites.isLocalId(source.id);
+    final changes = <String, dynamic>{
+      for (final entry in payload.entries)
+        if (unsent || !_unchangedSourceField(entry.key, entry.value, source))
+          entry.key: entry.value,
+    };
+    if (!unsent && changes.isEmpty) return source;
     final json = await _writes.queued(
       entityType: 'funding_source',
       operation: 'update',
       method: 'PATCH',
       endpoint: '/api/v1/funding-sources/${source.id}',
-      payload: payload,
+      payload: changes,
       table: _table,
       localJson: localJson,
       planId: source.weddingPlanId,
@@ -322,6 +335,25 @@ class FundingApi {
   String? _trimmedOrNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// Whether [value], as an edit would send it under [key], is what
+  /// [source] already holds (RA-MO-241).
+  bool _unchangedSourceField(String key, Object? value, FundingSource source) {
+    return switch (key) {
+      'kind' => value == source.kind,
+      'status' => value == source.status,
+      'sourceName' => value == source.sourceName.trim(),
+      // «1000» and «1000.00» are one amount.
+      'amount' =>
+        num.tryParse('$value') != null &&
+            num.tryParse('$value') == num.tryParse(source.amount),
+      'sourcePhone' => value == _trimmedOrNull(source.sourcePhone),
+      'contributorName' => value == _trimmedOrNull(source.contributorName),
+      'note' => value == _trimmedOrNull(source.note),
+      'expectedAt' => value == _date(source.expectedAt),
+      _ => false,
+    };
   }
 
   String? _date(DateTime? value) => value == null

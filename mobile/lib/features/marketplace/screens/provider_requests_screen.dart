@@ -238,6 +238,12 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: AarastV3Density.pageInsets,
                 children: [
+                  // D87 (RA-MO-260): the offers compared here may be an
+                  // old copy; the person is told before choosing.
+                  if (quotes.isNotEmpty && marketplace.quoteRequestsStale) ...[
+                    JourneyListNotice(offline: true, onRetry: _load),
+                    const SizedBox(height: AarastV3Space.x2),
+                  ],
                   if (row == null || quotes.isEmpty)
                     if (_loading)
                       const JourneyListState(

@@ -255,6 +255,28 @@ void main() {
     expect(find.text('ما حجزت عند أحد بعد'), findsOneWidget);
   });
 
+  // RA-MO-260 (D87): a copy on the phone was shown as if it were current.
+  testWidgets('an old copy of the bookings says so', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 1400);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: _Marketplace(_quotes, stale: true),
+        child: MaterialApp(
+          home: PlanBookingsScreen(weddingPlanId: 'plan-1', now: _now),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('journey-list-notice-offline')),
+      findsOneWidget,
+    );
+    expect(find.text('قاعة سبأ'), findsOneWidget);
+  });
+
   testWidgets('while the requests load, no bookings is not «none»', (
     tester,
   ) async {
@@ -277,11 +299,15 @@ void main() {
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace(this._quotes, {this.loading = false})
+  _Marketplace(this._quotes, {this.loading = false, this.stale = false})
     : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<QuoteRequest> _quotes;
   final bool loading;
+  final bool stale;
+
+  @override
+  bool get quoteRequestsStale => stale;
 
   @override
   bool get isLoadingQuoteRequests => loading;

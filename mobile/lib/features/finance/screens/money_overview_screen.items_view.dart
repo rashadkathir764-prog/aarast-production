@@ -242,7 +242,8 @@ class _ItemsBudgetBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = summary.currency;
-    String money(Object? value) => _figure(context, value, currency);
+    // RA-MO-168: this card states a difference between its figures.
+    String money(Object? value) => _exactFigure(context, value, currency);
     final wedding = summary.expected?.wedding ?? const MoneyExpectedTotals();
     final agreed = moneyValue(wedding.agreed);
     final budget = summary.budget.total;

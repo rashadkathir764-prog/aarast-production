@@ -333,6 +333,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
             count: _count,
             restDue: restDue,
             firstDue: _firstDue,
+            paidOn: _agreementDate,
           );
     final category = (_categoryId == null
         ? null
@@ -559,6 +560,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     onPickAgreementDate: () => _pickDate(
                       initial: _agreementDate,
                       first: DateTime(2020),
+                      // RA-MO-174: an agreement is made by today, not later.
+                      last: DateUtils.dateOnly(appNow()),
                       onPicked: (date) => _agreementDate = date,
                     ),
                     noteController: _noteController,
@@ -644,14 +647,17 @@ class _CostFormScreenState extends State<CostFormScreen> {
     required DateTime? initial,
     required void Function(DateTime date) onPicked,
     DateTime? first,
+    DateTime? last,
   }) async {
     releaseFieldFocus();
     final now = DateUtils.dateOnly(appNow());
+    final lastDate = last ?? now.add(const Duration(days: 3650));
+    final wanted = initial ?? now;
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial ?? now,
+      initialDate: wanted.isAfter(lastDate) ? lastDate : wanted,
       firstDate: first ?? now,
-      lastDate: now.add(const Duration(days: 3650)),
+      lastDate: lastDate,
       locale: const Locale('ar'),
     );
     if (picked == null || !mounted) return;

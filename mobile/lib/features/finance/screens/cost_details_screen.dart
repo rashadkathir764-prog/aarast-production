@@ -253,7 +253,11 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
               ? pending[index].note!.trim()
               : 'الدفعة ${arabicOrdinal(number++)}',
           line: _dueLine(pending[index], now),
-          amount: pending[index].amount,
+          // RA-MO-170: what the date asks now, as its reminder and its pay
+          // page say (a straight payment may have left less than its
+          // amount); the note under the dates says when they ask together
+          // for more than is left (G32).
+          amount: pending[index].dueAmount,
           state: index == 0 ? _EntryState.current : _EntryState.later,
           // A date still to pay changes or goes in its sheet.
           onTap: canManage && !cost.isCancelled

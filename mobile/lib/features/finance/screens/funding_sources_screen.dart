@@ -397,8 +397,11 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       // Saved by the sheet.
       ok = true;
       if (source == null && result.repayments.isNotEmpty) {
-        await _addRepayments(funding.sources.last.id, result.repayments);
-        return;
+        final created = funding.lastCreated;
+        if (created != null) {
+          await _addRepayments(created, result.repayments);
+          return;
+        }
       }
     }
     if (!mounted) return;
@@ -419,14 +422,14 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
   /// A new loan's repayments, one call each; a failure keeps the loan and
   /// says what is missing.
   Future<void> _addRepayments(
-    String loanId,
+    FundingSource created,
     List<({String amount, DateTime dueDate})> repayments,
   ) async {
     final funding = context.read<FundingProvider>();
     var missed = 0;
     for (final repayment in repayments) {
-      final loan = funding.sourceById(loanId);
-      if (loan == null) break;
+      // The loan as it is now (each repayment adds to it), else as made.
+      final loan = funding.sourceById(created.id) ?? created;
       final ok = await funding.addRepayment(
         loan,
         amount: repayment.amount,

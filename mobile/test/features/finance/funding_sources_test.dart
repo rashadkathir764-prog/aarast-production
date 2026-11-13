@@ -352,6 +352,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-178: a new loan's repayments went to whatever ended the list; with
+  // another plan's list loaded that was another plan's source.
+  test('the source just made is known, whatever list is loaded', () async {
+    final api = _FakeFundingApi();
+    final provider = FundingProvider(api);
+    await provider.load('plan-1');
+    final before = provider.sources.length;
+
+    await provider.create(
+      weddingPlanId: 'plan-2',
+      kind: FundingKind.loan,
+      sourceName: 'خالي',
+      amount: '500000',
+      status: FundingStatus.received,
+    );
+
+    expect(provider.sources, hasLength(before));
+    expect(provider.lastCreated?.sourceName, 'خالي');
+    expect(provider.lastCreated?.weddingPlanId, 'plan-2');
+  });
+
   test('D59: the provider sends the promised day it is given', () async {
     final api = _FakeFundingApi();
     final provider = FundingProvider(api);
@@ -514,14 +535,15 @@ void main() {
     expect(find.byKey(const ValueKey('loan-owed')), findsOneWidget);
     final payNext = find.byKey(const ValueKey('loan-pay-next'));
     await tester.ensureVisible(payNext);
-    expect(find.text('سجّل الدفعة الأولى'), findsOneWidget);
+    // RA-MO-175 (2026-11-13): a loan is paid back, not paid to a vendor.
+    expect(find.text('سجّل دفعة السداد الأولى'), findsOneWidget);
     await tester.tap(payNext);
     await tester.pumpAndSettle();
     expect(
       api.sourceNamed('خالي أحمد').repayments.where((item) => item.isPaid),
       hasLength(1),
     );
-    expect(find.text('سجّل الدفعة الثانية'), findsOneWidget);
+    expect(find.text('سجّل دفعة السداد الثانية'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -574,11 +596,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('loan-repayment-r1')));
     await tester.pump();
     expect(toggles, 0);
+    // A promised loan is not paid back, so nothing says how to.
+    expect(find.byKey(const ValueKey('loan-repayment-hint')), findsNothing);
 
     // Once it arrived the sheet is as before.
     await tester.pumpWidget(sheet(FundingStatus.received));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('loan-pay-next')), findsOneWidget);
+    // RA-MO-175: how a repayment is marked, and taken back.
+    expect(find.byKey(const ValueKey('loan-repayment-hint')), findsOneWidget);
     expect(find.byKey(const ValueKey('loan-not-arrived')), findsNothing);
     expect(tester.takeException(), isNull);
   });

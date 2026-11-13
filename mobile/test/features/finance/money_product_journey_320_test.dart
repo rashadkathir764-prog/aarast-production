@@ -707,6 +707,8 @@ void main() {
         find.byKey(const ValueKey('cost-plan-count-2')),
       );
       expect(find.byKey(const ValueKey('cost-plan-preview')), findsOneWidget);
+      // RA-MO-174: without an agreement day the deposit is today's.
+      expect(find.textContaining('العربون · اليوم'), findsOneWidget);
       tester.testTextInput.hide();
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('cost-save')));

@@ -62,12 +62,9 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
             ),
             JourneyChip(
               key: const ValueKey('money-pay-done'),
-              label: context.ownerDid(
-                'اللي دفعتها',
-                'اللي دفعتيها',
-                groom: 'اللي اندفع',
-                bride: 'اللي اندفع',
-              ),
+              // RA-MO-172 (D59): the list holds every payment, the
+              // father's too, so «اللي دفعتها» said more than was true.
+              label: 'اللي اندفع',
               selected: _segment == _PaySegment.done,
               onTap: () => setState(() => _segment = _PaySegment.done),
             ),

@@ -307,7 +307,10 @@ void main() {
       final box = find.byKey(const ValueKey('money-items-budget'));
       final said = _said(tester, box);
       expect(said, contains('3 مليون'));
-      expect(said, contains('اتفاقات 1.6 مليون')); // 1,550,000
+      // RA-MO-168 (2026-11-13): «1.6 مليون» beside «تقديرات 800,000» and
+      // «تحت الميزانية بـ650,000» did not add up to the 3 million; an
+      // amount the tenths would round is written in full on this card.
+      expect(said, contains('اتفاقات 1,550,000'));
       expect(said, contains('تقديرات 800,000'));
       expect(said, contains('متاح 650,000'));
       expect(said, contains('تحت الميزانية بـ650,000'));

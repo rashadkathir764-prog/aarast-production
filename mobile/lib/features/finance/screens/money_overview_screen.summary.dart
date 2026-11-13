@@ -6,6 +6,26 @@ part of 'money_overview_screen.dart';
 // «ناقصك» is the server's shortfall, which already counts what was
 // pledged.
 
+/// [_figure], but shortened only when shortening loses nothing: a card that
+/// states a difference between its figures (RA-MO-168: «ميزانية 7.1 مليون»
+/// over «بنود العرس 7 مليون، تحت الميزانية بـ50,000») writes an amount the
+/// tenths of a million would round in full, so its sums add up on screen.
+String _exactFigure(BuildContext context, Object? value, String currency) {
+  final amount = moneyValue(value);
+  final hundredThousands = amount / 100000;
+  if (amount.abs() < 1000000 ||
+      hundredThousands == hundredThousands.roundToDouble()) {
+    return _figure(context, value, currency);
+  }
+  final hidden = context.select<FinanceProvider?, bool>(
+    (provider) => provider?.amountsHidden ?? false,
+  );
+  if (hidden) return '••••';
+  return keepCurrencyOnLine(
+    '${formatMoneyInputValue(amount.round())} ${currencyLabelAr(currency)}',
+  );
+}
+
 String _amount(BuildContext context, Object? value, String currency) {
   final hidden = context.select<FinanceProvider?, bool>(
     (provider) => provider?.amountsHidden ?? false,

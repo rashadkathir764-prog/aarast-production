@@ -82,6 +82,12 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     );
   }
 
+  /// The source the last [create] made (RA-MO-178): a new loan's repayments
+  /// go to it, never to whatever ends the list (a read in flight, or
+  /// another plan's list).
+  FundingSource? get lastCreated => _lastCreated;
+  FundingSource? _lastCreated;
+
   Future<bool> create({
     required String weddingPlanId,
     required String kind,
@@ -92,6 +98,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     String? note,
     DateTime? expectedAt,
   }) {
+    _lastCreated = null;
     return _save(weddingPlanId, () async {
       final created = await _api.createFundingSource(
         weddingPlanId: weddingPlanId,
@@ -105,6 +112,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
         // D108, RA-MO-49: who it is from, as the family view reads it.
         contributorName: FundingKind.namesPerson(kind) ? sourceName : null,
       );
+      _lastCreated = created;
       // Another plan's list (or none yet) is not this one: the next read of
       // this plan brings it.
       if (_loadedPlanId != weddingPlanId) return;

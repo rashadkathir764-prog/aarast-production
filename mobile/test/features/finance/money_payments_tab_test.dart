@@ -490,6 +490,15 @@ void main() {
     final provider = await tester.runAsync(_plan);
     await _open(tester, provider!);
     await _payments(tester);
+    // RA-MO-172 (D59): every payment is listed, others' too, so the owner
+    // reads «اللي اندفع», not «اللي دفعتها».
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('money-pay-done')),
+        matching: find.text('اللي اندفع'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('money-pay-done')));
     await tester.pumpAndSettle();
 

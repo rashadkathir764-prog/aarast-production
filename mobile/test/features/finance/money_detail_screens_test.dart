@@ -343,6 +343,30 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // RA-MO-170: the date read its stored amount on the agreement while its
+    // reminder and its pay page asked what the agreement still owes.
+    testWidgets('a date reads what it asks now on the agreement', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        api: _MoneyDetailsApi(scheduleAmount: '700', scheduleAmountDue: '300'),
+      );
+
+      final row = find.text('الدفعة الثانية');
+      await tester.scrollUntilVisible(row, 240);
+      final entry = find.ancestor(of: row, matching: find.byType(Row)).first;
+      expect(
+        find.descendant(of: entry, matching: find.textContaining('300')),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(of: entry, matching: find.textContaining('700')),
+        findsNothing,
+      );
+    });
+
     testWidgets('removing a date asks once more, then deletes it', (
       tester,
     ) async {
@@ -1178,7 +1202,11 @@ class _MoneyDetailsApi extends FinanceApi {
     this.payer,
     this.payerName,
     this.scheduleAmount = '400',
+    this.scheduleAmountDue,
   }) : super(ApiClient(tokenProvider: () async => null));
+
+  /// What the date asks now, when the server sends less than its amount.
+  final String? scheduleAmountDue;
 
   static final _now = DateTime(2026, 7, 14, 12);
 
@@ -1222,6 +1250,7 @@ class _MoneyDetailsApi extends FinanceApi {
     costId: 'cost-1',
     weddingPlanId: 'plan-1',
     amount: scheduleAmount,
+    amountDue: scheduleAmountDue,
     dueDate: _now.add(const Duration(days: 30)),
     status: 'PENDING',
     costTitle: 'قاعة الحفل',

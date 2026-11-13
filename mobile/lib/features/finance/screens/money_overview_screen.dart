@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/arabic_count.dart';
@@ -36,6 +37,7 @@ import '../widgets/funding_widgets.dart'
     show fundingKindChoice, fundingKindIcon;
 import '../widgets/due_date_sheets.dart';
 import '../widgets/money_cover_words.dart';
+import '../widgets/money_input_formatter.dart' show formatMoneyInputValue;
 import '../widgets/money_widgets.dart';
 import 'money_item_market.dart';
 

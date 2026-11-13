@@ -239,6 +239,22 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
               ],
             ),
           ),
+        // RA-MO-175: a tap marks a repayment paid, and a tap again takes it
+        // back; nothing said either.
+        if (repayments.isNotEmpty && !promised) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          Text(
+            key: const ValueKey('loan-repayment-hint'),
+            context.say(
+              'اضغط الدفعة لما تسددها، واضغطها مرة ثانية لو غلطت.',
+              'اضغطي الدفعة لما تسدديها، واضغطيها مرة ثانية لو غلطتِ.',
+            ),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,7 +334,8 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
           JourneyButton(
             key: const ValueKey('loan-pay-next'),
             label:
-                '${context.say('سجّل', 'سجّلي')} الدفعة ${arabicOrdinal(nextIndex)}',
+                // RA-MO-175: paying back a loan, not a payment to a vendor.
+                '${context.say('سجّل', 'سجّلي')} دفعة السداد ${arabicOrdinal(nextIndex)}',
             expand: true,
             large: true,
             loading: widget.saving,

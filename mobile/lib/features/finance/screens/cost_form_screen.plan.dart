@@ -37,17 +37,24 @@ List<_PlannedLine> _planLines({
   required int count,
   required DateTime? restDue,
   required DateTime firstDue,
+  DateTime? paidOn,
 }) {
   if (total <= 0) return const [];
+  // RA-MO-174: the payment made with the agreement is dated by the server on
+  // the agreement's day when it has one; the preview said «اليوم» anyway.
+  final today = DateUtils.dateOnly(appNow());
+  final paidDay = paidOn == null || DateUtils.isSameDay(paidOn, today)
+      ? 'اليوم'
+      : formatArabicDayMonth(paidOn);
   switch (plan) {
     case _PayPlan.later:
       return const [];
     case _PayPlan.full:
-      return [_PlannedLine(amount: total, label: 'كاملة · اليوم')];
+      return [_PlannedLine(amount: total, label: 'كاملة · $paidDay')];
     case _PayPlan.depositRest:
       if (deposit <= 0 || deposit >= total || restDue == null) return const [];
       return [
-        _PlannedLine(amount: deposit, label: 'العربون · اليوم'),
+        _PlannedLine(amount: deposit, label: 'العربون · $paidDay'),
         _PlannedLine(
           amount: total - deposit,
           label: 'الباقي · ${formatArabicDayMonth(restDue)}',
@@ -60,7 +67,7 @@ List<_PlannedLine> _planLines({
       final each = rest ~/ count;
       return [
         if (deposit > 0)
-          _PlannedLine(amount: deposit, label: 'العربون · اليوم'),
+          _PlannedLine(amount: deposit, label: 'العربون · $paidDay'),
         for (var index = 0; index < count; index++)
           _PlannedLine(
             // The last payment carries what does not divide evenly.

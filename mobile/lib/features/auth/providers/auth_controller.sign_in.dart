@@ -141,7 +141,33 @@ mixin _AuthSignIn on _AuthControllerCore {
       networkFailureMessage:
           'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
     );
-    return success ? result : null;
+    return success ? result : _earlierCodeStillLive(phone, 'REGISTER');
+  }
+
+  /// RA-MO-109: the system closed the app while the person was in WhatsApp
+  /// reading the code; the app opened at its start, the number was typed
+  /// again, and the server refused a second code within the minute
+  /// (`OTP_LIMIT_COOLDOWN`), though the first was still good. That refusal
+  /// now opens the code screen for the code already sent; a new one can be
+  /// asked there once the minute is over.
+  OtpRequestResult? _earlierCodeStillLive(String phone, String purpose) {
+    if (_errorCode != 'OTP_LIMIT_COOLDOWN') return null;
+    _errorMessage = null;
+    _errorCode = null;
+    _failedOffline = false;
+    final earlier = OtpRequestResult(
+      phone: phone.trim(),
+      purpose: purpose,
+      // Not known here, and not read by the code screen.
+      expiresAt: appNow(),
+      delivery: 'WHATSAPP',
+      message:
+          'الرمز اللي طلبناه على هذا الرقم قبل أقل من دقيقة لسا شغال، '
+          'وهنا مكانه لو وصلك.',
+    );
+    _otpRequest = earlier;
+    notifyListeners();
+    return earlier;
   }
 
   Future<OtpRequestResult?> requestOtp({
@@ -160,7 +186,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       networkFailureMessage:
           'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
     );
-    return success ? result : null;
+    return success ? result : _earlierCodeStillLive(phone, purpose);
   }
 
   /// RA-MO-98: an invite opened with another number, on a phone signed in to

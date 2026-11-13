@@ -41,6 +41,12 @@ class _Api extends GuestsApi {
   String? sentGroupId;
   Set<String> refuseNames = const {};
 
+  /// Guests made so far, so each has its own id across the parts sent.
+  int made = 0;
+
+  /// How many parts the list went in.
+  int calls = 0;
+
   @override
   Future<List<Guest>> getGuests(String weddingPlanId) async => guests;
 
@@ -68,6 +74,7 @@ class _Api extends GuestsApi {
     required List<({String name, String? phone})> people,
     String? groupId,
   }) async {
+    calls += 1;
     sent.addAll(people);
     sentGroupId = groupId;
     // RA-MO-34: the server refuses the people named in [refuseNames].
@@ -78,7 +85,7 @@ class _Api extends GuestsApi {
     return (
       created: [
         for (var i = 0; i < added.length; i++)
-          _guest('new-$i', added[i].name, phone: added[i].phone),
+          _guest('new-${made++}', added[i].name, phone: added[i].phone),
       ],
       refused: [
         for (final person in people)
@@ -164,6 +171,33 @@ void main() {
         (name: 'يحيى السنيدار', phone: null),
         (name: 'أحمد ناجي', phone: '773456789'),
       ]);
+    });
+
+    // RA-MO-223: a long list said nothing until all of it was sent, and
+    // leaving midway left no result; it goes in parts, each counted and
+    // put on the list as it lands.
+    test('a long list goes in parts, counted as it lands', () async {
+      final api = _Api(const []);
+      final provider = GuestsProvider(api);
+      await provider.loadGuests('plan-1');
+      final seen = <int>[];
+      provider.addListener(() {
+        final progress = provider.importProgress;
+        if (progress != null && !seen.contains(progress.done)) {
+          seen.add(progress.done);
+        }
+      });
+
+      final added = await provider.addGuests(
+        weddingPlanId: 'plan-1',
+        people: [for (var i = 0; i < 25; i++) (name: 'ضيف $i', phone: null)],
+      );
+
+      expect(added, 25);
+      expect(api.calls, 3);
+      expect(seen, [0, 10, 20, 25]);
+      expect(provider.guests, hasLength(25));
+      expect(provider.importProgress, isNull);
     });
 
     // RA-MO-231: a second number stayed in the name, and a line of a number

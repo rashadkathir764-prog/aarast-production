@@ -173,23 +173,38 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
+    _importProgress = (done: 0, total: people.length);
     notifyListeners();
     try {
-      final result = await _api.createGuestsBulk(
-        weddingPlanId: weddingPlanId,
-        people: people,
-        groupId: groupId,
-      );
-      final created = result.created;
-      // What was added is on the list, whatever was refused after it.
-      _guests = [...created, ..._guests];
+      // RA-MO-223: a long list goes in small parts, each said as it lands
+      // and put on the list at once: the screen counts, and whoever leaves
+      // it midway finds the guests added so far in the list.
+      final created = <Guest>[];
+      final refused = <({String name, String? phone})>[];
+      String? reason;
+      for (var start = 0; start < people.length; start += _importPart) {
+        final end = start + _importPart > people.length
+            ? people.length
+            : start + _importPart;
+        final result = await _api.createGuestsBulk(
+          weddingPlanId: weddingPlanId,
+          people: people.sublist(start, end),
+          groupId: groupId,
+        );
+        created.addAll(result.created);
+        refused.addAll(result.refused);
+        reason ??= result.reason;
+        _guests = [...result.created, ..._guests];
+        _importProgress = (done: end, total: people.length);
+        notifyListeners();
+      }
       _refreshSummary(weddingPlanId);
-      _lastRefusedGuests = result.refused;
-      if (result.refused.isNotEmpty) {
+      _lastRefusedGuests = refused;
+      if (refused.isNotEmpty) {
         _errorMessage = created.isEmpty
-            ? result.reason
-            : 'انضاف ${created.length}، وما انضاف ${result.refused.length}: '
-                  '${result.reason ?? 'جرّب مرة ثانية'}';
+            ? reason
+            : 'انضاف ${created.length}، وما انضاف ${refused.length}: '
+                  '${reason ?? 'جرّب مرة ثانية'}';
       } else if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
@@ -202,9 +217,17 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       return 0;
     } finally {
       _isSubmitting = false;
+      _importProgress = null;
       notifyListeners();
     }
   }
+
+  /// How many of a list being added are in so far; null when none is.
+  ({int done, int total})? get importProgress => _importProgress;
+  ({int done, int total})? _importProgress;
+
+  /// Guests sent per part of a long list (RA-MO-223).
+  static const _importPart = 10;
 
   Future<bool> updateGuest({
     required Guest guest,

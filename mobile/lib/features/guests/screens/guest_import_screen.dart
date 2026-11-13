@@ -205,9 +205,13 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const ValueKey('import-add'),
-              label: toAdd.isEmpty
-                  ? say('أضف', 'أضيفي')
-                  : '${say('أضف', 'أضيفي')} $count',
+              // RA-MO-223: a long list says how far it got.
+              label: switch (provider.importProgress) {
+                final progress? when _saving =>
+                  'نضيف ${progress.done} من ${progress.total}…',
+                _ when toAdd.isEmpty => say('أضف', 'أضيفي'),
+                _ => '${say('أضف', 'أضيفي')} $count',
+              },
               icon: LucideIcons.userPlus,
               background: context.accent.primary,
               expand: true,

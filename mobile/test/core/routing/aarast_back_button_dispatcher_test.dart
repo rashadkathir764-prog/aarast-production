@@ -164,6 +164,41 @@ void main() {
     },
   );
 
+  // RA-MO-162: `/home` opens the selected plan's home straight away; back
+  // from that home to `/home` showed the home a second time.
+  testWidgets('back from the selected plan\'s home never shows it twice', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    final selected = ValueNotifier<({String contextKey, String weddingPlanId})>(
+      (contextKey: 'plan:plan-one:owner', weddingPlanId: 'plan-one'),
+    );
+    harness.dispatcher.bindContext(
+      listenable: selected,
+      readContextKey: () => selected.value.contextKey,
+      readWeddingPlanId: () => selected.value.weddingPlanId,
+    );
+    addTearDown(() {
+      selected.dispose();
+      harness.dispose();
+    });
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go(AppRouter.weddingPlanDashboard('plan-one'));
+    await tester.pumpAndSettle();
+    harness.router.go(AppRouter.money('plan-one'));
+    await tester.pumpAndSettle();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(
+      harness.router.state.uri.path,
+      AppRouter.weddingPlanDashboard('plan-one'),
+    );
+    // The next back leaves the app: `/home` is this same home.
+    expect(await harness.dispatcher.didPopRoute(), isFalse);
+  });
+
   testWidgets('contributor fallback never re-enters the owner dashboard', (
     tester,
   ) async {

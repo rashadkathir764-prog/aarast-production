@@ -54,7 +54,8 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
       final previous = _history.removeLast();
       if (previous.contextKey != _currentContextKey ||
           previous.location == _currentLocation ||
-          !_restorableByLocation(previous.location)) {
+          !_restorableByLocation(previous.location) ||
+          _homeAgain(previous.location)) {
         continue;
       }
       _restoringHistory = true;
@@ -73,7 +74,11 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
         fallback = AppRouter.home;
       }
     }
-    if (fallback == null || fallback == _currentLocation) return false;
+    if (fallback == null ||
+        fallback == _currentLocation ||
+        _homeAgain(fallback)) {
+      return false;
+    }
 
     _restoringHistory = true;
     router.go(fallback);
@@ -102,6 +107,17 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
     _currentWeddingPlanId = readWeddingPlanId?.call();
     _history.clear();
     listenable.addListener(_handleContextChanged);
+  }
+
+  /// RA-MO-162: on the selected plan's home, `/home` is that same home (the
+  /// entry opens it straight away), so back to it showed the home twice.
+  bool _homeAgain(String target) {
+    final planId = _currentWeddingPlanId;
+    if (planId == null || Uri.tryParse(target)?.path != AppRouter.home) {
+      return false;
+    }
+    return Uri.tryParse(_currentLocation)?.path ==
+        AppRouter.weddingPlanDashboard(planId);
   }
 
   /// RA-MO-120: the code page lives on what it was opened with (its number,

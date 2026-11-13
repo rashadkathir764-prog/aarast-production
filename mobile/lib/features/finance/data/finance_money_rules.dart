@@ -43,7 +43,7 @@ abstract final class FinanceMoneyRules {
     required String totalAmount,
     String? initialPaymentAmount,
   }) {
-    final total = assertPositive(totalAmount, 'إجمالي التكلفة');
+    final total = assertPositive(totalAmount, 'مبلغ الاتفاق');
     final paid = assertOptionalNonNegative(
       initialPaymentAmount,
       'الدفعة الأولى',
@@ -64,7 +64,7 @@ abstract final class FinanceMoneyRules {
     final paid = value(cost['paidAmount']);
     final remaining = (total - paid).clamp(0, total);
     if (amount > remaining) {
-      throw const ApiException('المبلغ يتجاوز غير المدفوع على التكلفة.');
+      throw const ApiException('المبلغ أكثر من الباقي على الاتفاق.');
     }
   }
 
@@ -73,7 +73,7 @@ abstract final class FinanceMoneyRules {
     required num remainingAmount,
   }) {
     if (amount > remainingAmount) {
-      throw const ApiException('مبلغ الموعد يتجاوز غير المدفوع على التكلفة.');
+      throw const ApiException('مبلغ الموعد أكثر من الباقي على الاتفاق.');
     }
   }
 

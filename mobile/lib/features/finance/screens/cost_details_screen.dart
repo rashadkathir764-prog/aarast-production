@@ -304,7 +304,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         if (!canManage) ...[
           const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(
-            text: 'تشوف بس. التعديل والدفع لمن معه صلاحية المال.',
+            text: 'للقراءة بس. التعديل والدفع لمن عنده صلاحية تعديل المال.',
             icon: LucideIcons.eye,
           ),
         ],
@@ -439,7 +439,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     );
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'صارت التكلفة مشتركة مع الخطة.');
+      AarastToast.showSuccess(context, 'صار الاتفاق مشترك مع الخطة.');
       await _load(refreshMoney: true);
     } else {
       AarastToast.showError(

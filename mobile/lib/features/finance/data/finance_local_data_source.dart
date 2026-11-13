@@ -281,7 +281,7 @@ class FinanceLocalDataSource {
     final cached = await _read(OfflineTables.cachedCosts, cost.id);
     final current = cached == null ? cost : WeddingCost.fromJson(cached);
     if (current.hasActivePayments) {
-      throw const ApiException('اعكس الدفعات القائمة أولًا قبل إلغاء التكلفة.');
+      throw const ApiException('الاتفاق عليه دفعات، فما ينلغي قبل ما تنعكس.');
     }
     final json = <String, dynamic>{
       ...?cached,

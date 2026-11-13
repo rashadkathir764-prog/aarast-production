@@ -1175,7 +1175,8 @@ void main() {
           isA<ApiException>().having(
             (error) => error.message,
             'message',
-            contains('اعكس الدفعات'),
+            // RA-MO-182: what stops it, not an order to one reader.
+            contains('فما ينلغي قبل ما تنعكس'),
           ),
         ),
       );

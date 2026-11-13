@@ -131,7 +131,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       'allocatedAmount': _nullableTrimmed(allocatedAmount),
     };
     if (payload['name']!.isEmpty) {
-      throw const ApiException('اكتب اسم التصنيف.');
+      throw const ApiException('البند يحتاج اسم.');
     }
     final mutation = _mutation(
       'POST',
@@ -175,7 +175,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       'allocatedAmount': _nullableTrimmed(allocatedAmount),
     };
     if (payload['name']!.isEmpty) {
-      throw const ApiException('اكتب اسم التصنيف.');
+      throw const ApiException('البند يحتاج اسم.');
     }
     final mutation = _mutation(
       'PATCH',
@@ -299,7 +299,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
   Future<void> deleteBudgetCategory(BudgetCategory category) async {
     if (category.costsCount > 0 || await _local.categoryHasCosts(category.id)) {
       throw const ApiException(
-        'انقل تكاليف هذا التصنيف أو احذفها قبل حذف التصنيف.',
+        'هذا البند عليه اتفاقات، فما ينحذف قبل ما تنتقل أو تنحذف.',
       );
     }
     final mutation = _mutation(
@@ -492,14 +492,14 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       final clientId = _nullableTrimmed(category['clientId']?.toString());
       if ((id == null) == (clientId == null)) {
         throw const ApiException(
-          'ما قدرنا نحفظ التصنيفات. صار خطأ عندنا، جرّب مرة ثانية.',
+          'ما قدرنا نحفظ البنود الحين، والغلط من عندنا.',
         );
       }
       if (clientId != null && !_uuidV4Pattern.hasMatch(clientId)) {
-        throw const ApiException('ما قدرنا نحفظ البند الجديد. جرّب مرة ثانية.');
+        throw const ApiException('ما قدرنا نحفظ البند الجديد الحين.');
       }
       final name = category['name']?.toString().trim() ?? '';
-      if (name.isEmpty) throw const ApiException('اكتب اسم البند.');
+      if (name.isEmpty) throw const ApiException('البند يحتاج اسم.');
       // D86: the server compares names with their spaces collapsed; so
       // does the phone, before a budget waits to be refused.
       final folded = name.replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
@@ -508,16 +508,16 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       }
       allocated += FinanceMoneyRules.assertOptionalNonNegative(
         category['allocatedAmount'],
-        'مخصص التصنيف',
+        'مبلغ البند',
       ).toDouble();
     }
     if (total == null && allocated > 0) {
       throw const ApiException(
-        'حدد الميزانية أولًا قبل توزيع مبالغ على التصنيفات.',
+        'الميزانية لازم تتحدد قبل ما تتوزع مبالغ على البنود.',
       );
     }
     if (total != null && allocated > total) {
-      throw const ApiException('مجموع مخصصات التصنيفات يتجاوز الميزانية.');
+      throw const ApiException('مجموع مبالغ البنود أكثر من الميزانية.');
     }
   }
 

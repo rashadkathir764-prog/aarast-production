@@ -96,7 +96,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         id: costId,
       );
       if (cached == null) {
-        throw const ApiException('ما لقينا التكلفة.');
+        throw const ApiException('ما لقينا الاتفاق.');
       }
       return WeddingCost.fromJson(cached);
     }
@@ -327,7 +327,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
 
   Future<WeddingCost> cancelCost(WeddingCost cost) async {
     if (cost.hasActivePayments) {
-      throw const ApiException('اعكس الدفعات القائمة أولًا قبل إلغاء التكلفة.');
+      throw const ApiException('الاتفاق عليه دفعات، فما ينلغي قبل ما تنعكس.');
     }
     final mutation = _mutation(
       'POST',
@@ -431,10 +431,10 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? note,
   }) {
     if (budgetCategoryId.trim().isEmpty) {
-      throw const ApiException('اختر تصنيف التكلفة.');
+      throw const ApiException('الاتفاق يحتاج بند.');
     }
     if (title.trim().isEmpty) {
-      throw const ApiException('اكتب اسم التكلفة.');
+      throw const ApiException('الاتفاق يحتاج اسم.');
     }
     return {
       'budgetCategoryId': budgetCategoryId.trim(),

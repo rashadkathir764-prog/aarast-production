@@ -32,7 +32,8 @@ class CostReceipt {
 /// Server codes for receipts, as Arabic actions.
 String? costReceiptErrorMessage(String? code) => switch (code) {
   'COST_RECEIPT_LIMIT' =>
-    'وصلت التكلفة إلى الحد (10 إيصالات). احذف إيصالًا قديمًا أولًا.',
-  'COST_HAS_RECEIPTS' => 'لهذه التكلفة إيصالات. احذفها أولًا ثم احذف التكلفة.',
+    'الاتفاق وصل حدّه، 10 إيصالات. ينحذف إيصال قديم قبل ما ينضاف جديد.',
+  'COST_HAS_RECEIPTS' =>
+    'الاتفاق عليه إيصالات، فما ينحذف قبل ما تنحذف إيصالاته.',
   _ => null,
 };

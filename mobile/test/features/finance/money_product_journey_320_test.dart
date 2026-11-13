@@ -1050,14 +1050,14 @@ void main() {
         harness.router.go(AppRouter.moneyBudget(_planId));
         await tester.pumpAndSettle();
         expect(find.byType(MoneyBudgetScreen), findsOneWidget);
-        expect(find.text('العرض فقط'), findsOneWidget);
+        expect(find.text('للقراءة بس'), findsOneWidget);
         expect(find.text('حفظ الميزانية'), findsNothing);
         expect(tester.takeException(), isNull);
 
         harness.router.go(AppRouter.moneyCostCreate(_planId));
         await tester.pumpAndSettle();
         expect(find.byType(CostFormScreen), findsOneWidget);
-        expect(find.text('العرض فقط'), findsOneWidget);
+        expect(find.text('للقراءة بس'), findsOneWidget);
         expect(find.text('حفظ الاتفاق'), findsNothing);
         expect(tester.takeException(), isNull);
       },

@@ -411,7 +411,7 @@ String _localCategoryId(String? clientId) {
   final value = _nullableTrimmed(clientId);
   if (value == null || !_uuidV4Pattern.hasMatch(value)) {
     throw const ApiException(
-      'ما قدرنا نحفظ التصنيف الجديد. صار خطأ عندنا، جرّب مرة ثانية.',
+      'ما قدرنا نحفظ البند الجديد الحين، والغلط من عندنا.',
     );
   }
   return '$_localCategoryPrefix$value';

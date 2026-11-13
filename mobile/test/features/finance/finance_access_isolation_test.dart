@@ -260,7 +260,10 @@ void main() {
 
     expect(find.text('حجز الصالة'), findsWidgets);
     expect(
-      find.textContaining('تشوف بس. التعديل والدفع لمن معه صلاحية المال.'),
+      // RA-MO-182: the right is named once, as its level reads.
+      find.textContaining(
+        'للقراءة بس. التعديل والدفع لمن عنده صلاحية تعديل المال.',
+      ),
       findsOneWidget,
     );
     expect(find.byTooltip('تعديل التكلفة'), findsNothing);
@@ -278,7 +281,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('العرض فقط'), findsOneWidget);
+    expect(find.text('للقراءة بس'), findsOneWidget);
     expect(find.text('حفظ الاتفاق'), findsNothing);
     expect(tester.takeException(), isNull);
   });

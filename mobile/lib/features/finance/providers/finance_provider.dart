@@ -644,7 +644,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     return _submit(category.weddingPlanId, () async {
       if (category.costsCount > 0) {
         throw const ApiException(
-          'انقل تكاليف هذا التصنيف أو احذفها قبل حذف التصنيف.',
+          'هذا البند عليه اتفاقات، فما ينحذف قبل ما تنتقل أو تنحذف.',
         );
       }
       await _replaceBudget(
@@ -956,7 +956,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     Future<void> Function()? refresh,
   }) async {
     if (!_access.canManageMoney && !_isLocalPlan(planId)) {
-      _errorMessage = 'ما عندك صلاحية تدير المال في هذي الخطة.';
+      // RA-MO-182: one name for the right, as its level reads («يعدّل»).
+      _errorMessage = 'ما عندك صلاحية تعدّل المال في هذي الخطة.';
       notifyListeners();
       return false;
     }

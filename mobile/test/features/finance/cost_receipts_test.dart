@@ -52,8 +52,9 @@ void main() {
         contains('10 إيصالات'),
       );
       expect(
+        // RA-MO-182: what stops it, without an order to one reader.
         costReceiptErrorMessage('COST_HAS_RECEIPTS'),
-        contains('احذفها أولًا'),
+        contains('قبل ما تنحذف إيصالاته'),
       );
       expect(costReceiptErrorMessage('OTHER'), isNull);
     },

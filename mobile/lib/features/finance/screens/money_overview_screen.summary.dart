@@ -65,8 +65,10 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   // what is still an estimate), as «البنود» and «يحتاج انتباهك» say it.
   final left = summary.expected?.budgetLeft ?? summary.budget.remaining;
   final over = moneyValue(left) < 0;
-  if (over && short) return 'فوق الميزانية، وفلوسك ما تغطي اتفاقاتك';
-  if (short) return 'فلوسك ما تغطي اتفاقاتك';
+  // RA-MO-182: the shortfall counts the mahr and the loans' repayments too,
+  // not the agreements alone; neutral for a participant who reads it.
+  if (over && short) return 'فوق الميزانية، والفلوس ما تكفي اللي باقي يندفع';
+  if (short) return 'الفلوس ما تكفي اللي باقي يندفع';
   if (over) return 'فوق الميزانية';
   // Neutral like «فوق الميزانية»: a participant who reads the money is not
   // the owner of this budget (RA-MO-11).

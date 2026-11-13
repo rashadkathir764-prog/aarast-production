@@ -36,8 +36,8 @@ Widget? financeWriteAccessBlock({
       maxWidth: 520,
       child: Center(
         child: AarastEmptyState(
-          title: 'العرض فقط',
-          message: 'ما معك صلاحية تعديل المال في هذي الخطة.',
+          title: 'للقراءة بس',
+          message: 'ما عندك صلاحية تعدّل المال في هذي الخطة.',
           icon: LucideIcons.lock,
         ),
       ),

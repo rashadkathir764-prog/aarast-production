@@ -52,6 +52,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   final _host = TextEditingController();
   final _freeText = TextEditingController();
   final _mapUrl = TextEditingController();
+
+  /// Why the map link cannot be saved (RA-MO-226).
+  String? _mapError;
   final _address = TextEditingController();
   final _place = TextEditingController();
 
@@ -212,6 +215,19 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   /// Saves the card, and the venue on the wedding event. True when done.
   Future<bool> _save(PlanEvent? wedding) async {
     if (_saving) return false;
+    // RA-MO-226: the server takes an https map link only, and refused any
+    // other in a programmer's word; it is said here, under the field.
+    final map = _mapUrl.text.trim();
+    final mapOk =
+        map.isEmpty || (Uri.tryParse(map)?.isScheme('https') ?? false);
+    if (!mapOk) {
+      setState(
+        () => _mapError =
+            'الرابط لازم يبدأ بـ https://. انسخه من «مشاركة» في تطبيق الخرائط.',
+      );
+      return false;
+    }
+    if (_mapError != null) setState(() => _mapError = null);
     setState(() => _saving = true);
     try {
       final changes = _cardChanges();
@@ -480,6 +496,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         keyboardType: TextInputType.url,
         textDirection: TextDirection.ltr,
         maxLength: 500,
+        errorText: _mapError,
       ),
       const SizedBox(height: AarastV3Space.x2),
       JourneyTextField(

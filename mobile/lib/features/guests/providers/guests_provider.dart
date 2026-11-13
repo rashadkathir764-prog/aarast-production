@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
+import '../../../core/offline/offline_contract.dart' show OfflineWrites;
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
@@ -316,6 +317,18 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   /// Deleting a group keeps its guests; they become ungrouped, here as on
   /// the server.
   Future<bool> deleteGroup(GuestGroup group) {
+    // RA-MO-227: a group made with no network and not sent yet, deleted,
+    // took its create off the phone's queue while its guests' changes kept
+    // naming it; the server refused each, and each stayed stuck. Its guests
+    // move first, or the network comes back and it is sent.
+    if (OfflineWrites.isLocalId(group.id) &&
+        _guests.any((guest) => guest.groupId == group.id)) {
+      _groupsErrorMessage =
+          'هذي المجموعة ما وصلت بعد وفيها ضيوف. انقلهم لمجموعة ثانية، '
+          'أو احذفها لما يرجع النت.';
+      notifyListeners();
+      return Future.value(false);
+    }
     return _changeGroups(() async {
       await _api.deleteGroup(group);
       _groups = _groups.where((item) => item.id != group.id).toList();

@@ -327,6 +327,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-226: a map link the server refuses (not https) is said under the
+  // field, and nothing is sent.
+  testWidgets('a map link that is not https is said before saving', (
+    tester,
+  ) async {
+    final api = await _pump(tester, [_guest('a', 'ياسر')]);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-map-url')),
+      'maps.google.com/?q=hall',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('invite-send')));
+    await tester.pumpAndSettle();
+
+    expect(api.cardWrites, isEmpty);
+    expect(
+      find.text(
+        'الرابط لازم يبدأ بـ https://. انسخه من «مشاركة» في تطبيق الخرائط.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('إرسال الدعوات'), findsNothing);
+  });
+
   // RA-MO-62: the venue field took the plan's city, so the card opened as
   // changed and saving wrote the city over the wedding's venue.
   testWidgets(

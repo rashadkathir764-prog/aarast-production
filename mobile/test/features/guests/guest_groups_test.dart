@@ -37,6 +37,20 @@ void main() {
       expect(provider.guests.single.groupId, isNull);
     });
 
+    // RA-MO-227: an unsent group deleted left its guests' queued changes
+    // naming it, refused by the server and stuck.
+    test('an unsent group with guests is not deleted, and says why', () async {
+      final offlineApi = _GroupsApi()..familyId = 'queued-guest_group-1';
+      final offline = GuestsProvider(offlineApi);
+      await offline.loadGuests('plan-1');
+
+      expect(await offline.deleteGroup(offline.groups.single), isFalse);
+
+      expect(offlineApi.deletes, 0);
+      expect(offline.groups, hasLength(1));
+      expect(offline.groupsErrorMessage, contains('ما وصلت بعد وفيها ضيوف'));
+    });
+
     test('a rejected change keeps the groups and says why', () async {
       api.reject = true;
 
@@ -123,13 +137,17 @@ class _GroupsApi extends GuestsApi {
 
   bool reject = false;
   int _sequence = 0;
+  int deletes = 0;
+
+  /// The family's id: a «queued-» one was made on the phone and not sent.
+  String familyId = 'family';
 
   @override
   Future<List<Guest>> getGuests(String weddingPlanId) async => [
     Guest(
       id: 'guest-1',
       weddingPlanId: weddingPlanId,
-      groupId: 'family',
+      groupId: familyId,
       name: 'خالد',
       side: 'GROOM',
       status: 'INVITED',
@@ -141,7 +159,7 @@ class _GroupsApi extends GuestsApi {
 
   @override
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async => [
-    GuestGroup(id: 'family', weddingPlanId: weddingPlanId, name: 'الأهل'),
+    GuestGroup(id: familyId, weddingPlanId: weddingPlanId, name: 'الأهل'),
   ];
 
   @override
@@ -188,5 +206,6 @@ class _GroupsApi extends GuestsApi {
   @override
   Future<void> deleteGroup(GuestGroup group) async {
     _gate();
+    deletes += 1;
   }
 }

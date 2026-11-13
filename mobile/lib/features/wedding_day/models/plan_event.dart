@@ -217,11 +217,12 @@ class PlanEventsView {
   /// b12's «اقتراحات», «مناسبة ثانية» last.
   final List<PlanEventType> suggestions;
 
-  /// b04/y12 «برنامج الأسبوع»: the events of the wedding week, the six days
-  /// before the wedding and its day, in order.
+  /// b04/y12 «برنامج الأسبوع»: the events of the wedding week, in order.
+  /// The week is the stage's (`WeddingPlanStage.finalWeek`, seven days or
+  /// fewer): the program covers the day the moment opens (RA-MO-211).
   List<PlanEvent> weekOf(DateTime weddingDate) {
     final day = DateUtils.dateOnly(weddingDate);
-    final first = day.subtract(const Duration(days: 6));
+    final first = day.subtract(const Duration(days: weddingWeekDays));
     return [
       for (final event in items)
         if (event.date case final date?

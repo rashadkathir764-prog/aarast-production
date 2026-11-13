@@ -74,7 +74,7 @@ WeddingPlanStageState resolveWeddingPlanStage(
       guidance: 'الوقت والموقع والمهام الحرجة وجهات الاتصال في مكان واحد.',
     );
   }
-  if (days <= 7) {
+  if (days <= weddingWeekDays) {
     return WeddingPlanStageState(
       stage: WeddingPlanStage.finalWeek,
       daysUntilWedding: days,

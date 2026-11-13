@@ -29,6 +29,10 @@ DateTime sanaaToday({DateTime? now}) {
   return DateTime(at.year, at.month, at.day);
 }
 
+/// The wedding week: the last [weddingWeekDays] days before the wedding.
+/// Its moment opens and its program starts on the same day (RA-MO-211).
+const weddingWeekDays = 7;
+
 /// Whole days from today in Sana'a to the calendar [day]: 0 on the day,
 /// negative after it (RA-MO-20). Counted on UTC dates, so a daylight-saving
 /// change in the phone's zone never makes one day read as none, and every

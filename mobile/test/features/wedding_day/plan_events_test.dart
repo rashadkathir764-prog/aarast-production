@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provide
 import 'package:aarast_mobile/features/wedding_day/screens/plan_events_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
@@ -184,7 +185,32 @@ Future<void> _pump(
 }
 
 void main() {
-  test('the week is the six days before the wedding and its day', () {
+  // RA-MO-211: the week's moment opens seven days before; its program
+  // missed the events of that first day.
+  test('the program starts the day the week opens', () {
+    final view = PlanEventsView.fromJson({
+      'weddingPlanId': 'plan-1',
+      'canEdit': true,
+      'party': 'GROOM',
+      'items': [
+        {'id': 'aqd', 'type': 'AQD', 'date': '2027-01-14', 'timeSlot': null},
+        {'id': 'lunch', 'type': 'LUNCH', 'date': '2027-01-13'},
+      ],
+      'suggestions': const [],
+    });
+    final wedding = DateTime(2027, 1, 21);
+    expect(view.weekOf(wedding).map((event) => event.id), ['aqd']);
+    expect(
+      resolveWeddingPlanStage(wedding, now: DateTime.utc(2027, 1, 14, 9)).stage,
+      WeddingPlanStage.finalWeek,
+    );
+    expect(
+      resolveWeddingPlanStage(wedding, now: DateTime.utc(2027, 1, 13, 9)).stage,
+      isNot(WeddingPlanStage.finalWeek),
+    );
+  });
+
+  test('the week is the days before the wedding and its day', () {
     final view = _view();
     final wedding = DateTime(2027, 1, 21);
     expect(view.weekOf(wedding).map((event) => event.type), [
@@ -264,7 +290,10 @@ void main() {
     await _pump(tester, provider);
 
     expect(find.text('مناسبات عرسك'), findsOneWidget);
-    expect(find.text('منها يتبنى أسبوع العرس ويوم العرس'), findsOneWidget);
+    expect(
+      find.text('اللي في آخر أسبوع قبل العرس تطلع في برنامجه'),
+      findsOneWidget,
+    );
     expect(find.text('السمرة'), findsOneWidget);
     expect(find.text('الثلاثاء 19 يناير · بعد العشاء'), findsOneWidget);
     expect(find.text('الديوان'), findsOneWidget);

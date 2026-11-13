@@ -79,7 +79,9 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
         children: [
           JourneySubHeader(
             title: 'مناسبات عرسك',
-            subtitle: 'منها يتبنى أسبوع العرس ويوم العرس',
+            // RA-MO-209: only the last week's events make its program; an
+            // earlier one (a ملكة a month before) is kept here alone.
+            subtitle: 'اللي في آخر أسبوع قبل العرس تطلع في برنامجه',
             onBack: () => context.popOrGo(
               AppRouter.weddingPlanDashboard(widget.weddingPlanId),
             ),

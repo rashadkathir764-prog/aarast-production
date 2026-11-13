@@ -638,7 +638,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       title: _planTitle,
       city: _city,
       location: _location.toJson(),
-      weddingDate: _dateUnknown ? null : _date?.toIso8601String(),
+      // RA-MO-124: the day as the server reads every plan day («2027-01-21»);
+      // a time with no zone was read in the server's own zone.
+      weddingDate: _dateUnknown || _date == null ? null : planDayToJson(_date!),
       estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
       currency: 'YER',
       selectedCategories: _catalogs().items,

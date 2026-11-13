@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -799,6 +800,35 @@ void main() {
     expect(request.currency, 'YER');
     expect(request.selectedCategories, isNotEmpty);
     expect(await storage.loadDraft(), isNull);
+  });
+
+  // RA-MO-124: the day went as a time with no zone, which the server read in
+  // its own zone; it goes as the day, as every plan day does.
+  testWidgets('signed in, the wedding day reaches the server as a day', (
+    tester,
+  ) async {
+    final plans = _RecordingPlans(succeed: true);
+    await _pump(tester, signedInPlans: plans);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-groom');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    final now = DateTime.now();
+    final month = DateTime(now.year, now.month + 2);
+    await _tap(tester, arabicMonthName(month.month));
+    final day = DateTime(month.year, month.month, 15);
+    await _pickDay(tester, day);
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'صنعاء');
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'ما اتفقنا بعد');
+    await _tap(tester, 'افتح خطتي');
+
+    final sent = plans.request!.weddingDate;
+    expect(sent, planDayToJson(day));
+    expect(sent, isNot(contains('T')));
   });
 
   testWidgets('signed in, a failed save stays and says so', (tester) async {

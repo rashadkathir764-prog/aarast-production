@@ -1,5 +1,7 @@
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart'
+    show afterWeddingFrom;
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +58,37 @@ Future<int Function()> _pump(
 }
 
 void main() {
+  // RA-MO-92 (D59, D102): after the day «باقي عليك» counted every
+  // agreement's remainder, the family's share with it.
+  test('after the day the debt is the owner\'s, not the family\'s', () {
+    // Agreements: 4 million, 2.5 unpaid, of which 1.5 the father pays.
+    final debt = afterWeddingFrom(
+      ownerOutstanding: '1000000',
+      costsTotal: '4000000',
+      costsOutstanding: '2500000',
+      spent: '1200000',
+      loanTotal: '500000',
+      loanRepaid: '300000',
+      loanOutstanding: '200000',
+    );
+    expect(debt.left, 1200000);
+    expect(debt.loansLeft, 200000);
+    expect(debt.paid, 1500000);
+    expect(debt.total, 2700000);
+
+    // A server before D102 (no owner figure): every remainder, as before.
+    final before = afterWeddingFrom(
+      ownerOutstanding: null,
+      costsTotal: '4000000',
+      costsOutstanding: '2500000',
+      spent: null,
+      loanTotal: '500000',
+      loanRepaid: null,
+      loanOutstanding: '200000',
+    );
+    expect(before.left, 2700000);
+  });
+
   testWidgets('after the day: the debt, the providers to rate, nothing else', (
     tester,
   ) async {

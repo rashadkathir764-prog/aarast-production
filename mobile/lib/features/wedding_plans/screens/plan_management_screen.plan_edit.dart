@@ -99,8 +99,10 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     final moneyKnown =
         finance.loadedPlanId == plan.id && finance.loadErrorMessage == null;
     final money = finance.summary;
+    // RA-MO-92 (D59, D102): «باقي عليك» is the owner's own remainder, not
+    // what the family pays; every agreement's only from a server before it.
     final owed = moneyKnown
-        ? moneyValue(money.costs.outstanding) +
+        ? moneyValue(money.outstanding?.owner ?? money.costs.outstanding) +
               moneyValue(money.funding?.loanOutstanding)
         : 0;
     // In the reader's words; the amount follows «أخفِ المبالغ» (G17).

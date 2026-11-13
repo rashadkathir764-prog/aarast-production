@@ -38,6 +38,44 @@ import '../widgets/dashboard/aarast_dashboard_view.dart';
 import '../widgets/plan_assistant_entry.dart';
 import '../widgets/push_off_card.dart';
 
+/// b07, once the day has passed: what is left to pay, from the money read.
+/// RA-MO-92 (D59, D102): with the owner's own figure ([ownerOutstanding],
+/// «عليك من العرس»: his agreements, the shared ones, the mahr he pays) it
+/// is his: that and his loans, and what his own money paid (spent and
+/// repaid); what the family pays is theirs. Without it (a server before
+/// D102, or no money of his recorded) every agreement's remainder, as before.
+@visibleForTesting
+DashboardAfterWedding afterWeddingFrom({
+  required String? ownerOutstanding,
+  required String? costsTotal,
+  required String? costsOutstanding,
+  required String? spent,
+  required String? loanTotal,
+  required String? loanRepaid,
+  required String? loanOutstanding,
+}) {
+  num value(String? text) => num.tryParse(text ?? '') ?? 0;
+  final loansLeft = value(loanOutstanding);
+  if (ownerOutstanding != null) {
+    final left = value(ownerOutstanding) + loansLeft;
+    final paid = value(spent) + value(loanRepaid);
+    return DashboardAfterWedding(
+      left: left,
+      paid: paid,
+      total: left + paid,
+      loansLeft: loansLeft,
+    );
+  }
+  final total = value(costsTotal) + value(loanTotal);
+  final left = value(costsOutstanding) + loansLeft;
+  return DashboardAfterWedding(
+    left: left,
+    paid: total - left,
+    total: total,
+    loansLeft: loansLeft,
+  );
+}
+
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
     required this.weddingPlanId,
@@ -316,7 +354,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       );
     }
     if (!summary.canViewMoney) return null;
-    num value(String? text) => num.tryParse(text ?? '') ?? 0;
     final finance = context.watch<FinanceProvider?>();
     if (finance == null) return null;
     if (finance.loadedPlanId != planId) {
@@ -332,14 +369,14 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     if (!finance.hasLoadedMoney) return null;
     final money = finance.summary;
     final funding = money.funding;
-    final total = value(money.costs.total) + value(funding?.loanTotal);
-    final left =
-        value(money.costs.outstanding) + value(funding?.loanOutstanding);
-    return DashboardAfterWedding(
-      left: left,
-      paid: total - left,
-      total: total,
-      loansLeft: value(funding?.loanOutstanding),
+    return afterWeddingFrom(
+      ownerOutstanding: funding == null ? null : money.outstanding?.owner,
+      costsTotal: money.costs.total,
+      costsOutstanding: money.costs.outstanding,
+      spent: funding?.spent,
+      loanTotal: funding?.loanTotal,
+      loanRepaid: funding?.loanRepaid,
+      loanOutstanding: funding?.loanOutstanding,
     );
   }
 

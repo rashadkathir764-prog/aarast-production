@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderPackage;
@@ -27,7 +28,8 @@ Future<bool?> showProviderListingSheet(
 
 /// A price as the server takes it: a whole amount (D112, Q-25), or empty.
 String? providerListingPriceError(String value) {
-  final normalized = value.trim().replaceAll(',', '');
+  // RA-MO-301: «٤٠٠٠٠٠» from an Arabic keyboard is the same amount.
+  final normalized = typedAmount(value);
   if (normalized.isEmpty) return null;
   if (RegExp(r'^\d{1,12}$').hasMatch(normalized)) return null;
   return RegExp(r'^\d{1,12}\.\d+$').hasMatch(normalized)
@@ -120,7 +122,7 @@ class _ListingSheetState extends State<_ListingSheet> {
     }
     setState(() => _saving = true);
     final dashboard = context.read<ProviderDashboardProvider>();
-    final price = _price.text.trim().replaceAll(',', '');
+    final price = typedAmount(_price.text);
     final ok = _isService
         ? await dashboard.updateService(
             serviceId: widget.service!.id,

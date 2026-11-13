@@ -10,6 +10,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/theme/app_theme.dart';
@@ -18,6 +19,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show MarketplaceService;
 import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_listing_sheet.dart' show providerListingPriceError;
 
 class AddProviderPackageScreen extends StatefulWidget {
   const AddProviderPackageScreen({super.key});
@@ -140,6 +142,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                       const SizedBox(height: AarastV3Space.x2),
                       TextFormField(
                         controller: _priceController,
+                        validator: (value) =>
+                            providerListingPriceError(value ?? ''),
                         keyboardType: TextInputType.number,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.right,
@@ -260,7 +264,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       title: _titleController.text,
       serviceId: _serviceId,
       description: _descriptionController.text,
-      price: _priceController.text,
+      price: typedAmount(_priceController.text),
       currency: defaultCurrencyCode,
       items: items,
     );

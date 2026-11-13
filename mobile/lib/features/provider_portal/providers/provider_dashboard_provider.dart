@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -25,6 +26,7 @@ import '../../marketplace/marketplace_api.dart'
         bookingErrorMessage,
         marketplaceErrorMessage;
 import '../data/provider_offer_queue.dart';
+import '../data/provider_text_limits.dart' show providerPackageItems;
 
 export '../data/provider_offer_queue.dart' show ProviderQueuedOffer;
 
@@ -816,11 +818,35 @@ class ProviderDashboardProvider extends ChangeNotifier
     notifyListeners();
 
     try {
+      // RA-MO-288: what he changed only. The form fills itself once, and
+      // from the phone's copy when the server is slow; sent whole, it took
+      // back a name or a number corrected elsewhere meanwhile.
+      final held = _profile;
+      final sentName = held == null
+          ? businessName
+          : _changedText(businessName, held.businessName);
+      final sentPhone = held == null || !_samePhone(phone, held.phone)
+          ? phone
+          : null;
+      final sentCity = held == null
+          ? cityId
+          : _changedText(cityId, held.cityId);
+      final sentDescription = held == null
+          ? description
+          : _changedText(description ?? '', held.description);
+      if (sentName == null &&
+          sentPhone == null &&
+          sentCity == null &&
+          sentDescription == null &&
+          logoUrl == null &&
+          coverUrl == null) {
+        return true;
+      }
       _profile = await _api.updateProfile(
-        businessName: businessName,
-        phone: phone,
-        cityId: cityId,
-        description: description,
+        businessName: sentName,
+        phone: sentPhone,
+        cityId: sentCity,
+        description: sentDescription,
         logoUrl: logoUrl,
         coverUrl: coverUrl,
       );
@@ -968,14 +994,42 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String priceUnit,
     required String currency,
   }) async {
+    // RA-MO-288: the sheet sent every field as the phone had read it, so a
+    // save from a copy a little old (his other phone, the team's edit)
+    // undid a change made meanwhile. The server keeps what it is not sent.
+    final held = _services.where((item) => item.id == serviceId).firstOrNull;
+    if (held == null) {
+      return _mutateService(
+        () => _api.updateService(
+          serviceId: serviceId,
+          title: title,
+          description: description,
+          basePrice: basePrice,
+          priceUnit: priceUnit,
+          currency: currency,
+        ),
+      );
+    }
+    final sentTitle = _changedText(title, held.title);
+    final sentDescription = _changedText(description, held.description);
+    final sentPrice = _sameAmount(basePrice, held.basePrice) ? null : basePrice;
+    final sentUnit = _changedText(priceUnit, held.priceUnit);
+    final sentCurrency = _changedText(currency, held.currency, upper: true);
+    if (sentTitle == null &&
+        sentDescription == null &&
+        sentPrice == null &&
+        sentUnit == null &&
+        sentCurrency == null) {
+      return true;
+    }
     return _mutateService(
       () => _api.updateService(
         serviceId: serviceId,
-        title: title,
-        description: description,
-        basePrice: basePrice,
-        priceUnit: priceUnit,
-        currency: currency,
+        title: sentTitle,
+        description: sentDescription,
+        basePrice: sentPrice,
+        priceUnit: sentUnit,
+        currency: sentCurrency,
       ),
     );
   }
@@ -1058,14 +1112,42 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String currency,
     required List<String> items,
   }) async {
+    // RA-MO-288: what changed only, as for a service.
+    final held = _packages.where((item) => item.id == packageId).firstOrNull;
+    if (held == null) {
+      return _mutatePackage(
+        () => _api.updatePackage(
+          packageId: packageId,
+          title: title,
+          description: description,
+          price: price,
+          currency: currency,
+          items: items,
+        ),
+      );
+    }
+    final sentTitle = _changedText(title, held.title);
+    final sentDescription = _changedText(description, held.description);
+    final sentPrice = _sameAmount(price, held.price) ? null : price;
+    final sentCurrency = _changedText(currency, held.currency, upper: true);
+    final sentItems = listEquals(items, providerPackageItems(held.items ?? ''))
+        ? null
+        : items;
+    if (sentTitle == null &&
+        sentDescription == null &&
+        sentPrice == null &&
+        sentCurrency == null &&
+        sentItems == null) {
+      return true;
+    }
     return _mutatePackage(
       () => _api.updatePackage(
         packageId: packageId,
-        title: title,
-        description: description,
-        price: price,
-        currency: currency,
-        items: items,
+        title: sentTitle,
+        description: sentDescription,
+        price: sentPrice,
+        currency: sentCurrency,
+        items: sentItems,
       ),
     );
   }
@@ -1484,6 +1566,37 @@ class ProviderDashboardProvider extends ChangeNotifier
 String _said(ApiException error, String needs) => error.isNetworkFailure
     ? 'ما قدرنا نوصل للخادم الحين. $needs، جرّب لما يرجع.'
     : marketplaceErrorMessage(error.message);
+
+/// [next] when an edit changed it from what the phone holds, else null:
+/// a field that is not sent is one the server keeps (RA-MO-288).
+String? _changedText(String next, String? was, {bool upper = false}) {
+  String shape(String value) =>
+      upper ? value.trim().toUpperCase() : value.trim();
+  return shape(next) == shape(was ?? '') ? null : next;
+}
+
+/// «1000» and «1000.00» are one amount; an empty price equals none.
+bool _sameAmount(String next, String? was) {
+  final sent = next.trim();
+  final held = (was ?? '').trim();
+  if (sent.isEmpty || held.isEmpty) return sent.isEmpty && held.isEmpty;
+  final a = num.tryParse(sent);
+  final b = num.tryParse(held);
+  return a != null && b != null ? a == b : sent == held;
+}
+
+/// One number in its two spellings («771…» and «+967771…») is unchanged.
+bool _samePhone(String next, String? was) {
+  String shape(String value) {
+    try {
+      return normalizeYemeniPhone(value);
+    } on Object {
+      return value.trim();
+    }
+  }
+
+  return was != null && shape(next) == shape(was);
+}
 
 bool _isMissingProviderProfile(String message) {
   final normalized = message.toLowerCase();

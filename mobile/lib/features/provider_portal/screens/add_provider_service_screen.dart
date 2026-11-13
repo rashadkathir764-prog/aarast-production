@@ -10,6 +10,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,6 +20,7 @@ import '../../marketplace/marketplace_api.dart'
     show ProviderMarketplaceProvider;
 import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_listing_sheet.dart' show providerListingPriceError;
 
 class AddProviderServiceScreen extends StatefulWidget {
   const AddProviderServiceScreen({super.key});
@@ -165,6 +167,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                       const SizedBox(height: AarastV3Space.x2),
                       TextFormField(
                         controller: _basePriceController,
+                        // RA-MO-301: the price went to the server as
+                        // typed, and a refusal named no field.
+                        validator: (value) =>
+                            providerListingPriceError(value ?? ''),
                         keyboardType: TextInputType.number,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.right,
@@ -292,7 +298,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       title: _titleController.text,
       categoryId: _categoryId!,
       description: _descriptionController.text,
-      basePrice: _basePriceController.text,
+      basePrice: typedAmount(_basePriceController.text),
       priceUnit: _priceUnitController.text,
       currency: defaultCurrencyCode,
       cityId: _cityId,

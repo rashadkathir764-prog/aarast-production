@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/forms/latin_digits_formatter.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
@@ -115,6 +116,16 @@ void main() {
       'المبلغ رقم صحيح، بدون كسور.',
     );
     expect(providerListingPriceError('12,5x'), 'اكتب المبلغ أرقام بس.');
+  });
+
+  // RA-MO-301 (batch 9): a price typed on an Arabic keyboard was refused.
+  test('a price in Arabic keyboard digits is the same amount', () {
+    expect(providerListingPriceError('٤٠٠٠٠٠'), isNull);
+    expect(providerListingPriceError('٤٠٠٬٠٠٠'), isNull);
+    expect(typedAmount(' ٤٠٠٬٠٠٠ '), '400000');
+    expect(typedAmount('400,000'), '400000');
+    // A mistake is still named, not hidden.
+    expect(providerListingPriceError('٤٠٠x'), 'اكتب المبلغ أرقام بس.');
   });
 }
 

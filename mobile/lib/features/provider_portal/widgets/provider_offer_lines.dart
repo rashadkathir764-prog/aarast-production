@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteOfferLine;
 import '../data/provider_text_limits.dart';
 
@@ -43,7 +44,8 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
 
   void _add() {
     final label = _label.text.trim();
-    final amount = _amount.text.trim().replaceAll(',', '');
+    // RA-MO-301: an extra's price typed on an Arabic keyboard was refused.
+    final amount = typedAmount(_amount.text);
     if (label.isEmpty) {
       setState(() => _error = 'اكتب السطر.');
       return;

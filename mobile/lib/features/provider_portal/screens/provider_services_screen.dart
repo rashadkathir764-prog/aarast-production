@@ -19,14 +19,35 @@ import '../widgets/provider_request_parts.dart' show providerGroupedAmount;
 /// opening its edit. What a package includes is his own words (its
 /// description, B-07); the season price and the teams are not kept by the
 /// server (F18, D-2), so they are not drawn. Opened from «ملفي» (D39).
-class ProviderServicesScreen extends StatelessWidget {
+class ProviderServicesScreen extends StatefulWidget {
   const ProviderServicesScreen({this.now, super.key});
 
   /// The clock for «آخر تحديث قبل أسبوعين»; tests pin it.
   final DateTime? now;
 
   @override
+  State<ProviderServicesScreen> createState() => _ProviderServicesScreenState();
+}
+
+class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // RA-MO-300: opened before the portal had read anything (a link, a
+    // restored page), the page said «ما عندك خدمة لسا» of services it had
+    // not asked for. It reads them itself.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final dashboard = context.read<ProviderDashboardProvider>();
+      if (dashboard.profile == null && !dashboard.isLoading) {
+        dashboard.loadDashboard();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final now = widget.now;
     final dashboard = context.watch<ProviderDashboardProvider>();
     final services = dashboard.services;
     final packages = dashboard.packages;

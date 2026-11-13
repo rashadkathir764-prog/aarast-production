@@ -1141,20 +1141,22 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// Every field is sent only when given: the server keeps the rest
+  /// (RA-MO-288). An empty [description] clears it.
   Future<ProviderDashboardProfile> updateProfile({
-    required String businessName,
-    required String phone,
-    required String cityId,
+    String? businessName,
+    String? phone,
+    String? cityId,
     String? description,
     String? logoUrl,
     String? coverUrl,
   }) async {
-    final normalizedPhone = _normalizePhone(phone);
+    final normalizedPhone = phone == null ? null : _normalizePhone(phone);
     final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
-      'businessName': businessName.trim(),
-      'phone': normalizedPhone,
-      'cityId': cityId.trim(),
-      'description': description?.trim(),
+      'businessName': ?businessName?.trim(),
+      'phone': ?normalizedPhone,
+      'cityId': ?cityId?.trim(),
+      'description': ?description?.trim(),
       if (logoUrl != null) 'logoUrl': logoUrl.trim(),
       if (coverUrl != null) 'coverUrl': coverUrl.trim(),
     });
@@ -1403,13 +1405,17 @@ class ProviderDashboardApi {
       '/api/v1/provider/me/quote-offers/$quoteOfferId',
       {
         'message': message.trim(),
-        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+        // RA-MO-289: an edit says what the offer is now. A title taken
+        // off, and «بدون» for the delivery, were left out of the request,
+        // so the server kept the old ones and the provider read «تعدّل
+        // العرض» over a promise he had removed. Both go as null.
+        'title': title == null || title.trim().isEmpty ? null : title.trim(),
         'amount': amount.trim(),
         'currency': currency.trim().toUpperCase(),
         if (validUntil != null)
           'validUntil': validUntil.toUtc().toIso8601String(),
         if (lines != null) 'lines': [for (final line in lines) line.toJson()],
-        'deliveryDays': ?deliveryDays,
+        'deliveryDays': deliveryDays,
       },
     );
     return QuoteOffer.fromJson(json);

@@ -58,11 +58,19 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      final dashboard = context.read<ProviderDashboardProvider>();
+      // RA-MO-300: a link straight to the offer reads the requests first,
+      // as the request page does; it showed an error until «إعادة».
+      if (!dashboard.isLoading &&
+          !dashboard.quoteRequests.any((quote) => quote.id == widget.quoteId)) {
+        await dashboard.loadDashboard();
+        if (!mounted) return;
+      }
       // Opening the offer form on a new request tells the customer it was
       // seen (D35).
-      context.read<ProviderDashboardProvider>().markQuoteViewed(widget.quoteId);
+      dashboard.markQuoteViewed(widget.quoteId);
     });
   }
 
@@ -103,6 +111,9 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
 
   void _pick(ProviderPackage? package) {
     setState(() {
+      // «مخصص» after a package: the package's name went out on an offer
+      // with another price (RA-MO-289). Leaving a package drops its name.
+      if (package == null && _packageId != null) _title = null;
       _packageId = package?.id;
       if (package == null) return;
       _title = package.title.trim();
@@ -437,6 +448,34 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                 widget.message,
                 style: JourneyType.of(JourneyType.body, height: 1.5),
               ),
+              // RA-MO-289: «كذا يوصل» left out what the price covers and
+              // the delivery promise, both of which the customer receives.
+              for (final line in widget.lines)
+                Padding(
+                  key: ValueKey('provider-offer-preview-line-${line.label}'),
+                  padding: const EdgeInsets.only(top: AarastV3Space.x1),
+                  child: Text(
+                    [
+                      line.isExcluded
+                          ? 'ما يشمل: ${line.label}'
+                          : line.isExtra
+                          ? 'إضافة: ${line.label}'
+                          : line.label,
+                      if (line.amount case final price?)
+                        providerMoneyLabel(price, currency),
+                    ].join(' · '),
+                    style: JourneyType.of(JourneyType.bodySmall),
+                  ),
+                ),
+              if (widget.deliveryDays case final days?)
+                Padding(
+                  key: const ValueKey('provider-offer-preview-delivery'),
+                  padding: const EdgeInsets.only(top: AarastV3Space.x1),
+                  child: Text(
+                    'التسليم خلال $days يوم بعد العرس',
+                    style: JourneyType.of(JourneyType.bodySmall),
+                  ),
+                ),
               if (until != null) ...[
                 const SizedBox(height: AarastV3Space.x2),
                 Row(
@@ -510,7 +549,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
           )
         : await dashboard.updateQuoteOffer(
             quoteOfferId: existing.id,
-            title: widget.title ?? existing.title,
+            title: widget.title,
             message: widget.message,
             amount: widget.amount,
             currency: currency,

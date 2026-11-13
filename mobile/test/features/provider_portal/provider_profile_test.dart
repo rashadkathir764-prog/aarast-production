@@ -634,7 +634,10 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('provider-listing-save')));
       await tester.pumpAndSettle();
-      expect(api.updated, ['pkg-1:صور فقط:400000']);
+      // RA-MO-288: only the price was edited, so only the price goes; the
+      // name was sent with it as the phone had read it, which let a save
+      // from an old copy undo a rename made elsewhere.
+      expect(api.updated, ['pkg-1:null:400000']);
       expect(find.text('عدّل الباقة'), findsNothing);
     });
   });

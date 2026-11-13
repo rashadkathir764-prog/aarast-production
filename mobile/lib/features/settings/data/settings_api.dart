@@ -35,8 +35,21 @@ class SettingsApi {
   }
 
   Future<UserSettings> updateSettings(UserSettings settings) async {
-    final cached = await _reads.cachedBlob(_settingsKey) ?? const {};
-    final payload = settings.toUpdateJson();
+    final read = await _reads.cachedBlob(_settingsKey);
+    final cached = read ?? const <String, dynamic>{};
+    final whole = settings.toUpdateJson();
+    // RA-MO-288: one switch saved all three as the phone had read them:
+    // the provider's «رسائل العملاء» switch took back a reminder switch
+    // changed from the couple's settings on another phone, and the
+    // reverse. A save sends the switches that differ from the phone's
+    // copy (what it last read, or last saved); the server keeps the rest.
+    final payload = read == null
+        ? whole
+        : <String, dynamic>{
+            for (final entry in whole.entries)
+              if (cached[entry.key] != entry.value) entry.key: entry.value,
+          };
+    if (payload.isEmpty) return settings;
     final json = await _writes.queued(
       entityType: 'user_settings',
       operation: 'update',

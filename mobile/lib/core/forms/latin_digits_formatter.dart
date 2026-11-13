@@ -12,6 +12,20 @@ int? latinDigitOf(int rune) {
   return null;
 }
 
+/// An amount as the person typed it, in the shape the server reads: Arabic
+/// keyboard digits as 0-9, and no thousands separator («,» or the Arabic
+/// «٬»). For a money field that keeps what was typed and checks it on
+/// save, where [LatinDigitsFormatter] would hide the mistake instead of
+/// naming it (RA-MO-301).
+String typedAmount(String input) {
+  final buffer = StringBuffer();
+  for (final rune in input.trim().runes) {
+    if (rune == 0x2C || rune == 0x066C) continue;
+    buffer.writeCharCode(latinDigitOf(rune) ?? rune);
+  }
+  return buffer.toString();
+}
+
 /// A field of digits (a code, a count, a price) that takes the digits an
 /// Arabic keyboard types. `FilteringTextInputFormatter.digitsOnly` keeps
 /// 0-9 only, so «٥٠٠٠٠٠» or a WhatsApp code typed in Arabic digits vanished

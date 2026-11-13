@@ -243,6 +243,25 @@ void main() {
       );
       expect(client.lastBody?['validUntil'], '2026-11-03T09:00:00.000Z');
     });
+
+    // RA-MO-289 (batch 9): a title taken off and «بدون» for the delivery
+    // were left out of the request, so the server kept the old ones.
+    test(
+      'an offer edit says what was taken off: no title, no delivery',
+      () async {
+        final client = _RecordingClient();
+        await ProviderDashboardApi(client).updateQuoteOffer(
+          quoteOfferId: 'offer-1',
+          message: 'عرض',
+          amount: '100',
+          currency: 'YER',
+        );
+        expect(client.lastBody!.containsKey('title'), isTrue);
+        expect(client.lastBody!['title'], isNull);
+        expect(client.lastBody!.containsKey('deliveryDays'), isTrue);
+        expect(client.lastBody!['deliveryDays'], isNull);
+      },
+    );
   });
 
   testWidgets('a cancelled booking carries the reason typed', (tester) async {
@@ -647,6 +666,15 @@ class _RecordingClient extends ApiClient {
 
   @override
   Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    lastBody = body;
+    return {'id': 'offer-1', 'status': 'PENDING'};
+  }
+
+  @override
+  Future<Map<String, dynamic>> patchJson(
     String path,
     Map<String, dynamic> body,
   ) async {

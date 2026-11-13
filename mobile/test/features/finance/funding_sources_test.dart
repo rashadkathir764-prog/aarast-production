@@ -8,6 +8,7 @@ import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/finance/screens/funding_sources_screen.dart';
@@ -276,6 +277,38 @@ void main() {
 
     // «الوالد» is promised: its own sheet asks whether it arrived.
     expect(find.byKey(const ValueKey('pledge-confirm')), findsOneWidget);
+  });
+
+  // RA-MO-310: the money tab's link opened the source's sheet even for a
+  // plan in the memories, whose rows open nothing (D112, Q-21).
+  testWidgets('a source link in a memory shows the list and opens nothing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<FundingProvider>.value(
+            value: FundingProvider(_FakeFundingApi()),
+          ),
+          ChangeNotifierProvider<FinanceProvider?>.value(
+            value: _MemoryFinance(),
+          ),
+        ],
+        child: const MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: FundingSourcesScreen(
+              weddingPlanId: 'plan-1',
+              openSourceId: 'source-0',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('الوالد'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pledge-confirm')), findsNothing);
   });
 
   testWidgets('promised money that arrived moves to received (x08)', (
@@ -884,4 +917,16 @@ class _RecordingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// The owner reading a plan in the memories (D112, Q-21), its money read.
+class _MemoryFinance extends FinanceProvider {
+  _MemoryFinance()
+    : super(FinanceApi(ApiClient(tokenProvider: () async => null)));
+
+  @override
+  String? get loadedPlanId => 'plan-1';
+
+  @override
+  bool get ownerReadsOnly => true;
 }

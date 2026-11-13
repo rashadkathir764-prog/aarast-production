@@ -61,6 +61,14 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     final id = widget.openSourceId;
     if (!mounted || id == null || _openedRequested) return;
     _openedRequested = true;
+    // RA-MO-310: a link with `?source=` opened the source's sheet even for a
+    // plan in the memories, whose rows open nothing (D112, Q-21); the save
+    // was then refused after the typing. The link now only shows the list.
+    if (finance != null &&
+        finance.loadedPlanId == widget.weddingPlanId &&
+        finance.ownerReadsOnly) {
+      return;
+    }
     final source = funding.sourceById(id);
     if (source != null) await _openSource(source);
   }

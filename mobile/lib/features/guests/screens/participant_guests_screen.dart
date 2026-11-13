@@ -121,28 +121,20 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
           )
         else ...[
           JourneySectionTitle(words.allGuests, action: '${view.guestsTotal}'),
-          JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
-            child: Column(
-              children: [
-                for (final (index, guest) in view.guests.indexed) ...[
-                  if (index > 0)
-                    const Divider(
-                      height: 1,
-                      indent: 58,
-                      endIndent: 14,
-                      color: AarastV3Color.line,
-                    ),
-                  _GuestLine(
-                    key: ValueKey('participant-guest-${guest.id}'),
-                    guest: guest,
-                    voice: voice,
-                    index: index,
-                  ),
-                ],
-              ],
+          // RA-MO-235: one box slice per guest, each its own child of the
+          // page's list, so only the guests on screen are built and laid out
+          // (one box holding all of them built up to 5000 rows at once).
+          for (final (index, guest) in view.guests.indexed)
+            _GuestSlice(
+              first: index == 0,
+              last: index == view.guests.length - 1,
+              child: _GuestLine(
+                key: ValueKey('participant-guest-${guest.id}'),
+                guest: guest,
+                voice: voice,
+                index: index,
+              ),
             ),
-          ),
         ],
       ]);
     }
@@ -170,6 +162,53 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
             ),
             const SizedBox(height: AarastV3Space.x3),
             ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One row's share of the guests' box: the box's fill, its rounded top on
+/// the first row and bottom on the last, a line between rows.
+class _GuestSlice extends StatelessWidget {
+  const _GuestSlice({
+    required this.first,
+    required this.last,
+    required this.child,
+  });
+
+  final bool first;
+  final bool last;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = Radius.circular(AarastV3Radius.card);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.vertical(
+          top: first ? radius : Radius.zero,
+          bottom: last ? radius : Radius.zero,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: first ? AarastV3Space.x1 : 0,
+          bottom: last ? AarastV3Space.x1 : 0,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!first)
+              const Divider(
+                height: 1,
+                indent: 58,
+                endIndent: 14,
+                color: AarastV3Color.line,
+              ),
+            child,
           ],
         ),
       ),

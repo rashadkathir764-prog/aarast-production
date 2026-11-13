@@ -139,13 +139,22 @@ class FinanceApi extends _FinanceApiCore
     required String settled,
     DateTime? remainingDueDate,
   }) async {
-    // A write is sent once with its request id (retries reconcile).
-    final json = await _mutation('POST', '/api/v1/wedding-plans/$planId/mahr', {
-      'total': total,
-      'settled': settled,
-      if (remainingDueDate != null)
-        'remainingDueDate': planDayToJson(remainingDueDate),
-    }).send();
+    // A write is sent once with its request id (retries reconcile). The
+    // server files it and answers with the whole money picture, so it does
+    // not wait on the phone; without the network the failure says why
+    // (RA-MO-173, D85).
+    final json = await OfflineWrites(_apiClient, _offline).serverOnly(
+      reason: 'المهر يحسبه الخادم مع مالك كله، فيحتاج النت.',
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$planId/mahr',
+      body: {
+        'total': total,
+        'settled': settled,
+        if (remainingDueDate != null)
+          'remainingDueDate': planDayToJson(remainingDueDate),
+      },
+      clientRequestId: _uuidV4(),
+    );
     final summary = MoneySummary.fromJson(json);
     await _cacheSummary(summary, planId);
     return summary;

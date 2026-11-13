@@ -992,6 +992,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         return false;
       }
       var refreshed = true;
+      // RA-MO-177: a read the phone's copy answered means no network: the
+      // write waits on the phone, and is said so, not as «انحفظ».
+      final served = OfflineReads.copiesServed;
       if (refresh != null) {
         // Only this refresh's read counts, not an older failed one.
         _loadErrorMessage = null;
@@ -1006,13 +1009,16 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       // Another plan (or no session) is on screen now: the save stands, but
       // its notices belong to a view that is gone.
       if (isSessionDisposed || _loadedPlanId != planId) return true;
-      if (!refreshed) {
+      if (_isLocalPlan(planId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (OfflineReads.copiesServed > served) {
+        _loadErrorMessage = null;
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      } else if (!refreshed) {
         // The save went through: the notice says the view is old, so the
         // read failure is not shown a second time.
         _loadErrorMessage = null;
         _noticeMessage = savedButStaleMessage;
-      } else if (_isLocalPlan(planId)) {
-        _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
       return true;
     } finally {

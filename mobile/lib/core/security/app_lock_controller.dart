@@ -111,12 +111,24 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
   /// tried while still waiting, which is not even checked).
   Future<bool> unlock(String code) async {
     if (!_locked) return true;
+    return _check(code, unlocking: true);
+  }
+
+  /// RA-MO-156: the code asked again before it is changed or taken off, so
+  /// an unlocked phone in another hand cannot drop the lock. Wrong codes
+  /// count and wait as at the lock screen.
+  Future<bool> confirmCode(String code) async {
+    if (!_enabled) return true;
+    return _check(code, unlocking: false);
+  }
+
+  Future<bool> _check(String code, {required bool unlocking}) async {
     if (waitRemaining > Duration.zero) return false;
     final salt = await _vault.read(_saltKey);
     final hash = await _vault.read(_hashKey);
     if (salt != null && hash != null && _digest(salt, code) == hash) {
       await _clearFailures();
-      _locked = false;
+      if (unlocking) _locked = false;
       notifyListeners();
       return true;
     }

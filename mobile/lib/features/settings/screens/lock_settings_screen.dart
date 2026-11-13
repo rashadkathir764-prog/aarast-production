@@ -28,6 +28,11 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
   String? _first;
   bool _mismatch = false;
 
+  /// RA-MO-156: what waits for the current code (change it, or take the
+  /// lock off); null when nothing does.
+  _AfterCode? _confirming;
+  bool _wrongCode = false;
+
   @override
   Widget build(BuildContext context) {
     AppLockController? lock;
@@ -51,6 +56,54 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           JourneyType.bodyLarge,
           color: AarastV3Color.onPrimary,
         ),
+      );
+    } else if (_confirming case final action?) {
+      final wait = controller.waitRemaining;
+      body = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            context.say('اكتب رمزك الحالي', 'اكتبي رمزك الحالي'),
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.title,
+              weight: JourneyType.bold,
+              color: AarastV3Color.onPrimary,
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x1),
+          Text(
+            wait > Duration.zero
+                ? 'جرّب بعد ${wait.inSeconds + 1} ثانية.'
+                : _wrongCode
+                ? 'الرمز غلط.'
+                : action == _AfterCode.turnOff
+                ? 'عشان نتأكد إنك صاحب الجوال قبل ما نشيل القفل.'
+                : 'عشان نتأكد إنك صاحب الجوال قبل ما نغيّره.',
+            key: const Key('lock-confirm-line'),
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.small,
+              color: context.accent.onPrimaryMuted,
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x5),
+          AppLockCodePad(
+            key: ValueKey('confirm-$_wrongCode'),
+            dark: true,
+            onCompleted: (code) => _confirmed(controller, action, code),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyTextAction(
+            key: const Key('lock-confirm-cancel'),
+            label: 'رجوع',
+            color: AarastV3Color.onPrimary,
+            onPressed: () => setState(() {
+              _confirming = null;
+              _wrongCode = false;
+            }),
+          ),
+        ],
       );
     } else if (choosing) {
       body = Column(
@@ -133,9 +186,8 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             foreground: context.accent.primary,
             expand: true,
             onPressed: () => setState(() {
-              _choosing = true;
-              _first = null;
-              _mismatch = false;
+              _confirming = _AfterCode.change;
+              _wrongCode = false;
             }),
           ),
           const SizedBox(height: AarastV3Space.x2),
@@ -144,7 +196,10 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               key: const Key('lock-turn-off'),
               label: context.say('شيل القفل', 'شيلي القفل'),
               color: AarastV3Color.onPrimary,
-              onPressed: () => _turnOff(controller),
+              onPressed: () => setState(() {
+                _confirming = _AfterCode.turnOff;
+                _wrongCode = false;
+              }),
             ),
           ),
         ],
@@ -205,6 +260,33 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
     AarastToast.showSuccess(context, 'انقفل التطبيق برمزك.');
   }
 
+  Future<void> _confirmed(
+    AppLockController lock,
+    _AfterCode action,
+    String code,
+  ) async {
+    final ok = await lock.confirmCode(code);
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _wrongCode = true);
+      return;
+    }
+    setState(() {
+      _confirming = null;
+      _wrongCode = false;
+    });
+    switch (action) {
+      case _AfterCode.change:
+        setState(() {
+          _choosing = true;
+          _first = null;
+          _mismatch = false;
+        });
+      case _AfterCode.turnOff:
+        await _turnOff(lock);
+    }
+  }
+
   Future<void> _turnOff(AppLockController lock) async {
     await lock.disable();
     if (!mounted) return;
@@ -221,3 +303,6 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
     }
   }
 }
+
+/// What the current code is asked for (RA-MO-156).
+enum _AfterCode { change, turnOff }

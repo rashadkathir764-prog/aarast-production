@@ -267,9 +267,65 @@ void main() {
     expect(lock.isEnabled, isTrue);
     expect(find.text('التطبيق مقفول برمزك'), findsOneWidget);
 
+    // RA-MO-156 (2026-11-13): taking the lock off asks the code first; a
+    // single tap took it off for whoever held the unlocked phone.
     await tester.tap(find.byKey(const Key('lock-turn-off')));
     await tester.pumpAndSettle();
+    expect(find.text('اكتب رمزك الحالي'), findsOneWidget);
+    for (final digit in ['0', '0', '0', '0']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('الرمز غلط.'), findsOneWidget);
+    expect(lock.isEnabled, isTrue);
+
+    for (final digit in ['1', '9', '7', '3']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
     expect(lock.isEnabled, isFalse);
+  });
+
+  testWidgets('changing the code asks the current one first', (tester) async {
+    final lock = controller();
+    await lock.load();
+    await lock.setCode('2580');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider.value(
+          value: lock,
+          child: const LockSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('lock-change-code')));
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب رمزك الحالي'), findsOneWidget);
+    expect(find.text('اختر رمز من 4 أرقام'), findsNothing);
+
+    for (final digit in ['2', '5', '8', '0']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('اختر رمز من 4 أرقام'), findsOneWidget);
+  });
+
+  test('wrong codes asked before a change count and wait too', () async {
+    final lock = controller();
+    await lock.load();
+    await lock.setCode('2580');
+    for (var attempt = 0; attempt < 5; attempt += 1) {
+      expect(await lock.confirmCode('0000'), isFalse);
+    }
+    expect(lock.waitRemaining, const Duration(seconds: 30));
+    expect(await lock.confirmCode('2580'), isFalse);
+    // Confirming never locks or unlocks the app.
+    expect(lock.isLocked, isFalse);
   });
 
   testWidgets('g08 starts over when the second code differs', (tester) async {

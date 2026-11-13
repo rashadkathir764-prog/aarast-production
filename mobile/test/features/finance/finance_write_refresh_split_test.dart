@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/cache_policy.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
@@ -72,6 +74,20 @@ void main() {
     expect(provider.errorMessage, 'المبلغ أكبر من المتبقي.');
     // Money was read fine: no «old copy» notice follows a failed save.
     expect(provider.loadErrorMessage, isNull);
+  });
+
+  // RA-MO-177: with no network the write waits on the phone; it said
+  // «انحفظت الدفعة» as if it had reached the server.
+  test('a save made with no network says it waits on the phone', () async {
+    api.readsFromCopy = true;
+
+    await provider.recordPayment(cost: api.cost, amount: '100');
+
+    expect(provider.noticeMessage, CachePolicy.offlineWriteMessage);
+    expect(
+      provider.savedMessage('انحفظت الدفعة'),
+      CachePolicy.offlineWriteMessage,
+    );
   });
 
   test('a confirmed save with a failed refresh says so once', () async {
@@ -223,10 +239,14 @@ class _WriteThenReadFinanceApi extends FinanceApi {
     updatedAt: DateTime.utc(2026, 7, 11),
   );
 
+  /// The reads are answered from the phone's copy (no network).
+  bool readsFromCopy = false;
+
   void _readGate() {
     if (failReads) {
       throw const ApiException('تعذر تحميل المال.', statusCode: 500);
     }
+    if (readsFromCopy) OfflineReads.noteCopyServed();
   }
 
   @override

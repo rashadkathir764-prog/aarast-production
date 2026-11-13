@@ -1055,6 +1055,30 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   Future<void> _reloadData(String planId) async {
     final generation = _loadGeneration;
+    // RA-MO-179: a save re-read the first page only, and every agreement
+    // and payment past the first 30 left the lists until a full read. The
+    // pages read before are read again.
+    final costPagesBefore = _costsPage;
+    final paymentPagesBefore = _paymentsPage;
+    await _reloadFirstPages(planId, generation);
+    if (!_isCurrent(generation) || _loadedPlanId != planId) return;
+    while (_costsPage < costPagesBefore &&
+        hasMoreCosts &&
+        !_isLoadingMoreCosts) {
+      final before = _costsPage;
+      await loadMoreCosts();
+      if (_costsPage == before) break;
+    }
+    while (_paymentsPage < paymentPagesBefore &&
+        hasMorePayments &&
+        !_isLoadingMorePayments) {
+      final before = _paymentsPage;
+      await loadMorePayments();
+      if (_paymentsPage == before) break;
+    }
+  }
+
+  Future<void> _reloadFirstPages(String planId, int generation) async {
     final costRequest = ++_costRequestGeneration;
     final paymentRequest = ++_paymentRequestGeneration;
     final results = await Future.wait<Object>([

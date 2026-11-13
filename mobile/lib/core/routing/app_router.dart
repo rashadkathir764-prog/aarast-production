@@ -665,8 +665,11 @@ class RouterErrorScreen extends StatelessWidget {
               children: [
                 const Icon(LucideIcons.navigation, size: 52),
                 const SizedBox(height: AarastV3Space.x4),
+                // RA-MO-123: a newcomer reaches this from a broken invite
+                // link; it says what happened in plain words, to anyone,
+                // without the address a programmer reads.
                 const Text(
-                  'صار خطأ وإحنا ننقلك للصفحة.',
+                  'هذا الرابط ما يفتح صفحة عندنا.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: JourneyType.pageTitle,
@@ -675,24 +678,15 @@ class RouterErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AarastV3Space.x2),
                 const Text(
-                  'ما غيّرنا شي في حسابك. ارجع لاختيار المسار وجرّب مرة ثانية.',
+                  'يمكن انقطع وهو ينرسل. ما تغيّر شي في حسابك، والبداية من هنا.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AarastV3Space.x5),
                 FilledButton(
                   key: const Key('router-error-home-button'),
                   onPressed: () => context.go(AppRouter.home),
-                  child: const Text('العودة إلى اختيار المسار'),
+                  child: const Text('الصفحة الأولى'),
                 ),
-                if (location.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AarastV3Space.x3),
-                    child: Text(
-                      'المسار: $location',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
               ],
             ),
           ),

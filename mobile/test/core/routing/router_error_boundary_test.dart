@@ -18,6 +18,9 @@ void main() {
 
     expect(find.byKey(const Key('router-error-boundary')), findsOneWidget);
     expect(find.text('ما قدرنا نفتح الصفحة'), findsOneWidget);
+    // RA-MO-123: plain words, no address a programmer reads.
+    expect(find.text('هذا الرابط ما يفتح صفحة عندنا.'), findsOneWidget);
+    expect(find.textContaining('المسار'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

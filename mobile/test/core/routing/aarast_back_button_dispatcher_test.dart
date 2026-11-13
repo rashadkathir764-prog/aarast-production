@@ -50,6 +50,25 @@ void main() {
     expect(transitions.first.attributes['currentRoute'], AppRouter.home);
   });
 
+  // RA-MO-120: the code page lives on what it was opened with; back from
+  // «نسيت كلمة المرور» reopened it empty by its address.
+  testWidgets('back from the password reset skips the code page', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go(AppRouter.otp);
+    await tester.pumpAndSettle();
+    harness.router.go('${AppRouter.resetPassword}?phone=777123456');
+    await tester.pumpAndSettle();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, isNot(AppRouter.otp));
+  });
+
   testWidgets('ordinary pushed routes still pop through Navigator', (
     tester,
   ) async {
@@ -359,6 +378,12 @@ class _RouterHarness {
             path: '/wedding-plans/:id/money/costs/create',
             builder: (context, state) => const _Screen('create cost'),
           ),
+          for (final path in [
+            AppRouter.login,
+            AppRouter.otp,
+            AppRouter.resetPassword,
+          ])
+            GoRoute(path: path, builder: (context, state) => _Screen(path)),
         ],
       ) {
     dispatcher = AarastBackButtonDispatcher(router, keptOnPhone: keptOnPhone);

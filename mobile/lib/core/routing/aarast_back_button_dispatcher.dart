@@ -53,7 +53,8 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
     while (_history.isNotEmpty) {
       final previous = _history.removeLast();
       if (previous.contextKey != _currentContextKey ||
-          previous.location == _currentLocation) {
+          previous.location == _currentLocation ||
+          !_restorableByLocation(previous.location)) {
         continue;
       }
       _restoringHistory = true;
@@ -103,6 +104,12 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
     listenable.addListener(_handleContextChanged);
   }
 
+  /// RA-MO-120: the code page lives on what it was opened with (its number,
+  /// its purpose), not on its address; gone back to by the address alone it
+  /// opened empty, and its check was refused with a general message.
+  static bool _restorableByLocation(String location) =>
+      Uri.tryParse(location)?.path != AppRouter.otp;
+
   @visibleForTesting
   static String? fallbackLocationFor(Uri uri) {
     final path = uri.path;
@@ -114,6 +121,8 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
         path == AppRouter.onboarding) {
       return AppRouter.welcome;
     }
+    // «نسيت كلمة المرور» goes back to signing in, as its own arrow does.
+    if (path == AppRouter.resetPassword) return AppRouter.login;
 
     if (path == AppRouter.providerProfileEdit ||
         path == AppRouter.providerServiceNew ||

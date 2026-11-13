@@ -13,6 +13,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
@@ -462,9 +463,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   /// does not; it came back as it was, a plan dated in the past).
   bool _restore(GuestOnboardingDraft draft) {
     final kept = draft.weddingDate;
-    final dayPassed =
-        kept != null &&
-        DateUtils.dateOnly(kept).isBefore(DateUtils.dateOnly(appNow()));
+    // D11: today in Sana'a, as every day of the plan is counted.
+    final dayPassed = kept != null && daysUntilPlanDay(kept) < 0;
     final name = draft.planName?.trim() ?? '';
     _nameController.text = name.startsWith('عرس ') ? name.substring(4) : name;
     _budgetController.text = formatMoneyInputValue(draft.estimatedBudget);

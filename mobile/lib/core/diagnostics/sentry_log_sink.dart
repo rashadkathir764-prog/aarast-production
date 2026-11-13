@@ -36,6 +36,13 @@ final class SentryAppLogSink implements AppLogSink {
     unawaited(_ignoreTransportFailure(_addBreadcrumb(safeEvent)));
   }
 
+  /// RA-MO-102 (D63, w40): the reporter's performance traces ask the switch
+  /// too; turned off while the app runs, none leaves.
+  SentryTransaction? beforeSendTransaction(
+    SentryTransaction transaction,
+    Hint hint,
+  ) => CrashReportSwitch.enabled ? transaction : null;
+
   /// Defense-in-depth scrubber for automatic SDK events.
   ///
   /// This must be assigned to [SentryOptions.beforeSend] during initialization.

@@ -74,7 +74,12 @@ class DevicePreferences extends ChangeNotifier {
   Future<void> setHideAmounts(bool value) => _set(_hideAmountsKey, value);
 
   /// D63 (w40): crash and error reports leave this phone (on by default).
-  bool get crashReports => _preferences.getBool(_crashReportsKey) ?? true;
+  bool get crashReports => storedCrashReports(_preferences);
+
+  /// The same choice, read before the app's preferences exist: the error
+  /// reporter starts first (RA-MO-102).
+  static bool storedCrashReports(SharedPreferences preferences) =>
+      preferences.getBool(_crashReportsKey) ?? true;
 
   Future<void> setCrashReports(bool value) async {
     CrashReportSwitch.set(value);

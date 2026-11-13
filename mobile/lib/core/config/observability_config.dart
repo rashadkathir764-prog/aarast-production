@@ -46,6 +46,7 @@ class ObservabilityConfig {
   void applyTo(
     SentryFlutterOptions options, {
     BeforeSendCallback? beforeSend,
+    BeforeSendTransactionCallback? beforeSendTransaction,
     BeforeBreadcrumbCallback? beforeBreadcrumb,
   }) {
     options
@@ -66,6 +67,7 @@ class ObservabilityConfig {
       ..enableUserInteractionBreadcrumbs = false
       ..enableUserInteractionTracing = false
       ..beforeSend = beforeSend
+      ..beforeSendTransaction = beforeSendTransaction
       ..beforeBreadcrumb = beforeBreadcrumb;
 
     options.replay

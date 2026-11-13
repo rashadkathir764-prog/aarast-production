@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
+import 'package:aarast_mobile/core/diagnostics/crash_report_switch.dart';
 import 'package:aarast_mobile/core/diagnostics/sentry_log_sink.dart';
+import 'package:aarast_mobile/core/preferences/device_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('SentryAppLogSink', () {
@@ -151,6 +154,44 @@ void main() {
       expect(payload, isNot(contains('header-secret')));
       expect(payload, isNot(contains('+967777123456')));
     });
+
+    // RA-MO-102 (D63, w40): the reporter's performance traces never asked
+    // the phone's switch.
+    test('performance traces stay on the phone while reports are off', () {
+      addTearDown(() => CrashReportSwitch.set(true));
+      final transaction = _FakeTransaction();
+
+      CrashReportSwitch.set(false);
+      expect(sink.beforeSendTransaction(transaction, Hint()), isNull);
+      CrashReportSwitch.set(true);
+      expect(
+        sink.beforeSendTransaction(transaction, Hint()),
+        same(transaction),
+      );
+    });
+  });
+
+  // RA-MO-102: the reporter starts before the app's preferences; the choice
+  // is read from the same place first.
+  test('the stored choice is read before the preferences exist', () async {
+    SharedPreferences.setMockInitialValues({});
+    expect(
+      DevicePreferences.storedCrashReports(
+        await SharedPreferences.getInstance(),
+      ),
+      isTrue,
+    );
+    final preferences = DevicePreferences(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(() => CrashReportSwitch.set(true));
+    await preferences.setCrashReports(false);
+    expect(
+      DevicePreferences.storedCrashReports(
+        await SharedPreferences.getInstance(),
+      ),
+      isFalse,
+    );
   });
 }
 
@@ -170,3 +211,6 @@ final class _FakeSentryLogTransport implements SentryLogTransport {
     breadcrumbs.add(breadcrumb);
   }
 }
+
+/// A performance trace; the switch only decides whether it leaves.
+class _FakeTransaction extends Fake implements SentryTransaction {}

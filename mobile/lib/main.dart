@@ -12,6 +12,7 @@ import 'app.dart';
 import 'core/config/api_config.dart';
 import 'core/config/observability_config.dart';
 import 'core/diagnostics/app_logger.dart';
+import 'core/diagnostics/crash_report_switch.dart';
 import 'core/diagnostics/diagnostic_report_sender.dart';
 import 'core/diagnostics/sentry_log_sink.dart';
 import 'core/forms/aarast_form_draft_store.dart';
@@ -92,10 +93,24 @@ Future<void> main() async {
     return;
   }
 
+  // RA-MO-102 (D63, w40): the phone's choice is read before the reporter
+  // starts. It used to start first with the switch on, so a crash while the
+  // app opened was sent from a phone that had said no, and the reporter's
+  // own native crash and performance reports never asked the switch. Off,
+  // the reporter is not started at all; turned on, it starts next time.
+  SentryWidgetsFlutterBinding.ensureInitialized();
+  final stored = await SharedPreferences.getInstance();
+  CrashReportSwitch.set(DevicePreferences.storedCrashReports(stored));
+  if (!CrashReportSwitch.enabled) {
+    await appRunner();
+    return;
+  }
+
   await SentryFlutter.init(
     (options) => observability.applyTo(
       options,
       beforeSend: bootstrapSentrySink.beforeSend,
+      beforeSendTransaction: bootstrapSentrySink.beforeSendTransaction,
       beforeBreadcrumb: bootstrapSentrySink.beforeBreadcrumb,
     ),
     appRunner: appRunner,

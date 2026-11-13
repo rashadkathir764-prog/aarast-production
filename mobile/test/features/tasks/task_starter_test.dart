@@ -229,6 +229,27 @@ void main() {
     );
   });
 
+  // RA-MO-206: past ten the count takes the singular («12 مهمة»).
+  test('a partial failure of many counts them in good Arabic', () async {
+    final api = _StarterApi()..failAfter = 1;
+    final provider = TaskTimelineProvider(api);
+    await provider.load('plan-1');
+
+    await provider.addStarterTasks(
+      weddingPlanId: 'plan-1',
+      templates: [
+        for (var i = 0; i < 12; i++)
+          TaskStarterTemplate(key: 'k$i', title: 'مهمة $i', daysBefore: null),
+      ],
+      weddingDate: null,
+    );
+
+    expect(
+      provider.errorMessage,
+      'انضافت 1 من 12 مهمة، وما قدرنا نحفظ الباقي: انقطع الاتصال.',
+    );
+  });
+
   testWidgets('the sheet preselects recommended tasks and marks added ones', (
     tester,
   ) async {

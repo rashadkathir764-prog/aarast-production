@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_for.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_checklist_item.dart';
@@ -185,7 +186,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظت المهمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انحفظت المهمة الحين.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -211,7 +212,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
         .where((item) => existing.add(taskStarterTitleKey(item.title)))
         .toList(growable: false);
     if (pending.isEmpty) {
-      _noticeMessage = 'كل المهام المختارة موجودة في خطتك بالفعل.';
+      _noticeMessage = 'كل المهام اللي اخترتها موجودة في الخطة من قبل.';
       notifyListeners();
       return 0;
     }
@@ -259,7 +260,9 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       if (failure != null) {
         _errorMessage = added == 0
             ? failure
-            : 'انضافت $added من ${pending.length} مهام، وما قدرنا نحفظ الباقي: $failure';
+            : 'انضافت $added من ${pending.length} '
+                  '${arabicCountWord(pending.length, one: 'مهمة', two: 'مهمة', few: 'مهام', many: 'مهمة')}'
+                  '، وما قدرنا نحفظ الباقي: $failure';
       } else if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       } else if (queuedOffline) {
@@ -295,7 +298,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نشارك المهمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نشارك المهمة الحين.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -326,7 +329,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نربط المهمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نربط المهمة الحين.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -378,7 +381,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } catch (_) {
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
-        _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
+        _errorMessage = 'ما انحفظ التغيير الحين.';
       }
       return false;
     } finally {
@@ -536,7 +539,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } catch (_) {
       _replaceTask(previousTask);
-      _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انحفظ التغيير الحين.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -616,7 +619,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحذفت المهمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انحذفت المهمة الحين.';
       return false;
     } finally {
       _isSubmitting = false;

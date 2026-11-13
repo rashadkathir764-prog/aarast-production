@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/whatsapp_share.dart';
 import 'aarast_bottom_sheet.dart';
 import 'aarast_toast.dart';
+import '../experience_v3/aarast_journey_profile.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
 
 /// Shows the exact text before it leaves the app, with an optional switch
@@ -21,6 +22,9 @@ Future<void> showAarastShareSheet({
     context: context,
     isScrollControlled: true,
     builder: (_) => _ShareSheet(
+      // Worded for the reader of the screen that opened it: the sheet's own
+      // route sits above that screen's plan voice.
+      sendLabel: context.say('أرسل بالواتساب', 'أرسلي بالواتساب'),
       title: title,
       buildText: buildText,
       switchLabel: switchLabel,
@@ -31,12 +35,14 @@ Future<void> showAarastShareSheet({
 
 class _ShareSheet extends StatefulWidget {
   const _ShareSheet({
+    required this.sendLabel,
     required this.title,
     required this.buildText,
     required this.switchLabel,
     required this.switchInitial,
   });
 
+  final String sendLabel;
   final String title;
   final String Function(bool switchOn) buildText;
   final String? switchLabel;
@@ -112,7 +118,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             FilledButton.icon(
               onPressed: () => _send(text),
               icon: const Icon(LucideIcons.send),
-              label: const Text('إرسال عبر واتساب'),
+              label: Text(widget.sendLabel),
             ),
           ],
         ),

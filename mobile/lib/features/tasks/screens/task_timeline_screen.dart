@@ -305,7 +305,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                 alignment: AlignmentDirectional.centerStart,
                 child: JourneyTextAction(
                   key: const ValueKey('tasks-members-retry'),
-                  label: 'جرّب مرة ثانية',
+                  label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
                   icon: LucideIcons.refreshCw,
                   color: context.accent.primary,
                   onPressed: () => context

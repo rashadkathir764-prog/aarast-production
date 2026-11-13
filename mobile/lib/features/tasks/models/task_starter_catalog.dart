@@ -100,7 +100,7 @@ List<TaskStarterGroup> taskStarterGroupsFor(
       key,
       () => (
         item.groupNameAr ?? 'مهام إضافية',
-        item.groupSubtitleAr ?? 'اختر ما يناسب خطتك.',
+        item.groupSubtitleAr ?? 'اللي يناسب خطتك منها.',
       ),
     );
     grouped

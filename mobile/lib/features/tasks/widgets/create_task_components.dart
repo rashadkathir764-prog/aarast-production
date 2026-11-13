@@ -124,7 +124,10 @@ class CreateTaskResponsibleSection extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: JourneyTextAction(
                 key: const ValueKey('task-invite-responsible'),
-                label: 'دعوته كمشارك في الخطة',
+                label: context.say(
+                  'ادعه يشارك في الخطة',
+                  'ادعيه يشارك في الخطة',
+                ),
                 icon: LucideIcons.userPlus,
                 color: context.accent.primary,
                 onPressed: onInvite,

@@ -83,7 +83,7 @@ void main() {
     expect(failure, isA<ApiException>());
     final exception = failure! as ApiException;
     expect(exception.isNetworkFailure, isTrue);
-    expect(exception.message, contains('الخطوات تنحفظ في الخادم'));
+    expect(exception.message, contains('الخطوات تحتاج نت'));
     expect(exception.message, contains('المهمة نفسها محفوظة في جوالك'));
   });
 }

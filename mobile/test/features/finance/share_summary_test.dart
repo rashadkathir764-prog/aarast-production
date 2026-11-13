@@ -313,7 +313,8 @@ void main() {
     await tester.tap(find.byKey(const Key('share-sheet-switch')));
     await tester.pumpAndSettle();
     expect(preview(), isNot(contains('مليون')));
-    expect(find.text('إرسال عبر واتساب'), findsOneWidget);
+    // RA-MO-206: in the reader's own words, not «إرسال عبر».
+    expect(find.text('أرسل بالواتساب'), findsOneWidget);
   });
 
   // D105: the cost shared is the expected cost, and the budget is held

@@ -87,7 +87,7 @@ Future<void> _openTaskStarterSheet(
   } else {
     AarastToast.showSuccess(
       context,
-      provider.noticeMessage ?? 'أُضيفت المهام المقترحة إلى خطتك',
+      provider.noticeMessage ?? 'انضافت المهام للخطة',
     );
   }
 }

@@ -32,9 +32,9 @@ class TaskTimelineApi {
   /// server's to keep (their ids and members live there); the task itself
   /// stays on the phone (D85).
   static const _stepsNeedServer =
-      'الخطوات تنحفظ في الخادم بس، والمهمة نفسها محفوظة في جوالك.';
+      'الخطوات تحتاج نت عشان تنحفظ، والمهمة نفسها محفوظة في جوالك.';
   static const _assignNeedsServer =
-      'تعيين المسؤول يتأكد من عضويته في الخطة، فيحتاج الخادم.';
+      'إعطاء المهمة لعضو يحتاج نت، عشان نتأكد إنه للحين في الخطة.';
 
   /// RA-BE-15: the server's TASK_PERSON_NAME_MAX. A name picked from the
   /// contacts is set from code and can pass the field's limit.

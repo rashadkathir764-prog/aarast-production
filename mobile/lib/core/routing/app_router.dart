@@ -590,6 +590,15 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
           ? WeddingPlanRouteAccess.viewPlan
           : WeddingPlanRouteAccess.manageProviders,
     'sharing' => WeddingPlanRouteAccess.inviteMembers,
+    // RA-MO-180: where the money comes from, and the mahr, are the owner's
+    // alone on the server; a member with money rights reached them by a link
+    // and met «أضف مصدر», then a 404.
+    'money' when segments.length > 3 && segments[3] == 'funding' =>
+      WeddingPlanRouteAccess.ownerMoney,
+    'money' when segments.length == 4 && segments[3] == 'mahr' =>
+      WeddingPlanRouteAccess.ownerManageMoney,
+    'money' when segments.length > 4 && segments[3] == 'mahr' =>
+      WeddingPlanRouteAccess.ownerMoney,
     'money' =>
       _isReadOnlyMoneyPath(segments)
           ? WeddingPlanRouteAccess.viewMoney

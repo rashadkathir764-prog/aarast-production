@@ -278,9 +278,13 @@ void main() {
       // else, so it is a write. It passed as a read, which showed the form
       // to who reads the money without managing it, and to the owner of a
       // plan in the memories. The moment after it is a read.
-      '/wedding-plans/plan-1/money/mahr': WeddingPlanRouteAccess.manageMoney,
+      // RA-MO-180: the mahr and where the money comes from are the owner's
+      // alone on the server (a member with money rights got a 404).
+      '/wedding-plans/plan-1/money/mahr':
+          WeddingPlanRouteAccess.ownerManageMoney,
       '/wedding-plans/plan-1/money/mahr/moment':
-          WeddingPlanRouteAccess.viewMoney,
+          WeddingPlanRouteAccess.ownerMoney,
+      '/wedding-plans/plan-1/money/funding': WeddingPlanRouteAccess.ownerMoney,
       '/wedding-plans/plan-1/unknown': WeddingPlanRouteAccess.unknown,
     };
 

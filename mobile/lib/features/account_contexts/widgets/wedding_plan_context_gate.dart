@@ -24,6 +24,14 @@ enum WeddingPlanRouteAccess {
   /// paid. Who manages the money, and the owner of a plan in the memories
   /// (D112, Q-21).
   settleMoney,
+
+  /// RA-MO-180: the owner's own money picture, where the money comes from
+  /// (and the mahr's moment). The server shows it to the owner alone, even
+  /// to a member with money rights; reading it.
+  ownerMoney,
+
+  /// RA-MO-180: recording the mahr, the owner's alone on the server.
+  ownerManageMoney,
   manageTasks,
   manageGuests,
   manageProviders,
@@ -92,7 +100,9 @@ class WeddingPlanContextGate extends StatelessWidget {
           active: switch (requiredAccess) {
             WeddingPlanRouteAccess.viewMoney ||
             WeddingPlanRouteAccess.manageMoney ||
-            WeddingPlanRouteAccess.settleMoney => true,
+            WeddingPlanRouteAccess.settleMoney ||
+            WeddingPlanRouteAccess.ownerMoney ||
+            WeddingPlanRouteAccess.ownerManageMoney => true,
             _ => false,
           },
           child: child,
@@ -190,6 +200,10 @@ bool accountContextAllowsPlanAccess(
     // from who manages its money by role (G15); the owner always does.
     WeddingPlanRouteAccess.settleMoney =>
       permissions.canManageMoney || selected.isOwnerMemory,
+    WeddingPlanRouteAccess.ownerMoney =>
+      selected.role == AccountContextRole.owner && permissions.canViewMoney,
+    WeddingPlanRouteAccess.ownerManageMoney =>
+      selected.role == AccountContextRole.owner && permissions.canManageMoney,
     WeddingPlanRouteAccess.manageTasks => permissions.canManageTasks,
     WeddingPlanRouteAccess.manageGuests => permissions.canManageGuests,
     WeddingPlanRouteAccess.manageProviders => permissions.canManageProviders,

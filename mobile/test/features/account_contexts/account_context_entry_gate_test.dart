@@ -96,6 +96,29 @@ void main() {
     );
   });
 
+  // RA-MO-180: where the money comes from and the mahr are the owner's alone
+  // on the server; a member with money rights reached them by a link.
+  test('the owner\'s money pages open to the owner alone', () {
+    final owner = accountContext(role: AccountContextRole.owner);
+    final json = accountContextJson(role: AccountContextRole.contributor);
+    (json['permissions'] as Map<String, dynamic>)
+      ..['canViewMoney'] = true
+      ..['canManageMoney'] = true;
+    final member = AccountContext.fromJson(json);
+
+    for (final access in [
+      WeddingPlanRouteAccess.ownerMoney,
+      WeddingPlanRouteAccess.ownerManageMoney,
+    ]) {
+      expect(accountContextAllowsPlanAccess(owner, access), isTrue);
+      expect(accountContextAllowsPlanAccess(member, access), isFalse);
+    }
+    expect(
+      accountContextAllowsPlanAccess(member, WeddingPlanRouteAccess.viewMoney),
+      isTrue,
+    );
+  });
+
   test('one provider path opens the provider dashboard directly', () async {
     final controller = await _controller([
       accountContext(role: AccountContextRole.provider),

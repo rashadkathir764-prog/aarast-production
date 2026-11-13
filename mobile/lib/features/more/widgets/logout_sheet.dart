@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/side_outboxes.dart';
 import '../../../core/offline/sync_status.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -30,7 +31,9 @@ class LogoutSheet extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, OfflineSyncService? service) {
-    final unsent = service?.unsyncedCount ?? 0;
+    // RA-MO-101: chat messages and offers wait outside the sync queue and
+    // go with the sign-out too; they are named with the rest.
+    final unsent = (service?.unsyncedCount ?? 0) + SideOutboxes.count();
     final sending = service?.state == SyncState.syncing;
     final offline = service?.state == SyncState.offline;
     return JourneySheetBody(

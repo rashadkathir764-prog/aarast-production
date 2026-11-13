@@ -21,6 +21,7 @@ import 'core/network/server_reachability.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
 import 'core/offline/pending_plan_cleanup.dart';
+import 'core/offline/side_outboxes.dart';
 import 'core/preferences/device_preferences.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
@@ -218,12 +219,19 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     registrationApi: PushRegistrationApi(apiClient),
   );
   await pushNotificationsController.initialize();
+  // RA-MO-101: «الخروج» names these waiting writes with the rest.
+  SideOutboxes.register(() => ChatOutbox.countAll(preferences));
+  SideOutboxes.register(() => ProviderOfferQueue.countAll(preferences));
   final sessionTeardownCoordinator = SessionTeardownCoordinator(
     auth: authRepository,
     push: pushNotificationsController,
     clearLocalAccountData: () async {
       await offlineSyncService.clearLocalData();
       await formDraftStore.clearAll();
+      // RA-MO-101: the chat's and the offers' waiting writes go with the
+      // rest of the account's data; they stayed and went at the next sign-in.
+      await ChatOutbox.clearAll(preferences);
+      await ProviderOfferQueue.clearAll(preferences);
     },
     clearLocalAccountDataKeepingUnsent: () async {
       await offlineSyncService.clearLocalData(keepUnsentChanges: true);

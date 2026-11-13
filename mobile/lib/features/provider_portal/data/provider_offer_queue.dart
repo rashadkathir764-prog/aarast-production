@@ -115,8 +115,29 @@ class ProviderOfferQueue {
 
   final SharedPreferences _preferences;
 
-  static String _key(String providerId) =>
-      'aarast_provider_offer_queue:$providerId';
+  static const _prefix = 'aarast_provider_offer_queue:';
+
+  static String _key(String providerId) => '$_prefix$providerId';
+
+  /// RA-MO-101: a sign-out the person chose takes the waiting offers off
+  /// the phone with the rest of the account's data.
+  static Future<void> clearAll(SharedPreferences preferences) async {
+    for (final key in preferences.getKeys().toList()) {
+      if (key.startsWith(_prefix)) await preferences.remove(key);
+    }
+  }
+
+  /// How many offers wait on this phone, for the sign-out's warning.
+  static int countAll(SharedPreferences preferences) {
+    var count = 0;
+    for (final key in preferences.getKeys()) {
+      if (!key.startsWith(_prefix)) continue;
+      count += ProviderOfferQueue(
+        preferences,
+      ).read(key.substring(_prefix.length)).length;
+    }
+    return count;
+  }
 
   List<ProviderQueuedOffer> read(String providerId) {
     final raw = _preferences.getString(_key(providerId));

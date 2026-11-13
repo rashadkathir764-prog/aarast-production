@@ -68,7 +68,30 @@ class ChatOutbox {
 
   final SharedPreferences _preferences;
 
-  static String _key(String userId) => 'aarast_chat_outbox:$userId';
+  static const _prefix = 'aarast_chat_outbox:';
+
+  static String _key(String userId) => '$_prefix$userId';
+
+  /// RA-MO-101: a sign-out the person chose takes every waiting message
+  /// off the phone, as it takes the rest of the account's data; they stayed
+  /// in plain storage and went out at the next sign-in.
+  static Future<void> clearAll(SharedPreferences preferences) async {
+    for (final key in preferences.getKeys().toList()) {
+      if (key.startsWith(_prefix)) await preferences.remove(key);
+    }
+  }
+
+  /// How many messages wait on this phone, for the sign-out's warning.
+  static int countAll(SharedPreferences preferences) {
+    var count = 0;
+    for (final key in preferences.getKeys()) {
+      if (!key.startsWith(_prefix)) continue;
+      count += ChatOutbox(
+        preferences,
+      ).read(key.substring(_prefix.length)).length;
+    }
+    return count;
+  }
 
   List<ChatOutboxMessage> read(String userId) {
     final raw = _preferences.getString(_key(userId));

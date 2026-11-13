@@ -541,6 +541,121 @@ void main() {
     );
   });
 
+  // RA-MO-239: found by looking for the defect of batches 5 and 6 in the
+  // money. Editing an agreement sent the whole agreement as the phone held
+  // it: its amount, its item, who it is with, who pays. A note corrected
+  // from a copy a little old brought back an amount the partner had changed
+  // since, with nothing said, and every figure of the plan with it. An edit
+  // sends what the person changed.
+  test('an agreement edit sends the fields that changed', () async {
+    final database = await _freshDatabase();
+    final client = _CapturingCostClient();
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+    final cost = _cost(id: 'cost-1');
+
+    await api.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: cost.title,
+      totalAmount: cost.totalAmount,
+      partyName: cost.partyName,
+      note: 'العربون نقدًا',
+    );
+    expect(client.sent.single, {'note': 'العربون نقدًا'});
+
+    client.sent.clear();
+    await api.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: 'قاعة سبأ',
+      totalAmount: '1200',
+      partyName: cost.partyName,
+    );
+    expect(client.sent.single, {'title': 'قاعة سبأ', 'totalAmount': '1200'});
+
+    // The same amount written another way is not a change.
+    client.sent.clear();
+    await api.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: cost.title,
+      totalAmount: '1000.00',
+      partyName: cost.partyName,
+      payer: 'FAMILY',
+    );
+    expect(client.sent.single, {'payer': 'FAMILY'});
+  });
+
+  // RA-MO-240: the same for a payment date.
+  test('moving a payment date sends its day, not its amount', () async {
+    final database = await _freshDatabase();
+    final client = _CapturingCostClient(
+      answer: {
+        'id': 'schedule-1',
+        'weddingCostId': 'cost-1',
+        'weddingPlanId': 'plan-1',
+        'amount': '500',
+        'dueDate': '2026-08-09',
+        'status': 'PENDING',
+      },
+    );
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+    final cost = _cost(id: 'cost-1');
+    final schedule = PaymentSchedule(
+      id: 'schedule-1',
+      costId: cost.id,
+      amount: '500',
+      dueDate: DateTime(2026, 8, 1),
+      status: 'PENDING',
+      weddingPlanId: cost.weddingPlanId,
+    );
+
+    await api.updateSchedule(
+      schedule: schedule,
+      cost: cost,
+      amount: '500',
+      dueDate: DateTime(2026, 8, 9),
+    );
+
+    expect(client.sent.single, {'dueDate': '2026-08-09'});
+  });
+
+  test('an agreement edit kept without a connection waits with its '
+      'changes only, and the phone shows it whole', () async {
+    final database = await _freshDatabase();
+    final client = _OfflineFinanceClient();
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+    final cost = _cost(id: 'cost-1');
+    await database.saveCachedItem(
+      table: OfflineTables.cachedCosts,
+      json: _costJson(cost),
+    );
+
+    final shown = await api.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: cost.title,
+      totalAmount: cost.totalAmount,
+      partyName: cost.partyName,
+      note: 'العربون نقدًا',
+    );
+
+    // The phone's copy is the whole agreement with the note on it.
+    expect(shown.note, 'العربون نقدًا');
+    expect(shown.totalAmount, cost.totalAmount);
+    expect(shown.title, cost.title);
+    // What waits for the server is the change.
+    final queued = (await database.pendingSyncItems()).single;
+    expect(queued.entityType, 'cost');
+    expect(queued.payload, {'note': 'العربون نقدًا'});
+  });
+
   test('online budget idMap rewrites cached dependent category ids', () async {
     final database = await _freshDatabase();
     await database.saveCachedItem(
@@ -1686,6 +1801,26 @@ class _OfflineFinanceClient extends ApiClient {
 
   @override
   Future<Map<String, dynamic>> deleteJson(String path) async => throw _offline;
+}
+
+/// Answers an agreement edit and keeps what was sent.
+class _CapturingCostClient extends ApiClient {
+  _CapturingCostClient({this.answer}) : super(tokenProvider: () async => null);
+
+  /// What the server answers; an agreement when the test gives none.
+  final Map<String, dynamic>? answer;
+  final sent = <Map<String, dynamic>>[];
+
+  @override
+  Future<Map<String, dynamic>> mutateJson(
+    String path,
+    Map<String, dynamic> data, {
+    required String method,
+    required String clientRequestId,
+  }) async {
+    sent.add(data);
+    return answer ?? _costJson(_cost(id: 'cost-1'));
+  }
 }
 
 class _OnlineBudgetClient extends ApiClient {

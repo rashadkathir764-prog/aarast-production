@@ -217,25 +217,44 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? estimatePart,
   }) async {
     _assertPartyChoice(providerId: providerId, partyName: partyName);
-    final payload = <String, dynamic>{
-      ..._costPayload(
-        budgetCategoryId: budgetCategoryId,
-        title: title,
-        totalAmount: totalAmount,
-        providerId: providerId,
-        quoteOfferId: quoteOfferId,
-        partyName: partyName,
-        partyPhone: partyPhone,
-        payer: payer,
-        payerName: payerName,
-        agreementDate: agreementDate,
-        note: note,
-      ),
+    final fields = _costPayload(
+      budgetCategoryId: budgetCategoryId,
+      title: title,
+      totalAmount: totalAmount,
+      providerId: providerId,
+      quoteOfferId: quoteOfferId,
+      partyName: partyName,
+      partyPhone: partyPhone,
+      payer: payer,
+      payerName: payerName,
+      agreementDate: agreementDate,
+      note: note,
+    );
+    // RA-MO-239: an edit sends what the person changed. The whole agreement
+    // used to go as the phone held it, so a note corrected from a copy a
+    // little old brought back an amount, an item or a payer the partner had
+    // changed since, and every figure of the plan with it. An agreement not
+    // on the server yet still goes whole: this is its own creation.
+    final onServer =
+        !cost.id.startsWith('local-') &&
+        !FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId);
+    final extras = <String, dynamic>{
       // V1 checklist 4.10: a private cost becomes the shared plan's.
       if (shareWithPlan) 'isPrivate': false,
       ..._coverPayload(estimateCover, estimatePart),
     };
-    final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', payload);
+    // The phone's own copy is rewritten from the whole agreement as the
+    // form holds it (its balance is worked out from the amount); the
+    // server is sent the changes.
+    final payload = <String, dynamic>{...fields, ...extras};
+    final changes = <String, dynamic>{
+      for (final entry in fields.entries)
+        if (!onServer || !_unchangedCostField(entry.key, entry.value, cost))
+          entry.key: entry.value,
+      ...extras,
+    };
+    if (onServer && changes.isEmpty) return cost;
+    final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', changes);
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       return _local.updateCost(cost: cost, payload: payload);
     }
@@ -358,6 +377,42 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       'estimateCover': cover,
       if (cover == 'PART' && _nullableTrimmed(part) != null)
         'estimatePart': part!.trim(),
+    };
+  }
+
+  /// Whether [value], as an edit would send it under [key], is what [cost]
+  /// already holds (RA-MO-239).
+  static bool _unchangedCostField(String key, Object? value, WeddingCost cost) {
+    String? text(String? held) {
+      final trimmed = held?.trim();
+      return trimmed == null || trimmed.isEmpty ? null : trimmed;
+    }
+
+    return switch (key) {
+      'budgetCategoryId' => value == text(cost.budgetCategoryId),
+      'title' => value == text(cost.title),
+      // «1000» and «1000.00» are one amount.
+      'totalAmount' =>
+        num.tryParse('$value') != null &&
+            num.tryParse('$value') == num.tryParse(cost.totalAmount),
+      'providerId' => value == text(cost.providerId),
+      'quoteOfferId' => value == text(cost.quoteOfferId),
+      'partyName' => value == text(cost.partyName),
+      'partyPhone' => value == text(cost.partyPhone),
+      'payer' => value == text(cost.payer),
+      'payerName' => value == text(cost.payerName),
+      'note' => value == text(cost.note),
+      'agreementDate' => switch ((
+        DateTime.tryParse('$value')?.toLocal(),
+        cost.agreementDate?.toLocal(),
+      )) {
+        (final sent?, final held?) =>
+          sent.year == held.year &&
+              sent.month == held.month &&
+              sent.day == held.day,
+        _ => false,
+      },
+      _ => false,
     };
   }
 

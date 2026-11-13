@@ -129,10 +129,32 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
       if (remindAt is DateTime) 'remindAt': _dateOnly(remindAt),
       if (remindAt == null) 'remindAt': null,
     };
+    // RA-MO-240: as an agreement's edit (RA-MO-239), a date's edit sends
+    // what the person changed: moving its day from a copy a little old
+    // brought back an amount or a note the partner had changed since. The
+    // phone's own copy is still rewritten from the whole date.
+    final onServer =
+        !schedule.id.startsWith('local-') &&
+        !FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId);
+    final changes = <String, dynamic>{
+      for (final entry in payload.entries)
+        if (!onServer ||
+            !switch (entry.key) {
+              'amount' =>
+                num.tryParse('${entry.value}') != null &&
+                    num.tryParse('${entry.value}') ==
+                        num.tryParse(schedule.amount),
+              'dueDate' => entry.value == _dateOnly(schedule.dueDate),
+              'note' => entry.value == _nullableTrimmed(schedule.note),
+              _ => false,
+            })
+          entry.key: entry.value,
+    };
+    if (onServer && changes.isEmpty) return schedule;
     final mutation = _mutation(
       'PATCH',
       '/api/v1/payment-schedules/${schedule.id}',
-      payload,
+      changes,
     );
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       return _local.updateSchedule(

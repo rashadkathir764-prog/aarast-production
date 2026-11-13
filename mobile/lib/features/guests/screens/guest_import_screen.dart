@@ -32,11 +32,16 @@ class GuestImportScreen extends StatefulWidget {
     required this.weddingPlanId,
     required this.source,
     this.loadContacts = ContactPickerService.loadAll,
+    this.confirmAccess = ContactPickerService.confirmAccess,
     super.key,
   });
 
   final String weddingPlanId;
   final GuestImportSource source;
+
+  /// D112 (Q-10): the app's own page before the address book is read, said
+  /// yes to; tests pass their own.
+  final Future<bool> Function(BuildContext context) confirmAccess;
 
   /// The address book; tests pass their own.
   final Future<List<ContactPhoneDraft>> Function() loadContacts;
@@ -91,6 +96,17 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       _contactsError = null;
     });
     try {
+      // The names are read only after the person said yes to what is read
+      // and kept (D112, Q-10); «مو الآن» reads nothing.
+      if (!await widget.confirmAccess(context)) {
+        if (mounted) {
+          setState(
+            () => _contactsError =
+                'ما قرأنا جهات الاتصال. تقدر تضيف الأسماء بالكتابة أو اللصق.',
+          );
+        }
+        return;
+      }
       final contacts = await widget.loadContacts();
       if (mounted) setState(() => _contacts = contacts);
     } on ContactPickerException catch (error) {

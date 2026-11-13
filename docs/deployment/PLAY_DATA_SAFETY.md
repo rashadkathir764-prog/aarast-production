@@ -99,7 +99,14 @@ Notes for the reviewer form:
 - `INTERNET` — API communication.
 - `READ_CONTACTS` — the guest list's single-contact picker and «من جهات
   الاتصال», which lists the address book on the device so the user picks
-  whom to add (see above).
+  whom to add (see above). **Prominent disclosure (D112 Q-10, 2026-11-13):**
+  before Android's own prompt, and every time the permission is not yet
+  held, the app shows its own page (`ContactPickerService.confirmAccess`):
+  «نقرأ جهات الاتصال من جوالك» with what is read (names and numbers, on the
+  phone), what is kept (only who is picked) and that the address book does
+  not leave the phone, with «موافق، كمّل» and «مو الآن». Nothing is read
+  before the yes. Play's User Data policy asks for exactly this; keep the
+  page's wording and this paragraph in step.
 - `POST_NOTIFICATIONS` — Android notification permission for Firebase Push;
   denial keeps Push registration disabled and does not disable the in-app
   notification inbox.

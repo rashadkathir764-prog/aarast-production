@@ -7,6 +7,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../shared/models/contact_phone_draft.dart';
 import '../widgets/aarast_bottom_sheet.dart';
 import '../widgets/aarast_phone_text.dart';
+import '../experience_v3/aarast_journey.dart';
+import '../experience_v3/aarast_journey_sheet.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
 
 class ContactPickerException implements Exception {
@@ -27,7 +29,55 @@ class ContactPickerService {
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
+  /// D112 (Q-10): the app's own page before Android's question. It says
+  /// what is read (names and numbers, on the phone) and what is kept (only
+  /// who the person picks), and the read goes on only on a yes. Play
+  /// requires this for `READ_CONTACTS`; the app went straight to the system
+  /// prompt. Not shown again once the permission is held.
+  ///
+  /// True when the address book may be read now.
+  static Future<bool> confirmAccess(BuildContext context) async {
+    if (await FlutterContacts.permissions.has(PermissionType.read)) {
+      return true;
+    }
+    if (!context.mounted) return false;
+    final agreed = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        key: const Key('contacts-disclosure'),
+        title: 'نقرأ جهات الاتصال من جوالك',
+        subtitle:
+            'عشان تنضاف الأسماء من جوالك بدل كتابتها. نقرأ الأسماء والأرقام '
+            'على الجوال نفسه، وما ينحفظ في الخطة إلا من يُختار منها. دفتر '
+            'الأسماء ما يطلع من جوالك.',
+        children: [
+          JourneyButton(
+            key: const Key('contacts-disclosure-agree'),
+            label: 'موافق، كمّل',
+            icon: LucideIcons.contact,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton(
+            key: const Key('contacts-disclosure-decline'),
+            label: 'مو الآن',
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.ink,
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
+      ),
+    );
+    return agreed == true;
+  }
+
+  /// One contact by the system's picker; null when the person picked none
+  /// or said «مو الآن» to the page above.
   static Future<ContactPhoneDraft?> pickContact(BuildContext context) async {
+    if (!await confirmAccess(context)) return null;
     final permission = await FlutterContacts.permissions.request(
       PermissionType.read,
     );

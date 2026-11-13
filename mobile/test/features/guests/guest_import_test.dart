@@ -122,6 +122,8 @@ Future<_Api> _pump(
                 weddingPlanId: 'plan-1',
                 source: source,
                 loadContacts: () async => contacts,
+                // D112 (Q-10): the person said yes to the app's page.
+                confirmAccess: (_) async => true,
               ),
             ),
             GoRoute(
@@ -409,6 +411,7 @@ void main() {
           home: GuestImportScreen(
             weddingPlanId: 'plan-1',
             source: GuestImportSource.contacts,
+            confirmAccess: (_) async => true,
             loadContacts: () async {
               calls++;
               throw StateError('no plugin');
@@ -424,5 +427,44 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('import-retry')));
     await tester.pumpAndSettle();
     expect(calls, 2);
+  });
+
+  // D112 (Q-10): the address book is read only after a yes to the app's
+  // own page; «مو الآن» reads nothing and says what else can be done.
+  testWidgets('e03 reads no contact before the person agrees', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 900);
+    addTearDown(tester.view.reset);
+    final provider = GuestsProvider(_Api(const []));
+    var reads = 0;
+    var agreed = false;
+    await tester.pumpWidget(
+      ChangeNotifierProvider<GuestsProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          home: GuestImportScreen(
+            weddingPlanId: 'plan-1',
+            source: GuestImportSource.contacts,
+            confirmAccess: (_) async => agreed,
+            loadContacts: () async {
+              reads++;
+              return const [];
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(reads, 0);
+    expect(
+      find.text('ما قرأنا جهات الاتصال. تقدر تضيف الأسماء بالكتابة أو اللصق.'),
+      findsOneWidget,
+    );
+
+    agreed = true;
+    await tester.tap(find.byKey(const ValueKey('import-retry')));
+    await tester.pumpAndSettle();
+    expect(reads, 1);
   });
 }

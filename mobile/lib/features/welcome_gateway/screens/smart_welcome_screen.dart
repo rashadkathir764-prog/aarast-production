@@ -77,7 +77,8 @@ class SmartWelcomeScreen extends StatefulWidget {
   State<SmartWelcomeScreen> createState() => _SmartWelcomeScreenState();
 }
 
-class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
+class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
+    with WidgetsBindingObserver {
   late _WelcomeStep _step = widget.newPlan
       ? _WelcomeStep.whose
       : _WelcomeStep.start;
@@ -111,12 +112,32 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!widget.newPlan) _loadSavedDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCities());
   }
 
+  /// RA-MO-114: what was typed inside a step was kept only as the step was
+  /// left, and a change made after «جاهزة» only on its next tap; the system
+  /// closing the app in the background lost both. Going to the background
+  /// keeps them: the steps' progress, or the plan already kept.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.paused &&
+        state != AppLifecycleState.hidden) {
+      return;
+    }
+    if (widget.newPlan) return;
+    if (_keptPlanId != null) {
+      if (!_saving) unawaited(_keepPlan());
+      return;
+    }
+    _keepProgress(_step);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nameController.dispose();
     _budgetController.dispose();
     _mahrTotalController.dispose();

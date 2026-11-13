@@ -1003,6 +1003,30 @@ void main() {
     expect(await storage.loadProgress(), isNull);
   });
 
+  // RA-MO-114: what was typed in a step was kept only as the step was left;
+  // the system closing the app in the background lost it.
+  testWidgets('going to the background keeps what was typed in a step', (
+    tester,
+  ) async {
+    final storage = await _pump(tester);
+    await _tapKey(tester, 'door-plan');
+    await _tapKey(tester, 'persona-groom');
+    await tester.enterText(find.byType(TextField).first, 'سالم');
+    await tester.pumpAndSettle();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+
+    final progress = await storage.loadProgress();
+    expect(progress?.draft.planName, 'عرس سالم');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
   testWidgets('J1-02: saving with the number after that keeps the one plan', (
     tester,
   ) async {

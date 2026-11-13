@@ -34,6 +34,11 @@ class LocalGuestDashboardSummarySource {
     final metrics = await LocalDashboardMetrics.load(
       database: database,
       planId: planId,
+      persona: switch (plan.persona) {
+        GuestPersona.groom => 'GROOM',
+        GuestPersona.bride => 'BRIDE',
+        _ => null,
+      },
     );
     return LocalGuestDashboardSummary.fromPlan(plan, metrics: metrics);
   }
@@ -58,6 +63,7 @@ class LocalGuestDashboardSummary {
     required this.confirmedCostTotal,
     required this.paidTotal,
     required this.outstandingTotal,
+    this.ownerOutstandingTotal = 0,
     required this.duePaymentSchedulesCount,
     required this.nextPaymentScheduleDue,
     required this.localImportantItems,
@@ -82,6 +88,9 @@ class LocalGuestDashboardSummary {
   final String confirmedCostTotal;
   final String paidTotal;
   final String outstandingTotal;
+
+  /// RA-MO-91 (D59): of [outstandingTotal], what is on the owner.
+  final num ownerOutstandingTotal;
   final int duePaymentSchedulesCount;
   final DashboardNextPaymentSchedule? nextPaymentScheduleDue;
   final List<DashboardImportantItem> localImportantItems;
@@ -122,6 +131,7 @@ class LocalGuestDashboardSummary {
       confirmedCostTotal: _amountString(metrics.confirmedCostTotal),
       paidTotal: _amountString(metrics.paidTotal),
       outstandingTotal: _amountString(metrics.outstandingTotal),
+      ownerOutstandingTotal: metrics.ownerOutstandingTotal,
       duePaymentSchedulesCount: metrics.duePaymentSchedulesCount,
       nextPaymentScheduleDue: metrics.nextPaymentScheduleDue,
       localImportantItems: metrics.importantItems,
@@ -262,6 +272,7 @@ class LocalDashboardMetrics {
     required this.confirmedCostTotal,
     required this.paidTotal,
     required this.outstandingTotal,
+    this.ownerOutstandingTotal = 0,
     required this.duePaymentSchedulesCount,
     required this.overduePaymentSchedulesCount,
     required this.dueSoonPaymentSchedulesCount,
@@ -303,6 +314,9 @@ class LocalDashboardMetrics {
   final num confirmedCostTotal;
   final num paidTotal;
   final num outstandingTotal;
+
+  /// RA-MO-91 (D59): of [outstandingTotal], what is on the owner.
+  final num ownerOutstandingTotal;
   final int duePaymentSchedulesCount;
   final int overduePaymentSchedulesCount;
   final int dueSoonPaymentSchedulesCount;
@@ -318,6 +332,9 @@ class LocalDashboardMetrics {
   static Future<LocalDashboardMetrics> load({
     required LocalDatabase database,
     required String planId,
+
+    /// Whose plan it is (`GROOM`, `BRIDE`): whose side's agreements are his.
+    String? persona,
   }) async {
     final guests = await database.readCachedList(
       table: OfflineTables.cachedGuests,
@@ -376,6 +393,23 @@ class LocalDashboardMetrics {
       0,
       confirmedCostTotal,
     );
+    // RA-MO-91 (D59): what is on the owner, by the money's own rule: no
+    // payer, a shared agreement, or the owner's own side. The home said the
+    // whole of it was on him, the father's agreements with it.
+    bool ownersOwn(Map<String, dynamic> cost) {
+      final payer = cost['payer']?.toString();
+      if (payer == null || payer.isEmpty || payer == 'SHARED') return true;
+      return payer == persona;
+    }
+
+    final ownerOutstandingTotal = activeCosts.where(ownersOwn).fold<num>(0, (
+      sum,
+      cost,
+    ) {
+      final left =
+          _moneyValue(cost['totalAmount']) - _moneyValue(cost['paidAmount']);
+      return sum + (left < 0 ? 0 : left);
+    });
     final activeCostIds = activeCosts
         .map((cost) => cost['id']?.toString())
         .whereType<String>()
@@ -429,6 +463,7 @@ class LocalDashboardMetrics {
       confirmedCostTotal: confirmedCostTotal,
       paidTotal: paidTotal,
       outstandingTotal: outstandingTotal,
+      ownerOutstandingTotal: ownerOutstandingTotal,
       duePaymentSchedulesCount: actionableSchedules.length,
       overduePaymentSchedulesCount: overduePaymentSchedulesCount,
       dueSoonPaymentSchedulesCount: dueSoonPaymentSchedulesCount,

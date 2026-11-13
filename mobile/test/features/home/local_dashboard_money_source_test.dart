@@ -99,4 +99,39 @@ void main() {
       );
     },
   );
+
+  // RA-MO-91 (D59): on a plan kept on the phone the home said every
+  // agreement was on the owner, the father's with it.
+  test('the owner\'s share leaves out what the family pays', () async {
+    SharedPreferences.setMockInitialValues({});
+    final database = JsonLocalDatabase(await SharedPreferences.getInstance());
+    await database.initialize();
+    const planId = 'local-share-plan';
+    Future<void> cost(String id, String payer, String total, String paid) =>
+        database.saveCachedItem(
+          table: OfflineTables.cachedCosts,
+          json: {
+            'id': id,
+            'planId': planId,
+            'weddingPlanId': planId,
+            'title': id,
+            'totalAmount': total,
+            'paidAmount': paid,
+            'payer': payer,
+            'status': 'PARTIALLY_PAID',
+          },
+        );
+    await cost('hall', 'GROOM', '1000', '400');
+    await cost('photo', 'FAMILY', '800', '0');
+    await cost('cake', 'SHARED', '300', '100');
+
+    final metrics = await LocalDashboardMetrics.load(
+      database: database,
+      planId: planId,
+      persona: 'GROOM',
+    );
+
+    expect(metrics.outstandingTotal, 1600);
+    expect(metrics.ownerOutstandingTotal, 800);
+  });
 }

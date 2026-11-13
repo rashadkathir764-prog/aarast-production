@@ -18,6 +18,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
     show
         AarastDashboardView,
         DashboardAfterWedding,
+        DashboardHomeFunding,
         DashboardImportantItem,
         DashboardSummary,
         DashboardSummaryProvider;
@@ -98,6 +99,15 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
             ? dashboardSummary.title.trim().substring(4)
             : '',
         bottomPadding: 132,
+        // RA-MO-91 (D59): the money card's «عليك من العرس» is his share,
+        // not every agreement; nothing else of the money in is known here.
+        funding: DashboardHomeFunding(
+          inHand: 0,
+          pledged: 0,
+          shortfall: null,
+          sourcesCount: 0,
+          ownerLeft: summary.ownerOutstandingTotal.toDouble(),
+        ),
         afterWedding: DashboardAfterWedding(
           left: owed.left,
           paid: owed.total - owed.left,
@@ -289,7 +299,8 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     }
     return AuthActionGuard.requireAccount(
       context,
-      reason: 'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
+      reason:
+          'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
     );
   }
 

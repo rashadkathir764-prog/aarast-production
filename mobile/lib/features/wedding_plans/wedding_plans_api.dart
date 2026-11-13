@@ -40,5 +40,5 @@ export 'utils/assistant_consent.dart' show AssistantConsent;
 export 'utils/plan_pulse_sync.dart'
     show publishGuestPlanPulse, publishTaskPlanPulse;
 export 'widgets/dashboard/aarast_dashboard_view.dart'
-    show AarastDashboardView, DashboardAfterWedding;
+    show AarastDashboardView, DashboardAfterWedding, DashboardHomeFunding;
 export 'widgets/postpone_sheet.dart' show showPostponeSheet;

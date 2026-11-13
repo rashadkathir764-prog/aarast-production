@@ -2432,8 +2432,13 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/dashboard/aarast_dashboard_view.dart',
         // DashboardAfterWedding: the home of a plan kept on the phone shows
-        // its debt after the wedding (RA-MO-22).
-        show: ['AarastDashboardView', 'DashboardAfterWedding'],
+        // its debt after the wedding (RA-MO-22). DashboardHomeFunding: and
+        // the owner's own share of what is left (RA-MO-91, D59).
+        show: [
+          'AarastDashboardView',
+          'DashboardAfterWedding',
+          'DashboardHomeFunding',
+        ],
       },
       {
         uri: 'widgets/postpone_sheet.dart',
@@ -3201,6 +3206,7 @@ const trackedShellEntryBatchContracts = [
     show: [
       'AarastDashboardView',
       'DashboardAfterWedding',
+      'DashboardHomeFunding',
       'DashboardImportantItem',
       'DashboardSummary',
       'DashboardSummaryProvider',

@@ -184,6 +184,49 @@ void main() {
       },
     );
 
+    // RA-MO-266 (batch 8): the list kept refreshing under the page pushed
+    // on top of it, and raced that page's own read on the shared provider.
+    testWidgets('the list does not refresh under a page pushed on top of it', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final api = _FakeSharingApi(invites: [_invite()]);
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(
+          weddingPlanId: _planId,
+          pendingInviteRefreshInterval: Duration(seconds: 30),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(api.getPlanInvitesCalls, 1);
+
+      final navigator = Navigator.of(
+        tester.element(find.byType(SharingScreen)),
+      );
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('participant-page')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('participant-page'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 70));
+      await tester.pump();
+      expect(api.getPlanInvitesCalls, 1);
+
+      navigator.pop();
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 31));
+      await tester.pump();
+      await tester.pump();
+      expect(api.getPlanInvitesCalls, 2);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       'stale pending invites never poll behind a different-plan permission gate',
       (tester) async {
@@ -546,7 +589,7 @@ void main() {
         expect(find.text('ما اكتملت'), findsOneWidget);
         for (final (id, word) in [
           ('invite-2', 'انتهت'),
-          ('invite-3', 'رفض'),
+          ('invite-3', 'رُفضت'),
           ('invite-4', 'أُلغيت'),
         ]) {
           expect(

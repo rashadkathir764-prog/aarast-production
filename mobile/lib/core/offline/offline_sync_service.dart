@@ -84,6 +84,19 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     lastError: _lastError,
   );
 
+  /// The changes of one plan still on this phone: the ones waiting for the
+  /// network and the ones the server refused. Leaving the plan deletes
+  /// them with its copy, so the leave page counts them first (RA-MO-264).
+  Future<int> unsentCountForPlan(String planId) async {
+    final wanted = planId.trim();
+    if (wanted.isEmpty) return 0;
+    final items = [
+      ...await database.pendingSyncItems(),
+      ...await database.blockedSyncItems(),
+    ];
+    return items.where((item) => item.planId == wanted).length;
+  }
+
   bool hasPendingEntity(String entityType, String entityId) {
     return _pendingEntityKeys.contains('$entityType:$entityId');
   }

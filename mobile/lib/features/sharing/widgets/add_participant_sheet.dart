@@ -159,7 +159,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         if (!_fromContact) ...[
           JourneyTextField(
             key: const ValueKey('participant-name'),
-            label: 'اسمه',
+            label: 'الاسم',
             hint: context.planWord('صالح', 'نورة'),
             controller: _name,
             textInputAction: TextInputAction.next,
@@ -168,7 +168,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const ValueKey('participant-phone-field'),
-            label: 'رقم جواله',
+            label: 'رقم الجوال',
             hint: '771 554 220',
             controller: _phone,
             keyboardType: TextInputType.phone,
@@ -203,7 +203,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
             _draft?.changed();
           },
           onChanged: (value) {
-            setState(() => _permissions = value);
+            setState(() {
+              _permissions = value;
+              _role = participantRoleForLevels(_role, value);
+            });
             _draft?.changed();
           },
         ),

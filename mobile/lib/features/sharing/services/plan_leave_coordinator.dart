@@ -21,7 +21,16 @@ class PlanLeaveCoordinator {
   final Set<String> _readyForContextRefresh = <String>{};
   Future<void> _operationTail = Future<void>.value();
 
-  Future<void> leavePlan({
+  /// The changes of [weddingPlanId] still on this phone, waiting or
+  /// refused. Leaving deletes them with the plan's copy, so the person is
+  /// told the number first (RA-MO-264).
+  Future<int> unsentChanges(String weddingPlanId) =>
+      _offlineSync.unsentCountForPlan(weddingPlanId);
+
+  /// Returns whether the server answered. False means the leave is kept
+  /// and goes when the network is back: the plan is hidden meanwhile, and
+  /// the person is told it is not done yet (RA-MO-265).
+  Future<bool> leavePlan({
     required String userId,
     required String weddingPlanId,
     required String expectedMemberId,
@@ -32,7 +41,7 @@ class PlanLeaveCoordinator {
     final normalizedUserId = _requiredId(userId, 'userId');
     final normalizedPlanId = _requiredId(weddingPlanId, 'weddingPlanId');
     final normalizedRequestId = _requiredId(clientRequestId, 'clientRequestId');
-    await _serialize(() async {
+    final answered = await _serialize(() async {
       // The durable write is deliberately before quiescing or contacting the
       // server. A process death after this await can replay the exact request.
       final durableRecord = await _store.putIfAbsent(
@@ -42,13 +51,14 @@ class PlanLeaveCoordinator {
         expectedAuthorityVersion: expectedAuthorityVersion,
         clientRequestId: normalizedRequestId,
       );
-      await _execute(durableRecord);
+      return _execute(durableRecord);
     });
     // Run outside the coordinator's serialization tail: refresh invokes the
     // replay hooks on this same coordinator and would otherwise deadlock.
     // The callback itself was captured from the app-scoped controller before
     // the screen could unmount, so invalidation never depends on BuildContext.
     await refreshAccountContexts();
+    return answered;
   }
 
   /// Replays every unresolved leave before account contexts are loaded.
@@ -125,7 +135,9 @@ class PlanLeaveCoordinator {
     });
   }
 
-  Future<void> _execute(PendingPlanCleanupRecord record) async {
+  /// True once the server answered the leave; false while its answer is
+  /// still owed (no network, an ambiguous failure) and the marker waits.
+  Future<bool> _execute(PendingPlanCleanupRecord record) async {
     appLogEvent(
       'PLAN_LEAVE_CLEANUP_STARTED',
       category: AppLogCategory.session,
@@ -137,7 +149,7 @@ class PlanLeaveCoordinator {
       await _offlineSync.quiescePlan(record.planId);
     } on Object catch (error) {
       _logPending(record, 'offline_quiesce_failed', error);
-      return;
+      return false;
     }
     try {
       await _sharingApi.leaveCurrentPlan(
@@ -164,19 +176,20 @@ class PlanLeaveCoordinator {
         rethrow;
       }
       _logPending(record, 'ambiguous_remote_result', error);
-      return;
+      return false;
     } on Object catch (error) {
       // A non-API transport/runtime failure does not prove that the DELETE
       // stayed client-side. Keep the marker and fail closed.
       _logPending(record, 'unclassified_remote_result', error);
-      return;
+      return false;
     }
 
     try {
       await _offlineSync.clearPlanContext(record.planId);
     } on Object catch (error) {
       _logPending(record, 'local_plan_cleanup_failed', error);
-      return;
+      // The server did answer; only the phone's own cleanup is still owed.
+      return true;
     }
     _readyForContextRefresh.add(record.identity);
     appLogEvent(
@@ -186,6 +199,7 @@ class PlanLeaveCoordinator {
       weddingPlanId: record.planId,
       source: 'PlanLeaveCoordinator',
     );
+    return true;
   }
 
   void _logPending(

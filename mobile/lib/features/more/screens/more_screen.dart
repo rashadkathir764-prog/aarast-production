@@ -20,7 +20,7 @@ import '../../auth/auth_api.dart'
 import '../../settings/settings_api.dart'
     show showChangePhoneSheet, showSetPasswordSheet;
 import '../../sharing/sharing_api.dart'
-    show participantPhone, participantRoleLabel;
+    show participantOwnRoleWord, participantPhone;
 import '../widgets/logout_sheet.dart';
 import '../widgets/participant_account_sections.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
@@ -91,7 +91,10 @@ class _MoreScreenState extends State<MoreScreen> {
               current: selected,
               roleLabel: plan?.permissions.role == null
                   ? null
-                  : participantRoleLabel(plan!.permissions.role!),
+                  : participantOwnRoleWord(
+                      plan!.permissions.role,
+                      feminine: context.journeyProfile.feminine,
+                    ),
               recordedCount: plan?.contributionHistory.values.fold<int>(
                 0,
                 (total, count) => total + count,

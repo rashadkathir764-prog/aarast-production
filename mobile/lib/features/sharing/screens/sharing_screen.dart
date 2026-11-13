@@ -214,6 +214,14 @@ class _SharingScreenState extends State<SharingScreen>
     _pendingInviteRefreshTimer = Timer(widget.pendingInviteRefreshInterval, () {
       _pendingInviteRefreshTimer = null;
       if (!mounted || !_isForeground) return;
+      // RA-MO-266: under a page pushed on top (a participant, the history)
+      // this refresh raced that page's own read on the shared provider,
+      // and the page showed an error or «ما لقينا هذا المشارك» for someone
+      // who is there. The list waits its turn, and reads again on return.
+      if (ModalRoute.of(context)?.isCurrent == false) {
+        _syncPendingInviteRefreshTimer();
+        return;
+      }
       unawaited(
         _refreshSharingAccessAndLoad(
           showPageLoader: false,
@@ -229,7 +237,20 @@ class _SharingScreenState extends State<SharingScreen>
       weddingPlanId: widget.weddingPlanId,
       preset: preset,
     );
-    if (mounted) _syncPendingInviteRefreshTimer();
+    if (mounted) _readAfterAdd();
+  }
+
+  /// RA-MO-270: an invite the server made but whose answer was lost was
+  /// not in the list, and nothing read the list again once the sheet
+  /// closed: the owner kept seeing «لسا ما أضفت أحد» and a second try was
+  /// refused as «مرسلة من قبل».
+  void _readAfterAdd() {
+    unawaited(
+      _refreshSharingAccessAndLoad(
+        showPageLoader: false,
+        preserveCurrentState: true,
+      ),
+    );
   }
 
   Future<void> _addFromContacts() async {
@@ -241,7 +262,7 @@ class _SharingScreenState extends State<SharingScreen>
         weddingPlanId: widget.weddingPlanId,
         contact: contact,
       );
-      if (mounted) _syncPendingInviteRefreshTimer();
+      if (mounted) _readAfterAdd();
     } on Object catch (error) {
       if (mounted) {
         AarastToast.showError(context, contactPickerErrorMessage(error));
@@ -269,7 +290,9 @@ class _SharingScreenState extends State<SharingScreen>
       context,
       context.say(
         'نسخنا رابط جديد، أرسله له. القديم ما عاد يشتغل.',
-        'نسخنا رابط جديد، أرسليه لها. القديم ما عاد يشتغل.',
+        // The invitee is not the reader: «لها» followed the reader's own
+        // gender (RA-MO-276).
+        'نسخنا رابط جديد، أرسليه له. القديم ما عاد يشتغل.',
       ),
     );
   }
@@ -893,7 +916,8 @@ String _dayWord(DateTime? at) {
 /// a waiting or an accepted one.
 String? _closedInviteWord(String status) => switch (status) {
   'EXPIRED' => 'انتهت',
-  'DECLINED' => 'رفض',
+  // The invite, like its two neighbours: «رفض» said the invitee is a man.
+  'DECLINED' => 'رُفضت',
   'CANCELLED' => 'أُلغيت',
   _ => null,
 };

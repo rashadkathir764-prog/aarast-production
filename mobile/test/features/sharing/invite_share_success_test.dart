@@ -505,7 +505,10 @@ class _FakeSharingApi extends SharingApi {
 
   @override
   Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
-    return invitesByPlan[weddingPlanId] ?? existingInvites;
+    return [
+      ...invitesByPlan[weddingPlanId] ?? existingInvites,
+      ..._created.where((invite) => invite.weddingPlanId == weddingPlanId),
+    ];
   }
 
   @override
@@ -545,13 +548,20 @@ class _FakeSharingApi extends SharingApi {
       'canManageMoney': canManageMoney,
       'expiresInDays': expiresInDays,
     };
-    return _invite(
+    final created = _invite(
       weddingPlanId: weddingPlanId,
       role: role,
       deliveryStatus: createDeliveryStatus,
       canManageTasks: canManageTasks,
     );
+    // The list is read again once the sheet closes (RA-MO-270), and a
+    // server lists the invite it has just made: without its raw link,
+    // which it keeps only as a hash.
+    _created.add(created.withIdentityToken());
+    return created;
   }
+
+  final List<PlanInvite> _created = [];
 
   @override
   Future<PlanInvite> reissuePlanInvite({

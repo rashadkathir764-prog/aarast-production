@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -287,8 +289,26 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     } on ApiException catch (error) {
       if (error.isUnauthorized) {
         _handleApiError(error);
+      } else if (error.statusCode == 409) {
+        // RA-MO-271: the invite stopped waiting a moment ago (accepted,
+        // declined, or cancelled from another phone). «ما قدرنا نلغي
+        // الدعوة» gave no reason and left the row under «ينتظرون». The
+        // list is read again, so an accepted invitee shows as a
+        // participant, who is taken off from their own page.
+        _invites = _invites.where((item) => item.id != invite.id).toList();
+        // The read clears the message as it starts, so the reason is
+        // written after it.
+        unawaited(
+          loadMembers(invite.weddingPlanId, preserveCurrentState: true),
+        );
+        _errorMessage =
+            'الدعوة ما عادت تنتظر: انقبلت أو انردّت قبل شوي. حدّثنا القائمة.';
+        _errorCode = error.serverCode;
       } else {
-        _errorMessage = 'ما قدرنا نلغي الدعوة.';
+        // The measured reason when the server was not reached.
+        _errorMessage = error.isNetworkFailure
+            ? error.message
+            : 'ما قدرنا نلغي الدعوة.';
         _errorCode = error.serverCode;
       }
       return false;

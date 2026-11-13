@@ -2216,7 +2216,15 @@ const trackedOwnerApiContracts = [
       { uri: 'data/sharing_api.dart', show: ['SharingApi'] },
       {
         uri: 'models/participant_access.dart',
-        show: ['participantPhone', 'participantRoleLabel', 'participantRoleTag'],
+        // 2026-11-13 (RA-MO-277): +participantOwnRoleWord. «حسابي» said a
+        // woman's own role in the third-person masculine («مساعد»); the
+        // word said to the reader lives with the other role words.
+        show: [
+          'participantOwnRoleWord',
+          'participantPhone',
+          'participantRoleLabel',
+          'participantRoleTag',
+        ],
       },
       {
         uri: 'models/plan_access_permissions.dart',
@@ -2668,7 +2676,9 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/sharing/sharing_api.dart',
-    show: ['participantPhone', 'participantRoleLabel'],
+    // 2026-11-13 (RA-MO-277): the reader's own role word in place of the
+    // third-person label.
+    show: ['participantOwnRoleWord', 'participantPhone'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',

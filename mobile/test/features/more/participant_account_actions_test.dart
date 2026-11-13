@@ -502,7 +502,8 @@ void main() {
       await _openLeave(tester);
       expect(find.byType(JourneySheetBody), findsOneWidget);
       expect(find.text('تطلع من عرس المشارك؟'), findsOneWidget);
-      expect(find.text('تقدر ترجع لو أرسل لك دعوة ثانية'), findsWidgets);
+      // RA-MO-278: «لو أرسل لك» took the plan's owner for a man.
+      expect(find.text('تقدر ترجع لو وصلتك دعوة ثانية'), findsWidgets);
       await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 
@@ -661,6 +662,60 @@ void main() {
     },
   );
 
+  // RA-MO-264 (batch 8): leaving deletes the plan's copy on the phone and,
+  // with it, the changes that have not gone yet. Nothing said so.
+  testWidgets('leaving says how many changes have not been sent yet', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    for (final title in ['حجز القاعة', 'شراء الورد']) {
+      await harness.offline.database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/api/v1/wedding-plans/shared-plan/tasks',
+        method: 'POST',
+        payload: {'title': title},
+        planId: 'shared-plan',
+        localEntityId: 'local-$title',
+      );
+    }
+    // Another plan's change is not this plan's loss.
+    await harness.offline.database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/api/v1/wedding-plans/other-plan/tasks',
+      method: 'POST',
+      payload: {'title': 'غيرها'},
+      planId: 'other-plan',
+      localEntityId: 'local-other',
+    );
+    await harness.pump(tester);
+
+    await _openLeave(tester);
+
+    expect(
+      find.byKey(const ValueKey('participant-leave-unsent')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('باقي على جوالك تغييرين'), findsOneWidget);
+  });
+
+  testWidgets('with nothing unsent, leaving says nothing about changes', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    await _openLeave(tester);
+
+    expect(
+      find.byKey(const ValueKey('participant-leave-unsent')),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'ambiguous leave stays durable and hides the plan while replay is pending',
     (tester) async {
@@ -679,6 +734,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
+      // RA-MO-265: the server never answered, so «طلعت» is not said; the
+      // leave is owed and the person is told when it completes.
+      expect(find.text('طلعت من عرس المشارك'), findsNothing);
+      expect(
+        find.text('ما في نت الآن. خروجك من عرس المشارك يكتمل أول ما يرجع.'),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
       expect(harness.sharing.requestIds, hasLength(2));
       expect(harness.sharing.requestIds.toSet(), hasLength(1));
       expect(await harness.pendingPlanCleanupStore.readAll(), hasLength(1));

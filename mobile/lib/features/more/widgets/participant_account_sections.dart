@@ -74,6 +74,18 @@ class _ParticipantAccountSectionsState
     final coordinator = context.read<PlanLeaveCoordinator>();
     final controller = context.read<AccountContextController>();
     final reader = context.journeyProfile;
+    // RA-MO-264: leaving deletes the plan's copy and, with it, the changes
+    // that have not gone yet. The sheet says how many before it asks.
+    var unsent = 0;
+    try {
+      unsent = await coordinator.unsentChanges(planId);
+    } on Object {
+      // The count is a courtesy; a phone store that cannot be read does
+      // not stop the person from leaving.
+    }
+    if (!mounted) return;
+    // RA-MO-265: whether the server answered, or the leave is still owed.
+    var answered = true;
 
     Future<void> leaveOnce() async {
       final membership = controller.selectedContext;
@@ -85,7 +97,7 @@ class _ParticipantAccountSectionsState
           membership?.membershipAuthorityVersion == null) {
         throw StateError('The current participant membership is needed');
       }
-      await coordinator.leavePlan(
+      answered = await coordinator.leavePlan(
         userId: userId,
         weddingPlanId: planId,
         expectedMemberId: membership!.membershipId!,
@@ -104,6 +116,7 @@ class _ParticipantAccountSectionsState
       builder: (sheetContext) => _LeaveSheet(
         planTitle: planTitle,
         reader: reader,
+        unsent: unsent,
         onLeave: () async {
           try {
             await leaveOnce();
@@ -127,9 +140,14 @@ class _ParticipantAccountSectionsState
     final navigator = router.routerDelegate.navigatorKey.currentState;
     router.go(AppRouter.home);
     if (navigator != null && navigator.mounted) {
+      // Without the server's answer the leave is kept and goes with the
+      // network: the plan is hidden meanwhile, and «طلعت» would be said
+      // of something not done yet.
       AarastToast.showInfo(
         navigator.context,
-        'طلعت من $planTitle',
+        answered
+            ? reader.say('طلعت من $planTitle', 'طلعتِ من $planTitle')
+            : 'ما في نت الآن. خروجك من $planTitle يكتمل أول ما يرجع.',
         overlay: navigator.overlay,
       );
     }
@@ -227,9 +245,10 @@ class _ParticipantAccountSectionsState
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
               title: reader.say('اطلع من الخطة', 'اطلعي من الخطة'),
+              // «لو أرسل لك» took the plan's owner for a man (RA-MO-278).
               subtitle: reader.say(
-                'تقدر ترجع لو أرسل لك دعوة ثانية',
-                'تقدرين ترجعين لو أرسل لك دعوة ثانية',
+                'تقدر ترجع لو وصلتك دعوة ثانية',
+                'تقدرين ترجعين لو وصلتك دعوة ثانية',
               ),
               onTap: _leave,
             ),
@@ -345,9 +364,13 @@ class _LeaveSheet extends StatefulWidget {
     required this.planTitle,
     required this.reader,
     required this.onLeave,
+    this.unsent = 0,
   });
 
   final String planTitle;
+
+  /// The plan's changes still on this phone; leaving deletes them.
+  final int unsent;
 
   /// B5: the sheet speaks to the reader as who they are.
   final JourneyProfile reader;
@@ -410,10 +433,23 @@ class _LeaveSheetState extends State<_LeaveSheet> {
         'تطلعين من ${widget.planTitle}؟',
       ),
       subtitle: say(
-        'تقدر ترجع لو أرسل لك دعوة ثانية',
-        'تقدرين ترجعين لو أرسل لك دعوة ثانية',
+        'تقدر ترجع لو وصلتك دعوة ثانية',
+        'تقدرين ترجعين لو وصلتك دعوة ثانية',
       ),
       children: [
+        if (widget.unsent > 0) ...[
+          JourneyNote(
+            key: const ValueKey('participant-leave-unsent'),
+            text:
+                'باقي على جوالك ${arabicCount(widget.unsent, one: 'تغيير واحد', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} '
+                'لهذي الخطة ما انرسل بعد. '
+                '${say('لو طلعت الآن', 'لو طلعتِ الآن')} ينحذف وما يوصل.',
+            icon: LucideIcons.cloudOff,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
         if (_error case final error?) ...[
           JourneyNote(
             key: const ValueKey('participant-leave-error'),

@@ -1,7 +1,11 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/sharing_api.dart' show SharingApi;
 export 'models/participant_access.dart'
-    show participantPhone, participantRoleLabel, participantRoleTag;
+    show
+        participantOwnRoleWord,
+        participantPhone,
+        participantRoleLabel,
+        participantRoleTag;
 export 'models/plan_access_permissions.dart' show PlanAccessPermissions;
 export 'models/shared_member.dart' show SharedMember, sharedMemberRoleLabel;
 export 'models/shared_wedding_plan.dart' show SharedWeddingPlan;

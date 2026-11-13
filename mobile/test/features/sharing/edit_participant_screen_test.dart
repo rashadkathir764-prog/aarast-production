@@ -93,6 +93,39 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   });
 
+  // RA-MO-269 (batch 8): the editor let the owner open «يعدّل» for «يشوف
+  // بس», and the server refused the save without saying what to change.
+  testWidgets('opening a level for «يشوف بس» makes them «مساعد»', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'VIEWER', manages: false));
+    await _pump(tester, api);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-level-المهام')),
+        matching: find.text('يعدّل'),
+      ),
+    );
+    await tester.pump();
+
+    final helper = tester.widget<JourneyChip>(
+      find.byKey(const ValueKey('participant-preset-HELPER')),
+    );
+    expect(helper.selected, isTrue);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('member-save')));
+    await tester.tap(find.byKey(const ValueKey('member-save')));
+    await tester.pumpAndSettle();
+
+    expect(api.lastUpdate!['role'], 'HELPER');
+    expect(api.lastUpdate!['canManageTasks'], isTrue);
+    // Only what the owner opened: the other levels stay closed.
+    expect(api.lastUpdate!['canManageGuests'], isFalse);
+    expect(api.lastUpdate!['canManageMoney'], isFalse);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
   testWidgets('J2-17: a cold open uses the route\'s plan, not the cache', (
     tester,
   ) async {
@@ -222,6 +255,7 @@ SharedMember _member({
   bool canViewMoney = false,
   bool canEditPlan = false,
   bool canInviteMembers = false,
+  bool manages = true,
 }) {
   return SharedMember(
     id: 'member-1',
@@ -235,8 +269,8 @@ SharedMember _member({
     role: role,
     canViewMoney: canViewMoney,
     canEditPlan: canEditPlan,
-    canManageTasks: true,
-    canManageGuests: true,
+    canManageTasks: manages,
+    canManageGuests: manages,
     canInviteMembers: canInviteMembers,
     canManageMoney: false,
     createdAt: DateTime(2026, 7, 16),

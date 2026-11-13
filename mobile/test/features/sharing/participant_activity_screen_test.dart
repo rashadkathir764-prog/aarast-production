@@ -95,6 +95,19 @@ void main() {
     expect(activityLine(schedule, self: true), startsWith('أضفت'));
   });
 
+  // RA-MO-272 (batch 8): a right taken away read as a bare «أنت سجّلت».
+  test('a right taken away says which, not «سجّلت»', () {
+    final revoked = _event(
+      'r1',
+      section: 'MONEY',
+      entityType: 'SECTION',
+      action: 'SECTION_REVOKED',
+      snapshot: {'status': 'REVOKED'},
+    );
+    expect(activityLine(revoked, self: true), 'بدون صلاحية المال من الآن');
+    expect(activityLine(revoked, self: false), 'بدون صلاحية المال من الآن');
+  });
+
   test('merged lists hold back rows older than a list still paging', () async {
     final api = _PagingApi();
     final provider = ContributionHistoryProvider(api);

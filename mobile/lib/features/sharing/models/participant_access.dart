@@ -26,6 +26,21 @@ enum ParticipantPreset {
   }
 }
 
+/// «يشوف بس» edits nothing: the server refuses it with any editing right
+/// (J2-05, D52). The editor still let the owner open «يعدّل» for a viewer,
+/// and the save came back with a refusal that did not say what to change
+/// (RA-MO-269). Opening an editing level for a viewer makes them «مساعد»,
+/// which is what the owner has just described; the chip moves with it.
+String participantRoleForLevels(String role, PlanRolePermissions levels) {
+  if (role != 'VIEWER') return role;
+  final edits =
+      levels.canManageTasks ||
+      levels.canManageGuests ||
+      levels.canManageProviders ||
+      levels.canManageMoney;
+  return edits ? ParticipantPreset.helper.role : role;
+}
+
 /// Money has three levels; the other sections have two (g06).
 enum MoneyLevel { none, view, manage }
 
@@ -91,18 +106,23 @@ String participantRoleLabel(String role) {
 /// bride's plan speaks to a woman («أنتِ مساعدة», q17). The role words are
 /// said about someone («يشوف بس» beside a name), so a sentence to the
 /// participant takes its own words: «أنت تتابع بس», «أنت من الأهل».
-String participantRoleTag(String? role, {bool feminine = false}) {
-  final you = feminine ? 'أنتِ' : 'أنت';
-  return switch (role) {
-    'VIEWER' => feminine ? 'أنتِ تتابعين بس' : 'أنت تتابع بس',
-    'FAMILY' => '$you من الأهل',
-    'HELPER' => feminine ? 'أنتِ مساعدة' : 'أنت مساعد',
-    'CONTRIBUTOR' => feminine ? 'أنتِ مساهمة' : 'أنت مساهم',
-    'MANAGER' => feminine ? 'أنتِ مديرة' : 'أنت مدير',
-    'GROOM' || 'BRIDE' => feminine ? 'أنتِ شريكة' : 'أنت شريك',
-    _ => feminine ? 'أنتِ مشاركة' : 'أنت مشارك',
-  };
-}
+String participantRoleTag(String? role, {bool feminine = false}) =>
+    '${feminine ? 'أنتِ' : 'أنت'} '
+    '${participantOwnRoleWord(role, feminine: feminine)}';
+
+/// The reader's own role as a short word, said to them as who they are:
+/// «مساعدة», «من الأهل», «تتابعين بس». «حسابي» showed a woman the
+/// third-person «مساعد» and «يشوف بس» (RA-MO-277).
+String participantOwnRoleWord(String? role, {bool feminine = false}) =>
+    switch (role) {
+      'VIEWER' => feminine ? 'تتابعين بس' : 'تتابع بس',
+      'FAMILY' => 'من الأهل',
+      'HELPER' => feminine ? 'مساعدة' : 'مساعد',
+      'CONTRIBUTOR' => feminine ? 'مساهمة' : 'مساهم',
+      'MANAGER' => feminine ? 'مديرة' : 'مدير',
+      'GROOM' || 'BRIDE' => feminine ? 'شريكة' : 'شريك',
+      _ => feminine ? 'مشاركة' : 'مشارك',
+    };
 
 /// «771 554 220»: a Yemeni mobile the way it is read out at home; any other
 /// number as it is displayed elsewhere.

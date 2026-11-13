@@ -465,6 +465,16 @@ String activityLine(
     'PAYMENT_REVERSED' => withTitle(verb('عكس', 'عكست')),
     'INVITED' => withTitle(verb('دعا', 'دعيت')),
     'MEMBER_LEFT' => verb('طلع من الخطة', 'طلعت من الخطة'),
+    // RA-MO-272: the owner took a right away. The entry stands under the
+    // participant, who did nothing, and it read as a bare «أنت سجّلت». The
+    // line says what changed, in words that fit a man or a woman.
+    'SECTION_REVOKED' => switch (event.section) {
+      'TASKS' => 'بدون صلاحية المهام من الآن',
+      'GUESTS' => 'بدون صلاحية الضيوف من الآن',
+      'PROVIDERS' => 'بدون صلاحية المزودين من الآن',
+      'MONEY' => 'بدون صلاحية المال من الآن',
+      _ => 'تغيّرت الصلاحيات',
+    },
     _ => withTitle(verb('سجّل', 'سجّلت')),
   };
 }

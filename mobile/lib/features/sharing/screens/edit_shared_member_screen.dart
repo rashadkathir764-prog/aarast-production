@@ -174,7 +174,9 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           section: JourneySection.home,
           emptyIcon: LucideIcons.users,
           emptyTitle: 'ما لقينا هذا المشارك',
-          emptyMessage: 'يمكن طلع من الخطة. افتحه من «المشاركين».',
+          // «افتحه من المشاركين» sent the owner to a list he is no longer
+          // in (RA-MO-284).
+          emptyMessage: 'يمكن طلع من الخطة أو انشال منها.',
         ),
       ];
     }
@@ -188,7 +190,10 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           _role = preset.role;
           _permissions = preset.permissions;
         }),
-        onChanged: (value) => setState(() => _permissions = value),
+        onChanged: (value) => setState(() {
+          _permissions = value;
+          _role = participantRoleForLevels(_role, value);
+        }),
       ),
       if (provider.errorMessage != null) ...[
         const SizedBox(height: AarastV3Space.x2),

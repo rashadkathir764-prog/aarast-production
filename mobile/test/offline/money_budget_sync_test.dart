@@ -1739,6 +1739,46 @@ void main() {
       );
     },
   );
+
+  // RA-MO-94: an expense made offline kept the phone's own payment beside
+  // the server's once it went, and showed it twice.
+  test('an offline expense\'s payment becomes the server\'s, once', () async {
+    final database = await _freshDatabase();
+    final offlineClient = _OfflineFinanceClient();
+    final offline = OfflineSyncService(
+      database: database,
+      apiClient: offlineClient,
+    );
+    await offline.initialize();
+    final api = FinanceApi(offlineClient, offline: offline);
+    await api.createCost(
+      planId: 'plan-1',
+      budgetCategoryId: 'category-1',
+      title: 'القاعة',
+      totalAmount: '1000',
+      partyName: 'قاعة خارجية',
+      isExpense: true,
+    );
+    final localPayments = await database.readCachedList(
+      table: OfflineTables.cachedCostPayments,
+    );
+    expect(localPayments, hasLength(1));
+
+    final adapter = _InitialCostSyncAdapter(expense: true);
+    final onlineClient = ApiClient(tokenProvider: () async => 'token')
+      ..dio.httpClientAdapter = adapter;
+    final sync = OfflineSyncService(
+      database: database,
+      apiClient: onlineClient,
+    );
+    await sync.ensureCacheOwner('user-1');
+    await sync.syncPendingChanges();
+
+    final payments = await database.readCachedList(
+      table: OfflineTables.cachedCostPayments,
+    );
+    expect(payments.map((payment) => payment['id']), ['payment-1']);
+  });
 }
 
 Future<JsonLocalDatabase> _freshDatabase() async {
@@ -2004,6 +2044,11 @@ class _TerminalMoneySyncAdapter implements HttpClientAdapter {
 }
 
 class _InitialCostSyncAdapter implements HttpClientAdapter {
+  _InitialCostSyncAdapter({this.expense = false});
+
+  /// The cost is an expense, paid whole as it is made (RA-MO-94).
+  final bool expense;
+
   final List<RequestOptions> requests = [];
 
   @override
@@ -2019,10 +2064,10 @@ class _InitialCostSyncAdapter implements HttpClientAdapter {
               'id': 'payment-1',
               'weddingPlanId': 'plan-1',
               'costId': 'cost-1',
-              'amount': '100',
+              'amount': expense ? '1000' : '100',
               'entryType': 'PAYMENT',
               'paidAt': '2026-07-14T12:00:00.000Z',
-              'note': 'دفعة أولى',
+              'note': expense ? 'دفعتها كاملة' : 'دفعة أولى',
               'reversible': true,
             },
           ]

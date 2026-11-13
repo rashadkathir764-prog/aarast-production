@@ -873,7 +873,15 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   ) async {
     final localCostId = item.localEntityId?.trim();
     final remoteCostId = cost['id']?.toString().trim();
-    final initialAmount = _positiveNumber(item.payload['initialPaymentAmount']);
+    // RA-MO-94: an expense is paid whole as it is made: its payment is the
+    // whole amount, under «دفعتها كاملة» on the phone and on the server. It
+    // was never matched, so the phone kept its own payment beside the
+    // server's and showed it twice.
+    final isExpense = item.payload['entryKind'] == 'EXPENSE';
+    final initialAmount = isExpense
+        ? _positiveNumber(item.payload['totalAmount'])
+        : _positiveNumber(item.payload['initialPaymentAmount']);
+    final initialNote = isExpense ? 'دفعتها كاملة' : 'دفعة أولى';
     if (localCostId == null ||
         localCostId.isEmpty ||
         remoteCostId == null ||
@@ -889,7 +897,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     for (final payment in cachedPayments) {
       if (payment['costId']?.toString() == localCostId &&
           payment['entryType']?.toString() == 'PAYMENT' &&
-          payment['note']?.toString() == 'دفعة أولى' &&
+          payment['note']?.toString() == initialNote &&
           _numbersEqual(payment['amount'], initialAmount)) {
         localInitial = payment;
         break;
@@ -904,7 +912,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     for (final raw in remoteItems.whereType<Map>()) {
       final payment = Map<String, dynamic>.from(raw);
       if (payment['entryType']?.toString() == 'PAYMENT' &&
-          payment['note']?.toString() == 'دفعة أولى' &&
+          payment['note']?.toString() == initialNote &&
           _numbersEqual(payment['amount'], initialAmount)) {
         remoteInitial = payment;
         break;

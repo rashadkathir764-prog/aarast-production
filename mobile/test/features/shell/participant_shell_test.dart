@@ -2,6 +2,9 @@ import 'package:aarast_mobile/app.dart' show AarastPlanProfileScope;
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+// The home counts days in Sana'a (D11); the test's «today» must too, or a
+// run between 21:00 and 24:00 UTC (GitHub's clock) is a day off.
+import 'package:aarast_mobile/core/utils/plan_day.dart' show sanaaToday;
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
@@ -491,7 +494,7 @@ void main() {
   testWidgets('q18: every member reads the day\'s programme (D52, D65)', (
     tester,
   ) async {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = sanaaToday();
     String day(DateTime value) =>
         '${value.year}-${value.month.toString().padLeft(2, '0')}-'
         '${value.day.toString().padLeft(2, '0')}';
@@ -719,7 +722,7 @@ WeddingTask _task(
   bool mine = false,
   bool done = false,
 }) {
-  final today = DateUtils.dateOnly(DateTime.now());
+  final today = sanaaToday();
   return WeddingTask(
     id: id,
     weddingPlanId: _planId,
@@ -735,7 +738,7 @@ WeddingTask _task(
 
 /// D52: the plan as every member reads it; nothing of money or phones.
 PlanReadView _readView() {
-  final today = DateUtils.dateOnly(DateTime.now());
+  final today = sanaaToday();
   String day(int days) => today.add(Duration(days: days)).toIso8601String();
   return PlanReadView.fromJson({
     'weddingPlanId': _planId,
@@ -1000,7 +1003,7 @@ DashboardSummary _summary({
   bool canViewMoney = false,
   bool isOwner = false,
 }) {
-  final today = DateUtils.dateOnly(DateTime.now());
+  final today = sanaaToday();
   return DashboardSummary(
     planId: _planId,
     title: title,

@@ -493,9 +493,12 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
   }
 }
 
+/// «عليك اليوم»: due today in Sana'a (D11), as the day hero above it counts.
+/// It compared with the phone's own date, so a phone on another clock read
+/// a different «today» from the hero for three hours each night.
 bool _isOn(WeddingTask task, DateTime now) {
   final due = task.dueDate;
-  return due != null && DateUtils.isSameDay(due, now);
+  return due != null && daysUntilPlanDay(due, now: now) == 0;
 }
 
 int _byDue(WeddingTask a, WeddingTask b) {

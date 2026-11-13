@@ -38,7 +38,11 @@ const noCatalog = { listActiveCategories: async () => [], listMoneyCatalogItems:
 
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");
-  assert.equal(requiredMoneyAmount("99.25", "amount"), "99.25");
+  // D112 (Q-25), the owner's word: whole riyals; a fraction is refused.
+  assert.throws(
+    () => requiredMoneyAmount("99.25", "amount"),
+    (error: any) => error.getResponse?.().code === "MONEY_AMOUNT_NOT_WHOLE",
+  );
   assert.equal(optionalMoneyAmount(undefined, "amount"), null);
   for (const invalid of ["9999999999999", "10.999", "-5", "abc", ""]) {
     assert.throws(

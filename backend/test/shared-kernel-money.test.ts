@@ -37,8 +37,47 @@ test('required money preserves every current valid serialized form', () => {
   ];
 
   for (const [value, expected] of cases) {
-    assert.equal(requiredMoneyAmount(value, 'amount'), expected);
     assert.equal(Money.required(value, 'amount').toString(), expected);
+  }
+});
+
+// D112 (Q-25), the owner's word: whole riyals everywhere. `Money` still
+// holds what a column holds (old rows with a fraction, exact arithmetic);
+// what a person sends is a whole amount. The phone's fields took whole
+// amounts already; the server accepted two decimals from any other caller.
+test('Q-25: an amount a person sends is whole; a fraction is refused by its own code', () => {
+  const whole: Array<[unknown, string]> = [
+    ['0', '0'],
+    ['00', '00'],
+    ['1', '1'],
+    ['1.0', '1.0'],
+    ['1.00', '1.00'],
+    ['999999999999', '999999999999'],
+    [' 1500000 ', '1500000'],
+    [0, '0'],
+    [1, '1'],
+  ];
+  for (const [value, expected] of whole) {
+    assert.equal(requiredMoneyAmount(value, 'amount'), expected);
+    assert.equal(optionalMoneyAmount(value, 'amount'), expected);
+  }
+  for (const value of ['1.2', '1.20', '0.5', '999999999999.99', 1.2, ' 400.01 ']) {
+    for (const parse of [requiredMoneyAmount, optionalMoneyAmount]) {
+      assert.throws(
+        () => parse(value, 'amount'),
+        (error: unknown) => {
+          assert.ok(error instanceof BadRequestException);
+          assert.deepEqual(error.getResponse(), {
+            statusCode: 400,
+            code: 'MONEY_AMOUNT_NOT_WHOLE',
+            message: 'المبلغ رقم صحيح، بدون كسور.',
+            field: 'amount',
+          });
+          return true;
+        },
+        String(value),
+      );
+    }
   }
 });
 
@@ -73,13 +112,13 @@ test('required money rejects every invalid grammar boundary with the exact error
     assertInvalid(() => Money.required(value, 'price'), 'price');
   }
 });
-
 test('optional money returns null for absent and blank inputs without constructing Money', () => {
   for (const value of [undefined, null, '', ' ', '\t\r\n']) {
     assert.equal(optionalMoneyAmount(value, 'amount'), null);
     assert.equal(Money.optional(value, 'amount'), null);
   }
-  assert.equal(optionalMoneyAmount(' 1.20 ', 'amount'), '1.20');
+  // Q-25: the input parser takes whole amounts; `Money` keeps the fraction.
+  assert.equal(optionalMoneyAmount(' 1.00 ', 'amount'), '1.00');
   assert.equal(Money.optional(' 1.20 ', 'amount')?.toString(), '1.20');
   assertInvalid(() => optionalMoneyAmount(false, 'amount'), 'amount');
 });

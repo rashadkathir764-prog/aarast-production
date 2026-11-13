@@ -2512,6 +2512,13 @@ Provider service `basePrice`, package `price`, and quote-offer `amount` use the
 same money boundary as the planning ledger: a present value must be
 non-negative, contain at most 12 integer digits and 2 decimal places, and fit
 PostgreSQL `numeric(14,2)`. Null or blank optional prices clear/omit the value.
+
+D112 (Q-25): every amount a request carries is whole (agreements, payments,
+payment dates, budgets, funding, the mahr, a plan's estimated budget, a
+provider's prices, an offer's amounts). `5000`, `5000.0` and `5000.00` are
+accepted; a fraction answers `400 { statusCode, code: "MONEY_AMOUNT_NOT_WHOLE",
+message: "المبلغ رقم صحيح، بدون كسور.", field }`. Columns stay `numeric(14,2)`:
+a row saved with a fraction earlier is still read and summed as it is.
 Provider create/update, administrator service create/update, and marketplace
 price filters all share this validator. Invalid precision or overflow returns
 `400` before Prisma writes, so PostgreSQL never silently rounds a provider

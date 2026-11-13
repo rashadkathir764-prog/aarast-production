@@ -262,10 +262,23 @@ async function run() {
     const oversizedReminder = await request(
       'POST',
       `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
-      { amount: '400.01', dueDate: dateOffsetIso(12) },
+      // D112 (Q-25): whole amounts; one riyal over what is left (it was a
+      // hundredth over, which is now refused as a fraction before the bound).
+      { amount: '401', dueDate: dateOffsetIso(12) },
       owner.token,
     );
-    check('each reminder is still bounded by the current remaining cost', oversizedReminder.status === 400);
+    check('each reminder is still bounded by the current remaining cost',
+      oversizedReminder.status === 400 && oversizedReminder.body?.code !== 'MONEY_AMOUNT_NOT_WHOLE');
+    const fractionalReminder = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      { amount: '100.50', dueDate: dateOffsetIso(12) },
+      owner.token,
+    );
+    check('D112 Q-25: an amount with a fraction is refused, in Arabic, by its own code',
+      fractionalReminder.status === 400
+        && fractionalReminder.body?.code === 'MONEY_AMOUNT_NOT_WHOLE'
+        && fractionalReminder.body?.message === 'المبلغ رقم صحيح، بدون كسور.');
     // RA-BE-25: a reminder the person cancelled by hand is not brought back.
     const reminderDropped = await request(
       'POST',

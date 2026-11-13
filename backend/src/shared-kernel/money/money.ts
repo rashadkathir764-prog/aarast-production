@@ -74,16 +74,40 @@ export class Money {
   }
 }
 
+/**
+ * D112 (Q-25), the owner's word: whole riyals everywhere. An amount a
+ * person sends (an agreement, a payment, a budget, a provider's price, an
+ * offer) is whole; a fraction is refused with its own code and an Arabic
+ * sentence, where it used to be accepted from any caller but the phone,
+ * whose fields take whole amounts. `Money` itself still holds what a column
+ * holds: a row saved with a fraction before this is read and summed as it
+ * is.
+ */
+function wholeAmount(money: Money, field: string): string {
+  if (!money.toDecimal().isInteger()) {
+    throw new BadRequestException({
+      statusCode: 400,
+      code: 'MONEY_AMOUNT_NOT_WHOLE',
+      message: 'المبلغ رقم صحيح، بدون كسور.',
+      field,
+    });
+  }
+  return money.toString();
+}
+
+/** An amount a request carries: bounded, and whole (Q-25). */
 export function requiredMoneyAmount(
   value: unknown,
   field: string,
 ): string {
-  return Money.required(value, field).toString();
+  return wholeAmount(Money.required(value, field), field);
 }
 
+/** [requiredMoneyAmount], or null for an absent or blank value. */
 export function optionalMoneyAmount(
   value: unknown,
   field: string,
 ): string | null {
-  return Money.optional(value, field)?.toString() ?? null;
+  const money = Money.optional(value, field);
+  return money ? wholeAmount(money, field) : null;
 }

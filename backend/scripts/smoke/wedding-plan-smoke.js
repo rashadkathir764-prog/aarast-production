@@ -95,7 +95,8 @@ async function run() {
       title: 'Smoke Wedding Plan',
       city: 'Sanaa',
       weddingDate: '2026-12-20T00:00:00.000Z',
-      estimatedBudget: '1500000.50',
+      // D112 (Q-25): whole riyals; a fraction is refused.
+      estimatedBudget: '1500000',
     }, accessToken);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created plan has id', typeof res.body?.id === 'string');

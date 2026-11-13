@@ -65,10 +65,13 @@ test("provider catalog prices stay optional while quote offers require positive 
   assert.equal(optionalMoneyAmount(undefined, "price"), null);
   assert.equal(optionalMoneyAmount(null, "price"), null);
   assert.equal(optionalMoneyAmount("  ", "price"), null);
-  assert.equal(optionalMoneyAmount("999.25", "price"), "999.25");
-  assert.equal(
-    optionalMoneyAmount("999999999999.99", "price"),
-    "999999999999.99",
+  // D112 (Q-25), the owner's word: whole riyals everywhere, a provider's
+  // price included (it is the figure the groom reads).
+  assert.equal(optionalMoneyAmount("999", "price"), "999");
+  assert.equal(optionalMoneyAmount("999999999999", "price"), "999999999999");
+  assert.throws(
+    () => optionalMoneyAmount("999.25", "price"),
+    (error: any) => error.getResponse?.().code === "MONEY_AMOUNT_NOT_WHOLE",
   );
 
   const source = readFileSync(

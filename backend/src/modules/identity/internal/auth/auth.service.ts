@@ -1136,7 +1136,7 @@ export class AuthService implements IdentityAuthPort {
     newPhoneInput: string,
     context: OtpDispatchContext = {},
   ): Promise<OtpRequestResponse> {
-    this.assertNotAdministratorPhone(currentUser);
+    await this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
     await this.assertNotOwnPhone(this.prisma, currentUser.id, phone);
     const { otpId: _otpId, ...response } = await this.issueOtp(
@@ -1157,7 +1157,7 @@ export class AuthService implements IdentityAuthPort {
     newPhoneInput: string,
     codeInput: string,
   ): Promise<{ changed: true; phone: string }> {
-    this.assertNotAdministratorPhone(currentUser);
+    await this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
     const code = this.requiredText(codeInput, "code");
     const now = new Date();
@@ -1221,8 +1221,18 @@ export class AuthService implements IdentityAuthPort {
    * both to another number. It changes with the admin provisioning only;
    * the write refuses it too (`AuthUserRepository.changePhone`).
    */
-  private assertNotAdministratorPhone(currentUser: AuthenticatedUser): void {
-    if (currentUser.role === UserRole.ADMIN) {
+  private async assertNotAdministratorPhone(
+    currentUser: AuthenticatedUser,
+  ): Promise<void> {
+    // RA-BE-127: an app session carries the administrator as USER, so the
+    // session's role never refused here; a code went to the new number and
+    // the write's own refusal came back as a general 401. The account's
+    // stored role decides, before any code is sent.
+    const administrator =
+      currentUser.role === UserRole.ADMIN ||
+      (await this.users.findById(this.prisma, currentUser.id))?.role ===
+        UserRole.ADMIN;
+    if (administrator) {
       throw new ForbiddenException({
         statusCode: 403,
         code: "ADMIN_PHONE_CHANGE_REFUSED",

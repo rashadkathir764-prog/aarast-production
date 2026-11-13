@@ -66,6 +66,22 @@ test("nor confirm one", async () => {
   await refused(service().confirmPhoneChange(admin, "+967777999999", "123456"));
 });
 
+// RA-BE-127: an app session carries the administrator as USER; the session's
+// role never refused, a code went to the new number, and the write's own
+// refusal came back as a general 401. The stored role refuses first.
+test("an administrator signed into the app as USER is refused before any code", async () => {
+  const appSession = { ...admin, role: UserRole.USER } as AuthenticatedUser;
+  const stored = authService(
+    { user: { findUnique: async () => ({ id: "admin-1", role: UserRole.ADMIN }) } },
+    {},
+    {},
+    { consume: async () => { throw new Error("no code may be sent"); } },
+    { disconnectUser: () => undefined },
+  );
+  await refused(stored.requestPhoneChange(appSession, "+967777999999"));
+  await refused(stored.confirmPhoneChange(appSession, "+967777999999", "123456"));
+});
+
 test("the write itself never moves an administrator's phone", async () => {
   let where: unknown;
   const repository = new AuthUserRepository();

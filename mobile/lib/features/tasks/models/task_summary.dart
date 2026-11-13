@@ -107,6 +107,26 @@ class TaskSummary {
     );
   }
 
+  /// These counts with what only the server knows taken from [server]: the
+  /// right to keep a task private and the tasks given to the reader.
+  TaskSummary withServerRights(TaskSummary? server) {
+    if (server == null) return this;
+    return TaskSummary(
+      weddingPlanId: weddingPlanId,
+      total: total,
+      completed: completed,
+      pendingInProgress: pendingInProgress,
+      overdue: overdue,
+      dueToday: dueToday,
+      highPriority: highPriority,
+      assignedToMe: server.assignedToMe,
+      assigneeSummary: assigneeSummary,
+      byStatus: byStatus,
+      byPriority: byPriority,
+      canKeepPrivateTask: server.canKeepPrivateTask,
+    );
+  }
+
   final String weddingPlanId;
   final int total;
   final int completed;

@@ -105,14 +105,35 @@ class TaskTimelineApi {
 
   Future<TaskSummary?> cachedTaskSummary(String weddingPlanId) async {
     final raw = await _offline?.database.getMeta('task-summary:$weddingPlanId');
-    if (raw == null) return null;
-    try {
-      return TaskSummary.fromJson(
-        Map<String, dynamic>.from(jsonDecode(raw) as Map),
-      );
-    } on Object {
-      return null;
+    TaskSummary? server;
+    if (raw != null) {
+      try {
+        server = TaskSummary.fromJson(
+          Map<String, dynamic>.from(jsonDecode(raw) as Map),
+        );
+      } on Object {
+        server = null;
+      }
     }
+    return _summaryOfCopy(weddingPlanId, server);
+  }
+
+  /// RA-MO-193: the phone's copy of the counts. Once the plan's task list
+  /// was kept, it holds every change made since the server's last summary,
+  /// so the counts are the list's; that summary lends only what the phone
+  /// cannot count. The home read the old summary after a change offline.
+  Future<TaskSummary?> _summaryOfCopy(
+    String weddingPlanId,
+    TaskSummary? server,
+  ) async {
+    final listKept = await OfflineReads.listKeptOn(
+      _offline,
+      OfflineTables.cachedTasks,
+      parentId: weddingPlanId,
+    );
+    if (!listKept) return server;
+    final counted = await _taskSummaryFromCachedTasks(weddingPlanId);
+    return counted.withServerRights(server);
   }
 
   Future<Timeline> getTimeline(String weddingPlanId) async {
@@ -155,13 +176,8 @@ class TaskTimelineApi {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
       OfflineReads.noteCopyServed();
       await _offline.noteNetworkFailure((error as ApiException).message);
-      final cached = await _offline.database.getMeta(key);
-      if (cached != null) {
-        return TaskSummary.fromJson(
-          Map<String, dynamic>.from(jsonDecode(cached) as Map),
-        );
-      }
-      return _taskSummaryFromCachedTasks(weddingPlanId);
+      return await cachedTaskSummary(weddingPlanId) ??
+          await _taskSummaryFromCachedTasks(weddingPlanId);
     }
   }
 

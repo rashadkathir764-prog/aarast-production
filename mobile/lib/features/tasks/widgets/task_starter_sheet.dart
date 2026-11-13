@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -80,7 +80,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
       final days = chosen.daysBefore ?? 0;
       if (days > longest) longest = days;
     }
-    final today = DateUtils.dateOnly(appNow());
+    final today = sanaaToday();
     final date = taskStarterDueDate(
       wedding,
       template.daysBefore,

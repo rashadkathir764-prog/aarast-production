@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/arabic_for.dart';
@@ -490,7 +491,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       buildText: (_) => taskShareText(
         tasks,
         planTitle: name.isEmpty ? 'خطتنا' : name,
-        today: appNow(),
+        // RA-MO-204: «متأخرة» counted from today in Sana'a, as the list.
+        today: sanaaToday(),
         scope: switch (person) {
           _everyone => null,
           _mine => 'اللي عليّ',

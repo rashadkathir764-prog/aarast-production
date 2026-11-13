@@ -21,8 +21,9 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
 
   /// The day the chosen «متى؟» saves as.
   DateTime? get _dueDate => switch (_when) {
-    _When.week => _endOfWeek(appNow()),
-    _When.month => _endOfMonth(appNow()),
+    // RA-MO-204: the week and the month of today in Sana'a.
+    _When.week => _endOfWeek(sanaaToday()),
+    _When.month => _endOfMonth(sanaaToday()),
     _When.date => _pickedDate,
     _When.none => null,
   };

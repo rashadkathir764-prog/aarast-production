@@ -90,6 +90,13 @@ class _Api extends PlanEventsApi {
     updated.add((event.id!, draft.toJson(isMain: event.isMain)));
     return event;
   }
+
+  final removed = <String>[];
+
+  @override
+  Future<void> remove(String weddingPlanId, String eventId) async {
+    removed.add(eventId);
+  }
 }
 
 /// What «أجّل العرس» reads behind the wedding's sheet.
@@ -327,6 +334,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.created.single.$1, PlanEventType.custom);
     expect(api.created.single.$2['title'], 'الحناء');
+  });
+
+  // RA-MO-190: an event went at the first tap of «احذف المناسبة», with its
+  // place and its note and nothing to take it back. The first tap asks.
+  testWidgets('an event is deleted on the second tap, not the first', (
+    tester,
+  ) async {
+    final api = _Api(_view());
+    final provider = PlanEventsProvider(api: api);
+    await _pump(tester, provider);
+
+    await tester.tap(find.byTooltip('تعديل المقيل'));
+    await tester.pumpAndSettle();
+    final remove = find.byKey(const ValueKey('plan-event-remove'));
+    await tester.ensureVisible(remove);
+    expect(find.text('احذف المناسبة'), findsOneWidget);
+
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(api.removed, isEmpty);
+    expect(
+      find.text('تنحذف بمكانها وملاحظتها. اضغط ثاني للتأكيد'),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(remove);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(api.removed, ['maqeel']);
   });
 
   testWidgets('the wedding day is the plan date and is not picked here', (

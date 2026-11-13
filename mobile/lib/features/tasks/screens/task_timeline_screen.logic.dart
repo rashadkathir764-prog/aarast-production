@@ -38,7 +38,13 @@ String _statusLine(
   final open = tasks
       .where((task) => isOpenTaskGroup(taskGroupOf(task, today)))
       .toList();
-  if (open.isEmpty) return 'خلصت كل المهام';
+  // RA-MO-185: «خلصت كل المهام» was said of a plan whose tasks were all
+  // cancelled («ما نحتاجها») and none done.
+  if (open.isEmpty) {
+    return tasks.any((task) => task.isDone)
+        ? 'خلصت كل المهام'
+        : 'ما فيه مهام مفتوحة';
+  }
   final overdue = open
       .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
       .length;

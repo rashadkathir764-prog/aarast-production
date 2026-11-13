@@ -342,7 +342,14 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               ),
               const SizedBox(height: AarastV3Space.x1),
             ],
-            if (tasks.length < _starterTaskThreshold) ...[
+            // RA-MO-184: only once the plan's tasks are known. While they
+            // were still being read, or the read had failed with nothing
+            // to show, the card offered the ready-made tasks against an
+            // empty list: none was marked «في خطتك» and adding them made a
+            // second copy of each (the server adds what it is sent).
+            if (tasks.length < _starterTaskThreshold &&
+                !provider.isLoading &&
+                !(tasks.isEmpty && provider.loadErrorMessage != null)) ...[
               const SizedBox(height: AarastV3Space.x2),
               _StarterTasksCard(
                 onOpen: () => _openTaskStarterSheet(

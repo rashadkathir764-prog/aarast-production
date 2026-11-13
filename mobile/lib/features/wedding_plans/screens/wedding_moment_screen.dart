@@ -129,7 +129,10 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
         .first;
     final hijri = showHijri ? HijriDate.fromGregorian(today) : null;
     // D11: from today in Sana'a, as the server counts (RA-MO-20).
-    final days = weddingDate == null ? 7 : daysUntilPlanDay(weddingDate);
+    // RA-MO-189: unknown until the plan's events are read. It was taken as
+    // seven, so the page said «سبعة أيام على عرسك» to anyone whose events
+    // had not arrived (no connection and no copy), whatever the day.
+    final days = weddingDate == null ? null : daysUntilPlanDay(weddingDate);
     final color = week ? context.accent.night : AarastV3Color.saffron;
 
     return AarastScreenFrame(
@@ -153,9 +156,10 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
             : 'اليوم عرسك يا $name',
         subtitle: week
             ? [
-                days == 7
-                    ? 'سبعة أيام على عرسك.'
-                    : '${days <= 0 ? 'اليوم' : arabicDays(days)} على عرسك.',
+                if (days != null)
+                  days == 7
+                      ? 'سبعة أيام على عرسك.'
+                      : '${days <= 0 ? 'اليوم' : arabicDays(days)} على عرسك.',
                 'من اليوم الرئيسية تمشي معك ليلة ليلة.',
               ].join('\n')
             : 'بارك الله لكما، وبارك عليكما،\nوجمع بينكما في خير.',

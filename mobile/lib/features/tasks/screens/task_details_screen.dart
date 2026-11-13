@@ -311,14 +311,31 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         if (task.isOpen)
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: JourneyTextAction(
-              key: const ValueKey('task-detail-reminder'),
-              label: task.reminderAt == null
-                  ? context.say('ذكّرني بوقت', 'ذكّريني بوقت')
-                  : 'غيّر التذكير',
-              onPressed: provider.isSubmitting
-                  ? null
-                  : () => _pickReminder(provider, task),
+            child: Wrap(
+              spacing: AarastV3Space.x3,
+              children: [
+                JourneyTextAction(
+                  key: const ValueKey('task-detail-reminder'),
+                  label: task.reminderAt == null
+                      ? context.say('ذكّرني بوقت', 'ذكّريني بوقت')
+                      : context.say('غيّر التذكير', 'غيّري التذكير'),
+                  onPressed: provider.isSubmitting
+                      ? null
+                      : () => _pickReminder(provider, task),
+                ),
+                // RA-MO-186: a reminder could be set and moved, never
+                // taken off (the code said «clearing it removes the
+                // reminder» and nothing cleared it).
+                if (task.reminderAt != null)
+                  JourneyTextAction(
+                    key: const ValueKey('task-detail-reminder-remove'),
+                    label: context.say('شيل التذكير', 'شيلي التذكير'),
+                    color: AarastV3Color.textMuted,
+                    onPressed: provider.isSubmitting
+                        ? null
+                        : () => _removeReminder(provider, task),
+                  ),
+              ],
             ),
           ),
         if (steps.isNotEmpty) ...[
@@ -475,8 +492,31 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final local = at.toLocal();
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
-    final half = local.hour < 12 ? 'الصبح' : 'المساء';
+    // RA-MO-187: 12:30 at noon was said «12:30 المساء».
+    final half = local.hour < 12
+        ? 'الصبح'
+        : local.hour < 15
+        ? 'الظهر'
+        : local.hour < 18
+        ? 'العصر'
+        : 'المساء';
     return '${formatArabicWeekdayDayMonth(local)} · $hour:$minute $half';
+  }
+
+  Future<void> _removeReminder(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+  ) async {
+    final ok = await provider.setTaskReminder(widget.weddingPlanId, task, null);
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(context, 'انشال التذكير');
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نشيل التذكير',
+      );
+    }
   }
 
   /// G36: a day and a time to be reminded; clearing it removes the reminder.

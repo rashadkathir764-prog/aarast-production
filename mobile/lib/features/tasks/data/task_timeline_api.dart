@@ -845,6 +845,11 @@ class TaskTimelineApi {
         'linkedScheduleId': task.linkedScheduleId,
       if (task.autoClosedAt != null)
         'autoClosedAt': task.autoClosedAt!.toIso8601String(),
+      // RA-MO-188: the copy dropped the reminder, so every step added or
+      // renamed rewrote the task without it and the page showed none until
+      // the server was read again.
+      if (task.reminderAt != null)
+        'reminderAt': task.reminderAt!.toUtc().toIso8601String(),
     };
   }
 

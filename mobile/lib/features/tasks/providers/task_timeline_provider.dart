@@ -417,17 +417,17 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       priority: priority,
       updatedAt: DateTime.now(),
     );
-    final payload = <String, dynamic>{
-      'title': title.trim(),
-      'description': description,
-      'dueDate': dueDate?.toIso8601String(),
-      'taskCategory': normalizedCategory,
-      'status': status,
-      'priority': priority,
-    };
+    final Map<String, dynamic> payload;
     if (task.id.startsWith('local-task-')) {
-      payload.addAll(
-        _responsibilityPayload(
+      // Not on the server yet: this is still the task's own creation.
+      payload = <String, dynamic>{
+        'title': title.trim(),
+        'description': description,
+        'dueDate': dueDate?.toIso8601String(),
+        'taskCategory': normalizedCategory,
+        'status': status,
+        'priority': priority,
+        ..._responsibilityPayload(
           assigneeUserId: assigneeUserId,
           assigneeName: assigneeName,
           assigneePhone: assigneePhone,
@@ -436,13 +436,49 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           responsiblePhone: responsiblePhone,
           responsibleSource: responsibleSource,
         ),
-      );
+      };
     } else {
-      payload.addAll({
-        'responsibleName': assigneeUserId == null ? responsibleName : null,
-        'responsiblePhone': assigneeUserId == null ? responsiblePhone : null,
-        'responsibleSource': assigneeUserId == null ? responsibleSource : null,
-      });
+      // RA-MO-183: a change sends what was changed. The whole task used to
+      // go as the phone held it, so «أجّلها» from a copy a little old
+      // reopened a task the partner had finished since, and brought back a
+      // title or an assignment someone else had changed.
+      String? named(String? value, String? assignee) =>
+          assignee == null ? value : null;
+      final responsible = {
+        'responsibleName': named(responsibleName, assigneeUserId),
+        'responsiblePhone': named(responsiblePhone, assigneeUserId),
+        'responsibleSource': named(responsibleSource, assigneeUserId),
+      };
+      final responsibleBefore = {
+        'responsibleName': named(
+          previousTask.responsibleName,
+          previousTask.assigneeUserId,
+        ),
+        'responsiblePhone': named(
+          previousTask.responsiblePhone,
+          previousTask.assigneeUserId,
+        ),
+        'responsibleSource': named(
+          previousTask.responsibleSource,
+          previousTask.assigneeUserId,
+        ),
+      };
+      final responsibleChanged = responsible.keys.any(
+        (key) => responsible[key] != responsibleBefore[key],
+      );
+      payload = <String, dynamic>{
+        if (title.trim() != previousTask.title.trim()) 'title': title.trim(),
+        if (description != previousTask.description) 'description': description,
+        if (dueDate?.toIso8601String() !=
+            previousTask.dueDate?.toIso8601String())
+          'dueDate': dueDate?.toIso8601String(),
+        if (normalizedCategory !=
+            _taskCategoryForPayload(previousTask.taskCategory))
+          'taskCategory': normalizedCategory,
+        if (status != previousTask.status) 'status': status,
+        if (priority != previousTask.priority) 'priority': priority,
+        if (responsibleChanged) ...responsible,
+      };
     }
 
     _isSubmitting = true;
@@ -452,7 +488,11 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     try {
-      var updated = await _api.updateTask(task.id, payload);
+      // Nothing of the task's own fields changed (only who does it, sent
+      // below, or nothing at all): no request is made for them.
+      var updated = payload.isEmpty
+          ? previousTask
+          : await _api.updateTask(task.id, payload);
       if (!task.id.startsWith('local-task-') &&
           _assigneeChanged(previousTask.assigneeUserId, assigneeUserId)) {
         // The field update above is already saved; the assignment is a

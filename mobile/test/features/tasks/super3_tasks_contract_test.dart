@@ -808,19 +808,102 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // Batch 5 (RA-MO-184, RA-MO-185): the ready-made tasks are offered only
+  // once the plan's tasks are known, and a plan whose tasks were all
+  // cancelled is not told «خلصت كل المهام».
+  testWidgets('ready-made tasks are not offered against a list not read yet', (
+    tester,
+  ) async {
+    final harness = await _createHarness();
+    Future<void> pump(TaskTimelineProvider provider) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        _providers(
+          harness,
+          provider,
+          const MaterialApp(
+            home: TaskTimelineScreen(weddingPlanId: 'account-plan'),
+          ),
+        ),
+      );
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+    }
+
+    const starter = Key('task-starter-open');
+    // Read, and empty: this is where the ready-made tasks belong.
+    await pump(_FixedTaskProvider(harness.api, const []));
+    expect(find.byKey(starter), findsOneWidget);
+
+    // Still being read: the list is empty only because it has not arrived.
+    await pump(_FixedTaskProvider(harness.api, const [], loading: true));
+    expect(find.byKey(starter), findsNothing);
+
+    // The read failed with nothing to show.
+    await pump(
+      _FixedTaskProvider(harness.api, const [], loadError: 'ما وصلنا للخادم.'),
+    );
+    expect(find.byKey(starter), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tasks all cancelled are not said to be all done', (
+    tester,
+  ) async {
+    final harness = await _createHarness();
+    WeddingTask cancelled(String id) => WeddingTask(
+      id: id,
+      weddingPlanId: 'account-plan',
+      title: 'الكوشة $id',
+      status: 'CANCELLED',
+      priority: 'MEDIUM',
+      createdAt: DateTime(2026, 6, 28),
+      updatedAt: DateTime(2026, 6, 28),
+    );
+    _setPhoneView(tester);
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        _FixedTaskProvider(harness.api, [cancelled('a'), cancelled('b')]),
+        const MaterialApp(
+          home: TaskTimelineScreen(weddingPlanId: 'account-plan'),
+        ),
+      ),
+    );
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('خلصت كل المهام'), findsNothing);
+    expect(find.text('ما فيه مهام مفتوحة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 /// An account plan's tasks, held as given: nothing is read from a server.
 class _FixedTaskProvider extends TaskTimelineProvider {
-  _FixedTaskProvider(super.api, this._fixed);
+  _FixedTaskProvider(
+    super.api,
+    this._fixed, {
+    this.loading = false,
+    this.loadError,
+  });
 
   final List<WeddingTask> _fixed;
+  final bool loading;
+  final String? loadError;
 
   @override
   List<WeddingTask> get tasks => _fixed;
 
   @override
-  bool get isLoading => false;
+  bool get isLoading => loading;
+
+  @override
+  String? get loadErrorMessage => loadError;
 
   @override
   Future<void> load(String weddingPlanId) async {}

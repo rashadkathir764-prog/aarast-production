@@ -168,9 +168,18 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
     }
   }
 
+  /// RA-MO-190: «احذف المناسبة» deleted at the first tap, with its place,
+  /// its person in charge and its note, and nothing to take it back. The
+  /// first tap asks; the second deletes.
+  bool _askedToRemove = false;
+
   Future<void> _remove() async {
     final event = widget.event;
     if (event == null) return;
+    if (!_askedToRemove) {
+      setState(() => _askedToRemove = true);
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -223,7 +232,12 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             const SizedBox(height: AarastV3Space.x1),
             JourneyTextAction(
               key: const ValueKey('plan-event-remove'),
-              label: 'احذف المناسبة',
+              label: _askedToRemove
+                  ? context.say(
+                      'تنحذف بمكانها وملاحظتها. اضغط ثاني للتأكيد',
+                      'تنحذف بمكانها وملاحظتها. اضغطي ثاني للتأكيد',
+                    )
+                  : context.say('احذف المناسبة', 'احذفي المناسبة'),
               icon: LucideIcons.trash2,
               color: AarastV3Color.danger,
               onPressed: _saving ? null : _remove,

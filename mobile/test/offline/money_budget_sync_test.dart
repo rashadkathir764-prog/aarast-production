@@ -656,6 +656,45 @@ void main() {
     expect(queued.payload, {'note': 'العربون نقدًا'});
   });
 
+  // RA-MO-90: an edit made online went straight past an older one still
+  // waiting for the same agreement; the older one, replayed after, wrote
+  // the agreement back. The new one waits behind it.
+  test('an edit waits behind an older change of the same agreement', () async {
+    final database = await _freshDatabase();
+    final client = _CapturingCostClient();
+    final offline = OfflineSyncService(database: database, apiClient: client);
+    await offline.initialize();
+    final api = FinanceApi(client, offline: offline);
+    final cost = _cost(id: 'cost-1');
+    await database.saveCachedItem(
+      table: OfflineTables.cachedCosts,
+      json: _costJson(cost),
+    );
+    await database.enqueueSync(
+      entityType: 'cost',
+      operation: 'update',
+      endpoint: '/api/v1/costs/cost-1',
+      method: 'PATCH',
+      payload: const {'note': 'قديم'},
+      planId: cost.weddingPlanId,
+      localEntityId: 'cost-1',
+      clientRequestId: 'older-request',
+    );
+
+    await api.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: 'قاعة سبأ',
+      totalAmount: cost.totalAmount,
+      partyName: cost.partyName,
+    );
+
+    expect(client.sent, isEmpty, reason: 'not past the older change');
+    final waiting = await database.pendingSyncItems();
+    expect(waiting.map((item) => item.localEntityId), everyElement('cost-1'));
+    expect(waiting.any((item) => item.payload['title'] == 'قاعة سبأ'), isTrue);
+  });
+
   test('online budget idMap rewrites cached dependent category ids', () async {
     final database = await _freshDatabase();
     await database.saveCachedItem(

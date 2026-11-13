@@ -163,7 +163,8 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
         payload: payload,
       );
     }
-    if (schedule.id.startsWith('local-')) {
+    // RA-MO-90: an older change to this date still waiting goes first.
+    if (schedule.id.startsWith('local-') || await _waitsInQueue(schedule.id)) {
       final local = await _local.updateSchedule(
         schedule: schedule,
         cost: cost,

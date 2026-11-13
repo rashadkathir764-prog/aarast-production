@@ -268,6 +268,17 @@ abstract class _FinanceApiCore {
     String endpoint,
     Map<String, dynamic> payload,
   ) => _FinanceMutation(_apiClient, method, endpoint, payload, _uuidV4());
+
+  /// RA-MO-90: whether an older change to [entityId] still waits on the
+  /// phone. An edit sent straight past it reached the server first, and the
+  /// older one, replayed after, wrote the row back to what it was before;
+  /// such an edit waits behind it instead, in order.
+  Future<bool> _waitsInQueue(String entityId) async {
+    final offline = _offline;
+    if (offline == null) return false;
+    final pending = await offline.database.pendingSyncItems();
+    return pending.any((item) => item.localEntityId == entityId);
+  }
 }
 
 class _FinanceMutation {

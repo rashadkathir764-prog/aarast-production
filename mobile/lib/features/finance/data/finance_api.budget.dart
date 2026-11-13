@@ -185,7 +185,8 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     if (FinanceLocalDataSource.isLocalGuestPlanId(category.weddingPlanId)) {
       return _local.updateBudgetCategory(category: category, payload: payload);
     }
-    if (category.id.startsWith('local-')) {
+    // RA-MO-90: an older change to this item still waiting goes first.
+    if (category.id.startsWith('local-') || await _waitsInQueue(category.id)) {
       final local = await _local.updateBudgetCategory(
         category: category,
         payload: payload,
@@ -241,7 +242,8 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     if (FinanceLocalDataSource.isLocalGuestPlanId(category.weddingPlanId)) {
       return _local.updateBudgetCategory(category: category, payload: payload);
     }
-    if (category.id.startsWith('local-')) {
+    // RA-MO-90: an older change to this item still waiting goes first.
+    if (category.id.startsWith('local-') || await _waitsInQueue(category.id)) {
       final local = await _local.updateBudgetCategory(
         category: category,
         payload: payload,

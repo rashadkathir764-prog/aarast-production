@@ -258,7 +258,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       return _local.updateCost(cost: cost, payload: payload);
     }
-    if (cost.id.startsWith('local-')) {
+    if (cost.id.startsWith('local-') || await _waitsInQueue(cost.id)) {
       final local = await _local.updateCost(cost: cost, payload: payload);
       await _queue(
         entityType: 'cost',

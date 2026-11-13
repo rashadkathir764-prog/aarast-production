@@ -891,13 +891,24 @@ export class TasksService {
       assigneeUserId,
     );
 
+    // RA-MO-197: said to the person as what happened. These were English
+    // sentences with no code, so the phone showed «راجع اللي كتبته» for a
+    // member who had left the plan or holds no tasks right, which nothing
+    // the person wrote could fix.
     if (!member) {
-      throw new BadRequestException("assigneeUserId must belong to the plan");
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "TASK_ASSIGNEE_NOT_IN_PLAN",
+        message: "هذا المشارك ما عاد في الخطة.",
+      });
     }
     if (!member.canManageTasks) {
-      throw new BadRequestException(
-        "assigneeUserId must have task permission",
-      );
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "TASK_ASSIGNEE_NO_TASKS_RIGHT",
+        message:
+          "هذا المشارك ما عنده صلاحية المهام. تنفتح له من «المشاركين».",
+      });
     }
     return { receiveNotifications: member.receiveNotifications, member };
   }
@@ -1253,7 +1264,8 @@ export class TasksService {
     throw new BadRequestException({
       statusCode: 400,
       code: "TASK_LINK_NOT_IN_PLAN",
-      message: "A task links to an item or a payment of its own plan",
+      // RA-MO-197: it had a code and an English sentence only.
+      message: "البند أو الدفعة مو من هذي الخطة.",
     });
   }
 

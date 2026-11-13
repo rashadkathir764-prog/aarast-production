@@ -105,14 +105,30 @@ extension _CreateTaskWho on _CreateTaskScreenState {
       }
       final self = findCurrentSharedMember(members, currentUserId);
       if (self == null) {
-        AarastToast.showError(
-          context,
-          context.say(
-            'ما قدرنا نلقى حسابك في الخطة. انتظر لين يحمّل المشاركين وجرّب مرة ثانية.',
-            'ما قدرنا نلقى حسابك في الخطة. انتظري لين يحمّل المشاركين وجرّبي مرة ثانية.',
-          ),
+        // RA-MO-194: «أنا» is the reader's own account, known without the
+        // list of participants. Saving waited for that list and stopped
+        // with «ما قدرنا نلقى حسابك في الخطة» while it had not arrived:
+        // without a connection, on a first open, and for a helper whose
+        // list failed whole. The account's id is what is saved either way.
+        if (currentUserId == null || currentUserId.isEmpty) {
+          AarastToast.showError(
+            context,
+            context.say(
+              'ما قدرنا نلقى حسابك. جرّب مرة ثانية.',
+              'ما قدرنا نلقى حسابك. جرّبي مرة ثانية.',
+            ),
+          );
+          return null;
+        }
+        return (
+          assigneeUserId: currentUserId,
+          assigneeName: context.read<AuthController?>()?.user?.name,
+          assigneePhone: null,
+          assigneeRole: null,
+          responsibleName: null,
+          responsiblePhone: null,
+          responsibleSource: null,
         );
-        return null;
       }
       return (
         assigneeUserId: self.userId,

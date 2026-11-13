@@ -100,7 +100,17 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       remote: () async {
         final results = await Future.wait<Object>([
           _api.getSharedMembers(weddingPlanId),
-          _api.getPlanInvites(weddingPlanId),
+          // RA-MO-194: the invites are for who may invite; the server
+          // answers anyone else 403 or 404. That answer failed the whole
+          // read, so a helper got no participants at all, and with them no
+          // names on tasks. The participants stand without the invites.
+          _api
+              .getPlanInvites(weddingPlanId)
+              .onError<ApiException>(
+                (error, _) => error.statusCode == 403 || error.statusCode == 404
+                    ? const <PlanInvite>[]
+                    : throw error,
+              ),
         ]);
         return _MembersBundle(
           results[0] as List<SharedMember>,

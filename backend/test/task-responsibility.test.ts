@@ -133,6 +133,63 @@ test("assigning a plan participant clears manual responsibility", async () => {
   });
 });
 
+// RA-MO-197 (batch 5): a refused assignment says what happened, in Arabic
+// and by its own code. Both were English sentences with no code, so the
+// phone showed «راجع اللي كتبته» for a member who had left the plan or
+// holds no tasks right.
+test("a refused assignment says why: the member left, or holds no tasks right", async () => {
+  const refusalFor = async (member: unknown) => {
+    const prisma: any = {
+      weddingTask: {
+        findUnique: async () => task(),
+        update: async () => {
+          throw new Error("a refused assignment writes nothing");
+        },
+      },
+      weddingPlan: { findUnique: async () => ({ ownerUserId: "user-1" }) },
+      sharedMember: { findUnique: async () => member },
+      $queryRaw: async () => [{ id: "task-1" }],
+    };
+    prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+      operation(prisma);
+    const service = tasksService(
+      prisma as any,
+      {
+        canViewMoney: () => true,
+        assertTaskManageableInTransaction: async () => ({
+          plan: { ownerUserId: "user-1" },
+          isOwner: true,
+          sharedMember: null,
+        }),
+        lockMembershipForShareInTransaction: async () => member,
+      } as any,
+      { notifyTaskDue: async () => undefined } as any,
+      contributionHistory as any,
+      contributorScope as any,
+    );
+    return service
+      .assign({ id: "user-1" } as any, "task-1", { assigneeUserId: "user-9" })
+      .then(
+        () => null,
+        (error: any) => error.getResponse?.(),
+      );
+  };
+
+  assert.deepEqual(await refusalFor(null), {
+    statusCode: 400,
+    code: "TASK_ASSIGNEE_NOT_IN_PLAN",
+    message: "هذا المشارك ما عاد في الخطة.",
+  });
+  assert.deepEqual(
+    await refusalFor({ userId: "user-9", canManageTasks: false }),
+    {
+      statusCode: 400,
+      code: "TASK_ASSIGNEE_NO_TASKS_RIGHT",
+      message: "هذا المشارك ما عنده صلاحية المهام. تنفتح له من «المشاركين».",
+    },
+  );
+});
+
 test("assigning a notification-enabled contributor creates one durable task notification", async () => {
   const notificationCalls: Array<{ client: unknown; input: any }> = [];
   const prisma: any = {

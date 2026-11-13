@@ -811,6 +811,35 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     return ok ? result : null;
   }
 
+  /// RA-MO-176: a new agreement's payment dates, saved one after another
+  /// and read back once. Each date used to re-read the whole money and the
+  /// agreement after it: a deposit and six dates were some 40 requests
+  /// behind one spinner. Returns how many were saved; a refused date does
+  /// not stop the ones after it.
+  Future<int> createSchedules({
+    required WeddingCost cost,
+    required List<({String amount, DateTime dueDate, String? note})> dates,
+  }) async {
+    if (dates.isEmpty) return 0;
+    var saved = 0;
+    await _submit(cost.weddingPlanId, () async {
+      for (final date in dates) {
+        try {
+          await _api.createSchedule(
+            cost: cost,
+            amount: date.amount,
+            dueDate: date.dueDate,
+            note: date.note,
+          );
+          saved++;
+        } on ApiException {
+          // Said by the count the caller gets back.
+        }
+      }
+    }, refresh: () => _reloadCost(cost));
+    return saved;
+  }
+
   Future<bool> updateSchedule({
     required PaymentSchedule schedule,
     required WeddingCost cost,

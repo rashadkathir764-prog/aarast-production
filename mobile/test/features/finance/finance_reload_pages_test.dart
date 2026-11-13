@@ -26,9 +26,34 @@ class _Api extends FinanceApi {
 
   final costs = [for (var i = 0; i < 35; i++) _cost(i)];
 
+  int summaryReads = 0;
+  int schedulesMade = 0;
+
   @override
-  Future<MoneySummary> getMoneySummary(String planId) async =>
-      const MoneySummary(planId: 'plan-1', categories: []);
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    summaryReads += 1;
+    return const MoneySummary(planId: 'plan-1', categories: []);
+  }
+
+  @override
+  Future<PaymentSchedule> createSchedule({
+    required WeddingCost cost,
+    required String amount,
+    required DateTime dueDate,
+    String? note,
+  }) async {
+    schedulesMade += 1;
+    if (note == 'refused') {
+      throw const ApiException('الموعد بعد العرس بكثير', statusCode: 400);
+    }
+    return PaymentSchedule(
+      id: 's$schedulesMade',
+      costId: cost.id,
+      amount: amount,
+      dueDate: dueDate,
+      status: 'PENDING',
+    );
+  }
 
   @override
   Future<FinancePage<WeddingCost>> getCosts(
@@ -84,5 +109,31 @@ void main() {
     expect(await provider.deleteCost(provider.costs.first), isTrue);
 
     expect(provider.costs, hasLength(34));
+  });
+
+  // RA-MO-176: each date re-read the whole money; six dates were some 40
+  // requests behind one spinner. They are read back once, and a refused
+  // date does not stop the rest.
+  test('an agreement\'s dates are read back once', () async {
+    final api = _Api();
+    final provider = FinanceProvider(api);
+    await provider.loadMoney('plan-1');
+    final readsBefore = api.summaryReads;
+
+    final saved = await provider.createSchedules(
+      cost: provider.costs.first,
+      dates: [
+        for (var i = 0; i < 6; i++)
+          (
+            amount: '100',
+            dueDate: DateTime(2027, 1, i + 1),
+            note: i == 2 ? 'refused' : null,
+          ),
+      ],
+    );
+
+    expect(api.schedulesMade, 6);
+    expect(saved, 5);
+    expect(api.summaryReads - readsBefore, 1);
   });
 }

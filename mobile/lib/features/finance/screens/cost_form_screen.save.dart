@@ -118,18 +118,19 @@ extension _CostFormSave on _CostFormScreenState {
       return;
     }
     await _draft?.clear();
-    // The payment dates follow one by one; a failure keeps the agreement
-    // and says what is missing.
-    var missed = 0;
-    for (final line in lines.where((line) => !line.paidNow)) {
-      final schedule = await provider.createSchedule(
-        cost: created,
-        amount: '${line.amount}',
-        dueDate: line.dueDate!,
-        note: line.label.split(' · ').first,
-      );
-      if (schedule == null) missed++;
-    }
+    // The payment dates follow, read back once (RA-MO-176); a failure keeps
+    // the agreement and says what is missing.
+    final dates = [
+      for (final line in lines.where((line) => !line.paidNow))
+        (
+          amount: '${line.amount}',
+          dueDate: line.dueDate!,
+          note: line.label.split(' · ').first,
+        ),
+    ];
+    final missed =
+        dates.length -
+        await provider.createSchedules(cost: created, dates: dates);
     if (!mounted) return;
     final router = GoRouter.of(context);
     if (missed > 0) {

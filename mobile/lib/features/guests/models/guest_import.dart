@@ -48,23 +48,39 @@ String _withinGuestName(String name) =>
     clipToCharacters(name.trim(), guestNameMaxCharacters);
 
 /// w28: a pasted list, one person per line, the number optional and in any
-/// place on the line. Lines without a name are skipped.
+/// place on the line. Lines without a name are skipped
+/// ([unnamedGuestLines] counts them, so the screen says so).
 List<({String name, String? phone})> parseGuestLines(String text) {
   final people = <({String name, String? phone})>[];
   for (final raw in text.split('\n')) {
-    final line = PhoneNumberUtils.toAsciiDigits(raw).trim();
-    if (line.isEmpty) continue;
-    final match = _phonePattern.firstMatch(line);
-    final phone = match?.group(0)?.replaceAll(RegExp(r'[\s-]'), '');
-    final name =
-        (match == null ? line : line.replaceRange(match.start, match.end, ' '))
-            .replaceAll(RegExp(r'[,،:؛;|\-–.]+'), ' ')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim();
-    if (name.isEmpty) continue;
-    people.add((name: name, phone: phone));
+    final line = _parseLine(raw);
+    if (line == null || line.name.isEmpty) continue;
+    people.add(line);
   }
   return people;
+}
+
+/// RA-MO-231: the pasted lines that hold a number and no name, which
+/// [parseGuestLines] leaves out; they fell away with no word.
+int unnamedGuestLines(String text) => text
+    .split('\n')
+    .map(_parseLine)
+    .where((line) => line != null && line.name.isEmpty)
+    .length;
+
+/// One pasted line: its first number is the phone, and no number stays in
+/// the name (RA-MO-231: a second one did). Null for a blank line.
+({String name, String? phone})? _parseLine(String raw) {
+  final line = PhoneNumberUtils.toAsciiDigits(raw).trim();
+  if (line.isEmpty) return null;
+  final match = _phonePattern.firstMatch(line);
+  final phone = match?.group(0)?.replaceAll(RegExp(r'[\s-]'), '');
+  final name = line
+      .replaceAll(_phonePattern, ' ')
+      .replaceAll(RegExp(r'[,،:؛;|/\\\-–.]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  return (name: name, phone: phone);
 }
 
 /// Marks who the plan already has, and who repeats within the list itself.

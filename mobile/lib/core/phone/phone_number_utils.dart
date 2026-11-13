@@ -74,7 +74,8 @@ class PhoneNumberUtils {
         validationState: PhoneValidationState.valid,
         message: _sameCompactPhone(compact, normalizedPhone)
             ? null
-            : 'تم تنسيق الرقم إلى ${isolateLtr(displayPhone)}',
+            // RA-MO-236: in the app's voice, not the formal «تم تنسيق».
+            : 'رتّبنا الرقم كذا: ${isolateLtr(displayPhone)}',
         isYemeniMobile: true,
       );
     }

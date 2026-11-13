@@ -150,13 +150,24 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
             loading: _busy,
             onPressed: _busy ? null : _send,
           ),
-          Center(
-            child: JourneyTextAction(
-              key: const ValueKey('guest-send-skip'),
-              label:
-                  '${context.say('تخطّا', 'تخطّي')}${context.planWord('ه', 'ها')}',
-              onPressed: _busy ? null : () => setState(() => _index++),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              JourneyTextAction(
+                key: const ValueKey('guest-send-skip'),
+                label:
+                    '${context.say('تخطّا', 'تخطّي')}${context.planWord('ه', 'ها')}',
+                onPressed: _busy ? null : () => setState(() => _index++),
+              ),
+              // RA-MO-233: stopping midway was only a swipe down; it keeps
+              // what was sent and leaves the rest for later.
+              JourneyTextAction(
+                key: const ValueKey('guest-send-stop'),
+                label: context.say('وقّف هنا', 'وقّفي هنا'),
+                color: AarastV3Color.textMuted,
+                onPressed: _busy ? null : () => Navigator.pop(context, _sent),
+              ),
+            ],
           ),
         ],
       ],

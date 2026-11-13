@@ -258,8 +258,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
                           // D85: the copy is the phone's; the invitations need the
                           // server because their links are its.
                           context.say(
-                            'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
-                            'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويتحدّث لما نوصل للخادم. الدعوات تحتاج الخادم.',
+                            'تشوف آخر نسخة محفوظة، واللي تضيفه ينحفظ في جوالك ويوصل لما يرجع النت. الدعوات تحتاج نت.',
+                            'تشوفين آخر نسخة محفوظة، واللي تضيفينه ينحفظ في جوالك ويوصل لما يرجع النت. الدعوات تحتاج نت.',
                           ),
                           if (sync?.lastSyncedAt case final at?)
                             _lastUpdate(at),

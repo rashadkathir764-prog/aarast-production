@@ -104,7 +104,8 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
       title: 'المجموعات',
       subtitle:
           '${context.say('رتّب', 'رتّبي')} '
-          '${context.planWord('ضيوفك: الأهل، الأصحاب، زملاء الشغل…', 'ضيفاتك: الأهل، الصاحبات، زميلات الشغل…')}',
+          '${GuestWords.of(context).yourGuests}: '
+          '${context.planWord('الأهل، الأصحاب، زملاء الشغل…', 'الأهل، الصاحبات، زميلات الشغل…')}',
       children: [
         JourneyBox(
           padding: EdgeInsets.zero,

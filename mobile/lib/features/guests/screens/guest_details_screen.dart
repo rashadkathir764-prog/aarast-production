@@ -279,7 +279,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         if (guest.isConfirmed && guest.companionsCount > 0) ...[
           const SizedBox(height: AarastV3Space.x1),
           Text(
-            '${context.say('معه', 'معها')} ${guest.companionsCount} · ${arabicSeats(guest.seatsCount)}',
+            // RA-MO-236: the guest is the plan's side, not the reader.
+            '${context.planWord('معه', 'معها')} ${guest.companionsCount} · ${arabicSeats(guest.seatsCount)}',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -469,7 +470,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         ? context.planWord('اعتذر', 'اعتذرت')
         : context.planWord('ما ردّ', 'ما ردّت');
     final with_ = reply.isConfirmed && reply.companionsCount > 0
-        ? ' · ${context.say('معه', 'معها')} ${reply.companionsCount}'
+        ? ' · ${context.planWord('معه', 'معها')} ${reply.companionsCount}'
         : '';
     return '${label ?? 'مناسبة'}: $word$with_';
   }

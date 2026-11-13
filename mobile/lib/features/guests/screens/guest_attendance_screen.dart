@@ -133,7 +133,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     final words = GuestWords.of(context);
     final waiting = [
       summary.pending == 0
-          ? words.profile.plan('كل ضيوفك ردّوا', 'كل ضيفاتك ردّن')
+          ? 'كل ${words.yourGuests} ${words.profile.plan('ردّوا', 'ردّن')}'
           : '${summary.pending} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
       if (summary.declined > 0) '${summary.declined} ${words.declined}',
     ].join(' · ');

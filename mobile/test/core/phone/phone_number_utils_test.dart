@@ -24,7 +24,8 @@ void main() {
       expect(analysis.displayPhone, '+967 777 758 200');
       expect(
         analysis.message,
-        'تم تنسيق الرقم إلى \u2066+967 777 758 200\u2069',
+        'رتّبنا الرقم كذا: '
+        '\u2066+967 777 758 200\u2069',
       );
       expect(analysis.isValid, isTrue);
     });

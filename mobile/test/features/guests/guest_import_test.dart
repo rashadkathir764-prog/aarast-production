@@ -166,6 +166,17 @@ void main() {
       ]);
     });
 
+    // RA-MO-231: a second number stayed in the name, and a line of a number
+    // alone fell away with no word.
+    test('a second number leaves the name, a number alone is counted', () {
+      const text = 'صالح علي 771234567 / 733456789\n777123456\nعلي';
+      expect(parseGuestLines(text), [
+        (name: 'صالح علي', phone: '771234567'),
+        (name: 'علي', phone: null),
+      ]);
+      expect(unnamedGuestLines(text), 1);
+    });
+
     // RA-BE-15/16: a name the server would refuse held the queued import as
     // «السيرفر رفضه»; it stops at the server's 120, counted as the phone and
     // the server both count (a letter with its marks is one).
@@ -240,7 +251,7 @@ void main() {
       guests: [_guest('g1', 'أحمد ناجي', phone: '+967777123456')],
       groups: const [group],
     );
-    expect(find.text('أضف مجموعة ضيوف'), findsOneWidget);
+    expect(find.text('أضف قائمة ضيوف'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('import-paste')).hitTestable().first,

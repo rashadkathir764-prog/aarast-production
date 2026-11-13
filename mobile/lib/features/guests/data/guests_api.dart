@@ -283,7 +283,7 @@ class GuestsApi {
     bool reminder = false,
   }) async {
     final json = await _writes.serverOnly(
-      reason: 'الرابط يصدره الخادم، فما ينفع بدونه.',
+      reason: 'رابط الدعوة يحتاج نت عشان يتجهّز.',
       method: 'POST',
       path: '/api/v1/guests/$guestId/invitation-link',
       body: {if (reminder) 'reminder': true},

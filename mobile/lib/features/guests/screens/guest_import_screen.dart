@@ -16,6 +16,7 @@ import '../../../shared/models/contact_phone_draft.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../models/guest_import.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
@@ -24,7 +25,7 @@ import '../widgets/guest_search_field.dart';
 /// Where the guests come from.
 enum GuestImportSource { contacts, paste }
 
-/// e03 «من جهات الاتصال» and w28 «أضف مجموعة ضيوف»: many guests at once.
+/// e03 «من جهات الاتصال» and w28 «أضف قائمة ضيوف»: many guests at once.
 /// Whoever the plan already has is marked and never added twice; the
 /// chosen group applies to all of them.
 class GuestImportScreen extends StatefulWidget {
@@ -179,7 +180,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             child: JourneySubHeader(
               title: _fromContacts
                   ? 'من جهات الاتصال'
-                  : '${say('أضف', 'أضيفي')} مجموعة '
+                  // «قائمة», not «مجموعة»: a group is a named set of
+                  // guests (RA-MO-228).
+                  : '${say('أضف', 'أضيفي')} قائمة '
                         '${words.profile.plan('ضيوف', 'ضيفات')}',
               subtitle: _fromContacts
                   ? say(
@@ -241,6 +244,19 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
           maxLines: 10,
           autofocus: true,
         ),
+        if (unnamedGuestLines(_paste.text) case final unnamed when unnamed > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: AarastV3Space.x2),
+            child: JourneyNote(
+              key: const ValueKey('import-unnamed'),
+              icon: LucideIcons.alertCircle,
+              color: AarastV3Color.brandAccentStrong,
+              text:
+                  '${arabicCount(unnamed, one: 'سطر واحد', two: 'سطرين', few: 'أسطر', many: 'سطر')} '
+                  'فيها رقم بلا اسم، ما ${unnamed == 1 ? 'ينضاف' : 'تنضاف'}. '
+                  '${context.say('اكتب', 'اكتبي')} الاسم جنب الرقم.',
+            ),
+          ),
         if (candidates.isNotEmpty) ...[
           const SizedBox(height: AarastV3Space.x2),
           const JourneySectionTitle('فهمناها كذا'),

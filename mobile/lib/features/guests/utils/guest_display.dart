@@ -31,8 +31,10 @@ class GuestWords {
   /// «الضيوف» / «الضيفات».
   String get guests => _say('الضيوف', 'الضيفات');
 
-  /// «ضيوفك» / «ضيفاتك».
-  String get yourGuests => _say('ضيوفك', 'ضيفاتك');
+  /// «ضيوفك» / «ضيفاتك» to the plan's owner; to a participant they are the
+  /// plan's, «الضيوف» (RA-MO-236: a helper read «ضيوفك»).
+  String get yourGuests =>
+      profile.readerIsOwner ? _say('ضيوفك', 'ضيفاتك') : guests;
 
   /// «كل الضيوف» / «كل الضيفات».
   String get allGuests => _say('كل الضيوف', 'كل الضيفات');

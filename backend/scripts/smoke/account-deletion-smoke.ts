@@ -898,8 +898,26 @@ async function main() {
         serviceId: service.id,
         cityId: city.id,
         conversationId: sharedConversation.id,
-        status: QuoteRequestStatus.SENT,
+        status: QuoteRequestStatus.ACCEPTED,
+        acceptedAt: new Date(),
+        contactName: 'DELETION SMOKE',
+        contactPhone: phone,
+        contactNormalizedPhone: phone,
         message: `${tag}-member-request`,
+      },
+    });
+    // D112 (Q-22), RA-BE-131: the member booked the hall for the client's
+    // wedding. That booking is the plan's, and has to outlive his account.
+    const memberBooking = await prisma.booking.create({
+      data: {
+        quoteRequestId: memberQuote.id,
+        providerId: provider.id,
+        eventDate: new Date(
+          `${new Date(Date.now() + 20 * DAY).toISOString().slice(0, 10)}T00:00:00.000Z`,
+        ),
+        status: 'CONFIRMED',
+        confirmedAt: new Date(),
+        requestedByUserId: user.id,
       },
     });
     const clientQuote = await prisma.quoteRequest.create({
@@ -1261,19 +1279,68 @@ async function main() {
         })) === 2,
       'deleting a shared member does not delete the owner or either customer plan conversation',
     );
+    // D112 (Q-22), the owner's word: what a participant recorded in a plan
+    // stays in that plan. This check pinned the opposite for his requests
+    // («shared-member request … removed»): the request went with his
+    // account and its confirmed booking with it, by cascade, and the plan's
+    // owner was told nothing (RA-BE-131). It is handed to the plan's owner.
+    const keptQuote = await prisma.quoteRequest.findUnique({
+      where: { id: memberQuote.id },
+    });
+    const keptBooking = await prisma.booking.findUnique({
+      where: { id: memberBooking.id },
+    });
     assertCheck(
-      (await prisma.quoteRequest.count({ where: { id: memberQuote.id } })) ===
-        0 &&
-        (await prisma.quoteRequest.count({
-          where: { id: { in: [clientQuote.id, secondClientQuote.id] } },
-        })) === 2 &&
+      keptQuote?.userId === client.id &&
+        keptQuote?.weddingPlanId === clientPlans[0].id &&
+        keptQuote?.status === QuoteRequestStatus.ACCEPTED &&
+        keptBooking?.status === 'CONFIRMED' &&
+        keptBooking?.requestedByUserId === client.id,
+      "Q-22: a member's request in the owner's plan, and its confirmed booking, pass to the owner",
+    );
+    assertCheck(
+      keptQuote?.contactName === client.name &&
+        keptQuote?.contactPhone === client.phone &&
+        keptQuote?.contactNormalizedPhone === client.phone &&
+        keptQuote?.message === `${tag}-member-request`,
+      "Q-22: the request carries the owner's contact, not the erased account's",
+    );
+    // This smoke records what the saga writes through the notifications
+    // port instead of storing it (`erasureNotices`).
+    const ownerNotices = (
+      erasureNotices.written as unknown as Array<{
+        userId: string;
+        entityType?: string;
+        weddingPlanId?: string | null;
+        body?: string;
+      }>
+    ).filter(
+      (notice) =>
+        notice.userId === client.id &&
+        notice.entityType === 'plan_member_deletion',
+    );
+    assertCheck(
+      ownerNotices.length === 1 &&
+        ownerNotices[0].weddingPlanId === clientPlans[0].id &&
+        ownerNotices[0].body ===
+          'انحذف حساب DELETION وما عاد في خطتك. اللي انسجّل في الخطة باقي، وطلبات العروض والحجوزات اللي انطلبت من هذا الحساب صارت باسمك.',
+      "Q-22: the plan's owner is told once that the member's account is gone and what stays",
+    );
+    // The booking stayed, as it should. The provider's own erasure further
+    // down is refused while a wedding is booked with him (B-33), so the
+    // booking is taken off here for the steps that follow.
+    await prisma.booking.delete({ where: { id: memberBooking.id } });
+    assertCheck(
+      (await prisma.quoteRequest.count({
+        where: { id: { in: [clientQuote.id, secondClientQuote.id] } },
+      })) === 2 &&
         (await prisma.conversationParticipant.count({
           where: {
             conversationId: sharedConversation.id,
             userId: user.id,
           },
         })) === 0,
-      'shared-member request and participant state are removed without touching other requests',
+      'shared-member participant state is removed without touching other requests',
     );
     assertCheck(
       (await prisma.weddingCost.count({ where: { id: clientCost.id } })) ===

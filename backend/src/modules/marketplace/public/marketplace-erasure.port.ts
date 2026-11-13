@@ -10,6 +10,14 @@ export interface OwnedQuoteRequestScope {
   conversationIds: readonly string[];
 }
 
+/** D112 (Q-22): the owner a plan's requests pass to, and his contact. */
+export interface QuoteRequestHeir {
+  quoteRequestIds: readonly string[];
+  ownerUserId: string;
+  contactName: string | null;
+  contactPhone: string | null;
+}
+
 // The marketplace steps of account erasure, each run by marketplace on the
 // saga's transaction at the point the saga reaches it.
 export interface MarketplaceErasurePort {
@@ -75,7 +83,35 @@ export interface MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void>;
-  /** Locks (`FOR UPDATE`, ascending) and returns the quote requests in the account's contexts. */
+  /**
+   * D112 (Q-22), RA-BE-131: the requests the account sent from inside plans
+   * it does not own, locked (`FOR UPDATE`, ascending), by plan. They are the
+   * plan's (a helper who booked the hall for the groom), so they are not
+   * erased with the account: they used to be, and their offers and
+   * bookings, confirmed ones too, went with them by cascade while the
+   * plan's owner was told nothing. Called right after the owned requests
+   * are locked, with the same scope, so the two sets never overlap.
+   */
+  lockMemberPlanQuoteRequestsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    scope: OwnedQuoteRequestScope,
+  ): Promise<Array<{ weddingPlanId: string; quoteRequestIds: string[] }>>;
+  /**
+   * D112 (Q-22): hands those requests to each plan's owner: the request,
+   * its booking and its booking changes are his from now on, and the
+   * contact the provider calls is his (the erased account's name and number
+   * leave the request).
+   */
+  handOverQuoteRequestsInTransaction(
+    tx: Prisma.TransactionClient,
+    erasedUserId: string,
+    heirs: readonly QuoteRequestHeir[],
+  ): Promise<void>;
+  /**
+   * Locks (`FOR UPDATE`, ascending) and returns the quote requests in the
+   * account's contexts: its own outside any plan or in a plan it owns, and
+   * every request of its plans, its listings and its conversations.
+   */
   lockOwnedQuoteRequestIdsForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     scope: OwnedQuoteRequestScope,

@@ -93,9 +93,14 @@ import {
   deleteApplicationRefreshTokens,
   deleteOtpCodesByPhone,
   findAccountDeletionReceipt,
+  findPlanOwnerContacts,
   lockUserForAccountDeletion,
 } from '../../infrastructure/account-erasure.repository';
-import { planErasedNotice } from "./account-deletion-notices";
+import {
+  planErasedNotice,
+  planMemberErasedNotice,
+} from "./account-deletion-notices";
+import { applicationDisplayName } from "../../../../shared-kernel/privacy/application-user-identity";
 import {
   findPrivacySettings,
   updatePrivacySettings,
@@ -461,6 +466,87 @@ export class UsersService {
               conversationIds,
             },
           );
+
+        // D112 (Q-22), RA-BE-131: what the account recorded in another
+        // person's plan stays in that plan. Its requests there (a helper
+        // who booked the hall for the groom) pass to the plan's owner with
+        // their offers and bookings, instead of going with the account by
+        // cascade; and the owner of every plan it took part in is told.
+        // Locked here, right after the owned requests, so the saga's lock
+        // order is unchanged.
+        const memberPlanRequests =
+          await this.marketplaceErasure.lockMemberPlanQuoteRequestsForUpdateInTransaction(
+            tx,
+            {
+              userId,
+              weddingPlanIds: planIds,
+              providerIds,
+              conversationIds,
+            },
+          );
+        const memberPlanIds = [
+          ...new Set([
+            ...memberPlanRequests.map((item) => item.weddingPlanId),
+            ...(await this.permissionService.listMemberships(tx, userId)).map(
+              (membership) => membership.weddingPlanId,
+            ),
+          ]),
+        ].filter((weddingPlanId) => !planIds.includes(weddingPlanId));
+        // An account that took part in no one else's plan asks nothing more.
+        const planOwners =
+          memberPlanIds.length === 0
+            ? []
+            : (
+                await this.planErasure.listPlanOwnersInTransaction(
+                  tx,
+                  memberPlanIds,
+                )
+              ).filter((plan) => plan.ownerUserId !== userId);
+        const ownerContacts = new Map(
+          (planOwners.length === 0
+            ? []
+            : await findPlanOwnerContacts(
+                tx,
+                planOwners.map((plan) => plan.ownerUserId),
+              )
+          ).map((owner) => [owner.id, owner]),
+        );
+        const requestsByPlan = new Map(
+          memberPlanRequests.map((item) => [
+            item.weddingPlanId,
+            item.quoteRequestIds,
+          ]),
+        );
+        await this.marketplaceErasure.handOverQuoteRequestsInTransaction(
+          tx,
+          userId,
+          planOwners.flatMap((plan) => {
+            const owner = ownerContacts.get(plan.ownerUserId);
+            const quoteRequestIds = requestsByPlan.get(plan.weddingPlanId);
+            return owner && quoteRequestIds
+              ? [
+                  {
+                    quoteRequestIds,
+                    ownerUserId: owner.id,
+                    contactName: applicationDisplayName(owner),
+                    contactPhone: owner.phone,
+                  },
+                ]
+              : [];
+          }),
+        );
+        notices.push(
+          ...planOwners.map((plan) =>
+            planMemberErasedNotice({
+              ownerUserId: plan.ownerUserId,
+              weddingPlanId: plan.weddingPlanId,
+              memberName: account.name,
+              handedOverRequests:
+                requestsByPlan.get(plan.weddingPlanId)?.length ?? 0,
+              erasedAt: now,
+            }),
+          ),
+        );
 
         const attachmentIds =
           await this.messagingErasure.listAttachmentIdsForConversations(

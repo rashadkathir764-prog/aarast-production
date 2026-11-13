@@ -78,6 +78,50 @@ export function planReopenedNotice(args: {
   };
 }
 
+/**
+ * D112 (Q-22), RA-BE-131: what the owner of a plan reads when a participant
+ * of it is erased. What the participant recorded stays in the plan, and his
+ * requests and bookings there pass to the owner; the owner was told
+ * nothing. The account is named once, here, as it was known; nothing in the
+ * sentence is said of it as a man or a woman.
+ */
+export function planMemberErasedNotice(args: {
+  ownerUserId: string;
+  weddingPlanId: string;
+  memberName: string | null;
+  handedOverRequests: number;
+  erasedAt: Date;
+}): CreateNotificationInput {
+  const who = firstName(args.memberName);
+  const gone = who
+    ? `انحذف حساب ${who} وما عاد في خطتك.`
+    : "انحذف حساب أحد المشاركين وما عاد في خطتك.";
+  const kept =
+    args.handedOverRequests > 0
+      ? " اللي انسجّل في الخطة باقي، وطلبات العروض والحجوزات اللي انطلبت من هذا الحساب صارت باسمك."
+      : " اللي انسجّل في الخطة باقي.";
+  return {
+    userId: args.ownerUserId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.PLAN_UPDATED,
+    priority:
+      args.handedOverRequests > 0
+        ? NotificationPriority.HIGH
+        : NotificationPriority.NORMAL,
+    title: who ? `انحذف حساب ${who}` : "انحذف حساب مشارك",
+    body: `${gone}${kept}`,
+    entityType: "plan_member_deletion",
+    entityId: null,
+    routeTarget: noticeRoutes.planHome(args.weddingPlanId),
+    data: {
+      weddingPlanId: args.weddingPlanId,
+      planEvent: "MEMBER_ERASED",
+      handedOverRequests: args.handedOverRequests,
+    },
+    dedupeKey: `${args.ownerUserId}:plan-member-erased:${args.weddingPlanId}:${args.erasedAt.getTime()}`,
+  };
+}
+
 /** After the 30 days: the plan went with its owner's account; built before the purge, written after. */
 export function planErasedNotice(args: {
   memberUserId: string;

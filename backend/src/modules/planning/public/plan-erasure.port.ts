@@ -15,4 +15,13 @@ export interface PlanErasurePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void>;
+  /**
+   * D112 (Q-22): who owns each of these plans. What an erased account
+   * recorded in another person's plan stays in it, and passes to that
+   * plan's owner; a plan that no longer exists is not returned.
+   */
+  listPlanOwnersInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<Array<{ weddingPlanId: string; ownerUserId: string }>>;
 }

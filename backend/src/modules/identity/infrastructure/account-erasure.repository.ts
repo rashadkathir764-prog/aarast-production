@@ -6,6 +6,7 @@ import {
   UserRole,
   WeddingPersona,
 } from '@prisma/client';
+import { applicationNameFields } from '../../../shared-kernel/privacy/application-user-identity';
 
 export function findAccountDeletionReceipt(
   tx: Prisma.TransactionClient,
@@ -139,6 +140,22 @@ export function deleteApplicationRefreshTokens(tx: Prisma.TransactionClient, use
 
 export function deleteAccountUser(tx: Prisma.TransactionClient, userId: string) {
   return tx.user.delete({ where: { id: userId } });
+}
+
+/**
+ * D112 (Q-22): the owners of the plans an erased account took part in, as a
+ * provider reaches them: what the account requested in their plans passes
+ * to them with their own name and number.
+ */
+export function findPlanOwnerContacts(
+  tx: Prisma.TransactionClient,
+  userIds: readonly string[],
+) {
+  return tx.user.findMany({
+    where: { id: { in: [...userIds] } },
+    orderBy: { id: 'asc' },
+    select: { id: true, phone: true, ...applicationNameFields },
+  });
 }
 
 export function clearAdministratorApplicationIdentity(

@@ -110,8 +110,13 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
   await service.deleteProvidersInTransaction(tx, ['provider-1']);
   await service.deleteProvidersInTransaction(tx, []);
   await service.deleteUserFavoritesInTransaction(tx, 'user-1');
+  // D112 (Q-22), RA-BE-131: the account's own requests go with it only
+  // outside any plan or inside a plan it owns. One it sent from inside
+  // another person's plan is that plan's and is handed to its owner (the
+  // test below); it was selected here by `"userId" = ?` alone and its
+  // confirmed booking went with it.
   assert.deepEqual(statements, [
-    'SELECT "id" FROM "QuoteRequest" WHERE "userId" = ? OR "weddingPlanId" = ANY(?::text[]) OR "providerId" = ANY(?::text[]) OR "conversationId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
+    'SELECT "id" FROM "QuoteRequest" WHERE ("userId" = ? AND ("weddingPlanId" IS NULL OR "weddingPlanId" = ANY(?::text[]))) OR "weddingPlanId" = ANY(?::text[]) OR "providerId" = ANY(?::text[]) OR "conversationId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
   ]);
   assert.deepEqual(calls, [
     ['provider.findMany', { where: { userId: 'user-1' }, orderBy: { id: 'asc' }, select: { id: true } }],
@@ -119,11 +124,82 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
     // RA-ST-05: the reports this account made go with it.
     ['reviewReport.deleteMany', { where: { reporterUserId: 'user-1' } }],
     ['providerReview.deleteMany', { where: { userId: 'user-1' } }],
-    ['$queryRaw', ['user-1', ['plan-1'], [], ['conversation-1']]],
+    ['$queryRaw', ['user-1', ['plan-1'], ['plan-1'], [], ['conversation-1']]],
     ['quoteRequest.deleteMany', { where: { id: { in: ['quote-1'] } } }],
     ['planProviderLink.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     ['provider.deleteMany', { where: { id: { in: ['provider-1'] } } }],
     ['favoriteProvider.deleteMany', { where: { userId: 'user-1' } }],
+  ]);
+});
+
+// D112 (Q-22), RA-BE-131: what an erased account requested inside another
+// person's plan passes to that plan's owner: the request, its booking and
+// its booking changes, with the owner's contact in place of the account's.
+test('Q-22: marketplace hands the requests of another person\'s plan to its owner', async () => {
+  const { tx, calls, statements } = recorder();
+  (tx as any).booking = new Proxy({}, {
+    get: (_target, method: string) => async (args: unknown) => {
+      calls.push([`booking.${method}`, args]);
+      return { count: 1 };
+    },
+  });
+  (tx as any).bookingChange = new Proxy({}, {
+    get: (_target, method: string) => async (args: unknown) => {
+      calls.push([`bookingChange.${method}`, args]);
+      return { count: 0 };
+    },
+  });
+  const service = new MarketplaceErasureService();
+
+  await service.lockMemberPlanQuoteRequestsForUpdateInTransaction(tx, {
+    userId: 'user-1', weddingPlanIds: ['own-plan'], providerIds: ['own-provider'], conversationIds: ['own-thread'],
+  });
+  // The requests the lock above leaves: his, inside a plan that is not
+  // his, to a listing and in a thread that stay.
+  assert.deepEqual(statements, [
+    'SELECT "id", "weddingPlanId" FROM "QuoteRequest" WHERE "userId" = ? AND "weddingPlanId" IS NOT NULL AND NOT ("weddingPlanId" = ANY(?::text[])) AND NOT ("providerId" = ANY(?::text[])) AND ("conversationId" IS NULL OR NOT ("conversationId" = ANY(?::text[]))) ORDER BY "id" ASC FOR UPDATE',
+  ]);
+  calls.length = 0;
+
+  await service.handOverQuoteRequestsInTransaction(tx, 'user-1', [
+    { quoteRequestIds: ['quote-1', 'quote-2'], ownerUserId: 'owner-1', contactName: 'محمد', contactPhone: '+967777000001' },
+    { quoteRequestIds: [], ownerUserId: 'owner-2', contactName: null, contactPhone: null },
+  ]);
+  assert.deepEqual(calls, [
+    ['quoteRequest.updateMany', {
+      where: { id: { in: ['quote-1', 'quote-2'] }, userId: 'user-1' },
+      data: { userId: 'owner-1', contactName: 'محمد', contactPhone: '+967777000001', contactNormalizedPhone: '+967777000001' },
+    }],
+    ['booking.updateMany', {
+      where: { quoteRequestId: { in: ['quote-1', 'quote-2'] }, requestedByUserId: 'user-1' },
+      data: { requestedByUserId: 'owner-1' },
+    }],
+    ['bookingChange.updateMany', {
+      where: { booking: { quoteRequestId: { in: ['quote-1', 'quote-2'] } }, requestedByUserId: 'user-1' },
+      data: { requestedByUserId: 'owner-1' },
+    }],
+  ]);
+});
+
+test('Q-22: planning names the owner of each plan an erased account took part in', async () => {
+  const { tx, calls } = recorder();
+  (tx as any).weddingPlan = {
+    findMany: async (args: unknown) => {
+      calls.push(['weddingPlan.findMany', args]);
+      return [{ id: 'plan-1', ownerUserId: 'owner-1' }];
+    },
+  };
+  const service = new PlanErasureService();
+  assert.deepEqual(await service.listPlanOwnersInTransaction(tx, []), []);
+  assert.deepEqual(await service.listPlanOwnersInTransaction(tx, ['plan-1', 'plan-gone']), [
+    { weddingPlanId: 'plan-1', ownerUserId: 'owner-1' },
+  ]);
+  assert.deepEqual(calls, [
+    ['weddingPlan.findMany', {
+      where: { id: { in: ['plan-1', 'plan-gone'] } },
+      orderBy: { id: 'asc' },
+      select: { id: true, ownerUserId: true },
+    }],
   ]);
 });
 

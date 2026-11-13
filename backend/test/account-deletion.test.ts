@@ -42,6 +42,10 @@ interface RecordedGraph {
   }>;
   /** D63: the members of the owned plans, told after the purge. */
   members?: Array<{ userId: string; weddingPlanId: string }>;
+  /** D112 (Q-22): the account's requests inside plans it does not own. */
+  memberPlanQuotes?: Array<{ id: string; weddingPlanId: string }>;
+  /** D112 (Q-22): the plans the account takes part in, and their owners. */
+  memberships?: Array<{ weddingPlanId: string; ownerUserId: string }>;
   /** The account's phone on its row (null skips the OTP cleanup). */
   phone?: string | null;
   /** D63: where the account's 30 days stand at the purge. */
@@ -122,6 +126,15 @@ function recordingTx(
       if (text.includes('FROM "Conversation"')) {
         calls.push("lockConversations");
         return [...(graph.conversationIds ?? [])].sort().map((id) => ({ id }));
+      }
+      // D112 (Q-22): the account's requests inside plans it does not own,
+      // locked apart from the ones that go with it.
+      if (
+        text.includes('FROM "QuoteRequest"') &&
+        text.includes('"weddingPlanId" IS NOT NULL')
+      ) {
+        calls.push("lockMemberPlanQuoteRequests");
+        return [...(graph.memberPlanQuotes ?? [])];
       }
       if (text.includes('FROM "QuoteRequest"')) {
         calls.push("lockQuoteRequests");
@@ -350,6 +363,42 @@ function recordingTx(
       return { count: 1 };
     },
   };
+  // D112 (Q-22): what passes to the owners of the plans the account took
+  // part in.
+  const handedOver: Array<{ ids: string[]; data: Record<string, unknown> }> = [];
+  tx.weddingPlan.findMany = async ({ where }: any) =>
+    (graph.memberships ?? [])
+      .filter((plan) => where.id.in.includes(plan.weddingPlanId))
+      .map((plan) => ({ id: plan.weddingPlanId, ownerUserId: plan.ownerUserId }));
+  tx.user.findMany = async ({ where }: any) =>
+    where.id.in.map((id: string) => ({
+      id,
+      name: `صاحب ${id}`,
+      appName: null,
+      role: UserRole.USER,
+      phone: `+9677${id.replace(/\D/gu, "").padStart(8, "0")}`,
+    }));
+  tx.quoteRequest.updateMany = async ({ where, data }: any) => {
+    calls.push("quoteRequest.handOver");
+    assert.equal(where.userId, "u1");
+    handedOver.push({ ids: where.id.in, data });
+    return { count: where.id.in.length };
+  };
+  tx.booking = {
+    ...(tx.booking ?? {}),
+    updateMany: async ({ data }: any) => {
+      calls.push("booking.handOver");
+      assert.equal(typeof data.requestedByUserId, "string");
+      return { count: 1 };
+    },
+  };
+  tx.bookingChange = {
+    ...(tx.bookingChange ?? {}),
+    updateMany: async () => {
+      calls.push("bookingChange.handOver");
+      return { count: 0 };
+    },
+  };
   // D63: the members of the owned plans, read through collaboration's port.
   const permissions = {
     listPlanMembers: async (_client: unknown, weddingPlanIds: readonly string[]) => {
@@ -358,7 +407,12 @@ function recordingTx(
         weddingPlanIds.includes(member.weddingPlanId),
       );
     },
+    listMemberships: async () =>
+      (graph.memberships ?? []).map((plan) => ({
+        weddingPlanId: plan.weddingPlanId,
+      })),
   };
+  tx.handedOver = handedOver;
   return { tx, calls, queries, permissions };
 }
 
@@ -369,7 +423,7 @@ const serviceFor = (
     scheduleAllOwnedMediaDeletion: async () => [],
   },
   realtime?: { disconnectUser: (userId: string) => void },
-  permissions: unknown = { listPlanMembers: async () => [] },
+  permissions: unknown = { listPlanMembers: async () => [], listMemberships: async () => [] },
 ) =>
   usersService(
     {
@@ -394,7 +448,7 @@ test("application account deletion erases only the administrator's application i
       $transaction: async (operation: (value: any) => Promise<unknown>) =>
         operation(tx),
     } as any,
-    { listPlanMembers: async () => [] },
+    { listPlanMembers: async () => [], listMemberships: async () => [] },
     {
       lockAccountDeletionBoundary: async () => {},
       scheduleApplicationIdentityMediaDeletion: async () => {
@@ -654,15 +708,77 @@ test("B-33: customers with an open request are told «أغلق حسابه» afte
   assert.ok(calls.includes("quoteRequest"));
 });
 
-test("deleting a shared member removes only that member's request and preserves the owner's conversation", async () => {
-  const { tx, calls, queries } = recordingTx([], {
-    quoteRequestIds: ["member-authored-quote"],
+// D112 (Q-22), the owner's word: what a participant recorded in a plan
+// stays in that plan. This test pinned the opposite for his requests
+// («removes only that member's request»): the request went with his
+// account and its confirmed booking with it, by cascade, and the plan's
+// owner was told nothing (RA-BE-131). It passes to the plan's owner, with
+// his contact, before the account's row goes; and he is told.
+test("Q-22: a member's request in another person's plan passes to that plan's owner, who is told", async () => {
+  const { tx, calls, queries, permissions } = recordingTx([], {
+    memberPlanQuotes: [
+      { id: "member-quote-2", weddingPlanId: "plan-of-owner-7" },
+      { id: "member-quote-1", weddingPlanId: "plan-of-owner-7" },
+    ],
+    memberships: [
+      { weddingPlanId: "plan-of-owner-7", ownerUserId: "owner-7" },
+      // A plan he only took part in, with nothing requested: its owner is
+      // told too, and nothing passes.
+      { weddingPlanId: "plan-of-owner-9", ownerUserId: "owner-9" },
+    ],
   });
-  const svc = serviceFor(tx);
+  erasureNotices.written.length = 0;
+  const svc = serviceFor(tx, undefined, undefined, permissions);
 
   await svc.eraseDueAccount("u1", NOW);
+  const written = erasureNotices.written as any[];
 
-  assert.ok(calls.includes("quoteRequest"));
+  // The requests were handed over, not deleted, and before the row went.
+  assert.deepEqual(tx.handedOver, [
+    {
+      ids: ["member-quote-2", "member-quote-1"],
+      data: {
+        userId: "owner-7",
+        contactName: "صاحب owner-7",
+        contactPhone: "+967700000007",
+        contactNormalizedPhone: "+967700000007",
+      },
+    },
+  ]);
+  assert.ok(calls.includes("booking.handOver"));
+  assert.ok(
+    calls.indexOf("lockQuoteRequests") <
+      calls.indexOf("lockMemberPlanQuoteRequests"),
+  );
+  assert.ok(calls.indexOf("quoteRequest.handOver") < calls.indexOf("user.delete"));
+  const ownerNotices = written.filter(
+    (notice) => notice.entityType === "plan_member_deletion",
+  );
+  assert.deepEqual(
+    ownerNotices.map((notice) => [notice.userId, notice.weddingPlanId, notice.body]),
+    [
+      [
+        "owner-7",
+        "plan-of-owner-7",
+        "انحذف حساب سلمان وما عاد في خطتك. اللي انسجّل في الخطة باقي، وطلبات العروض والحجوزات اللي انطلبت من هذا الحساب صارت باسمك.",
+      ],
+      [
+        "owner-9",
+        "plan-of-owner-9",
+        "انحذف حساب سلمان وما عاد في خطتك. اللي انسجّل في الخطة باقي.",
+      ],
+    ],
+  );
+  // The lock that selects what goes with the account leaves them out.
+  const deleteLock = queries.find(
+    (query) =>
+      query.text.includes('FROM "QuoteRequest"') &&
+      !query.text.includes('"weddingPlanId" IS NOT NULL'),
+  );
+  assert.match(
+    deleteLock?.text ?? "",
+    /"userId" = \S*\s+AND \("weddingPlanId" IS NULL\s+OR "weddingPlanId" = ANY/u,
+  );
   assert.equal(calls.includes("conversation"), false);
   assert.equal(calls.includes("weddingPlan"), false);
   const conversationLock = queries.find((query) =>
@@ -721,7 +837,7 @@ test("account deletion retries a deadlock without changing its read-committed me
   };
   const service = usersService(
     prisma as any,
-    { listPlanMembers: async () => [] },
+    { listPlanMembers: async () => [], listMemberships: async () => [] },
     {
       lockAccountDeletionBoundary: async () => {},
       scheduleAllOwnedMediaDeletion: async () => [],

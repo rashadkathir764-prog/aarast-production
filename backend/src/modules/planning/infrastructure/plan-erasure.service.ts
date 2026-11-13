@@ -32,4 +32,20 @@ export class PlanErasureService implements PlanErasurePort {
       where: { id: { in: [...weddingPlanIds] } },
     });
   }
+
+  async listPlanOwnersInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<Array<{ weddingPlanId: string; ownerUserId: string }>> {
+    if (weddingPlanIds.length === 0) return [];
+    const plans = await tx.weddingPlan.findMany({
+      where: { id: { in: [...weddingPlanIds] } },
+      orderBy: { id: 'asc' },
+      select: { id: true, ownerUserId: true },
+    });
+    return plans.map((plan) => ({
+      weddingPlanId: plan.id,
+      ownerUserId: plan.ownerUserId,
+    }));
+  }
 }

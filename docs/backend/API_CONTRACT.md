@@ -400,6 +400,22 @@ administrator/application identity the administrator row remains with all
 application identity fields cleared. (The earlier immediate deletion keyed by
 the client request id, with `DELETED`/`PENDING`/`NOT_STARTED`, is gone.)
 
+D112 (Q-22), RA-BE-131: what an account recorded in another person's plan
+stays in that plan. The quote requests it sent from inside a plan it does not
+own are not erased with it: each passes to that plan's owner (`userId`, and
+`requestedByUserId` on its booking and booking changes), and the contact the
+provider reads on it becomes the owner's name and number; its offers and
+bookings stay as they are. (They were erased by `"userId" = account` and their
+confirmed bookings went by cascade.) The provider is not told the customer
+left. The owner of every plan the account took part in gets one
+`PLAN_UPDATED` notice (`entityType: "plan_member_deletion"`,
+`data.planEvent: "MEMBER_ERASED"`, `data.handedOverRequests`), which says
+what stays and, when requests passed to him, that they are his now. The
+account's own requests (outside any plan, or in a plan it owns) go with it as
+before. Still erased with the account, and not yet decided otherwise: the
+receipts it uploaded into other plans, its chat messages, and the invites it
+sent.
+
 The settings response includes the persisted content preferences plus an
 additive `channelCapabilities` object:
 

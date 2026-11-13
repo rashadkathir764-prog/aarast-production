@@ -9,6 +9,7 @@ import { bookingToday } from '../../../marketplace/booking-policy';
 import type {
   MarketplaceErasurePort,
   OwnedQuoteRequestScope,
+  QuoteRequestHeir,
 } from '../public/marketplace-erasure.port';
 
 @Injectable()
@@ -86,7 +87,10 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     const open = await tx.quoteRequest.findMany({
       where: {
         OR: [
-          { userId: scope.userId },
+          // D112 (Q-22): a request the account sent from inside another
+          // person's plan stays that plan's and is not closed, so its
+          // provider is not told the customer left.
+          { userId: scope.userId, weddingPlanId: null },
           ...(scope.weddingPlanIds.length > 0
             ? [{ weddingPlanId: { in: [...scope.weddingPlanIds] } }]
             : []),
@@ -198,7 +202,9 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
       Prisma.sql`
         SELECT "id"
         FROM "QuoteRequest"
-        WHERE "userId" = ${scope.userId}
+        WHERE ("userId" = ${scope.userId}
+               AND ("weddingPlanId" IS NULL
+                    OR "weddingPlanId" = ANY(${weddingPlanIds}::text[])))
            OR "weddingPlanId" = ANY(${weddingPlanIds}::text[])
            OR "providerId" = ANY(${providerIds}::text[])
            OR "conversationId" = ANY(${conversationIds}::text[])
@@ -207,6 +213,75 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
       `,
     );
     return quoteRequests.map((quote) => quote.id);
+  }
+
+  async lockMemberPlanQuoteRequestsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    scope: OwnedQuoteRequestScope,
+  ): Promise<Array<{ weddingPlanId: string; quoteRequestIds: string[] }>> {
+    const weddingPlanIds = [...scope.weddingPlanIds];
+    const providerIds = [...scope.providerIds];
+    const conversationIds = [...scope.conversationIds];
+    // Exactly the account's requests the lock above leaves out: sent from a
+    // plan it does not own, to a listing and in a thread that stay.
+    const rows = await tx.$queryRaw<Array<{ id: string; weddingPlanId: string }>>(
+      Prisma.sql`
+        SELECT "id", "weddingPlanId"
+        FROM "QuoteRequest"
+        WHERE "userId" = ${scope.userId}
+          AND "weddingPlanId" IS NOT NULL
+          AND NOT ("weddingPlanId" = ANY(${weddingPlanIds}::text[]))
+          AND NOT ("providerId" = ANY(${providerIds}::text[]))
+          AND ("conversationId" IS NULL
+               OR NOT ("conversationId" = ANY(${conversationIds}::text[])))
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
+    const byPlan = new Map<string, string[]>();
+    for (const row of rows) {
+      byPlan.set(row.weddingPlanId, [
+        ...(byPlan.get(row.weddingPlanId) ?? []),
+        row.id,
+      ]);
+    }
+    return [...byPlan.entries()]
+      .sort(([first], [second]) => (first < second ? -1 : first > second ? 1 : 0))
+      .map(([weddingPlanId, quoteRequestIds]) => ({
+        weddingPlanId,
+        quoteRequestIds,
+      }));
+  }
+
+  async handOverQuoteRequestsInTransaction(
+    tx: Prisma.TransactionClient,
+    erasedUserId: string,
+    heirs: readonly QuoteRequestHeir[],
+  ): Promise<void> {
+    for (const heir of heirs) {
+      const ids = [...heir.quoteRequestIds];
+      if (ids.length === 0) continue;
+      await tx.quoteRequest.updateMany({
+        where: { id: { in: ids }, userId: erasedUserId },
+        data: {
+          userId: heir.ownerUserId,
+          contactName: heir.contactName,
+          contactPhone: heir.contactPhone,
+          contactNormalizedPhone: heir.contactPhone,
+        },
+      });
+      await tx.booking.updateMany({
+        where: { quoteRequestId: { in: ids }, requestedByUserId: erasedUserId },
+        data: { requestedByUserId: heir.ownerUserId },
+      });
+      await tx.bookingChange.updateMany({
+        where: {
+          booking: { quoteRequestId: { in: ids } },
+          requestedByUserId: erasedUserId,
+        },
+        data: { requestedByUserId: heir.ownerUserId },
+      });
+    }
   }
 
   async deleteQuoteRequestsInTransaction(

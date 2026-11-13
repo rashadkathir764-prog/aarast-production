@@ -97,7 +97,8 @@ void main() {
     test('a full day reads in Arabic', () {
       expect(
         bookingErrorMessage('BOOKING_DAY_FULL'),
-        'المزوّد محجوز كامل في هذا اليوم. اختر يوم ثاني.',
+        // RA-MO-262 (2026-11-13): no fixed «اختر» to the bride.
+        'المزوّد محجوز كامل في هذا اليوم.',
       );
     });
   });

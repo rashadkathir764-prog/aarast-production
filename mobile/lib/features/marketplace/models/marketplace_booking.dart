@@ -159,14 +159,24 @@ class MarketplaceBooking {
   /// owes on this booking's item; null without an agreement.
   final BookingMoney? money;
 
-  bool get isRequested => status == 'REQUESTED';
+  /// RA-MO-263: a request whose day passed with no answer. The server can
+  /// no longer confirm, decline or cancel it, so it reads it as over
+  /// (`lifecycleStatus` EXPIRED) and takes a new request.
+  bool get isUnansweredPast =>
+      status == 'REQUESTED' && lifecycleStatus == 'EXPIRED';
+
+  bool get isRequested => status == 'REQUESTED' && !isUnansweredPast;
   bool get isConfirmed => status == 'CONFIRMED';
   bool get isOpen => isRequested || isConfirmed;
 
   /// The customer may ask (again) when there is no open booking; a request
-  /// that expired with the provider's suspension (B-42) too.
+  /// that expired with the provider's suspension (B-42), or whose day
+  /// passed unanswered, too.
   bool get canRequestAgain =>
-      status == 'DECLINED' || status == 'CANCELLED' || status == 'EXPIRED';
+      status == 'DECLINED' ||
+      status == 'CANCELLED' ||
+      status == 'EXPIRED' ||
+      isUnansweredPast;
 
   /// The server's own rule for a review (F10, RA-BE-46): the booking's day
   /// passed, or the provider reported that he himself did not come. Any
@@ -348,6 +358,9 @@ String bookingStatusLabel(
       booking.cancelledBy == 'PROVIDER'
           ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
           : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
+    // RA-MO-263: its day passed with no answer.
+    'EXPIRED' when booking.isUnansweredPast =>
+      forProvider ? 'مرّ يومه وما رديت عليه' : 'مرّ يومه وما ردّ المزوّد',
     // B-42: his account was stopped while the request waited.
     'EXPIRED' =>
       forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
@@ -358,15 +371,16 @@ String bookingStatusLabel(
 /// Arabic text for the booking API's error codes.
 String? bookingErrorMessage(String? code) {
   return switch (code) {
-    'BOOKING_DATE_UNAVAILABLE' =>
-      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
-    'BOOKING_DAY_FULL' => 'المزوّد محجوز كامل في هذا اليوم. اختر يوم ثاني.',
+    // RA-MO-262: no fixed «اختر» to a reader who may be the bride; what
+    // the day is, and the picker stays open for another.
+    'BOOKING_DATE_UNAVAILABLE' => 'المزوّد مو متاح في هذا اليوم.',
+    'BOOKING_DAY_FULL' => 'المزوّد محجوز كامل في هذا اليوم.',
     'BOOKING_DATE_HAS_BOOKING' => 'عندك حجز مؤكد في هذا اليوم.',
-    'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يوم جاي.',
-    'BOOKING_INVALID_DATE' => 'اختر يوم العرس أولًا.',
+    'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى، الحجز ليوم جاي.',
+    'BOOKING_INVALID_DATE' => 'يوم العرس لازم يتحدد أول.',
     'BOOKING_ALREADY_OPEN' => 'عندك طلب حجز مفتوح مع هذا المزوّد.',
-    'BOOKING_QUOTE_NOT_ACCEPTED' => 'اقبل عرض السعر أولًا ثم اطلب الحجز.',
-    'BOOKING_NOT_ALLOWED' => 'تغيّر الحجز. حدّث الشاشة وجرّب مرة ثانية.',
+    'BOOKING_QUOTE_NOT_ACCEPTED' => 'الحجز يُطلب بعد قبول عرض السعر.',
+    'BOOKING_NOT_ALLOWED' => 'تغيّر الحجز، وحاله الجديد يطلع لما تتحدث الصفحة.',
     _ => null,
   };
 }

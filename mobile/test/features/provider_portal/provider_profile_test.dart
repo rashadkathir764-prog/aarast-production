@@ -561,7 +561,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('عريس من اعّرست'), findsOneWidget);
+      // RA-MO-303 (2026-11-13): the reviewer may be a bride.
+      expect(find.text('من عملاء اعّرست'), findsOneWidget);
       expect(find.bySemanticsLabel('5 من 5'), findsOneWidget);
       expect(find.textContaining('«'), findsNothing);
     });

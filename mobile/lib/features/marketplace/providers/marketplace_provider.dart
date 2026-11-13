@@ -282,6 +282,10 @@ String providerDirectoryErrorMessage(Object error) {
 }
 
 const providerReferenceDataErrorMessage = 'ما قدرنا نجيب المدن والأقسام الحين.';
+
+/// The server's 409 on a second review of one provider (RA-MO-263: the
+/// reviews page moves the provider to «قيّمتهم» on it).
+const alreadyReviewedMessage = 'قيّمت هذا المزوّد من قبل.';
 const providerDirectoryGenericErrorMessage =
     'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.';
 const providerDetailsStaleErrorMessage =

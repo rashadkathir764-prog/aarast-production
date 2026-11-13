@@ -226,7 +226,10 @@ class _ParticipantAccountSectionsState
               title: 'اللي سجّلته',
               subtitle: count == null
                   ? 'يبقى باسمك'
-                  : '${arabicCount(count, one: 'حركة', two: 'حركتين', few: 'حركات', many: 'حركة')} · تبقى باسمك',
+                  // RA-MO-280: the server counts the things recorded (a
+                  // task edited three times is one), the page lists each
+                  // change; «حركة» said the page's count, which it was not.
+                  : '${arabicCount(count, one: 'شي واحد', two: 'شيئين', few: 'أشياء', many: 'شي')} · تبقى باسمك',
               onTap: () => context.push(AppRouter.contributionHistory(planId)),
             ),
             if (current.permissions.canInviteMembers)

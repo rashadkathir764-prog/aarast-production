@@ -68,7 +68,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
 
     return AarastPageScaffold(
       title: 'إضافة باقة',
-      subtitle: 'اجمعي أكثر عرض يطلبه العملاء في باقة واضحة.',
+      // RA-MO-303: one voice to the provider (it mixed «اجمعي» and «تريد»).
+      subtitle: 'اجمع أكثر شي يطلبه العملاء في باقة واضحة.',
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: canManageListing
           ? AarastV3FormActionBar(
@@ -112,9 +113,9 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   const AarastV3FocusPrompt(
-                    question: 'ما العرض الذي تريد جمعه في باقة واحدة؟',
+                    question: 'وش اللي تبي تجمعه في باقة وحدة؟',
                     supportingText:
-                        'ابدأ باسم واضح وسعر حقيقي؛ وأضف المزايا والخدمة المرتبطة عند الحاجة.',
+                        'ابدأ باسم واضح وسعر حقيقي، وأضف المميزات والخدمة لو تحتاج.',
                     icon: LucideIcons.package,
                   ),
                   if (_draft != null) ...[

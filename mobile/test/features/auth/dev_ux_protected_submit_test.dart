@@ -54,7 +54,8 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.'),
+        // RA-MO-256 (2026-11-13): the same refusal in plain words.
+        find.text('هذا ينحفظ في حسابك. سجّل دخول عشان تكمل.'),
         findsOneWidget,
       );
       expect(taskProvider.tasks, isEmpty);

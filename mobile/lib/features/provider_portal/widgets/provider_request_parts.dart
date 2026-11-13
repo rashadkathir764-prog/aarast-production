@@ -153,6 +153,9 @@ ProviderCaseState providerCaseOf(
     if (booking.lifecycleStatus == 'NOT_HAPPENED') {
       return ProviderCaseState.notHappened;
     }
+    // RA-MO-263: a request whose day passed unanswered is over; it read
+    // «أكّد الحجز», which the server refuses. The request is what stands.
+    if (booking.isUnansweredPast) return _requestCase(quote);
     switch (booking.status.toUpperCase()) {
       case 'REQUESTED':
         return ProviderCaseState.bookingAsked;
@@ -164,6 +167,10 @@ ProviderCaseState providerCaseOf(
         return ProviderCaseState.bookingCancelled;
     }
   }
+  return _requestCase(quote);
+}
+
+ProviderCaseState _requestCase(QuoteRequest quote) {
   return switch (quote.status.toUpperCase()) {
     'SENT' || 'VIEWED' => ProviderCaseState.fresh,
     'RESPONDED' =>
@@ -445,7 +452,8 @@ String providerDroppedOfferLine(ProviderDroppedOffer dropped, String name) {
     ProviderOfferDropReason.refused =>
       dropped.serverMessage?.trim().isNotEmpty == true
           ? dropped.serverMessage!.trim()
-          : 'ما قبله النظام',
+          // RA-MO-303: «النظام» is a programmer's word.
+          : 'ما انقبل',
   };
   return 'ما أرسلنا عرضك المحفوظ ل$name: $why';
 }

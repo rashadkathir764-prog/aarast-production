@@ -592,7 +592,9 @@ class _SharingScreenState extends State<SharingScreen>
       JourneyNote(
         key: const ValueKey('sharing-note'),
         text: pending.isNotEmpty
-            ? 'الرابط يشتغل 7 أيام من يوم الدعوة. '
+            // RA-MO-282: a reminder sends a new link and its seven days
+            // start again (`reissueInvite`); «من يوم الدعوة» was untrue.
+            ? 'الرابط يشتغل 7 أيام من آخر ما انرسل. '
                   '${context.say('لما ترسل', 'لما ترسلين')} له رابط جديد، '
                   'القديم ما عاد يشتغل.'
             : participantReadingNote(context),

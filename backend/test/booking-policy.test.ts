@@ -77,6 +77,18 @@ test("a declined or cancelled booking can be asked again; an open one cannot", (
   assert.equal(canRequestBooking(BookingStatus.CONFIRMED), false);
 });
 
+// RA-MO-263: a request whose day passed unanswered could be neither
+// confirmed, declined, cancelled nor asked again: a dead end for both.
+test("a request whose day passed unanswered is over, and asked again", () => {
+  const passed = day("2026-10-01");
+  const ahead = day("2027-02-18");
+  assert.equal(canRequestBooking(BookingStatus.REQUESTED, passed, now), true);
+  assert.equal(canRequestBooking(BookingStatus.REQUESTED, ahead, now), false);
+  assert.equal(canRequestBooking(BookingStatus.CONFIRMED, passed, now), false);
+  assert.equal(bookingLifecycle(BookingStatus.REQUESTED, passed, now), "EXPIRED");
+  assert.equal(bookingLifecycle(BookingStatus.REQUESTED, ahead, now), "REQUESTED");
+});
+
 test("a confirmed booking whose day passed reads as completed", () => {
   assert.equal(bookingLifecycle(BookingStatus.CONFIRMED, day("2026-10-01"), now), "COMPLETED");
   assert.equal(bookingLifecycle(BookingStatus.CONFIRMED, day("2027-02-18"), now), "CONFIRMED");

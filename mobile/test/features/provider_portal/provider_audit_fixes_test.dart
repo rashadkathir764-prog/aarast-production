@@ -198,6 +198,8 @@ void main() {
       await _sendOffer(tester);
 
       expect(api.updatedOfferIds, ['offer-1']);
+      // RA-MO-289: the edit names the version it was made from.
+      expect(api.updatedOfferVersions, [1]);
       _expectDaysAhead(api.updatedOffers.single, before, 14);
       expect(api.createdOffers, isEmpty);
       await tester.pump(const Duration(seconds: 5));
@@ -260,6 +262,17 @@ void main() {
         expect(client.lastBody!['title'], isNull);
         expect(client.lastBody!.containsKey('deliveryDays'), isTrue);
         expect(client.lastBody!['deliveryDays'], isNull);
+        // RA-MO-289: no version known, none sent (an older offer).
+        expect(client.lastBody!.containsKey('baseVersionNo'), isFalse);
+
+        await ProviderDashboardApi(client).updateQuoteOffer(
+          quoteOfferId: 'offer-1',
+          message: 'عرض',
+          amount: '100',
+          currency: 'YER',
+          baseVersionNo: 3,
+        );
+        expect(client.lastBody!['baseVersionNo'], 3);
       },
     );
   });
@@ -711,6 +724,7 @@ class _PortalApi extends ProviderDashboardApi {
   final createdOffers = <DateTime?>[];
   final updatedOffers = <DateTime?>[];
   final updatedOfferIds = <String>[];
+  final updatedOfferVersions = <int?>[];
   final decisions = <String>[];
 
   @override
@@ -808,8 +822,10 @@ class _PortalApi extends ProviderDashboardApi {
     DateTime? validUntil,
     List<QuoteOfferLine>? lines,
     int? deliveryDays,
+    int? baseVersionNo,
   }) async {
     updatedOfferIds.add(quoteOfferId);
+    updatedOfferVersions.add(baseVersionNo);
     updatedOffers.add(validUntil);
     return QuoteOffer.fromJson({'id': quoteOfferId, 'status': 'PENDING'});
   }

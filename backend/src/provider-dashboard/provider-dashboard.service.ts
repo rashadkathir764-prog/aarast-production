@@ -62,6 +62,7 @@ import { quoteOfferCurrencyMismatch } from '../marketplace/quote-offer-currency'
 import {
   parseQuoteOfferLines,
   quoteOfferChanges,
+  quoteOfferEditFromOldVersion,
   quoteOfferLocked,
   quoteOfferVersionView,
   toQuoteOfferChangesJson,
@@ -1443,6 +1444,13 @@ export class ProviderDashboardService {
       // B-06: an edit that changes nothing (a retry) is not a new version.
       const changes = quoteOfferChanges(existing, next);
       if (changes.length === 0) return existing;
+      // RA-MO-289: a retry of an edit that went changes nothing and
+      // returned above; an edit from an older version is refused.
+      const stale = quoteOfferEditFromOldVersion(
+        dto.baseVersionNo,
+        existing.currentVersionNo,
+      );
+      if (stale) throw stale;
 
       const versionNo = existing.currentVersionNo + 1;
       const revisedAt = new Date();

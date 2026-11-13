@@ -62,9 +62,13 @@ class _PlanTasks extends StatelessWidget {
             soft: AarastV3Color.paper,
           ),
         ],
-        if (provider?.errorMessage != null) ...[
+        // RA-MO-258 (D87): a refused refresh, or the phone's copy.
+        if (provider?.errorMessage != null || provider?.isStale == true) ...[
           const SizedBox(height: AarastV3Space.x3),
-          JourneyListNotice(offline: false, onRetry: onRetry),
+          JourneyListNotice(
+            offline: provider?.errorMessage == null,
+            onRetry: onRetry,
+          ),
         ],
         if (view.tasks.isEmpty)
           const Padding(

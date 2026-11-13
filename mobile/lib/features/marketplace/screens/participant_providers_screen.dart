@@ -90,6 +90,11 @@ class _ParticipantProvidersScreenState
               soft: AarastV3Color.paper,
             ),
             const SizedBox(height: AarastV3Space.x3),
+            // RA-MO-258 (D87): the phone's copy, said as such.
+            if (view != null && provider?.isStale == true) ...[
+              JourneyListNotice(offline: true, onRetry: _load),
+              const SizedBox(height: AarastV3Space.x3),
+            ],
             if (view == null)
               JourneyListState(
                 phase: failed

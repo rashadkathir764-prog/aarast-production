@@ -246,7 +246,8 @@ class ProviderReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = review.userName?.trim().isNotEmpty == true
         ? review.userName!.trim()
-        : 'عريس من اعّرست';
+        // RA-MO-303: the reviewer may be a bride.
+        : 'من عملاء اعّرست';
     final comment = review.comment?.trim() ?? '';
     final written = review.createdAt;
     final rating = review.rating.clamp(0, 5);

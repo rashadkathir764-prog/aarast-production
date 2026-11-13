@@ -286,9 +286,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             // go from one tab to four under the reader's finger.
             final planMode =
                 _weddingLocationPlanId != null && _hasAccount != null;
-            final tabs = planMode
+            // RA-MO-256: a guest's plan on the phone has no conversations
+            // and no favourites (both are kept in an account), so those two
+            // tabs were dead ends for him.
+            final tabs = !planMode
+                ? const ['استكشف']
+                : _hasAccount == true
                 ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
-                : const ['استكشف'];
+                : const ['استكشف', 'طلباتي'];
             final board = planMode
                 ? _board(provider)
                 : const <ProviderBoardRow>[];
@@ -555,6 +560,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             onFavorite: () async {
               if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
                 context,
+                message: 'المفضلة تنحفظ في حسابك. سجّل دخول عشان تحفظ المزود.',
               )) {
                 return;
               }

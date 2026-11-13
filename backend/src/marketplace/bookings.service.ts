@@ -168,7 +168,12 @@ export class BookingsService {
           "A booking follows an accepted offer",
         );
       }
-      if (!canRequestBooking(quote.booking?.status ?? null)) {
+      if (
+        !canRequestBooking(
+          quote.booking?.status ?? null,
+          quote.booking?.eventDate ?? null,
+        )
+      ) {
         bookingError(
           "CONFLICT",
           "BOOKING_ALREADY_OPEN",

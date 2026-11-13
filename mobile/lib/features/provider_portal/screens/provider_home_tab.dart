@@ -356,7 +356,7 @@ class _BookingAsked extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'يشتي يحجز ${formatArabicWeekdayDayMonth(booking.eventDate)}',
+                  'طلب حجز ${formatArabicWeekdayDayMonth(booking.eventDate)}',
                   style: JourneyType.of(
                     JourneyType.label,
                     color: AarastV3Color.textMuted,

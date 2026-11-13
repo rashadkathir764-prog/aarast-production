@@ -556,6 +556,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
             validUntil: widget.validUntil,
             lines: widget.lines,
             deliveryDays: widget.deliveryDays,
+            baseVersionNo: existing.versionNo,
           )
         ? ProviderOfferSend.sent
         : ProviderOfferSend.failed;

@@ -93,10 +93,16 @@ class WeddingPlansApi {
   }
 
   /// D52: the plan's tasks, guests and bookings as every member reads them.
-  /// Not kept for offline use: a participant's access fails closed (C64).
+  ///
+  /// RA-MO-258: kept on the phone (D85) and served without the network,
+  /// marked old by the contract. D112 (Q-17), the owner's word, replaced
+  /// C64's fail-closed rule: a participant reads the phone's copy until the
+  /// server answers that the right was withdrawn, which removes the plan
+  /// and this copy with it ([LocalDatabase.deletePlanGraph]).
   Future<PlanReadView> getPlanReadView(String planId) async {
-    final json = await _apiClient.getJson(
+    final json = await OfflineReads(_apiClient, _offline).blob(
       '/api/v1/wedding-plans/$planId/plan-view',
+      metaKey: 'plan-view:$planId',
     );
     return PlanReadView.fromJson(json);
   }

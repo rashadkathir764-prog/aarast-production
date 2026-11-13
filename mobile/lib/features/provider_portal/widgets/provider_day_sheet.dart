@@ -109,7 +109,7 @@ class _ProviderDaySheet extends StatelessWidget {
       soft: confirmed ? AarastV3Color.mintSoft : AarastV3Color.brandAccentSoft,
       title: 'عرس $name',
       subtitle: service.isEmpty
-          ? (confirmed ? 'حجز مؤكد' : 'يشتي يحجز اليوم')
+          ? (confirmed ? 'حجز مؤكد' : 'طلب حجز لهذا اليوم')
           : service,
       trailing: JourneyTag(
         label: confirmed ? 'محجوز' : 'ينتظر تأكيدك',

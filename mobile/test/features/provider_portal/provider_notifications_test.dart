@@ -211,7 +211,8 @@ void main() {
     expect(find.text('كل واحد يفتح طلبه'), findsOne);
     expect(find.text('طلب جديد من سلمى'), findsOne);
     expect(find.text('صور وفيديو · 21 يناير'), findsWidgets);
-    expect(find.text('محمد يشتي يحجز'), findsOne);
+    // RA-MO-303 (2026-11-13): the customer may be a bride.
+    expect(find.text('طلب حجز من محمد'), findsOne);
     expect(find.text('أكّد الحجز'), findsWidgets);
     expect(find.text('فهد لغى الحجز'), findsOne);
     expect(find.text('4 فبراير · الحجز انلغى'), findsOne);

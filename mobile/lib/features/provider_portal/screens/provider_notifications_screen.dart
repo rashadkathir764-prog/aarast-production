@@ -305,7 +305,8 @@ ProviderNoticeLook providerNoticeLook(
         icon: LucideIcons.calendarCheck,
         color: AarastV3Color.brandAccentStrong,
         soft: AarastV3Color.brandAccentSoft,
-        title: '$first يشتي يحجز',
+        // RA-MO-303: the customer may be a bride.
+        title: 'طلب حجز من $first',
         subtitle: asked ? 'أكّد الحجز' : requestLine,
       );
     case 'BOOKING_UPDATED':

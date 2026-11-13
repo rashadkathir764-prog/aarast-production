@@ -57,6 +57,10 @@ void main() {
     expect(api.membersCalls, 0);
     expect(api.requests.single.contributorUserId, isNull);
     expect(find.textContaining('خلّصت'), findsWidgets);
+    // RA-MO-279: a reader without the money has no «المال» filter (the
+    // server shows them no money in the history).
+    expect(find.byKey(const ValueKey('history-filter-MONEY')), findsNothing);
+    expect(find.byKey(const ValueKey('history-filter-TASKS')), findsOneWidget);
   });
 
   test('«أخفِ المبالغ» hides the amount in an activity row', () {

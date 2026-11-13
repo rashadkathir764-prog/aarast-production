@@ -321,7 +321,9 @@ class JsonLocalDatabase implements LocalDatabase {
       ..remove('money-summary:$normalizedPlanId')
       ..remove('money-funding:$normalizedPlanId')
       ..remove('guest-groups:$normalizedPlanId')
-      ..remove('funding:$normalizedPlanId');
+      ..remove('funding:$normalizedPlanId')
+      // RA-MO-258: the participant's read of the plan.
+      ..remove('plan-view:$normalizedPlanId');
     await _writeMap(_metaKey, meta);
   }
 

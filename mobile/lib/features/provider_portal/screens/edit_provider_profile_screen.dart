@@ -76,7 +76,8 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
 
     return AarastPageScaffold(
       title: 'تعديل ملف المزود',
-      subtitle: 'حدّث بيانات النشاط التي تظهر للعملاء في سوق المزودين.',
+      // RA-MO-303: in the app's words, not formal.
+      subtitle: 'بيانات محلك اللي يشوفها العملاء في دليل المزودين.',
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: profile == null
           ? null

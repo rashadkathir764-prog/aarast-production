@@ -520,6 +520,34 @@ void main() {
     chat.dispose();
   });
 
+  // RA-MO-263 (batch 7): lifting a block opened the writing in a
+  // conversation the server had closed for another reason.
+  test('lifting a block opens writing only where the server allows', () async {
+    final closed = _conversation(
+      blocked: true,
+      blockedByMe: true,
+      canSend: false,
+    );
+    final api = _FakeChatApi(
+      // What the server holds once the block is lifted: still closed.
+      conversations: [_conversation(id: closed.id, canSend: false)],
+    );
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    addTearDown(chat.dispose);
+    await chat.initialize();
+
+    expect(await chat.setBlocked(closed, false), isTrue);
+
+    expect(api.blockedValues, [false]);
+    final now = chat.conversations.where((item) => item.id == closed.id);
+    expect(now.single.canSend, isFalse);
+    expect(now.single.blockedByMe, isFalse);
+  });
+
   // RA-MO-255 (batch 7): the plan's conversations listed every conversation
   // of the account; another plan's opened as «هذي الخطة ما عادت لك».
   testWidgets('a plan\'s conversations are that plan\'s only', (tester) async {
@@ -1296,6 +1324,13 @@ class _FakeChatApi extends ChatApi {
   @override
   Future<void> report(String conversationId, String reason) async {
     reports.add(reason);
+  }
+
+  final List<bool> blockedValues = [];
+
+  @override
+  Future<void> setBlocked(String conversationId, bool enabled) async {
+    blockedValues.add(enabled);
   }
 
   final List<ChatConversation> conversations;

@@ -283,7 +283,8 @@ class _BudgetMatchContextCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'إزالة فلتر الميزانية',
+            // RA-MO-262: the filter is the plan's item, not «الميزانية».
+            tooltip: 'إلغاء فلتر البند',
             onPressed: onClear,
             icon: Icon(LucideIcons.x, color: context.accent.primary),
           ),

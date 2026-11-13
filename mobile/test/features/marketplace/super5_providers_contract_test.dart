@@ -361,6 +361,39 @@ void main() {
     },
   );
 
+  // RA-MO-259 (batch 7): a price in dollars was compared with the riyal
+  // item: «$450» read as «أقل من بندك» on a 300,000 riyal item.
+  testWidgets('a price in another currency is not compared with the item', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      providers: [
+        _provider(
+          id: 'provider-1',
+          businessName: 'قاعة السلام',
+          services: [
+            _service(title: 'قاعة كبيرة', basePrice: '450', currency: 'USD'),
+          ],
+        ),
+      ],
+      categories: const [ProviderCategory(id: 'cat-venue', nameAr: 'القاعات')],
+      budgetMatchIntent: const ProviderBudgetMatchIntent(
+        budgetCategoryName: 'الصالة',
+        allocatedAmount: '300000',
+      ),
+    );
+
+    await _pumpMarketplace(tester, state);
+    await tester.scrollUntilVisible(
+      find.text('نفس القسم'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('أقل من بندك'), findsNothing);
+    expect(find.text('ضمن بندك'), findsNothing);
+  });
+
   testWidgets('provider card opens the provider details screen', (
     tester,
   ) async {
@@ -919,6 +952,7 @@ MarketplaceService _service({
   required String title,
   String? basePrice,
   MarketplaceCity? city,
+  String? currency,
 }) {
   return MarketplaceService(
     id: 'service-$title',
@@ -928,6 +962,7 @@ MarketplaceService _service({
     category: const ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
     basePrice: basePrice,
     city: city,
+    currency: currency,
   );
 }
 

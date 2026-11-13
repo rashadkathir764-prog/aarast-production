@@ -45,4 +45,15 @@ export class UpdateQuoteOfferDto {
   @Min(0)
   @Max(365)
   deliveryDays?: number | null;
+
+  /**
+   * RA-MO-289: the offer version this edit was made from. Another edit
+   * since (his other phone) refuses it with `409 QUOTE_OFFER_CHANGED`, so an
+   * old copy never undoes a newer offer. Optional: older phones send none.
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100_000)
+  baseVersionNo?: number;
 }

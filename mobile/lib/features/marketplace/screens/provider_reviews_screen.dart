@@ -290,6 +290,10 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
           comment: _comment.text.trim().isEmpty ? null : _comment.text.trim(),
         );
     if (!mounted) return;
+    // RA-MO-263: a review the moderation hid is not in the public list, so
+    // this page asked for it again and the server refused. Refused as
+    // already rated, the provider moves to «قيّمتهم».
+    final ratedBefore = error == alreadyReviewedMessage;
     setState(() {
       _sending = false;
       if (error == null) {
@@ -297,9 +301,17 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
         _sent = provider;
         _rating = 0;
         _comment.clear();
+      } else if (ratedBefore) {
+        _mine[provider.providerId] = 0;
+        _rating = 0;
+        _comment.clear();
       }
     });
-    if (error != null) AarastToast.showError(context, error);
+    if (ratedBefore) {
+      AarastToast.showInfo(context, error!);
+    } else if (error != null) {
+      AarastToast.showError(context, error);
+    }
   }
 
   void _close() {
@@ -549,7 +561,17 @@ class _RatedList extends StatelessWidget {
                 soft: AarastV3Color.mintSoft,
                 title: item.name,
                 subtitle: item.service,
-                trailing: _Stars(rating: mine[item.providerId]!, size: 16),
+                // 0: rated before, its stars not public (the review is
+                // hidden or waits, RA-MO-263).
+                trailing: mine[item.providerId] == 0
+                    ? Text(
+                        'قيّمته من قبل',
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      )
+                    : _Stars(rating: mine[item.providerId]!, size: 16),
               ),
           ],
         ),

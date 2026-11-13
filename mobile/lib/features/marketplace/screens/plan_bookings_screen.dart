@@ -254,6 +254,9 @@ class _BookingCard extends StatelessWidget {
         booking.notHappenedReason == 'WE_DID_NOT_ATTEND'
             ? 'قالوا إنهم ما حضروا'
             : 'المزود سجّل إن الحجز ما تمّ',
+      // RA-MO-263: its day passed with no answer.
+      'EXPIRED' when booking.isUnansweredPast =>
+        'مرّ يوم الحجز وما ردّوا، فانتهى الطلب',
       // B-42: the request waited while his account was stopped.
       'EXPIRED' => 'انتهى الطلب، المزود موقوف مؤقتًا',
       _ => _cancelledLine(booking, context.journeyProfile),

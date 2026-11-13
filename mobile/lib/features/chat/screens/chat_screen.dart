@@ -332,8 +332,15 @@ class _ChatScreenState extends State<ChatScreen> {
           if (conversation?.blocked == true)
             _Notice(
               text: conversation?.blockedByMe == true
-                  ? 'حظرته. ترفع الحظر من اسمه فوق.'
-                  : 'ما تقدر ترسل في هذي المحادثة الحين.',
+                  // RA-MO-262: said to the reader as who they are.
+                  ? context.say(
+                      'حظرته. ترفع الحظر من اسمه فوق.',
+                      'حظرتيه. ترفعين الحظر من اسمه فوق.',
+                    )
+                  : context.say(
+                      'ما تقدر ترسل في هذي المحادثة الحين.',
+                      'ما تقدرين ترسلين في هذي المحادثة الحين.',
+                    ),
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             )
@@ -1211,7 +1218,7 @@ class _Composer extends StatelessWidget {
             maxLength: 2000,
             style: JourneyType.of(JourneyType.body),
             decoration: InputDecoration(
-              hintText: 'اكتب رسالتك...',
+              hintText: context.say('اكتب رسالتك...', 'اكتبي رسالتك...'),
               hintStyle: JourneyType.of(
                 JourneyType.body,
                 color: AarastV3Color.textFaint,

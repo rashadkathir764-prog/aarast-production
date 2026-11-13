@@ -46,6 +46,9 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
   String? _section;
   bool _accessFailed = false;
 
+  /// RA-MO-279: «المال» is a filter for a reader who sees the money only.
+  bool _seesMoney = false;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +96,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
     setState(() {
       _isOwner = isOwner;
       _actors = actors;
+      _seesMoney = isOwner || sharing.access.canViewMoney;
     });
     await history.load(
       planId,
@@ -138,15 +142,16 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  for (final (label, section) in _filters) ...[
-                    JourneyChip(
-                      key: ValueKey('history-filter-${section ?? 'ALL'}'),
-                      label: label,
-                      selected: _section == section,
-                      onTap: () => _filter(section),
-                    ),
-                    const SizedBox(width: AarastV3Space.x2),
-                  ],
+                  for (final (label, section) in _filters)
+                    if (section != 'MONEY' || _seesMoney) ...[
+                      JourneyChip(
+                        key: ValueKey('history-filter-${section ?? 'ALL'}'),
+                        label: label,
+                        selected: _section == section,
+                        onTap: () => _filter(section),
+                      ),
+                      const SizedBox(width: AarastV3Space.x2),
+                    ],
                 ],
               ),
             ),

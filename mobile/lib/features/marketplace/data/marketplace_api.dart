@@ -1420,10 +1420,15 @@ class ProviderDashboardApi {
     DateTime? validUntil,
     List<QuoteOfferLine>? lines,
     int? deliveryDays,
+    int? baseVersionNo,
   }) async {
     final json = await _apiClient.patchJson(
       '/api/v1/provider/me/quote-offers/$quoteOfferId',
       {
+        // RA-MO-289: the version the edit was made from; the server
+        // refuses it (QUOTE_OFFER_CHANGED) if his other phone changed the
+        // offer since.
+        'baseVersionNo': ?baseVersionNo,
         'message': message.trim(),
         // RA-MO-289: an edit says what the offer is now. A title taken
         // off, and «بدون» for the delivery, were left out of the request,

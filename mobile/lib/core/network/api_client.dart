@@ -1020,6 +1020,9 @@ class ApiException implements Exception {
       'PROVIDER_NOT_ACTIVE' => 'المزود موقوف الحين، ما يستقبل رسائل ولا طلبات.',
       // RA-BE-26: the provider's owner is waiting out the account's deletion.
       'PROVIDER_LEAVING' => 'هذا المزود يقفل حسابه وما يستقبل طلبات جديدة.',
+      // RA-MO-263: it came in English.
+      'PROVIDER_NOT_CLAIMED' =>
+        'هذا المزوّد ما فعّل حسابه بعد، فما يستقبل طلبات.',
       // RA-MO-297: said as «اطلبها من صاحب الخطة», the 403 for a plan.
       'PROVIDER_PROFILE_READ_ONLY' => 'ملفك ما يتعدّل وهو موقوف أو مرفوض.',
       'CONVERSATION_CLOSED' => 'هذي المحادثة انقفلت، ما تستقبل رسائل.',

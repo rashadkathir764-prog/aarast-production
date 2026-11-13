@@ -334,6 +334,12 @@ class _ChosenCard extends StatelessWidget {
         AarastV3Color.canvas,
       ),
       _ when completed => ('تم', AarastV3Color.mint, AarastV3Color.mintSoft),
+      // RA-MO-263: its day passed unanswered; it is over.
+      _ when booking?.isUnansweredPast == true => (
+        'انتهى',
+        AarastV3Color.textMuted,
+        AarastV3Color.canvas,
+      ),
       'CONFIRMED' => ('محجوز', AarastV3Color.mint, AarastV3Color.mintSoft),
       'REQUESTED' => (
         'ينتظر تأكيدهم',
@@ -374,6 +380,8 @@ class _ChosenCard extends StatelessWidget {
         'ما قدروا على ${formatArabicDayMonth(change.toDate)}${change.declineReason == null ? '' : ': ${change.declineReason}'} · الحجز باقي ${formatArabicDayMonth(booking!.eventDate)}',
       'CONFIRMED' =>
         'أكدوا ${formatArabicDayMonth(booking!.eventDate)} · نذكّركم قبل بأسبوع وبيوم',
+      _ when booking?.isUnansweredPast == true =>
+        'مرّ يوم الحجز وما ردّوا، فانتهى الطلب',
       'REQUESTED' =>
         '${context.say('طلبت', 'طلبتِ')} ${formatArabicDayMonth(booking!.eventDate)} · ينتظر ردهم',
       'DECLINED' =>

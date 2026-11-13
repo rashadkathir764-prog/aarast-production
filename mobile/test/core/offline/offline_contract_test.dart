@@ -29,7 +29,7 @@ const _baseline = <String, int>{
   // the model now, with its own long wait; the status is asked fresh for
   // what is left today, and kept on the phone for the home's door.
   'wedding_plans/data/plan_assistant_api.dart': 2,
-  'wedding_plans/data/wedding_plans_api.dart': 10,
+  'wedding_plans/data/wedding_plans_api.dart': 9,
 };
 
 void main() {

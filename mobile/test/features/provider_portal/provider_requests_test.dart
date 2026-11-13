@@ -159,7 +159,8 @@ void main() {
 
       expect(find.byKey(const Key('provider-home-none-waiting')), findsOne);
       expect(find.text('محمد قبل عرضك'), findsOneWidget);
-      expect(find.text('يشتي يحجز الخميس 21 يناير'), findsOneWidget);
+      // RA-MO-303 (2026-11-13): the customer may be a bride.
+      expect(find.text('طلب حجز الخميس 21 يناير'), findsOneWidget);
       expect(find.text('عرس عادل الريمي · صور وفيديو'), findsOneWidget);
 
       await tester.tap(
@@ -228,7 +229,7 @@ void main() {
       expect(find.text('انتهى'), findsOneWidget);
       expect(find.text('محمد الحمدي'), findsOneWidget);
       expect(find.text('الخميس 21 يناير · صور وفيديو'), findsWidgets);
-      expect(find.text('أكّد الحجز: يشتي يحجز'), findsOneWidget);
+      expect(find.text('أكّد الحجز: طلب حجز'), findsOneWidget);
       expect(find.text('قبلوا عرضك'), findsOneWidget);
       // B-04: each new request counts its seven days, as p15 draws it.
       expect(find.text('ردّ: باقي 6 أيام'), findsNWidgets(2));

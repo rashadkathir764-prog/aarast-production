@@ -18,8 +18,10 @@ class AuthActionGuard {
   static const sessionExpiredTitle = 'انتهى دخولك';
   static const sharingSessionExpiredBody =
       'سجّل دخول مرة ثانية عشان تكمل مشاركة الخطة.';
+  // RA-MO-256: «لحفظ هذا الإجراء… ومزامنته» was formal and a programmer's
+  // word; said as the app says things.
   static const protectedActionMessage =
-      'سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.';
+      'هذا ينحفظ في حسابك. سجّل دخول عشان تكمل.';
   static const quoteSubmitMessage = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
   static const localPlanningSaveMessage =
       'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';

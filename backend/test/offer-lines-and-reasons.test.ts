@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   parseQuoteOfferLines,
   quoteOfferChanges,
+  quoteOfferEditFromOldVersion,
   quoteOfferVersionView,
   readQuoteOfferLines,
 } from '../src/modules/marketplace/public/quote-offer-versions';
@@ -12,6 +15,30 @@ import {
 } from '../src/marketplace/quote-notifications';
 
 // G24 (owner-vision audit 2026-10-27): B-05, B-07, B-11.
+
+// RA-MO-289: an edit from his other phone's older copy of the offer undid
+// the newer one, field by field. The edit names the version it was made
+// from, and an older one is refused.
+test('an offer edit made from an older version is refused', () => {
+  assert.equal(quoteOfferEditFromOldVersion(undefined, 3), null);
+  assert.equal(quoteOfferEditFromOldVersion(3, 3), null);
+  const refused = quoteOfferEditFromOldVersion(2, 3);
+  assert.ok(refused);
+  assert.equal(refused.getStatus(), 409);
+  assert.deepEqual(
+    (refused.getResponse() as { code: string }).code,
+    'QUOTE_OFFER_CHANGED',
+  );
+  // The service checks it after a retry that changes nothing returned.
+  const service = readFileSync(
+    join(__dirname, '..', 'src', 'provider-dashboard', 'provider-dashboard.service.ts'),
+    'utf8',
+  );
+  assert.match(
+    service,
+    /if \(changes\.length === 0\) return existing;[\s\S]{0,300}quoteOfferEditFromOldVersion\(\s*dto\.baseVersionNo,/u,
+  );
+});
 
 test('B-07: offer lines are checked and normalized', () => {
   assert.equal(parseQuoteOfferLines(undefined), undefined);

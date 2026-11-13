@@ -2611,7 +2611,11 @@ B-08, B-14, G19; D50):
   customer («عدّل … عرضه», no amount; push «عدّلوا عرضهم»), at most once per
   offer per ten minutes (`QuoteOffer.revisionNoticeAt`): a revision inside
   that window is recorded on the timeline but not notified. An edit
-  that changes nothing returns the offer unchanged. Renewing an expired offer
+  that changes nothing returns the offer unchanged. An edit may carry
+  `baseVersionNo`, the version it was made from (RA-MO-289): when the offer is
+  at another version (changed from the provider's other phone) a changing
+  edit is `409 QUOTE_OFFER_CHANGED`, never merged field by field; an edit
+  without it is applied as before. Renewing an expired offer
   is an edit like any other. Editing an offer that is not `PENDING` on a
   `RESPONDED` request is `409 QUOTE_OFFER_LOCKED`.
 - **Accepting a version.** `PATCH /api/v1/quote-offers/:id/accept` takes an
@@ -3070,7 +3074,10 @@ cancelledAt, expiredAt, createdAt, updatedAt }`. `status` is `REQUESTED |
 CONFIRMED | DECLINED | CANCELLED | EXPIRED` (`EXPIRED`: an open request of a
 provider the back office suspended, B-42; the customer may ask again);
 `lifecycleStatus` adds `COMPLETED` for a confirmed booking whose day has
-passed. Quote responses (customer and provider) carry `booking` (or `null`);
+passed, and reads `EXPIRED` for a `REQUESTED` one whose day passed with no
+answer (RA-MO-263): it can no longer be confirmed, declined or cancelled, and
+`POST /api/v1/me/quote-requests/:id/booking` takes a new request over it.
+Quote responses (customer and provider) carry `booking` (or `null`);
 on the provider's request responses the booking also carries `money`.
 
 **Money for the provider (B-18, D41, D60).** `money` is `{ agreed, paid, left,

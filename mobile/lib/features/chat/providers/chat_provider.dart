@@ -504,13 +504,24 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _errorMessage = null;
     try {
       await _api.setBlocked(conversation.id, enabled);
-      _replaceConversation(
-        conversation.copyWith(
-          blocked: enabled || conversation.blockedByCounterpart,
-          blockedByMe: enabled,
-          canSend: !enabled && !conversation.blockedByCounterpart,
-        ),
+      var next = conversation.copyWith(
+        blocked: enabled || conversation.blockedByCounterpart,
+        blockedByMe: enabled,
+        // Blocking closes the writing at once; lifting it opens it only if
+        // nothing else closed it (below).
+        canSend: false,
       );
+      if (!enabled) {
+        // RA-MO-263: lifting a block opened the writing in a conversation
+        // closed for another reason (the request ended, the provider left).
+        // The server says whether it can be written in now.
+        try {
+          next = await _api.getConversation(conversation.id);
+        } on Object catch (error) {
+          debugPrint('Conversation not read after unblocking: $error');
+        }
+      }
+      _replaceConversation(next);
       notifyListeners();
       return true;
     } on ApiException catch (error) {

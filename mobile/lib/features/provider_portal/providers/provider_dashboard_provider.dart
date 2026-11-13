@@ -1412,6 +1412,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     DateTime? validUntil,
     List<QuoteOfferLine>? lines,
     int? deliveryDays,
+    int? baseVersionNo,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -1427,11 +1428,16 @@ class ProviderDashboardProvider extends ChangeNotifier
         validUntil: validUntil,
         lines: lines,
         deliveryDays: deliveryDays,
+        baseVersionNo: baseVersionNo,
       );
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'تعديل العرض يحتاج الخادم');
+      final refusal = _said(error, 'تعديل العرض يحتاج الخادم');
+      // RA-MO-289: changed from his other phone: the newer offer is read,
+      // and the refusal stays said.
+      if (error.serverCode == 'QUOTE_OFFER_CHANGED') await loadDashboard();
+      _errorMessage = refusal;
       return false;
     } catch (_) {
       _errorMessage = 'ما اتعدّل العرض الحين. جرّب مرة ثانية.';

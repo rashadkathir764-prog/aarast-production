@@ -139,7 +139,12 @@ void main() {
     expect(ok, false);
     expect(provider.lastCreatedQuote, isNull);
     expect(provider.existingActiveQuote?.id, 'quote-existing');
-    expect(provider.quoteSubmitErrorMessage, contains('الطلب الحالي'));
+    // RA-MO-262 (2026-11-13): the server's formal sentence is said in the
+    // app's words; the open request itself is [existingActiveQuote].
+    expect(
+      provider.quoteSubmitErrorMessage,
+      'فيه طلب مفتوح عند هذا المزوّد لنفس الشي.',
+    );
   });
 
   test(

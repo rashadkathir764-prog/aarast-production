@@ -71,7 +71,8 @@ void main() {
   test('booking errors read as Arabic actions', () {
     expect(
       bookingErrorMessage('BOOKING_DATE_UNAVAILABLE'),
-      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
+      // RA-MO-262 (2026-11-13): no fixed «اختر» to the bride.
+      'المزوّد مو متاح في هذا اليوم.',
     );
     expect(bookingErrorMessage('SOMETHING_ELSE'), isNull);
   });

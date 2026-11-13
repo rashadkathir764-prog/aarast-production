@@ -107,8 +107,9 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     final service = widget.quote?.service?.title.trim() ?? '';
     final day = formatArabicWeekdayDayMonth(booking.eventDate);
     final asks = service.isEmpty
-        ? 'يشتي يحجز $day'
-        : 'يشتي يحجز $service · $day';
+        // RA-MO-303: the customer may be a bride.
+        ? 'طلب حجز $day'
+        : 'طلب حجز $service · $day';
     final error = _error;
     if (_declining) {
       return JourneySheetBody(

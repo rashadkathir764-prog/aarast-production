@@ -75,8 +75,12 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
       );
     } else {
       children.addAll([
-        if (provider?.errorMessage != null) ...[
-          JourneyListNotice(offline: false, onRetry: _load),
+        // RA-MO-258 (D87): a refused refresh, or the phone's copy.
+        if (provider?.errorMessage != null || provider?.isStale == true) ...[
+          JourneyListNotice(
+            offline: provider?.errorMessage == null,
+            onRetry: _load,
+          ),
           const SizedBox(height: AarastV3Space.x3),
         ],
         if (view.guestsTotal > 0) ...[

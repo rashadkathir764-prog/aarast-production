@@ -141,12 +141,13 @@ class ProviderRequestCard extends StatelessWidget {
       final until? =>
         '${onQuickOffer == null ? 'ردّ' : 'ردّ سريع'}: '
             '${providerDaysLeftLabel(until.toLocal())}',
-      null => onQuickOffer == null ? 'ردّ على طلبه' : 'ردّ سريع',
+      // RA-MO-303: the customer may be a bride; nothing says «he».
+      null => onQuickOffer == null ? 'ردّ على الطلب' : 'ردّ سريع',
     },
-    ProviderCaseState.bookingAsked => 'أكّد الحجز: يشتي يحجز',
+    ProviderCaseState.bookingAsked => 'أكّد الحجز: طلب حجز',
     ProviderCaseState.replied => switch (quote.pendingOffer?.validUntil) {
       final until? => 'عرضك صالح لين ${formatArabicDayMonth(until.toLocal())}',
-      null => 'عرضك عنده',
+      null => 'عرضك وصل',
     },
     ProviderCaseState.waitingBooking => 'قبل عرضك، ينتظر يطلب الحجز',
     ProviderCaseState.booked => 'الحجز مؤكد',

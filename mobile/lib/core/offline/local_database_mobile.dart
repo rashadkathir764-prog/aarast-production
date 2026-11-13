@@ -369,6 +369,8 @@ class SqliteLocalDatabase implements LocalDatabase {
         'money-funding:$normalizedPlanId',
         'guest-groups:$normalizedPlanId',
         'funding:$normalizedPlanId',
+        // RA-MO-258: the participant's read of the plan.
+        'plan-view:$normalizedPlanId',
       ]) {
         await txn.delete(
           OfflineTables.localMeta,

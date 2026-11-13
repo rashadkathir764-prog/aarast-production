@@ -746,6 +746,19 @@ void main() {
     expect(tabs.labels[tabs.selected], 'استكشف');
   });
 
+  // RA-MO-256 (batch 7): a plan on the phone, without an account, showed
+  // «المحادثات» and «المفضلة», both kept in an account: dead ends.
+  testWidgets('a guest\'s plan on the phone has the two tabs that work', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeMarketplaceProvider(), account: false);
+
+    final tabs = tester.widget<JourneyTabSwitch>(
+      find.byKey(const ValueKey('providers-tabs')),
+    );
+    expect(tabs.labels, ['استكشف', 'طلباتي']);
+  });
+
   testWidgets('D72: a request under way opens on «طلباتي»', (tester) async {
     await _pump(
       tester,

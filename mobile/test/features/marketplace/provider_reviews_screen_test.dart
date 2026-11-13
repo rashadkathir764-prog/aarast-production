@@ -126,6 +126,26 @@ void main() {
     expect(find.text('أرسل التقييم'), findsOneWidget);
   });
 
+  // RA-MO-263 (batch 7): a review the moderation hid is not listed, so the
+  // page asked for it again, and the server's refusal left it asking.
+  testWidgets('a hidden review refused as rated before moves to «قيّمتهم»', (
+    tester,
+  ) async {
+    final marketplace = await _pump(tester, [
+      _booked('studio', 'استوديو ضوء صنعاء', 'التصوير', 'COMPLETED'),
+    ]);
+    marketplace.reviewedHidden.add('provider-studio');
+
+    await tester.tap(find.byKey(const ValueKey('reviews-star-4')));
+    await tester.pump();
+    await tester.tap(find.text('أرسل التقييم'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('قيّمتهم'), findsOneWidget);
+    expect(find.text('قيّمته من قبل'), findsOneWidget);
+    expect(find.text('1 من 1 · تقييمك يساعد العرسان الجايين'), findsOneWidget);
+  });
+
   testWidgets('a provider rated before is not asked again', (tester) async {
     await _pump(
       tester,
@@ -186,6 +206,9 @@ class _Marketplace extends ProviderMarketplaceProvider {
   final List<QuoteRequest> _quotes;
   final sent = <String>[];
 
+  /// Providers this account reviewed in a review not publicly listed.
+  final reviewedHidden = <String>{};
+
   @override
   List<QuoteRequest> get quoteRequests => _quotes;
 
@@ -198,6 +221,7 @@ class _Marketplace extends ProviderMarketplaceProvider {
     required int rating,
     String? comment,
   }) async {
+    if (reviewedHidden.contains(providerId)) return alreadyReviewedMessage;
     sent.add('$providerId:$rating:${comment ?? ''}');
     return null;
   }

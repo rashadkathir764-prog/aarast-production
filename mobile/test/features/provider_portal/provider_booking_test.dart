@@ -120,7 +120,8 @@ void main() {
       final api = _asked();
       await _open(tester, api);
       expect(find.text('محمد قبل عرضك'), findsWidgets);
-      expect(find.text('يشتي يحجز صور وفيديو · الخميس 21 يناير'), findsOne);
+      // RA-MO-303 (2026-11-13): the customer may be a bride.
+      expect(find.text('طلب حجز صور وفيديو · الخميس 21 يناير'), findsOne);
       expect(find.textContaining('نتأكد إن اليوم فاضي'), findsOne);
       expect(find.textContaining('فريق'), findsNothing);
 

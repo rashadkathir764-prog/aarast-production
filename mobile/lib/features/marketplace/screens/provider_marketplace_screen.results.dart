@@ -59,11 +59,21 @@ class _ProviderCard extends StatelessWidget {
         ? summaryCategory
         : service?.category?.nameAr.trim();
     final location = _providerLocationLabel(provider);
-    final price =
-        _moneyValueOrNull(provider.serviceSummary?.minPrice) ??
-        _moneyValueOrNull(service?.basePrice);
+    // RA-MO-259: the item is in riyals; a price in another currency is not
+    // compared with it (as the provider's page does, f03), the card says
+    // the category only.
+    final summary = provider.serviceSummary;
+    final summaryPrice = _moneyValueOrNull(summary?.minPrice);
+    final (price, priceCurrency) = summaryPrice != null
+        ? (summaryPrice, summary?.currency)
+        : (_moneyValueOrNull(service?.basePrice), service?.currency);
+    final comparable =
+        currencyCodeFromDisplayInput(priceCurrency ?? defaultCurrencyCode) ==
+        defaultCurrencyCode;
     final budgetStatus = budgetIntent == null
         ? null
+        : price != null && !comparable
+        ? _ServiceBudgetStatus.categoryOnly
         : _serviceBudgetStatus(budgetIntent!, price);
     final budgetColor = budgetStatus == null
         ? AarastV3Color.brandAccentStrong

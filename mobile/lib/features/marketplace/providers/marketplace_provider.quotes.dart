@@ -123,6 +123,9 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     } on ApiException catch (error) {
       _quoteSubmitErrorMessage = marketplaceErrorMessage(error.message);
       if (error.serverCode == 'ACTIVE_QUOTE_REQUEST_EXISTS') {
+        // RA-MO-262: the server's sentence is formal («يوجد طلب عرض سعر
+        // نشط مطابق»); the open request shows under it.
+        _quoteSubmitErrorMessage = 'فيه طلب مفتوح عند هذا المزوّد لنفس الشي.';
         final refreshed = await _safeQuoteRequests(
           weddingPlanId: weddingPlanId,
         );
@@ -297,7 +300,7 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       );
       return null;
     } on ApiException catch (error) {
-      if (error.statusCode == 409) return 'قيّمت هذا المزوّد من قبل.';
+      if (error.statusCode == 409) return alreadyReviewedMessage;
       if (error.serverCode == 'REVIEW_REQUIRES_COMPLETED_BOOKING') {
         return 'تقدر تقيّم بعد يوم الحجز.';
       }

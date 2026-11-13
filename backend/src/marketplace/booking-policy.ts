@@ -99,12 +99,24 @@ export function bookingActionViolation(
  * that expired with its provider's suspension (B-42) may be asked again once
  * he is back.
  */
-export function canRequestBooking(existing: BookingStatus | null): boolean {
+export function canRequestBooking(
+  existing: BookingStatus | null,
+  /**
+   * RA-MO-263: the day of the request held. One whose day passed without
+   * the provider's answer can no longer be confirmed, declined or cancelled
+   * ([bookingActionViolation]); it is over, and the customer asks again.
+   */
+  existingDay: Date | null = null,
+  now: Date = new Date(),
+): boolean {
   return (
     existing === null ||
     existing === BookingStatus.DECLINED ||
     existing === BookingStatus.CANCELLED ||
-    existing === BookingStatus.EXPIRED
+    existing === BookingStatus.EXPIRED ||
+    (existing === BookingStatus.REQUESTED &&
+      existingDay !== null &&
+      existingDay.getTime() < bookingToday(now).getTime())
   );
 }
 
@@ -129,6 +141,14 @@ export function bookingLifecycle(
   notHappenedAt: Date | null = null,
 ): BookingLifecycle {
   if (status === BookingStatus.CONFIRMED && notHappenedAt) return "NOT_HAPPENED";
+  // RA-MO-263: a request whose day passed unanswered is over (it can no
+  // longer be confirmed, declined or cancelled), and is asked again.
+  if (
+    status === BookingStatus.REQUESTED &&
+    eventDate.getTime() < bookingToday(now).getTime()
+  ) {
+    return "EXPIRED";
+  }
   if (
     status === BookingStatus.CONFIRMED &&
     eventDate.getTime() < bookingToday(now).getTime()

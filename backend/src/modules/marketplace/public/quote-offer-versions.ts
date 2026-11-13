@@ -240,6 +240,25 @@ export function quoteOfferLocked(status: QuoteOfferStatus): ConflictException {
   return new ConflictException({ code: "QUOTE_OFFER_LOCKED", message });
 }
 
+/**
+ * RA-MO-289: an edit made from an older version of the offer (his other
+ * phone changed it since) is refused, never merged field by field into an
+ * offer the customer reads as one. Null lets it through; an edit that sent
+ * no version (an older phone) is let through as before.
+ */
+export function quoteOfferEditFromOldVersion(
+  baseVersionNo: number | undefined,
+  currentVersionNo: number,
+): ConflictException | null {
+  if (baseVersionNo === undefined || baseVersionNo === currentVersionNo) {
+    return null;
+  }
+  return new ConflictException({
+    code: "QUOTE_OFFER_CHANGED",
+    message: "تعدّل العرض من جهاز ثاني. افتحه من جديد وعدّل على آخر نسخة.",
+  });
+}
+
 export function toQuoteOfferChangesJson(
   changes: readonly QuoteOfferChange[],
 ): Prisma.InputJsonValue {

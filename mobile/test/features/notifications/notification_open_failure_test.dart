@@ -70,6 +70,23 @@ void main() {
 
     expect(controller.selectedContext?.weddingPlanId, 'plan-2');
     expect(find.text('opened tasks'), findsOneWidget);
+    // RA-MO-151: the switch to another plan is said, by its name.
+    expect(find.text('فتحنا «Plan plan-2»'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // RA-MO-151: the account's list mixed two plans' notices, none named.
+  testWidgets('the account\'s list names each notice\'s plan', (tester) async {
+    await _pump(
+      tester,
+      _Api(),
+      others: [accountContext(role: AccountContextRole.owner, planId: 'p-2')],
+      accountWide: true,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('notification-plan'))).data,
+      'Plan plan-1',
+    );
   });
 
   // D112 (Q-21): a plan in the memories keeps reminding of its payment
@@ -135,6 +152,9 @@ Future<AccountContextController> _pump(
   WidgetTester tester,
   _Api api, {
   List<AccountContext> others = const [],
+
+  /// The account's list, every plan's notices together.
+  bool accountWide = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -165,7 +185,8 @@ Future<AccountContextController> _pump(
     routes: [
       GoRoute(
         path: '/notifications',
-        builder: (_, _) => const NotificationsScreen(weddingPlanId: _planId),
+        builder: (_, _) =>
+            NotificationsScreen(weddingPlanId: accountWide ? null : _planId),
       ),
       GoRoute(
         path: '/wedding-plans/:id/tasks',

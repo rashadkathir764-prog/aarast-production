@@ -236,6 +236,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   notification: notification,
                   now: now,
                   plain: true,
+                  planName: _planNameOf(notification),
                   onTap: () => _openNotification(provider, notification),
                   onArchive: () => _archive(provider, notification),
                 ),
@@ -281,6 +282,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   _NotificationRow(
                     notification: notification,
                     now: now,
+                    planName: _planNameOf(notification),
                     onTap: () => _openNotification(provider, notification),
                     onArchive: () => _archive(provider, notification),
                   ),
@@ -463,6 +465,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // A memory's reminders point to pages that are read (the agreement, the
     // loans); the server sends it no other kind after archiving.
     router.go(target);
+    // RA-MO-151: the app moved to another plan; it says which.
+    final name = path.displayName.trim();
+    if (mounted && name.isNotEmpty) {
+      AarastToast.showInfo(context, 'فتحنا «$name»');
+    }
+  }
+
+  /// RA-MO-151: the account's list mixed two plans' notices with no word of
+  /// whose; each says its plan once the account has more than one.
+  String? _planNameOf(AarastNotification notification) {
+    if (widget.weddingPlanId != null) return null;
+    final planId = notification.weddingPlanId;
+    if (planId == null) return null;
+    final plans = [
+      for (final path
+          in context.read<AccountContextController?>()?.contexts ?? const [])
+        if (path.isPlan) path,
+    ];
+    if (plans.map((path) => path.weddingPlanId).toSet().length < 2) {
+      return null;
+    }
+    final name = plans
+        .where((path) => path.weddingPlanId == planId)
+        .firstOrNull
+        ?.displayName
+        .trim();
+    return name == null || name.isEmpty ? null : name;
   }
 
   String? _targetPlanId(String target) {
@@ -550,9 +579,13 @@ class _NotificationRow extends StatelessWidget {
     required this.onArchive,
     required this.now,
     this.plain = false,
+    this.planName,
   });
 
   final AarastNotification notification;
+
+  /// RA-MO-151: whose plan it is, in an account list of several plans.
+  final String? planName;
   final DateTime now;
   final VoidCallback onTap;
   final VoidCallback onArchive;
@@ -582,6 +615,7 @@ class _NotificationRow extends StatelessWidget {
       label: [
         if (notification.isUnread) 'جديد',
         if (urgent) 'عاجل',
+        ?planName,
         copy.title,
         copy.body,
         when,
@@ -614,6 +648,18 @@ class _NotificationRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (planName case final name?)
+                        Text(
+                          name,
+                          key: const ValueKey('notification-plan'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            weight: JourneyType.bold,
+                            color: context.accent.primary,
+                          ),
+                        ),
                       Text(
                         copy.title,
                         style: JourneyType.of(

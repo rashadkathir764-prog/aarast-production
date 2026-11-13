@@ -20,10 +20,17 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     required SensitiveValueVault vault,
     required this.userId,
     DateTime Function()? clock,
+    Duration Function()? elapsed,
     Random? random,
   }) : _vault = vault,
        _clock = clock ?? DateTime.now,
+       _elapsed = elapsed ?? _sinceStart,
        _random = random ?? Random.secure();
+
+  /// RA-MO-103: time the phone's date cannot move. The wait after wrong
+  /// codes ran on the phone's clock, so moving the date forward ended it.
+  static final Stopwatch _uptime = Stopwatch()..start();
+  static Duration _sinceStart() => _uptime.elapsed;
 
   static const codeLength = 4;
   static const relockAfter = Duration(minutes: 1);
@@ -32,6 +39,7 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
 
   final SensitiveValueVault _vault;
   final DateTime Function() _clock;
+  final Duration Function() _elapsed;
   final Random _random;
 
   /// The signed-in account, or null for a guest (no lock).
@@ -42,8 +50,12 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
   bool _locked = false;
   bool _observing = false;
   int _failedAttempts = 0;
-  DateTime? _blockedUntil;
+
+  /// The current wait, on [_elapsed]: when it began and how long it is.
+  Duration? _waitStartedAt;
+  Duration _waitLength = Duration.zero;
   DateTime? _backgroundedAt;
+  Duration? _backgroundedElapsed;
 
   bool get isEnabled => _enabled;
   bool get isLocked => _locked;
@@ -54,10 +66,21 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// How long until another code may be tried; zero when one may.
   Duration get waitRemaining {
-    final until = _blockedUntil;
-    if (until == null) return Duration.zero;
-    final remaining = until.difference(_clock());
+    final started = _waitStartedAt;
+    if (started == null) return Duration.zero;
+    final remaining = _waitLength - (_elapsed() - started);
     return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// 30 seconds after the fifth wrong code, doubling, at most 15 minutes.
+  static Duration _waitAfter(int failures) {
+    final extra = failures - freeAttempts;
+    return Duration(seconds: min(30 * pow(2, min(extra, 10)).toInt(), 15 * 60));
+  }
+
+  void _startWait() {
+    _waitLength = _waitAfter(_failedAttempts);
+    _waitStartedAt = _elapsed();
   }
 
   String get _hashKey => 'app_lock.$userId.hash';
@@ -74,7 +97,14 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     _enabled = hash != null;
     _locked = _enabled;
     _failedAttempts = int.tryParse(await _vault.read(_failuresKey) ?? '') ?? 0;
-    _blockedUntil = DateTime.tryParse(await _vault.read(_blockedKey) ?? '');
+    // RA-MO-103: a wait the app closed on starts again in full. How long
+    // the app stayed closed is known only from the phone's clock, which can
+    // be moved; a wait cut short by it is worth more than the owner's few
+    // minutes.
+    if (_failedAttempts >= freeAttempts &&
+        await _vault.read(_blockedKey) != null) {
+      _startWait();
+    }
     _loaded = true;
     if (!_observing) {
       WidgetsBinding.instance.addObserver(this);
@@ -135,10 +165,8 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     _failedAttempts += 1;
     await _vault.write(_failuresKey, '$_failedAttempts');
     if (_failedAttempts >= freeAttempts) {
-      final extra = _failedAttempts - freeAttempts;
-      final seconds = min(30 * pow(2, extra).toInt(), 15 * 60);
-      _blockedUntil = _clock().add(Duration(seconds: seconds));
-      await _vault.write(_blockedKey, _blockedUntil!.toIso8601String());
+      _startWait();
+      await _vault.write(_blockedKey, '${_waitLength.inSeconds}');
     }
     notifyListeners();
     return false;
@@ -154,10 +182,20 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _backgroundedAt ??= _clock();
+      _backgroundedElapsed ??= _elapsed();
     } else if (state == AppLifecycleState.resumed) {
       final since = _backgroundedAt;
+      final sinceElapsed = _backgroundedElapsed;
       _backgroundedAt = null;
-      if (since != null && _clock().difference(since) >= relockAfter) {
+      _backgroundedElapsed = null;
+      if (since == null || sinceElapsed == null) return;
+      // RA-MO-103: either clock past a minute locks. The uptime clock can
+      // stand still while the phone sleeps, and the phone's clock can be
+      // moved; a clock moved back locks too.
+      final away = _clock().difference(since);
+      if (away >= relockAfter ||
+          away.isNegative ||
+          _elapsed() - sinceElapsed >= relockAfter) {
         _locked = true;
         notifyListeners();
       }
@@ -181,7 +219,8 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _clearFailures() async {
     _failedAttempts = 0;
-    _blockedUntil = null;
+    _waitStartedAt = null;
+    _waitLength = Duration.zero;
     await _vault.delete(_failuresKey);
     await _vault.delete(_blockedKey);
   }

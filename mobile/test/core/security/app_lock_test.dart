@@ -26,13 +26,27 @@ void main() {
 
   late _MemoryVault vault;
   late DateTime now;
+  // RA-MO-103: the waits run on time the phone's date cannot move.
+  late Duration uptime;
 
   AppLockController controller({String? userId = 'user-1'}) =>
-      AppLockController(vault: vault, userId: userId, clock: () => now);
+      AppLockController(
+        vault: vault,
+        userId: userId,
+        clock: () => now,
+        elapsed: () => uptime,
+      );
+
+  /// Time passing, on both clocks.
+  void pass(Duration duration) {
+    now = now.add(duration);
+    uptime += duration;
+  }
 
   setUp(() {
     vault = _MemoryVault();
     now = DateTime(2026, 10, 15, 12);
+    uptime = const Duration(hours: 1);
   });
 
   test('a guest never has a lock, and no code is set by default', () async {
@@ -86,13 +100,64 @@ void main() {
     // While waiting, even the right code is not checked.
     expect(await reopened.unlock('2580'), isFalse);
 
-    now = now.add(const Duration(seconds: 31));
+    pass(const Duration(seconds: 31));
     expect(await reopened.unlock('0000'), isFalse);
     expect(reopened.waitRemaining, const Duration(seconds: 60));
 
-    now = now.add(const Duration(seconds: 61));
+    pass(const Duration(seconds: 61));
     expect(await reopened.unlock('2580'), isTrue);
     expect(reopened.failedAttempts, 0);
+  });
+
+  // RA-MO-103: the wait ran on the phone's clock, so moving the date
+  // forward ended it.
+  test('moving the phone\'s date does not end the wait', () async {
+    final lock = controller();
+    await lock.load();
+    await lock.setCode('2580');
+    for (var attempt = 0; attempt < 5; attempt += 1) {
+      await lock.confirmCode('0000');
+    }
+
+    now = now.add(const Duration(days: 1));
+    expect(lock.waitRemaining, const Duration(seconds: 30));
+    expect(await lock.confirmCode('2580'), isFalse);
+  });
+
+  test('a wait the app closed on starts again in full', () async {
+    final lock = controller();
+    await lock.load();
+    await lock.setCode('2580');
+    for (var attempt = 0; attempt < 6; attempt += 1) {
+      pass(const Duration(seconds: 31));
+      await lock.confirmCode('0000');
+    }
+
+    // The app is closed, the date moved on, and it opens again.
+    now = now.add(const Duration(days: 1));
+    final reopened = controller();
+    await reopened.load();
+    expect(reopened.waitRemaining, const Duration(seconds: 60));
+    expect(await reopened.unlock('2580'), isFalse);
+  });
+
+  test('a phone clock moved back, or a phone asleep, still locks', () async {
+    final lock = controller();
+    await lock.load();
+    await lock.setCode('2580');
+
+    // The date moved back while away.
+    lock.didChangeAppLifecycleState(AppLifecycleState.paused);
+    now = now.subtract(const Duration(hours: 1));
+    lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(lock.isLocked, isTrue);
+    expect(await lock.unlock('2580'), isTrue);
+
+    // Asleep: the phone's clock ran on while the uptime one stood still.
+    lock.didChangeAppLifecycleState(AppLifecycleState.paused);
+    now = now.add(const Duration(minutes: 5));
+    lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(lock.isLocked, isTrue);
   });
 
   test(
@@ -103,12 +168,12 @@ void main() {
       await lock.setCode('2580');
 
       lock.didChangeAppLifecycleState(AppLifecycleState.paused);
-      now = now.add(const Duration(seconds: 20));
+      pass(const Duration(seconds: 20));
       lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(lock.isLocked, isFalse);
 
       lock.didChangeAppLifecycleState(AppLifecycleState.paused);
-      now = now.add(const Duration(minutes: 2));
+      pass(const Duration(minutes: 2));
       lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(lock.isLocked, isTrue);
     },

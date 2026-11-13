@@ -361,6 +361,12 @@ class TaskTimelineApi {
     return WeddingTask.fromJson(hydratedJson);
   }
 
+  /// RA-MO-192: a change to [taskId] waits on this phone for the network.
+  /// A task the server already has keeps its id when changed offline, so
+  /// its id alone cannot say it.
+  bool hasUnsentChange(String taskId) =>
+      _offline?.hasPendingEntity('task', taskId) ?? false;
+
   Future<WeddingTask> updateTask(String id, Map<String, dynamic> data) async {
     if (id.startsWith('local-task-')) {
       return _updateLocalTask(id: id, data: data);

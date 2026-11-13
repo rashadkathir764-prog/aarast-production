@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/cache_policy.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/timeline.dart';
@@ -20,6 +21,17 @@ void main() {
     api = _RecordingTaskApi();
     provider = TaskTimelineProvider(api);
     await provider.load('plan-1');
+  });
+
+  // RA-MO-192: a task the server has, changed with no network, said
+  // «انحفظت» as if sent; the notice was tied to tasks never sent.
+  test('a change that waits on the phone says so', () async {
+    api.queued = true;
+    final task = api.serverTask;
+    final ok = await provider.updateTaskStatus('plan-1', task, 'DONE');
+
+    expect(ok, isTrue);
+    expect(provider.noticeMessage, CachePolicy.offlineWriteMessage);
   });
 
   test('postponing a task sends its new day and nothing else', () async {
@@ -128,6 +140,12 @@ class _RecordingTaskApi extends TaskTimelineApi {
   _RecordingTaskApi() : super(ApiClient(tokenProvider: () async => null));
 
   final sent = <Map<String, dynamic>>[];
+
+  /// The change waits on the phone (no network).
+  bool queued = false;
+
+  @override
+  bool hasUnsentChange(String taskId) => queued;
 
   WeddingTask serverTask = WeddingTask(
     id: 'task-1',

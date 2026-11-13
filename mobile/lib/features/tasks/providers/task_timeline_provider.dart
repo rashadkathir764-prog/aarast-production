@@ -271,6 +271,11 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     return added;
   }
 
+  /// A change to [task] waits on the phone: a task not sent yet, or one the
+  /// server has, changed offline (RA-MO-192: that one said «انحفظت»).
+  bool _waitsOnPhone(WeddingTask task) =>
+      task.id.startsWith('local-') || _api.hasUnsentChange(task.id);
+
   /// V1 checklist 4.10: shows a private task to the whole plan. A shared
   /// task never becomes private again.
   Future<bool> shareTaskWithPlan(String weddingPlanId, WeddingTask task) async {
@@ -281,7 +286,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     try {
       final updated = await _api.updateTask(task.id, {'isPrivate': false});
       _replaceTask(updated);
-      if (updated.id.startsWith('local-')) {
+      if (_waitsOnPhone(updated)) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       await _refreshTaskData(weddingPlanId);
@@ -360,7 +365,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           _lastMeaningfulStatuses[task.id] = previousTask.status;
         }
         _replaceTask(updated);
-        if (updated.id.startsWith('local-')) {
+        if (_waitsOnPhone(updated)) {
           _noticeMessage = CachePolicy.offlineWriteMessage;
         }
         await _refreshTaskData(weddingPlanId);
@@ -520,7 +525,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _replaceTask(updated);
       if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
-      } else if (updated.id.startsWith('local-')) {
+      } else if (_waitsOnPhone(updated)) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       await _refreshTaskData(weddingPlanId);
@@ -555,7 +560,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
         'reminderAt': reminderAt?.toUtc().toIso8601String(),
       });
       _replaceTask(updated);
-      if (updated.id.startsWith('local-')) {
+      if (_waitsOnPhone(updated)) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       return true;

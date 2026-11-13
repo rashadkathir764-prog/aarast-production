@@ -5,10 +5,12 @@ import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/timeline.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
+import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_row.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 // V1 checklist 4.10: a task the owner or partner keeps to themselves.
 
@@ -85,6 +87,32 @@ void main() {
     },
   );
 
+  // RA-MO-201: opened before the plan's tasks were read, the form had no
+  // summary and hid «خاصة»; a draft could still carry it unseen.
+  testWidgets('the form opened first reads the summary and offers «خاصة»', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 1600);
+    addTearDown(tester.view.reset);
+    final api = _PrivacyApi()..canKeepPrivate = true;
+    final provider = TaskTimelineProvider(api);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<TaskTimelineProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const CreateTaskScreen(weddingPlanId: 'plan-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.summaryReads, 1);
+    expect(find.byKey(const ValueKey('task-private')), findsOneWidget);
+  });
+
   test('the privacy refusals reach the user in Arabic', () {
     for (final code in [
       'COST_PRIVACY_NOT_ALLOWED',
@@ -133,9 +161,17 @@ class _PrivacyApi extends TaskTimelineApi {
   @override
   Future<Timeline> getTimeline(String weddingPlanId) async => Timeline.empty();
 
+  bool canKeepPrivate = false;
+  int summaryReads = 0;
+
   @override
-  Future<TaskSummary> getTaskSummary(String weddingPlanId) async =>
-      TaskSummary.empty(weddingPlanId);
+  Future<TaskSummary> getTaskSummary(String weddingPlanId) async {
+    summaryReads += 1;
+    return TaskSummary.fromJson({
+      'weddingPlanId': weddingPlanId,
+      'canKeepPrivateTask': canKeepPrivate,
+    });
+  }
 
   @override
   Future<WeddingTask> createTask({

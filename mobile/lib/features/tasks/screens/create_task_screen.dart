@@ -109,6 +109,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     super.didChangeDependencies();
     _configureDraft();
     _loadMembersIfAvailable();
+    _loadSummaryIfMissing();
     if (!_isEditMode || _didPrefill) return;
     final currentUserId = context.read<AuthController?>()?.user?.id;
     final task =
@@ -119,6 +120,22 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       _showMore = task.hasDescription;
       _editAsOpened = _editSignature();
     }
+  }
+
+  bool _askedSummary = false;
+
+  /// RA-MO-201: opened straight (a notice, the home's quick add) before the
+  /// plan's tasks were read, the form had no summary to offer «خاصة» by.
+  void _loadSummaryIfMissing() {
+    if (_isEditMode || _askedSummary) return;
+    final provider = context.read<TaskTimelineProvider>();
+    if (provider.summary.weddingPlanId == widget.weddingPlanId) return;
+    _askedSummary = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !provider.isLoading) {
+        unawaited(provider.load(widget.weddingPlanId));
+      }
+    });
   }
 
   /// RA-MO-202: the task as the edit opened it, to tell a change made.
@@ -462,7 +479,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             responsibleSource: who.responsibleSource,
             status: 'TODO',
             priority: _priority,
-            isPrivate: _isPrivate,
+            isPrivate: _keepsPrivate(provider),
           );
     if (!mounted) return;
     if (!saved) {

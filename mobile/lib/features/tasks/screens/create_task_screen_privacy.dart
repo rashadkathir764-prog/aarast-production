@@ -32,11 +32,7 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
         ),
       ];
     }
-    final canKeepPrivate =
-        !_isEditMode &&
-        provider.summary.weddingPlanId == widget.weddingPlanId &&
-        provider.summary.canKeepPrivateTask;
-    if (!canKeepPrivate) return const [];
+    if (!_canKeepPrivate(provider)) return const [];
     return [
       const SizedBox(height: AarastV3Space.x3),
       JourneyBox(
@@ -71,10 +67,20 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
     ];
   }
 
-  /// Whether the task stays with its owner only.
+  /// Whether this plan's summary, read, lets a new task stay private. The
+  /// form reads the summary itself when opened before the plan's tasks
+  /// (RA-MO-201).
+  bool _canKeepPrivate(TaskTimelineProvider provider) =>
+      !_isEditMode &&
+      provider.summary.weddingPlanId == widget.weddingPlanId &&
+      provider.summary.canKeepPrivateTask;
+
+  /// Whether the task stays with its owner only. A draft's «خاصة» counts
+  /// only while the switch is offered (RA-MO-201): a hidden switch never
+  /// saves a task the reader cannot see is private.
   bool _keepsPrivate(TaskTimelineProvider provider) => _isEditMode
       ? _currentEditingTask(provider)?.isPrivate == true
-      : _isPrivate;
+      : _isPrivate && _canKeepPrivate(provider);
 
   Future<void> _shareWithPlan(WeddingTask task) async {
     final confirmed = await showDialog<bool>(

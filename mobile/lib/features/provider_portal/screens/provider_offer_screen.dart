@@ -183,13 +183,10 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                         key: const Key('provider-offer-amount'),
                         label: 'السعر',
                         controller: _amount,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        // «٥٠٠٠٠٠» from an Arabic keyboard is 500000.
-                        inputFormatters: const [
-                          LatinDigitsFormatter(decimals: 2),
-                        ],
+                        keyboardType: TextInputType.number,
+                        // «٥٠٠٠٠٠» from an Arabic keyboard is 500000. Whole
+                        // riyals (D112, Q-25): no decimal point is taken.
+                        inputFormatters: const [LatinDigitsFormatter()],
                         errorText: _amountError,
                         onChanged: (_) {
                           if (_amountError != null) {
@@ -550,8 +547,12 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
 String? validateProviderOfferAmount(String? value) {
   final normalized = value?.trim().replaceAll(',', '') ?? '';
   if (normalized.isEmpty) return 'اكتب سعر العرض.';
-  if (!RegExp(r'^\d{1,12}(\.\d{1,2})?$').hasMatch(normalized)) {
-    return 'اكتب سعر صحيح، وبحد أقصى رقمين بعد الفاصلة.';
+  // D112 (Q-25): whole riyals; the server refuses a fraction.
+  if (RegExp(r'^\d{1,12}\.\d+$').hasMatch(normalized)) {
+    return 'السعر رقم صحيح، بدون كسور.';
+  }
+  if (!RegExp(r'^\d{1,12}$').hasMatch(normalized)) {
+    return 'اكتب السعر أرقام بس.';
   }
   final parsed = num.tryParse(normalized);
   if (parsed == null || parsed <= 0) return 'السعر لازم يكون أكبر من صفر.';

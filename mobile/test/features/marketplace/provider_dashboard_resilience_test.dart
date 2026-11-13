@@ -3,6 +3,7 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_requests_tab.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_listing_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -95,7 +96,25 @@ void main() {
     expect(validateProviderOfferAmount('0'), isNotNull);
     expect(validateProviderOfferAmount('-10'), isNotNull);
     expect(validateProviderOfferAmount('100.123'), isNotNull);
-    expect(validateProviderOfferAmount('1250.50'), isNull);
+    // D112 (Q-25), the owner's word: whole riyals everywhere, a provider's
+    // offer included. The server refuses a fraction now, so the field says
+    // it before sending («1250.50» used to pass here).
+    expect(
+      validateProviderOfferAmount('1250.50'),
+      'السعر رقم صحيح، بدون كسور.',
+    );
+    expect(validateProviderOfferAmount('1250'), isNull);
+    expect(validateProviderOfferAmount('1,250,000'), isNull);
+  });
+
+  test('Q-25: a listing price is whole, or empty', () {
+    expect(providerListingPriceError(''), isNull);
+    expect(providerListingPriceError('400,000'), isNull);
+    expect(
+      providerListingPriceError('400000.5'),
+      'المبلغ رقم صحيح، بدون كسور.',
+    );
+    expect(providerListingPriceError('12,5x'), 'اكتب المبلغ أرقام بس.');
   });
 }
 

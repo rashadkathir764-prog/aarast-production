@@ -25,12 +25,13 @@ Future<bool?> showProviderListingSheet(
   );
 }
 
-/// A price as the server takes it: digits with up to two decimals, or empty.
+/// A price as the server takes it: a whole amount (D112, Q-25), or empty.
 String? providerListingPriceError(String value) {
   final normalized = value.trim().replaceAll(',', '');
   if (normalized.isEmpty) return null;
-  return RegExp(r'^\d{1,12}(\.\d{1,2})?$').hasMatch(normalized)
-      ? null
+  if (RegExp(r'^\d{1,12}$').hasMatch(normalized)) return null;
+  return RegExp(r'^\d{1,12}\.\d+$').hasMatch(normalized)
+      ? 'المبلغ رقم صحيح، بدون كسور.'
       : 'اكتب المبلغ أرقام بس.';
 }
 
@@ -175,7 +176,7 @@ class _ListingSheetState extends State<_ListingSheet> {
             key: const Key('provider-listing-price'),
             label: _isService ? 'السعر من' : 'السعر',
             controller: _price,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
             suffix: currencyLabelAr(_currency),
             errorText: _priceError,
           ),

@@ -48,10 +48,11 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
       setState(() => _error = 'اكتب السطر.');
       return;
     }
+    // D112 (Q-25): whole riyals; the server refuses a fraction.
     if (_kind == 'EXTRA' &&
         amount.isNotEmpty &&
-        (num.tryParse(amount) == null || num.parse(amount) <= 0)) {
-      setState(() => _error = 'سعر الإضافة رقم أكبر من صفر.');
+        (!RegExp(r'^\d{1,12}$').hasMatch(amount) || int.parse(amount) <= 0)) {
+      setState(() => _error = 'سعر الإضافة رقم صحيح أكبر من صفر.');
       return;
     }
     widget.onChanged([
@@ -148,9 +149,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
                   key: const Key('provider-offer-line-amount'),
                   label: 'سعرها',
                   controller: _amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  keyboardType: TextInputType.number,
                 ),
               ),
             ],

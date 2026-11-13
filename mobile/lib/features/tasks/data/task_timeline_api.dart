@@ -500,7 +500,11 @@ class TaskTimelineApi {
       parentColumn: parentColumn,
       parentId: parentId,
     );
-    if (cached.isEmpty) return null;
+    // A list kept empty is a copy (RA-MO-203).
+    if (cached.isEmpty &&
+        !await OfflineReads.listKeptOn(_offline, table, parentId: parentId)) {
+      return null;
+    }
     OfflineReads.noteCopyServed();
     return cached;
   }

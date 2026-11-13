@@ -1,5 +1,17 @@
 import 'sync_queue.dart';
 
+/// RA-MO-203: the meta key that says the server's list for [table] under
+/// [parentId] was kept on this phone, even empty. Without it a plan with no
+/// tasks read offline had «no copy» and showed an error, not «ما فيه مهام».
+/// Ends with the parent id, so a plan's markers go with the plan.
+String keptListMetaKey(String table, String? parentId) =>
+    'kept-list:$table:${parentId ?? '*'}';
+
+/// Every [keptListMetaKey] of [planId] ends with this.
+String keptListPlanSuffix(String planId) => ':$planId';
+
+const keptListPrefix = 'kept-list:';
+
 abstract class LocalDatabase {
   Future<void> initialize();
 

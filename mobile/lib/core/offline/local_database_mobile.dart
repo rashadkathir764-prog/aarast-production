@@ -192,6 +192,11 @@ class SqliteLocalDatabase implements LocalDatabase {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
+      await txn.insert(OfflineTables.localMeta, {
+        'key': keptListMetaKey(table, parentId),
+        'value': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 
@@ -378,6 +383,17 @@ class SqliteLocalDatabase implements LocalDatabase {
           whereArgs: [key],
         );
       }
+      // RA-MO-203: the plan's «list kept» markers go with it.
+      await txn.delete(
+        OfflineTables.localMeta,
+        where: 'substr(key, 1, ?) = ? AND substr(key, -?) = ?',
+        whereArgs: [
+          keptListPrefix.length,
+          keptListPrefix,
+          keptListPlanSuffix(normalizedPlanId).length,
+          keptListPlanSuffix(normalizedPlanId),
+        ],
+      );
     });
   }
 

@@ -80,13 +80,16 @@ void main() {
     },
   );
 
+  // RA-MO-203: the copy was read, so after its only guest is deleted it is
+  // an empty list, not «no copy». It used to throw, which the guest list
+  // showed as a failed read for a plan the phone knew had no guests left.
   test('a deleted guest leaves the saved copy', () async {
     await api.getGuests('plan-1');
     await api.deleteGuest('guest-1');
 
     server.online = false;
 
-    await expectLater(api.getGuests('plan-1'), throwsA(isA<ApiException>()));
+    expect(await api.getGuests('plan-1'), isEmpty);
   });
 }
 

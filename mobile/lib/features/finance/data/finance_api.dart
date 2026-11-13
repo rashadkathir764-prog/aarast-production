@@ -206,7 +206,11 @@ abstract class _FinanceApiCore {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
     final cached = await _readCachedPlanList(table, planId);
-    if (cached.isEmpty) return null;
+    // A list kept empty is a copy (RA-MO-203).
+    if (cached.isEmpty &&
+        !await OfflineReads.listKeptOn(_offline, table, parentId: planId)) {
+      return null;
+    }
     OfflineReads.noteCopyServed();
     return cached;
   }

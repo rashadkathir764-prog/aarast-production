@@ -367,7 +367,10 @@ class WeddingPlansApi {
     if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
     await _offline.noteNetworkFailure((error as ApiException).message);
     final cached = await _offline.database.readCachedList(table: table);
-    if (cached.isEmpty) return null;
+    // A list kept empty is a copy (RA-MO-203).
+    if (cached.isEmpty && !await OfflineReads.listKeptOn(_offline, table)) {
+      return null;
+    }
     OfflineReads.noteCopyServed();
     return cached;
   }

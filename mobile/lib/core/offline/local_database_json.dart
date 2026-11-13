@@ -144,6 +144,7 @@ class JsonLocalDatabase implements LocalDatabase {
       nextRows.add(row.columns);
     }
     await _writeList(_tableKey(table), nextRows);
+    await setMeta(keptListMetaKey(table, parentId), now.toIso8601String());
   }
 
   @override
@@ -323,7 +324,13 @@ class JsonLocalDatabase implements LocalDatabase {
       ..remove('guest-groups:$normalizedPlanId')
       ..remove('funding:$normalizedPlanId')
       // RA-MO-258: the participant's read of the plan.
-      ..remove('plan-view:$normalizedPlanId');
+      ..remove('plan-view:$normalizedPlanId')
+      // RA-MO-203: the plan's «list kept» markers go with it.
+      ..removeWhere(
+        (key, _) =>
+            key.startsWith(keptListPrefix) &&
+            key.endsWith(keptListPlanSuffix(normalizedPlanId)),
+      );
     await _writeMap(_metaKey, meta);
   }
 

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../network/api_client.dart';
 import 'cache_policy.dart';
+import 'local_database_contract.dart' show keptListMetaKey;
 import 'offline_sync_service.dart';
 
 /// D85: the one contract every feature's data layer follows.
@@ -62,7 +63,10 @@ class OfflineReads {
         parentId: parentId,
       );
       // No copy on the phone: the failure is reported, never an empty list.
-      if (cached.isEmpty) rethrow;
+      // A list kept empty is a copy (RA-MO-203).
+      if (cached.isEmpty && !await listKept(table, parentId: parentId)) {
+        rethrow;
+      }
       noteCopyServed();
       return cached;
     }
@@ -135,6 +139,22 @@ class OfflineReads {
   }
 
   // --- the phone's copy alone, for screens that show it before asking ---
+
+  /// RA-MO-203: whether the server's list for [table] under [parentId] was
+  /// kept on this phone, even empty: an empty copy is still a copy.
+  Future<bool> listKept(String table, {String? parentId}) =>
+      listKeptOn(_offline, table, parentId: parentId);
+
+  /// [listKept] for the data files that read their copy themselves.
+  static Future<bool> listKeptOn(
+    OfflineSyncService? offline,
+    String table, {
+    String? parentId,
+  }) async {
+    final database = offline?.database;
+    if (database == null) return false;
+    return await database.getMeta(keptListMetaKey(table, parentId)) != null;
+  }
 
   Future<List<Map<String, dynamic>>> cachedList(
     String table, {

@@ -19,8 +19,44 @@ class AuthStorage {
   static const _safeUserKey = 'aarast_safe_user';
   static const _activePlanIdKey = 'aarast_active_plan_id';
   static const _accountContextKey = 'aarast_account_context_key';
+  static const _codeRequestKey = 'aarast_code_request';
 
   final SharedPreferences _preferences;
+
+  /// RA-MO-109, RA-MO-308: which number and purpose this phone last got a
+  /// WhatsApp code for, and when, so a refusal to send another within the
+  /// server's minute can reopen the code screen after the system closed the
+  /// app. Only the number typed on this phone; dropped once a code is taken
+  /// and read only within its minute.
+  Future<void> rememberCodeRequest({
+    required String phone,
+    required String purpose,
+    required DateTime at,
+  }) => _preferences.setString(
+    _codeRequestKey,
+    jsonEncode({
+      'phone': phone,
+      'purpose': purpose,
+      'at': at.toUtc().toIso8601String(),
+    }),
+  );
+
+  ({String phone, String purpose, DateTime at})? recalledCodeRequest() {
+    final raw = _preferences.getString(_codeRequestKey);
+    if (raw == null) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return (
+        phone: json['phone'] as String,
+        purpose: json['purpose'] as String,
+        at: DateTime.parse(json['at'] as String),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> forgetCodeRequest() => _preferences.remove(_codeRequestKey);
 
   /// When provided (production wiring in main.dart), the access token lives
   /// in the OS keystore. Without it (widget tests), the legacy

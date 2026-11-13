@@ -117,6 +117,8 @@ mixin _AuthSignIn on _AuthControllerCore {
       }
       unawaited(_offlineSyncService?.syncPendingChanges());
     }, networkFailureMessage: _signUpOfflineMessage);
+    // RA-MO-308: the sign-up code was taken; it opens nothing again.
+    if (success && otpCode != null) _forgetCodeSent();
     return success && _isCurrentSessionOperation(operation);
   }
 
@@ -136,7 +138,7 @@ mixin _AuthSignIn on _AuthControllerCore {
           name: name.trim(),
           phone: phone.trim(),
         );
-        _otpRequest = result;
+        _noteCodeSent(result, phone, 'REGISTER');
       },
       networkFailureMessage:
           'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
@@ -150,24 +152,83 @@ mixin _AuthSignIn on _AuthControllerCore {
   /// (`OTP_LIMIT_COOLDOWN`), though the first was still good. That refusal
   /// now opens the code screen for the code already sent; a new one can be
   /// asked there once the minute is over.
+  ///
+  /// RA-MO-308: the minute is per number, whoever asked and for whatever
+  /// purpose, and a code is good only for its own purpose. So the refusal
+  /// opens the code screen only when this phone itself got a code for the
+  /// same number and purpose within the minute. Otherwise (another purpose,
+  /// someone else, or the app was closed and that request is gone, as it is
+  /// kept in memory only) the server's refusal is shown as it is: the screen
+  /// would refuse the code in WhatsApp as wrong.
+  ///
+  /// After the app was closed, the request in memory is gone; the mark this
+  /// phone kept of it ([AuthRepository.recalledCodeRequest]) answers the
+  /// same three questions, so the case RA-MO-109 was written for keeps its
+  /// shortcut.
   OtpRequestResult? _earlierCodeStillLive(String phone, String purpose) {
     if (_errorCode != 'OTP_LIMIT_COOLDOWN') return null;
+    final inMemory = _otpRequest;
+    final inMemoryAt = _otpRequestAt;
+    final mark = inMemory != null && inMemoryAt != null
+        ? (phone: inMemory.phone, purpose: inMemory.purpose, at: inMemoryAt)
+        : _authRepository.recalledCodeRequest();
+    if (mark == null) return null;
+    if (mark.purpose != purpose || !_samePhone(mark.phone, phone)) {
+      return null;
+    }
+    if (_now().difference(mark.at) >= AuthController.otpCooldown) return null;
     _errorMessage = null;
     _errorCode = null;
     _failedOffline = false;
-    final earlier = OtpRequestResult(
+    final earlier = inMemory != null && inMemoryAt != null ? inMemory : null;
+    final reopened = OtpRequestResult(
       phone: phone.trim(),
-      purpose: purpose,
-      // Not known here, and not read by the code screen.
-      expiresAt: appNow(),
-      delivery: 'WHATSAPP',
+      purpose: mark.purpose,
+      // After a restart the code's expiry is not known; the code screen
+      // does not read it.
+      expiresAt: earlier?.expiresAt ?? mark.at,
+      delivery: earlier?.delivery ?? 'WHATSAPP',
+      deliveryStatus: earlier?.deliveryStatus ?? 'PENDING',
+      accountSetupRequired: earlier?.accountSetupRequired ?? false,
+      code: earlier?.code,
       message:
           'الرمز اللي طلبناه على هذا الرقم قبل أقل من دقيقة لسا شغال، '
           'وهنا مكانه لو وصلك.',
     );
-    _otpRequest = earlier;
+    _otpRequestAt ??= mark.at;
+    // [_otpRequestAt] stays: asking again does not lengthen the minute.
+    _otpRequest = reopened;
     notifyListeners();
-    return earlier;
+    return reopened;
+  }
+
+  /// A code was sent from this phone: kept in memory, and its mark on the
+  /// phone for a closed app (RA-MO-109).
+  void _noteCodeSent(OtpRequestResult? result, String phone, String purpose) {
+    _otpRequest = result;
+    final at = _now();
+    _otpRequestAt = at;
+    unawaited(
+      _authRepository.rememberCodeRequest(
+        phone: phone.trim(),
+        purpose: purpose,
+        at: at,
+      ),
+    );
+  }
+
+  /// The server took the code: nothing reopens it again (RA-MO-308).
+  void _forgetCodeSent() {
+    _otpRequestAt = null;
+    unawaited(_authRepository.forgetCodeRequest());
+  }
+
+  static bool _samePhone(String a, String b) {
+    try {
+      return normalizeYemeniPhone(a) == normalizeYemeniPhone(b);
+    } on FormatException {
+      return false;
+    }
   }
 
   Future<OtpRequestResult?> requestOtp({
@@ -181,7 +242,7 @@ mixin _AuthSignIn on _AuthControllerCore {
           phone: phone.trim(),
           purpose: purpose,
         );
-        _otpRequest = result;
+        _noteCodeSent(result, phone, purpose);
       },
       networkFailureMessage:
           'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
@@ -245,7 +306,7 @@ mixin _AuthSignIn on _AuthControllerCore {
           token: token.trim(),
           phone: phone.trim(),
         );
-        _otpRequest = result;
+        _noteCodeSent(result, phone, result?.purpose ?? '');
       },
       networkFailureMessage:
           'ما قدرنا نتأكد من الدعوة. تأكد من النت وجرّب مرة ثانية.',
@@ -323,6 +384,8 @@ mixin _AuthSignIn on _AuthControllerCore {
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
     }, networkFailureMessage: offline);
+    // RA-MO-308: the server took the code; it opens nothing again.
+    if (success) _forgetCodeSent();
     // The number this code proved goes with its proof (D75): only a proof
     // this code brought; one kept from another number is never given to
     // this one (RA-MO-111 keeps a proof across a failed request).

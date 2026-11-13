@@ -119,6 +119,11 @@ class AuthController extends _AuthControllerCore
   /// sends one the server has already dropped and asks for a code instead.
   static const phoneProofLifetime = Duration(minutes: 9, seconds: 30);
 
+  /// The server sends one code per number a minute, whoever asks and for
+  /// whatever purpose (`PHONE_COOLDOWN` in
+  /// `backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts`).
+  static const otpCooldown = Duration(minutes: 1);
+
   /// The proof for [phone] (as typed, normalised), or null when the last
   /// proof was for another number, is too old, or there is none.
   String? phoneProofFor(String phone) {
@@ -247,6 +252,10 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   String? _errorMessage;
   String? _errorCode;
   OtpRequestResult? _otpRequest;
+
+  /// When this phone got [_otpRequest] from the server; null when it was
+  /// not sent from here or its code was already used (RA-MO-308).
+  DateTime? _otpRequestAt;
   bool _sessionExpired = false;
   bool _accountJustCreated = false;
   bool _failedOffline = false;

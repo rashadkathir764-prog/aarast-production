@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -28,6 +29,48 @@ class DeletionPendingScreen extends StatefulWidget {
 
 class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
   String? _error;
+
+  /// RA-MO-157 (C59): signing out wipes what this phone has not sent; it
+  /// is named first, as on g11, before it is lost.
+  Future<void> _signOut(AuthController auth) async {
+    OfflineSyncService? sync;
+    try {
+      sync = context.read<OfflineSyncService>();
+    } on ProviderNotFoundException {
+      sync = null;
+    }
+    final unsent = sync?.unsyncedCount ?? 0;
+    if (unsent > 0) {
+      final leave = await showJourneySheet<bool>(
+        context: context,
+        builder: (sheetContext) => JourneySheetBody(
+          title: context.say('تطلع؟', 'تطلعين؟'),
+          subtitle:
+              '${unsent == 1 ? 'تغيير واحد' : arabicCount(unsent, one: 'تغيير', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} '
+              'على جوالك ما انرسل، ويضيع لو طلعت الحين.',
+          children: [
+            JourneyButton(
+              key: const Key('deletion-pending-sign-out-anyway'),
+              label: context.say('اطلع على كل حال', 'اطلعي على كل حال'),
+              background: AarastV3Color.danger,
+              expand: true,
+              onPressed: () => Navigator.pop(sheetContext, true),
+            ),
+            const SizedBox(height: AarastV3Space.x2),
+            JourneyButton(
+              label: 'رجوع',
+              background: AarastV3Color.paper,
+              foreground: AarastV3Color.ink,
+              expand: true,
+              onPressed: () => Navigator.pop(sheetContext, false),
+            ),
+          ],
+        ),
+      );
+      if (leave != true || !mounted) return;
+    }
+    await auth.logout();
+  }
 
   Future<void> _restore() async {
     setState(() => _error = null);
@@ -132,7 +175,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
             background: AarastV3Color.paper,
             foreground: AarastV3Color.textMuted,
             expand: true,
-            onPressed: auth.isSubmitting ? null : auth.logout,
+            onPressed: auth.isSubmitting ? null : () => _signOut(auth),
           ),
           if (_error != null) ...[
             const SizedBox(height: AarastV3Space.x3),

@@ -2,6 +2,7 @@
 library;
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
@@ -125,6 +126,11 @@ Future<void> _pumpDashboard(
 
 void main() {
   setUpAll(loadPreviewAppFonts);
+  // RA-MO-154: the home counts the days from the wedding's date today, so
+  // every part of the picture is drawn on the day the view is given (4
+  // July: 58 days to 31 August; the summaries' «57» is the server's count
+  // a day later, which the phone no longer takes over the date).
+  setUpAll(() => pinAppClock(DateTime(2026, 7, 4, 9)));
 
   testWidgets('real dashboard shell - active plan at 420px RTL', (
     tester,

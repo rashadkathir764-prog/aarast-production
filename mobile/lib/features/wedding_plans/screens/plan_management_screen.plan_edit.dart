@@ -90,12 +90,24 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     // G15: say what is still owed before the plan closes. The server keeps
     // reminding of payment dates and loan repayments after archiving.
     final finance = context.read<FinanceProvider>();
+    // RA-MO-152: the money is this plan's, read now; another plan's (or a
+    // read that failed and counted nothing) said nothing was owed.
+    if (finance.loadedPlanId != plan.id || finance.loadErrorMessage != null) {
+      await finance.loadMoney(plan.id);
+      if (!mounted) return;
+    }
+    final moneyKnown =
+        finance.loadedPlanId == plan.id && finance.loadErrorMessage == null;
     final money = finance.summary;
-    final owed =
-        moneyValue(money.costs.outstanding) +
-        moneyValue(money.funding?.loanOutstanding);
+    final owed = moneyKnown
+        ? moneyValue(money.costs.outstanding) +
+              moneyValue(money.funding?.loanOutstanding)
+        : 0;
     // In the reader's words; the amount follows «أخفِ المبالغ» (G17).
-    final owedLine = owed > 0
+    final owedLine = !moneyKnown
+        ? '\n\nما قدرنا نقرأ مالك الحين، فما نعرف إذا باقي عليك شي. '
+              'التذكير بمواعيد الدفعات والسلف يستمر بعدها.'
+        : owed > 0
         ? '\n\nباقي عليك ${finance.shownAmount(formatCompactMoney(owed, currencyCode: money.currency))} من '
               'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعدها، '
               '${context.say('والأفضل تخليها مفتوحة لين تسدّد.', 'والأفضل تخلّينها مفتوحة لين تسدّدين.')}'

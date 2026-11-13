@@ -81,19 +81,33 @@ class _JourneySuggestions extends StatelessWidget {
                   ),
                   child: Wrap(
                     children: [
-                      JourneyTextAction(
-                        key: ValueKey(
-                          'aarast-dashboard-suggestion-${item.key}-not-needed',
+                      // RA-MO-164: a screen reader heard «ما أحتاجها» and
+                      // «بعدين» without the item they answer.
+                      Semantics(
+                        button: true,
+                        label: 'ما أحتاج ${_title(context, item.key)}',
+                        onTap: () => onAnswer(item, 'NOT_NEEDED'),
+                        excludeSemantics: true,
+                        child: JourneyTextAction(
+                          key: ValueKey(
+                            'aarast-dashboard-suggestion-${item.key}-not-needed',
+                          ),
+                          label: 'ما أحتاجها',
+                          onPressed: () => onAnswer(item, 'NOT_NEEDED'),
                         ),
-                        label: 'ما أحتاجها',
-                        onPressed: () => onAnswer(item, 'NOT_NEEDED'),
                       ),
-                      JourneyTextAction(
-                        key: ValueKey(
-                          'aarast-dashboard-suggestion-${item.key}-later',
+                      Semantics(
+                        button: true,
+                        label: '${_title(context, item.key)} بعدين',
+                        onTap: () => onAnswer(item, 'LATER'),
+                        excludeSemantics: true,
+                        child: JourneyTextAction(
+                          key: ValueKey(
+                            'aarast-dashboard-suggestion-${item.key}-later',
+                          ),
+                          label: 'بعدين',
+                          onPressed: () => onAnswer(item, 'LATER'),
                         ),
-                        label: 'بعدين',
-                        onPressed: () => onAnswer(item, 'LATER'),
                       ),
                     ],
                   ),

@@ -220,6 +220,9 @@ void main() {
       find.byKey(const ValueKey('aarast-dashboard-suggestion-PHOTO-later')),
     );
     expect(answers, ['VENUE:NOT_NEEDED', 'PHOTO:LATER']);
+    // RA-MO-164: each answer is heard with the item it answers.
+    expect(find.bySemanticsLabel('ما أحتاج التصوير'), findsOneWidget);
+    expect(find.bySemanticsLabel('التصوير بعدين'), findsOneWidget);
 
     await _tapVisible(tester, find.text('التصوير'));
     expect(opened?.budgetCategoryId, 'item-PHOTO');

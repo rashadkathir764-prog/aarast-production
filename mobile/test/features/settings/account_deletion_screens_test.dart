@@ -1,5 +1,7 @@
 import 'package:aarast_mobile/core/diagnostics/crash_report_switch.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/preferences/device_preferences.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
@@ -134,6 +136,21 @@ void main() {
     expect(world.repository.requestCalls, 0);
   });
 
+  // RA-MO-160: unread, the switch said «الاسم الأول بس» as if known.
+  testWidgets('w40 says when the review name could not be read', (
+    tester,
+  ) async {
+    _tallPhone(tester);
+    final world = await _World.create();
+    world.settings.failReviewRead = true;
+    await tester.pumpWidget(world.app(const PrivacyScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ما قدرنا نقرأ اختيارك الحين'), findsOneWidget);
+    expect(find.text('الاسم الأول بس'), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets(
     'w40 keeps what the product has: reports, the review name, the download',
     (tester) async {
@@ -217,6 +234,37 @@ void _pendingScreenTests() {
       find.text('ما أحد يقدر يدخل خطتك خلال هذي المدة، ولا توصلك تذكيرات.'),
       findsOneWidget,
     );
+  });
+
+  // RA-MO-157 (C59): «اطلع» here signed out at once, wiping what the phone
+  // had not sent; g11 names it first, and so does this screen now.
+  testWidgets('w06 names unsent changes before signing out', (tester) async {
+    _tallPhone(tester);
+    pinAppClock(DateTime(2026, 10, 22, 10));
+    final world = await _World.create(
+      pending: (
+        requestedAt: DateTime(2026, 10, 19, 9),
+        scheduledFor: DateTime(2026, 11, 18, 9),
+      ),
+    );
+    SharedPreferences.setMockInitialValues({});
+    final database = JsonLocalDatabase(await SharedPreferences.getInstance());
+    await database.initialize();
+    final sync = _UnsentSync(database);
+    await tester.pumpWidget(
+      world.app(const DeletionPendingScreen(), sync: sync),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('deletion-pending-sign-out')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('تغييرين على جوالك ما انرسل، ويضيع لو طلعت الحين.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('رجوع'));
+    await tester.pumpAndSettle();
+    expect(world.controller.user, isNotNull);
   });
 
   // RA-BE-56: the 30 days before erasure are when someone leaving wants
@@ -307,7 +355,7 @@ class _World {
     );
   }
 
-  Widget app(Widget screen) {
+  Widget app(Widget screen, {OfflineSyncService? sync}) {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => screen),
@@ -324,10 +372,24 @@ class _World {
         ChangeNotifierProvider<AuthController>.value(value: controller),
         Provider<SettingsApi>.value(value: settings),
         ChangeNotifierProvider<DevicePreferences>.value(value: preferences),
+        if (sync != null)
+          ChangeNotifierProvider<OfflineSyncService>.value(value: sync),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
   }
+}
+
+/// A phone holding two changes not sent yet.
+class _UnsentSync extends OfflineSyncService {
+  _UnsentSync(JsonLocalDatabase database)
+    : super(
+        database: database,
+        apiClient: ApiClient(tokenProvider: () async => null),
+      );
+
+  @override
+  int get unsyncedCount => 2;
 }
 
 class _Settings extends SettingsApi {
@@ -340,8 +402,16 @@ class _Settings extends SettingsApi {
   @override
   Future<AccountDeletionImpact> deletionImpact() async => impact!;
 
+  /// The read of the review name fails (no network).
+  bool failReviewRead = false;
+
   @override
-  Future<bool> reviewFirstNameOnly() async => reviewFirstNameOnlyValue;
+  Future<bool> reviewFirstNameOnly() async {
+    if (failReviewRead) {
+      throw const ApiException('ما وصلنا', isNetworkFailure: true);
+    }
+    return reviewFirstNameOnlyValue;
+  }
 
   @override
   Future<bool> setReviewFirstNameOnly(bool value) async {

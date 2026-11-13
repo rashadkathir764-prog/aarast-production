@@ -34,6 +34,7 @@ class PrivacyScreen extends StatefulWidget {
 
 class _PrivacyScreenState extends State<PrivacyScreen> {
   bool? _reviewFirstNameOnly;
+  bool _reviewReadFailed = false;
   bool _reviewSaving = false;
   bool? _assistantConsent;
   int? _assistantDailyLimit;
@@ -62,7 +63,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       final firstOnly = await api.reviewFirstNameOnly();
       if (mounted) setState(() => _reviewFirstNameOnly = firstOnly);
     } on ApiException catch (error) {
-      if (mounted) AarastToast.showError(context, error.message);
+      if (mounted) {
+        setState(() => _reviewReadFailed = true);
+        AarastToast.showError(context, error.message);
+      }
     }
     final consent = await AssistantConsent.isGiven(userId);
     int? limit;
@@ -152,9 +156,15 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 _Toggle(
                   key: const ValueKey('privacy-review-name'),
                   title: 'اسمي في التقييمات',
-                  subtitle: reviewFirstOnly == false
-                      ? 'اسمك كامل'
-                      : 'الاسم الأول بس',
+                  // RA-MO-160: unread (no network), it said «الاسم الأول
+                  // بس» as if known.
+                  subtitle: reviewFirstOnly == null
+                      ? (_reviewReadFailed
+                            ? 'ما قدرنا نقرأ اختيارك الحين'
+                            : 'نقرأ اختيارك…')
+                      : reviewFirstOnly
+                      ? 'الاسم الأول بس'
+                      : 'اسمك كامل',
                   value: reviewFirstOnly ?? true,
                   onChanged: reviewFirstOnly == null || _reviewSaving
                       ? null

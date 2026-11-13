@@ -112,10 +112,16 @@ class _Greeting extends StatelessWidget {
               key: const ValueKey('participant-profile'),
               onTap: onProfile,
               borderRadius: BorderRadius.circular(AarastV3Radius.card),
-              child: JourneyAvatar(
-                letter: first.isEmpty ? '' : first.characters.first,
-                color: AarastV3Color.brandAccentStrong,
-                size: 40,
+              // RA-MO-164: the drawn circle stays 40, the touch is 48.
+              child: SizedBox.square(
+                dimension: kMinInteractiveDimension,
+                child: Center(
+                  child: JourneyAvatar(
+                    letter: first.isEmpty ? '' : first.characters.first,
+                    color: AarastV3Color.brandAccentStrong,
+                    size: 40,
+                  ),
+                ),
               ),
             ),
           ),

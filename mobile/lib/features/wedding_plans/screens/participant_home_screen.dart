@@ -215,10 +215,12 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
 
     final now = appNow();
     final date = summary?.weddingDate;
-    // D11: from today in Sana'a, as the server counts (RA-MO-20).
-    final days =
-        summary?.daysRemaining ??
-        (date == null ? null : daysUntilPlanDay(date, now: now));
+    // D11: from today in Sana'a, as the server counts (RA-MO-20); from the
+    // date first, since an old copy of the summary holds an old count
+    // (RA-MO-154).
+    final days = date == null
+        ? summary?.daysRemaining
+        : daysUntilPlanDay(date, now: now);
     final weddingDay = date != null && days == 0;
     final title = (summary?.title ?? selected.displayName).trim();
     final role = summary?.permissions.role;

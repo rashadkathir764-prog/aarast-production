@@ -145,7 +145,10 @@ class _JourneyHomeHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = summary.weddingDate;
-    final days = summary.daysRemaining ?? stage.daysUntilWedding;
+    // RA-MO-154: the days are counted from the date today (D11, as the
+    // server counts), not taken from the summary: an old copy of it, days
+    // without the network, held an old count beside today's moment.
+    final days = date == null ? summary.daysRemaining : stage.daysUntilWedding;
     final hijri = date == null || !showHijri
         ? null
         : HijriDate.fromGregorian(date);

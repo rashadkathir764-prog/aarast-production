@@ -117,7 +117,68 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (task != null) {
       _prefillTask(task, currentUserId);
       _showMore = task.hasDescription;
+      _editAsOpened = _editSignature();
     }
+  }
+
+  /// RA-MO-202: the task as the edit opened it, to tell a change made.
+  String? _editAsOpened;
+
+  /// Saved: leaving says nothing.
+  bool _leavingSaved = false;
+
+  String _editSignature() => [
+    _titleController.text.trim(),
+    _descriptionController.text.trim(),
+    _who,
+    _when.name,
+    _pickedDate?.toIso8601String(),
+    _priority,
+    _category,
+    _status,
+    _assigneeUserId,
+    _otherNameController.text.trim(),
+    _otherPhoneController.text.trim(),
+  ].join('|');
+
+  /// An edit (or a hand-over) with changes not saved: the editor has no
+  /// draft, so leaving drops them; it asks first (RA-MO-202).
+  bool get _hasUnsavedEdit =>
+      _isEditMode &&
+      !_leavingSaved &&
+      _editAsOpened != null &&
+      _editSignature() != _editAsOpened;
+
+  Future<bool> _confirmLeave() async {
+    final leave = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: context.say(
+          'تطلع بدون ما تحفظ التعديل؟',
+          'تطلعين بدون ما تحفظين التعديل؟',
+        ),
+        subtitle: 'اللي غيّرته هنا ما ينحفظ.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('task-edit-leave'),
+            label: context.say('اطلع بدون حفظ', 'اطلعي بدون حفظ'),
+            background: AarastV3Color.danger,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton(
+            key: const ValueKey('task-edit-stay'),
+            label: context.say('كمّل التعديل', 'كمّلي التعديل'),
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.ink,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, false),
+          ),
+        ],
+      ),
+    );
+    return leave == true;
   }
 
   @override
@@ -151,157 +212,163 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     final currentUserId = context.watch<AuthController?>()?.user?.id;
     final locked = _keepsPrivate(provider);
 
-    return AarastScreenFrame(
-      maxWidth: 600,
-      backgroundColor: AarastV3Color.canvas,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x4,
-              AarastV3Space.x2,
-              AarastV3Space.x2,
-              0,
+    return PopScope(
+      canPop: !_hasUnsavedEdit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_backAsked());
+      },
+      child: AarastScreenFrame(
+        maxWidth: 600,
+        backgroundColor: AarastV3Color.canvas,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                0,
+              ),
+              child: JourneySubHeader(
+                title: widget.handOver
+                    ? context.say('لمين تحوّلها؟', 'لمين تحوّلينها؟')
+                    : _isEditMode
+                    ? 'تعديل المهمة'
+                    : 'مهمة جديدة',
+                onBack: _backAsked,
+              ),
             ),
-            child: JourneySubHeader(
-              title: widget.handOver
-                  ? context.say('لمين تحوّلها؟', 'لمين تحوّلينها؟')
-                  : _isEditMode
-                  ? 'تعديل المهمة'
-                  : 'مهمة جديدة',
-              onBack: _goBack,
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: AarastV3Density.pageInsets,
-              children: [
-                JourneyTextField(
-                  key: const ValueKey('task-title'),
-                  label: 'ايش المهمة؟',
-                  hint: context.say(
-                    'مثلًا: تذوّق الضيافة مع صالح',
-                    'مثلًا: تذوّق الضيافة مع نورة',
-                  ),
-                  controller: _titleController,
-                  autofocus: !_isEditMode,
-                  maxLength: 200,
-                  errorText: _titleError,
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) => setState(() => _titleError = null),
-                ),
-                const SizedBox(height: AarastV3Space.x3),
-                _label('متى؟'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (option, label, icon) in const [
-                      (_When.week, 'هذا الأسبوع', null),
-                      (_When.month, 'هذا الشهر', null),
-                      (_When.date, 'تاريخ', LucideIcons.calendarDays),
-                      (_When.none, 'بدون موعد', null),
-                    ])
-                      JourneyChip(
-                        key: ValueKey('task-when-${option.name}'),
-                        label: option == _When.date && _pickedDate != null
-                            ? formatArabicDayMonth(_pickedDate!)
-                            : label,
-                        icon: icon,
-                        selected: _when == option,
-                        selectedColor: context.accent.primary,
-                        onTap: () => option == _When.date
-                            ? _pickDate()
-                            : _mutateDraft(() => _when = option),
-                      ),
-                  ],
-                ),
-                if (_when == _When.week || _when == _When.month)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AarastV3Space.x1),
-                    child: Text(
-                      'قبل ${formatArabicWeekdayDayMonth(_dueDate!)}',
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ),
-                SizedBox(key: _whoKey, height: AarastV3Space.x4),
-                CreateTaskResponsibleSection(
-                  choices: _whoChoices(provider, members, currentUserId),
-                  selected: _who,
-                  locked: locked,
-                  onSelected: (who) => _mutateDraft(() {
-                    _who = who;
-                    _otherNameError = null;
-                  }),
-                  otherNameController: _otherNameController,
-                  otherPhoneController: _otherPhoneController,
-                  otherNameError: _otherNameError,
-                  onDraftChanged: (draft) =>
-                      _mutateDraft(() => _otherSource = draft.source),
-                  canInvite: _otherPhoneController.text.trim().isNotEmpty,
-                  onInvite: _inviteResponsibleAsParticipant,
-                ),
-                ..._privacySection(provider),
-                const SizedBox(height: AarastV3Space.x2),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: JourneyTextAction(
-                    key: const ValueKey('task-more'),
-                    label: _showMore
-                        ? 'أقل'
-                        : context.say('أضف ملاحظة', 'أضيفي ملاحظة'),
-                    icon: _showMore
-                        ? LucideIcons.chevronUp
-                        : LucideIcons.chevronDown,
-                    color: context.accent.primary,
-                    onPressed: () => setState(() => _showMore = !_showMore),
-                  ),
-                ),
-                if (_showMore)
+            Expanded(
+              child: ListView(
+                padding: AarastV3Density.pageInsets,
+                children: [
                   JourneyTextField(
-                    key: const ValueKey('task-note'),
-                    label: 'ملاحظة',
+                    key: const ValueKey('task-title'),
+                    label: 'ايش المهمة؟',
                     hint: context.say(
-                      'ايش لازم تتذكر وقت تسويها؟',
-                      'ايش لازم تتذكرين وقت تسوينها؟',
+                      'مثلًا: تذوّق الضيافة مع صالح',
+                      'مثلًا: تذوّق الضيافة مع نورة',
                     ),
-                    controller: _descriptionController,
-                    maxLength: 1000,
+                    controller: _titleController,
+                    autofocus: !_isEditMode,
+                    maxLength: 200,
+                    errorText: _titleError,
+                    textInputAction: TextInputAction.done,
+                    onChanged: (_) => setState(() => _titleError = null),
                   ),
-                if (_saveError != null) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  JourneyNote(
-                    key: const ValueKey('task-save-error'),
-                    text: _saveError!,
-                    icon: LucideIcons.alertCircle,
-                    color: AarastV3Color.danger,
-                    soft: AarastV3Color.dangerSoft,
+                  const SizedBox(height: AarastV3Space.x3),
+                  _label('متى؟'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final (option, label, icon) in const [
+                        (_When.week, 'هذا الأسبوع', null),
+                        (_When.month, 'هذا الشهر', null),
+                        (_When.date, 'تاريخ', LucideIcons.calendarDays),
+                        (_When.none, 'بدون موعد', null),
+                      ])
+                        JourneyChip(
+                          key: ValueKey('task-when-${option.name}'),
+                          label: option == _When.date && _pickedDate != null
+                              ? formatArabicDayMonth(_pickedDate!)
+                              : label,
+                          icon: icon,
+                          selected: _when == option,
+                          selectedColor: context.accent.primary,
+                          onTap: () => option == _When.date
+                              ? _pickDate()
+                              : _mutateDraft(() => _when = option),
+                        ),
+                    ],
                   ),
-                ],
-                if (_draft != null) ...[
+                  if (_when == _When.week || _when == _When.month)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AarastV3Space.x1),
+                      child: Text(
+                        'قبل ${formatArabicWeekdayDayMonth(_dueDate!)}',
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                    ),
+                  SizedBox(key: _whoKey, height: AarastV3Space.x4),
+                  CreateTaskResponsibleSection(
+                    choices: _whoChoices(provider, members, currentUserId),
+                    selected: _who,
+                    locked: locked,
+                    onSelected: (who) => _mutateDraft(() {
+                      _who = who;
+                      _otherNameError = null;
+                    }),
+                    otherNameController: _otherNameController,
+                    otherPhoneController: _otherPhoneController,
+                    otherNameError: _otherNameError,
+                    onDraftChanged: (draft) =>
+                        _mutateDraft(() => _otherSource = draft.source),
+                    canInvite: _otherPhoneController.text.trim().isNotEmpty,
+                    onInvite: _inviteResponsibleAsParticipant,
+                  ),
+                  ..._privacySection(provider),
                   const SizedBox(height: AarastV3Space.x2),
-                  AarastV3DraftStatusLine(status: _draft!.status),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: JourneyTextAction(
+                      key: const ValueKey('task-more'),
+                      label: _showMore
+                          ? 'أقل'
+                          : context.say('أضف ملاحظة', 'أضيفي ملاحظة'),
+                      icon: _showMore
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      color: context.accent.primary,
+                      onPressed: () => setState(() => _showMore = !_showMore),
+                    ),
+                  ),
+                  if (_showMore)
+                    JourneyTextField(
+                      key: const ValueKey('task-note'),
+                      label: 'ملاحظة',
+                      hint: context.say(
+                        'ايش لازم تتذكر وقت تسويها؟',
+                        'ايش لازم تتذكرين وقت تسوينها؟',
+                      ),
+                      controller: _descriptionController,
+                      maxLength: 1000,
+                    ),
+                  if (_saveError != null) ...[
+                    const SizedBox(height: AarastV3Space.x2),
+                    JourneyNote(
+                      key: const ValueKey('task-save-error'),
+                      text: _saveError!,
+                      icon: LucideIcons.alertCircle,
+                      color: AarastV3Color.danger,
+                      soft: AarastV3Color.dangerSoft,
+                    ),
+                  ],
+                  if (_draft != null) ...[
+                    const SizedBox(height: AarastV3Space.x2),
+                    AarastV3DraftStatusLine(status: _draft!.status),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          Padding(
-            padding: AarastV3Density.actionInsets,
-            child: JourneyButton(
-              key: const ValueKey('task-save'),
-              label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
-              background: context.accent.primary,
-              expand: true,
-              large: true,
-              loading: provider.isSubmitting,
-              onPressed: provider.isSubmitting ? null : _submit,
+            Padding(
+              padding: AarastV3Density.actionInsets,
+              child: JourneyButton(
+                key: const ValueKey('task-save'),
+                label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
+                background: context.accent.primary,
+                expand: true,
+                large: true,
+                loading: provider.isSubmitting,
+                onPressed: provider.isSubmitting ? null : _submit,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -339,6 +406,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   void _goBack() => context.popOrGo(AppRouter.tasks(widget.weddingPlanId));
+
+  /// The header's back and the phone's: an unsaved edit asks first.
+  Future<void> _backAsked() async {
+    if (_hasUnsavedEdit && !await _confirmLeave()) return;
+    if (!mounted) return;
+    _leavingSaved = true;
+    _goBack();
+  }
 
   Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) {
@@ -438,6 +513,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     await _draft?.clear();
     if (!mounted) return;
     _showSaveSuccess(provider);
+    _leavingSaved = true;
     _goBack();
   }
 

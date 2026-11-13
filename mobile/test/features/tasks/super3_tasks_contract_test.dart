@@ -532,6 +532,53 @@ void main() {
     expect(find.byKey(const ValueKey('task-save-error')), findsNothing);
   });
 
+  // RA-MO-202: leaving an edit midway dropped what was typed, with no word;
+  // the editor keeps no draft (it would bring back an old copy), so it asks.
+  testWidgets('leaving an edited task asks before dropping the change', (
+    tester,
+  ) async {
+    _setPhoneView(tester, width: 390);
+    final harness = await _createHarness();
+    final provider = TaskTimelineProvider(harness.api);
+    final task = _task(id: 'edit-me', title: 'تأكيد القاعة');
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp.router(
+          routerConfig: _router(
+            start: CreateTaskScreen(
+              weddingPlanId: localPlanId,
+              taskId: task.id,
+              initialTask: task,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('task-title')),
+      'تأكيد القاعة والعشاء',
+    );
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('task-edit-leave')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('task-edit-stay')));
+    await tester.pumpAndSettle();
+    expect(find.text('تعديل المهمة'), findsOneWidget);
+    expect(find.text('تأكيد القاعة والعشاء'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('task-edit-leave')));
+    await tester.pumpAndSettle();
+    expect(find.text('tasks-target'), findsOneWidget);
+  });
+
   testWidgets('«حوّلها لأحد ثاني» opens the form on «لمين؟»', (tester) async {
     _setPhoneView(tester, width: 390);
     final harness = await _createHarness();

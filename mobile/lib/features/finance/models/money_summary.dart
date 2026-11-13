@@ -260,6 +260,20 @@ class MoneyFundingSummary {
   /// Promised money whose day passed without it arriving («متأخر»).
   final int overduePledges;
   final int sourcesCount;
+
+  /// RA-MO-171 (D86): «وصلك» and «معك» on the same list the sections under
+  /// them sum ([listedReceived], the received sources the phone holds),
+  /// when it holds one; else this summary's own. Offline the summary is the
+  /// server's last copy, without a source added since, and the head said
+  /// one figure while its section said another. «معك» is what came in less
+  /// what left (D104), never below zero.
+  ({num received, num cash}) headOn(num? listedReceived) {
+    if (listedReceived == null) {
+      return (received: moneyValue(received), cash: moneyValue(availableCash));
+    }
+    final left = listedReceived - moneyValue(spent) - moneyValue(loanRepaid);
+    return (received: listedReceived, cash: left < 0 ? 0 : left);
+  }
 }
 
 /// The plan's mahr (a06, C1), one shape for both sides.

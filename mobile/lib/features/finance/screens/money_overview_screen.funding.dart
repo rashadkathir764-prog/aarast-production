@@ -154,6 +154,10 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
     final estimates = moneyValue(coverage?.estimatesLeft);
     final afterEstimates = moneyValue(coverage?.endAfterEstimates);
     final out = moneyValue(funding.spent) + moneyValue(funding.loanRepaid);
+    // RA-MO-171 (D86): the head and the sections under it read one list.
+    final head = funding.headOn(loaded.isEmpty ? null : sum(received));
+    final receivedTotal = head.received;
+    final cash = head.cash;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -172,7 +176,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 ),
               ),
               Text(
-                money(funding.availableCash),
+                money(cash),
                 key: const ValueKey('money-cash-figure'),
                 style: JourneyType.of(
                   JourneyType.headline,
@@ -181,7 +185,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 ),
               ),
               Text(
-                'وصلك ${money(funding.received)} − ${context.say('صرفت', 'صرفتِ')} منها ${money(out)}',
+                'وصلك ${money(receivedTotal)} − ${context.say('صرفت', 'صرفتِ')} منها ${money(out)}',
                 key: const ValueKey('money-cash-how'),
                 style: JourneyType.of(
                   JourneyType.small,

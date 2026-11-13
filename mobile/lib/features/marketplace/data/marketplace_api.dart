@@ -1425,7 +1425,8 @@ class ProviderDashboardApi {
     try {
       return normalizeYemeniPhone(phone);
     } on FormatException {
-      throw const ApiException('رقم الجوال غير صحيح');
+      // D112 (Q-12): another country's number is told what the app takes.
+      throw ApiException(yemeniPhoneRefusal(phone));
     }
   }
 }

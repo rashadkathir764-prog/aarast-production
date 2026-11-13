@@ -274,7 +274,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                       'شارك المهام على واتساب',
                       'شاركي المهام على واتساب',
                     ),
-                    onPressed: () => _share(tasks),
+                    // What the screen shows, so «خلصنا X من Y» matches it.
+                    onPressed: () => _share(visible, person),
                   ),
                 if (widget.showHeaderAdd)
                   JourneyRoundButton(
@@ -478,7 +479,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
 
   void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));
 
-  void _share(List<WeddingTask> tasks) {
+  void _share(List<WeddingTask> tasks, String person) {
     final selected = context.read<AccountContextController?>()?.selectedContext;
     final name = selected?.weddingPlanId?.toString() == widget.weddingPlanId
         ? selected?.displayName.trim() ?? ''
@@ -490,6 +491,11 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         tasks,
         planTitle: name.isEmpty ? 'خطتنا' : name,
         today: appNow(),
+        scope: switch (person) {
+          _everyone => null,
+          _mine => 'اللي عليّ',
+          _ => 'اللي على $person',
+        },
       ),
     );
   }

@@ -317,6 +317,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('task-person-صالح')));
     await tester.pumpAndSettle();
     expect(find.text('0 من 1'), findsOneWidget);
+
+    // RA-MO-210: what is shared is what the screen counts, and says whose.
+    await tester.tap(find.byKey(const Key('tasks-share-summary')));
+    await tester.pumpAndSettle();
+    final shared = tester
+        .widget<Text>(find.byKey(const Key('share-sheet-preview')))
+        .data!;
+    expect(shared, contains('اللي على صالح'));
+    expect(shared, contains('خلصنا 0 من 1'));
   });
 
   testWidgets('finishing a task moves it to «خلصت» (d01)', (tester) async {

@@ -1,6 +1,10 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/offline_contract.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_checklist_item.dart';
 import 'package:aarast_mobile/features/tasks/models/task_starter_catalog.dart';
@@ -14,6 +18,9 @@ import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../account_contexts/account_context_test_data.dart';
 
 // A failed action says why where it happened, and is not shown as a page
 // that could not be refreshed. A failed read is the only "old copy" notice.
@@ -91,6 +98,53 @@ void main() {
     expect(find.text('تنمسح هي وخطواتها، وما ترجع.'), findsOneWidget);
     expect(find.textContaining('«ما نحتاجها» تخليها'), findsNothing);
     await tester.pump(const Duration(seconds: 5));
+  });
+
+  // RA-MO-207: without the task right the server lists no task, and a page
+  // opened from a notice said «هذي المهمة ما عاد موجودة».
+  testWidgets('a task whose right was taken away says so, not «gone»', (
+    tester,
+  ) async {
+    final api = _Api()..hideAll = true;
+    final provider = TaskTimelineProvider(api);
+    final gateway = _Gateway();
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final contexts = AccountContextController(
+      contextsApi: gateway,
+      authStorage: storage,
+      setActiveWeddingPlan: (_) async {},
+    );
+    addTearDown(contexts.dispose);
+    await contexts.refresh(allowInitialSingleContext: true);
+    expect(contexts.selectedContext?.permissions.canManageTasks, isTrue);
+
+    gateway.tasksOpen = false;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 1400);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<TaskTimelineProvider>.value(value: provider),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: contexts,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TaskDetailsScreen(
+            weddingPlanId: 'plan-1',
+            taskId: 'task-1',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(gateway.reads, 2);
+    expect(find.text('المهام ما عادت مفتوحة لك'), findsOneWidget);
+    expect(find.text('هذي المهمة ما عاد موجودة'), findsNothing);
   });
 
   testWidgets('a failed delete says so and stays on the task', (tester) async {
@@ -250,6 +304,27 @@ Future<void> _pumpDetails(
   await tester.pumpAndSettle();
 }
 
+/// A participant of plan-1 whose task right the owner can take away.
+class _Gateway implements AccountContextsGateway {
+  bool tasksOpen = true;
+  int reads = 0;
+
+  AccountContext get _context {
+    final json = accountContextJson(role: AccountContextRole.contributor);
+    (json['permissions'] as Map<String, dynamic>)['canManageTasks'] = tasksOpen;
+    return AccountContext.fromJson(json);
+  }
+
+  @override
+  Future<List<AccountContext>> listContexts() async {
+    reads += 1;
+    return [_context];
+  }
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async => _context;
+}
+
 class _Api extends TaskTimelineApi {
   _Api() : super(ApiClient(tokenProvider: () async => null));
 
@@ -257,6 +332,9 @@ class _Api extends TaskTimelineApi {
   bool failDelete = false;
   bool failChecklist = false;
   bool failRead = false;
+
+  /// The server lists nothing to a participant without the task right.
+  bool hideAll = false;
 
   /// D87: the server is out of reach and the phone has a copy.
   bool serveCopy = false;
@@ -290,7 +368,7 @@ class _Api extends TaskTimelineApi {
   @override
   Future<List<WeddingTask>> getTasks(String weddingPlanId) async {
     _read();
-    return [task];
+    return hideAll ? const [] : [task];
   }
 
   @override

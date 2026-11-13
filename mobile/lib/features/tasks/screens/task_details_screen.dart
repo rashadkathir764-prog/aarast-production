@@ -19,6 +19,8 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
@@ -91,10 +93,41 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   void _back() => context.popOrGo(AppRouter.tasks(widget.weddingPlanId));
 
+  bool _askedMyAccess = false;
+
+  /// RA-MO-207: without the task right the server lists no task at all, so
+  /// a page opened from a notice after the owner took that right away read
+  /// «هذي المهمة ما عاد موجودة». For a participant the missing task first
+  /// asks their rights again: true when tasks are now closed to them, false
+  /// while asking, null when the rights still open tasks (the task is gone).
+  bool? _tasksClosedToMe(TaskTimelineProvider provider) {
+    if (provider.loadErrorMessage != null) return null;
+    final contexts = context.watch<AccountContextController?>();
+    final selected = contexts?.selectedContext;
+    if (contexts == null ||
+        selected == null ||
+        selected.weddingPlanId != widget.weddingPlanId ||
+        selected.role == AccountContextRole.owner) {
+      return null;
+    }
+    if (!selected.permissions.canManageTasks) return true;
+    if (!_askedMyAccess) {
+      _askedMyAccess = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(contexts.refresh());
+      });
+      return false;
+    }
+    return contexts.isRefreshing ? false : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
     final task = _task(provider);
+    final closedToMe = task == null && !provider.isLoading
+        ? _tasksClosedToMe(provider)
+        : null;
 
     final Widget body;
     if (task == null && provider.isLoading) {
@@ -102,6 +135,21 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.tasks,
       );
+    } else if (closedToMe != null) {
+      body = closedToMe
+          ? JourneyListState(
+              phase: JourneyListPhase.empty,
+              section: JourneySection.tasks,
+              emptyIcon: LucideIcons.lock,
+              emptyTitle: 'المهام ما عادت مفتوحة لك',
+              emptyMessage: 'تغيّرت صلاحيتك في هذي الخطة.',
+              emptyAction: context.say('ارجع', 'ارجعي'),
+              onEmptyAction: _back,
+            )
+          : const JourneyListState(
+              phase: JourneyListPhase.loading,
+              section: JourneySection.tasks,
+            );
     } else if (task == null) {
       body = JourneyListState(
         phase: provider.loadErrorMessage == null

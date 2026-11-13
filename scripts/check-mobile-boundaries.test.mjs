@@ -1742,7 +1742,10 @@ const r19ProviderPortalApi = Object.freeze({
 // +2 (D112 Q-13, 2026-11-12): the shell's quiet strip for the other side's
 // plan kept on the phone reads who is signed in (the auth owner API) and
 // what was kept (the onboarding owner API); no new export on either.
-const r19LegalRecordCount = 268;
+// +1 (RA-MO-207, 2026-11-13): the task page asks a participant's rights
+// again when their task is missing (the account contexts owner API); no new
+// export.
+const r19LegalRecordCount = 269;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2963,6 +2966,13 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthController'],
+  },
+  // RA-MO-207: a participant's missing task asks their rights again, so a
+  // task right taken away is said as such, not as a deleted task.
+  {
+    source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',

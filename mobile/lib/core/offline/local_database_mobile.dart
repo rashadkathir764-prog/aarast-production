@@ -273,7 +273,6 @@ class SqliteLocalDatabase implements LocalDatabase {
     String? clientRequestId,
     DateTime? queueCreatedAt,
   }) async {
-    final now = queueCreatedAt ?? nextSyncQueueTimestamp();
     final normalizedPlanId = normalizeSyncQueuePlanId(
       entityType: entityType,
       planId: planId,
@@ -286,46 +285,70 @@ class SqliteLocalDatabase implements LocalDatabase {
         'must not be empty',
       );
     }
-    final item = SyncQueueItem(
-      id: normalizedRequestId ?? syncQueueIdFor(now),
-      entityType: entityType,
-      operation: operation,
-      endpoint: endpoint,
-      method: method.toUpperCase(),
-      payloadJson: jsonEncode(payload),
-      status: SyncQueueItem.queued,
-      retryCount: 0,
-      planId: normalizedPlanId,
-      localEntityId: localEntityId,
-      createdAt: now,
-      updatedAt: now,
-    );
+    final (String, List<Object?>)? replacedRows = replaceAllPendingForEntity
+        ? (
+            'entityType = ? AND '
+                'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
+                'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'} '
+                'AND status != ?',
+            [
+              entityType,
+              ?localEntityId,
+              ?normalizedPlanId,
+              SyncQueueItem.synced,
+            ],
+          )
+        : replacePendingForEntity
+        ? (
+            'entityType = ? AND operation = ? AND '
+                'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
+                'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'}',
+            [entityType, operation, ?localEntityId, ?normalizedPlanId],
+          )
+        : null;
+    late SyncQueueItem item;
     await _db.transaction((txn) async {
-      if (replaceAllPendingForEntity) {
-        await txn.delete(
+      // RA-MO-93: a change that replaces a waiting one keeps its place in
+      // the queue (its earliest time); added at the end, a newer budget went
+      // behind an agreement made on one of its new items.
+      DateTime? earliest;
+      if (replacedRows case (final where, final args)) {
+        final found = await txn.query(
           OfflineTables.syncQueue,
-          where:
-              'entityType = ? AND '
-              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
-              'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'} '
-              'AND status != ?',
-          whereArgs: [
-            entityType,
-            ?localEntityId,
-            ?normalizedPlanId,
-            SyncQueueItem.synced,
-          ],
+          columns: ['createdAt'],
+          where: where,
+          whereArgs: args,
+          orderBy: 'createdAt ASC',
+          limit: 1,
         );
-      } else if (replacePendingForEntity) {
+        if (found.isNotEmpty) {
+          earliest = DateTime.tryParse(found.first['createdAt'].toString());
+        }
         await txn.delete(
           OfflineTables.syncQueue,
-          where:
-              'entityType = ? AND operation = ? AND '
-              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
-              'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'}',
-          whereArgs: [entityType, operation, ?localEntityId, ?normalizedPlanId],
+          where: where,
+          whereArgs: args,
         );
       }
+      final now = queueCreatedAt ?? earliest ?? nextSyncQueueTimestamp();
+      item = SyncQueueItem(
+        // A new change gets a new id even where it takes an older one's
+        // place: the server tells a resend by it.
+        id:
+            normalizedRequestId ??
+            syncQueueIdFor(earliest == null ? now : nextSyncQueueTimestamp()),
+        entityType: entityType,
+        operation: operation,
+        endpoint: endpoint,
+        method: method.toUpperCase(),
+        payloadJson: jsonEncode(payload),
+        status: SyncQueueItem.queued,
+        retryCount: 0,
+        planId: normalizedPlanId,
+        localEntityId: localEntityId,
+        createdAt: now,
+        updatedAt: now,
+      );
       await txn.insert(OfflineTables.syncQueue, item.toRow());
     });
     return item;

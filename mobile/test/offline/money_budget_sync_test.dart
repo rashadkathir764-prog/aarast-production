@@ -452,6 +452,38 @@ void main() {
     expect(cached.single['name'], 'قاعة الحفل');
   });
 
+  // RA-MO-93: a newer budget replaced the waiting one at the end of the
+  // queue, behind an agreement made on one of its new items; the agreement
+  // reached the server first and was refused.
+  test('a newer budget keeps the waiting one\'s place in the queue', () async {
+    final database = await _freshDatabase();
+    Future<void> budget(String total) => database.enqueueSync(
+      entityType: 'money_budget',
+      operation: 'replace',
+      endpoint: '/api/v1/wedding-plans/plan-1/money/budget',
+      method: 'PUT',
+      payload: {'totalBudget': total},
+      planId: 'plan-1',
+      localEntityId: 'plan-1',
+      replacePendingForEntity: true,
+    );
+    await budget('1000');
+    await database.enqueueSync(
+      entityType: 'cost',
+      operation: 'create',
+      endpoint: '/api/v1/wedding-plans/plan-1/costs',
+      method: 'POST',
+      payload: const {'budgetCategoryId': 'new-item'},
+      planId: 'plan-1',
+      localEntityId: 'local-cost-1',
+    );
+    await budget('1200');
+
+    final waiting = await database.pendingSyncItems();
+    expect(waiting.map((item) => item.entityType), ['money_budget', 'cost']);
+    expect(waiting.first.payload['totalBudget'], '1200');
+  });
+
   // D112 (Q-4), the owner's word: a budget saved from an older read is
   // refused by the server. The phone sends the version its save was made
   // from, and several saves made without a connection go as one made from

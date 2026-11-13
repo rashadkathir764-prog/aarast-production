@@ -228,11 +228,36 @@ class JsonLocalDatabase implements LocalDatabase {
     String? clientRequestId,
     DateTime? queueCreatedAt,
   }) async {
-    final now = queueCreatedAt ?? nextSyncQueueTimestamp();
     final normalizedPlanId = normalizeSyncQueuePlanId(
       entityType: entityType,
       planId: planId,
     );
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    bool replaced(Map<String, dynamic> row) =>
+        (replaceAllPendingForEntity &&
+            row['entityType'] == entityType &&
+            row['localEntityId'] == localEntityId &&
+            _nonEmpty(row['planId']) == normalizedPlanId &&
+            row['status'] != SyncQueueItem.synced) ||
+        (!replaceAllPendingForEntity &&
+            replacePendingForEntity &&
+            row['entityType'] == entityType &&
+            row['operation'] == operation &&
+            row['localEntityId'] == localEntityId &&
+            _nonEmpty(row['planId']) == normalizedPlanId);
+    // RA-MO-93: a change that replaces a waiting one keeps its place in
+    // the queue. Added at the end, a newer budget went behind an agreement
+    // made on one of its new items, which then reached the server first and
+    // was refused, its payments after it.
+    final earliest = rows
+        .where(replaced)
+        .map((row) => DateTime.tryParse(row['createdAt']?.toString() ?? ''))
+        .whereType<DateTime>()
+        .fold<DateTime?>(
+          null,
+          (first, at) => first == null || at.isBefore(first) ? at : first,
+        );
+    final now = queueCreatedAt ?? earliest ?? nextSyncQueueTimestamp();
     final normalizedRequestId = clientRequestId?.trim();
     if (clientRequestId != null && normalizedRequestId!.isEmpty) {
       throw ArgumentError.value(
@@ -242,7 +267,11 @@ class JsonLocalDatabase implements LocalDatabase {
       );
     }
     final item = SyncQueueItem(
-      id: normalizedRequestId ?? syncQueueIdFor(now),
+      // A new change gets a new id even where it takes an older one's place:
+      // the server tells a resend by it, and the older may be there already.
+      id:
+          normalizedRequestId ??
+          syncQueueIdFor(earliest == null ? now : nextSyncQueueTimestamp()),
       entityType: entityType,
       operation: operation,
       endpoint: endpoint,
@@ -255,25 +284,9 @@ class JsonLocalDatabase implements LocalDatabase {
       createdAt: now,
       updatedAt: now,
     );
-    final rows = _readList(_tableKey(OfflineTables.syncQueue));
-    if (replaceAllPendingForEntity) {
-      rows.removeWhere(
-        (row) =>
-            row['entityType'] == entityType &&
-            row['localEntityId'] == localEntityId &&
-            _nonEmpty(row['planId']) == normalizedPlanId &&
-            row['status'] != SyncQueueItem.synced,
-      );
-    } else if (replacePendingForEntity) {
-      rows.removeWhere(
-        (row) =>
-            row['entityType'] == entityType &&
-            row['operation'] == operation &&
-            row['localEntityId'] == localEntityId &&
-            _nonEmpty(row['planId']) == normalizedPlanId,
-      );
-    }
-    rows.add(item.toRow());
+    rows
+      ..removeWhere(replaced)
+      ..add(item.toRow());
     await _writeList(_tableKey(OfflineTables.syncQueue), rows);
     return item;
   }

@@ -350,6 +350,37 @@ void main() {
     expect(find.text('ما يناسبك العرض؟'), findsNothing);
   });
 
+  // RA-MO-257: closing the sheet forgot that the message arrived, so the
+  // sheet opened again sent the polite message a second time.
+  testWidgets('x10 the sheet opened again does not send the message twice', (
+    tester,
+  ) async {
+    final marketplace = _Marketplace([_offer('q1', 'ضوء صنعاء', '550000')])
+      ..refuseDeclines = 1;
+    final h = await _pump(tester, const [], marketplace: marketplace);
+
+    await tester.tap(find.byKey(const ValueKey('requests-decline-q1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('decline-send')));
+    await tester.pumpAndSettle();
+    expect(h.chat.sent, hasLength(1));
+    expect(h.marketplace.rejectedQuoteIds, isEmpty);
+
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('ما يناسبك العرض؟'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('requests-decline-q1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('decline-send')));
+    await tester.pumpAndSettle();
+
+    expect(h.chat.sent, hasLength(1));
+    expect(h.marketplace.rejectedQuoteIds, ['q1']);
+    // And the message went with a key, so a lost answer is not a second one.
+    expect(h.chat.keys.single, startsWith('decline-offer-q1-'));
+  });
+
   testWidgets('waiting and expired requests: no decisions, ask again', (
     tester,
   ) async {
@@ -853,6 +884,7 @@ class _Chat extends ChatApi {
 
   final bool fails;
   final sent = <String>[];
+  final keys = <String?>[];
 
   @override
   Future<ChatConversation> conversationForQuote(String quoteRequestId) async {
@@ -872,6 +904,7 @@ class _Chat extends ChatApi {
     String? clientRequestId,
   }) async {
     sent.add(body);
+    keys.add(clientRequestId);
     return ChatMessage.fromJson({
       'id': 'm1',
       'conversationId': conversationId,

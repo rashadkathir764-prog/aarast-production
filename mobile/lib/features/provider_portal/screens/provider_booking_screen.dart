@@ -57,8 +57,7 @@ class ProviderBookingScreen extends StatelessWidget {
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: AarastV3Density.pageInsets,
+      child: ProviderCaseList(
         children: [
           JourneySubHeader(
             title: 'حجز $name',
@@ -292,8 +291,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: AarastV3Density.pageInsets,
+      child: ProviderCaseList(
         children: [
           JourneySubHeader(
             title: 'حجز $name',

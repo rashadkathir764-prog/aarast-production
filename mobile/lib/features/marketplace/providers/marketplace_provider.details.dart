@@ -38,7 +38,6 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         scopedPlanId != null &&
         scopedPlanId == _quotePlanId;
     _isLoading = true;
-    _errorMessage = null;
     _providerQuoteContextsLoading.add(providerId);
     notifyListeners();
 
@@ -92,8 +91,10 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         if (!reviewsResult.isSuccess) 'التقييمات',
         if (portfolioResult != null && !portfolioResult.isSuccess) 'الصور',
       ];
-      if (failedSections.isNotEmpty) {
-        _errorMessage =
+      if (failedSections.isEmpty) {
+        _detailSectionsErrors.remove(providerId);
+      } else {
+        _detailSectionsErrors[providerId] =
             'ما قدرنا نحدّث ${failedSections.join('، ')}. جرّب مرة ثانية.';
       }
       if (canLoadPlanQuotes) {
@@ -101,13 +102,11 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
       }
     } on ApiException catch (error) {
       final message = providerDirectoryErrorMessage(error);
-      _errorMessage = message;
       _detailsErrors[providerId] = _details.containsKey(providerId)
           ? providerDetailsStaleErrorMessage
           : message;
     } catch (error) {
       final message = providerDirectoryErrorMessage(error);
-      _errorMessage = message;
       _detailsErrors[providerId] = _details.containsKey(providerId)
           ? providerDetailsStaleErrorMessage
           : message;

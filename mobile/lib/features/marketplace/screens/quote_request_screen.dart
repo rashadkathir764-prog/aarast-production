@@ -166,8 +166,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
-    final submitError =
-        marketplace.quoteSubmitErrorMessage ?? marketplace.errorMessage;
+    // RA-MO-254: the form says its own sending only; a refresh of the
+    // provider's page that failed is that page's to say.
+    final submitError = marketplace.quoteSubmitErrorMessage;
     final requiresAuth =
         auth.status == AuthStatus.unauthenticated &&
         !AppFeatureFlags.devBypassLoginGatesForUxExploration;

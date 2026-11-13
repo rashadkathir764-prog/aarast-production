@@ -264,6 +264,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('طلب جديد'), findsOneWidget);
     });
+
+    // RA-MO-290: the request showed what the phone held when the list was
+    // read; a change since (the customer's booking request) never showed.
+    testWidgets('a request is read again when opened, and when pulled', (
+      tester,
+    ) async {
+      final api = RequestsApi(quotes: [quoteJson()]);
+      await pumpHarness(tester, api);
+      api._quotes.single['message'] = 'غيرنا الوقت للعصر';
+
+      await tester.tap(find.byKey(const Key('provider-request-quote-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('«غيرنا الوقت للعصر»'), findsOneWidget);
+
+      api._quotes.single['message'] = 'والعدد صار 150';
+      await tester.fling(find.text('طلب جديد'), const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+      expect(find.text('«والعدد صار 150»'), findsOneWidget);
+    });
   });
 
   group('p16 new request and p18 apology', () {

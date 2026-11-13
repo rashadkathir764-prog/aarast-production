@@ -19,10 +19,14 @@ class ConversationListView extends StatefulWidget {
     this.embedded = false,
     this.iconFor,
     this.now,
+    this.planId,
     super.key,
   });
 
   final bool embedded;
+
+  /// The plan whose conversations show; all of the account's when null.
+  final String? planId;
 
   /// The icon of the service a conversation is about; the providers tab
   /// owns that map. A store when not given.
@@ -56,6 +60,16 @@ class _ConversationListViewState extends State<ConversationListView> {
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final now = widget.now ?? appNow();
+    // RA-MO-255: the server lists every conversation of the account; in a
+    // plan's providers tab only that plan's show (another plan's opened as
+    // «هذي الخطة ما عادت لك», which was untrue).
+    final planId = widget.planId;
+    final shown = planId == null
+        ? chat.conversations
+        : [
+            for (final conversation in chat.conversations)
+              if (conversation.weddingPlan?.id == planId) conversation,
+          ];
     final content = RefreshIndicator(
       color: context.accent.primary,
       onRefresh: chat.initialize,
@@ -73,18 +87,18 @@ class _ConversationListViewState extends State<ConversationListView> {
               title: 'المحادثات',
               onBack: () => context.popOrGo(AppRouter.home),
             ),
-          if (chat.isLoading && chat.conversations.isEmpty)
+          if (chat.isLoading && shown.isEmpty)
             const JourneyListState(
               phase: JourneyListPhase.loading,
               section: JourneySection.providers,
             )
-          else if (chat.errorMessage != null && chat.conversations.isEmpty)
+          else if (chat.errorMessage != null && shown.isEmpty)
             JourneyListState(
               phase: JourneyListPhase.error,
               section: JourneySection.providers,
               onRetry: chat.initialize,
             )
-          else if (chat.conversations.isEmpty)
+          else if (shown.isEmpty)
             const JourneyListState(
               key: ValueKey('conversations-empty'),
               phase: JourneyListPhase.empty,
@@ -108,7 +122,7 @@ class _ConversationListViewState extends State<ConversationListView> {
               padding: EdgeInsets.zero,
               child: JourneyList(
                 children: [
-                  for (final conversation in chat.conversations)
+                  for (final conversation in shown)
                     _ConversationRow(
                       key: ValueKey('conversation-${conversation.id}'),
                       conversation: conversation,

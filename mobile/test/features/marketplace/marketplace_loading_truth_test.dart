@@ -54,7 +54,10 @@ void main() {
         marketplace.reviewsErrorFor('provider-1'),
         'تعذر تحميل التقييمات.',
       );
-      expect(marketplace.errorMessage, isNotNull);
+      // RA-MO-254 (2026-11-13): reported on the provider's page; the shared
+      // error showed on the quote form and the directory.
+      expect(marketplace.detailSectionsErrorFor('provider-1'), isNotNull);
+      expect(marketplace.errorMessage, isNull);
 
       api
         ..servicesError = null
@@ -87,7 +90,13 @@ void main() {
     api.portfolioError = const ApiException('تعذر تحميل الصور.');
     await marketplace.loadProviderDetails('provider-1');
     expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
-    expect(marketplace.errorMessage, 'ما قدرنا نحدّث الصور. جرّب مرة ثانية.');
+    // RA-MO-254 (2026-11-13): reported on the provider's page, not as the
+    // shared error the quote form and the directory showed.
+    expect(
+      marketplace.detailSectionsErrorFor('provider-1'),
+      'ما قدرنا نحدّث الصور. جرّب مرة ثانية.',
+    );
+    expect(marketplace.errorMessage, isNull);
   });
 
   test(

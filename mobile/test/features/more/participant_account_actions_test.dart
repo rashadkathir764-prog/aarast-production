@@ -306,6 +306,82 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-273: with no network the page said «ما فيه تغيير على هذي الخطة»,
+  // which it had not asked.
+  testWidgets('q19: an ask that failed says so, and asks again', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    harness.contextsGateway.failLists = 1;
+    harness.router.go('/shared/wedding-plans/shared-plan');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('participant-plan-state-unasked')),
+      findsOneWidget,
+    );
+    expect(find.text('ما قدرنا نتأكد من حال الخطة الحين.'), findsOneWidget);
+    expect(find.text('ما فيه تغيير على هذي الخطة'), findsNothing);
+
+    await tester.tap(find.text('جرّب مرة ثانية'));
+    await tester.pumpAndSettle();
+    expect(find.text('ما فيه تغيير على هذي الخطة'), findsOneWidget);
+    expect(find.text('افتح «حسابي»'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-275: taken off a plan, the phone kept its unsent changes; the
+  // server refused each, and each stayed blocked for a plan the participant
+  // could no longer open. They go, and the page says how many.
+  testWidgets('J2-07: taken off a plan, its stuck changes go and are told', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create();
+    addTearDown(harness.dispose);
+    for (final title in ['حجز القاعة', 'شراء الورد']) {
+      await harness.offline.database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/api/v1/wedding-plans/shared-plan/tasks',
+        method: 'POST',
+        payload: {'title': title},
+        planId: 'shared-plan',
+        localEntityId: 'local-$title',
+      );
+    }
+    await harness.offline.database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/api/v1/wedding-plans/owner-plan/tasks',
+      method: 'POST',
+      payload: {'title': 'خطتي أنا'},
+      planId: 'owner-plan',
+      localEntityId: 'local-mine',
+    );
+    await harness.pump(tester);
+
+    harness.contextsGateway.contexts.removeWhere(
+      (context) => context.weddingPlanId == 'shared-plan',
+    );
+    harness.router.go('/shared/wedding-plans/shared-plan');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك. '
+        'تغييرين ما وصلت قبلها، وانحذفت من جوالك.',
+      ),
+      findsOneWidget,
+    );
+    expect(await harness.offline.unsentCountForPlan('shared-plan'), 0);
+    // The plan still held keeps its own.
+    expect(await harness.offline.unsentCountForPlan('owner-plan'), 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('J2-07: a participant taken off the plan is told so, by name', (
     tester,
   ) async {
@@ -901,6 +977,12 @@ class _ContributorActionHarness {
           planLeaveCoordinator.preparePendingForUser('contributor-user'),
       afterRefresh: () => planLeaveCoordinator
           .completeAfterContextsRefreshForUser('contributor-user'),
+      // As lib/main.dart wires it (RA-MO-275).
+      forgetRemovedPlan: (planId) async {
+        final unsent = await offline.unsentCountForPlan(planId);
+        await offline.clearPlanContext(planId);
+        return unsent;
+      },
     );
     await contexts.refresh();
     expect(await contexts.select(contributor.contextKey), isTrue);
@@ -1134,9 +1216,16 @@ class _ContextsGateway implements AccountContextsGateway {
     if (release != null && !release.isCompleted) release.complete();
   }
 
+  /// How many lists fail for want of the network.
+  int failLists = 0;
+
   @override
   Future<List<AccountContext>> listContexts() async {
     listCalls += 1;
+    if (failLists > 0) {
+      failLists -= 1;
+      throw const ApiException('بدون نت', isNetworkFailure: true);
+    }
     final release = _listRelease;
     if (release != null) {
       await release.future;

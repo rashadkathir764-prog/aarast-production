@@ -559,12 +559,15 @@ class MarketplaceApi {
       final items = await _getJsonMapList(
         '/api/v1/wedding-plans/$planId/quote-requests',
       );
-      for (final item in items) {
-        await _offline?.database.saveCachedItem(
-          table: OfflineTables.cachedBookings,
-          json: item,
-        );
-      }
+      // RA-MO-261: the plan's copy is the server's list, not added to it:
+      // a request this reader no longer sees (rights withdrawn, removed)
+      // stayed on the phone with its amounts and showed with no network.
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedBookings,
+        items: items,
+        parentColumn: 'planId',
+        parentId: planId,
+      );
       return items.map(QuoteRequest.fromJson).toList();
     } on Object catch (error) {
       final cached = await _cachedListOnNetworkFailure(
@@ -625,12 +628,14 @@ class MarketplaceApi {
     required String quoteOfferId,
     String? reason,
     String? message,
+    String? clientRequestId,
   }) async {
     await _writes.serverOnly(
       reason: _reachesProvider,
       method: 'PATCH',
       path: '/api/v1/quote-offers/$quoteOfferId/reject',
       body: {'reason': ?reason, 'message': ?message},
+      clientRequestId: clientRequestId,
     );
     return getQuoteRequest(quoteRequestId);
   }
@@ -1245,28 +1250,36 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// [clientRequestId] is held by the caller for the attempt, so a press
+  /// again after a lost answer does not add the service twice (RA-MO-296).
   Future<MarketplaceService> createService({
     required String title,
     required String categoryId,
+    required String clientRequestId,
     String? description,
     String? basePrice,
     String? priceUnit,
     String? currency,
     String? cityId,
   }) async {
-    final json = await _apiClient.postJson('/api/v1/provider/me/services', {
-      'title': title.trim(),
-      'categoryId': categoryId.trim(),
-      if (description != null && description.trim().isNotEmpty)
-        'description': description.trim(),
-      if (basePrice != null && basePrice.trim().isNotEmpty)
-        'basePrice': basePrice.trim(),
-      if (priceUnit != null && priceUnit.trim().isNotEmpty)
-        'priceUnit': priceUnit.trim(),
-      if (currency != null && currency.trim().isNotEmpty)
-        'currency': currency.trim(),
-      if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
-    });
+    final json = await _apiClient.mutateJson(
+      '/api/v1/provider/me/services',
+      {
+        'title': title.trim(),
+        'categoryId': categoryId.trim(),
+        if (description != null && description.trim().isNotEmpty)
+          'description': description.trim(),
+        if (basePrice != null && basePrice.trim().isNotEmpty)
+          'basePrice': basePrice.trim(),
+        if (priceUnit != null && priceUnit.trim().isNotEmpty)
+          'priceUnit': priceUnit.trim(),
+        if (currency != null && currency.trim().isNotEmpty)
+          'currency': currency.trim(),
+        if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
+      },
+      method: 'POST',
+      clientRequestId: clientRequestId,
+    );
     return MarketplaceService.fromJson(json);
   }
 
@@ -1294,25 +1307,32 @@ class ProviderDashboardApi {
     return MarketplaceService.fromJson(json);
   }
 
+  /// [clientRequestId] as for [createService] (RA-MO-296).
   Future<ProviderPackage> createPackage({
     required String title,
+    required String clientRequestId,
     String? serviceId,
     String? description,
     String? price,
     String? currency,
     List<String> items = const [],
   }) async {
-    final json = await _apiClient.postJson('/api/v1/provider/me/packages', {
-      'title': title.trim(),
-      if (serviceId != null && serviceId.trim().isNotEmpty)
-        'serviceId': serviceId.trim(),
-      if (description != null && description.trim().isNotEmpty)
-        'description': description.trim(),
-      if (price != null && price.trim().isNotEmpty) 'price': price.trim(),
-      if (currency != null && currency.trim().isNotEmpty)
-        'currency': currency.trim(),
-      if (items.isNotEmpty) 'items': items,
-    });
+    final json = await _apiClient.mutateJson(
+      '/api/v1/provider/me/packages',
+      {
+        'title': title.trim(),
+        if (serviceId != null && serviceId.trim().isNotEmpty)
+          'serviceId': serviceId.trim(),
+        if (description != null && description.trim().isNotEmpty)
+          'description': description.trim(),
+        if (price != null && price.trim().isNotEmpty) 'price': price.trim(),
+        if (currency != null && currency.trim().isNotEmpty)
+          'currency': currency.trim(),
+        if (items.isNotEmpty) 'items': items,
+      },
+      method: 'POST',
+      clientRequestId: clientRequestId,
+    );
     return ProviderPackage.fromJson(json);
   }
 

@@ -341,6 +341,53 @@ void main() {
     dashboard.dispose();
   });
 
+  // RA-MO-302: the offer reached the server and its answer was lost, so the
+  // phone kept it; the next read found it on the request and said «ما
+  // أرسلنا عرضك المحفوظ… رديت عليه».
+  test('an offer the server took while its answer was lost is sent', () async {
+    final api = _api();
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await dashboard.loadDashboard();
+    await _offerOffline(dashboard, api);
+
+    api
+      ..offline = false
+      ..replaced = [
+        quoteJson(
+          name: 'عادل الريمي',
+          status: 'RESPONDED',
+          offers: [offerJson()],
+        ),
+      ];
+    await dashboard.loadDashboard();
+    expect(api.created, isEmpty);
+    expect(dashboard.queuedOffers, isEmpty);
+    expect(dashboard.droppedOffers, isEmpty);
+
+    // Another offer on it (his other phone) is still said.
+    await _offerOffline(dashboard, api);
+    api
+      ..offline = false
+      ..replaced = [
+        quoteJson(
+          name: 'عادل الريمي',
+          status: 'RESPONDED',
+          offers: [
+            {...offerJson(), 'amount': '600000'},
+          ],
+        ),
+      ];
+    await dashboard.loadDashboard();
+    expect(
+      dashboard.droppedOffers.single.reason,
+      ProviderOfferDropReason.alreadyAnswered,
+    );
+    dashboard.dispose();
+  });
+
   testWidgets('an offer that cannot go is said, with why, until he closes it', (
     tester,
   ) async {

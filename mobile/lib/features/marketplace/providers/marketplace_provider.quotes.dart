@@ -92,7 +92,7 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       });
       if (_quoteAttemptSignature != signature || _quoteAttemptId == null) {
         _quoteAttemptSignature = signature;
-        _quoteAttemptId = _newUuidV4();
+        _quoteAttemptId = newClientRequestId();
       }
       final quote = await _api.createQuoteRequest(
         providerId: providerId,
@@ -246,16 +246,40 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
   }
 
   /// B-11: [reason] is kept for the provider; the message went to the chat.
+  ///
+  /// RA-MO-257: the decline carried no key, so a press again after a lost
+  /// answer was refused in English («Quote offer is not pending») though it
+  /// had gone. The same press is now the same request; and a refusal is
+  /// read against the offer: already declined is done.
   Future<bool> rejectQuote(QuoteRequest quote, {String? reason}) async {
     final offer = quote.pendingOffer;
     if (offer == null) return false;
-    return _updateQuote(
-      () => _api.rejectQuoteOffer(
-        quoteRequestId: quote.id,
-        quoteOfferId: offer.id,
-        reason: reason,
-      ),
-    );
+    final key = _declineAttempts.keyFor(offer.id, {'reason': reason});
+    final done = await _updateQuote(() async {
+      try {
+        return await _api.rejectQuoteOffer(
+          quoteRequestId: quote.id,
+          quoteOfferId: offer.id,
+          reason: reason,
+          clientRequestId: key,
+        );
+      } on ApiException catch (error) {
+        // A named refusal (QUOTE_OFFER_EXPIRED) says itself.
+        if (error.statusCode != 409 || error.serverCode != null) rethrow;
+        final now = await _api.getQuoteRequest(quote.id);
+        final declined = now.offers.any(
+          (item) => item.id == offer.id && item.status == 'REJECTED',
+        );
+        if (declined) return now;
+        _replaceQuote(now);
+        throw const ApiException(
+          'العرض ما عاد ينتظر ردك، شوف حاله الحين.',
+          statusCode: 409,
+        );
+      }
+    });
+    if (done) _declineAttempts.done(offer.id);
+    return done;
   }
 
   /// Reviews the provider after the booked day passed (3.1). Returns null on

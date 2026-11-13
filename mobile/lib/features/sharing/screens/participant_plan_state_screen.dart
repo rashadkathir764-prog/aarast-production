@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show
@@ -41,11 +43,14 @@ class _ParticipantPlanStateScreenState
     super.initState();
     final controller = context.read<AccountContextController>();
     _lastKnown = _pathOf(controller);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await controller.refresh();
-      if (mounted) setState(() => _refreshed = true);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ask());
+  }
+
+  Future<void> _ask() async {
+    if (!mounted) return;
+    setState(() => _refreshed = false);
+    await context.read<AccountContextController>().refresh();
+    if (mounted) setState(() => _refreshed = true);
   }
 
   AccountContext? _pathOf(AccountContextController controller) {
@@ -66,11 +71,10 @@ class _ParticipantPlanStateScreenState
     final archivedPath = path != null && path.lifecycle == 'ARCHIVED'
         ? path
         : null;
-    final removed =
-        path == null &&
-        _refreshed &&
-        controller.hasLoadedContexts &&
-        controller.errorMessage == null;
+    // RA-MO-273: a failed ask (no network) said «ما فيه تغيير», which it
+    // did not know; it says it could not ask, with a try again.
+    final unasked = _refreshed && !controller.lastRefreshAnswered;
+    final removed = path == null && _refreshed && !unasked;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
@@ -82,7 +86,20 @@ class _ParticipantPlanStateScreenState
             subtitle: 'لما الخطة تتغير',
             onBack: () => context.popOrGo(AppRouter.more),
           ),
-          if (archivedPath != null)
+          if (!_refreshed)
+            const JourneyListState(
+              phase: JourneyListPhase.loading,
+              section: JourneySection.home,
+            )
+          else if (unasked)
+            JourneyListState(
+              key: const ValueKey('participant-plan-state-unasked'),
+              phase: JourneyListPhase.error,
+              section: JourneySection.home,
+              errorMessage: 'ما قدرنا نتأكد من حال الخطة الحين.',
+              onRetry: _ask,
+            )
+          else if (archivedPath != null)
             _StateCard(
               key: const ValueKey('participant-plan-archived'),
               icon: LucideIcons.archive,
@@ -98,25 +115,30 @@ class _ParticipantPlanStateScreenState
               key: const ValueKey('participant-plan-removed'),
               icon: LucideIcons.userX,
               title: 'ما عاد لك مكان في الخطة',
-              message: known == null
-                  ? 'ما عاد لك مكان في هذي الخطة. اللي سجّلته قبل يبقى باسمك.'
-                  : '${known.planOwnerWord} '
-                        '${_ownerIsBride(known) ? 'شالتك' : 'شالك'} من '
-                        '${known.displayName}. اللي سجّلته قبل يبقى باسمك.',
-            )
-          else if (!_refreshed)
-            const JourneyListState(
-              phase: JourneyListPhase.loading,
-              section: JourneySection.home,
+              message: [
+                known == null
+                    ? 'ما عاد لك مكان في هذي الخطة. اللي سجّلته قبل يبقى باسمك.'
+                    : '${known.planOwnerWord} '
+                          '${_ownerIsBride(known) ? 'شالتك' : 'شالك'} من '
+                          '${known.displayName}. اللي سجّلته قبل يبقى باسمك.',
+                // RA-MO-275: what had not reached the plan went with it.
+                if (controller.unsentDroppedOnRemoval(widget.weddingPlanId)
+                    case final dropped when dropped > 0)
+                  dropped == 1
+                      ? 'تغيير واحد ما وصل قبلها، وانحذف من جوالك.'
+                      : '${arabicCount(dropped, one: 'تغيير', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} ما وصلت قبلها، وانحذفت من جوالك.',
+              ].join(' '),
             )
           else
-            const JourneyListState(
-              key: ValueKey('participant-plan-state-missing'),
+            JourneyListState(
+              key: const ValueKey('participant-plan-state-missing'),
               phase: JourneyListPhase.empty,
               section: JourneySection.home,
               emptyIcon: LucideIcons.layers,
               emptyTitle: 'ما فيه تغيير على هذي الخطة',
-              emptyMessage: 'افتحها من «حسابي».',
+              emptyMessage: 'الخطة مفتوحة لك. تفتحها من «حسابي».',
+              emptyAction: 'افتح «حسابي»',
+              onEmptyAction: () => context.go(AppRouter.more),
             ),
         ],
       ),

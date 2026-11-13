@@ -282,9 +282,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             // is enough to know the four tabs belong here; each one shows its
             // own loading state until its data lands.
             // Once the account answer is in: a plan gets the four tabs. Before
-          // it, the directory alone, so the row is drawn once and does not
-          // go from one tab to four under the reader's finger.
-          final planMode = _weddingLocationPlanId != null && _hasAccount != null;
+            // it, the directory alone, so the row is drawn once and does not
+            // go from one tab to four under the reader's finger.
+            final planMode =
+                _weddingLocationPlanId != null && _hasAccount != null;
             final tabs = planMode
                 ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
                 : const ['استكشف'];
@@ -385,9 +386,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     ),
                     'طلباتي' when firstVisit == null => _firstVisitPending(),
                     'طلباتي' => _boardTab(provider, board, tabs),
-                    'المحادثات' => const ConversationListView(
+                    'المحادثات' => ConversationListView(
                       embedded: true,
                       iconFor: _conversationIcon,
+                      planId: _conversationsPlanId(context),
                     ),
                     'المفضلة' => _favoritesTab(provider),
                     _ => _exploreTab(provider),
@@ -807,10 +809,24 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     );
   }
 
+  /// The plan whose conversations the tab lists (RA-MO-255), watched in
+  /// the build as [_selectedPlanIdForAccount] reads it.
+  String? _conversationsPlanId(BuildContext context) {
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    return _planIdOf(selected?.isPlan == true ? selected?.weddingPlanId : null);
+  }
+
   String? _selectedPlanIdForAccount() {
     final selected = context.read<AccountContextController?>()?.selectedContext;
-    if (selected?.isPlan != true) return null;
-    final selectedPlanId = _normalizedPlanId(selected?.weddingPlanId);
+    return _planIdOf(selected?.isPlan == true ? selected?.weddingPlanId : null);
+  }
+
+  /// [openPlanId]: the plan the account has open, if it is a plan.
+  String? _planIdOf(String? openPlanId) {
+    final selectedPlanId = _normalizedPlanId(openPlanId);
+    if (selectedPlanId == null) return null;
     final requestedPlanId = _normalizedPlanId(widget.weddingPlanId);
     if (requestedPlanId != null && requestedPlanId != selectedPlanId) {
       return null;

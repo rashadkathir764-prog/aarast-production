@@ -56,6 +56,10 @@ class ProviderRequestsScreen extends StatefulWidget {
 class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   bool _loading = true;
 
+  /// Offers whose polite message arrived (RA-MO-257): the sheet opened
+  /// again only records the decline, never a second message.
+  final _declineMessageArrived = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -466,25 +470,33 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// arrived, so the provider never sees a silent «رفض».
   Future<void> _decline(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
+    final offerId = quote.pendingOffer?.id;
+    if (offerId == null) return;
     final chat = context.read<ChatApi>();
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final failedToSend = context.say(
       'ما وصلت رسالتك. جرّب مرة ثانية.',
       'ما وصلت رسالتك. جرّبي مرة ثانية.',
     );
-    // Once the message arrived, a retry only records the decline: the
-    // provider never gets the polite message twice.
-    var messageArrived = false;
+    // Once the message arrived, a retry only records the decline, even
+    // from the sheet opened again: the provider never gets the polite
+    // message twice. A lost answer is sent again under the same key, and
+    // the server answers it with the first message (RA-MO-257).
     final choice = await showJourneySheet<DeclineOfferChoice>(
       context: context,
       builder: (_) => DeclineOfferSheet(
         quote: quote,
         onSend: (choice) async {
-          if (!messageArrived) {
+          if (!_declineMessageArrived.contains(offerId)) {
             try {
               final conversation = await chat.conversationForQuote(quote.id);
-              await chat.send(conversation.id, body: choice.message);
-              messageArrived = true;
+              await chat.send(
+                conversation.id,
+                body: choice.message,
+                clientRequestId:
+                    'decline-$offerId-${choice.message.hashCode.abs()}',
+              );
+              _declineMessageArrived.add(offerId);
             } catch (_) {
               return failedToSend;
             }

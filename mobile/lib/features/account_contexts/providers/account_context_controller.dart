@@ -12,6 +12,10 @@ typedef SetActiveWeddingPlan = Future<void> Function(String planId);
 typedef ReadActiveWeddingPlanId = Future<String?> Function();
 typedef BeforeAccountContextsRefresh = Future<Set<String>> Function();
 typedef AfterAccountContextsRefresh = Future<void> Function();
+
+/// Removes from the phone a plan the server says this participant no
+/// longer has, and says how many unsent changes went with it.
+typedef ForgetRemovedPlan = Future<int> Function(String planId);
 typedef ResetAccountContextState =
     FutureOr<void> Function(
       AccountContext? previousContext,
@@ -28,7 +32,9 @@ class AccountContextController extends ChangeNotifier {
     ResetAccountContextState? resetContextState,
     BeforeAccountContextsRefresh? beforeRefresh,
     AfterAccountContextsRefresh? afterRefresh,
-  }) : _contextsApi = contextsApi,
+    ForgetRemovedPlan? forgetRemovedPlan,
+  }) : _forgetRemovedPlan = forgetRemovedPlan,
+       _contextsApi = contextsApi,
        _authStorage = authStorage,
        _setActiveWeddingPlan = setActiveWeddingPlan,
        _userId = userId,
@@ -55,6 +61,12 @@ class AccountContextController extends ChangeNotifier {
   final ResetAccountContextState? _resetContextStateCallback;
   final BeforeAccountContextsRefresh? _beforeRefresh;
   final AfterAccountContextsRefresh? _afterRefresh;
+  final ForgetRemovedPlan? _forgetRemovedPlan;
+
+  /// RA-MO-275: unsent changes that went with a plan the participant was
+  /// taken off, by plan; the page that tells the removal says them.
+  final Map<String, int> _droppedOnRemoval = {};
+  int unsentDroppedOnRemoval(String planId) => _droppedOnRemoval[planId] ?? 0;
 
   List<AccountContext> _contexts = const [];
   AccountContext? _selectedContext;
@@ -88,6 +100,13 @@ class AccountContextController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get noticeMessage => _noticeMessage;
   bool get hasLoadedContexts => _hasLoadedContexts;
+
+  /// Whether the last [refresh] heard the server: offline a participant's
+  /// plan stays open on the kept copy with no error (D112), so a page that
+  /// asks the server about a plan reads this, not [errorMessage]
+  /// (RA-MO-273).
+  bool get lastRefreshAnswered => _lastRefreshAnswered;
+  bool _lastRefreshAnswered = false;
   bool get needsSelection =>
       _hasLoadedContexts &&
       _selectedContext == null &&
@@ -120,10 +139,17 @@ class AccountContextController extends ChangeNotifier {
     _refreshCount += 1;
     _errorMessage = null;
     _noticeMessage = null;
+    _lastRefreshAnswered = false;
     _notifyListeners();
 
     var blockedPlanIds = const <String>{};
     AccountContextPermissionChange? permissionChange;
+    // The plans this phone held as a participant before asking.
+    final heldAsParticipant = {
+      for (final context in [..._contexts, ?_storedContext()])
+        if (context.role == AccountContextRole.contributor)
+          ?context.weddingPlanId,
+    };
     try {
       final beforeRefresh = _beforeRefresh;
       if (beforeRefresh != null) blockedPlanIds = await beforeRefresh();
@@ -213,6 +239,14 @@ class AccountContextController extends ChangeNotifier {
       _selectedContext = selected;
       _notePermissionChange(permissionChange, selected);
       _hasLoadedContexts = true;
+      _lastRefreshAnswered = true;
+      await _forgetRemovedPlans(
+        heldAsParticipant,
+        stillHeld: {
+          for (final context in serverContexts) ?context.weddingPlanId,
+          ...blockedPlanIds,
+        },
+      );
       if (!_sameContext(previousContext, selected)) {
         appLogEvent(
           selected == null
@@ -603,6 +637,28 @@ class AccountContextController extends ChangeNotifier {
   }
 
   /// The path this phone kept for the signed-in user, whatever its role.
+  /// RA-MO-275: a participant taken off a plan kept its copy and its
+  /// unsent changes on the phone; the server refused each change, and each
+  /// stayed blocked for a plan the participant can no longer open to delete
+  /// it. The server's answer removes them, counted for the page that tells
+  /// the removal. A plan still listed, or one whose leave is pending (the
+  /// leave owns it), is kept.
+  Future<void> _forgetRemovedPlans(
+    Set<String> held, {
+    required Set<String> stillHeld,
+  }) async {
+    final forget = _forgetRemovedPlan;
+    if (forget == null) return;
+    for (final planId in held.difference(stillHeld)) {
+      try {
+        final dropped = await forget(planId);
+        if (dropped > 0) _droppedOnRemoval[planId] = dropped;
+      } on Object catch (error) {
+        debugPrint('Removed plan $planId not cleared: $error');
+      }
+    }
+  }
+
   AccountContext? _storedContext() {
     final kept = _authStorage.readAccountContextSnapshot();
     if (kept == null) return null;

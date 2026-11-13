@@ -899,6 +899,7 @@ class _Api extends ProviderDashboardApi {
   Future<MarketplaceService> createService({
     required String title,
     required String categoryId,
+    required String clientRequestId,
     String? description,
     String? basePrice,
     String? priceUnit,

@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/client_request_id.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/marketplace_api.dart';
@@ -87,6 +87,12 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   final Map<String, String> _servicesErrors = {};
   final Map<String, String> _packagesErrors = {};
   final Map<String, String> _reviewsErrors = {};
+
+  /// RA-MO-254: the sections of one provider's page that did not refresh,
+  /// said on that page. It used to be the shared [errorMessage], so it
+  /// showed on the quote form («ما قدرنا نحدّث الصور» over «أرسل الطلب»)
+  /// and on the directory.
+  final Map<String, String> _detailSectionsErrors = {};
   final Map<String, Future<void>> _providerDetailsLoads = {};
   Set<String> _favoriteProviderIds = {};
 
@@ -112,6 +118,9 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   QuoteRequest? _lastCreatedQuote;
   String? _quoteAttemptSignature;
   String? _quoteAttemptId;
+
+  /// One key per decline of an offer (RA-MO-257).
+  final _declineAttempts = ClientAttemptKeys();
   Future<void>? _referenceDataLoadInFlight;
 
   bool get isLoading => _isLoading;
@@ -149,6 +158,8 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   String? packagesErrorFor(String providerId) => _packagesErrors[providerId];
   String? reviewsErrorFor(String providerId) => _reviewsErrors[providerId];
   String? detailsErrorFor(String providerId) => _detailsErrors[providerId];
+  String? detailSectionsErrorFor(String providerId) =>
+      _detailSectionsErrors[providerId];
 
   Future<_MarketplaceLoadResult<List<FavoriteProvider>>>
   _loadFavorites() async {
@@ -197,18 +208,6 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
 String? _normalizedAudience(String? value) {
   final normalized = value?.trim().toUpperCase();
   return normalized == 'GROOM' || normalized == 'BRIDE' ? normalized : null;
-}
-
-String _newUuidV4() {
-  final random = Random.secure();
-  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  final hex = bytes
-      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-      .join();
-  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
-      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
 String? _normalizedOrNull(String? value) {

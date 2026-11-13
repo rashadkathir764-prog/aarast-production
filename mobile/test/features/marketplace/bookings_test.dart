@@ -100,9 +100,12 @@ void main() {
       await dashboard.decideBooking(bookingId: 'booking-1', action: 'confirm'),
       isFalse,
     );
+    // RA-MO-297 (2026-11-13): this was the customer's sentence («المزوّد مو
+    // متاح… اختر يوم ثاني») said to the provider confirming; he reads why in
+    // his own words now.
     expect(
       dashboard.errorMessage,
-      'المزوّد مو متاح في هذا اليوم. اختر يوم ثاني.',
+      'هذا اليوم مقفول عندك. افتحه من التقويم أول.',
     );
   });
 

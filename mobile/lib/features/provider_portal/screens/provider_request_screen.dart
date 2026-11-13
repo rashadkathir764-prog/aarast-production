@@ -43,10 +43,10 @@ class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final dashboard = context.read<ProviderDashboardProvider>();
-      // A link straight to the request reads the requests first.
-      if (_quoteOf(dashboard) == null && !dashboard.isLoading) {
-        await dashboard.loadDashboard();
-      }
+      // RA-MO-290: the request is read again on every open, not only from a
+      // link: «يشتي يحجز» opened what the phone held before the booking
+      // request, with no «أكّد الحجز». What it held shows meanwhile.
+      if (!dashboard.isLoading) await dashboard.loadDashboard();
       if (!mounted) return;
       dashboard.markQuoteViewed(widget.quoteId);
     });
@@ -127,8 +127,7 @@ class _NewRequest extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: AarastV3Density.pageInsets,
+            child: ProviderCaseList(
               children: [
                 JourneySubHeader(
                   title: 'طلب جديد',
@@ -318,8 +317,7 @@ class _Answered extends StatelessWidget {
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: AarastV3Density.pageInsets,
+      child: ProviderCaseList(
         children: [
           JourneySubHeader(
             title: providerCustomerName(quote),

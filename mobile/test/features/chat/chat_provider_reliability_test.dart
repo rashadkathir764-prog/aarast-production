@@ -520,6 +520,65 @@ void main() {
     chat.dispose();
   });
 
+  // RA-MO-255 (batch 7): the plan's conversations listed every conversation
+  // of the account; another plan's opened as «هذي الخطة ما عادت لك».
+  testWidgets('a plan\'s conversations are that plan\'s only', (tester) async {
+    final other = _conversation(id: 'conversation-2');
+    final chat = ChatProvider(
+      api: _FakeChatApi(
+        conversations: [
+          _conversation(),
+          ChatConversation(
+            id: other.id,
+            scope: other.scope,
+            weddingPlan: const ChatWeddingPlan(
+              id: 'plan-2',
+              title: 'خطة ثانية',
+            ),
+            provider: const ChatProviderSummary(
+              id: 'provider-2',
+              businessName: 'ضيافة الأصالة',
+            ),
+            quoteRequestCount: 1,
+            unreadMessageCount: 0,
+            muted: false,
+            blocked: false,
+            providerJoined: true,
+            canSend: true,
+            permissions: other.permissions,
+            lastActivityAt: other.lastActivityAt,
+            createdAt: other.createdAt,
+            updatedAt: other.updatedAt,
+          ),
+        ],
+      ),
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    await chat.initialize();
+    addTearDown(chat.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: ConversationListView(embedded: true, planId: 'plan-1'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('conversation-conversation-1')), findsOne);
+    expect(
+      find.byKey(const ValueKey('conversation-conversation-2')),
+      findsNothing,
+    );
+    expect(find.text('ضيافة الأصالة'), findsNothing);
+  });
+
   testWidgets('f08 rows say the last word, when, and how many are unread', (
     tester,
   ) async {

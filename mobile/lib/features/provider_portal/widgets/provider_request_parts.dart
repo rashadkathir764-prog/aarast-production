@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
@@ -328,6 +329,38 @@ class ProviderOfflineBar extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One request's page (p16, p19, p22, p25): pulled down it reads his
+/// requests again, and without the network it says that what shows is the
+/// last copy (RA-MO-290: these pages showed what the phone held, with no
+/// way to read again and no word that it was old). The bar goes under the
+/// page's header, the first of [children].
+class ProviderCaseList extends StatelessWidget {
+  const ProviderCaseList({required this.children, super.key});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final dashboard = context.watch<ProviderDashboardProvider>();
+    return RefreshIndicator(
+      color: AarastV3Color.primary,
+      onRefresh: dashboard.loadDashboard,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: AarastV3Density.pageInsets,
+        children: [
+          ...children.take(1),
+          if (dashboard.isOffline) ...[
+            const ProviderOfflineBar(),
+            const SizedBox(height: AarastV3Space.x3),
+          ],
+          ...children.skip(1),
         ],
       ),
     );

@@ -812,6 +812,12 @@ class _AarastSessionProviders extends StatelessWidget {
           : () => planLeaveCoordinator.completeAfterContextsRefreshForUser(
               userId,
             ),
+      // RA-MO-275: taken off a plan, its copy and stuck changes go.
+      forgetRemovedPlan: (planId) async {
+        final unsent = await offlineSyncService.unsentCountForPlan(planId);
+        await offlineSyncService.clearPlanContext(planId);
+        return unsent;
+      },
     );
     if (shouldRefresh) {
       unawaited(controller.refresh(allowInitialSingleContext: true));

@@ -1967,7 +1967,8 @@ const trackedOwnerApiContracts = [
         show: [
           'MarketplaceBooking',
           'ProviderLedger',
-          'bookingErrorMessage',
+          // 2026-11-13, RA-MO-297: the provider has his own booking words
+          // (providerBookingErrorMessage); the customer's are not his.
           'bookingStatusLabel',
         ],
       },

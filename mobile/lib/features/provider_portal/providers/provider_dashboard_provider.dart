@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/client_request_id.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
@@ -23,7 +24,6 @@ import '../../marketplace/marketplace_api.dart'
         ProviderResponsiveness,
         ProviderReview,
         QuoteRequest,
-        bookingErrorMessage,
         marketplaceErrorMessage;
 import '../data/provider_offer_queue.dart';
 import '../data/provider_text_limits.dart' show providerPackageItems;
@@ -83,6 +83,9 @@ class ProviderDashboardProvider extends ChangeNotifier
     : _queue = offerQueue;
 
   final ProviderDashboardApi _api;
+
+  /// One key per attempt at adding a service or a package (RA-MO-296).
+  final _createAttempts = ClientAttemptKeys();
 
   bool _isLoading = false;
   bool _isSubmitting = false;
@@ -293,13 +296,24 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String price,
     String? about,
   }) async {
-    final current = joiningService;
-    final categoryId = profile?.primaryCategoryId;
-    if (_isSubmitting || (current == null && categoryId == null)) return false;
+    if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
     try {
+      // RA-MO-298: a failed read looked like «no service yet», so the save
+      // took the add road and the server refused a second service. Read
+      // again first; unread, nothing is sent.
+      if (joiningService == null && !_joiningServicesRead) {
+        await _loadJoiningServices();
+        if (!_joiningServicesRead) {
+          _errorMessage = 'ما قدرنا نقرأ خدمتك الحين. جرّب مرة ثانية.';
+          return false;
+        }
+      }
+      final current = joiningService;
+      final categoryId = profile?.primaryCategoryId;
+      if (current == null && categoryId == null) return false;
       if (current != null) {
         await _api.updateService(
           serviceId: current.id,
@@ -308,17 +322,26 @@ class ProviderDashboardProvider extends ChangeNotifier
           description: about ?? '',
         );
       } else {
+        final body = {
+          'title': title,
+          'categoryId': categoryId,
+          'basePrice': price,
+          'about': about,
+        };
         await _api.createService(
           title: title,
           categoryId: categoryId!,
+          clientRequestId: _createAttempts.keyFor('joining-service', body),
           basePrice: price,
           currency: 'YER',
           description: about,
         );
+        _createAttempts.done('joining-service');
       }
       await _loadJoiningServices();
       return true;
     } on ApiException catch (error) {
+      _endAttemptIfFinal('joining-service', error);
       _errorMessage = _said(error, 'خدمتك تحتاج الخادم');
       return false;
     } catch (_) {
@@ -337,13 +360,26 @@ class ProviderDashboardProvider extends ChangeNotifier
     return status == 'PENDING' || status == 'NEEDS_CHANGES';
   }
 
+  /// Whether the last read of the joining service answered (RA-MO-298).
+  bool _joiningServicesRead = false;
+
   Future<void> _loadJoiningServices() async {
     if (!awaitingApproval) return;
     try {
       _services = await _api.getServices();
+      _joiningServicesRead = true;
     } on Object catch (error) {
       debugPrint('Joining service not read: $error');
       _services = const [];
+      _joiningServicesRead = false;
+    }
+  }
+
+  /// A refusal that will not change on a resend ends the attempt, so the
+  /// next press is a new request; a lost answer keeps its key (RA-MO-296).
+  void _endAttemptIfFinal(String kind, ApiException error) {
+    if (!error.isNetworkFailure && (error.statusCode ?? 0) < 500) {
+      _createAttempts.done(kind);
     }
   }
 
@@ -603,6 +639,18 @@ class ProviderDashboardProvider extends ChangeNotifier
     };
   }
 
+  /// Whether [quote] holds a live offer with the kept one's amount and
+  /// words: the kept one, which reached the server (RA-MO-302). A request
+  /// holds his offers only, so another one is from his other phone.
+  static bool _holdsQueuedOffer(QuoteRequest quote, ProviderQueuedOffer kept) {
+    return quote.offers.any(
+      (offer) =>
+          !offer.isWithdrawn &&
+          _sameAmount(kept.amount, offer.amount) &&
+          kept.message.trim() == (offer.message ?? '').trim(),
+    );
+  }
+
   /// Sends the offers kept on this phone (p43). One the request can no
   /// longer take is dropped and told to him with its reason; one the server
   /// already holds answers 409 and counts as sent (F6).
@@ -624,6 +672,9 @@ class ProviderDashboardProvider extends ChangeNotifier
       final quote = _quoteRequests
           .where((item) => item.id == offer.quoteRequestId)
           .firstOrNull;
+      // RA-MO-302: an offer the server took while its answer was lost is
+      // on the request now; it is this one, sent, not «ما أرسلناه».
+      if (quote != null && _holdsQueuedOffer(quote, offer)) continue;
       final blocker = _queuedOfferBlocker(quote);
       if (blocker != null) {
         dropped.add(
@@ -962,12 +1013,22 @@ class ProviderDashboardProvider extends ChangeNotifier
       final service = await _api.createService(
         title: title,
         categoryId: categoryId,
+        clientRequestId: _createAttempts.keyFor('service', {
+          'title': title,
+          'categoryId': categoryId,
+          'description': description,
+          'basePrice': basePrice,
+          'priceUnit': priceUnit,
+          'currency': currency,
+          'cityId': cityId,
+        }),
         description: description,
         basePrice: basePrice,
         priceUnit: priceUnit,
         currency: currency,
         cityId: cityId,
       );
+      _createAttempts.done('service');
       _services = [
         service,
         ..._services.where((item) => item.id != service.id),
@@ -975,6 +1036,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
+      _endAttemptIfFinal('service', error);
       _errorMessage = _said(error, 'الخدمة الجديدة تحتاج الخادم');
       return false;
     } catch (_) {
@@ -1080,12 +1142,21 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       final providerPackage = await _api.createPackage(
         title: title,
+        clientRequestId: _createAttempts.keyFor('package', {
+          'title': title,
+          'serviceId': serviceId,
+          'description': description,
+          'price': price,
+          'currency': currency,
+          'items': items,
+        }),
         serviceId: serviceId,
         description: description,
         price: price,
         currency: currency,
         items: items,
       );
+      _createAttempts.done('package');
       _packages = [
         providerPackage,
         ..._packages.where((item) => item.id != providerPackage.id),
@@ -1093,6 +1164,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
+      _endAttemptIfFinal('package', error);
       _errorMessage = _said(error, 'الباقة الجديدة تحتاج الخادم');
       return false;
     } catch (_) {
@@ -1407,6 +1479,20 @@ class ProviderDashboardProvider extends ChangeNotifier
       ];
       return true;
     } on ApiException catch (error) {
+      // RA-MO-297: a reply that went and whose answer was lost is refused
+      // the second time; the review is read again, and his reply on it is
+      // the reply sent.
+      if (error.serverCode == 'REVIEW_ALREADY_REPLIED') {
+        try {
+          _reviews = await _api.getReviews();
+          final now = _reviews.where((review) => review.id == reviewId);
+          if (now.firstOrNull?.reply != null) return true;
+        } on Object catch (readError) {
+          debugPrint('Reviews not read again: $readError');
+        }
+        _errorMessage = 'رديت على هذا التقييم من قبل.';
+        return false;
+      }
       _errorMessage = _said(error, 'ردك يحتاج الخادم');
       return false;
     } catch (_) {
@@ -1425,14 +1511,31 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String action,
     String? note,
   }) async {
-    final decided = await _calendarMutation(
+    // The quote cards, the booking list and the calendar all change together.
+    return _bookingMutation(
       () =>
           _api.decideBooking(bookingId: bookingId, action: action, note: note),
       fallback: 'ما اتحدّث الحجز الحين. جرّب مرة ثانية.',
     );
-    // The quote cards, the booking list and the calendar all change together.
-    if (decided) await loadDashboard();
-    return decided;
+  }
+
+  /// A booking step, then everything read again: after it went, and after
+  /// a refusal too (RA-MO-297), since a refusal means the booking is not
+  /// what this phone shows (his other phone, or a first press whose answer
+  /// was lost). The refusal stays said.
+  Future<bool> _bookingMutation(
+    Future<void> Function() mutation, {
+    required String fallback,
+  }) async {
+    final done = await _calendarMutation(mutation, fallback: fallback);
+    if (!done && (_lastChangeOffline || _errorCode == null)) return false;
+    final refusal = done ? null : _errorMessage;
+    await loadDashboard();
+    if (refusal != null) {
+      _errorMessage = refusal;
+      notifyListeners();
+    }
+    return done;
   }
 
   /// B-22: «تم» or «ما صار» (with [reason]) after the day.
@@ -1441,7 +1544,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     required bool happened,
     String? reason,
   }) async {
-    final done = await _calendarMutation(
+    return _bookingMutation(
       () => _api.recordBookingOutcome(
         bookingId: bookingId,
         happened: happened,
@@ -1449,8 +1552,6 @@ class ProviderDashboardProvider extends ChangeNotifier
       ),
       fallback: 'ما قدرنا نسجّل. جرّب مرة ثانية.',
     );
-    if (done) await loadDashboard();
-    return done;
   }
 
   /// B-23: the delivery (a link and a note).
@@ -1459,12 +1560,10 @@ class ProviderDashboardProvider extends ChangeNotifier
     String? link,
     String? note,
   }) async {
-    final done = await _calendarMutation(
+    return _bookingMutation(
       () => _api.deliverBooking(bookingId: bookingId, link: link, note: note),
       fallback: 'ما قدرنا نسجّل التسليم. جرّب مرة ثانية.',
     );
-    if (done) await loadDashboard();
-    return done;
   }
 
   /// B-24: takes or declines the customer's new day.
@@ -1473,7 +1572,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     required bool accept,
     String? reason,
   }) async {
-    final done = await _calendarMutation(
+    return _bookingMutation(
       () => _api.decideBookingChange(
         changeId: changeId,
         accept: accept,
@@ -1481,8 +1580,6 @@ class ProviderDashboardProvider extends ChangeNotifier
       ),
       fallback: 'ما قدرنا نحفظ ردك. جرّب مرة ثانية.',
     );
-    if (done) await loadDashboard();
-    return done;
   }
 
   /// B-20: how many weddings he takes on one day (1 to 20). A lower number
@@ -1543,7 +1640,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorCode = error.serverCode;
       _lastChangeOffline = error.isNetworkFailure;
       _errorMessage =
-          bookingErrorMessage(error.serverCode) ??
+          providerBookingErrorMessage(error.serverCode) ??
           _said(error, 'التغيير يحتاج الخادم');
       return false;
     } catch (_) {
@@ -1565,7 +1662,23 @@ class ProviderDashboardProvider extends ChangeNotifier
 /// the server refusing; [needs] names what waits («ردك يحتاج الخادم»).
 String _said(ApiException error, String needs) => error.isNetworkFailure
     ? 'ما قدرنا نوصل للخادم الحين. $needs، جرّب لما يرجع.'
+    // RA-MO-297: the shared sentence is the customer's («المزود موقوف»);
+    // to a provider waiting for approval it was untrue.
+    : error.serverCode == 'PROVIDER_NOT_ACTIVE'
+    ? 'هذا يصير لما يكون ملفك نشط.'
     : marketplaceErrorMessage(error.message);
+
+/// A booking refusal as the provider reads it (RA-MO-297): the customer's
+/// sentences («المزوّد محجوز… اختر يوم ثاني») were said to the provider
+/// taking a new day. Null leaves the refusal to [_said].
+String? providerBookingErrorMessage(String? code) => switch (code) {
+  'BOOKING_DATE_UNAVAILABLE' => 'هذا اليوم مقفول عندك. افتحه من التقويم أول.',
+  'BOOKING_DAY_FULL' => 'يومك هذا مليان بحجوزات مؤكدة على قد طاقتك.',
+  'BOOKING_DATE_HAS_BOOKING' => 'عندك حجز مؤكد في هذا اليوم.',
+  'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى.',
+  'BOOKING_NOT_ALLOWED' => 'الحجز تغيّر. هذا حاله الحين.',
+  _ => null,
+};
 
 /// [next] when an edit changed it from what the phone holds, else null:
 /// a field that is not sent is one the server keeps (RA-MO-288).

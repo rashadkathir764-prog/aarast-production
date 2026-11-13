@@ -171,9 +171,11 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                 : null,
             withinBudget: _withinBudget(provider, services, selectedPlanId),
             dataSaver: context.watch<DevicePreferences?>()?.dataSaver ?? false,
-            // The page, its services or its packages failed to refresh.
+            // The page or one of its sections (services, packages,
+            // reviews, photos) failed to refresh (RA-MO-254).
             detailsErrorMessage:
                 detailsError ??
+                state.detailSectionsErrorFor(widget.providerId) ??
                 state.servicesErrorFor(widget.providerId) ??
                 state.packagesErrorFor(widget.providerId),
             onRetryDetails: detailsLoading ? null : retry,

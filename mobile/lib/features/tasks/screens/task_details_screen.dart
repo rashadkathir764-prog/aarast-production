@@ -627,6 +627,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       await finance.loadMoney(widget.weddingPlanId);
     }
     if (!mounted) return;
+    // RA-MO-200: a failed read opened the sheet on another plan's items or
+    // none, with no word.
+    if (finance.loadedPlanId != widget.weddingPlanId) {
+      AarastToast.showError(
+        context,
+        finance.loadErrorMessage ?? 'ما قدرنا نقرأ بنود المال الحين',
+      );
+      return;
+    }
+    final wasOpen = task.isOpen;
     final choice = await showTaskLinkSheet(
       context,
       finance: finance,
@@ -642,6 +652,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     if (!mounted) return;
     if (saved) {
       _pulse(provider);
+      // RA-MO-200: an item already booked ends the task as it is linked
+      // (the server's rule); the task closed with no word.
+      final now = provider.tasks.where((item) => item.id == task.id);
+      if (wasOpen && now.isNotEmpty && now.first.isDone) {
+        AarastToast.showSuccess(
+          context,
+          'البند محجوز من قبل، فخلصت المهمة على طول',
+        );
+      }
     } else {
       AarastToast.showError(
         context,

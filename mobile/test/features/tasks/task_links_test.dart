@@ -110,6 +110,39 @@ void main() {
     ]);
   });
 
+  // RA-MO-200: an item already booked ends the task as it is linked, which
+  // the page did with no word; and with nothing to link to, an empty box.
+  testWidgets('linking to a booked item says the task is done', (tester) async {
+    final api = _TasksApi(closesOnLink: true);
+    await _pump(tester, _task(), api: api);
+
+    await tester.tap(find.byKey(const ValueKey('task-menu')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('task-menu-link')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('task-link-item-item-photo')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('البند محجوز من قبل، فخلصت المهمة على طول'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('with nothing in the money, the sheet says why', (tester) async {
+    await _pump(tester, _task(), emptyMoney: true);
+
+    await tester.tap(find.byKey(const ValueKey('task-menu')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('task-menu-link')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('task-link-nothing')), findsOneWidget);
+  });
+
   testWidgets('a linked task can lose its link', (tester) async {
     final api = _TasksApi();
     await _pump(tester, _task(item: 'item-photo'), api: api);
@@ -171,13 +204,17 @@ Future<List<String>> _pump(
   WidgetTester tester,
   WeddingTask task, {
   _TasksApi? api,
+  bool emptyMoney = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 1200);
   addTearDown(tester.view.reset);
-  final finance = FinanceProvider(_Finance());
+  final finance = FinanceProvider(_Finance(empty: emptyMoney));
   await finance.loadMoney('plan-1');
   final opened = <String>[];
+  final tasksApi = api ?? _TasksApi();
+  final shown = [task];
+  tasksApi.shown = shown;
   final router = GoRouter(
     initialLocation: '/task',
     routes: [
@@ -197,7 +234,7 @@ Future<List<String>> _pump(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<TaskTimelineProvider>.value(
-          value: _Tasks([task], api ?? _TasksApi()),
+          value: _Tasks(shown, tasksApi),
         ),
         ChangeNotifierProvider<FinanceProvider>.value(value: finance),
       ],
@@ -219,7 +256,14 @@ Future<List<String>> _pump(
 }
 
 class _TasksApi extends TaskTimelineApi {
-  _TasksApi() : super(ApiClient(tokenProvider: () async => null));
+  _TasksApi({this.closesOnLink = false})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  /// The item is booked already: the server ends the task as it links it.
+  final bool closesOnLink;
+
+  /// The list the screen reads, rewritten as the server answers.
+  List<WeddingTask>? shown;
 
   final updates = <Map<String, dynamic>>[];
   final starterKeys = <String?>[];
@@ -227,7 +271,9 @@ class _TasksApi extends TaskTimelineApi {
   @override
   Future<WeddingTask> updateTask(String id, Map<String, dynamic> data) async {
     updates.add(data);
-    return _task();
+    final saved = closesOnLink ? _task(status: 'DONE') : _task();
+    shown?[0] = saved;
+    return saved;
   }
 
   @override
@@ -267,21 +313,26 @@ class _Tasks extends TaskTimelineProvider {
 }
 
 class _Finance extends FinanceApi {
-  _Finance() : super(ApiClient(tokenProvider: () async => null));
+  _Finance({this.empty = false})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  /// A plan with no money items or payments yet.
+  final bool empty;
 
   @override
-  Future<MoneySummary> getMoneySummary(String planId) async =>
-      const MoneySummary(
-        planId: 'plan-1',
-        categories: [
-          MoneyCategorySummary(categoryId: 'item-photo', name: 'التصوير'),
-          MoneyCategorySummary(
-            categoryId: 'item-mahr',
-            name: 'المهر',
-            isMahr: true,
-          ),
-        ],
-      );
+  Future<MoneySummary> getMoneySummary(String planId) async => empty
+      ? const MoneySummary(planId: 'plan-1', categories: [])
+      : const MoneySummary(
+          planId: 'plan-1',
+          categories: [
+            MoneyCategorySummary(categoryId: 'item-photo', name: 'التصوير'),
+            MoneyCategorySummary(
+              categoryId: 'item-mahr',
+              name: 'المهر',
+              isMahr: true,
+            ),
+          ],
+        );
 
   @override
   Future<FinancePage<WeddingCost>> getCosts(
@@ -315,13 +366,14 @@ class _Finance extends FinanceApi {
 
   @override
   Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async => [
-    PaymentSchedule(
-      id: 'schedule-2',
-      costId: 'cost-hall',
-      amount: '500000',
-      dueDate: DateTime(2027, 1, 14),
-      status: 'PENDING',
-      note: 'دفعة القاعة',
-    ),
+    if (!empty)
+      PaymentSchedule(
+        id: 'schedule-2',
+        costId: 'cost-hall',
+        amount: '500000',
+        dueDate: DateTime(2027, 1, 14),
+        status: 'PENDING',
+        note: 'دفعة القاعة',
+      ),
   ];
 }

@@ -36,6 +36,22 @@ class _TaskLinkSheet extends StatelessWidget {
     final linked =
         task.linkedBudgetCategoryId != null || task.linkedScheduleId != null;
     void choose(TaskLinkChoice choice) => Navigator.of(context).pop(choice);
+    // RA-MO-200: with nothing to link to, the sheet was an empty box.
+    if (items.isEmpty && payments.isEmpty && !linked) {
+      return JourneySheetBody(
+        title: 'وين تنتهي المهمة؟',
+        children: [
+          JourneyNote(
+            key: const ValueKey('task-link-nothing'),
+            icon: LucideIcons.tags,
+            text: context.say(
+              'ما فيه بنود ولا دفعات في المال بعد. لما تضيف بند، تقدر تربط المهمة فيه وتنتهي لحالها لما ينحجز.',
+              'ما فيه بنود ولا دفعات في المال بعد. لما تضيفين بند، تقدرين تربطين المهمة فيه وتنتهي لحالها لما ينحجز.',
+            ),
+          ),
+        ],
+      );
+    }
     return JourneySheetBody(
       title: 'وين تنتهي المهمة؟',
       subtitle: 'تنتهي لحالها لما ينحجز البند أو تنسجّل الدفعة',

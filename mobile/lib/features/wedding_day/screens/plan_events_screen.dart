@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -43,9 +44,12 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
       provider: provider,
       event: event,
       type: type,
-      onMoveDay: event?.isMain == true && day != null
+      onMoveDay: event?.isMain != true
+          ? null
+          : day != null
           ? () => _postpone(day)
-          : null,
+          // RA-MO-196: no day yet: its first is set in «بيانات الخطة».
+          : () => context.push(AppRouter.weddingPlans),
     );
   }
 

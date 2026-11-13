@@ -266,7 +266,11 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
                       icon: LucideIcons.calendar,
                       value: date == null ? null : _weekdayDay(date),
                       placeholder: 'موعد العرس',
-                      helper: 'يتغير من «أجّل العرس»',
+                      // RA-MO-196: a plan with no day yet sets its first
+                      // in «بيانات الخطة»; «أجّل العرس» moves a day it has.
+                      helper: date == null
+                          ? 'يتحدد من «بيانات الخطة»'
+                          : 'يتغير من «أجّل العرس»',
                       onTap: widget.onMoveDay == null ? null : _moveDay,
                     )
                   : JourneyPickerField(

@@ -18,7 +18,10 @@ import 'package:provider/provider.dart';
 // D65: b12 «مناسبات عرسك», b13 «تعديل مناسبة», and the week and day the
 // home builds from them.
 
-PlanEventsView _view({bool canEdit = true}) => PlanEventsView.fromJson({
+PlanEventsView _view({
+  bool canEdit = true,
+  String? weddingDay = '2027-01-21',
+}) => PlanEventsView.fromJson({
   'weddingPlanId': 'plan-1',
   'canEdit': canEdit,
   'party': 'GROOM',
@@ -41,7 +44,7 @@ PlanEventsView _view({bool canEdit = true}) => PlanEventsView.fromJson({
     {
       'id': null,
       'type': 'WEDDING',
-      'date': '2027-01-21',
+      'date': weddingDay,
       'timeSlot': null,
       'isMain': true,
     },
@@ -375,6 +378,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('يتغير من «أجّل العرس»'), findsOneWidget);
     expect(find.text('احذف المناسبة'), findsNothing);
+  });
+
+  // RA-MO-196: a plan with no day sent its wedding to «أجّل العرس», which
+  // moves a day and sets none; its first is set in «بيانات الخطة».
+  testWidgets('a plan with no day yet is told where its first is set', (
+    tester,
+  ) async {
+    final provider = PlanEventsProvider(api: _Api(_view(weddingDay: null)));
+    await _pump(tester, provider);
+
+    await tester.tap(find.byTooltip('تعديل الزفاف'));
+    await tester.pumpAndSettle();
+    expect(find.text('يتحدد من «بيانات الخطة»'), findsOneWidget);
+    expect(find.text('يتغير من «أجّل العرس»'), findsNothing);
   });
 
   testWidgets('the wedding day opens «أجّل العرس», and the list follows it', (

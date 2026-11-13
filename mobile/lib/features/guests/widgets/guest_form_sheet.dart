@@ -272,13 +272,13 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
       _nameError = name.isEmpty
           ? '${context.say('اكتب', 'اكتبي')} ${context.planWord('اسمه', 'اسمها')}'
           : null;
+      // RA-MO-232: a repeated number is said once, by the phone field
+      // itself; the save only stops on it.
       _phoneError = phone.isInvalid
           ? phone.message ?? PhoneNumberUtils.invalidMessage
-          : duplicate
-          ? '${context.planWord('رقمه', 'رقمها')} عندك لـ${_duplicatePhoneGuest!.name}'
           : null;
     });
-    if (_nameError != null || _phoneError != null) return;
+    if (_nameError != null || _phoneError != null || duplicate) return;
     // The list clears the draft once this guest is saved: nothing is left
     // pending to write it back when this sheet goes.
     unawaited(_draft?.flush());
@@ -355,10 +355,11 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           ),
         if (_hasSoftNameDuplicate)
           Text(
-            context.say(
-              'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
-              'فيه اسم مشابه بدون رقم؛ كمّلي لو هي وحدة ثانية.',
-            ),
+            // RA-MO-236: the verb is the reader's, the guest is the
+            // plan's side («هو» in his, «هي» in hers).
+            'فيه اسم مشابه بدون رقم؛ '
+            '${context.say('كمّل', 'كمّلي')} لو '
+            '${context.planWord('هو شخص ثاني', 'هي وحدة ثانية')}.',
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
@@ -366,7 +367,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ),
           ),
         if (_groups.isNotEmpty || widget.onCreateGroup != null) ...[
-          _label('العائلة'),
+          // RA-MO-228: one name for one thing, «المجموعة», as in its sheet
+          // and the import (a group of friends is not a family).
+          _label('المجموعة'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -576,7 +579,7 @@ class GuestFormResult {
   final bool addAnother;
 }
 
-/// «عائلة جديدة», a journey sheet over the guest form (e06). Owns its
+/// «مجموعة جديدة», a journey sheet over the guest form (e06). Owns its
 /// controller so it is disposed after the sheet route is gone.
 class _NewGroupSheet extends StatefulWidget {
   const _NewGroupSheet();
@@ -597,11 +600,11 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   @override
   Widget build(BuildContext context) {
     return JourneySheetBody(
-      title: 'عائلة جديدة',
+      title: 'مجموعة جديدة',
       children: [
         JourneyTextField(
           key: const ValueKey('guest-form-group-name'),
-          label: 'اسم العائلة',
+          label: 'اسم المجموعة',
           hint: 'مثلًا: آل السقاف',
           controller: _controller,
           autofocus: true,

@@ -340,6 +340,14 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// RA-MO-234: the groups sheet opens on a clean slate; an error from the
+  /// last time it was open is about a change already behind the reader.
+  void clearGroupsError() {
+    if (_groupsErrorMessage == null) return;
+    _groupsErrorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> _changeGroups(Future<void> Function() change) async {
     if (_isSavingGroups) return false;
     _isSavingGroups = true;
@@ -352,7 +360,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _groupsErrorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
-      _groupsErrorMessage = 'ما قدرنا نحفظ المجموعة. جرّب مرة ثانية.';
+      _groupsErrorMessage = 'ما قدرنا نحفظ المجموعة الحين.';
       return false;
     } finally {
       _isSavingGroups = false;

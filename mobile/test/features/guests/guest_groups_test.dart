@@ -59,6 +59,10 @@ void main() {
       expect(provider.groups.map((group) => group.name), ['الأهل']);
       expect(provider.groupsErrorMessage, 'لا تملك صلاحية إدارة الضيوف.');
       expect(provider.isSavingGroups, isFalse);
+
+      // RA-MO-234: opened again, the sheet does not carry that old error.
+      provider.clearGroupsError();
+      expect(provider.groupsErrorMessage, isNull);
     });
   });
 

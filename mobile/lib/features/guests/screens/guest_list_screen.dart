@@ -421,7 +421,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         ),
         const SizedBox(height: AarastV3Space.x2),
         JourneySectionTitle(
-          'حسب العائلة',
+          'حسب المجموعة',
           action: _isLocalPlan ? null : 'المجموعات',
           onAction: _isLocalPlan ? null : _showGroupsSheet,
           // The guests' own colour, as e01 draws the section's link.
@@ -635,7 +635,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
 
   /// Groups are saved on the account, so a device-only plan has none (w27).
   Future<void> _showGroupsSheet() {
-    final provider = context.read<GuestsProvider>();
+    final provider = context.read<GuestsProvider>()..clearGroupsError();
     return showJourneySheet<void>(
       context: context,
       useRootNavigator: true,

@@ -185,6 +185,16 @@ void main() {
     expect(find.text('أرسلها'), findsOneWidget);
   });
 
+  // RA-MO-230: added with no network, the guest is not on the server yet;
+  // «أرسلها» answered «ما عاد موجود».
+  testWidgets('a guest not sent yet waits for the network to be invited', (
+    tester,
+  ) async {
+    await _pump(tester, _guest(id: 'queued-guest-1'));
+    expect(find.byKey(const ValueKey('guest-send-invitation')), findsNothing);
+    expect(find.byKey(const ValueKey('guest-invite-waits')), findsOneWidget);
+  });
+
   testWidgets('once sent, a new link can be sent', (tester) async {
     await _pump(tester, _guest(invitationStatus: 'SENT'));
     expect(find.text('انرسلت له الدعوة'), findsOneWidget);

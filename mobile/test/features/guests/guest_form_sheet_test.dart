@@ -87,7 +87,8 @@ void main() {
     await tester.enterText(_phone, '777123456');
     await _submit(tester);
 
-    expect(find.text('رقمه عندك لـضيف موجود'), findsWidgets);
+    // RA-MO-232: said once, under the number, not again as a save error.
+    expect(find.text('رقمه عندك لـضيف موجود'), findsOneWidget);
     expect(result, isNull);
   });
 
@@ -186,8 +187,9 @@ void main() {
     await tester.enterText(_name, 'خالد الحمدي');
     await tester.tap(find.byKey(const ValueKey('guest-form-group-new')));
     await tester.pumpAndSettle();
-    // «عائلة جديدة» is a journey sheet over the form, not a dialog.
-    expect(find.text('عائلة جديدة'), findsOneWidget);
+    // «مجموعة جديدة» is a journey sheet over the form, not a dialog; one
+    // name with the groups sheet (RA-MO-228).
+    expect(find.text('مجموعة جديدة'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
     await tester.enterText(
       find.byKey(const ValueKey('guest-form-group-name')),

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/network/api_client.dart' show ApiException;
+import '../../../core/offline/offline_contract.dart' show OfflineWrites;
 import '../../../core/phone/phone_links.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
@@ -328,7 +329,11 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                     ),
                   ),
                 ),
-                if (guest.hasPhone && guest.editable)
+                // RA-MO-230: a guest added with no network has no invitation
+                // on the server yet; «أرسلها» answered «ما عاد موجود».
+                if (guest.hasPhone &&
+                    guest.editable &&
+                    !OfflineWrites.isLocalId(guest.id))
                   JourneyButton(
                     key: const ValueKey('guest-send-invitation'),
                     label: guest.invitationStatus == 'NOT_SENT'
@@ -341,7 +346,23 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
               ],
             ),
           ),
-          if (!guest.hasPhone && guest.editable)
+          if (guest.editable && OfflineWrites.isLocalId(guest.id))
+            Padding(
+              key: const ValueKey('guest-invite-waits'),
+              padding: const EdgeInsets.only(top: AarastV3Space.x1),
+              child: Text(
+                // The guest is the plan's side; the verb is the reader's.
+                '${context.planWord('انحفظ', 'انحفظت')} على الجوال، ولما '
+                'يرجع النت ${context.planWord('ويوصل', 'وتوصل')} '
+                '${context.say('تقدر ترسل', 'تقدرين ترسلين')} '
+                '${context.planWord('له', 'لها')} الدعوة.',
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            )
+          else if (!guest.hasPhone && guest.editable)
             Padding(
               padding: const EdgeInsets.only(top: AarastV3Space.x1),
               child: Text(

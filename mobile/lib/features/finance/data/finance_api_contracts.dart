@@ -7,10 +7,20 @@ class LocalFinancePlanContext {
     this.estimatedBudget,
     this.currency,
     this.persona,
+    this.mahrTotal,
+    this.mahrSettled,
+    this.mahrDueDate,
   });
 
   final String? estimatedBudget;
   final String? currency;
+
+  /// RA-MO-89: the mahr the plan's questions recorded (a06), which the
+  /// account makes an item and its agreement when the plan is saved there.
+  /// Null when it was not agreed yet.
+  final String? mahrTotal;
+  final String? mahrSettled;
+  final DateTime? mahrDueDate;
 
   /// GROOM, BRIDE or HELPER: whose side of the mahr it is and whose money
   /// pays (D59), as the server reads the plan's persona.

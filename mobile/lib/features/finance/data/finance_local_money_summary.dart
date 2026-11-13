@@ -11,6 +11,7 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
     String? currency,
     MoneyFundingSummary? funding,
     String? persona,
+    LocalFinancePlanContext? draftMahr,
   }) async {
     final budget = await readBudget(planId);
     final totalBudget = _nullableMoney(
@@ -72,6 +73,7 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
       payments: payments,
       schedules: schedules,
     );
+    _addDraftMahr(planInput, draftMahr, persona: persona);
     final plan = localMoneyPlan(planInput);
     final planItems = {
       for (final item in plan['items'] as List)
@@ -229,6 +231,62 @@ extension _LocalMoneySummary on FinanceLocalDataSource {
         canManageMoney: true,
       ),
     );
+  }
+
+  /// RA-MO-89: on a plan kept on the phone the mahr lived in the plan's
+  /// answers alone, outside the money worked out here, so «عليك» left out
+  /// what remained of it and the cover could say enough where the account,
+  /// once saved, said short. The groom's mahr goes in as the account makes
+  /// it: an item of its own, its agreement, what was handed over paid, and
+  /// the rest due on its day. Only while the phone has no mahr item of its
+  /// own; the bride's mahr is money coming in, not this.
+  void _addDraftMahr(
+    Map<String, dynamic> input,
+    LocalFinancePlanContext? draft, {
+    required String? persona,
+  }) {
+    final total = FinanceMoneyRules.value(draft?.mahrTotal);
+    if (persona != 'GROOM' || total <= 0) return;
+    final items = input['items'] as List;
+    if (items.any((item) => (item as Map)['kind'] == 'MAHR')) return;
+    final settled = FinanceMoneyRules.value(draft?.mahrSettled);
+    final paid = settled > total ? total : settled;
+    const itemId = 'local-draft-mahr';
+    const costId = 'local-draft-mahr-agreement';
+    items.add({
+      'id': itemId,
+      'kind': 'MAHR',
+      'allocatedAmount': null,
+      'estimatedAmount': null,
+      'notNeeded': false,
+    });
+    (input['costs'] as List).add({
+      'id': costId,
+      'budgetCategoryId': itemId,
+      'title': 'المهر',
+      'totalAmount': FinanceMoneyRules.asMoney(total),
+      'paid': FinanceMoneyRules.asMoney(paid),
+      'payer': null,
+      'payerName': null,
+      'ownerMoney': true,
+      'estimateCover': null,
+      'estimatePart': null,
+    });
+    final due = draft?.mahrDueDate;
+    if (due != null && total > paid) {
+      (input['schedules'] as List).add({
+        'id': 'local-draft-mahr-date',
+        'weddingCostId': costId,
+        'amount': FinanceMoneyRules.asMoney(total - paid),
+        'dueDate': planDayToJson(due),
+        'status': 'PENDING',
+        'note': null,
+        'remindAt': null,
+        'rescheduledFrom': null,
+        'partlyPaid': '0',
+        'createdAt': '',
+      });
+    }
   }
 
   /// The plan as `localMoneyPlan` reads it: the server's fixtures' shape.

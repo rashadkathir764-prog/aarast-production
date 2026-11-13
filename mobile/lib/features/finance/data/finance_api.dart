@@ -53,6 +53,7 @@ class FinanceApi extends _FinanceApiCore
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
         persona: context?.persona,
+        draftMahr: context,
       );
     }
     try {
@@ -88,6 +89,7 @@ class FinanceApi extends _FinanceApiCore
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
         persona: context?.persona,
+        draftMahr: context,
       );
     }
     final raw = await _offline.database.getMeta(_summaryKey(planId));

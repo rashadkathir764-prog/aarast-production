@@ -8,6 +8,7 @@ import '../../../core/utils/plan_day.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
+import 'finance_api_contracts.dart' show LocalFinancePlanContext;
 import 'finance_local_money_plan.dart';
 import 'finance_local_serializers.dart';
 import 'finance_local_summary.dart';
@@ -111,12 +112,14 @@ class FinanceLocalDataSource {
     String? currency,
     MoneyFundingSummary? funding,
     String? persona,
+    LocalFinancePlanContext? draftMahr,
   }) => _localMoneySummary(
     planId,
     estimatedBudget: estimatedBudget,
     currency: currency,
     funding: funding,
     persona: persona,
+    draftMahr: draftMahr,
   );
 
   Future<BudgetCategory> createBudgetCategory({

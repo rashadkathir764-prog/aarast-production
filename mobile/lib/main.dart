@@ -268,6 +268,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         estimatedBudget: draft.estimatedBudget,
         currency: draft.currency,
         persona: draft.persona?.name.toUpperCase(),
+        mahrTotal: draft.mahr?.total,
+        mahrSettled: draft.mahr?.settled,
+        mahrDueDate: draft.mahr?.remainingDueDate,
       );
     },
   );

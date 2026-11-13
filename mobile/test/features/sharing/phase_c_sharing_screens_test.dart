@@ -555,6 +555,59 @@ void main() {
       expect(find.textContaining('يشوف بس الأقسام'), findsNothing);
     });
 
+    // RA-MO-274: a participant who may invite sees this list, themselves in
+    // it, and opened their own permissions; saving said «هذا ما عاد موجود».
+    testWidgets('the reader\'s own row says «أنت» and opens nothing', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final mine = SharedMember(
+        id: 'me',
+        weddingPlanId: _planId,
+        userId: 'user-1',
+        user: const SharedMemberUser(
+          id: 'user-1',
+          name: 'رشاد',
+          phone: '+967771000001',
+        ),
+        role: 'HELPER',
+        canViewMoney: false,
+        canManageTasks: true,
+        canInviteMembers: true,
+        canManageMoney: false,
+        createdAt: DateTime(2026, 7, 5),
+        updatedAt: DateTime(2026, 7, 5),
+      );
+      final api = _FakeSharingApi(
+        members: [
+          mine,
+          _member(id: 'other', userName: 'صالح'),
+        ],
+      );
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      final own = find.byKey(const ValueKey('sharing-member-me'));
+      expect(
+        find.descendant(of: own, matching: find.text('أنت')),
+        findsOneWidget,
+      );
+      expect(tester.widget<AarastPressable>(own).onTap, isNull);
+      expect(
+        tester
+            .widget<AarastPressable>(
+              find.byKey(const ValueKey('sharing-member-other')),
+            )
+            .onTap,
+        isNotNull,
+      );
+    });
+
     testWidgets(
       'J2-13: ended, refused and cancelled invites stay in a small closed group',
       (tester) async {

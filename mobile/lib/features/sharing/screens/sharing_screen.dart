@@ -9,6 +9,7 @@ import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -478,6 +479,7 @@ class _SharingScreenState extends State<SharingScreen>
     final members = provider.members
         .where((member) => !member.isOwner)
         .toList();
+    final me = _signedInUserId(context);
     // J2-13: an invite that ended, was refused or cancelled stays in sight,
     // in a small group under the waiting ones.
     final closed = provider.invites
@@ -534,15 +536,21 @@ class _SharingScreenState extends State<SharingScreen>
                 member: members[i],
                 color: JourneyAvatar.paletteAt(context, i),
                 withTag: pending.isNotEmpty,
-                onTap: () {
-                  provider.selectMember(members[i]);
-                  context.push(
-                    AppRouter.editSharedMember(
-                      widget.weddingPlanId,
-                      members[i].id,
-                    ),
-                  );
-                },
+                // RA-MO-274: a participant who may invite is in this list
+                // too, and opened their own permissions; the server lets no
+                // one change their own, so saving said «هذا ما عاد موجود».
+                mine: members[i].userId == me,
+                onTap: members[i].userId == me
+                    ? null
+                    : () {
+                        provider.selectMember(members[i]);
+                        context.push(
+                          AppRouter.editSharedMember(
+                            widget.weddingPlanId,
+                            members[i].id,
+                          ),
+                        );
+                      },
               ),
           ],
         ),
@@ -663,6 +671,7 @@ class _MemberRow extends StatelessWidget {
     required this.color,
     required this.withTag,
     required this.onTap,
+    this.mine = false,
   });
 
   final SharedMember member;
@@ -670,7 +679,10 @@ class _MemberRow extends StatelessWidget {
 
   /// x07: next to people still waiting, the ones with you say «معك».
   final bool withTag;
-  final VoidCallback onTap;
+
+  /// The reader's own row: «أنت», and nothing to open (RA-MO-274).
+  final bool mine;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -718,7 +730,14 @@ class _MemberRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AarastV3Space.x2),
-            if (withTag)
+            if (mine)
+              const JourneyTag(
+                key: ValueKey('sharing-member-mine'),
+                label: 'أنت',
+                color: AarastV3Color.textMuted,
+                soft: AarastV3Color.canvas,
+              )
+            else if (withTag)
               const JourneyTag(
                 label: 'معك',
                 color: AarastV3Color.mint,
@@ -1031,5 +1050,15 @@ class _PresetCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The signed-in account, to know the reader's own row (RA-MO-274); null
+/// where no session is provided.
+String? _signedInUserId(BuildContext context) {
+  try {
+    return context.read<AuthStorage>().readUser()?.id;
+  } on ProviderNotFoundException {
+    return null;
   }
 }

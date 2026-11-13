@@ -28,9 +28,47 @@ class _Down implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+Future<FinanceApi> _apiWithNoNetwork() async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final database = JsonLocalDatabase(preferences);
+  await database.initialize();
+  final reachability = ServerReachability();
+  final apiClient = ApiClient(
+    tokenProvider: () async => 'token',
+    reachability: reachability,
+  );
+  apiClient.dio.httpClientAdapter = _Down();
+  final offline = OfflineSyncService(
+    database: database,
+    apiClient: apiClient,
+    reachability: reachability,
+  );
+  await offline.refreshStatus();
+  return FinanceApi(apiClient, offline: offline);
+}
+
 // RA-MO-173 (batch 4): recording the mahr was a bare request; with no
 // network it failed with no word of why it cannot wait on the phone (D85).
 void main() {
+  // RA-MO-158 (batch 3): the home's «ما أحتاجها» and «بعدين» likewise.
+  test('a suggestion answered without the server says why', () async {
+    final api = await _apiWithNoNetwork();
+    Object? failure;
+    try {
+      await api.setBudgetItemSuggestion(
+        weddingPlanId: 'plan-1',
+        categoryId: 'category-1',
+        choice: 'LATER',
+      );
+    } on Object catch (error) {
+      failure = error;
+    }
+    final exception = failure! as ApiException;
+    expect(exception.isNetworkFailure, isTrue);
+    expect(exception.message, contains('الاقتراحات يرتبها الخادم'));
+  });
+
   test('the mahr without the server says why it cannot wait', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();

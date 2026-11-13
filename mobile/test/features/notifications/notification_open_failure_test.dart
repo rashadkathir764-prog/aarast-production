@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -30,6 +32,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('opened tasks'), findsOneWidget);
+  });
+
+  // RA-MO-150: the page waited for the notice to be marked read (two trips
+  // to the server, no sign of it), and a second tap sent it again.
+  testWidgets('a notice opens at once, and a second tap sends nothing', (
+    tester,
+  ) async {
+    final api = _Api(failWrites: true)..holdMarkRead = Completer<void>();
+    await _pump(tester, api);
+
+    await tester.tap(find.text('محمد عطاك مهمة'));
+    await tester.tap(find.text('محمد عطاك مهمة'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.text('opened tasks'), findsOneWidget);
+    expect(api.markReadCalls, 1);
+    api.holdMarkRead!.complete();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('a notice for the groom\'s other plan opens that plan', (
@@ -179,6 +199,10 @@ class _Api extends NotificationsApi {
   final bool failWrites;
   final String target;
 
+  /// Holds marking read until completed (RA-MO-150).
+  Completer<void>? holdMarkRead;
+  int markReadCalls = 0;
+
   @override
   Future<NotificationsPage> getNotifications({
     String? weddingPlanId,
@@ -213,6 +237,8 @@ class _Api extends NotificationsApi {
 
   @override
   Future<AarastNotification> markRead(String id) async {
+    markReadCalls += 1;
+    await holdMarkRead?.future;
     throw const ApiException('ما وصلنا', isNetworkFailure: true);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
@@ -376,20 +378,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) async {
     final target = resolveNotificationRouteTarget(notification);
     if (target == null || !isSafeNotificationRouteTarget(target)) return;
+    // RA-MO-150: a second tap while one opens sends nothing.
+    if (_opening) return;
+    _opening = true;
     // Being marked read is secondary: a failure (offline) still opens what
     // the notification points to, and it stays unread to be marked later.
     if (!_isNotificationTargetCompatible(target)) {
-      await _openInItsPlan(provider, notification, target);
+      try {
+        await _openInItsPlan(provider, notification, target);
+      } finally {
+        _opening = false;
+      }
       return;
     }
-    await provider.markRead(notification);
-    if (!mounted) return;
+    // RA-MO-150: the page opens at once; being marked read (two trips to
+    // the server) no longer holds it.
+    unawaited(provider.markRead(notification));
     if (isPlanShellNotificationRouteTarget(target)) {
+      // This screen gives way to the plan's tab: it stays held until that
+      // is drawn, so a tap on the list before it goes opens nothing more.
       context.go(target);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _opening = false;
+      });
       return;
     }
-    await context.push(target);
+    try {
+      // Held until the page opened is closed, for the same reason.
+      await context.push(target);
+    } finally {
+      _opening = false;
+    }
   }
+
+  /// A notification is opening (RA-MO-150).
+  bool _opening = false;
 
   /// A notice for another of the account's plans (the groom's second plan,
   /// or one he helps in): that plan opens first, then the notice's page, as

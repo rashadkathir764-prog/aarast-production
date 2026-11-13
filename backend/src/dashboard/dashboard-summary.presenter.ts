@@ -143,9 +143,11 @@ export function buildImportantItems({
       id: schedule.id,
       type: "PAYMENT_SCHEDULE_DUE",
       title: schedule.title,
+      // RA-MO-161: «القاعة · موعدها بعد 5 أيام» read as the hall's day;
+      // it is a payment to it.
       subtitle: overdue
-        ? `فات موعدها من ${dayCountWords(-days)}`
-        : `موعدها ${whenWords(days)}`,
+        ? `دفعة فات موعدها من ${dayCountWords(-days)}`
+        : `دفعة موعدها ${whenWords(days)}`,
       body: weekdayDayMonthWords(schedule.dueDate),
       icon: "wallet",
       tone: overdue ? "danger" : "warning",

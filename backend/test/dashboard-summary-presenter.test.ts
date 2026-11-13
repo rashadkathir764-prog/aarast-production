@@ -141,7 +141,8 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
   assert.equal(items[0].actionLabel, 'افتح المهمة');
   assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks/task-1');
   assert.equal(items[1].title, 'دفعة القاعة');
-  assert.equal(items[1].subtitle, 'فات موعدها من يوم واحد');
+  // RA-MO-161 (2026-11-13): said as a payment, not the hall's own day.
+  assert.equal(items[1].subtitle, 'دفعة فات موعدها من يوم واحد');
   assert.equal(items[1].actionLabel, 'سجّل الدفعة');
   assert.equal(items[1].amount, '2500');
   // The amount is data, so «أخفِ المبالغ» can hide it.
@@ -189,7 +190,7 @@ test('dashboard next step: a reader who cannot record money only reads the payme
     planPersona: 'BRIDE',
   });
 
-  assert.equal(item.subtitle, 'موعدها بعد 5 أيام');
+  assert.equal(item.subtitle, 'دفعة موعدها بعد 5 أيام');
   assert.equal(item.actionLabel, 'شوفي الدفعة');
   assert.equal(
     item.routeTarget,

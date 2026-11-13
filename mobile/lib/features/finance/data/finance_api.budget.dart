@@ -285,9 +285,15 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     required String? choice,
   }) async {
     if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) return;
-    await _mutation('PUT', '/api/v1/budget-categories/$categoryId/suggestion', {
-      'choice': choice,
-    }).send();
+    // RA-MO-158 (D85): the home's suggestions are worked out by the server,
+    // so the answer does not wait on the phone; offline it says why.
+    await OfflineWrites(_apiClient, _offline).serverOnly(
+      reason: 'الاقتراحات يرتبها الخادم، فجوابك يحتاج النت.',
+      method: 'PUT',
+      path: '/api/v1/budget-categories/$categoryId/suggestion',
+      body: {'choice': choice},
+      clientRequestId: _uuidV4(),
+    );
   }
 
   Future<void> deleteBudgetCategory(BudgetCategory category) async {

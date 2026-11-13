@@ -57,6 +57,8 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
 
 class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     with WidgetsBindingObserver {
+  /// The suggestions whose answer is on its way (RA-MO-158).
+  final _answering = <String>{};
   LocalGuestDashboardSummary? _localSummary;
   bool _localLoading = false;
   String? _localErrorMessage;
@@ -142,12 +144,27 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   Future<void> _answerSuggestion(DashboardEssential item, String choice) async {
     final categoryId = item.budgetCategoryId;
     if (categoryId == null) return;
+    // RA-MO-158: a second tap while the first is on its way sends nothing.
+    if (!_answering.add(categoryId)) return;
     try {
       await context.read<FinanceApi>().setBudgetItemSuggestion(
         weddingPlanId: widget.weddingPlanId,
         categoryId: categoryId,
         choice: choice,
       );
+    } on ApiException catch (error) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          error.isNetworkFailure
+              ? error.message
+              : context.say(
+                  'ما انحفظ جوابك، جرّب مرة ثانية',
+                  'ما انحفظ جوابك، جرّبي مرة ثانية',
+                ),
+        );
+      }
+      return;
     } on Object {
       if (mounted) {
         AarastToast.showError(
@@ -159,6 +176,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         );
       }
       return;
+    } finally {
+      _answering.remove(categoryId);
     }
     if (!mounted) return;
     AarastToast.showSuccess(
@@ -607,7 +626,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                 final preferences = context.read<DevicePreferences?>();
                 preferences?.setHideAmounts(!preferences.hideAmounts);
               },
-              onOpenReviews: _isLocalGuestPlan
+              // RA-MO-153: rating needs a booking, and a booking needs an
+              // accepted offer (the plan's provider link); with none, the
+              // card opened an empty page.
+              onOpenReviews: _isLocalGuestPlan || summary.acceptedProviders == 0
                   ? null
                   : () => context.push(AppRouter.planReviews(selectedPlanId)),
               // D72: a suggestion opens its item's requests, where it is
@@ -668,13 +690,19 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),
-              onOpenPayment: (payment) => context.go(
-                AppRouter.moneySchedulePay(
-                  selectedPlanId,
-                  payment.weddingCostId,
-                  payment.id,
-                ),
-              ),
+              // RA-MO-146: over the home, not in place of it: saving comes
+              // back here (it reached the money tab), and the phone's back
+              // no longer reopens the paid date («ما ينتظر دفع»).
+              onOpenPayment: (payment) async {
+                await context.push(
+                  AppRouter.moneySchedulePay(
+                    selectedPlanId,
+                    payment.weddingCostId,
+                    payment.id,
+                  ),
+                );
+                if (mounted) await _load();
+              },
             );
           },
         ),

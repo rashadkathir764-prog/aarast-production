@@ -70,15 +70,23 @@ String _statusLine(
   GuestSummary summary,
   GuestWords words, {
   required bool helps,
+  required List<Guest> guests,
 }) {
   if (summary.totalGuests == 0) {
     return '${words.profile.say('ابدأ', 'ابدئي')} بقائمة '
         '${helps ? words.guests : words.yourGuests}';
   }
+  // RA-MO-219: «ما ردّوا» counted guests no invitation ever reached («100
+  // مدعو · 100 ما ردّوا», each row «ما وصلته دعوة»). Those are said apart.
+  final notSent = guests
+      .where((guest) => guest.isPending && guest.invitationStatus == 'NOT_SENT')
+      .length;
+  final waiting = summary.pending - notSent;
   return [
     '${summary.totalGuests} ${words.invited}',
     if (summary.confirmed > 0) '${summary.confirmed} ${words.confirmed}',
-    if (summary.pending > 0) '${summary.pending} ${words.pending}',
+    if (waiting > 0) '$waiting ${words.pending}',
+    if (notSent > 0) '$notSent ${words.noInvitation}',
   ].join(' · ');
 }
 

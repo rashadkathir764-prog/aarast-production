@@ -57,12 +57,22 @@ class GuestSummaryFigures extends StatelessWidget {
               ),
             ),
             if (pending > 0)
-              Text(
-                '$pending ${words.pending}',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.brandAccentStrong,
+              // Narrow and large text, it wraps under itself, never off the
+              // card.
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    // RA-MO-219: the segment holds the invited who did not
+                    // reply and the guests no invitation reached yet.
+                    '$pending ${words.notYetConfirmed}',
+                    textAlign: TextAlign.end,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.brandAccentStrong,
+                    ),
+                  ),
                 ),
               ),
           ],

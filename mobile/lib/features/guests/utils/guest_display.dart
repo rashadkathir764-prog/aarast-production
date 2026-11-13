@@ -49,6 +49,13 @@ class GuestWords {
   /// «ما ردّوا» / «ما ردّن».
   String get pending => _say('ما ردّوا', 'ما ردّن');
 
+  /// «ما أكدوا بعد» / «ما أكدن بعد»: who has not confirmed, invited yet or
+  /// not (RA-MO-219: «ما ردّوا» said it of guests never asked).
+  String get notYetConfirmed => _say('ما أكدوا بعد', 'ما أكدن بعد');
+
+  /// «بلا دعوة»: no invitation went to them yet.
+  String get noInvitation => 'بلا دعوة';
+
   /// «اعتذروا» / «اعتذرن».
   String get declined => _say('اعتذروا', 'اعتذرن');
 

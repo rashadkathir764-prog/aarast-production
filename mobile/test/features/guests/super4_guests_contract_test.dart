@@ -117,7 +117,9 @@ void main() {
     await _pumpGuestsScreen(tester, harness, setView: false);
 
     // e01: one confirmed guest, with his two companions counted once.
-    expect(find.text('2 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
+    // RA-MO-219 (2026-11-13): no invitation went to Laila yet, so she is not
+    // counted as «ما ردّوا».
+    expect(find.text('2 مدعو · 1 أكدوا · 1 بلا دعوة'), findsOneWidget);
     expect(find.text('أكدوا من 2'), findsOneWidget);
     // RA-MO-59: the confirmed and who comes with them, not the one who has
     // not replied (3 to 10 take the plural, arabicSeats).
@@ -140,7 +142,8 @@ void main() {
 
     await _pumpGuestsScreen(tester, harness, setView: false);
 
-    expect(find.text('1 مدعو · 1 ما ردّوا'), findsOneWidget);
+    // RA-MO-219: no invitation went yet.
+    expect(find.text('1 مدعو · 1 بلا دعوة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -215,7 +215,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   children: [
                     JourneyTabHeader(
                       title: words.guests,
-                      status: _statusLine(summary, words, helps: helps),
+                      status: _statusLine(
+                        summary,
+                        words,
+                        helps: helps,
+                        guests: guests,
+                      ),
                       actions: [
                         if (guests.isNotEmpty)
                           JourneyRoundButton(

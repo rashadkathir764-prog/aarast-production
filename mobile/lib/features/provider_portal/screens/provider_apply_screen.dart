@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
@@ -614,7 +615,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         );
         await ledger.markClaimed(providerId);
       } on Object catch (error) {
-        debugPrint('Provider claim not remembered: $error');
+        appDebugNote('Provider claim not remembered: $error');
       }
     }
   }

@@ -82,7 +82,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       );
       due = await ledger.welcomeDue(providerId, status);
     } on Object catch (error) {
-      debugPrint('Provider welcome not read: $error');
+      appDebugNote('Provider welcome not read: $error');
     }
     if (!mounted || key != _notedStatus) return;
     setState(() => _welcome = due);
@@ -96,7 +96,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       );
       await ledger.markWelcomed(providerId);
     } on Object catch (error) {
-      debugPrint('Provider welcome not remembered: $error');
+      appDebugNote('Provider welcome not remembered: $error');
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
@@ -518,7 +519,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
         try {
           next = await _api.getConversation(conversation.id);
         } on Object catch (error) {
-          debugPrint('Conversation not read after unblocking: $error');
+          appDebugNote('Conversation not read after unblocking: $error');
         }
       }
       _replaceConversation(next);

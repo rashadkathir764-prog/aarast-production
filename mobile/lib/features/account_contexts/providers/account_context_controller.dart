@@ -654,7 +654,7 @@ class AccountContextController extends ChangeNotifier {
         final dropped = await forget(planId);
         if (dropped > 0) _droppedOnRemoval[planId] = dropped;
       } on Object catch (error) {
-        debugPrint('Removed plan $planId not cleared: $error');
+        appDebugNote('Removed plan $planId not cleared: $error');
       }
     }
   }

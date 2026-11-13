@@ -20,7 +20,13 @@ void main() {
         'macos/Runner/Release.entitlements',
       ].map((path) => File(path).readAsStringSync());
 
-      expect(proguard, contains('-keep class net.sqlcipher.** { *; }'));
+      // RA-MO-104: sqflite_sqlcipher 3.4 uses net.zetetic's SQLCipher; the
+      // old net.sqlcipher rule kept a package that is no longer there.
+      expect(
+        proguard,
+        contains('-keep class net.zetetic.database.sqlcipher.** { *; }'),
+      );
+      expect(proguard, isNot(contains('-keep class net.sqlcipher.')));
       expect(vault, contains("storageNamespace: 'aarast_offline_database'"));
       expect(vault, contains('resetOnError: false'));
       expect(vault, contains('migrateWithBackup: true'));

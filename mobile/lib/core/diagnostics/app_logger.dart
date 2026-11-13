@@ -475,6 +475,13 @@ AppLogCategory _categoryForEventName(String name) {
   return AppLogCategory.lifecycle;
 }
 
+/// A note for whoever runs a debug build. `debugPrint` writes to the phone's
+/// log in a release build too, and these notes name plans, providers and
+/// requests by their ids (RA-MO-104); a release build keeps them to itself.
+void appDebugNote(String message) {
+  if (kDebugMode) debugPrint(message);
+}
+
 final class DebugConsoleAppLogSink implements AppLogSink {
   DebugConsoleAppLogSink({void Function(String message)? writer})
     : _writer = writer ?? ((message) => debugPrint(message));

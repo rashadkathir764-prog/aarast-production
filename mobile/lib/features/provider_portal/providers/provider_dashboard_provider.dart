@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/network/api_client.dart';
 import '../../../core/network/client_request_id.dart';
 import '../../../core/offline/offline_contract.dart';
@@ -170,7 +171,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _claimableListing = await _api.getClaimableListing();
     } on Object catch (error) {
-      debugPrint('Claimable provider listing not loaded: $error');
+      appDebugNote('Claimable provider listing not loaded: $error');
       _claimableListing = null;
     }
     notifyListeners();
@@ -187,7 +188,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _claim = await _api.getClaim();
     } on Object catch (error) {
-      debugPrint('Provider claim not read: $error');
+      appDebugNote('Provider claim not read: $error');
       _claim = null;
     }
     notifyListeners();
@@ -369,7 +370,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _services = await _api.getServices();
       _joiningServicesRead = true;
     } on Object catch (error) {
-      debugPrint('Joining service not read: $error');
+      appDebugNote('Joining service not read: $error');
       _services = const [];
       _joiningServicesRead = false;
     }
@@ -410,7 +411,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _responsiveness = await _api.getResponsiveness(providerId);
     } on Object catch (error) {
-      debugPrint('Provider responsiveness not read: $error');
+      appDebugNote('Provider responsiveness not read: $error');
       return;
     }
     notifyListeners();
@@ -437,7 +438,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _bookings = await _api.getBookings();
       _bookingsLoadFailed = false;
     } on Object catch (error) {
-      debugPrint('Provider bookings not loaded: $error');
+      appDebugNote('Provider bookings not loaded: $error');
       _bookings = const [];
       _bookingsLoadFailed = true;
     }
@@ -717,7 +718,7 @@ class ProviderDashboardProvider extends ChangeNotifier
           );
         }
       } on Object catch (error) {
-        debugPrint('Queued offer not sent: $error');
+        appDebugNote('Queued offer not sent: $error');
         kept.add(offer);
       }
     }
@@ -728,7 +729,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       try {
         _quoteRequests = await _api.getQuoteRequests();
       } on Object catch (error) {
-        debugPrint('Requests not read after the queued offers: $error');
+        appDebugNote('Requests not read after the queued offers: $error');
       }
     }
   }
@@ -747,7 +748,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       await queue.write(providerId, list);
     } on Object catch (error) {
-      debugPrint('Offer not kept on the phone: $error');
+      appDebugNote('Offer not kept on the phone: $error');
       return false;
     }
     _queuedOffers = list;
@@ -849,7 +850,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _profile = await _api.updateProfileAddress(place);
       return ProviderJoinResult.sent;
     } on Object catch (error) {
-      debugPrint('Provider address not saved after joining: $error');
+      appDebugNote('Provider address not saved after joining: $error');
       return ProviderJoinResult.sentWithoutAddress;
     } finally {
       notifyListeners();
@@ -1339,7 +1340,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       ];
       notifyListeners();
     } on Object catch (error) {
-      debugPrint('Quote request $quoteRequestId not marked viewed: $error');
+      appDebugNote('Quote request $quoteRequestId not marked viewed: $error');
     } finally {
       _markingViewed.remove(quoteRequestId);
     }
@@ -1494,7 +1495,7 @@ class ProviderDashboardProvider extends ChangeNotifier
           final now = _reviews.where((review) => review.id == reviewId);
           if (now.firstOrNull?.reply != null) return true;
         } on Object catch (readError) {
-          debugPrint('Reviews not read again: $readError');
+          appDebugNote('Reviews not read again: $readError');
         }
         _errorMessage = 'رديت على هذا التقييم من قبل.';
         return false;

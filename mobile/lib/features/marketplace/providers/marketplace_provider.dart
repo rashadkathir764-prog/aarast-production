@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/network/api_client.dart';
 import '../../../core/network/client_request_id.dart';
 import '../../../core/offline/cached_first_load.dart';

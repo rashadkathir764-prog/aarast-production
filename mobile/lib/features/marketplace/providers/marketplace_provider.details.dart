@@ -9,7 +9,7 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     try {
       await _api.recordProviderView(providerId);
     } on Object catch (error) {
-      debugPrint('Provider view not counted for $providerId: $error');
+      appDebugNote('Provider view not counted for $providerId: $error');
     }
   }
 

@@ -10,6 +10,7 @@ import {
   PORTFOLIO_MAX_ITEMS,
   portfolioItemNeedsReview,
   readSocialLinks,
+  splitPortfolioRemovals,
   WOMEN_ALBUM,
 } from '../modules/marketplace/public/provider-portfolio';
 import * as portfolioStore from '../modules/marketplace/infrastructure/portfolio.repository';
@@ -144,10 +145,28 @@ export class ProviderPortfolio {
           sortOrder: item.sortOrder,
         });
       }
-      for (const item of stored) {
-        if (wanted.has(item.mediaKey)) continue;
+      // RA-MO-287: a photo this save never saw (added from his other phone
+      // after this list was read) is kept, after the list he sent.
+      const { remove, unseen } = splitPortfolioRemovals(
+        stored.map((item) => item.mediaKey),
+        wanted,
+        dto.knownKeys,
+      );
+      for (const key of remove) {
+        const item = byKey.get(key)!;
         write.removeIds.push(item.id);
         await this.deps.mediaStorage.scheduleTargetDeletion({ type: 'PORTFOLIO_ITEM', id: item.id }, tx);
+      }
+      for (const [index, key] of unseen.entries()) {
+        const item = byKey.get(key)!;
+        write.update.push({
+          id: item.id,
+          album: item.album,
+          forWomen: item.forWomen,
+          noFaces: item.noFaces,
+          sortOrder: items.length + index,
+          reset: false,
+        });
       }
 
       const links =

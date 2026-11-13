@@ -87,7 +87,9 @@ class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
     switch (state) {
       case ProviderCaseState.fresh:
         return _NewRequest(quote: quote, dashboard: dashboard);
-      case ProviderCaseState.booked || ProviderCaseState.done:
+      case ProviderCaseState.booked ||
+          ProviderCaseState.done ||
+          ProviderCaseState.notHappened:
         return ProviderBookingScreen(quote: quote, booking: booking!);
       case ProviderCaseState.bookingCancelled ||
           ProviderCaseState.bookingDeclined:

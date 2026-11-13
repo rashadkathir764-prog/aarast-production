@@ -15,6 +15,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_sc
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_request_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_booking_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_request_parts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -278,6 +279,82 @@ void main() {
     expect(api.decisions, ['booking-1:cancel:تعطلت المعدات']);
     await tester.pump(const Duration(seconds: 5));
   });
+
+  // RA-MO-291 (batch 9): a booking he recorded «ما صار» stayed «محجوز»,
+  // with reminders and a cancel the server always refuses.
+  testWidgets('a booking recorded «ما صار» is over: no cancel, no reminders', (
+    tester,
+  ) async {
+    final dashboard = ProviderDashboardProvider(
+      _PortalApi(bookingStatus: 'CONFIRMED'),
+    );
+    final quote = QuoteRequest.fromJson(const {
+      'id': 'quote-1',
+      'providerId': 'provider-1',
+      'status': 'ACCEPTED',
+      'contactName': 'محمد الحمدي',
+    });
+    final booking = MarketplaceBooking.fromJson(const {
+      'id': 'booking-1',
+      'quoteRequestId': 'quote-1',
+      'providerId': 'provider-1',
+      'eventDate': '2026-10-01',
+      'status': 'CONFIRMED',
+      'lifecycleStatus': 'NOT_HAPPENED',
+      'notHappenedAt': '2026-10-02T09:00:00.000Z',
+      'notHappenedReason': 'CUSTOMER_CANCELLED',
+    });
+    expect(providerCaseOf(quote, booking), ProviderCaseState.notHappened);
+
+    await tester.pumpWidget(
+      _host(dashboard, ProviderBookingScreen(quote: quote, booking: booking)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ما صار'), findsWidgets);
+    expect(find.text('محجوز'), findsNothing);
+    expect(
+      find.byKey(const Key('provider-booking-cancel-booking-1')),
+      findsNothing,
+    );
+    expect(find.textContaining('نذكّرك'), findsNothing);
+    expect(
+      find.byKey(const Key('provider-booking-not-happened-note')),
+      findsOneWidget,
+    );
+  });
+
+  // RA-MO-294 (batch 9): the server leaves the day open when a confirmed
+  // booking holds it, and says so; the phone drew the day closed anyway.
+  test(
+    '«مشغول ذاك اليوم»: the day is closed only when the server closed it',
+    () async {
+      for (final closedByServer in [true, false]) {
+        final api = _PortalApi(
+          quotes: const [
+            {
+              'id': 'quote-1',
+              'providerId': 'provider-1',
+              'status': 'VIEWED',
+              'eventDate': '2027-01-21',
+            },
+          ],
+        )..dayBlockedAnswer = closedByServer;
+        final dashboard = ProviderDashboardProvider(api);
+        await dashboard.loadDashboard();
+
+        final declined = await dashboard.updateQuoteStatus(
+          quoteRequestId: 'quote-1',
+          status: 'REJECTED',
+          blockDay: true,
+        );
+
+        expect(declined, isTrue);
+        expect(dashboard.lastDeclineClosedDay, closedByServer);
+        expect(dashboard.blockedDates, hasLength(closedByServer ? 1 : 0));
+      }
+    },
+  );
 
   group('reviews', () {
     test('a review keeps its status; public ones count as published', () {
@@ -669,8 +746,14 @@ class _PortalApi extends ProviderDashboardApi {
     statusUpdates.add('$quoteRequestId:$status');
     final quote = _quotes.firstWhere((item) => item['id'] == quoteRequestId);
     quote['status'] = status;
-    return QuoteRequest.fromJson(quote);
+    return QuoteRequest.fromJson({
+      ...quote,
+      if (blockDay) 'dayBlocked': dayBlockedAnswer,
+    });
   }
+
+  /// B-05: what the server says of the day on «مشغول ذاك اليوم».
+  bool dayBlockedAnswer = true;
 
   @override
   Future<QuoteOffer> createQuoteOffer({

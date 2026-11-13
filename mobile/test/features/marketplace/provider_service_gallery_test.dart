@@ -34,6 +34,9 @@ void main() {
 
       expect(saved, isTrue);
       expect(api.sent.single.length, 2);
+      // RA-MO-287: the save says which photos this phone had read (one),
+      // so the server never deletes a photo added from his other phone.
+      expect(api.known.single, ['provider-portfolio/u/1.jpg']);
       expect(dashboard.portfolio?.items.last.isPending, isTrue);
       expect(dashboard.profile?.portfolioPhotos, 2);
       expect(dashboard.profile?.socialNetworks, ['tiktok']);
@@ -91,6 +94,7 @@ class _PortfolioApi extends ProviderDashboardApi {
   _PortfolioApi() : super(ApiClient(tokenProvider: () async => null));
 
   final sent = <List<Map<String, Object?>>>[];
+  final known = <List<String>>[];
   String? refuseWith;
 
   ProviderPortfolio _portfolio(List<String> statuses) => ProviderPortfolio(
@@ -115,12 +119,14 @@ class _PortfolioApi extends ProviderDashboardApi {
   @override
   Future<ProviderPortfolio> savePortfolio({
     required List<Map<String, Object?>> items,
+    required List<String> knownKeys,
     Map<String, String>? socialLinks,
   }) async {
     if (refuseWith != null) {
       throw ApiException('refused', statusCode: 422, serverCode: refuseWith);
     }
     sent.add(items);
+    known.add(knownKeys);
     return _portfolio(['APPROVED', 'PENDING']);
   }
 

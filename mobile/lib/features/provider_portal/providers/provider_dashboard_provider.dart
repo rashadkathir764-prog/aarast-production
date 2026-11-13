@@ -432,8 +432,10 @@ class ProviderDashboardProvider extends ChangeNotifier
     // served while this read ran means the server did not answer.
     final served = OfflineReads.copiesServed;
 
+    var profileRead = false;
     try {
       final profile = await _api.getProfile();
+      profileRead = true;
       _profile = profile;
       _hasProviderProfile = true;
       _operationsAccessDenied = false;
@@ -538,7 +540,12 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       // What was read before stays on screen, with its time (p43).
       _offline = error.isNetworkFailure;
-      if (_isMissingProviderProfile(error.message)) {
+      // RA-MO-299: the server's 404 for the profile is the account having
+      // no provider profile. This looked for the server's English words,
+      // which the network layer had already put into Arabic, so the «ما في
+      // ملف مزود» state never showed.
+      if ((!profileRead && error.statusCode == 404) ||
+          _isMissingProviderProfile(error.message)) {
         _profile = null;
         _hasProviderProfile = false;
         _operationsAccessDenied = false;
@@ -888,6 +895,11 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _portfolio = await _api.savePortfolio(
         items: items,
+        // What this phone had read: a photo outside it was added elsewhere
+        // and is not this save's to delete (RA-MO-287).
+        knownKeys: [
+          for (final photo in _portfolio?.items ?? const []) photo.key,
+        ],
         socialLinks: socialLinks,
       );
       try {
@@ -1114,8 +1126,13 @@ class ProviderDashboardProvider extends ChangeNotifier
       );
       if (blockDay) {
         final day = quote.eventDate;
-        lastDeclineClosedDay = day != null;
-        if (day != null &&
+        // RA-MO-294: the server says whether it closed the day; it does
+        // not when a confirmed booking holds it. The phone assumed it had,
+        // and drew the day closed in the calendar until the next read.
+        final closed = quote.dayBlocked ?? (day != null);
+        lastDeclineClosedDay = closed;
+        if (closed &&
+            day != null &&
             !_blockedDates.any(
               (blocked) =>
                   blocked.year == day.year &&

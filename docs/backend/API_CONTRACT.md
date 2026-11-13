@@ -3282,12 +3282,17 @@ approved photos; the women's album «حفلات النساء» is read by a brid
   and `rejectionReason` is the team's words.
 - `PUT /api/v1/provider/me/portfolio` (an approved provider only, else
   `403 PROVIDER_NOT_ACTIVE`, D41) `{ items: [{ key, album?, noFaces? }],
-  socialLinks?: { tiktok?, instagram?, facebook? } }` replaces the whole
-  portfolio in that order and returns it as above. A new `key` must be his
-  own verified `provider-portfolio` upload, used once; it is created
-  `PENDING`. A kept photo keeps its decision unless its album or `noFaces`
-  changed (then `PENDING` again); a refused one stays refused. A photo left
-  out is removed and its image becomes a media deletion job. `socialLinks`
+  knownKeys?: string[], socialLinks?: { tiktok?, instagram?, facebook? } }`
+  replaces the whole portfolio in that order and returns it as above. A new
+  `key` must be his own verified `provider-portfolio` upload, used once; it
+  is created `PENDING`. A kept photo keeps its decision unless its album or
+  `noFaces` changed (then `PENDING` again); a refused one stays refused. A
+  photo left out is removed and its image becomes a media deletion job.
+  `knownKeys` (RA-MO-287) are the keys the client had read when it built
+  `items`: with them, only a photo it knew and left out is removed, and a
+  stored photo outside them (added from another phone meanwhile) is kept
+  after the list; the limit counts those too. Without `knownKeys`, `items`
+  is the whole portfolio. `socialLinks`
   omitted keeps his links; given, it replaces them (an empty value removes
   one). Refusals: `422 PORTFOLIO_TOO_MANY_ITEMS { max: 60 }`,
   `422 PORTFOLIO_WOMEN_ALBUM_NOT_SERVED` (none of his sections is shown to

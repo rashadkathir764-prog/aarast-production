@@ -44,7 +44,10 @@ class ProviderBookingScreen extends StatelessWidget {
     final showHijri = context.watch<DevicePreferences?>()?.showHijri ?? true;
     final name = providerCustomerName(quote);
     final first = providerFirstName(name);
-    final done = booking.lifecycleStatus == 'COMPLETED';
+    // B-22: a booking he recorded «ما صار» is over too: no reminders, and
+    // no cancel, which the server refuses once the outcome is decided.
+    final notHappened = booking.lifecycleStatus == 'NOT_HAPPENED';
+    final done = booking.lifecycleStatus == 'COMPLETED' || notHappened;
     // The offer the booking follows: its own id, else the accepted one.
     final offer =
         quote.offers
@@ -60,7 +63,11 @@ class ProviderBookingScreen extends StatelessWidget {
           JourneySubHeader(
             title: 'حجز $name',
             trailing: ProviderCaseTag(
-              state: done ? ProviderCaseState.done : ProviderCaseState.booked,
+              state: notHappened
+                  ? ProviderCaseState.notHappened
+                  : done
+                  ? ProviderCaseState.done
+                  : ProviderCaseState.booked,
             ),
           ),
           ProviderRequestFacts(

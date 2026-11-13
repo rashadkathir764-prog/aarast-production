@@ -55,6 +55,18 @@ export class UpdateProviderPortfolioDto {
   @Type(() => PortfolioItemDto)
   items!: PortfolioItemDto[];
 
+  /**
+   * RA-MO-287: the keys of the photos this client had read when it built
+   * `items`. A stored photo outside them was added elsewhere meanwhile and
+   * is kept; without the field, `items` is the whole portfolio.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MaxLength(200, { each: true })
+  knownKeys?: string[];
+
   @IsOptional()
   @IsObject()
   @ValidateNested()

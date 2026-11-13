@@ -204,9 +204,11 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
     if (closed) {
       AarastToast.showSuccess(context, 'وصل اعتذارك.');
     } else {
-      AarastToast.showError(
+      // The one reason the server leaves the day open: a confirmed booking
+      // holds it, so the calendar would refuse to close it too.
+      AarastToast.showInfo(
         context,
-        'وصل اعتذارك، بس ما قدرنا نقفل اليوم. قفله من التقويم.',
+        'وصل اعتذارك. اليوم ما انقفل، عندك فيه حجز مؤكد.',
       );
     }
     Navigator.of(context).pop(true);

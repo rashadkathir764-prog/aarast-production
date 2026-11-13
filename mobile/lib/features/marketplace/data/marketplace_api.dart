@@ -1185,13 +1185,20 @@ class ProviderDashboardApi {
 
   /// p37 (B-16): the whole portfolio in its order, by upload key; new
   /// photos wait for review. [socialLinks] replaces his links when given.
+  ///
+  /// [knownKeys] are the photos this phone had read when it built [items]
+  /// (RA-MO-287): the server removes only a photo he knew and left out, and
+  /// keeps one added from his other phone meanwhile, which a list read
+  /// before it would otherwise delete, file and all.
   Future<ProviderPortfolio> savePortfolio({
     required List<Map<String, Object?>> items,
+    required List<String> knownKeys,
     Map<String, String>? socialLinks,
   }) async {
     return ProviderPortfolio.fromJson(
       await _apiClient.putJson('/api/v1/provider/me/portfolio', {
         'items': items,
+        'knownKeys': knownKeys,
         'socialLinks': ?socialLinks,
       }),
     );

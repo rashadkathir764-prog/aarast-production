@@ -133,6 +133,39 @@ export interface NormalizedPortfolioItem {
 }
 
 /**
+ * RA-MO-287: which stored photos a save removes, and which it never saw.
+ *
+ * The phone sends the whole list it holds. A list read before a photo was
+ * added from the provider's other phone left that photo out without meaning
+ * to, and the save deleted it, file and all. A save now says which photos
+ * it had read (`knownKeys`): only a photo it knew and left out is removed;
+ * one it never saw is kept, after the list. A client that sends no
+ * `knownKeys` keeps the first meaning: its list is the whole portfolio.
+ */
+export function splitPortfolioRemovals(
+  storedKeys: readonly string[],
+  wantedKeys: ReadonlySet<string>,
+  knownKeys?: readonly string[] | null,
+): { remove: string[]; unseen: string[] } {
+  const known = knownKeys ? new Set(knownKeys.map((key) => key.trim())) : null;
+  const remove: string[] = [];
+  const unseen: string[] = [];
+  for (const key of storedKeys) {
+    if (wantedKeys.has(key)) continue;
+    if (known && !known.has(key)) unseen.push(key);
+    else remove.push(key);
+  }
+  if (wantedKeys.size + unseen.length > PORTFOLIO_MAX_ITEMS) {
+    throw new UnprocessableEntityException({
+      code: 'PORTFOLIO_TOO_MANY_ITEMS',
+      max: PORTFOLIO_MAX_ITEMS,
+      message: `A portfolio holds at most ${PORTFOLIO_MAX_ITEMS} photos`,
+    });
+  }
+  return { remove, unseen };
+}
+
+/**
  * The provider's list, checked: at most {@link PORTFOLIO_MAX_ITEMS} photos,
  * each once; an album is a short label; the women's album needs a provider
  * who serves women and the provider's «بدون وجوه» on every photo in it.

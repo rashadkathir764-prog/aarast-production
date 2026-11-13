@@ -9,6 +9,7 @@ import {
   PORTFOLIO_MAX_ITEMS,
   portfolioItemNeedsReview,
   readSocialLinks,
+  splitPortfolioRemovals,
   WOMEN_ALBUM,
 } from '../src/modules/marketplace/public/provider-portfolio';
 import { portfolioDecisionNotice } from '../src/admin/admin-portfolio-review';
@@ -64,6 +65,34 @@ test('B-16: the list keeps its order, each photo once, at most the limit', () =>
     code('PORTFOLIO_TOO_MANY_ITEMS'),
   );
   assert.throws(() => normalizePortfolioItems([{ key: 'a', album: 'ا'.repeat(31) }], false), /30/);
+});
+
+// RA-MO-287 (batch 9): the phone sends the whole list it holds, and every
+// stored photo missing from it was deleted, file and all: a list read
+// before a photo was added from his other phone deleted that photo.
+test('RA-MO-287: a save removes the photos it knew and left out, never one it had not read', () => {
+  const stored = ['a', 'b', 'c', 'added-elsewhere'];
+  // He deleted «b» from a copy that held a, b and c.
+  assert.deepEqual(splitPortfolioRemovals(stored, new Set(['a', 'c']), ['a', 'b', 'c']), {
+    remove: ['b'],
+    unseen: ['added-elsewhere'],
+  });
+  // Saving his links alone, from that copy, removes nothing.
+  assert.deepEqual(splitPortfolioRemovals(stored, new Set(['a', 'b', 'c']), ['a', 'b', 'c']), {
+    remove: [],
+    unseen: ['added-elsewhere'],
+  });
+  // A client that does not say what it read: its list is the whole portfolio.
+  assert.deepEqual(splitPortfolioRemovals(stored, new Set(['a', 'c'])), {
+    remove: ['b', 'added-elsewhere'],
+    unseen: [],
+  });
+  // The limit counts the kept photos too.
+  const full = Array.from({ length: PORTFOLIO_MAX_ITEMS }, (_, i) => `k${i}`);
+  assert.throws(
+    () => splitPortfolioRemovals([...full, 'added-elsewhere'], new Set(full), full),
+    code('PORTFOLIO_TOO_MANY_ITEMS'),
+  );
 });
 
 test('B-16: the women\'s album needs a provider who serves women and «بدون وجوه»', () => {

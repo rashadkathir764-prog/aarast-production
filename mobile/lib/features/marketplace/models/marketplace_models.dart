@@ -556,8 +556,14 @@ class QuoteRequest {
     this.declineMessage,
     this.shareBudget = false,
     this.shareContact = false,
+    this.dayBlocked,
   }) : _status = status,
        _lifecycleStatus = lifecycleStatus;
+
+  /// B-05, on the answer to a provider's «مشغول ذاك اليوم» only: whether
+  /// the server closed the day with the decline. It does not when a
+  /// confirmed booking already holds that day. Null on every other read.
+  final bool? dayBlocked;
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
     final user = json['user'];
@@ -565,6 +571,9 @@ class QuoteRequest {
     final offers = json['offers'];
     final location = json['location'];
     return QuoteRequest(
+      dayBlocked: json['dayBlocked'] is bool
+          ? json['dayBlocked'] as bool
+          : null,
       id: json['id'].toString(),
       providerId: json['providerId']?.toString() ?? '',
       weddingPlanId: json['weddingPlanId']?.toString(),

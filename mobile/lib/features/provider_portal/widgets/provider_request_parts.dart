@@ -44,6 +44,10 @@ enum ProviderCaseState {
   /// The booked day has passed (`COMPLETED` is derived from the date).
   done,
 
+  /// B-22: he recorded «ما صار». It read «محجوز», with reminders and a
+  /// cancel the server always refuses (RA-MO-291).
+  notHappened,
+
   /// RESPONDED and the offer's end date passed (D35 renews it).
   offerExpired,
 
@@ -113,6 +117,11 @@ extension ProviderCaseStateTab on ProviderCaseState {
       AarastV3Color.mint,
       AarastV3Color.mintSoft,
     ),
+    ProviderCaseState.notHappened => (
+      'ما صار',
+      AarastV3Color.textMuted,
+      AarastV3Color.line,
+    ),
     ProviderCaseState.declined || ProviderCaseState.bookingDeclined => (
       'اعتذرت',
       AarastV3Color.textMuted,
@@ -140,6 +149,9 @@ ProviderCaseState providerCaseOf(
 ) {
   if (booking != null) {
     if (booking.lifecycleStatus == 'COMPLETED') return ProviderCaseState.done;
+    if (booking.lifecycleStatus == 'NOT_HAPPENED') {
+      return ProviderCaseState.notHappened;
+    }
     switch (booking.status.toUpperCase()) {
       case 'REQUESTED':
         return ProviderCaseState.bookingAsked;

@@ -225,6 +225,7 @@ class ProfileApi extends RequestsApi {
   @override
   Future<ProviderPortfolio> savePortfolio({
     required List<Map<String, Object?>> items,
+    required List<String> knownKeys,
     Map<String, String>? socialLinks,
   }) async {
     savedPortfolios.add(items);

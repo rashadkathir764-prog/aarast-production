@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -48,6 +50,31 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   String? _memberPlanId;
   int _refreshGeneration = 0;
 
+  /// The role and levels as the member was opened, so leaving midway asks
+  /// before dropping a change (RA-MO-284); null until the member is known.
+  String? _levelsAsOpened;
+  bool _leavingDone = false;
+
+  String _levelsSignature() {
+    final p = _permissions;
+    return [
+      _role,
+      p.canViewMoney,
+      p.canManageMoney,
+      p.canEditPlan,
+      p.canManageTasks,
+      p.canManageGuests,
+      p.canManageProviders,
+      p.canInviteMembers,
+      p.receiveNotifications,
+    ].join('|');
+  }
+
+  bool get _hasUnsavedLevels =>
+      !_leavingDone &&
+      _levelsAsOpened != null &&
+      _levelsSignature() != _levelsAsOpened;
+
   @override
   void initState() {
     super.initState();
@@ -95,7 +122,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           : hasName && phone != null
           ? '${participantRoleLabel(member.role)} · $phone'
           : participantRoleLabel(member.role),
-      onBack: _leave,
+      onBack: _backAsked,
     );
     if (!_isCheckingAccess &&
         provider.authGateKind == SharingAuthGateKind.sessionExpired) {
@@ -125,14 +152,30 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         ),
       );
     }
-    return AarastScreenFrame(
-      maxWidth: 520,
-      backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: AarastV3Density.pageInsets,
-        children: [header, ..._body(provider, member)],
+    return PopScope(
+      canPop: !_hasUnsavedLevels,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_backAsked());
+      },
+      child: AarastScreenFrame(
+        maxWidth: 520,
+        backgroundColor: AarastV3Color.canvas,
+        child: ListView(
+          padding: AarastV3Density.pageInsets,
+          children: [header, ..._body(provider, member)],
+        ),
       ),
     );
+  }
+
+  Future<void> _backAsked() async {
+    if (_hasUnsavedLevels &&
+        !await confirmLeaveUnsaved(context, keyPrefix: 'member-edit')) {
+      return;
+    }
+    if (!mounted) return;
+    _leavingDone = true;
+    _leave();
   }
 
   List<Widget> _body(SharingProvider provider, SharedMember? member) {
@@ -323,6 +366,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     _role = member.role;
     _permissions = member.toPermissions();
     _initialized = true;
+    _levelsAsOpened = _levelsSignature();
   }
 
   Future<void> _save(SharedMember member) async {
@@ -336,6 +380,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     );
     if (!mounted || !updated) return;
     AarastToast.showSuccess(context, 'حفظنا اللي يشوفه.');
+    _leavingDone = true;
     _leave();
   }
 
@@ -373,6 +418,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     );
     if (!mounted || !removed) return;
     AarastToast.showSuccess(context, 'شلناه من الخطة.');
+    _leavingDone = true;
     _leave();
   }
 }

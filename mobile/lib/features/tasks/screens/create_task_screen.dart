@@ -149,38 +149,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       _editAsOpened != null &&
       _editSignature() != _editAsOpened;
 
-  Future<bool> _confirmLeave() async {
-    final leave = await showJourneySheet<bool>(
-      context: context,
-      builder: (sheetContext) => JourneySheetBody(
-        title: context.say(
-          'تطلع بدون ما تحفظ التعديل؟',
-          'تطلعين بدون ما تحفظين التعديل؟',
-        ),
-        subtitle: 'اللي غيّرته هنا ما ينحفظ.',
-        children: [
-          JourneyButton(
-            key: const ValueKey('task-edit-leave'),
-            label: context.say('اطلع بدون حفظ', 'اطلعي بدون حفظ'),
-            background: AarastV3Color.danger,
-            expand: true,
-            onPressed: () => Navigator.pop(sheetContext, true),
-          ),
-          const SizedBox(height: AarastV3Space.x2),
-          JourneyButton(
-            key: const ValueKey('task-edit-stay'),
-            label: context.say('كمّل التعديل', 'كمّلي التعديل'),
-            background: AarastV3Color.paper,
-            foreground: AarastV3Color.ink,
-            expand: true,
-            onPressed: () => Navigator.pop(sheetContext, false),
-          ),
-        ],
-      ),
-    );
-    return leave == true;
-  }
-
   @override
   void dispose() {
     for (final controller in [
@@ -409,7 +377,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   /// The header's back and the phone's: an unsaved edit asks first.
   Future<void> _backAsked() async {
-    if (_hasUnsavedEdit && !await _confirmLeave()) return;
+    if (_hasUnsavedEdit &&
+        !await confirmLeaveUnsaved(context, keyPrefix: 'task-edit')) {
+      return;
+    }
     if (!mounted) return;
     _leavingSaved = true;
     _goBack();

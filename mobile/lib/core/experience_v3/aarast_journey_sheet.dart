@@ -46,6 +46,44 @@ Future<T?> showJourneySheet<T>({
   );
 }
 
+/// Asks before leaving an editor whose change is not saved, and answers true
+/// when the reader chose to leave. One wording for every editor; the keys are
+/// `$keyPrefix-leave` and `$keyPrefix-stay`.
+Future<bool> confirmLeaveUnsaved(
+  BuildContext context, {
+  required String keyPrefix,
+}) async {
+  final leave = await showJourneySheet<bool>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      title: context.say(
+        'تطلع بدون ما تحفظ التعديل؟',
+        'تطلعين بدون ما تحفظين التعديل؟',
+      ),
+      subtitle: 'اللي غيّرته هنا ما ينحفظ.',
+      children: [
+        JourneyButton(
+          key: ValueKey('$keyPrefix-leave'),
+          label: context.say('اطلع بدون حفظ', 'اطلعي بدون حفظ'),
+          background: AarastV3Color.danger,
+          expand: true,
+          onPressed: () => Navigator.pop(sheetContext, true),
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyButton(
+          key: ValueKey('$keyPrefix-stay'),
+          label: context.say('كمّل التعديل', 'كمّلي التعديل'),
+          background: AarastV3Color.paper,
+          foreground: AarastV3Color.ink,
+          expand: true,
+          onPressed: () => Navigator.pop(sheetContext, false),
+        ),
+      ],
+    ),
+  );
+  return leave == true;
+}
+
 /// The inside of a journey sheet (prototype `sheet`): a 40×5 handle, 14
 /// below it the title, an optional muted subtitle, 16 below them the
 /// content. Padding 20 / 10 / 20 / 30, where the bottom 30 also covers the

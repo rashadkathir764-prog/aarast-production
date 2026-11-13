@@ -150,6 +150,46 @@ void main() {
     );
   });
 
+  // RA-MO-284: going back dropped the changed levels with no word.
+  testWidgets('leaving changed levels asks; an untouched page just leaves', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'HELPER'));
+    await _pump(tester, api);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-level-المال')),
+        matching: find.text('يشوف'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('member-edit-leave')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('member-edit-stay')));
+    await tester.pumpAndSettle();
+    final money = tester.widget<JourneyLevelSwitch>(
+      find.byKey(const ValueKey('participant-level-المال')),
+    );
+    expect(money.selected, 1);
+    expect(api.lastUpdate, isNull);
+
+    // Put back as it was: nothing to lose, so no question.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-level-المال')),
+        matching: find.text('لا'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('member-edit-leave')), findsNothing);
+    expect(find.text('participants-list'), findsOneWidget);
+  });
+
   testWidgets('taking someone off the plan asks first', (tester) async {
     final api = _Api(_member(role: 'HELPER'));
     await _pump(tester, api);

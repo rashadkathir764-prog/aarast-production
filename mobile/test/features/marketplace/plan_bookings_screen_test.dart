@@ -157,13 +157,62 @@ void main() {
     expect(popped, ['cat-band']);
   });
 
-  testWidgets('a cancelled booking can be asked for again', (tester) async {
+  // RA-MO-245: the button sent the request with no day, and the server
+  // booked the day the request was first made for. It asks «نطلب الحجز؟»
+  // like the requests page, and sends the day the person saw.
+  testWidgets('asking again shows the day first, and sends that day', (
+    tester,
+  ) async {
     final (marketplace, _) = await _pump(tester);
 
     await tester.tap(find.text('اطلب حجز مرة ثانية'));
     await tester.pumpAndSettle();
+    expect(find.text('نطلب الحجز؟'), findsOneWidget);
+    expect(marketplace.asked, isEmpty);
+
+    await tester.tap(find.byKey(const ValueKey('booking-request')));
+    await tester.pumpAndSettle();
 
     expect(marketplace.asked, ['cancel']);
+    // The cancelled booking's own day, with no plan day to prefer.
+    expect(marketplace.askedDays, [DateTime(2027, 1, 21)]);
+  });
+
+  // RA-MO-247: both fell under «ملغي · لغيته أنت».
+  testWidgets('«ما صار» and an expired request are not «لغيته أنت»', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      quotes: [
+        _quote('absent', 'استوديو ضوء صنعاء', 'التصوير', {
+          'status': 'CONFIRMED',
+          'lifecycleStatus': 'NOT_HAPPENED',
+          'notHappenedReason': 'WE_DID_NOT_ATTEND',
+        }),
+        _quote('stopped', 'قاعة سبأ', 'القاعة', {
+          'status': 'EXPIRED',
+          'lifecycleStatus': 'EXPIRED',
+        }),
+      ],
+    );
+
+    expect(find.textContaining('لغيته أنت'), findsNothing);
+    expect(find.text('ملغي'), findsNothing);
+    expect(find.text('ما صار'), findsOneWidget);
+    expect(find.text('قالوا إنهم ما حضروا'), findsOneWidget);
+    // Their own absence leaves the review open (RA-BE-46).
+    expect(
+      find.byKey(const ValueKey('booking-rate-booking-absent')),
+      findsOneWidget,
+    );
+    expect(find.text('انتهى'), findsOneWidget);
+    expect(find.text('انتهى الطلب، المزود موقوف مؤقتًا'), findsOneWidget);
+    // B-42: it may be asked again once he is back.
+    expect(
+      find.byKey(const ValueKey('booking-ask-again-booking-stopped')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a booking whose day passed asks for a rating', (tester) async {
@@ -237,6 +286,7 @@ class _Marketplace extends ProviderMarketplaceProvider {
   @override
   bool get isLoadingQuoteRequests => loading;
   final asked = <String>[];
+  final askedDays = <DateTime?>[];
 
   @override
   List<QuoteRequest> get quoteRequests => _quotes;
@@ -250,6 +300,7 @@ class _Marketplace extends ProviderMarketplaceProvider {
   @override
   Future<bool> requestBooking(QuoteRequest quote, {DateTime? eventDate}) async {
     asked.add(quote.id);
+    askedDays.add(eventDate);
     return true;
   }
 }

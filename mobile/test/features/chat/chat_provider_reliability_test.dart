@@ -283,6 +283,39 @@ void main() {
     chat.dispose();
   });
 
+  // RA-MO-249 (batch 7): the refresh after the other side's activity put
+  // the server's page in place of the timeline and left out the texts
+  // still waiting to go. They vanished from view while still queued, so
+  // the person typed them again and they went twice.
+  test('a waiting text stays in view when the other side is active', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final realtime = _FakeRealtimeClient(storage);
+    final api = _OfflineChatApi()..rateLimited = true;
+    final chat = ChatProvider(
+      api: api,
+      realtime: realtime,
+      authStorage: storage,
+      outbox: ChatOutbox(preferences),
+    );
+    await chat.initialize();
+    await chat.openConversation('conversation-1');
+    expect(await chat.send('conversation-1', 'نأكد يوم الخميس'), isTrue);
+    expect(chat.queuedMessages, hasLength(1));
+
+    api.timelinePage = ChatTimelinePage(
+      items: [_eventItem(type: 'QUOTE_OFFER_RECEIVED')],
+    );
+    realtime.emitActivity('conversation-1');
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    final timeline = chat.timelineFor('conversation-1');
+    expect(timeline.first.event?.type, 'QUOTE_OFFER_RECEIVED');
+    expect(timeline.last.message?.body, 'نأكد يوم الخميس');
+    expect(timeline.last.message?.queued, isTrue);
+    expect(chat.queuedMessages, hasLength(1));
+  });
+
   test('activity event refreshes the conversation timeline', () async {
     final realtime = _FakeRealtimeClient(storage);
     final api = _FakeChatApi(conversations: [_conversation()]);
@@ -648,6 +681,65 @@ void main() {
       chat.dispose();
     },
   );
+
+  // RA-MO-250 (batch 7): a request that is gone, or another plan's, showed
+  // the generic error with «retry», which can never succeed.
+  testWidgets('a request that is gone says so, and offers no retry', (
+    tester,
+  ) async {
+    final api = _FakeChatApi()
+      ..quoteError = const ApiException('Not found', statusCode: 404);
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: const MaterialApp(
+          home: QuoteConversationEntryScreen(quoteRequestId: 'quote-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('quote-conversation-gone')),
+      findsOneWidget,
+    );
+    expect(find.text('هذي المحادثة ما عادت مفتوحة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('journey-list-error')), findsNothing);
+    chat.dispose();
+  });
+
+  testWidgets('a server out of reach still offers the retry', (tester) async {
+    final api = _FakeChatApi()
+      ..quoteError = const ApiException(
+        aarastBackendConnectionErrorMessage,
+        isNetworkFailure: true,
+      );
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: const MaterialApp(
+          home: QuoteConversationEntryScreen(quoteRequestId: 'quote-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('quote-conversation-gone')), findsNothing);
+    expect(find.byKey(const ValueKey('journey-list-error')), findsOneWidget);
+    chat.dispose();
+  });
 
   testWidgets('retry reloads chat after one transient timeline failure', (
     tester,
@@ -1162,11 +1254,13 @@ class _FakeChatApi extends ChatApi {
   int markReadCalls = 0;
   int timelineCalls = 0;
   int conversationForQuoteCalls = 0;
+  ApiException? quoteError;
   final List<String?> requestedConversationCursors = [];
 
   @override
   Future<ChatConversation> conversationForQuote(String quoteRequestId) async {
     conversationForQuoteCalls += 1;
+    if (quoteError != null) throw quoteError!;
     return conversations.isNotEmpty ? conversations.first : _conversation();
   }
 

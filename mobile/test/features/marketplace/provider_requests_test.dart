@@ -32,7 +32,7 @@ const _photo = MarketplaceService(
 QuoteRequest _offer(
   String id,
   String provider,
-  String amount, {
+  String? amount, {
   String lifecycle = 'RECEIVED',
   String offerStatus = 'PENDING',
   bool expired = false,
@@ -92,15 +92,19 @@ QuoteRequest _waiting(String id, String provider) => QuoteRequest(
   service: _photo,
 );
 
-MarketplaceBooking _booking(String status, {String? lifecycle}) =>
-    MarketplaceBooking.fromJson({
-      'id': 'booking-1',
-      'quoteRequestId': 'q1',
-      'providerId': 'provider-q1',
-      'eventDate': '2027-01-21',
-      'status': status,
-      'lifecycleStatus': lifecycle ?? status,
-    });
+MarketplaceBooking _booking(
+  String status, {
+  String? lifecycle,
+  String? notHappenedReason,
+}) => MarketplaceBooking.fromJson({
+  'id': 'booking-1',
+  'quoteRequestId': 'q1',
+  'providerId': 'provider-q1',
+  'eventDate': '2027-01-21',
+  'status': status,
+  'lifecycleStatus': lifecycle ?? status,
+  'notHappenedReason': ?notHappenedReason,
+});
 
 QuoteRequest _accepted({MarketplaceBooking? booking}) => _offer(
   'q1',
@@ -518,6 +522,84 @@ void main() {
     );
   });
 
+  // RA-MO-246: the card said «قالوا إنهم ما حضروا. قيّمهم» and gave no way
+  // to do it; the server takes exactly this review (RA-BE-46).
+  testWidgets('their own absence leaves a way to rate them', (tester) async {
+    await _pump(tester, [
+      _accepted(
+        booking: _booking(
+          'CONFIRMED',
+          lifecycle: 'NOT_HAPPENED',
+          notHappenedReason: 'WE_DID_NOT_ATTEND',
+        ),
+      ),
+    ]);
+
+    expect(find.textContaining('قالوا إنهم ما حضروا'), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-rate-q1')), findsOneWidget);
+    // The day has passed: the server would refuse a cancel.
+    expect(
+      find.byKey(const ValueKey('requests-cancel-booking-q1')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('any other «ما صار» closes the review', (tester) async {
+    await _pump(tester, [
+      _accepted(
+        booking: _booking(
+          'CONFIRMED',
+          lifecycle: 'NOT_HAPPENED',
+          notHappenedReason: 'CUSTOMER_CANCELLED',
+        ),
+      ),
+    ]);
+
+    expect(find.byKey(const ValueKey('requests-rate-q1')), findsNothing);
+  });
+
+  // RA-MO-248: choosing makes a money item, so the server asks for the
+  // money right. The button was shown to every providers manager and the
+  // server then refused; and an amount the server kept back read «بدون
+  // مبلغ», a false word about the offer.
+  testWidgets('a reader without the money right is not offered «اختر هذا»', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '550000'),
+    ], managesMoney: false);
+
+    expect(find.byKey(const ValueKey('requests-choose-q1')), findsNothing);
+    expect(find.byKey(const ValueKey('requests-choose-note')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('requests-choose-by-money')),
+      findsOneWidget,
+    );
+    // Saying no and talking to them need no money right.
+    expect(find.byKey(const ValueKey('requests-decline-q1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-chat-q1')), findsOneWidget);
+  });
+
+  testWidgets('an amount kept from the reader is not «بدون مبلغ»', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      [_offer('q1', 'ضوء صنعاء', null)],
+      // Without the money there are no items: the page finds its request.
+      itemKey: null,
+      quoteId: 'q1',
+      seesMoney: false,
+      managesMoney: false,
+    );
+
+    expect(find.text('بدون مبلغ'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('requests-offer-amount-hidden-q1')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a notification opens its request without knowing the row', (
     tester,
   ) async {
@@ -621,13 +703,19 @@ Future<_Harness> _pump(
   double width = 420,
   _Marketplace? marketplace,
   bool settle = true,
+  bool seesMoney = true,
+  bool managesMoney = true,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
   addTearDown(tester.view.reset);
   marketplace ??= _Marketplace(quotes);
   final finance = FinanceProvider(_Finance());
-  await finance.loadMoney('plan-1');
+  await finance.loadMoney(
+    'plan-1',
+    canViewMoney: seesMoney,
+    canManageMoney: managesMoney,
+  );
   final chat = _Chat(fails: chatFails);
   final router = GoRouter(
     initialLocation: '/requests',

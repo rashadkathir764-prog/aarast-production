@@ -284,6 +284,58 @@ void main() {
       }
     });
 
+    // RA-MO-251 (batch 7): on a request that ran past its days the footer
+    // said «اطلب عرض جديد», and the tap opened that dead request.
+    testWidgets('a request past its days: the tap asks for a new one', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final marketplace = _FakeMarketplaceProvider(
+        quotes: [_quote(status: 'EXPIRED')],
+      );
+      final account = await _authenticatedPlanContext();
+      addTearDown(account.controller.dispose);
+      final router = GoRouter(
+        initialLocation: '/providers/$_providerId',
+        routes: [
+          GoRoute(
+            path: '/providers/:id',
+            builder: (_, _) => const ProviderDetailsScreen(
+              providerId: _providerId,
+              weddingPlanId: 'plan-1',
+            ),
+          ),
+        ],
+        errorBuilder: (_, state) => Scaffold(body: Text('opened ${state.uri}')),
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: account.authStorage),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: account.controller,
+            ),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: marketplace,
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('اطلب عرض جديد'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-details-quote')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('opened /providers/$_providerId/quote'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('provider details conversation action routes with quote id', (
       tester,
     ) async {

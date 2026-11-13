@@ -293,10 +293,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   }
 
   void _openPrimaryQuoteAction(BuildContext context, QuoteRequest? quote) {
-    if (quote == null ||
-        quote.status == 'CANCELLED' ||
-        quote.status == 'REJECTED' ||
-        quote.hasExpiredOffer) {
+    if (quote == null || providerFooterAsksForNewQuote(quote)) {
       _pushOnce(AppRouter.providerQuote(widget.providerId));
       return;
     }

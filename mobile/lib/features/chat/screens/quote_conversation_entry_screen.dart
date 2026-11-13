@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
@@ -32,6 +33,10 @@ class _QuoteConversationEntryScreenState
   ChatConversation? _conversation;
   String? _error;
 
+  /// The request is gone or is not this account's (RA-MO-250): the page
+  /// offered «retry», which could never succeed.
+  bool _gone = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,13 +44,19 @@ class _QuoteConversationEntryScreenState
   }
 
   Future<void> _open() async {
-    if (mounted) setState(() => _error = null);
+    if (mounted) {
+      setState(() {
+        _error = null;
+        _gone = false;
+      });
+    }
     try {
       final chat = context.read<ChatProvider>();
       final conversation = await chat.openQuote(widget.quoteRequestId);
       if (!mounted) return;
       setState(() {
         _conversation = conversation;
+        _gone = conversation == null && chat.quoteOpenRefused;
         _error = conversation == null
             ? (chat.errorMessage ?? aarastBackendConnectionErrorMessage)
             : null;
@@ -74,13 +85,23 @@ class _QuoteConversationEntryScreenState
         padding: AarastV3Density.pageInsets,
         children: [
           const JourneySubHeader(title: ''),
-          JourneyListState(
-            phase: _error == null
-                ? JourneyListPhase.loading
-                : JourneyListPhase.error,
-            section: JourneySection.providers,
-            onRetry: _open,
-          ),
+          if (_gone)
+            const JourneyListState(
+              key: ValueKey('quote-conversation-gone'),
+              phase: JourneyListPhase.empty,
+              section: JourneySection.providers,
+              emptyIcon: LucideIcons.messageCircle,
+              emptyTitle: 'هذي المحادثة ما عادت مفتوحة',
+              emptyMessage: 'الطلب انشال، أو هو لخطة ثانية غير المفتوحة الآن.',
+            )
+          else
+            JourneyListState(
+              phase: _error == null
+                  ? JourneyListPhase.loading
+                  : JourneyListPhase.error,
+              section: JourneySection.providers,
+              onRetry: _open,
+            ),
         ],
       ),
     );

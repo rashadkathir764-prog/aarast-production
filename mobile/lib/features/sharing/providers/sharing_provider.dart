@@ -592,7 +592,53 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String id,
     required String role,
     required PlanRolePermissions permissions,
+    required SharedMember from,
   }) async {
+    // RA-MO-243: a save sends the rights the person changed, against the
+    // participant as the page read them ([from]). Every right used to go
+    // «so editing one never resets another»; across two phones it did the
+    // reverse: a page read before the owner took the money right away gave
+    // it back on its next save of anything. A new role is the whole set of
+    // levels just chosen, so it goes with every level the page shows; the
+    // flags the page does not show go only when a role changed them.
+    final before = from.toPermissions();
+    final roleChanged = role != from.role;
+    const shown = {
+      'canViewMoney',
+      'canManageMoney',
+      'canManageTasks',
+      'canManageGuests',
+      'canManageProviders',
+    };
+    final chosen = <String, bool>{
+      'canViewMoney': permissions.canViewMoney,
+      'canEditPlan': permissions.canEditPlan,
+      'canManageTasks': permissions.canManageTasks,
+      'canManageGuests': permissions.canManageGuests,
+      'canManageProviders': permissions.canManageProviders,
+      'canInviteMembers': permissions.canInviteMembers,
+      'canManageMoney': permissions.canManageMoney,
+      'receiveNotifications': permissions.receiveNotifications,
+    };
+    final held = <String, bool>{
+      'canViewMoney': before.canViewMoney,
+      'canEditPlan': before.canEditPlan,
+      'canManageTasks': before.canManageTasks,
+      'canManageGuests': before.canManageGuests,
+      'canManageProviders': before.canManageProviders,
+      'canInviteMembers': before.canInviteMembers,
+      'canManageMoney': before.canManageMoney,
+      'receiveNotifications': before.receiveNotifications,
+    };
+    final changes = <String, dynamic>{
+      if (roleChanged) 'role': role,
+      for (final entry in chosen.entries)
+        if (entry.value != held[entry.key] ||
+            (roleChanged && shown.contains(entry.key)))
+          entry.key: entry.value,
+    };
+    if (changes.isEmpty) return true;
+
     _isSubmitting = true;
     _errorMessage = null;
     _errorCode = null;
@@ -600,19 +646,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     try {
-      // Send the complete permission snapshot so editing one permission never
-      // silently resets another.
-      final member = await _api.updateSharedMember(weddingPlanId, id, {
-        'role': role,
-        'canViewMoney': permissions.canViewMoney,
-        'canEditPlan': permissions.canEditPlan,
-        'canManageTasks': permissions.canManageTasks,
-        'canManageGuests': permissions.canManageGuests,
-        'canManageProviders': permissions.canManageProviders,
-        'canInviteMembers': permissions.canInviteMembers,
-        'canManageMoney': permissions.canManageMoney,
-        'receiveNotifications': permissions.receiveNotifications,
-      });
+      final member = await _api.updateSharedMember(weddingPlanId, id, changes);
       _members = [
         for (final item in _members) item.id == member.id ? member : item,
       ];

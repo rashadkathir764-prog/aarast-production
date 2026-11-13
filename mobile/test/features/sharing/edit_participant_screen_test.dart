@@ -40,34 +40,35 @@ void main() {
     expect(find.text('الرفد'), findsNothing);
   });
 
-  testWidgets('saves one full snapshot and keeps the flags it does not show', (
-    tester,
-  ) async {
-    final api = _Api(
-      _member(role: 'HELPER', canEditPlan: true, canInviteMembers: true),
-    );
-    await _pump(tester, api);
+  // RA-MO-243 (batch 8): the page sent every right as it had read them,
+  // «so editing one permission never resets another». It did the reverse
+  // across two phones: a page read before the owner took the money right
+  // away gave it back on its next save, of anything. A save sends the
+  // rights the person changed; what it does not send, it cannot undo, and
+  // the flags the page does not show are never sent.
+  testWidgets(
+    'a changed level sends that level, and nothing it did not touch',
+    (tester) async {
+      final api = _Api(
+        _member(role: 'HELPER', canEditPlan: true, canInviteMembers: true),
+      );
+      await _pump(tester, api);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const ValueKey('participant-level-المال')),
-        matching: find.text('يعدّل'),
-      ),
-    );
-    await tester.pump();
-    await tester.ensureVisible(find.byKey(const ValueKey('member-save')));
-    await tester.tap(find.byKey(const ValueKey('member-save')));
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('participant-level-المال')),
+          matching: find.text('يعدّل'),
+        ),
+      );
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const ValueKey('member-save')));
+      await tester.tap(find.byKey(const ValueKey('member-save')));
+      await tester.pumpAndSettle();
 
-    final sent = api.lastUpdate!;
-    expect(sent['role'], 'HELPER');
-    expect(sent['canManageMoney'], isTrue);
-    expect(sent['canViewMoney'], isTrue);
-    expect(sent['canManageTasks'], isTrue);
-    expect(sent['canEditPlan'], isTrue);
-    expect(sent['canInviteMembers'], isTrue);
-    await tester.pump(const Duration(seconds: 6));
-  });
+      expect(api.lastUpdate, {'canViewMoney': true, 'canManageMoney': true});
+      await tester.pump(const Duration(seconds: 6));
+    },
+  );
 
   testWidgets('choosing «يشوف بس» resets the levels to the viewer role', (
     tester,
@@ -81,9 +82,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('member-save')));
     await tester.pumpAndSettle();
 
+    // A new role is the whole set of levels the person just chose: it goes
+    // with every level the page shows.
     expect(api.lastUpdate!['role'], 'VIEWER');
     expect(api.lastUpdate!['canManageTasks'], isFalse);
     expect(api.lastUpdate!['canManageGuests'], isFalse);
+    expect(api.lastUpdate!['canManageProviders'], isFalse);
+    expect(api.lastUpdate!['canViewMoney'], isFalse);
+    expect(api.lastUpdate!['canManageMoney'], isFalse);
     await tester.pump(const Duration(seconds: 6));
   });
 

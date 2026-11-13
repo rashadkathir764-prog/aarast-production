@@ -185,8 +185,14 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// The last [openQuote] was refused for good: the request is gone, or it
+  /// is not this account's. Asking again cannot succeed.
+  bool get quoteOpenRefused => _quoteOpenRefused;
+  bool _quoteOpenRefused = false;
+
   Future<ChatConversation?> openQuote(String quoteRequestId) async {
     _errorMessage = null;
+    _quoteOpenRefused = false;
     try {
       final conversation = await _api
           .conversationForQuote(quoteRequestId)
@@ -197,6 +203,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = 'فتح المحادثة طوّل أكثر من اللازم. جرّب مرة ثانية.';
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _quoteOpenRefused = error.statusCode == 403 || error.statusCode == 404;
     } catch (_) {
       _errorMessage = aarastBackendConnectionErrorMessage;
     }
@@ -590,7 +597,12 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       if (isSessionDisposed) return;
       _upsertConversation(results[0] as ChatConversation, notify: false);
       final page = results[1] as ChatTimelinePage;
-      _timelines[conversationId] = page.items;
+      // The texts still waiting to go stay under the server's page, as on
+      // opening the conversation (RA-MO-249).
+      _timelines[conversationId] = [
+        ...page.items,
+        ..._queuedItems(conversationId),
+      ];
       _nextTimelineCursors[conversationId] = page.nextCursor;
       _quoteRequests[conversationId] =
           (results[2] as ChatQuoteRequestPage).items;

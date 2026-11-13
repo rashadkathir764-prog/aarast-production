@@ -14,10 +14,15 @@ class _OffersRow extends StatelessWidget {
     required this.onChoose,
     required this.onDecline,
     required this.onChat,
+    this.amountHidden = false,
   });
 
   final List<QuoteRequest> offers;
   final bool busy;
+
+  /// The reader does not see the plan's money, so the offers came without
+  /// their amounts.
+  final bool amountHidden;
 
   /// Null once one of the service's offers was chosen: a second choice would
   /// put a second agreement on the same item.
@@ -32,6 +37,7 @@ class _OffersRow extends StatelessWidget {
       key: ValueKey('requests-offer-${quote.id}'),
       quote: quote,
       busy: busy,
+      amountHidden: amountHidden,
       onChoose: choose == null ? null : () => choose(quote),
       onDecline: () => onDecline(quote),
       onChat: () => onChat(quote),
@@ -76,11 +82,13 @@ class _OfferCard extends StatelessWidget {
     required this.onChoose,
     required this.onDecline,
     required this.onChat,
+    this.amountHidden = false,
     super.key,
   });
 
   final QuoteRequest quote;
   final bool busy;
+  final bool amountHidden;
   final VoidCallback? onChoose;
   final VoidCallback onDecline;
   final VoidCallback onChat;
@@ -109,10 +117,26 @@ class _OfferCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AarastV3Space.x2),
-          Text(
-            amount ?? 'بدون مبلغ',
-            style: JourneyType.of(JourneyType.figure, weight: JourneyType.bold),
-          ),
+          // RA-MO-248: «بدون مبلغ» was a false word about an offer whose
+          // amount the server kept from this reader.
+          if (amount == null && amountHidden)
+            Text(
+              'السعر عند اللي يدير المال',
+              key: ValueKey('requests-offer-amount-hidden-${quote.id}'),
+              style: JourneyType.of(
+                JourneyType.body,
+                weight: JourneyType.bold,
+                color: AarastV3Color.textMuted,
+              ),
+            )
+          else
+            Text(
+              amount ?? 'بدون مبلغ',
+              style: JourneyType.of(
+                JourneyType.figure,
+                weight: JourneyType.bold,
+              ),
+            ),
           if (quote.service?.title case final service?)
             Text(
               service,
@@ -322,6 +346,7 @@ class _ChosenCard extends StatelessWidget {
         AarastV3Color.dangerSoft,
       ),
       'CANCELLED' => ('ملغي', AarastV3Color.textMuted, AarastV3Color.canvas),
+      'EXPIRED' => ('انتهى', AarastV3Color.textMuted, AarastV3Color.canvas),
       _ => (
         context.say('اخترته', 'اخترتيه'),
         context.accent.primary,
@@ -356,6 +381,8 @@ class _ChosenCard extends StatelessWidget {
             ? 'اعتذروا: ${booking.note!.trim()}'
             : 'اعتذروا عن ${formatArabicDayMonth(booking.eventDate)}',
       'CANCELLED' => 'انلغى الحجز',
+      // B-42: the request waited while his account was stopped.
+      'EXPIRED' => 'انتهى طلب الحجز، المزود موقوف مؤقتًا',
       _ => context.say(
         'باقي تطلب منهم حجز يوم عرسك',
         'باقي تطلبين منهم حجز يوم عرسك',
@@ -419,7 +446,8 @@ class _ChosenCard extends StatelessWidget {
               expand: true,
               onPressed: busy ? null : onConfirmDelivery,
             )
-          else if (completed)
+          // RA-MO-246: «قالوا إنهم ما حضروا. قيّمهم» had no button to do it.
+          else if (booking?.canBeReviewed == true)
             JourneyButton(
               key: ValueKey('requests-rate-${quote.id}'),
               label:
@@ -476,7 +504,10 @@ class _ChosenCard extends StatelessWidget {
                 ),
               // The server cancels only before the day (booking-policy), so a
               // completed booking has no cancel to offer.
-              if (booking != null && booking.isOpen && !completed)
+              if (booking != null &&
+                  booking.isOpen &&
+                  !completed &&
+                  !notHappened)
                 JourneyTextAction(
                   key: ValueKey('requests-cancel-booking-${quote.id}'),
                   label: booking.isConfirmed

@@ -43,6 +43,10 @@ class ProviderReviewsScreen extends StatefulWidget {
 
 typedef _Booked = ({String providerId, String name, String service});
 
+/// What the server takes a review for: a booking whose day passed, and one
+/// the provider reported he did not come to (RA-MO-246).
+bool _reviewable(MarketplaceBooking booking) => booking.canBeReviewed;
+
 class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   final _comment = TextEditingController();
 
@@ -76,13 +80,15 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       .where((quote) => quote.booking != null)
       .toList();
 
-  /// Each provider once, from its bookings in [status].
-  List<_Booked> _providers(List<QuoteRequest> quotes, String status) {
+  /// Each provider once, from its bookings that pass [wanted].
+  List<_Booked> _providers(
+    List<QuoteRequest> quotes,
+    bool Function(MarketplaceBooking booking) wanted,
+  ) {
     final seen = <String>{};
     return [
       for (final quote in quotes)
-        if (quote.booking!.lifecycleStatus == status &&
-            seen.add(quote.providerId))
+        if (wanted(quote.booking!) && seen.add(quote.providerId))
           (
             providerId: quote.providerId,
             name: quote.provider?.businessName ?? '',
@@ -107,9 +113,15 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       _failed = false;
     });
     try {
+      // The page names its plan itself; opened first, nothing else has
+      // (RA-MO-244).
+      marketplace.configureAccountScope(
+        includeAccountData: true,
+        weddingPlanId: widget.weddingPlanId,
+      );
       if (_quotes.isEmpty) await marketplace.loadScopedQuoteRequests();
       if (!mounted) return;
-      for (final booked in _providers(_quotes, 'COMPLETED')) {
+      for (final booked in _providers(_quotes, _reviewable)) {
         if (userId == null) break;
         final reviews = await api.getProviderReviews(booked.providerId);
         final own = reviews.where((review) => review.userId == userId);
@@ -126,7 +138,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   Widget build(BuildContext context) {
     context.watch<ProviderMarketplaceProvider>();
     final quotes = _quotes;
-    final done = _providers(quotes, 'COMPLETED');
+    final done = _providers(quotes, _reviewable);
     final left = done.where((item) => !_mine.containsKey(item.providerId));
     final current =
         left.where((item) => item.providerId == _currentId).firstOrNull ??
@@ -167,7 +179,10 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
               }),
       );
     } else if (current == null) {
-      final ahead = _providers(quotes, 'CONFIRMED');
+      final ahead = _providers(
+        quotes,
+        (booking) => booking.lifecycleStatus == 'CONFIRMED',
+      );
       final locked =
           ahead
               .where((item) => item.providerId == widget.providerId)

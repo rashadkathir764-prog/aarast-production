@@ -327,6 +327,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       id: member.id,
       role: _role,
       permissions: _permissions,
+      from: member,
     );
     if (!mounted || !updated) return;
     AarastToast.showSuccess(context, 'حفظنا اللي يشوفه.');

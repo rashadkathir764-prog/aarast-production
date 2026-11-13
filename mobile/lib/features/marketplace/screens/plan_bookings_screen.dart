@@ -14,15 +14,25 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_board_view.dart' show providerServiceIcon;
+import '../widgets/quote_decision_sheets.dart' show BookingRequestSheet;
 
 /// w34 «الحجوزات»: every booking of the plan in one list, booked first,
 /// then waiting, declined, done and cancelled, each with its next step.
 /// «شوف غيرهم» on a declined one pops with that service's name, so the
 /// providers tab opens its directory on it.
 class PlanBookingsScreen extends StatefulWidget {
-  const PlanBookingsScreen({required this.weddingPlanId, this.now, super.key});
+  const PlanBookingsScreen({
+    required this.weddingPlanId,
+    this.now,
+    this.pickDay,
+    super.key,
+  });
 
   final String weddingPlanId;
+
+  /// Picks another day in «نطلب الحجز؟»; tests replace the platform picker.
+  final Future<DateTime?> Function(BuildContext context, DateTime? initial)?
+  pickDay;
 
   /// Fixed in tests so «أمس» and the reminders line do not drift.
   final DateTime? now;
@@ -36,9 +46,16 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<ProviderMarketplaceProvider>().loadScopedQuoteRequests();
-      }
+      if (!mounted) return;
+      // The page names its plan itself: the requests list answers «nothing»
+      // until a plan is named, and this page opens first from the home
+      // card and from a notification (RA-MO-244).
+      context.read<ProviderMarketplaceProvider>()
+        ..configureAccountScope(
+          includeAccountData: true,
+          weddingPlanId: widget.weddingPlanId,
+        )
+        ..loadScopedQuoteRequests();
     });
   }
 
@@ -108,11 +125,29 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
     );
   }
 
+  /// The same «نطلب الحجز؟» as the requests page, on the plan's day. Sent
+  /// without a day, the server booked the day the request was first made
+  /// for: not the day this booking had moved to, and not the new wedding
+  /// day this page is opened for after a postponement (RA-MO-245).
   Future<void> _askAgain(
     ProviderMarketplaceProvider marketplace,
     QuoteRequest quote,
   ) async {
-    final ok = await marketplace.requestBooking(quote);
+    final summary = context.read<DashboardSummaryProvider?>()?.summary;
+    final mine = summary?.planId == widget.weddingPlanId ? summary : null;
+    final place =
+        mine?.location?['fullLabel']?.toString().trim() ?? mine?.city?.trim();
+    final day = await showJourneySheet<DateTime>(
+      context: context,
+      builder: (_) => BookingRequestSheet(
+        quote: quote,
+        day: mine?.weddingDate ?? quote.booking?.eventDate ?? quote.eventDate,
+        place: place,
+        pickDay: widget.pickDay,
+      ),
+    );
+    if (day == null || !mounted) return;
+    final ok = await marketplace.requestBooking(quote, eventDate: day);
     if (!mounted) return;
     if (ok) {
       AarastToast.showSuccess(context, 'أرسلنا لهم طلب الحجز');
@@ -191,6 +226,10 @@ class _BookingCard extends StatelessWidget {
         AarastV3Color.dangerSoft,
       ),
       'COMPLETED' => ('تمّ', AarastV3Color.textMuted, AarastV3Color.line),
+      // RA-MO-247: these two fell under «ملغي · لغيته أنت», which the
+      // person never did.
+      'NOT_HAPPENED' => ('ما صار', AarastV3Color.textMuted, AarastV3Color.line),
+      'EXPIRED' => ('انتهى', AarastV3Color.textMuted, AarastV3Color.line),
       _ => ('ملغي', AarastV3Color.textMuted, AarastV3Color.line),
     };
     final line = switch (booking.lifecycleStatus) {
@@ -201,15 +240,24 @@ class _BookingCard extends StatelessWidget {
             : '${context.say('طلبت', 'طلبتِ')} ${_dayWord(booking.createdAt!, now)}',
       'DECLINED' => reason == null ? 'اعتذر عن الموعد' : 'اعتذر: $reason',
       'COMPLETED' => 'كان يوم ${formatArabicDayMonth(booking.eventDate)}',
+      // B-22: the provider reported it; his own absence leaves the review
+      // open (RA-BE-46).
+      'NOT_HAPPENED' =>
+        booking.notHappenedReason == 'WE_DID_NOT_ATTEND'
+            ? 'قالوا إنهم ما حضروا'
+            : 'المزود سجّل إن الحجز ما تمّ',
+      // B-42: the request waited while his account was stopped.
+      'EXPIRED' => 'انتهى الطلب، المزود موقوف مؤقتًا',
       _ => _cancelledLine(booking, context.journeyProfile),
     };
     final askAgain =
-        booking.lifecycleStatus == 'CANCELLED' &&
+        (booking.lifecycleStatus == 'CANCELLED' ||
+            booking.lifecycleStatus == 'EXPIRED') &&
         booking.canRequestAgain &&
         quote.status == 'ACCEPTED';
     final findOthers =
         booking.lifecycleStatus == 'DECLINED' && _serviceName(quote).isNotEmpty;
-    final rate = booking.lifecycleStatus == 'COMPLETED';
+    final rate = booking.canBeReviewed;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AarastV3Space.x2),

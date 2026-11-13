@@ -152,6 +152,25 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
+  /// The reader's money rights, once the money of this plan has been read;
+  /// null while they are not known.
+  FinanceProvider? get _knownMoney {
+    final finance = context.watch<FinanceProvider?>();
+    return finance != null &&
+            finance.loadedPlanId == widget.weddingPlanId &&
+            !finance.isLoading
+        ? finance
+        : null;
+  }
+
+  /// RA-MO-248: choosing an offer makes a money item, so the server asks
+  /// for the money right too. The button was offered to everyone who
+  /// manages the providers, and the server then refused.
+  bool get _mayChoose => _knownMoney?.canManageMoney ?? true;
+
+  /// The server sends no amount to a reader who does not see the money.
+  bool get _seesMoney => _knownMoney?.canViewMoney ?? true;
+
   @override
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
@@ -248,20 +267,29 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     _OffersRow(
                       offers: offers,
                       busy: marketplace.isSubmitting,
-                      onChoose: accepted.isEmpty ? _choose : null,
+                      onChoose: accepted.isEmpty && _mayChoose ? _choose : null,
+                      amountHidden: !_seesMoney,
                       onDecline: _decline,
                       onChat: _openChat,
                     ),
                     if (accepted.isEmpty) ...[
                       const SizedBox(height: AarastV3Space.x3),
-                      JourneyNote(
-                        key: const ValueKey('requests-choose-note'),
-                        text: context.say(
-                          'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
-                          'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                      if (_mayChoose)
+                        JourneyNote(
+                          key: const ValueKey('requests-choose-note'),
+                          text: context.say(
+                            'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                            'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                          ),
+                          icon: LucideIcons.wallet,
+                        )
+                      else
+                        const JourneyNote(
+                          key: ValueKey('requests-choose-by-money'),
+                          text:
+                              'اختيار العرض يصير بند في المال، فهو عند اللي يدير مال الخطة.',
+                          icon: LucideIcons.lock,
                         ),
-                        icon: LucideIcons.wallet,
-                      ),
                     ],
                   ],
                   for (final quote in accepted) ...[

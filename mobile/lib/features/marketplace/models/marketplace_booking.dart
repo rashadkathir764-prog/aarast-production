@@ -168,6 +168,14 @@ class MarketplaceBooking {
   bool get canRequestAgain =>
       status == 'DECLINED' || status == 'CANCELLED' || status == 'EXPIRED';
 
+  /// The server's own rule for a review (F10, RA-BE-46): the booking's day
+  /// passed, or the provider reported that he himself did not come. Any
+  /// other «ما صار» closes the review.
+  bool get canBeReviewed =>
+      lifecycleStatus == 'COMPLETED' ||
+      (lifecycleStatus == 'NOT_HAPPENED' &&
+          notHappenedReason == 'WE_DID_NOT_ATTEND');
+
   /// `YYYY-MM-DD`, the format the API takes.
   static String dayParam(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'

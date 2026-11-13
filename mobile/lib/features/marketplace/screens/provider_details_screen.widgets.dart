@@ -112,22 +112,32 @@ VoidCallback? _externalLinkAction(
   };
 }
 
+/// The footer asks for a new request: there is none, or the latest is over
+/// (cancelled, declined, run past its days, its offer expired). The label
+/// and the tap read this one rule; they had two, and on a request past its
+/// days the label said «اطلب عرض جديد» while the tap opened the dead
+/// request (RA-MO-251).
+bool providerFooterAsksForNewQuote(QuoteRequest? quote) {
+  if (quote == null) return true;
+  return switch (quote.status) {
+    'SENT' || 'VIEWED' || 'ACCEPTED' => false,
+    'RESPONDED' => quote.hasExpiredOffer,
+    _ => true,
+  };
+}
+
 /// Where the latest request to this provider stands, as the footer's action.
 String _primaryQuoteActionLabel(QuoteRequest? quote, JourneyProfile profile) {
   final say = profile.say;
   if (quote == null) return say('اطلب عرض سعر', 'اطلبي عرض سعر');
+  if (providerFooterAsksForNewQuote(quote)) {
+    return say('اطلب عرض جديد', 'اطلبي عرض جديد');
+  }
   if (quote.status == 'SENT' || quote.status == 'VIEWED') {
     return say('تابع طلبك', 'تابعي طلبك');
   }
-  if (quote.status == 'RESPONDED') {
-    return quote.hasExpiredOffer
-        ? say('اطلب عرض جديد', 'اطلبي عرض جديد')
-        : say('شوف العرض', 'شوفي العرض');
-  }
-  if (quote.status == 'ACCEPTED') {
-    return say('شوفه في طلباتي', 'شوفيه في طلباتي');
-  }
-  return say('اطلب عرض جديد', 'اطلبي عرض جديد');
+  if (quote.status == 'RESPONDED') return say('شوف العرض', 'شوفي العرض');
+  return say('شوفه في طلباتي', 'شوفيه في طلباتي');
 }
 
 /// w33: an unclaimed listing takes no requests until its owner claims it.

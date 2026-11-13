@@ -93,6 +93,29 @@ void main() {
     },
   );
 
+  // RA-MO-100: opening the app on a weak network, the refresh never reached
+  // the server, and the first 401 was passed on as a refusal: the session
+  // ended. A refresh that did not reach an answer is the connection.
+  test('a refresh that cannot reach the server is a network failure', () async {
+    var expired = 0;
+    final adapter = _RefreshAdapter();
+    final client = ApiClient(tokenProvider: () async => 'old-access');
+    client.dio.httpClientAdapter = adapter;
+    client.onSessionExpired = () => expired += 1;
+    client.refreshSession = () async =>
+        throw const ApiException('ما وصلنا', isNetworkFailure: true);
+
+    await expectLater(
+      client.getJson('/api/v1/auth/me'),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.isNetworkFailure, 'network', isTrue)
+            .having((e) => e.isUnauthorized, 'unauthorized', isFalse),
+      ),
+    );
+    expect(expired, 0);
+  });
+
   test(
     'a wrong current password is an answer, not an expired session',
     () async {

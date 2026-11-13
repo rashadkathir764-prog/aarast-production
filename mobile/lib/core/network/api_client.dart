@@ -161,9 +161,20 @@ class ApiClient {
                 handler.resolve(await dio.fetch<Object?>(options));
                 return;
               }
-            } on Object {
+            } on Object catch (refreshFailure) {
               _logFinalFailure(error);
-              handler.next(error);
+              // RA-MO-100: the refresh did not reach an answer (no network,
+              // a server down). Passing the first 401 on read as the server
+              // refusing the session, and opening the app on a weak network
+              // signed the person out; it is said as what it is, the
+              // connection, and the session stays.
+              handler.next(
+                DioException(
+                  requestOptions: error.requestOptions,
+                  type: DioExceptionType.connectionError,
+                  error: refreshFailure,
+                ),
+              );
               return;
             }
             onSessionExpired?.call();

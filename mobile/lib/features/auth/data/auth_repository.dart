@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/session/session_teardown_coordinator.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/utils/app_clock.dart';
 import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
 import '../../../core/session/safe_user.dart';
@@ -445,7 +448,38 @@ class AuthRepository implements SessionAuthTeardownPort {
       accessToken: accessToken,
       refreshToken: refreshToken,
     );
+    // RA-BE-129: the access token lives 15 minutes. Past that, the server
+    // refused the sign-out and the device's notice unregistering, so the
+    // refresh token stayed alive on the server for 30 days and the phone
+    // kept the account's notices. An expired one is traded here, in memory
+    // only, for a fresh pair that both requests then carry; the phone's own
+    // copy is cleared right after, as before. Offline or refused, the old
+    // pair stays and the sign-out on the phone goes on.
+    if (refreshToken == null || refreshToken.isEmpty) return;
+    if (accessToken != null &&
+        accessToken.isNotEmpty &&
+        !accessTokenExpired(accessToken, now: appNow())) {
+      return;
+    }
+    try {
+      final json = await _apiClient
+          .postJsonWithReceiveTimeout('/api/v1/auth/refresh', {
+            'refreshToken': refreshToken,
+          }, receiveTimeout: teardownRefreshTimeout)
+          .timeout(teardownRefreshTimeout);
+      final fresh = _parseAuthResponse(json, operation: 'teardown_refresh');
+      lease.captureCredentials(
+        accessToken: fresh.accessToken,
+        refreshToken: fresh.refreshToken,
+      );
+    } on Object {
+      // The old pair stays captured; the sign-out on the phone goes on.
+    }
   }
+
+  /// How long a sign-out waits to trade an expired access token: inside the
+  /// teardown's own two seconds for capturing the credentials.
+  static const teardownRefreshTimeout = Duration(milliseconds: 1500);
 
   @override
   Future<void> clearLocalSession(SessionAuthTeardownLease lease) async {
@@ -527,5 +561,29 @@ class AuthRepository implements SessionAuthTeardownPort {
       );
       throw const ApiException('ما قدرنا نقرأ رد الدخول. جرّب مرة ثانية.');
     }
+  }
+}
+
+/// Whether a signed access token's `exp` has passed (with half a minute to
+/// spare for the trip), read without checking the signature: only to know
+/// whether to trade it first (RA-BE-129). One that cannot be read is taken
+/// as live, and the request finds out.
+@visibleForTesting
+bool accessTokenExpired(String token, {required DateTime now}) {
+  final parts = token.split('.');
+  if (parts.length != 3) return false;
+  try {
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    );
+    final exp = payload is Map ? payload['exp'] : null;
+    if (exp is! num) return false;
+    final expiresAt = DateTime.fromMillisecondsSinceEpoch(
+      (exp * 1000).round(),
+      isUtc: true,
+    );
+    return !now.toUtc().add(const Duration(seconds: 30)).isBefore(expiresAt);
+  } on Object {
+    return false;
   }
 }

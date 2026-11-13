@@ -125,6 +125,13 @@ void main() {
 
       expect(find.text('اتفقت على 900$_nbspر.ي'), findsOneWidget);
       expect(find.text('دفعت 0$_nbspر.ي'), findsOneWidget);
+
+      // RA-MO-181: the reader hears the currency's name, not «ر.ي».
+      final card = tester.getSemantics(
+        find.byKey(const ValueKey('aarast-dashboard-money-card')),
+      );
+      expect(card.label, contains('ريال يمني'));
+      expect(card.label, isNot(contains('ر.ي')));
     });
 
     testWidgets('with the money in known: left, in hand and promised alike', (

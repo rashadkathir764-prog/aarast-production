@@ -280,6 +280,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
               ),
               Text(
                 money(sum(shown)),
+                semanticsLabel: _spokenMoney(money(sum(shown)), currency),
                 style: JourneyType.of(
                   JourneyType.display,
                   weight: JourneyType.bold,
@@ -400,6 +401,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
                   subtitleMaxLines: 2,
                   trailing: Text(
                     money(line.amount),
+                    semanticsLabel: _spokenMoney(money(line.amount), currency),
                     style: JourneyType.of(
                       JourneyType.body,
                       weight: JourneyType.bold,
@@ -499,6 +501,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
                 subtitleMaxLines: 2,
                 trailing: Text(
                   money(payment.amount),
+                  semanticsLabel: _spokenMoney(money(payment.amount), currency),
                   style:
                       JourneyType.of(
                         JourneyType.body,
@@ -685,12 +688,15 @@ class _DueLine extends StatelessWidget {
     final row = AarastPressable(
       // A date opens its pay page; anything else its agreement.
       onTap: pay == null ? onOpen : () => pay(line),
-      semanticLabel: [
-        line.title,
-        for (final fact in facts) fact.$1,
-        ...notes,
-        money(line.amount),
-      ].join('، '),
+      semanticLabel: _spokenMoney(
+        [
+          line.title,
+          for (final fact in facts) fact.$1,
+          ...notes,
+          money(line.amount),
+        ].join('، '),
+        currency,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(AarastV3Space.x3),
         // What it is beside how much, so the action does not push the

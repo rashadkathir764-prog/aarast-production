@@ -11,6 +11,11 @@ part of 'money_overview_screen.dart';
 String _figure(BuildContext context, Object? value, String currency) =>
     keepCurrencyOnLine(_amount(context, value, currency));
 
+/// RA-MO-181: [text] as the screen reader should say it, the currency by
+/// its name («ريال يمني») where the screen writes «ر.ي».
+String _spokenMoney(String text, String currency) =>
+    text.replaceAll(currencyLabelAr(currency), currencySpokenLabelAr(currency));
+
 String _dayWords(DateTime day) => formatArabicDayMonth(day);
 
 /// «بعد 5 أيام», «بكرة», «اليوم», «متأخرة 3 أيام».

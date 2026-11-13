@@ -264,13 +264,13 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           : [
               'المال',
               if (ownerLeft != null)
-                '${context.say('عليك من العرس', 'عليكِ من العرس')} ${_money(ownerLeft, currency)}'
+                '${context.say('عليك من العرس', 'عليكِ من العرس')} ${_spoken(ownerLeft, currency)}'
               else if (agreed > 0)
-                '$leftLabel ${_money(left, currency)}',
+                '$leftLabel ${_spoken(left, currency)}',
               ?verdict?.words,
-              if (known) 'معك ${_money(funding.inHand, currency)}',
+              if (known) 'معك ${_spoken(funding.inHand, currency)}',
               if (known && funding.pledged > 0)
-                'موعود ${_money(funding.pledged, currency)}',
+                'موعود ${_spoken(funding.pledged, currency)}',
             ].join('، '),
       child: AarastPressable(
         onTap: widget.onTap,
@@ -665,6 +665,12 @@ class _MoneySplitBar extends StatelessWidget {
 
 String _money(double value, String currency) {
   return compactMoneyParts(value, currencyCode: currency).plainText;
+}
+
+/// RA-MO-181: what the screen reader says: the currency by its name
+/// («ريال يمني»), not «ر.ي» read out letter by letter.
+String _spoken(double value, String currency) {
+  return compactMoneyParts(value, currencyCode: currency).semanticText;
 }
 
 /// b02's far column (V-01): every line the same way, the short figure with

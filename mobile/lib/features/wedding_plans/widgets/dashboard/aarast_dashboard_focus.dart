@@ -10,15 +10,6 @@ enum AarastDashboardFocusTarget {
   item,
   plan,
   money,
-
-  /// The budget screen itself (w19), for a step whose button says
-  /// «حدّد الميزانية»: it used to open the money tab's root and leave the
-  /// reader to find the budget.
-  budget,
-
-  /// The new-item form, for a step whose button says «أضف بند».
-  budgetItem,
-  mahr,
   tasks,
   guests,
 
@@ -60,9 +51,6 @@ class AarastDashboardFocus {
 AarastDashboardFocus resolveDashboardFocus(
   DashboardSummary summary, {
   JourneyProfile profile = JourneyProfile.groom,
-
-  /// A groom's or a bride's plan whose mahr is not recorded yet (b01).
-  bool mahrMissing = false,
 }) {
   final say = profile.say;
   final backendItem = summary.importantItems.firstOrNull;
@@ -139,9 +127,19 @@ AarastDashboardFocus resolveDashboardFocus(
     );
   }
 
-  // The basics everyone needs, each only while it is missing: no fixed
-  // steps hold the home (D72).
-  if (dashboardBudgetMissing(summary) && summary.permissions.canManageMoney) {
+  // D78 (RA-MO-147): the chain of basics is the server's, and an account
+  // plan's summary (a kept copy too) carries it in `importantItems`. When
+  // that list is empty the server found nothing missing for this reader, so
+  // the phone asks nothing more: it used to add «أضف أول بند» and «أضف أول
+  // مهمة», steps the server had not set, in an order of its own. Only a plan
+  // kept on the phone, which no server orders, walks the chain here, in
+  // D78's order: budget, first agreement, guests (its place is set when it
+  // is made; the mahr and a quote need an account).
+  final phoneChain = !summary.accountBacked;
+
+  if (phoneChain &&
+      dashboardBudgetMissing(summary) &&
+      summary.permissions.canManageMoney) {
     return AarastDashboardFocus(
       eyebrow: say('ابدأ من الأساس', 'ابدئي من الأساس'),
       title: say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
@@ -152,54 +150,32 @@ AarastDashboardFocus resolveDashboardFocus(
       actionLabel: say('حدّد الميزانية', 'حدّدي الميزانية'),
       icon: LucideIcons.wallet,
       tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.budget,
+      target: AarastDashboardFocusTarget.money,
     );
   }
 
-  if (mahrMissing && summary.permissions.canManageMoney) {
+  // The server's words for the same step (ADD_FIRST_COST): an agreement,
+  // not a budget item.
+  final agreed = _amount(
+    summary.confirmedCostTotal ?? summary.moneySummary.confirmedCost,
+  );
+  if (phoneChain &&
+      (agreed == null || agreed <= 0) &&
+      summary.permissions.canManageMoney) {
     return AarastDashboardFocus(
       eyebrow: 'خطوتك الجاية',
-      // One wording for both readers: it speaks to the couple.
-      title: 'اتفقتوا على المهر؟',
-      reason: 'نحسبه لحاله، برا ميزانية العرس.',
-      actionLabel: say('سجّل المهر', 'سجّلي المهر'),
-      icon: LucideIcons.heartHandshake,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.mahr,
-    );
-  }
-
-  if (summary.budgetItemsCount == 0 && summary.permissions.canManageMoney) {
-    return AarastDashboardFocus(
-      eyebrow: 'خطوتك الجاية',
-      title: say('أضف أول بند', 'أضيفي أول بند'),
-      reason: say(
-        'القاعة، الذهب، الكسوة… كل شي بتصرف عليه بند.',
-        'الصالة، الذهب، الفستان… كل شي بتصرفين عليه بند.',
-      ),
-      actionLabel: say('أضف بند', 'أضيفي بند'),
+      title: say('سجّل أول اتفاق', 'سجّلي أول اتفاق'),
+      reason: 'القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان',
+      actionLabel: say('أضف اتفاق', 'أضيفي اتفاق'),
       icon: LucideIcons.wallet,
       tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.budgetItem,
+      target: AarastDashboardFocusTarget.money,
     );
   }
 
-  if (summary.totalTasks == 0 && summary.permissions.canManageTasks) {
-    return AarastDashboardFocus(
-      eyebrow: 'خطوتك الجاية',
-      title: say('أضف أول مهمة', 'أضيفي أول مهمة'),
-      reason: say(
-        'اكتب أول شي لازم يتسوى: متى، وعلى مين.',
-        'اكتبي أول شي لازم يتسوى: متى، وعلى مين.',
-      ),
-      actionLabel: say('أضف مهمة', 'أضيفي مهمة'),
-      icon: LucideIcons.listChecks,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.tasks,
-    );
-  }
-
-  if (summary.guestCount == 0 && summary.permissions.canManageGuests) {
+  if (phoneChain &&
+      summary.guestCount == 0 &&
+      summary.permissions.canManageGuests) {
     return AarastDashboardFocus(
       eyebrow: 'خطوتك الجاية',
       title: say('أضف أول ضيف', 'أضيفي أول ضيفة'),

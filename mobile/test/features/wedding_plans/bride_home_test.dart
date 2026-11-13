@@ -220,7 +220,17 @@ void main() {
   });
 
   testWidgets('D72: her next step in rose and in her words', (tester) async {
-    await _pump(tester, _summary(budget: '7000000'), JourneyProfile.bride);
+    // D78 (RA-MO-147): the phone words a step itself only for a plan kept
+    // on it; an account plan's steps are the server's, in her form.
+    await _pump(
+      tester,
+      _summary(
+        budget: '7000000',
+        dataScope: 'LOCAL',
+        costs: const {'confirmedCost': '900000'},
+      ),
+      JourneyProfile.bride,
+    );
 
     expect(_heroColor(tester), AarastV3Color.rose);
     // No fixed steps: the one missing basic, spoken to her.

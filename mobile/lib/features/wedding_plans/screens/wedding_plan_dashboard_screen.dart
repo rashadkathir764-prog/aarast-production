@@ -654,7 +654,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                 selectedPlanId,
                 _homeMahr(summary, selectedPlanId),
               ),
-              onOpenMahr: () => _openMahr(selectedPlanId),
               showHijri: context.watch<DevicePreferences?>()?.showHijri ?? true,
               // G17: the phone's one «أخفِ المبالغ» switch.
               amountsHidden:
@@ -697,12 +696,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(selectedPlanId)),
               onOpenMoney: () => context.go(AppRouter.money(selectedPlanId)),
-              // b01's steps open what their buttons name (w19 and the item
-              // form), not the money tab's root.
-              onOpenBudget: () =>
-                  context.push(AppRouter.moneyBudget(selectedPlanId)),
-              onOpenBudgetItem: () =>
-                  context.push(AppRouter.moneyCategoryCreate(selectedPlanId)),
               onOpenTasks: () => context.go(AppRouter.tasks(selectedPlanId)),
               onOpenProviders: () =>
                   context.go(AppRouter.planProviders(selectedPlanId)),
@@ -761,17 +754,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       reason:
           'المشاركة تحتاج حساباً حتى نحفظ الصلاحيات والدعوات ونربطها بخطتك بأمان.',
     );
-  }
-
-  /// a06 for a plan without its mahr yet; the home reads the money again.
-  Future<void> _openMahr(String weddingPlanId) async {
-    await context.push(AppRouter.moneyMahr(weddingPlanId));
-    if (!mounted) return;
-    if (_isLocalGuestPlan) {
-      await _loadLocalDashboard();
-    } else {
-      await context.read<FinanceProvider?>()?.loadMoney(weddingPlanId);
-    }
   }
 
   /// The bell's dot is the summary's unread count, and reading the notices

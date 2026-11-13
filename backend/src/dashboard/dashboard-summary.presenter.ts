@@ -53,7 +53,6 @@ export function buildImportantItems({
   weddingPlanId,
   tasks,
   paymentSchedules,
-  providers,
   today,
   receivedQuotes,
   pendingInvites,
@@ -62,8 +61,10 @@ export function buildImportantItems({
   guestCount,
   quoteRequestsCount,
   acceptedProviders,
+  canManagePlan,
   canManageMoney,
   canManageGuests,
+  canManageProviders,
   form,
   planPersona,
   mahrRecorded = null,
@@ -72,7 +73,6 @@ export function buildImportantItems({
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
   paymentSchedules: DashboardDueMoneyItem[];
-  providers: DashboardPlanProviderLinkRecord[];
   today: Date;
   receivedQuotes: number;
   pendingInvites: number;
@@ -81,10 +81,18 @@ export function buildImportantItems({
   guestCount: number;
   quoteRequestsCount: number;
   acceptedProviders: number;
+  /**
+   * RA-MO-147: every step of D78's chain is offered only to a reader who may
+   * take it, as the guests' already was (RA-BE-121). «أكمل موقع الزفاف» was
+   * asked of a viewer the server then refused.
+   */
+  canManagePlan: boolean;
   /** A reader who may record a payment is offered that; others only read it. */
   canManageMoney: boolean;
   /** «أضف أول ضيف» opens the adding: only for a reader who may add (RA-BE-121). */
   canManageGuests: boolean;
+  /** «اطلب أول عرض سعر» sends a request: only for a reader who may send it. */
+  canManageProviders: boolean;
   /** The reader's form (B5): the next steps speak to them. */
   form: AddressForm;
   /** Whose wedding the plan is: the bride's guests are «الضيفات». */
@@ -223,7 +231,9 @@ export function buildImportantItems({
     });
   }
 
-  if (!hasLocation) {
+  // D78: the one chain, in its order: place, budget, mahr, first agreement,
+  // guests, first quote, each only while it is missing.
+  if (canManagePlan && !hasLocation) {
     items.push(
       setupAction(
         weddingPlanId,
@@ -235,7 +245,7 @@ export function buildImportantItems({
       ),
     );
   }
-  if (!hasBudget) {
+  if (canManageMoney && !hasBudget) {
     items.push(
       setupAction(
         weddingPlanId,
@@ -299,7 +309,11 @@ export function buildImportantItems({
       ),
     );
   }
-  if (quoteRequestsCount === 0 && acceptedProviders === 0) {
+  if (
+    canManageProviders &&
+    quoteRequestsCount === 0 &&
+    acceptedProviders === 0
+  ) {
     items.push(
       setupAction(
         weddingPlanId,
@@ -311,39 +325,9 @@ export function buildImportantItems({
       ),
     );
   }
-
-  const firstProvider = providers[0];
-  if (firstProvider) {
-    const provider = firstProvider.provider;
-    items.push({
-      id: firstProvider.id,
-      type: "PLAN_PROVIDER",
-      title: "مزود في خطتك",
-      subtitle: provider.businessName,
-      body: [
-        provider.primaryCategory?.nameAr ?? null,
-        Number(provider.ratingAverage) > 0
-          ? `تقييم ${provider.ratingAverage.toString()}`
-          : null,
-      ]
-        .filter((part): part is string => Boolean(part))
-        .join(" · "),
-      icon: "provider",
-      tone: "success",
-      priority: "LOW",
-      actionLabel: "عرض الملف",
-      dueDate: null,
-      amount: null,
-      route: `/providers/${provider.id}`,
-      routeTarget: `/providers/${provider.id}`,
-      entityId: provider.id,
-      data: {
-        weddingPlanId,
-        providerId: provider.id,
-        planProviderLinkId: firstProvider.id,
-      },
-    });
-  }
+  // RA-MO-147: «مزود في خطتك · عرض الملف» closed this list once the chain
+  // was done, and the home drew it as «الخطوة الجاية». It is no step; the
+  // plan's providers have their own list (`planProviders`).
 
   return selectTopDashboardActions(items);
 }

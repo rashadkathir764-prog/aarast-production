@@ -144,7 +144,6 @@ export type DashboardImportantItemType =
   | "TASK_OVERDUE"
   | "TASK_TODAY"
   | "PAYMENT_SCHEDULE_DUE"
-  | "PLAN_PROVIDER"
   | "QUOTE_RECEIVED"
   | "INVITE_PENDING"
   | "SET_LOCATION"

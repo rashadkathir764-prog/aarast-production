@@ -127,7 +127,6 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     weddingPlanId: 'plan-1',
     tasks: [],
     paymentSchedules: [],
-    providers: [],
     today: new Date(2026, 9, 25),
     receivedQuotes: 0,
     pendingInvites: 0,
@@ -138,6 +137,8 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     acceptedProviders: 0,
     canManageMoney: true,
     canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
   };
   const bride = presenter.buildImportantItems({
     ...base,

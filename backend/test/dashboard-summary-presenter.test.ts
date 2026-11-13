@@ -116,7 +116,6 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
         status: PaymentScheduleStatus.PENDING,
       },
     ],
-    providers: [],
     today,
     receivedQuotes: 2,
     pendingInvites: 1,
@@ -127,6 +126,8 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     acceptedProviders: 0,
     canManageMoney: true,
     canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -175,7 +176,6 @@ test('dashboard next step: a reader who cannot record money only reads the payme
         status: PaymentScheduleStatus.PENDING,
       },
     ],
-    providers: [],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
     pendingInvites: 0,
@@ -186,6 +186,8 @@ test('dashboard next step: a reader who cannot record money only reads the payme
     acceptedProviders: 0,
     canManageMoney: false,
     canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
     form: 'FEMININE',
     planPersona: 'BRIDE',
   });
@@ -203,7 +205,6 @@ test('dashboard setup actions and provider preview keep current product wording'
     weddingPlanId: 'plan-1',
     tasks: [],
     paymentSchedules: [],
-    providers: [],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
     pendingInvites: 0,
@@ -214,6 +215,8 @@ test('dashboard setup actions and provider preview keep current product wording'
     acceptedProviders: 0,
     canManageMoney: true,
     canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -225,54 +228,49 @@ test('dashboard setup actions and provider preview keep current product wording'
   assert.equal(setupItems[0].routeTarget, '/wedding-plans/plan-1/plan-center');
   assert.equal(setupItems[1].routeTarget, '/wedding-plans/plan-1/money/budget');
   assert.equal(setupItems[2].routeTarget, '/wedding-plans/plan-1/guests/add');
-
-  const providerItems = dashboardPresenter.buildImportantItems({
-    weddingPlanId: 'plan-1',
-    tasks: [],
-    paymentSchedules: [],
-    providers: [providerLink()],
-    today: new Date(2026, 6, 11),
-    receivedQuotes: 0,
-    pendingInvites: 0,
-    hasLocation: true,
-    hasBudget: true,
-    guestCount: 1,
-    quoteRequestsCount: 1,
-    acceptedProviders: 1,
-    canManageMoney: true,
-    canManageGuests: true,
-    form: 'MASCULINE',
-    planPersona: 'GROOM',
-  });
-
-  assert.equal(providerItems.length, 1);
-  assert.equal(providerItems[0].type, 'PLAN_PROVIDER');
-  assert.equal(providerItems[0].subtitle, 'قاعة النور');
-  assert.equal(providerItems[0].body, 'قاعات · تقييم 4.75');
-  assert.equal(providerItems[0].routeTarget, '/providers/provider-1');
 });
 
-test('dashboard provider card describes a plan link without claiming proximity', () => {
-  const items = dashboardPresenter.buildImportantItems({
-    weddingPlanId: 'plan-1',
-    tasks: [],
-    paymentSchedules: [],
-    providers: [providerLink()],
-    today: new Date(2026, 6, 11),
-    receivedQuotes: 0,
-    pendingInvites: 0,
-    hasLocation: true,
-    hasBudget: true,
+// RA-MO-147: once D78's chain was done, «مزود في خطتك · عرض الملف» closed
+// the list and the home drew it as «الخطوة الجاية». A plan with nothing left
+// to do has no step.
+test('dashboard next step: a plan with a provider and nothing missing has no step', () => {
+  const items = setupItems({
     guestCount: 1,
     quoteRequestsCount: 1,
     acceptedProviders: 1,
-    canManageMoney: true,
-    canManageGuests: true,
-    form: 'MASCULINE',
-    planPersona: 'GROOM',
+    mahrRecorded: true,
+    weddingCostsCount: 2,
   });
 
-  assert.equal(items[0].title, 'مزود في خطتك');
+  assert.deepEqual(items, []);
+});
+
+// RA-MO-147: a step is offered only to a reader who may take it; «أكمل موقع
+// الزفاف» and «اطلب أول عرض سعر» were asked of a viewer the server refused.
+test('dashboard next step: a reader without the rights is asked none of the chain', () => {
+  const viewer = setupItems({
+    hasLocation: false,
+    hasBudget: false,
+    canManagePlan: false,
+    canManageMoney: false,
+    canManageGuests: false,
+    canManageProviders: false,
+    mahrRecorded: null,
+    weddingCostsCount: null,
+  });
+  assert.deepEqual(viewer, []);
+
+  const planOnly = setupItems({
+    hasLocation: false,
+    hasBudget: false,
+    canManageMoney: false,
+    canManageGuests: false,
+    canManageProviders: false,
+  });
+  assert.deepEqual(
+    planOnly.map((item) => item.type),
+    ['SET_LOCATION'],
+  );
 });
 
 test('dashboard money warnings distinguish budget, overdue and due-soon states', () => {
@@ -470,7 +468,6 @@ function setupItems(
     weddingPlanId: 'plan-1',
     tasks: [],
     paymentSchedules: [],
-    providers: [],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
     pendingInvites: 0,
@@ -481,6 +478,8 @@ function setupItems(
     acceptedProviders: 0,
     canManageMoney: true,
     canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
     mahrRecorded: false,

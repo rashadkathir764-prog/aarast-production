@@ -392,11 +392,11 @@ export class DashboardService {
       overdueCount: canViewMoney ? overdueSchedules.length : null,
       dueSoonCount: canViewMoney ? dueSoonSchedules.length : null,
     });
+    const writeRights = planWriteRights(context, this.permissions);
     const importantItems = buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
       paymentSchedules: dueMoneyItems,
-      providers: planProviderLinks,
       today,
       receivedQuotes,
       pendingInvites,
@@ -412,8 +412,10 @@ export class DashboardService {
       acceptedProviders: providerCount,
       // D112 (Q-21): an archived plan is asked for no next step that
       // changes it.
-      canManageMoney: planWriteRights(context, this.permissions).canManageMoney,
-      canManageGuests: planWriteRights(context, this.permissions).canManageGuests,
+      canManagePlan: writeRights.canManagePlan,
+      canManageMoney: writeRights.canManageMoney,
+      canManageGuests: writeRights.canManageGuests,
+      canManageProviders: writeRights.canManageProviders,
       form: readerAddressForm(currentUser, context),
       planPersona: context.plan.persona,
       // J1-04: the mahr step is the owner's (only he records it); the first

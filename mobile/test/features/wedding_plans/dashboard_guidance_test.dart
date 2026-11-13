@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // D72 (replaces b01's fixed steps): no steps hold the home. «خطوتك الجاية»
-// names one missing basic at a time (budget, mahr, first item, first task,
-// first guest), each only while missing; the venue and the like are
-// optional suggestions under it, each answered «ما أحتاجها» or «بعدين».
+// names one missing basic at a time, each only while missing; the venue and
+// the like are optional suggestions under it, each answered «ما أحتاجها» or
+// «بعدين». D78 (RA-MO-147): the chain is the server's; the phone walks its
+// own (budget, first agreement, guests) only for a plan kept on the phone.
 
 DashboardSummary _summary({
   String? budget,
@@ -17,8 +18,15 @@ DashboardSummary _summary({
   int guests = 0,
   bool isOwner = true,
   List<Map<String, Object?>> essentials = const [],
+
+  /// A plan kept on the phone, and what its agreements come to.
+  bool onPhone = false,
+  String? agreed,
+  List<Map<String, Object?>> steps = const [],
 }) {
   return DashboardSummary.fromJson({
+    if (onPhone) ...{'accountBacked': false, 'dataScope': 'LOCAL'},
+    'confirmedCostTotal': ?agreed,
     'planId': 'plan-1',
     'title': 'عرس محمد',
     'city': 'صنعاء',
@@ -36,7 +44,7 @@ DashboardSummary _summary({
     'providerCount': 0,
     'quoteRequestsCount': 0,
     'unreadNotificationsCount': 0,
-    'nextBestActions': const [],
+    'nextBestActions': steps,
     'venueSecured': false,
     'budgetItemsCount': items,
     'essentials': essentials,
@@ -53,6 +61,22 @@ DashboardSummary _summary({
   });
 }
 
+/// One of the server's next steps, as the summary sends it (D78).
+Map<String, Object?> _step(
+  String type,
+  String title,
+  String action, {
+  String? route,
+}) => {
+  'id': 'step-$type',
+  'type': type,
+  'title': title,
+  'subtitle': 'من الخادم',
+  'actionLabel': action,
+  'priority': 'NORMAL',
+  'routeTarget': ?route,
+};
+
 Map<String, Object?> _essential(
   String key, {
   String status = 'MISSING',
@@ -68,7 +92,7 @@ Future<void> _pump(
   WidgetTester tester,
   DashboardSummary summary, {
   DashboardHomeMahr? mahr,
-  VoidCallback? onOpenMahr,
+  ValueChanged<DashboardImportantItem>? onOpenItem,
   VoidCallback? onOpenGuests,
   VoidCallback? onImportGuests,
   void Function(DashboardEssential item, String choice)? onAnswer,
@@ -95,7 +119,6 @@ Future<void> _pump(
             body: AarastDashboardView(
               summary: summary,
               mahr: mahr,
-              onOpenMahr: onOpenMahr,
               userName: 'محمد',
               bottomPadding: 24,
               now: DateTime(2026, 10, 17, 9),
@@ -109,7 +132,7 @@ Future<void> _pump(
               onImportGuests: onImportGuests,
               onOpenSharing: () {},
               onOpenNextStep: () {},
-              onOpenImportantItem: (_) {},
+              onOpenImportantItem: onOpenItem ?? (_) {},
               onAnswerSuggestion: onAnswer ?? (_, _) {},
               onOpenSuggestion: onOpenSuggestion,
             ),
@@ -132,7 +155,10 @@ void main() {
   testWidgets('a new plan is never held behind fixed steps', (tester) async {
     await _pump(
       tester,
-      _summary(essentials: [_essential('VENUE'), _essential('PHOTO')]),
+      _summary(
+        essentials: [_essential('VENUE'), _essential('PHOTO')],
+        steps: [_step('SET_BUDGET', 'حدد ميزانية الخطة', 'حدد الميزانية')],
+      ),
     );
 
     // The old checklist is gone; the home itself is there from day one.
@@ -142,44 +168,67 @@ void main() {
       find.byKey(const ValueKey('aarast-dashboard-suggestions')),
       findsOneWidget,
     );
-    // One next step: the first missing basic, the budget.
-    expect(find.text('حدّد ميزانية تقريبية'), findsOneWidget);
+    // One next step: the server's first, the budget.
+    expect(find.text('حدد ميزانية الخطة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a set budget is not asked again: the first item is next', (
+  // RA-MO-147: the server had sent nothing, and the phone still asked
+  // «أضف أول بند», a step of its own the server never set.
+  testWidgets('an account plan is asked no step the server did not send', (
     tester,
   ) async {
-    await _pump(tester, _summary(budget: '5000000', items: 0));
+    await _pump(tester, _summary(items: 0));
 
     expect(find.text('حدّد ميزانية تقريبية'), findsNothing);
-    expect(find.text('أضف أول بند'), findsOneWidget);
+    expect(find.text('أضف أول بند'), findsNothing);
+    expect(find.text('أضف أول مهمة'), findsNothing);
+    expect(find.text('ما فيه شي مستعجل'), findsOneWidget);
   });
 
-  testWidgets('a groom\'s plan without its mahr asks for it after the budget', (
+  testWidgets('a phone plan with its budget asks for the first agreement', (
     tester,
   ) async {
-    var opened = 0;
+    await _pump(tester, _summary(budget: '5000000', onPhone: true));
+
+    expect(find.text('حدّد ميزانية تقريبية'), findsNothing);
+    expect(find.text('سجّل أول اتفاق'), findsOneWidget);
+  });
+
+  testWidgets('the server\'s mahr step opens where the server sends it', (
+    tester,
+  ) async {
+    final opened = <String>[];
     await _pump(
       tester,
-      _summary(budget: '5000000', items: 4),
+      _summary(
+        budget: '5000000',
+        steps: [
+          _step(
+            'RECORD_MAHR',
+            'اتفقتوا على المهر؟',
+            'سجّل المهر',
+            route: '/wedding-plans/plan-1/money/mahr',
+          ),
+        ],
+      ),
       mahr: const DashboardHomeMahr.notRecorded(MahrHomeSide.pays),
-      onOpenMahr: () => opened += 1,
+      onOpenItem: (item) => opened.add(item.routeTarget!),
     );
 
     expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
     await _tapVisible(tester, find.text('سجّل المهر'));
-    expect(opened, 1);
+    expect(opened, ['/wedding-plans/plan-1/money/mahr']);
   });
 
-  testWidgets('with items and tasks, the first guest comes from contacts', (
+  testWidgets('a phone plan\'s first guest comes from contacts', (
     tester,
   ) async {
     var imported = 0;
     var listed = 0;
     await _pump(
       tester,
-      _summary(budget: '5000000', items: 4, tasks: 3),
+      _summary(budget: '5000000', onPhone: true, agreed: '400000'),
       onImportGuests: () => imported += 1,
       onOpenGuests: () => listed += 1,
     );

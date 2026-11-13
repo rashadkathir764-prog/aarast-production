@@ -24,32 +24,39 @@ void main() {
     );
   });
 
-  test('D72: urgent first, then each missing basic in order', () {
+  // D78 (RA-MO-147): a plan kept on the phone, which no server orders, walks
+  // the chain here in D78's order: budget, first agreement, guests.
+  test('a phone plan: urgent first, then each missing basic in D78 order', () {
     // A due payment outranks every basic.
     expect(
       resolveDashboardFocus(
-        _summary(duePaymentSchedules: 1, hasBudget: false),
+        _summary(duePaymentSchedules: 1, hasBudget: false, onPhone: true),
       ).target,
       AarastDashboardFocusTarget.money,
     );
-    // Budget, then the mahr, then the first item.
     expect(
-      resolveDashboardFocus(
-        _summary(hasBudget: false),
-        mahrMissing: true,
-      ).title,
+      resolveDashboardFocus(_summary(hasBudget: false, onPhone: true)).title,
       contains('ميزانية'),
     );
     expect(
-      resolveDashboardFocus(_summary(), mahrMissing: true).target,
-      AarastDashboardFocusTarget.mahr,
+      resolveDashboardFocus(_summary(onPhone: true)).title,
+      'سجّل أول اتفاق',
     );
     expect(
-      resolveDashboardFocus(_summary(budgetItems: 0)).title,
-      'أضف أول بند',
+      resolveDashboardFocus(_summary(onPhone: true, agreed: '400000')).title,
+      'أضف أول ضيف',
     );
-    // An unknown count (no money rights, or an older server) asks nothing.
-    expect(resolveDashboardFocus(_summary()).title, isNot('أضف أول بند'));
+  });
+
+  // D78 (RA-MO-147): an account plan's chain is the server's. An empty list
+  // means it found nothing missing for this reader; the phone used to add
+  // «أضف أول بند» and «أضف أول مهمة» of its own.
+  test('an account plan is asked no basic the server did not send', () {
+    final focus = resolveDashboardFocus(
+      _summary(hasBudget: false, budgetItems: 0),
+    );
+    expect(focus.title, 'ما فيه شي مستعجل');
+    expect(focus.target, AarastDashboardFocusTarget.plan);
   });
 
   test('the next step counts in Arabic and names its action', () {
@@ -69,11 +76,10 @@ void main() {
 
   test('missing budget remains more important than discovering providers', () {
     final focus = resolveDashboardFocus(
-      _summary(hasBudget: false, providerCount: 0),
+      _summary(hasBudget: false, providerCount: 0, onPhone: true),
     );
-    // The step's button says «حدّد الميزانية», so it opens the budget (w19)
-    // and not the money tab's root, which is what `money` means.
-    expect(focus.target, AarastDashboardFocusTarget.budget);
+    // A phone plan's money opens where its budget is.
+    expect(focus.target, AarastDashboardFocusTarget.money);
     expect(focus.title, contains('ميزانية'));
   });
 }
@@ -85,8 +91,15 @@ DashboardSummary _summary({
   int incompleteGuests = 0,
   int providerCount = 1,
   int? budgetItems,
+
+  /// A plan kept on the phone, no account behind it.
+  bool onPhone = false,
+  String? agreed,
 }) {
   return DashboardSummary(
+    accountBacked: !onPhone,
+    dataScope: onPhone ? 'LOCAL' : 'ACCOUNT_BACKED',
+    confirmedCostTotal: agreed,
     planId: 'plan-focus',
     title: 'خطة الاختبار',
     status: 'PLANNING',

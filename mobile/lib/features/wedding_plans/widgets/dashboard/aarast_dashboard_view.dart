@@ -42,8 +42,6 @@ class AarastDashboardView extends StatelessWidget {
     required this.onProfile,
     required this.onOpenPlan,
     required this.onOpenMoney,
-    this.onOpenBudget,
-    this.onOpenBudgetItem,
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
@@ -60,7 +58,6 @@ class AarastDashboardView extends StatelessWidget {
     this.moneyReadFailed = false,
     this.onRetryMoney,
     this.mahr,
-    this.onOpenMahr,
     this.onOpenReviews,
     this.onOpenSuggestion,
     this.onAnswerSuggestion,
@@ -94,12 +91,6 @@ class AarastDashboardView extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onOpenPlan;
   final VoidCallback onOpenMoney;
-
-  /// The budget screen (w19) and the new-item form, so b01's «حدّد
-  /// الميزانية» and «أضف بند» open what they name instead of the money
-  /// tab's root. Null falls back to the money tab.
-  final VoidCallback? onOpenBudget;
-  final VoidCallback? onOpenBudgetItem;
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
@@ -129,12 +120,10 @@ class AarastDashboardView extends StatelessWidget {
   /// Reads the money section again.
   final VoidCallback? onRetryMoney;
 
-  /// The plan's mahr for b01's step and b02's card (a groom's or a bride's
-  /// plan, the owner, once the money section is read); null leaves both out.
+  /// The plan's mahr for b02's card (a groom's or a bride's plan, the owner,
+  /// once the money section is read); null leaves it out. Its missing step
+  /// is the server's (D78).
   final DashboardHomeMahr? mahr;
-
-  /// a06 for a plan without its mahr yet (b01's step).
-  final VoidCallback? onOpenMahr;
 
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
@@ -160,7 +149,6 @@ class AarastDashboardView extends StatelessWidget {
     final focus = resolveDashboardFocus(
       summary,
       profile: context.journeyProfile,
-      mahrMissing: mahr != null && !mahr!.recorded,
     );
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
     // b04 and b05: the six days before the wedding and its day.
@@ -499,12 +487,6 @@ class AarastDashboardView extends StatelessWidget {
         onOpenPlan();
       case AarastDashboardFocusTarget.money:
         onOpenMoney();
-      case AarastDashboardFocusTarget.budget:
-        (onOpenBudget ?? onOpenMoney)();
-      case AarastDashboardFocusTarget.budgetItem:
-        (onOpenBudgetItem ?? onOpenMoney)();
-      case AarastDashboardFocusTarget.mahr:
-        (onOpenMahr ?? onOpenMoney)();
       case AarastDashboardFocusTarget.tasks:
         onOpenTasks();
       case AarastDashboardFocusTarget.guests:

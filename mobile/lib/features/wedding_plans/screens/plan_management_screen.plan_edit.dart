@@ -8,15 +8,18 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     String? title,
     DateTime? firstDay,
     String? budgetTotal,
+    String? city,
   }) async {
     if (_isLocalPlan && (title != null || firstDay != null)) {
       final saved = await _saveLocalDetails(title: title, firstDay: firstDay);
       if (!saved || !mounted) return false;
-    } else if (title != null || firstDay != null) {
+    } else if (title != null || firstDay != null || city != null) {
       final provider = context.read<WeddingPlansProvider>();
       final updated = await provider.updateWeddingPlan(plan.id, {
         'title': ?title,
         if (firstDay != null) 'weddingDate': planDayToJson(firstDay),
+        // RA-MO-155: a plan made without a city sets it here.
+        'city': ?city,
       });
       if (!mounted) return false;
       if (updated == null) {

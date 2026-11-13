@@ -191,11 +191,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                   ? finance.summary.budget.total
                   : null,
               onBack: _goBack,
-              onSave: ({title, firstDay, budgetTotal}) => _saveDetails(
+              onSave: ({title, firstDay, budgetTotal, city}) => _saveDetails(
                 plan,
                 title: title,
                 firstDay: firstDay,
                 budgetTotal: budgetTotal,
+                city: city,
               ),
               onChangeDate: canManage && !_isLocalPlan
                   ? () => _postpone(plan)

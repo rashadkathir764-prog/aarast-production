@@ -7,10 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 // w10 «بيانات الخطة» (D27): name, day, budget; the place and the currency
 // stay as the plan was made.
 
-WeddingPlan _plan({DateTime? day}) => WeddingPlan(
+WeddingPlan _plan({DateTime? day, String? city = 'صنعاء'}) => WeddingPlan(
   id: 'plan-1',
   ownerUserId: 'u1',
   title: 'عرس محمد',
+  city: city,
   weddingDate: day,
   currency: 'YER',
   status: 'PLANNING',
@@ -18,11 +19,17 @@ WeddingPlan _plan({DateTime? day}) => WeddingPlan(
   updatedAt: DateTime(2026),
 );
 
-typedef _Saved = ({String? title, DateTime? firstDay, String? budgetTotal});
+typedef _Saved = ({
+  String? title,
+  DateTime? firstDay,
+  String? budgetTotal,
+  String? city,
+});
 
 Future<List<_Saved>> _pump(
   WidgetTester tester, {
   DateTime? day,
+  String? city = 'صنعاء',
   VoidCallback? onChangeDate,
   bool repickStoredDay = false,
   VoidCallback? onArchive,
@@ -38,14 +45,15 @@ Future<List<_Saved>> _pump(
         textDirection: TextDirection.rtl,
         child: Scaffold(
           body: PlanDetailsView(
-            plan: _plan(day: day),
+            plan: _plan(day: day, city: city),
             budgetTotal: '7000000.00',
             onBack: () {},
-            onSave: ({title, firstDay, budgetTotal}) async {
+            onSave: ({title, firstDay, budgetTotal, city}) async {
               saved.add((
                 title: title,
                 firstDay: firstDay,
                 budgetTotal: budgetTotal,
+                city: city,
               ));
               return true;
             },
@@ -77,6 +85,32 @@ void main() {
     expect(find.text('المحافظة والمديرية'), findsNothing);
     expect(find.text('العملة'), findsNothing);
     expect(find.textContaining('أقساط'), findsNothing);
+  });
+
+  // RA-MO-155: «أكمل موقع الزفاف» opened this page, which had no place.
+  testWidgets('a plan made without a city sets it here, once', (tester) async {
+    final saved = await _pump(tester, day: DateTime(2027, 1, 21), city: null);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('plan-details-city')),
+        matching: find.byType(TextField),
+      ),
+      'عدن',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plan-details-save')));
+    await tester.pumpAndSettle();
+
+    expect(saved.single.city, 'عدن');
+    expect(saved.single.title, isNull);
+  });
+
+  testWidgets('a plan with a city does not offer to change it (D27)', (
+    tester,
+  ) async {
+    await _pump(tester, day: DateTime(2027, 1, 21));
+    expect(find.byKey(const ValueKey('plan-details-city')), findsNothing);
   });
 
   testWidgets('w10 saves only what changed', (tester) async {

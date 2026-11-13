@@ -13,7 +13,9 @@ import '../models/wedding_plan.dart';
 
 /// w10 «بيانات الخطة»: the plan's name, its day and the wedding budget.
 /// A set day changes only through g03 «تأجيل العرس»; a plan without one
-/// picks it here. The place and the currency stay as they were made (D27).
+/// picks it here. The place and the currency stay as they were made (D27);
+/// a plan made without a city sets it here, as a plan without a day does
+/// (RA-MO-155: «أكمل موقع الزفاف» opened this page and it had no field).
 /// A typed or stored amount: «7,000,000» or «7000000.00».
 num _amount(String text) => num.tryParse(text.replaceAll(',', '').trim()) ?? 0;
 
@@ -41,6 +43,7 @@ class PlanDetailsView extends StatefulWidget {
     String? title,
     DateTime? firstDay,
     String? budgetTotal,
+    String? city,
   })
   onSave;
 
@@ -59,6 +62,12 @@ class PlanDetailsView extends StatefulWidget {
 class _PlanDetailsViewState extends State<PlanDetailsView> {
   late final TextEditingController _title;
   late final TextEditingController _budget;
+  final _city = TextEditingController();
+
+  /// The plan was made without a city: it is set here once.
+  bool get _cityMissing => (widget.plan.city ?? '').trim().isEmpty;
+
+  bool get _cityChanged => _cityMissing && _city.text.trim().isNotEmpty;
   DateTime? _firstDay;
   bool _saving = false;
   String? _titleError;
@@ -84,6 +93,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
   void dispose() {
     _title.dispose();
     _budget.dispose();
+    _city.dispose();
     super.dispose();
   }
 
@@ -99,7 +109,8 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
   bool get _budgetChanged =>
       _amount(_cleanBudget) != _amount(widget.budgetTotal ?? '');
 
-  bool get _dirty => _titleChanged || _budgetChanged || _firstDay != null;
+  bool get _dirty =>
+      _titleChanged || _budgetChanged || _firstDay != null || _cityChanged;
 
   Future<void> _pickFirstDay() async {
     releaseFieldFocus();
@@ -135,6 +146,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
       budgetTotal: _budgetChanged
           ? (_cleanBudget.isEmpty ? '' : '${_amount(_cleanBudget).round()}')
           : null,
+      city: _cityChanged ? _city.text.trim() : null,
     );
     if (!mounted) return;
     setState(() {
@@ -192,6 +204,19 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                     selected: true,
                     onTap: widget.onChangeDate,
                   ),
+                ),
+              ],
+              if (_cityMissing) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                JourneyTextField(
+                  key: const ValueKey('plan-details-city'),
+                  label: 'مدينة العرس',
+                  hint: 'مثلًا: صنعاء',
+                  controller: _city,
+                  maxLength: 80,
+                  icon: LucideIcons.mapPin,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
                 ),
               ],
               const SizedBox(height: AarastV3Space.x3),

@@ -35,6 +35,10 @@ class PushNotificationsController extends ChangeNotifier
   int _bindingGeneration = 0;
   CancelToken? _bindingCancelToken;
 
+  /// This phone's push registration, so a password change keeps it while
+  /// the server drops the other phones' (RA-BE-133); null when none.
+  String? get registeredFid => _registeredFid;
+
   bool get isAvailable => _initialized && _gateway.isAvailable;
   bool get hasPendingNotificationsOpen => _pendingNotificationsOpen;
   Stream<PushForegroundNotification> get foregroundNotifications => isAvailable

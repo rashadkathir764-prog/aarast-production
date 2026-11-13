@@ -260,8 +260,57 @@ test("changing the password requires the current one and revokes only the other 
   assert.equal(current.revokedAt, null, "the caller's own session stays");
   assert.ok(other.revokedAt, "every other session is revoked");
   assert.deepEqual(h.disconnectedSessions, [other.id]);
-  assert.equal(h.outbox.length, 1);
+  assert.deepEqual(
+    h.outbox.map((event) => [event.type, event.payload]),
+    [
+      ["SESSION_REVOKED", { sessionId: other.id }],
+      // RA-BE-133: the phones signed out let go of their push registrations.
+      ["PUSH_INSTALLATIONS_RELEASED", { userId: user.id }],
+    ],
+  );
   assert.equal(h.throttle.cleared, 1);
+});
+
+// D112 (Q-11), RA-BE-133: a new password signed the other phones out but left
+// their push registrations bound, so a lost phone kept receiving the
+// account's notification titles. They go now; the phone that changed the
+// password names its own registration and keeps it.
+test("a password change releases the other phones' push registrations and keeps the caller's", async () => {
+  const h = createHarness();
+  const user = await h.addUser({ passwordHash: await bcryptjs.hash("old-pass", 4) });
+  const current = await h.addSession(user.id);
+  await h.addSession(user.id);
+
+  await h.service.setApplicationPassword(await h.identity(user.id, current.id), {
+    newPassword: "new-pass",
+    currentPassword: "old-pass",
+    pushInstallationId: "this-phone-fid-1",
+  });
+
+  assert.deepEqual(
+    h.outbox
+      .filter((event) => event.type === "PUSH_INSTALLATIONS_RELEASED")
+      .map((event) => [event.aggregateId, event.payload]),
+    [[user.id, { userId: user.id, keepInstallationFid: "this-phone-fid-1" }]],
+  );
+  assert.equal(
+    h.outbox.some((event) => event.type === "USER_SESSIONS_REVOKED"),
+    false,
+    "the caller's own sockets stay",
+  );
+});
+
+test("a first password signs no phone out and releases no push registration", async () => {
+  const h = createHarness();
+  const user = await h.addUser();
+  const current = await h.addSession(user.id);
+  await h.addSession(user.id);
+
+  await h.service.setApplicationPassword(await h.identity(user.id, current.id), {
+    newPassword: "first-pass",
+  });
+
+  assert.deepEqual(h.outbox, []);
 });
 
 test("an administrator's application password is its appPasswordHash, never the admin password", async () => {
@@ -312,6 +361,18 @@ test("the set-password body enforces the password policy", async () => {
   await assert.rejects(() => pipe.transform({ newPassword: "secret1", currentPassword: "" }, metadata));
   const ok = await pipe.transform({ newPassword: "secret1", currentPassword: "old-pass" }, metadata);
   assert.equal(ok.newPassword, "secret1");
+  // RA-BE-133: the phone's push registration, as the push route takes it.
+  for (const pushInstallationId of ["short", "has space-in-it", "x".repeat(201)]) {
+    await assert.rejects(
+      () => pipe.transform({ newPassword: "secret1", pushInstallationId }, metadata),
+      pushInstallationId,
+    );
+  }
+  const withPhone = await pipe.transform(
+    { newPassword: "secret1", pushInstallationId: "fid_ABC-123456" },
+    metadata,
+  );
+  assert.equal(withPhone.pushInstallationId, "fid_ABC-123456");
 });
 
 test("GET /auth/me reports hasPassword for the session's realm", async () => {

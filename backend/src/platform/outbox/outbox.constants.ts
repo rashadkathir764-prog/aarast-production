@@ -6,6 +6,7 @@ export const OutboxEventTypes = {
   conversationAccessRevoked: "CONVERSATION_ACCESS_REVOKED",
   userSessionsRevoked: "USER_SESSIONS_REVOKED",
   sessionRevoked: "SESSION_REVOKED",
+  pushInstallationsReleased: "PUSH_INSTALLATIONS_RELEASED",
 } as const;
 
 export type OutboxEventType =

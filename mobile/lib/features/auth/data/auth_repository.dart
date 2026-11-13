@@ -72,13 +72,18 @@ class AuthRepository implements SessionAuthTeardownPort {
   }
 
   /// D75: adds the app password, or changes it with [currentPassword].
+  ///
+  /// RA-BE-133: a change signs the other phones out and drops their push
+  /// registrations; [pushInstallationId] is this phone's, which stays.
   Future<void> setPassword({
     required String newPassword,
     String? currentPassword,
+    String? pushInstallationId,
   }) async {
     await _apiClient.postJson('/api/v1/auth/password', {
       'newPassword': newPassword,
       'currentPassword': ?currentPassword,
+      'pushInstallationId': ?pushInstallationId,
     });
   }
 
@@ -289,6 +294,19 @@ class AuthRepository implements SessionAuthTeardownPort {
   }
 
   Future<String?> readAccessToken() => _authStorage.readAccessToken();
+
+  /// RA-MO-109: the last code this phone got, kept past a closed app.
+  Future<void> rememberCodeRequest({
+    required String phone,
+    required String purpose,
+    required DateTime at,
+  }) =>
+      _authStorage.rememberCodeRequest(phone: phone, purpose: purpose, at: at);
+
+  ({String phone, String purpose, DateTime at})? recalledCodeRequest() =>
+      _authStorage.recalledCodeRequest();
+
+  Future<void> forgetCodeRequest() => _authStorage.forgetCodeRequest();
 
   Future<bool> refreshSession() async {
     final sessionEpoch = _authStorage.sessionEpoch;

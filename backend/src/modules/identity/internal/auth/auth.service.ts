@@ -96,6 +96,7 @@ import {
   lockUserLifecycleRowsForUpdateInTransaction,
 } from "../../public/user-lifecycle-lock";
 import {
+  enqueuePushInstallationsReleased,
   enqueueUserSessionsRevoked,
 } from "../../../../platform/outbox/realtime-revocation";
 import { AuthUserRepository } from "../../infrastructure/auth-user.repository";
@@ -1103,9 +1104,15 @@ export class AuthService implements IdentityAuthPort {
             );
           }
           if (currentHash === null) return [] as string[];
-          return this.sessions.revokeOtherActiveSessions(
+          const revoked = await this.sessions.revokeOtherActiveSessions(
             tx, user.id, AuthSessionScope.APPLICATION, sessionId, new Date(),
           );
+          // D112 (Q-11), RA-BE-133: the phones signed out stop receiving the
+          // account's notifications; the phone that changed it keeps its own.
+          await enqueuePushInstallationsReleased(
+            tx, user.id, dto.pushInstallationId ?? null,
+          );
+          return revoked;
         },
       );
     } catch (error) {

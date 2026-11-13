@@ -34,6 +34,30 @@ export async function enqueueUserSessionsRevoked(
   });
 }
 
+/**
+ * D112 (Q-11), RA-BE-133: a new password ends every other session of the
+ * account and keeps the caller's own, so its sockets are ended one session
+ * at a time ([enqueueSessionRevoked]) and its phones' push registrations
+ * here: every one made before now goes, except the caller's own phone's
+ * ([keepInstallationFid]) when it named it.
+ */
+export async function enqueuePushInstallationsReleased(
+  client: RevocationOutboxClient,
+  userId: string,
+  keepInstallationFid: string | null,
+): Promise<void> {
+  await client.outboxEvent.create({
+    data: {
+      type: OutboxEventTypes.pushInstallationsReleased,
+      aggregateType: 'user',
+      aggregateId: userId,
+      payload: keepInstallationFid
+        ? { userId, keepInstallationFid }
+        : { userId },
+    },
+  });
+}
+
 export async function enqueueSessionRevoked(
   client: RevocationOutboxClient,
   sessionId: string,

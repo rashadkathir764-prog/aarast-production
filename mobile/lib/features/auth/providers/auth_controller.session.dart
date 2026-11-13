@@ -333,12 +333,14 @@ mixin _AuthSession on _AuthControllerCore {
   /// again so «حسابي» says it has one.
   Future<String?> setPassword(
     String newPassword,
-    String? currentPassword,
-  ) async {
+    String? currentPassword, {
+    String? pushInstallationId,
+  }) async {
     try {
       await _authRepository.setPassword(
         newPassword: newPassword,
         currentPassword: currentPassword,
+        pushInstallationId: pushInstallationId,
       );
     } on ApiException catch (error) {
       if (error.serverCode == 'INVALID_CREDENTIALS') {

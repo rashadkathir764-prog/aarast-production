@@ -93,6 +93,59 @@ test("ending an account's sessions releases its push registrations made before t
   assert.deepEqual(released, [["user-1", "2026-07-10T10:00:00.000Z"]]);
 });
 
+// RA-BE-133: a new password ends the other sessions and keeps the caller's;
+// their phones' registrations go, the caller's own phone's stays, and the
+// caller's sockets are not touched.
+test("a password change's release keeps the named phone and leaves the sockets alone", async () => {
+  const released: unknown[][] = [];
+  const realtime = {
+    dispatchUserSessionsRevoked: async () => {
+      throw new Error("the caller's sockets must stay");
+    },
+  } as unknown as ConversationRealtimePublisher;
+  const push = {
+    dispatchNotification: async () => {},
+    releaseUserInstallations: async (...args: unknown[]) => {
+      released.push(args);
+    },
+  };
+  const dispatcher = new OutboxDispatcher(realtime, push);
+
+  await dispatcher.dispatch(
+    event(OutboxEventTypes.pushInstallationsReleased, {
+      userId: "user-1",
+      keepInstallationFid: "this-phone-fid-1",
+    }),
+  );
+  await dispatcher.dispatch(
+    event(OutboxEventTypes.pushInstallationsReleased, { userId: "user-1" }),
+  );
+
+  const at = new Date("2026-07-10T10:00:00.000Z");
+  assert.deepEqual(released, [
+    ["user-1", at, "this-phone-fid-1"],
+    ["user-1", at, undefined],
+  ]);
+  await assert.rejects(
+    () =>
+      dispatcher.dispatch(
+        event(OutboxEventTypes.pushInstallationsReleased, {
+          userId: "user-1",
+          keepInstallationFid: " ",
+        }),
+      ),
+    /InvalidOutboxPayload/,
+  );
+  // Without the push sink the release stays queued to be tried again.
+  await assert.rejects(
+    () =>
+      new OutboxDispatcher(realtime).dispatch(
+        event(OutboxEventTypes.pushInstallationsReleased, { userId: "user-1" }),
+      ),
+    /PushDeliveryUnavailable/,
+  );
+});
+
 test("without a push sink, ending sessions still reaches the sockets", async () => {
   const calls: string[] = [];
   const realtime = {

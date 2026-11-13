@@ -88,6 +88,26 @@ export class OutboxDispatcher {
         );
         return;
       }
+      case OutboxEventTypes.pushInstallationsReleased: {
+        const userId = requiredText(payload, "userId");
+        const keep =
+          payload.keepInstallationFid === undefined
+            ? undefined
+            : requiredText(payload, "keepInstallationFid");
+        if (!this.pushDelivery) {
+          const error = new Error("PushDeliveryUnavailable");
+          error.name = "PushDeliveryUnavailable";
+          throw error;
+        }
+        // RA-BE-133: a new password let the account's other phones go;
+        // the phone that set it keeps its own registration.
+        await this.pushDelivery.releaseUserInstallations(
+          userId,
+          event.createdAt,
+          keep,
+        );
+        return;
+      }
       case OutboxEventTypes.sessionRevoked: {
         await this.realtime.dispatchSessionRevoked(
           requiredText(payload, "sessionId"),

@@ -361,6 +361,17 @@ test("ended sessions release the registrations made before them; one made since 
   enabledLeft = 0;
   await service.releaseUserInstallations("user-3", revokedAt);
   assert.deepEqual(disabledUsers, ["user-3"]);
+
+  // RA-BE-133: a new password keeps the phone that set it.
+  deletes.length = 0;
+  await service.releaseUserInstallations("user-3", revokedAt, "this-phone-fid-1");
+  assert.deepEqual(deletes, [
+    {
+      userId: "user-3",
+      lastSeenAt: { lt: revokedAt },
+      fid: { not: "this-phone-fid-1" },
+    },
+  ]);
 });
 
 // RA-BE-99: the lock screen says what the notice says: a late task is late,

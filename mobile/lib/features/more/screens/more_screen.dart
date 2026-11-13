@@ -8,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/preferences/device_preferences.dart';
+import '../../../core/push/push_notifications_controller.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/security/app_lock_controller.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -223,7 +224,15 @@ class _MoreScreenState extends State<MoreScreen> {
                   onTap: () => showSetPasswordSheet(
                     context,
                     hasPassword: user.hasPassword,
-                    save: auth.setPassword,
+                    // RA-BE-133: this phone keeps its notices; the
+                    // server drops the other phones' with their sessions.
+                    save: (newPassword, current) => auth.setPassword(
+                      newPassword,
+                      current,
+                      pushInstallationId: context
+                          .read<PushNotificationsController?>()
+                          ?.registeredFid,
+                    ),
                   ),
                 ),
             ],

@@ -30,12 +30,22 @@ export class PushDeliveryService implements PushDeliveryPort {
    * signed in on are no longer its phones. Their registrations go, as a
    * sign-out's own does; one made since then belongs to a phone that signed
    * in again and stays. With none left the account's push is off until a
-   * phone registers again, as after any last sign-out.
+   * phone registers again, as after any last sign-out. A new password keeps
+   * the session that set it, and that phone's registration, [keepFid], stays
+   * with it (RA-BE-133).
    */
-  async releaseUserInstallations(userId: string, revokedAt: Date): Promise<void> {
+  async releaseUserInstallations(
+    userId: string,
+    revokedAt: Date,
+    keepFid?: string,
+  ): Promise<void> {
     await runSerializableTransaction(this.prisma, async (tx) => {
       await tx.pushInstallation.deleteMany({
-        where: { userId, lastSeenAt: { lt: revokedAt } },
+        where: {
+          userId,
+          lastSeenAt: { lt: revokedAt },
+          ...(keepFid ? { fid: { not: keepFid } } : {}),
+        },
       });
       const remaining = await tx.pushInstallation.count({
         where: { userId, enabled: true },

@@ -103,6 +103,25 @@ export function requiredMoneyAmount(
   return wholeAmount(Money.required(value, field), field);
 }
 
+/**
+ * RA-BE-132: a payment of exactly what is still owed ([owed]), the one
+ * fraction a request may carry. An amount saved with a fraction before Q-25
+ * (an agreement of 1000.50, a payment of 300.25) leaves a fraction owed that
+ * no whole payment settles: 1001 is more than is left, and 1000 leaves 0.50
+ * owed for ever. Any other fraction is refused as [requiredMoneyAmount]
+ * refuses it.
+ */
+export function requiredSettlingAmount(
+  value: unknown,
+  field: string,
+  owed: Prisma.Decimal,
+): string {
+  const money = Money.required(value, field);
+  return money.toDecimal().equals(owed)
+    ? money.toString()
+    : wholeAmount(money, field);
+}
+
 /** [requiredMoneyAmount], or null for an absent or blank value. */
 export function optionalMoneyAmount(
   value: unknown,

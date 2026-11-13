@@ -6,6 +6,7 @@ import {
   Money,
   optionalMoneyAmount,
   requiredMoneyAmount,
+  requiredSettlingAmount,
 } from '../src/shared-kernel/money/money';
 
 const invalidMessage = (field: string) =>
@@ -79,6 +80,25 @@ test('Q-25: an amount a person sends is whole; a fraction is refused by its own 
       );
     }
   }
+});
+
+// RA-BE-132: the one fraction a payment may carry is exactly what is still
+// owed on an amount saved with a fraction before Q-25.
+test('a settling amount takes a whole amount, or exactly the fraction owed', () => {
+  const owed = new Prisma.Decimal('0.50');
+  assert.equal(requiredSettlingAmount('0.50', 'amount', owed), '0.50');
+  assert.equal(requiredSettlingAmount('0.5', 'amount', owed), '0.5');
+  assert.equal(requiredSettlingAmount('7', 'amount', owed), '7');
+  for (const value of ['0.25', '1.50']) {
+    assert.throws(
+      () => requiredSettlingAmount(value, 'amount', owed),
+      (error: unknown) =>
+        error instanceof BadRequestException &&
+        (error.getResponse() as { code?: string }).code === 'MONEY_AMOUNT_NOT_WHOLE',
+      value,
+    );
+  }
+  assertInvalid(() => requiredSettlingAmount('0.505', 'amount', owed), 'amount');
 });
 
 test('required money rejects current invalid types with the exact field error', () => {

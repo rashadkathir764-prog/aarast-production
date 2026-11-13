@@ -515,6 +515,95 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
   ]);
 });
 
+// RA-BE-132: an agreement saved with a fraction before whole riyals (Q-25)
+// owed a fraction no whole payment could settle: 1001 is more than is left,
+// 0.50 was refused as a fraction, and the agreement stayed partly paid for
+// ever. Paying exactly what is left settles it; no other fraction passes.
+test("a payment of exactly the fraction an old agreement still owes settles it", async () => {
+  const now = new Date("2026-07-14T12:00:00.000Z");
+  const cost = {
+    id: "cost-1",
+    weddingPlanId: "plan-1",
+    budgetCategoryId: "cat-1",
+    providerId: null,
+    quoteOfferId: null,
+    title: "Hall",
+    partyName: null,
+    partyPhone: null,
+    totalAmount: new Prisma.Decimal("1000.50"),
+    paidAmount: new Prisma.Decimal("1000"),
+    agreementDate: null,
+    status: WeddingCostStatus.PARTIALLY_PAID,
+    note: null,
+    createdAt: now,
+    updatedAt: now,
+    budgetCategory: { name: "Hall" },
+    provider: null,
+    _count: { payments: 1, paymentSchedules: 0 },
+  };
+  const created: any[] = [];
+  const costUpdates: any[] = [];
+  const tx = {
+    $queryRaw: async () => [{ id: cost.id }],
+    weddingCost: {
+      findUnique: async () => ({ privateToUserId: null }),
+      findUniqueOrThrow: async () => cost,
+      update: async (args: any) => {
+        costUpdates.push(args);
+        return cost;
+      },
+    },
+    costPayment: {
+      create: async ({ data }: any) => {
+        created.push(data);
+        return {
+          id: "payment-2",
+          entryType: "PAYMENT",
+          paymentScheduleId: null,
+          reversalOfId: null,
+          reversedBy: null,
+          method: null,
+          note: null,
+          createdAt: now,
+          weddingCost: cost,
+          ...data,
+        };
+      },
+    },
+    paymentSchedule: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
+  };
+  const service = new WeddingCostsService(
+    {
+      weddingCost: { findUnique: async () => cost },
+      $transaction: async (operation: (client: any) => unknown) => operation(tx),
+    } as any,
+    {
+      assertMoneyManageableInTransaction: async () => ({
+        isOwner: true,
+        sharedMember: null,
+        plan: { id: "plan-1", currency: "YER" },
+      }),
+    } as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
+  );
+  const owner = { id: "owner-1" } as any;
+
+  for (const amount of ["0.25", "1.50"]) {
+    await assert.rejects(
+      () => service.createPayment(owner, cost.id, { amount }),
+      (error: any) => error.getResponse?.().code === "MONEY_AMOUNT_NOT_WHOLE",
+      amount,
+    );
+  }
+  assert.equal(created.length, 0);
+
+  await service.createPayment(owner, cost.id, { amount: "0.50" });
+  assert.equal(created[0]?.amount.toString(), "0.5");
+  assert.equal(costUpdates[0]?.data?.paidAmount.toString(), "1000.5");
+  assert.equal(costUpdates[0]?.data?.status, WeddingCostStatus.PAID);
+});
+
 test("each payment reminder is bounded by the current remaining cost without reserving other reminders", async () => {
   const now = new Date("2026-07-14T12:00:00.000Z");
   const cost = {

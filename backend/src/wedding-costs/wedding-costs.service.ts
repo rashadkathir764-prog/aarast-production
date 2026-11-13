@@ -40,7 +40,10 @@ import {
   runRetryableTransaction,
   runSerializableTransaction,
 } from "../platform/database/serializable-transaction";
-import { requiredMoneyAmount } from "../shared-kernel/money/money";
+import {
+  requiredMoneyAmount,
+  requiredSettlingAmount,
+} from "../shared-kernel/money/money";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   PROVIDER_READ_PORT,
@@ -829,8 +832,14 @@ export class WeddingCostsService {
           { settlement: true },
         );
         await this.assertScopedCostInTransaction(tx, context, costId);
-        const amount = this.positiveAmount(dto.amount, "amount");
         const cost = await this.lockCost(tx, costId);
+        // RA-BE-132: what the agreement still owes may carry a fraction
+        // saved before whole riyals; paying exactly that settles it.
+        const amount = this.positiveAmount(
+          dto.amount,
+          "amount",
+          cost.totalAmount.minus(cost.paidAmount),
+        );
         this.assertCostPayable(cost.status);
         raiseFinanceViolation(
           paymentAmountViolation(amount, cost.totalAmount, cost.paidAmount),
@@ -1574,8 +1583,10 @@ export class WeddingCostsService {
         scheduledPaymentViolation(due, cost.totalAmount, cost.paidAmount),
       );
       // D106: what was paid, when it is not what the date asks for. Never
-      // more than what is left on the agreement.
-      const paid = this.optionalPositiveAmount(dto.amount, "amount") ?? due;
+      // more than what is left on the agreement. What the date asks for may
+      // carry a fraction saved before whole riyals (RA-BE-132).
+      const paid =
+        this.optionalPositiveAmount(dto.amount, "amount", due) ?? due;
       raiseFinanceViolation(
         paymentAmountViolation(paid, cost.totalAmount, cost.paidAmount),
       );
@@ -2419,8 +2430,20 @@ export class WeddingCostsService {
     raiseFinanceViolation(payableViolation(status));
   }
 
-  private positiveAmount(value: string | number, field: string) {
-    const amount = new Prisma.Decimal(requiredMoneyAmount(value, field));
+  /**
+   * A whole amount (Q-25); with [owed], a payment, also exactly what is
+   * still owed when that carries a fraction (RA-BE-132).
+   */
+  private positiveAmount(
+    value: string | number,
+    field: string,
+    owed?: Prisma.Decimal,
+  ) {
+    const amount = new Prisma.Decimal(
+      owed === undefined
+        ? requiredMoneyAmount(value, field)
+        : requiredSettlingAmount(value, field, owed),
+    );
     raiseFinanceViolation(positiveAmountViolation(amount, field));
     return amount;
   }
@@ -2442,6 +2465,7 @@ export class WeddingCostsService {
   private optionalPositiveAmount(
     value: string | number | null | undefined,
     field: string,
+    owed?: Prisma.Decimal,
   ): Prisma.Decimal | null {
     if (
       value === null ||
@@ -2450,7 +2474,7 @@ export class WeddingCostsService {
     ) {
       return null;
     }
-    return this.positiveAmount(value, field);
+    return this.positiveAmount(value, field, owed);
   }
 
   /** D106: a reminder day of its own, between today and the due day; null clears it. */

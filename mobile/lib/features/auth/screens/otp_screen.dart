@@ -62,6 +62,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
   /// The account could not be made because the connection dropped (J1-17).
   bool _signUpFailedOffline = false;
+
+  /// RA-MO-119: the last check never reached the server; the code is kept.
+  bool _verifyFailedOffline = false;
   AarastOtpFieldState _fieldState = AarastOtpFieldState.idle;
   String? _otpNoticeMessage;
   Timer? _resendTimer;
@@ -150,6 +153,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _onCodeChanged(String value) {
+    if (_verifyFailedOffline) setState(() => _verifyFailedOffline = false);
     if (value.isEmpty) return;
     if (_fieldState == AarastOtpFieldState.error) {
       setState(() => _fieldState = AarastOtpFieldState.idle);
@@ -192,10 +196,16 @@ class _OtpScreenState extends State<OtpScreen> {
 
     if (!mounted) return;
     if (!success) {
+      // RA-MO-119: a check that never reached the server says nothing of
+      // the code; the error state would wipe a right one. It stays.
+      final offline = auth.failedOffline;
       setState(() {
         _isVerifying = false;
-        _fieldState = AarastOtpFieldState.error;
-        _signUpFailedOffline = registration != null && auth.failedOffline;
+        _fieldState = offline
+            ? AarastOtpFieldState.idle
+            : AarastOtpFieldState.error;
+        _verifyFailedOffline = offline;
+        _signUpFailedOffline = registration != null && offline;
       });
       return;
     }
@@ -206,6 +216,9 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _goBack() {
+    // RA-MO-118: while the code is checked the number cannot change; the
+    // check went on behind and signed in with the number left.
+    if (_isVerifying) return;
     final auth = context.read<AuthController>();
     final phone = widget.phone ?? auth.otpRequest?.phone ?? '';
     final purpose =
@@ -440,42 +453,49 @@ class _OtpScreenState extends State<OtpScreen> {
                             : 'ابدأ من هنا',
                         expand: true,
                         large: true,
-                        onPressed: () async {
-                          // A plan on this phone is saved with this number
-                          // at once: the code just proved it (D75).
-                          final name = _keptPlanOwnerName;
-                          final proof = auth.phoneProofFor(phone);
-                          if (!_forProvider && name != null && proof != null) {
-                            await auth.register(
-                              name: name,
-                              phone: phone,
-                              phoneProof: proof,
-                              successLocation: widget.successLocation,
-                              savesKeptPlan: true,
-                            );
-                            return;
-                          }
-                          auth.clearError();
-                          // A plan on this phone is saved with the number,
-                          // never replaced by a new one.
-                          context.go(
-                            _forProvider
-                                ? Uri(
-                                    path: AppRouter.register,
-                                    queryParameters: {
-                                      'type': 'provider',
-                                      'phone': phone,
-                                      'resume': widget.successLocation!,
-                                    },
-                                  ).toString()
-                                : _keptPlan != null
-                                ? Uri(
-                                    path: AppRouter.register,
-                                    queryParameters: {'phone': phone},
-                                  ).toString()
-                                : AppRouter.welcome,
-                          );
-                        },
+                        // RA-MO-111: the save waits on the server; it says so
+                        // and takes no second tap.
+                        loading: auth.isSubmitting,
+                        onPressed: auth.isSubmitting
+                            ? null
+                            : () async {
+                                // A plan on this phone is saved with this number
+                                // at once: the code just proved it (D75).
+                                final name = _keptPlanOwnerName;
+                                final proof = auth.phoneProofFor(phone);
+                                if (!_forProvider &&
+                                    name != null &&
+                                    proof != null) {
+                                  await auth.register(
+                                    name: name,
+                                    phone: phone,
+                                    phoneProof: proof,
+                                    successLocation: widget.successLocation,
+                                    savesKeptPlan: true,
+                                  );
+                                  return;
+                                }
+                                auth.clearError();
+                                // A plan on this phone is saved with the number,
+                                // never replaced by a new one.
+                                context.go(
+                                  _forProvider
+                                      ? Uri(
+                                          path: AppRouter.register,
+                                          queryParameters: {
+                                            'type': 'provider',
+                                            'phone': phone,
+                                            'resume': widget.successLocation!,
+                                          },
+                                        ).toString()
+                                      : _keptPlan != null
+                                      ? Uri(
+                                          path: AppRouter.register,
+                                          queryParameters: {'phone': phone},
+                                        ).toString()
+                                      : AppRouter.welcome,
+                                );
+                              },
                       )
                     : adminOnly
                     ? JourneyButton(
@@ -591,6 +611,17 @@ class _OtpScreenState extends State<OtpScreen> {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
+            // RA-MO-119: the code is kept; checking it again is one tap.
+            if (_verifyFailedOffline && auth.failedOffline)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: JourneyTextAction(
+                  key: const ValueKey('otp-retry-verify'),
+                  label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+                  icon: LucideIcons.refreshCw,
+                  onPressed: _isVerifying ? null : _verifyOtp,
+                ),
+              ),
           ],
           if (!stopped) ...[
             const SizedBox(height: AarastV3Space.x4),

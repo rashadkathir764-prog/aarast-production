@@ -43,6 +43,30 @@ void main() {
     },
   );
 
+  // RA-MO-111: every request dropped the proof as it began, so a save that
+  // failed took it, and «احفظ خطتي بهذا الرقم» left for a new code.
+  test('a failed save keeps the proof of the number', () async {
+    final controller = await _controller(
+      verifyErrorCode: 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
+      verifyPhoneProof: 'proof-token',
+    );
+    await controller.verifyOtp(
+      phone: '+967777123456',
+      purpose: 'LOGIN',
+      code: '123456',
+    );
+
+    final saved = await controller.register(
+      name: 'صالح',
+      phone: '+967777123456',
+      phoneProof: controller.phoneProofFor('+967777123456'),
+    );
+
+    expect(saved, isFalse);
+    expect(controller.phoneProofFor('+967777123456'), 'proof-token');
+    expect(controller.phoneProofFor('771 111 111'), isNull);
+  });
+
   testWidgets(
     'D75: an admin number without an app password is offered only another number',
     (tester) async {
@@ -265,6 +289,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('reset:+967777123456:/invite/example'), findsOneWidget);
+  });
+
+  // RA-MO-119: a check that never reached the server wiped the code typed,
+  // with nothing to check it again.
+  testWidgets('a check lost to the network keeps the code and offers again', (
+    tester,
+  ) async {
+    final controller = await _controller(verifyOffline: true);
+    final router = _router();
+    addTearDown(router.dispose);
+
+    await _pump(tester, controller: controller, router: router);
+    await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final field = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('otp-code-field')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(field.controller.text, '123456');
+    expect(find.byKey(const ValueKey('otp-retry-verify')), findsOneWidget);
   });
 
   testWidgets('missing account after a sign-in code starts again at the door', (
@@ -505,6 +553,7 @@ Future<AuthController> _controller({
   bool registrationSucceeds = false,
   bool existingAccount = false,
   String? verifyPhoneProof,
+  bool verifyOffline = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -519,6 +568,7 @@ Future<AuthController> _controller({
       registrationSucceeds: registrationSucceeds,
       existingAccount: existingAccount,
       verifyPhoneProof: verifyPhoneProof,
+      verifyOffline: verifyOffline,
     ),
   );
   await controller.restoreSession();
@@ -534,8 +584,11 @@ class _RecoveryRepository extends AuthRepository {
     this.registrationSucceeds = false,
     this.existingAccount = false,
     this.verifyPhoneProof,
+    this.verifyOffline = false,
   });
 
+  /// The code's check never reaches the server.
+  final bool verifyOffline;
   final String? verifyPhoneProof;
   final String? registerErrorCode;
   final String? verifyErrorCode;
@@ -576,6 +629,9 @@ class _RecoveryRepository extends AuthRepository {
     required String purpose,
     required String code,
   }) async {
+    if (verifyOffline) {
+      throw const ApiException('ما وصلنا', isNetworkFailure: true);
+    }
     throw ApiException(
       'backend OTP error',
       statusCode: 404,

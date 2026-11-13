@@ -258,6 +258,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       AppLogger.global?.startSessionCorrelation();
     }
     final operation = ++_sessionOperationGeneration;
+    final proofBefore = _phoneProofAt;
     // An invite's first code with a name makes the account (D75).
     final offline = accountName != null ? _signUpOfflineMessage : null;
     final success = await _submit(() async {
@@ -296,8 +297,12 @@ mixin _AuthSignIn on _AuthControllerCore {
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
     }, networkFailureMessage: offline);
-    // The number this code proved goes with its proof (D75).
-    _phoneProofPhone = _phoneProof == null ? null : phone.trim();
+    // The number this code proved goes with its proof (D75): only a proof
+    // this code brought; one kept from another number is never given to
+    // this one (RA-MO-111 keeps a proof across a failed request).
+    if (_phoneProofAt != proofBefore) {
+      _phoneProofPhone = _phoneProof == null ? null : phone.trim();
+    }
     return success && _isCurrentSessionOperation(operation);
   }
 
@@ -331,12 +336,16 @@ mixin _AuthSignIn on _AuthControllerCore {
     _errorMessage = null;
     _errorCode = null;
     _failedOffline = false;
-    _phoneProof = null;
-    _phoneProofAt = null;
+    // RA-MO-111: the proof that a code proved this number stays until a
+    // request goes through. It was dropped as every request began, so a
+    // save that failed (a password refused, the network) took it with it,
+    // and «احفظ خطتي بهذا الرقم» left for a new code.
     notifyListeners();
 
     try {
       await action();
+      _phoneProof = null;
+      _phoneProofAt = null;
       return true;
     } on FormatException catch (error) {
       appLogEvent(
@@ -351,9 +360,12 @@ mixin _AuthSignIn on _AuthControllerCore {
       return false;
     } on ApiException catch (error) {
       _errorCode = error.serverCode;
-      _phoneProof = error.phoneProof;
+      // A new proof replaces the old; a refusal without one keeps it.
       // Its age is counted from when the phone got it (J1-06).
-      _phoneProofAt = error.phoneProof == null ? null : _now();
+      if (error.phoneProof case final proof?) {
+        _phoneProof = proof;
+        _phoneProofAt = _now();
+      }
       final translatedMessage = _messageForServerCode(error.serverCode);
       if (translatedMessage != null) {
         _errorMessage = translatedMessage;

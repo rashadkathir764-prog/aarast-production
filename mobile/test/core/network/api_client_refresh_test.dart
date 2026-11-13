@@ -116,6 +116,37 @@ void main() {
     expect(expired, 0);
   });
 
+  // RA-MO-305: the retry after a good refresh was inside the refresh's
+  // failure catch, so a server refusal of the retried write became «no
+  // internet», lost its code and was queued for a retry.
+  test(
+    'a refusal of the retried request passes on as the server said it',
+    () async {
+      var token = 'old-access';
+      var expired = 0;
+      final adapter = _RetryRefusedAdapter();
+      final client = ApiClient(tokenProvider: () async => token);
+      client.dio.httpClientAdapter = adapter;
+      client.onSessionExpired = () => expired += 1;
+      client.refreshSession = () async {
+        token = 'new-access';
+        return true;
+      };
+
+      await expectLater(
+        client.postJson('/api/v1/wedding-plans/p1/budget', const {}),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isNetworkFailure, 'network', isFalse)
+              .having((e) => e.statusCode, 'status', 409)
+              .having((e) => e.serverCode, 'code', 'BUDGET_CHANGED_ELSEWHERE'),
+        ),
+      );
+      expect(adapter.calls, 2);
+      expect(expired, 0);
+    },
+  );
+
   test(
     'a wrong current password is an answer, not an expired session',
     () async {
@@ -400,6 +431,38 @@ class _RefreshAdapter implements HttpClientAdapter {
       return ResponseBody.fromString(
         '{"ok":true}',
         200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    return ResponseBody.fromString(
+      '{"message":"expired"}',
+      401,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _RetryRefusedAdapter implements HttpClientAdapter {
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls += 1;
+    if (options.headers['Authorization'] == 'Bearer new-access') {
+      return ResponseBody.fromString(
+        '{"code":"BUDGET_CHANGED_ELSEWHERE","message":"changed"}',
+        409,
         headers: {
           Headers.contentTypeHeader: ['application/json'],
         },

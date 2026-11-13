@@ -158,7 +158,18 @@ class ApiClient {
                   options.headers['Authorization'] = 'Bearer $token';
                 }
                 _logRetry(error);
-                handler.resolve(await dio.fetch<Object?>(options));
+                // RA-MO-305: the retried request is outside the refresh
+                // failure below. Its own answer (a 409, 422 or 403) passes on
+                // as the server said it; read as the connection, it lost its
+                // code and was queued for a retry that could never succeed.
+                final Response<Object?> retried;
+                try {
+                  retried = await dio.fetch<Object?>(options);
+                } on DioException catch (retryFailure) {
+                  handler.next(retryFailure);
+                  return;
+                }
+                handler.resolve(retried);
                 return;
               }
             } on Object catch (refreshFailure) {

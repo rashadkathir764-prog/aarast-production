@@ -137,6 +137,55 @@ void main() {
     expect(asked, [true, false]);
   });
 
+  // RA-MO-309: the shield asks after the frame. One that asked and was
+  // disposed in that same frame held the window secure for good, every
+  // screen of the app with it, until the app was restarted.
+  testWidgets('a money screen gone in the frame it asked in holds nothing', (
+    tester,
+  ) async {
+    final controller = await tester.runAsync(() => lock(on: false));
+    final showMoney = ValueNotifier<bool>(true);
+    addTearDown(showMoney.dispose);
+    await tester.pumpWidget(
+      app(
+        controller!,
+        ValueListenableBuilder<bool>(
+          valueListenable: showMoney,
+          builder: (context, show, _) => show
+              ? const MoneyScreenShield(child: Text('المال'))
+              : const Text('الرئيسية'),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(asked, isEmpty);
+
+    // One frame's order, step by step: the lock turns on and the shield
+    // rebuilds wanting to hold; the money closes and the shield is
+    // disposed; only then do the frame's end callbacks run.
+    final owner = tester.binding.buildOwner!;
+    final root = tester.binding.rootElement!;
+    await tester.runAsync(() => controller.setCode('1234'));
+    owner.buildScope(root);
+    showMoney.value = false;
+    owner.buildScope(root);
+    owner.finalizeTree();
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('الرئيسية'), findsOneWidget);
+    expect(asked, isEmpty);
+
+    // A later money screen holds and lets go as it should.
+    showMoney.value = true;
+    await tester.pump();
+    await tester.pump();
+    expect(asked, [true]);
+    showMoney.value = false;
+    await tester.pump();
+    await tester.pump();
+    expect(asked, [true, false]);
+  });
+
   // The two places every money screen passes: the plan's money tab, and
   // the gate of the money routes.
   testWidgets('the plan\'s money tab is protected, its other tabs are not', (

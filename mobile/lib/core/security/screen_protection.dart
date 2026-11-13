@@ -90,6 +90,10 @@ class _MoneyScreenShieldState extends State<MoneyScreenShield> {
     // After the frame: a page replacing another releases and holds in one
     // pass, so the window is not asked twice for nothing.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // RA-MO-309: a screen disposed in the frame it asked in has already
+      // let go in dispose; holding now would keep the window secure for
+      // the whole app until restart.
+      if (!mounted) return;
       if (_holding) {
         ScreenProtection.instance.hold(_holder);
       } else {
@@ -100,6 +104,7 @@ class _MoneyScreenShieldState extends State<MoneyScreenShield> {
 
   @override
   void dispose() {
+    _holding = false;
     ScreenProtection.instance.release(_holder);
     super.dispose();
   }

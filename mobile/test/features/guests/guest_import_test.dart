@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/contacts/contact_picker_service.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
@@ -427,6 +428,46 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('import-retry')));
     await tester.pumpAndSettle();
     expect(calls, 2);
+  });
+
+  // RA-MO-224: refused for good, «جرّب مرة ثانية» asked again for nothing;
+  // the page opens the phone's settings, and reads again after.
+  testWidgets('e03 sends a lasting refusal to the phone\'s settings', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 900);
+    addTearDown(tester.view.reset);
+    final provider = GuestsProvider(_Api(const []));
+    var reads = 0;
+    var settingsOpened = 0;
+    await tester.pumpWidget(
+      ChangeNotifierProvider<GuestsProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          home: GuestImportScreen(
+            weddingPlanId: 'plan-1',
+            source: GuestImportSource.contacts,
+            confirmAccess: (_) async => true,
+            openSettings: () async => settingsOpened++,
+            loadContacts: () async {
+              reads++;
+              throw const ContactPickerException(
+                'إذن جهات الاتصال مقفول في جوالك. تفتحه من إعدادات الجوال.',
+                needsSettings: true,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('import-retry')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('import-open-settings')));
+    await tester.pumpAndSettle();
+    expect(settingsOpened, 1);
+    expect(reads, 2);
   });
 
   // D112 (Q-10): the address book is read only after a yes to the app's

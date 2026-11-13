@@ -33,8 +33,12 @@ class GuestImportScreen extends StatefulWidget {
     required this.source,
     this.loadContacts = ContactPickerService.loadAll,
     this.confirmAccess = ContactPickerService.confirmAccess,
+    this.openSettings = ContactPickerService.openSettings,
     super.key,
   });
+
+  /// The phone's settings for this app (RA-MO-224); tests pass their own.
+  final Future<void> Function() openSettings;
 
   final String weddingPlanId;
   final GuestImportSource source;
@@ -54,6 +58,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   final _paste = TextEditingController();
   List<ContactPhoneDraft>? _contacts;
   String? _contactsError;
+  bool _contactsNeedSettings = false;
   final _picked = <int>{};
 
   /// Pasted names the person said are someone else than the guest of the
@@ -94,6 +99,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     setState(() {
       _contacts = null;
       _contactsError = null;
+      _contactsNeedSettings = false;
     });
     try {
       // The names are read only after the person said yes to what is read
@@ -110,7 +116,12 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       final contacts = await widget.loadContacts();
       if (mounted) setState(() => _contacts = contacts);
     } on ContactPickerException catch (error) {
-      if (mounted) setState(() => _contactsError = error.message);
+      if (mounted) {
+        setState(() {
+          _contactsError = error.message;
+          _contactsNeedSettings = error.needsSettings;
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _contactsError = 'ما قدرنا نقرأ جهات الاتصال');
@@ -280,12 +291,25 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
               soft: AarastV3Color.dangerSoft,
             ),
             const SizedBox(height: AarastV3Space.x3),
-            JourneyButton(
-              key: const ValueKey('import-retry'),
-              label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
-              icon: LucideIcons.refreshCw,
-              onPressed: _loadContacts,
-            ),
+            // RA-MO-224: refused for good, asking again shows nothing; the
+            // phone's settings open it, and the page reads again after.
+            if (_contactsNeedSettings)
+              JourneyButton(
+                key: const ValueKey('import-open-settings'),
+                label: context.say('افتح الإعدادات', 'افتحي الإعدادات'),
+                icon: LucideIcons.settings,
+                onPressed: () async {
+                  await widget.openSettings();
+                  if (mounted) await _loadContacts();
+                },
+              )
+            else
+              JourneyButton(
+                key: const ValueKey('import-retry'),
+                label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+                icon: LucideIcons.refreshCw,
+                onPressed: _loadContacts,
+              ),
           ],
         ),
       );

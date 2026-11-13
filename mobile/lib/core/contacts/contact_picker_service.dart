@@ -13,9 +13,14 @@ import '../experience_v3/aarast_journey_sheet.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
 
 class ContactPickerException implements Exception {
-  const ContactPickerException(this.message);
+  const ContactPickerException(this.message, {this.needsSettings = false});
 
   final String message;
+
+  /// RA-MO-224: the permission was refused for good («لا تسأل مرة ثانية»,
+  /// or a policy): asking again shows nothing, only the phone's settings
+  /// open it.
+  final bool needsSettings;
 
   @override
   String toString() => message;
@@ -82,9 +87,7 @@ class ContactPickerService {
     final permission = await FlutterContacts.permissions.request(
       PermissionType.read,
     );
-    if (!_isGranted(permission)) {
-      throw const ContactPickerException('ما سمحت لنا نشوف جهات الاتصال');
-    }
+    if (!_isGranted(permission)) throw _refused(permission);
 
     final contact = await FlutterContacts.native.showPicker(
       properties: {ContactProperty.name, ContactProperty.phone},
@@ -118,9 +121,7 @@ class ContactPickerService {
     final permission = await FlutterContacts.permissions.request(
       PermissionType.read,
     );
-    if (!_isGranted(permission)) {
-      throw const ContactPickerException('ما سمحت لنا نشوف جهات الاتصال');
-    }
+    if (!_isGranted(permission)) throw _refused(permission);
     final contacts = await FlutterContacts.getAll(
       properties: {ContactProperty.name, ContactProperty.phone},
     );
@@ -197,6 +198,23 @@ class ContactPickerService {
     return status == PermissionStatus.granted ||
         status == PermissionStatus.limited;
   }
+
+  /// The refusal as said to the person (RA-MO-224).
+  static ContactPickerException _refused(PermissionStatus status) {
+    final forGood =
+        status == PermissionStatus.permanentlyDenied ||
+        status == PermissionStatus.restricted;
+    return forGood
+        ? const ContactPickerException(
+            'إذن جهات الاتصال مقفول في جوالك. تفتحه من إعدادات الجوال.',
+            needsSettings: true,
+          )
+        : const ContactPickerException('ما سمحت لنا نشوف جهات الاتصال');
+  }
+
+  /// The phone's settings page for this app (RA-MO-224).
+  static Future<void> openSettings() =>
+      FlutterContacts.permissions.openSettings();
 
   static List<String> _phoneNumbers(Contact contact) {
     final seen = <String>{};

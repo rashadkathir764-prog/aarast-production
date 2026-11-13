@@ -245,18 +245,24 @@ class _TaskMenu extends StatelessWidget {
 }
 
 class _DeleteSheet extends StatelessWidget {
-  const _DeleteSheet({required this.title});
+  const _DeleteSheet({required this.title, required this.open});
 
   final String title;
+
+  /// RA-MO-199: «ما نحتاجها» is offered for an open task only; a done or
+  /// cancelled one was sent to an action it does not have.
+  final bool open;
 
   @override
   Widget build(BuildContext context) {
     return JourneySheetBody(
       title: '${context.say('تحذف', 'تحذفين')} «$title»؟',
-      subtitle: context.say(
-        'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
-        'تنمسح هي وخطواتها. لو بس ما تحتاجينها، «ما نحتاجها» تخليها في السجل.',
-      ),
+      subtitle: !open
+          ? 'تنمسح هي وخطواتها، وما ترجع.'
+          : context.say(
+              'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
+              'تنمسح هي وخطواتها. لو بس ما تحتاجينها، «ما نحتاجها» تخليها في السجل.',
+            ),
       children: [
         JourneyButton(
           key: const ValueKey('task-delete-confirm'),

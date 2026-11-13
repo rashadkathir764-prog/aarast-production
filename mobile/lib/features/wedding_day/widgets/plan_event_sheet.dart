@@ -165,6 +165,15 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
           _error = error.message;
         });
       }
+    } catch (_) {
+      // RA-MO-208: a failure that is not the server's answer (the phone's
+      // copy could not be written) left the spinner turning for good.
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'ما انحفظت المناسبة. جرّب مرة ثانية.';
+        });
+      }
     }
   }
 
@@ -192,6 +201,14 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
         setState(() {
           _saving = false;
           _error = error.message;
+        });
+      }
+    } catch (_) {
+      // RA-MO-208: as for saving.
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'ما انحذفت المناسبة. جرّب مرة ثانية.';
         });
       }
     }

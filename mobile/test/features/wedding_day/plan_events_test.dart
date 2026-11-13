@@ -84,12 +84,16 @@ class _Api extends PlanEventsApi {
     return PlanEvent(id: 'new', type: type);
   }
 
+  /// The phone's copy cannot be written (not the server's answer).
+  bool failLocally = false;
+
   @override
   Future<PlanEvent> update(
     String weddingPlanId,
     PlanEvent event,
     PlanEventDraft draft,
   ) async {
+    if (failLocally) throw StateError('disk full');
     updated.add((event.id!, draft.toJson(isMain: event.isMain)));
     return event;
   }
@@ -297,6 +301,25 @@ void main() {
     expect(find.text('السمرة'), findsOneWidget);
     expect(find.text('اقتراحات'), findsNothing);
     expect(find.byTooltip('تعديل السمرة'), findsNothing);
+  });
+
+  // RA-MO-208: a failure that is not the server's answer left the save
+  // button turning for good.
+  testWidgets('a save that fails on the phone stops and says so', (
+    tester,
+  ) async {
+    final api = _Api(_view())..failLocally = true;
+    await _pump(tester, PlanEventsProvider(api: api));
+
+    await tester.tap(find.byTooltip('تعديل المقيل'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plan-event-slot-AFTER_ASR')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plan-event-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ما انحفظت المناسبة. جرّب مرة ثانية.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('b13 saves an edit with its time and place', (tester) async {

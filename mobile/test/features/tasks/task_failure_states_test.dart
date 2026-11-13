@@ -72,6 +72,27 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  // RA-MO-199: deleting a done task pointed to «ما نحتاجها», which a done
+  // task does not offer.
+  testWidgets('a done task\'s delete does not point to «ما نحتاجها»', (
+    tester,
+  ) async {
+    final api = _Api();
+    api.task = api.task.copyWith(status: 'DONE');
+    final provider = TaskTimelineProvider(api);
+    await provider.load('plan-1');
+    await _pumpDetails(tester, provider);
+
+    await tester.tap(find.byKey(const ValueKey('task-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('task-menu-delete')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تنمسح هي وخطواتها، وما ترجع.'), findsOneWidget);
+    expect(find.textContaining('«ما نحتاجها» تخليها'), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('a failed delete says so and stays on the task', (tester) async {
     final api = _Api()..failDelete = true;
     final provider = TaskTimelineProvider(api);

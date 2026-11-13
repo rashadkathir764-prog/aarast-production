@@ -629,7 +629,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       case _TaskAction.delete:
         final confirmed = await showJourneySheet<bool>(
           context: context,
-          builder: (_) => _DeleteSheet(title: task.title),
+          builder: (_) => _DeleteSheet(title: task.title, open: task.isOpen),
         );
         if (confirmed != true || !mounted) return;
         final deleted = await provider.deleteTask(

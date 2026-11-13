@@ -327,6 +327,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-225: going back dropped what was typed on the card, with no word.
+  testWidgets('leaving a changed card asks first', (tester) async {
+    final api = await _pump(tester, [_guest('a', 'ياسر')]);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-address')),
+      'شارع تعز',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invite-card-leave')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('invite-card-stay')));
+    await tester.pumpAndSettle();
+    expect(find.text('شارع تعز'), findsWidgets);
+    expect(api.cardWrites, isEmpty);
+  });
+
   // RA-MO-226: a map link the server refuses (not https) is said under the
   // field, and nothing is sent.
   testWidgets('a map link that is not https is said before saving', (

@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/offline/offline_contract.dart' show OfflineReads;
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../data/guests_api.dart';
@@ -39,15 +41,38 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   }
 
   /// The counts are the server's; who the button can reach needs the list.
+  /// RA-MO-220: when the server is out of reach the summary is its last
+  /// copy, older than a reply set on the phone since, and it disagreed with
+  /// the guests' cards; then the replies are counted from the guest list,
+  /// the per-event ones staying the server's (the phone has none).
   Future<GuestSummary> _load() async {
     final api = context.read<GuestsApi>();
+    final copies = OfflineReads.copiesServed;
     final (summary, guests) = await (
       api.getSummary(weddingPlanId: widget.weddingPlanId),
       api.getGuests(widget.weddingPlanId),
     ).wait;
     _guests = guests;
-    return summary;
+    final counted = GuestSummary.fromGuests(
+      weddingPlanId: widget.weddingPlanId,
+      guests: [
+        for (final guest in guests)
+          if (guest.weddingPlanId == widget.weddingPlanId) guest,
+      ],
+    );
+    final shown = OfflineReads.copiesServed == copies
+        ? summary
+        : counted.withEvents(summary.byEvent);
+    // The people are counted on the phone (the server sends no such
+    // number), said only while the list agrees with what is shown.
+    _people = counted.confirmed == shown.confirmed
+        ? counted.confirmedSeatsCount
+        : null;
+    return shown;
   }
+
+  /// The confirmed with who comes with them; null when unknown.
+  int? _people;
 
   void _retry() {
     final next = _load();
@@ -163,6 +188,20 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
               color: context.accent.primary,
               height: 10,
             ),
+            // RA-MO-220: the hall and the caterer count people, the
+            // confirmed with who comes with them.
+            if (summary.confirmed > 0 && _people != null) ...[
+              const SizedBox(height: AarastV3Space.x1),
+              Text(
+                'يعني ${arabicCount(_people!, one: 'شخص واحد', two: 'شخصين', few: 'أشخاص', many: 'شخص')} مع المرافقين',
+                key: const ValueKey('guest-attendance-people'),
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                  color: context.accent.primary,
+                ),
+              ),
+            ],
             const SizedBox(height: AarastV3Space.x2),
             Text(
               waiting,

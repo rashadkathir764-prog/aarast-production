@@ -461,6 +461,26 @@ class GuestSummary {
   /// with invited guests. Empty for a plan kept on the phone.
   final List<GuestEventCounters> byEvent;
 
+  /// These counts with [events] in place of [byEvent]: the per-event replies
+  /// are the server's alone (the phone does not keep them per event).
+  GuestSummary withEvents(List<GuestEventCounters> events) => GuestSummary(
+    weddingPlanId: weddingPlanId,
+    totalGuests: totalGuests,
+    confirmed: confirmed,
+    pending: pending,
+    declined: declined,
+    missingPhoneCount: missingPhoneCount,
+    missingNameCount: missingNameCount,
+    incompleteGuestsCount: incompleteGuestsCount,
+    expectedSeatsCount: expectedSeatsCount,
+    companionsExpectedCount: companionsExpectedCount,
+    bySideForSuper: bySideForSuper,
+    byGroup: byGroup,
+    groupsCount: groupsCount,
+    byEvent: events,
+    confirmedSeatsCount: confirmedSeatsCount,
+  );
+
   double get completionRatio {
     if (totalGuests <= 0) return 0;
     final complete = totalGuests - incompleteGuestsCount;

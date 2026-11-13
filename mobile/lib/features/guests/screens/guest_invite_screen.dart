@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -277,6 +279,20 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     }
   }
 
+  bool _leaving = false;
+
+  /// RA-MO-225: going back dropped what was typed on the card, with no
+  /// draft and no word; a card with a change asks first.
+  Future<void> _backAsked(bool dirty) async {
+    if (dirty &&
+        !await confirmLeaveUnsaved(context, keyPrefix: 'invite-card')) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _leaving = true);
+    context.popOrGo(AppRouter.guestList(widget.weddingPlanId));
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GuestsProvider>();
@@ -300,141 +316,146 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     final unread = !known && !reading && provider.loadErrorMessage != null;
     final dirty = !widget.reminder && _dirty(wedding);
 
-    return AarastScreenFrame(
-      maxWidth: 600,
-      backgroundColor: AarastV3Color.canvas,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x4,
-              AarastV3Space.x2,
-              AarastV3Space.x2,
-              0,
+    return PopScope(
+      canPop: _leaving || !dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_backAsked(dirty));
+      },
+      child: AarastScreenFrame(
+        maxWidth: 600,
+        backgroundColor: AarastV3Color.canvas,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x2,
+                AarastV3Space.x2,
+                0,
+              ),
+              child: JourneySubHeader(
+                title: widget.reminder
+                    ? 'تذكير اللي ${words.pending}'
+                    : 'بطاقة الدعوة',
+                subtitle: widget.reminder
+                    ? plan(
+                        'كل واحد يوصله باسمه ورابطه',
+                        'كل وحدة يوصلها باسمها ورابطها',
+                      )
+                    : plan(
+                        'كل ضيف يوصله رابط خاص يرد منه بضغطة',
+                        'كل ضيفة يوصلها رابط خاص ترد منه بضغطة',
+                      ),
+                onBack: () => _backAsked(dirty),
+              ),
             ),
-            child: JourneySubHeader(
-              title: widget.reminder
-                  ? 'تذكير اللي ${words.pending}'
-                  : 'بطاقة الدعوة',
-              subtitle: widget.reminder
-                  ? plan(
-                      'كل واحد يوصله باسمه ورابطه',
-                      'كل وحدة يوصلها باسمها ورابطها',
+            Expanded(
+              child: ListView(
+                padding: AarastV3Density.pageInsets,
+                children: [
+                  if (widget.reminder)
+                    _ReminderPreview(profile: words.profile)
+                  else
+                    _InviteCardPreview(card: card),
+                  const SizedBox(height: AarastV3Space.x3),
+                  if (!widget.reminder) ...[
+                    if (_cardUnread)
+                      JourneyListState(
+                        phase: JourneyListPhase.error,
+                        section: JourneySection.guests,
+                        errorMessage: _cardError,
+                        onRetry: _readCard,
+                      )
+                    else
+                      ..._cardFields(context, say, plan, dirty, wedding),
+                    const SizedBox(height: AarastV3Space.x3),
+                  ],
+                  if (reading)
+                    const JourneyListState(
+                      phase: JourneyListPhase.loading,
+                      section: JourneySection.guests,
                     )
-                  : plan(
-                      'كل ضيف يوصله رابط خاص يرد منه بضغطة',
-                      'كل ضيفة يوصلها رابط خاص ترد منه بضغطة',
-                    ),
-              onBack: () =>
-                  context.popOrGo(AppRouter.guestList(widget.weddingPlanId)),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: AarastV3Density.pageInsets,
-              children: [
-                if (widget.reminder)
-                  _ReminderPreview(profile: words.profile)
-                else
-                  _InviteCardPreview(card: card),
-                const SizedBox(height: AarastV3Space.x3),
-                if (!widget.reminder) ...[
-                  if (_cardUnread)
+                  else if (unread)
                     JourneyListState(
                       phase: JourneyListPhase.error,
                       section: JourneySection.guests,
-                      errorMessage: _cardError,
-                      onRetry: _readCard,
+                      onRetry: () => provider.loadGuests(widget.weddingPlanId),
                     )
-                  else
-                    ..._cardFields(context, say, plan, dirty, wedding),
-                  const SizedBox(height: AarastV3Space.x3),
-                ],
-                if (reading)
-                  const JourneyListState(
-                    phase: JourneyListPhase.loading,
-                    section: JourneySection.guests,
-                  )
-                else if (unread)
-                  JourneyListState(
-                    phase: JourneyListPhase.error,
-                    section: JourneySection.guests,
-                    onRetry: () => provider.loadGuests(widget.weddingPlanId),
-                  )
-                else if (reachable.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final guest in reachable.take(6))
-                        JourneyChip(label: guest.name, selected: false),
-                      if (reachable.length > 6)
-                        JourneyChip(
-                          label: '+${reachable.length - 6}',
-                          selected: false,
-                        ),
-                    ],
-                  ),
-                if (!reading && !unread && unreachable > 0) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  JourneyNote(
-                    key: const ValueKey('invite-no-phone'),
-                    text:
-                        '${words.count(unreachable)} بدون رقم، ${say('ما توصل', 'ما توصلين')}${unreachable == 1 ? plan('ه', 'ها') : plan('هم', 'هن')} على واتساب.',
-                    icon: LucideIcons.phoneOff,
-                    color: AarastV3Color.brandAccentStrong,
-                    soft: AarastV3Color.brandAccentSoft,
-                  ),
-                ],
-                // Nobody waited on at all; who waits without a number is
-                // the note above, not «nobody» (RA-MO-66).
-                if (!reading && !unread && candidates.isEmpty) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  Text(
-                    widget.reminder
-                        ? plan(
-                            'ما فيه أحد ينتظر رده.',
-                            'ما فيه وحدة تنتظر ردها.',
-                          )
-                        : plan(
-                            'ما فيه أحد ما وصلته دعوة.',
-                            'ما فيه وحدة ما وصلتها دعوة.',
+                  else if (reachable.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final guest in reachable.take(6))
+                          JourneyChip(label: guest.name, selected: false),
+                        if (reachable.length > 6)
+                          JourneyChip(
+                            label: '+${reachable.length - 6}',
+                            selected: false,
                           ),
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      color: AarastV3Color.textMuted,
+                      ],
                     ),
-                  ),
+                  if (!reading && !unread && unreachable > 0) ...[
+                    const SizedBox(height: AarastV3Space.x2),
+                    JourneyNote(
+                      key: const ValueKey('invite-no-phone'),
+                      text:
+                          '${words.count(unreachable)} بدون رقم، ${say('ما توصل', 'ما توصلين')}${unreachable == 1 ? plan('ه', 'ها') : plan('هم', 'هن')} على واتساب.',
+                      icon: LucideIcons.phoneOff,
+                      color: AarastV3Color.brandAccentStrong,
+                      soft: AarastV3Color.brandAccentSoft,
+                    ),
+                  ],
+                  // Nobody waited on at all; who waits without a number is
+                  // the note above, not «nobody» (RA-MO-66).
+                  if (!reading && !unread && candidates.isEmpty) ...[
+                    const SizedBox(height: AarastV3Space.x2),
+                    Text(
+                      widget.reminder
+                          ? plan(
+                              'ما فيه أحد ينتظر رده.',
+                              'ما فيه وحدة تنتظر ردها.',
+                            )
+                          : plan(
+                              'ما فيه أحد ما وصلته دعوة.',
+                              'ما فيه وحدة ما وصلتها دعوة.',
+                            ),
+                      textAlign: TextAlign.center,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          Padding(
-            padding: AarastV3Density.actionInsets,
-            child: JourneyButton(
-              key: const ValueKey('invite-send'),
-              // No «لـ 0 ضيوف»: with nobody to send to the button only
-              // waits; with changes unsaved it saves the card first.
-              label: reachable.isEmpty
-                  ? dirty
-                        ? '${say('احفظ', 'احفظي')} البطاقة'
-                        : say('أرسل', 'أرسلي')
-                  : dirty
-                  ? '${say('احفظ', 'احفظي')} و${say('أرسل', 'أرسلي')} لـ $count'
-                  : '${say('أرسل', 'أرسلي')} لـ $count',
-              icon: LucideIcons.send,
-              background: context.accent.primary,
-              expand: true,
-              large: true,
-              loading: _saving,
-              onPressed: _saving || (reachable.isEmpty && !dirty)
-                  ? null
-                  : () => _sendOrSave(provider, reachable, wedding),
+            Padding(
+              padding: AarastV3Density.actionInsets,
+              child: JourneyButton(
+                key: const ValueKey('invite-send'),
+                // No «لـ 0 ضيوف»: with nobody to send to the button only
+                // waits; with changes unsaved it saves the card first.
+                label: reachable.isEmpty
+                    ? dirty
+                          ? '${say('احفظ', 'احفظي')} البطاقة'
+                          : say('أرسل', 'أرسلي')
+                    : dirty
+                    ? '${say('احفظ', 'احفظي')} و${say('أرسل', 'أرسلي')} لـ $count'
+                    : '${say('أرسل', 'أرسلي')} لـ $count',
+                icon: LucideIcons.send,
+                background: context.accent.primary,
+                expand: true,
+                large: true,
+                loading: _saving,
+                onPressed: _saving || (reachable.isEmpty && !dirty)
+                    ? null
+                    : () => _sendOrSave(provider, reachable, wedding),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

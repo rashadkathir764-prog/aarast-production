@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
@@ -131,6 +132,21 @@ void main() {
     expect(find.text('62 أكدوا من 124'), findsOneWidget);
   });
 
+  // RA-MO-220: offline the summary is the server's last copy, older than a
+  // reply set on the phone since; the counts follow the guests' cards, and
+  // say how many people that is.
+  testWidgets('an old copy is counted from the phone\'s guests', (
+    tester,
+  ) async {
+    final api = _FakeGuestsApi(_summary(confirmed: 1, pending: 1))
+      ..guests = [_guest('g1', 'CONFIRMED'), _guest('g2', 'CONFIRMED')]
+      ..servesCopy = true;
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    expect(find.text('2 أكدوا من 2'), findsOneWidget);
+    expect(find.text('يعني شخصين مع المرافقين'), findsOneWidget);
+  });
+
   testWidgets('the guests summary card opens it', (tester) async {
     final api = _FakeGuestsApi(_summary(confirmed: 1, pending: 1))
       ..guests = [_guest('g1', 'CONFIRMED'), _guest('g2', 'INVITED')];
@@ -240,8 +256,12 @@ class _FakeGuestsApi extends GuestsApi {
   }) async {
     summaryCalls.add(weddingPlanId);
     if (fails) throw const ApiException('offline');
+    if (servesCopy) OfflineReads.noteCopyServed();
     return summary;
   }
+
+  /// The server is out of reach and the phone's last copy answers.
+  bool servesCopy = false;
 
   @override
   Future<List<Guest>> getGuests(String weddingPlanId) async => guests;

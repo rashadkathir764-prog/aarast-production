@@ -53,7 +53,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final provider = context.read<GuestsProvider>();
-      if (_guest(provider) == null) provider.loadGuests(widget.weddingPlanId);
+      // RA-MO-213: read again on every open; the copy on the phone shows
+      // meanwhile. The page read only when it had no copy, so opened from
+      // «X أكّد حضوره» it showed the reply from before the notice.
+      provider.loadGuests(widget.weddingPlanId);
       // D83: the events' names, for the guest's replies to them.
       if (!_isLocalPlan) readPlanEventsOnce(context, widget.weddingPlanId);
     });
@@ -482,22 +485,43 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       ),
     );
     if (result == null || !mounted) return;
+    // RA-MO-212: a save sends what the person changed. Every field used to
+    // go as this phone had last read the guest, the reply and the
+    // companions with them: a guest who answered from the link after that
+    // read lost the answer when their name or number was corrected (back
+    // to «ما ردّ», with nothing said), and an edit kept without a
+    // connection did the same when it was sent.
+    String? changed(String? now, String? before) =>
+        (now ?? '').trim() == (before ?? '').trim() ? null : now ?? '';
+    final replyChanged = result.status != guest.status;
     final ok = await provider.updateGuest(
       guest: guest,
-      name: result.name,
-      phone: result.phone ?? '',
-      // Sent only when it changed: keeping a group the owner chose is not
-      // linking the guest to it again (D80).
+      name: changed(result.name, guest.name),
+      phone: changed(result.phone, guest.phone),
+      // Keeping a group the owner chose is not linking the guest to it
+      // again (D80).
       groupId: result.groupId == guest.groupId ? null : result.groupId ?? '',
-      side: result.side,
-      status: result.status,
-      attendanceStatus: guestAttendanceForStatus(result.status),
-      seatsCount: result.seatsCount,
-      companionsCount: result.companionsCount,
-      notes: result.notes,
-      // D83: only when the form offered the plan's events; otherwise the
-      // guest keeps theirs.
-      eventIds: events.isEmpty ? null : result.eventIds,
+      side: result.side == guest.side ? null : result.side,
+      status: replyChanged ? result.status : null,
+      attendanceStatus: replyChanged
+          ? guestAttendanceForStatus(result.status)
+          : null,
+      seatsCount: result.seatsCount == guest.seatsCount
+          ? null
+          : result.seatsCount,
+      companionsCount: result.companionsCount == guest.companionsCount
+          ? null
+          : result.companionsCount,
+      notes: changed(result.notes, guest.notes),
+      // D83: only when the form offered the plan's events, and only when
+      // the choice of them changed; otherwise the guest keeps theirs.
+      eventIds:
+          events.isEmpty ||
+              (result.eventIds.toSet().length ==
+                      guest.eventIds.toSet().length &&
+                  result.eventIds.toSet().containsAll(guest.eventIds))
+          ? null
+          : result.eventIds,
     );
     if (!mounted) return;
     if (ok) {

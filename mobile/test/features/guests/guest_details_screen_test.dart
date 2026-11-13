@@ -44,6 +44,9 @@ class _FakeGuestsApi extends GuestsApi {
   Guest guest;
   final updates = <String?>[];
 
+  /// What each save carried: the fields that were sent, and no others.
+  final sent = <Map<String, Object?>>[];
+
   @override
   Future<List<Guest>> getGuests(String weddingPlanId) async => [guest];
 
@@ -73,6 +76,18 @@ class _FakeGuestsApi extends GuestsApi {
     List<String>? eventIds,
   }) async {
     updates.add(status);
+    sent.add({
+      'name': ?name,
+      'phone': ?phone,
+      'groupId': ?groupId,
+      'side': ?side,
+      'status': ?status,
+      'attendanceStatus': ?attendanceStatus,
+      'seatsCount': ?seatsCount,
+      'companionsCount': ?companionsCount,
+      'notes': ?notes,
+      'eventIds': ?eventIds,
+    });
     guest = _guest(
       planId: guest.weddingPlanId,
       status: status ?? guest.status,
@@ -186,6 +201,38 @@ void main() {
     await _pump(tester, _guest(planId: 'local-guest-plan'));
     expect(find.text('الدعوة'), findsNothing);
     expect(find.byKey(const ValueKey('guest-send-invitation')), findsNothing);
+  });
+
+  // RA-MO-212 (batch 6): «عدّل بياناته» sent the guest's reply and their
+  // companions with every save, as this phone had last read them. A guest
+  // who answered from the link after that read lost the answer when their
+  // name or number was corrected: back to «ما ردّ», with nothing said. A
+  // save sends what the person changed.
+  testWidgets('correcting a guest\'s name sends the name and not their reply', (
+    tester,
+  ) async {
+    final api = await _pump(tester, _guest());
+    await tester.tap(find.byKey(const ValueKey('guest-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('عدّل بياناته'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('guest-form-name')),
+        matching: find.byType(TextField),
+      ),
+      'عبدالله الحمدي',
+    );
+    await tester.pumpAndSettle();
+    final save = find.byKey(const ValueKey('guest-form-save'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(api.sent, hasLength(1));
+    expect(api.sent.single, {'name': 'عبدالله الحمدي'});
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the guest menu edits or removes them', (tester) async {

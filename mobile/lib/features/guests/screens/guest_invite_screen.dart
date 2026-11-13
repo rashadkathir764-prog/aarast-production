@@ -527,11 +527,33 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     if (uploads == null) return;
     final source = await showImageSourceSheet(context);
     if (source == null || !mounted) return;
-    final file = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 86,
-      maxWidth: 1600,
-    );
+    final XFile? file;
+    try {
+      file = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 86,
+        maxWidth: 1600,
+      );
+    } on Object {
+      // RA-MO-214: a camera or gallery that refuses (the permission, no
+      // camera) raised here, outside the handling below: nothing happened
+      // and nothing was said.
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          source == ImageSource.camera
+              ? context.say(
+                  'ما قدرنا نفتح الكاميرا. شوف إذنها في إعدادات الجوال.',
+                  'ما قدرنا نفتح الكاميرا. شوفي إذنها في إعدادات الجوال.',
+                )
+              : context.say(
+                  'ما قدرنا نفتح الصور. شوف إذنها في إعدادات الجوال.',
+                  'ما قدرنا نفتح الصور. شوفي إذنها في إعدادات الجوال.',
+                ),
+        );
+      }
+      return;
+    }
     if (file == null || !mounted) return;
     setState(() => _uploading = true);
     try {

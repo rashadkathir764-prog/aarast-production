@@ -51,6 +51,23 @@ void main() {
     return answer;
   }
 
+  // RA-MO-216 (batch 6): the first number of a contact was always taken.
+  test('a contact is invited by its Yemeni mobile, wherever it is listed', () {
+    expect(
+      ContactPickerService.preferredContactPhone([
+        '01 234 567',
+        '+966501234567',
+        '777 123 456',
+      ]),
+      '777 123 456',
+    );
+    // None is a Yemeni mobile: the first stands, and is told as it is.
+    expect(
+      ContactPickerService.preferredContactPhone(['01 234 567', '02 333 444']),
+      '01 234 567',
+    );
+  });
+
   testWidgets('before the first read the app says what it reads and keeps', (
     tester,
   ) async {

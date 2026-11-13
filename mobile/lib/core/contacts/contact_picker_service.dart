@@ -5,6 +5,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../shared/models/contact_phone_draft.dart';
+import '../phone/yemeni_phone_normalizer.dart';
 import '../widgets/aarast_bottom_sheet.dart';
 import '../widgets/aarast_phone_text.dart';
 import '../experience_v3/aarast_journey.dart';
@@ -125,15 +126,26 @@ class ContactPickerService {
     );
     final drafts = <ContactPhoneDraft>[
       for (final contact in contacts)
-        if (_phoneNumbers(contact).isNotEmpty)
+        // RA-MO-217: a contact saved with no name was listed as a blank
+        // row, taken by «اختر الكل», and refused by the server.
+        if (_phoneNumbers(contact).isNotEmpty &&
+            (contact.displayName ?? '').trim().isNotEmpty)
           ContactPhoneDraft.fromInput(
-            name: contact.displayName ?? '',
-            rawPhone: _phoneNumbers(contact).first,
+            name: contact.displayName!.trim(),
+            rawPhone: preferredContactPhone(_phoneNumbers(contact)),
             source: ContactPhoneSource.deviceContact,
           ),
     ]..sort((a, b) => a.name.compareTo(b.name));
     return drafts;
   }
+
+  /// RA-MO-216: the number of a contact to invite by: the first Yemeni
+  /// mobile among its numbers, else the first. The first was always taken,
+  /// so a contact whose first number is a landline was added «بدون رقم»
+  /// while their mobile sat on the same card.
+  @visibleForTesting
+  static String preferredContactPhone(List<String> phones) =>
+      phones.firstWhere(isValidYemeniPhoneInput, orElse: () => phones.first);
 
   static Future<String?> pickPhoneNumber(BuildContext context) async {
     final contact = await pickContact(context);

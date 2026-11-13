@@ -270,6 +270,13 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return true;
     } on ApiException catch (error) {
+      // RA-MO-215: already removed on another phone. That is what was
+      // asked for; it was shown as an error and the row stayed.
+      if (error.statusCode == 404) {
+        _guests = _guests.where((item) => item.id != guest.id).toList();
+        _refreshSummary(guest.weddingPlanId);
+        return true;
+      }
       _errorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {

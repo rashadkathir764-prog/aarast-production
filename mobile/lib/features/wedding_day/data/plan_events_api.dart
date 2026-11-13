@@ -178,13 +178,30 @@ class PlanEventsApi {
   ) async {
     final view = await _reads.cachedBlob(_key(weddingPlanId));
     if (view == null) return;
+    // RA-MO-195: an event of one of the plan's kinds (all but «CUSTOM»)
+    // is one per plan. Added offline it stayed in the copy's suggestions,
+    // so it was offered and added again (the server refuses the second,
+    // and it stuck the queue), and a wedding without its own row yet stood
+    // beside the new one. The copy holds it once, and suggests it no more.
+    final type = row['type']?.toString();
+    final onePerPlan = type != null && type != PlanEventType.custom.wire;
     final items = [
       for (final item in view['items'] as List? ?? const [])
-        if (item is Map && item['id']?.toString() != row['id']?.toString())
+        if (item is Map &&
+            item['id']?.toString() != row['id']?.toString() &&
+            !(onePerPlan && item['type'] == type && item['id'] == null))
           Map<String, dynamic>.from(item),
       row,
     ];
-    await _reads.putBlob(_key(weddingPlanId), {...view, 'items': items});
+    final suggestions = [
+      for (final value in view['suggestions'] as List? ?? const [])
+        if (!onePerPlan || value != type) value,
+    ];
+    await _reads.putBlob(_key(weddingPlanId), {
+      ...view,
+      'items': items,
+      'suggestions': suggestions,
+    });
   }
 
   Future<void> _dropFromCopy(String weddingPlanId, String eventId) async {

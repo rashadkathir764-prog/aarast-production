@@ -99,7 +99,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
+  /* `clip`, not `hidden`: `hidden` would make body a scroll box of its own,
+     and the desk's side menu would stick to it, not to the window. */
+  overflow-x: clip;
   background: var(--canvas);
 }
 

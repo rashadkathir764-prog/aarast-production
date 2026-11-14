@@ -1745,7 +1745,13 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 (RA-MO-207, 2026-11-13): the task page asks a participant's rights
 // again when their task is missing (the account contexts owner API); no new
 // export.
-const r19LegalRecordCount = 269;
+// +1 (D114, 2026-11-14): the home of a plan kept on the phone reads the
+// money tab's own calculation (`localPlanMoneySummary`, the finance owner
+// API), so the two cannot disagree about the mahr.
+// +1 (RA-MO-317, 2026-11-14): the message a task's person gets names the
+// plan; the plan's title is read in one helper (task_plan_title.dart) from
+// the account contexts owner API. No new export.
+const r19LegalRecordCount = 271;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1849,6 +1855,8 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/finance/finance_api.dart',
     exports: [
       { uri: 'data/finance_api.dart', show: ['FinanceApi', 'LocalFinancePlanContext'] },
+      // D114: the phone plan's one money calculation, for the home too.
+      { uri: 'data/finance_local_data_source.dart', show: ['localPlanMoneySummary'] },
       { uri: 'data/funding_api.dart', show: ['FundingApi'] },
       { uri: 'providers/funding_provider.dart', show: ['FundingProvider'] },
       { uri: 'screens/funding_sources_screen.dart', show: ['FundingSourcesScreen'] },
@@ -1897,6 +1905,8 @@ const trackedOwnerApiContracts = [
         uri: 'widgets/money_cost_action_picker.dart',
         show: ['MoneyCostActionIntent', 'openMoneyCostAction'],
       },
+      // D114: «المهر من الميزانية؟», wherever the budget is typed.
+      { uri: 'widgets/mahr_budget_choice.dart', show: ['MahrBudgetChoice'] },
       // B5 (D55): a06's mahr fields, for the welcome steps and MahrScreen.
       {
         uri: 'widgets/mahr_fields.dart',
@@ -2912,7 +2922,8 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/guests/utils/guest_plan_events.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['PlanEvent', 'PlanEventType', 'PlanEventsProvider'],
+    // RA-MO-315: an occasion's time, as the invitation's message says it.
+    show: ['PlanEvent', 'PlanEventSlot', 'PlanEventType', 'PlanEventsProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
@@ -3064,7 +3075,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/widgets/plan_details_view.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['MoneyInputFormatter', 'formatMoneyInputValue'],
+    show: ['MahrBudgetChoice', 'MoneyInputFormatter', 'formatMoneyInputValue'],
   },
   // g03: after the wedding moves, the open tasks move by the same days.
   {
@@ -3138,6 +3149,13 @@ const trackedPlanningBatchContracts = [
 ];
 
 const trackedShellEntryBatchContracts = [
+  // D114: the home of a plan kept on the phone reads the same money
+  // calculation as its money tab.
+  {
+    source: 'mobile/lib/features/home/data/dashboard_summary_sources.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['LocalFinancePlanContext', 'localPlanMoneySummary'],
+  },
   {
     source: 'mobile/lib/features/home/data/dashboard_summary_sources.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
@@ -3306,6 +3324,7 @@ const trackedShellEntryBatchContracts = [
     // B5 (D55): a06's mahr fields are the welcome's third step.
     show: [
       'FinanceApi',
+      'MahrBudgetChoice',
       'MahrFields',
       'MoneyInputFormatter',
       'formatMoneyInputValue',

@@ -9,8 +9,13 @@ import '../../../core/theme/aarast_motion.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _resultCoverHeight = 120.0;
+/// A fixed dimension of this layout, not a spacing step (D74): how wide the
+/// photo stands beside the card's words.
+const _photoWidth = 112.0;
+
+/// What the name leaves for the heart's 48 target in the card's corner,
+/// past the card's own padding.
+const _heartRoom = 36.0;
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
@@ -160,104 +165,109 @@ class ProviderResultCard extends StatelessWidget {
         child: InkWell(
           key: detailsButtonKey,
           onTap: onDetails,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          // RA-MO-316: the photo stands beside what the card says, as tall
+          // as the card, so a face is kept whole and nothing is left blank
+          // under it. It was a strip across the card, 120 high: a portrait
+          // showed a nose and a mouth, and without a photo half the card
+          // was an empty band.
+          child: Stack(
             children: [
-              _Cover(
-                imageUrl: imageUrl,
-                name: businessName,
-                isFavorite: isFavorite,
-                onFavorite: onFavorite,
-                favoriteButtonKey: favoriteButtonKey,
+              // The words set the card's height; the photo fills it.
+              PositionedDirectional(
+                top: 0,
+                bottom: 0,
+                start: 0,
+                width: _photoWidth,
+                child: _Photo(imageUrl: imageUrl, name: businessName),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AarastV3Space.x4,
-                  AarastV3Space.x3,
-                  AarastV3Space.x4,
-                  AarastV3Space.x3,
+              ConstrainedBox(
+                // As wide as the list gives it, whatever the words' length.
+                constraints: const BoxConstraints(
+                  minHeight: _photoWidth,
+                  minWidth: double.infinity,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            businessName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: JourneyType.of(
-                              JourneyType.title,
-                              weight: JourneyType.bold,
-                            ),
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    _photoWidth + AarastV3Space.x3,
+                    AarastV3Space.x3,
+                    AarastV3Space.x3,
+                    AarastV3Space.x3,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // The name stops short of the heart in the corner.
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          end: _heartRoom,
+                        ),
+                        child: Text(
+                          businessName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: JourneyType.of(
+                            JourneyType.title,
+                            weight: JourneyType.bold,
                           ),
                         ),
-                        if (ratingCount > 0) ...[
-                          const Icon(
-                            LucideIcons.star,
-                            size: 15,
-                            color: AarastV3Color.saffron,
-                          ),
-                          Text(
-                            ' ${ratingAverage.toStringAsFixed(1)} ($ratingCount)',
-                            textDirection: TextDirection.ltr,
-                            style: JourneyType.of(
-                              JourneyType.body,
-                              weight: JourneyType.bold,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (where.isNotEmpty)
-                      Text(
-                        where,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          JourneyType.small,
-                          color: AarastV3Color.textMuted,
-                        ),
                       ),
-                    const SizedBox(height: AarastV3Space.x2),
-                    Wrap(spacing: 6, runSpacing: 6, children: badges),
-                    const SizedBox(height: AarastV3Space.x2),
-                    if (price != null)
-                      Text(
-                        [price, ?_clean(priceAgeLabel)].join(' · '),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          JourneyType.bodyLarge,
-                          weight: JourneyType.bold,
-                          color: context.accent.primary,
+                      if (where.isNotEmpty || ratingCount > 0)
+                        // The place gives way first; with large text
+                        // the rating goes under it.
+                        Wrap(
+                          spacing: AarastV3Space.x2,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (where.isNotEmpty)
+                              Text(
+                                where,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: JourneyType.of(
+                                  JourneyType.small,
+                                  color: AarastV3Color.textMuted,
+                                ),
+                              ),
+                            if (ratingCount > 0)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    LucideIcons.star,
+                                    size: 15,
+                                    color: AarastV3Color.saffron,
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      ' ${ratingAverage.toStringAsFixed(1)} ($ratingCount)',
+                                      textDirection: TextDirection.ltr,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: JourneyType.of(
+                                        JourneyType.small,
+                                        weight: JourneyType.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
-                      ),
-                    // An unclaimed listing has no one to answer a request
-                    // (409 PROVIDER_NOT_CLAIMED), price or not.
-                    if (!isClaimed || price == null)
-                      Text(
-                        isClaimed
-                            ? context.say(
-                                'اطلب عرض تعرف السعر',
-                                'اطلبي عرض تعرفين السعر',
-                              )
-                            : 'ما يستقبل طلبات لين يستلم صاحبه ملفه',
-                        key: isClaimed
-                            ? null
-                            : const Key('provider-card-unclaimed-note'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          price == null
-                              ? JourneyType.bodyLarge
-                              : JourneyType.small,
-                          weight: JourneyType.bold,
-                          color: AarastV3Color.textMuted,
-                        ),
-                      ),
-                  ],
+                      const SizedBox(height: AarastV3Space.x2),
+                      Wrap(spacing: 6, runSpacing: 6, children: badges),
+                      const SizedBox(height: AarastV3Space.x2),
+                      ..._priceLines(context, price),
+                    ],
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: _FavoriteHeart(
+                  isFavorite: isFavorite,
+                  onTap: onFavorite,
+                  buttonKey: favoriteButtonKey,
                 ),
               ),
             ],
@@ -267,26 +277,52 @@ class ProviderResultCard extends StatelessWidget {
     );
   }
 
+  /// The price with how old it is (w33), or what to do without one.
+  List<Widget> _priceLines(BuildContext context, String? price) {
+    return [
+      if (price != null)
+        Text(
+          [price, ?_clean(priceAgeLabel)].join(' · '),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: JourneyType.of(
+            JourneyType.bodyLarge,
+            weight: JourneyType.bold,
+            color: context.accent.primary,
+          ),
+        ),
+      // An unclaimed listing has no one to answer a request
+      // (409 PROVIDER_NOT_CLAIMED), price or not.
+      if (!isClaimed || price == null)
+        Text(
+          isClaimed
+              ? context.say('اطلب عرض تعرف السعر', 'اطلبي عرض تعرفين السعر')
+              : 'ما يستقبل طلبات لين يستلم صاحبه ملفه',
+          key: isClaimed ? null : const Key('provider-card-unclaimed-note'),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: JourneyType.of(
+            price == null ? JourneyType.bodyLarge : JourneyType.small,
+            weight: JourneyType.bold,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+    ];
+  }
+
   static String? _clean(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }
 
-class _Cover extends StatelessWidget {
-  const _Cover({
-    required this.imageUrl,
-    required this.name,
-    required this.isFavorite,
-    required this.onFavorite,
-    required this.favoriteButtonKey,
-  });
+/// The provider's photo, or the first letter of the name without one: a
+/// square, so a portrait keeps its face and a wide cover its middle.
+class _Photo extends StatelessWidget {
+  const _Photo({required this.imageUrl, required this.name});
 
   final String? imageUrl;
   final String name;
-  final bool isFavorite;
-  final VoidCallback? onFavorite;
-  final Key? favoriteButtonKey;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +333,9 @@ class _Cover extends StatelessWidget {
       child: Center(
         child: Text(
           initial,
+          // A drawing, not text to read: it does not grow with the reader's
+          // text size, or it would leave its square.
+          textScaler: TextScaler.noScaling,
           style: JourneyType.of(
             JourneyType.count,
             weight: JourneyType.bold,
@@ -305,39 +344,22 @@ class _Cover extends StatelessWidget {
         ),
       ),
     );
-    return SizedBox(
-      height: _resultCoverHeight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // g02 «توفير البيانات»: no photo loads in the list.
-          if (url == null ||
+    // Flush with the card's edge, which rounds its outer corners.
+    return SizedBox.expand(
+      key: const Key('provider-card-photo'),
+      // g02 «توفير البيانات»: no photo loads in the list.
+      child:
+          url == null ||
               url.isEmpty ||
-              (context.watch<DevicePreferences?>()?.dataSaver ?? false))
-            placeholder
-          else
-            Image.network(
+              (context.watch<DevicePreferences?>()?.dataSaver ?? false)
+          ? placeholder
+          : Image.network(
               url,
               fit: BoxFit.cover,
+              // What is cut off a tall photo is its bottom, not the face.
+              alignment: const Alignment(0, -0.6),
               errorBuilder: (context, error, stack) => placeholder,
             ),
-          PositionedDirectional(
-            top: 8,
-            end: 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AarastV3Color.paper.withValues(alpha: 0.92),
-                shape: BoxShape.circle,
-              ),
-              child: _FavoriteHeart(
-                isFavorite: isFavorite,
-                onTap: onFavorite,
-                buttonKey: favoriteButtonKey,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

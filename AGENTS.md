@@ -17,9 +17,10 @@ These rules apply to every AI agent working on Aarast / اعّرست.
 - Take the professional decision and keep working; show the owner the result per batch (D111). Do not invent a business rule: a money rule, a permission or a sensitive operation that the system does not settle is written under «أسئلة قواعد العمل» in `docs/project/DESIGN_STATUS.md` with its evidence and options, and the work that does not depend on it goes on.
 - Record only what was done. A check that was not run is written as not run, with the reason.
 - Do not add plan, report, inventory or tracking files. Progress goes in `STATUS.md`, a decision goes in `DECISIONS.md` as one line.
-- Two exceptions, by the owner's order:
+- Three exceptions, by the owner's order:
   - 2026-11-06: `docs/project/RELEASE_AUDIT.md` is the pre-release closing round's inventory, coverage and issue log. Update it after every batch; `STATUS.md` points to it and holds the resume point.
   - 2026-11-11: `docs/superpowers/plans/2026-11-11-groom-screens-home-language.md` and the mockups under `docs/superpowers/specs/2026-11-11-mockups/` are the plan of the UI work the owner opened (D110). No other plan file is added beside them.
+  - 2026-11-14: `docs/project/DESIGN_CRITIQUE.md` is the record of the design and UX critique the owner ran with a cloud session (rounds 0 to 7, every finding with its evidence). It is a list of findings for the owner, not a plan: nothing in it is carried out without his word, and the frontend freeze stands.
 - The seven files under `docs/superpowers/{plans,specs,reports}` dated 2026-08 and 2026-09 are pinned by the architecture gates. They are fixtures, not plans. Do not read them for direction.
 
 ## Frontend freeze (D67, D68)

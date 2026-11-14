@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -43,10 +44,16 @@ class GuestInviteScreen extends StatefulWidget {
   const GuestInviteScreen({
     required this.weddingPlanId,
     this.reminder = false,
+    this.pickPhoto,
     super.key,
   });
 
   final String weddingPlanId;
+
+  /// Picks the card's photo; the phone's camera or gallery when null. A
+  /// test gives its own, since the phone's picker does not run there.
+  @visibleForTesting
+  final Future<XFile?> Function(ImageSource source)? pickPhoto;
 
   /// e08: a new link and a short reminder, to who has not answered or to
   /// everyone the invitation reached.
@@ -83,6 +90,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   /// is kept so trying again does not ask for it again.
   String? _photoError;
   XFile? _photoFile;
+
+  /// The photo picked on this screen, as the file itself: the preview draws
+  /// it from here. Its stored address cannot be drawn (the bucket keeps the
+  /// card's photo private, and a signed read comes only with the saved
+  /// card). Kept until the photo is removed or another is picked.
+  Uint8List? _pickedPhoto;
 
   /// Why the last save failed, said above the button with what was typed.
   String? _saveError;
@@ -176,11 +189,17 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       }
     }
     final typed = _place.text.trim();
+    // The label the server writes in the message and on the link's preview
+    // (`locationLabel`: the medium one, else the display one); the full
+    // label, street and all, was a line the guest never got.
     final standIn =
-        mine?.location?['fullLabel']?.toString().trim() ??
-        mine?.location?['address']?.toString().trim() ??
-        mine?.city?.trim() ??
-        '';
+        [
+              mine?.location?['mediumLabel'],
+              mine?.location?['displayLabel'],
+              mine?.city,
+            ]
+            .map((label) => label?.toString().trim() ?? '')
+            .firstWhere((label) => label.isNotEmpty, orElse: () => '');
     return GuestInviteCard(
       title: mine?.title.trim().isNotEmpty == true ? mine!.title : 'زفافنا',
       host: _host.text,
@@ -369,6 +388,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       photo: _PhotoState(
         uploading: _uploading,
         error: _photoError,
+        picked: _pickedPhoto,
         onChange: widget.reminder || _cardUnread || _uploading
             ? null
             : () => _changePhoto(hasPhoto: _photoUrl != null),
@@ -610,6 +630,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         _photo = '';
         _photoError = null;
         _photoFile = null;
+        _pickedPhoto = null;
       });
       return;
     }
@@ -618,11 +639,13 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         : ImageSource.gallery;
     final XFile? file;
     try {
-      file = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: 86,
-        maxWidth: 1600,
-      );
+      file =
+          await (widget.pickPhoto?.call(source) ??
+              ImagePicker().pickImage(
+                source: source,
+                imageQuality: 86,
+                maxWidth: 1600,
+              ));
     } on Object {
       // RA-MO-214: a camera or gallery that refuses (the permission, no
       // camera) raised here, outside the handling below: nothing happened
@@ -661,10 +684,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         file: file,
         purpose: 'guest-invitation-card',
       );
+      final picked = await file.readAsBytes();
       if (!mounted) return;
       setState(() {
         _photo = ticket.publicUrl;
         _photoFile = null;
+        _pickedPhoto = picked;
       });
     } on ApiException catch (error) {
       if (mounted) {

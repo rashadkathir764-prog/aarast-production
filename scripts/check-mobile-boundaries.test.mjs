@@ -1751,7 +1751,11 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 (RA-MO-317, 2026-11-14): the message a task's person gets names the
 // plan; the plan's title is read in one helper (task_plan_title.dart) from
 // the account contexts owner API. No new export.
-const r19LegalRecordCount = 271;
+// +1 (second review of the field-notes branch, 2026-11-14): the home's
+// money card reads the budget's figures and the mahr's own line from the
+// finance owner API (money_budget_words.dart) instead of its own copy,
+// which had come apart from the money tab's.
+const r19LegalRecordCount = 272;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1916,6 +1920,12 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/mahr_fields.dart',
         show: ['MahrFields', 'mahrWords', 'pickMahrDueDate'],
+      },
+      // D114: the budget's figures and the mahr's own line, one writer for
+      // the money tab and the home's card (written twice, they came apart).
+      {
+        uri: 'widgets/money_budget_words.dart',
+        show: ['mahrOnItsOwnWords', 'moneyBudgetCells'],
       },
       // RA-MO-53 (D103): the money's one verdict, for the home's card too.
       {
@@ -3155,6 +3165,12 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
     target: 'mobile/lib/features/tasks/tasks_api.dart',
     show: ['TaskSummary'],
+  },
+  {
+    // D114: the home's money card says the money tab's own words.
+    source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['mahrOnItsOwnWords', 'moneyBudgetCells'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',

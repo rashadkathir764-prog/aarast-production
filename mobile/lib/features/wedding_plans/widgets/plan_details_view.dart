@@ -158,16 +158,24 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
     setState(() => _firstDay = picked);
   }
 
-  /// The choice under the budget is seen once before a save: with the
-  /// keyboard up on a small phone it sat under it.
+  /// The choice under the budget is seen once before a new budget is
+  /// saved: with the keyboard up on a small phone it sat under it. Only
+  /// then: a save of the name or the day has nothing to do with it and
+  /// goes through at the first press. A press spent on showing it says so
+  /// ([_choiceAsked]).
   final _choiceKey = GlobalKey();
   final _budgetKey = GlobalKey();
   bool _choiceSeen = false;
+  bool _choiceAsked = false;
 
   Future<void> _save() async {
-    if (widget.budgetIncludesMahr != null && !_choiceSeen) {
+    if (widget.budgetIncludesMahr != null &&
+        _budgetChanged &&
+        _inside == null &&
+        !_choiceSeen) {
       _choiceSeen = true;
       if (!mahrChoiceOnScreen(_choiceKey)) {
+        setState(() => _choiceAsked = true);
         revealMahrChoice(_choiceKey, near: _budgetKey);
         return;
       }
@@ -290,9 +298,13 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                   budget: total,
                   mahr: widget.mahrTotal,
                   currency: plan.currency,
+                  asksBeforeGoingOn: _choiceAsked,
                   onChanged: _saving
                       ? null
-                      : (inside) => setState(() => _inside = inside),
+                      : (inside) => setState(() {
+                          _inside = inside;
+                          _choiceAsked = false;
+                        }),
                 ),
               ],
               if (hasStoredDay) ...[

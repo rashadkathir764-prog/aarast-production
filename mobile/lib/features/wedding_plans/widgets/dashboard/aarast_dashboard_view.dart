@@ -14,6 +14,8 @@ import '../../../../core/utils/keep_currency_on_line.dart';
 import '../../../../core/utils/plan_day.dart';
 import '../../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
+import '../../../finance/finance_api.dart'
+    show mahrOnItsOwnWords, moneyBudgetCells;
 import '../../../wedding_day/wedding_day_api.dart'
     show PlanEvent, PlanEventMoment, PlanEventsView, programMoments;
 import '../../models/dashboard_summary.dart';

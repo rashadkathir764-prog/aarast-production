@@ -270,10 +270,14 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     final provider = context.read<FinanceProvider>();
     final currencyLocked = provider.summary.currencyFixed;
     final mahr = provider.summary.mahrCategory;
-    // The choice is seen once before the sheet closes: with the keyboard up
-    // on a small phone it sat under it.
+    // The choice is seen once before the sheet closes on a new total: with
+    // the keyboard up on a small phone it sat under it. A sheet closed with
+    // the total as it was, or with the choice already picked, closes at
+    // once; a press spent on showing the choice says so.
     final choiceKey = GlobalKey();
+    final totalBefore = moneyValue(_totalController.text);
     var choiceSeen = false;
+    var choiceAsked = false;
     return showJourneySheet<void>(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
@@ -292,9 +296,13 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
               expand: true,
               large: true,
               onPressed: () {
-                if (_asked && !choiceSeen) {
+                if (_asked &&
+                    !choiceSeen &&
+                    _includesMahr == null &&
+                    moneyValue(_totalController.text) != totalBefore) {
                   choiceSeen = true;
                   if (!mahrChoiceOnScreen(choiceKey)) {
+                    setSheetState(() => choiceAsked = true);
                     revealMahrChoice(choiceKey);
                     return;
                   }
@@ -360,8 +368,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   budget: total,
                   mahr: moneyValue(mahr?.confirmedCost),
                   currency: _currency,
+                  asksBeforeGoingOn: choiceAsked,
                   onChanged: (inside) {
-                    setSheetState(() {});
+                    setSheetState(() => choiceAsked = false);
                     setState(() => _includesMahr = inside);
                     _draft?.changed();
                   },

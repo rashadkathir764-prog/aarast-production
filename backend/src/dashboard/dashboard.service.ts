@@ -526,10 +526,12 @@ export class DashboardService {
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
       paidByOthers: moneyOrNull(paidByOthersNumber),
-      // D114: whether the budget figures hold the mahr, for the reader who
-      // sees the budget.
+      // D114: whether the budget holds the mahr, for the reader who sees the
+      // budget: the plan's own choice, a budget typed or not, as the money
+      // tab reads it (the home said nothing of it before a budget was typed
+      // and the two screens placed the mahr differently).
       budgetIncludesMahr:
-        money && budgetTotalNumber !== null ? money.budget.includesMahr : null,
+        money && seesWholePlan(context) ? money.budget.includesMahr : null,
       moneySummary: {
         totalBudget: moneyOrNull(budgetTotalNumber),
         confirmedCost: moneyOrNull(confirmedCostNumber),

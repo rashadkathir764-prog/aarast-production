@@ -69,6 +69,50 @@ void main() {
     expect(find.byType(AarastScreenLoading), findsOneWidget);
   });
 
+  // From the review of the field-notes branch: the wait was armed while the
+  // page was drawn and never taken back. A read asked for meanwhile (the
+  // app back in front, the person's own press) was asked for a second time
+  // when the wait ran out.
+  testWidgets('a read asked for meanwhile is not asked for again by the wait', (
+    tester,
+  ) async {
+    final gateway = _CountingGateway(failures: 1, holdAfterFailures: true);
+    final controller = await failedOnce(tester, gateway);
+    expect(find.text('نحاول مرة ثانية'), findsOneWidget);
+
+    unawaited(controller.refresh());
+    await tester.pump();
+    expect(gateway.calls, 2);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(gateway.calls, 2, reason: 'the read on its way is the try');
+    expect(find.byType(AarastErrorState), findsNothing);
+  });
+
+  testWidgets('drawing the page again while it waits arms nothing more', (
+    tester,
+  ) async {
+    final gateway = _CountingGateway(failures: 100);
+    await failedOnce(tester, gateway);
+
+    for (var i = 0; i < 5; i++) {
+      tester.view.physicalSize = Size(800 + i * 10, 600);
+      addTearDown(tester.view.reset);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(gateway.calls, 1);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(gateway.calls, 2);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(gateway.calls, 3);
+    expect(find.byType(AarastErrorState), findsOneWidget);
+  });
+
   testWidgets('after the tries by itself the error shows, with its retry', (
     tester,
   ) async {

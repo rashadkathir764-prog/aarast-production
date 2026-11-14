@@ -96,6 +96,14 @@
     return path && path[1] === route ? route : "";
   }
 
+  // A photo that does not load (its signed link refused, the connection
+  // dropped) leaves the page: the invitation reads whole without it, and a
+  // broken picture stood over it.
+  photo.addEventListener("error", () => {
+    photo.hidden = true;
+    photo.removeAttribute("src");
+  });
+
   function chipLabel(count) {
     return count === 0 ? "لحالي" : `+${count}`;
   }

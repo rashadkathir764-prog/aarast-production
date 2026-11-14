@@ -19,7 +19,8 @@ import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
-import '../models/guest_invite_text.dart' show guestNumberWithoutCountry;
+import '../models/guest_invite_text.dart'
+    show guestChatCanOpen, guestNumberWithoutCountry;
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
@@ -435,6 +436,12 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
   Future<void> _sendInvitation(Guest guest) async {
     final api = context.read<GuestsApi>();
     final provider = context.read<GuestsProvider>();
+    // Before the link: a new link ends the old one and marks the guest
+    // invited, and this number cannot be written to.
+    if (!guestChatCanOpen(guest.phone)) {
+      AarastToast.showError(context, guestNumberWithoutCountry(guest.name));
+      return;
+    }
     setState(() => _sending = true);
     try {
       final link = await api.createInvitationLink(guest.id);

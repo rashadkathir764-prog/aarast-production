@@ -563,6 +563,29 @@ test("a photo that cannot be signed leaves the card readable and its save answer
   assert.equal(saved.photoReadUrl, null);
 });
 
+// From the second review of this branch: the guest's page and the link's
+// preview named the photo's route all the same, so the guest got a broken
+// picture and WhatsApp a picture that answers with an error.
+test("a photo that cannot be signed is not offered to the guest's page or to the link's preview", async () => {
+  process.env.INVITE_PUBLIC_ORIGIN = "https://3.121.198.183";
+  const db = fakeDatabase();
+  const stored = "https://old-media.example/guest-invitation-card/owner-1/a.jpg";
+  const rsvp = service(db);
+  await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: stored, hostLine: "آل الحمدي" });
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+
+  const failing = service(db, { signingFails: true });
+  const view = await failing.getInvitation(token);
+  assert.equal(view.card?.photoUrl, null);
+  assert.equal(view.card?.hostLine, "آل الحمدي", "the rest of the card is still read");
+  const preview = await failing.invitationPreview(token);
+  assert.ok(preview);
+  assert.equal(preview.image, null);
+  // The route itself answers «no photo», not a server error.
+  await assert.rejects(failing.cardPhotoDownloadUrl(token), (error: any) =>
+    error.getStatus() === 404 && error.response.code === "RSVP_CARD_PHOTO_NOT_FOUND");
+});
+
 // «ذكّر الكل» (2026-11-14): a guest who already confirmed is reminded of the
 // day, not asked to answer again.
 test("a reminder to a guest who confirmed says the day and keeps the link, without asking for an answer", () => {

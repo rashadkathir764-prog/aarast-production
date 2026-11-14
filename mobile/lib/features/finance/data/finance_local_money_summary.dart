@@ -16,6 +16,12 @@ Future<MoneySummary> localPlanMoneySummary(
   String planId, {
   LocalFinancePlanContext? plan,
   MoneyFundingSummary? funding,
+
+  /// The plan's agreements and payment dates when the caller has read them
+  /// already (the home reads them for its own lists): not read a second
+  /// time here.
+  List<Map<String, dynamic>>? costRows,
+  List<Map<String, dynamic>>? scheduleRows,
 }) async {
   Future<List<Map<String, dynamic>>> rows(String table) async =>
       await database?.readCachedList(
@@ -47,9 +53,9 @@ Future<MoneySummary> localPlanMoneySummary(
     _ => plan?.budgetIncludesMahr == true,
   };
   final rawCategories = await rows(OfflineTables.cachedBudgetCategories);
-  final costs = (await rows(
-    OfflineTables.cachedCosts,
-  )).where((cost) => cost['status']?.toString() != 'CANCELLED').toList();
+  final costs = (costRows ?? await rows(OfflineTables.cachedCosts))
+      .where((cost) => cost['status']?.toString() != 'CANCELLED')
+      .toList();
   final activeCostIds = costs
       .map((cost) => cost['id']?.toString())
       .whereType<String>()
@@ -57,11 +63,13 @@ Future<MoneySummary> localPlanMoneySummary(
   final payments = (await rows(
     OfflineTables.cachedCostPayments,
   )).where((payment) => activeCostIds.contains(payment['costId']?.toString()));
-  final schedules = (await rows(OfflineTables.cachedPaymentSchedules))
-      .where(
-        (schedule) => activeCostIds.contains(schedule['costId']?.toString()),
-      )
-      .toList();
+  final schedules =
+      (scheduleRows ?? await rows(OfflineTables.cachedPaymentSchedules))
+          .where(
+            (schedule) =>
+                activeCostIds.contains(schedule['costId']?.toString()),
+          )
+          .toList();
 
   // What each agreement was paid, from the payments ledger net of its
   // reversals, as the server reads it (D59).

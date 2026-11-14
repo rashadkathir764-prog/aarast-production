@@ -16,11 +16,16 @@ class MahrBudgetChoice extends StatelessWidget {
     this.budget,
     this.mahr,
     this.currency = 'YER',
+    this.asksBeforeGoingOn = false,
     super.key,
   });
 
   final bool inside;
   final ValueChanged<bool>? onChanged;
+
+  /// The press that would have left was stopped to show this choice: it
+  /// says so, so a press that did nothing else is not taken for a save.
+  final bool asksBeforeGoingOn;
 
   /// The budget and the mahr as typed or saved; null or zero when unknown.
   final num? budget;
@@ -43,6 +48,21 @@ class MahrBudgetChoice extends StatelessWidget {
           'المهر من الميزانية؟',
           style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
         ),
+        if (asksBeforeGoingOn) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          Text(
+            context.say(
+              'اختر واحد منهم، بعدها كمّل.',
+              'اختاري واحد منهم، بعدها كمّلي.',
+            ),
+            key: const ValueKey('mahr-budget-choice-prompt'),
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: context.accent.primary,
+            ),
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x2),
         JourneyOption(
           key: const ValueKey('mahr-budget-outside'),

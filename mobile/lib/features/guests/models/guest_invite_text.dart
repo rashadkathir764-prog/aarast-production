@@ -187,7 +187,15 @@ Uri? guestWhatsAppUri(String? phone, String text) {
   return Uri.https('wa.me', '/', {'text': text});
 }
 
+/// Whether a chat can be opened for [phone] at all. Asked before a guest's
+/// link is made: making it replaces their old link and marks them invited,
+/// which must not happen for a message that cannot be sent.
+bool guestChatCanOpen(String? phone) => guestWhatsAppUri(phone, '') != null;
+
 /// Why [guestName]'s chat cannot open: the saved number has no country.
+///
+/// Said without a verb to the reader or a pronoun for the guest, so it is
+/// right for a groom or a bride reading, about a man or a woman.
 String guestNumberWithoutCountry(String guestName) =>
-    'رقم $guestName ما فيه مفتاح الدولة، فما نقدر نفتح محادثته. '
-    'عدّل رقمه في القائمة واكتبه كامل، مثل +966…';
+    'رقم $guestName ما فيه مفتاح الدولة، فما نقدر نفتح المحادثة. '
+    'الرقم ينكتب كامل من القائمة، مثل +966…';

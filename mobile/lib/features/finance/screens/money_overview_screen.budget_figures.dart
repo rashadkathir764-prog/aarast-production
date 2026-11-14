@@ -15,32 +15,6 @@ MoneyMahrSummary? _mahrPaid(MoneySummary summary) {
   return moneyValue(mahr.total) > 0 ? mahr : null;
 }
 
-/// «المهر 2 مليون، برّا الميزانية. سلّمت 500 ألف وباقي 1.5 مليون.»
-String _mahrOutsideWords(
-  BuildContext context,
-  MoneyMahrSummary mahr, {
-  required bool hasBudget,
-  required String Function(Object?) money,
-}) {
-  final total = moneyValue(mahr.total);
-  final settled = moneyValue(mahr.settled);
-  final left = moneyValue(mahr.remaining);
-  final where = hasBudget
-      ? 'المهر ${money(total)}، برّا الميزانية.'
-      : 'المهر ${money(total)}.';
-  if (settled <= 0) {
-    return '$where ${context.ownerDid('ما سلّمت منه شي بعد', 'ما سلّمتِ منه شي بعد', groom: 'العريس ما سلّم منه شي بعد', bride: 'العروسة ما سلّمت منه شي بعد')}.';
-  }
-  final handed = context.ownerDid(
-    'سلّمت',
-    'سلّمتِ',
-    groom: 'العريس سلّم',
-    bride: 'العروسة سلّمت',
-  );
-  if (left <= 0) return '$where $handed كله.';
-  return '$where $handed ${money(settled)} وباقي ${money(left)}.';
-}
-
 class _BudgetFigures extends StatelessWidget {
   const _BudgetFigures({required this.summary});
 
@@ -67,61 +41,27 @@ class _BudgetFigures extends StatelessWidget {
     final costs = summary.costs;
     final paidByOthers = moneyValue(costs.paidByOthers);
     final paidByOwner = moneyValue(costs.paidByOwner);
-    final paidFor = context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها');
-    final cells = <({String label, String? figure, String? note, bool danger})>[
-      if (hasBudget) ...[
+    // The home's money card says these same cells: one writer for both.
+    final cells = [
+      for (final cell in moneyBudgetCells(
+        context,
+        budget: moneyValue(budget.total),
+        budgetLeft: budget.remaining == null
+            ? null
+            : moneyValue(budget.remaining),
+        over: overBy != null,
+        overBy: overBy,
+        agreed: moneyValue(costs.total),
+        paidByOwner: paidByOwner,
+        paidByOthers: paidByOthers,
+        mahrInside: inside ? moneyValue(mahr.total) : null,
+        figure: money,
+      ))
         (
-          label: 'الميزانية',
-          figure: money(budget.total),
-          note: null,
-          danger: false,
-        ),
-        if (overBy != null)
-          (
-            label: 'فوق الميزانية بـ',
-            figure: money(overBy),
-            note: null,
-            danger: true,
-          )
-        else if (budget.remaining != null)
-          (
-            label: 'باقي منها',
-            figure: money(budget.remaining),
-            note: null,
-            danger: false,
-          ),
-      ],
-      (
-        label: context.ownerDid(
-          'اتفقت على',
-          'اتفقتِ على',
-          groom: 'اتفق العريس على',
-          bride: 'اتفقت العروسة على',
-        ),
-        figure: money(costs.total),
-        note: inside ? 'منها المهر ${money(mahr.total)}' : null,
-        danger: false,
-      ),
-      if (paidByOwner > 0 || paidByOthers <= 0)
-        (
-          label: context.ownerDid(
-            'دفعت',
-            'دفعتِ',
-            groom: 'العريس دفع',
-            bride: 'العروسة دفعت',
-          ),
-          figure: money(paidByOwner),
-          note: paidByOthers > 0
-              ? 'ودفع $paidFor ${money(paidByOthers)}'
-              : null,
-          danger: false,
-        )
-      else
-        (
-          label: 'دفع $paidFor',
-          figure: money(paidByOthers),
-          note: null,
-          danger: false,
+          label: cell.label,
+          figure: cell.value == null ? null : money(cell.value),
+          note: cell.note,
+          danger: cell.danger,
         ),
     ];
     Widget cell(({String label, String? figure, String? note, bool danger}) c) {
@@ -181,11 +121,13 @@ class _BudgetFigures extends StatelessWidget {
         if (mahr != null && !inside) ...[
           const SizedBox(height: AarastV3Space.x2),
           Text(
-            _mahrOutsideWords(
+            mahrOnItsOwnWords(
               context,
-              mahr,
+              total: moneyValue(mahr.total),
+              settled: moneyValue(mahr.settled),
+              left: moneyValue(mahr.remaining),
               hasBudget: hasBudget,
-              money: money,
+              figure: money,
             ),
             key: const ValueKey('money-share-mahr-line'),
             style: JourneyType.of(JourneyType.small, color: soft, height: 1.6),

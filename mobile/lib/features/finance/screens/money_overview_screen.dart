@@ -36,6 +36,7 @@ import '../providers/funding_provider.dart';
 import '../widgets/funding_widgets.dart'
     show fundingKindChoice, fundingKindIcon;
 import '../widgets/due_date_sheets.dart';
+import '../widgets/money_budget_words.dart';
 import '../widgets/money_cover_words.dart';
 import '../widgets/money_input_formatter.dart' show formatMoneyInputValue;
 import '../widgets/money_widgets.dart';

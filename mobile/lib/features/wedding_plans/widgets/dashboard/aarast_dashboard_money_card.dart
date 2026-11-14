@@ -140,81 +140,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     }
   }
 
-  /// D114: the budget's figures, then what was agreed and paid, in the
-  /// reader's words; [figure] writes each amount (for the screen or for
-  /// the screen reader).
-  List<_MoneyCellData> _cells({
-    required double budget,
-    required double? budgetLeft,
-    required bool over,
-    required double? overBy,
-    required double agreed,
-    required double paidByOwner,
-    required double paidByOthers,
-    required double? mahrInside,
-    required String Function(double) figure,
-  }) {
-    final paidFor = context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها');
-    return [
-      if (budget > 0) ...[
-        _MoneyCellData('الميزانية', budget),
-        if (over)
-          // D105: over the budget by the expected cost, as the tab says it.
-          _MoneyCellData(
-            overBy == null ? 'فوق الميزانية' : 'فوق الميزانية بـ',
-            overBy,
-            danger: true,
-            joined: true,
-          )
-        else if (budgetLeft != null)
-          _MoneyCellData('باقي منها', budgetLeft),
-      ],
-      _MoneyCellData(
-        context.ownerDid(
-          'اتفقت على',
-          'اتفقتِ على',
-          groom: 'اتفق العريس على',
-          bride: 'اتفقت العروسة على',
-        ),
-        agreed,
-        note: mahrInside == null ? null : 'منها المهر ${figure(mahrInside)}',
-      ),
-      if (paidByOwner > 0 || paidByOthers <= 0)
-        _MoneyCellData(
-          context.ownerDid(
-            'دفعت',
-            'دفعتِ',
-            groom: 'العريس دفع',
-            bride: 'العروسة دفعت',
-          ),
-          paidByOwner,
-          note: paidByOthers > 0
-              ? 'ودفع $paidFor ${figure(paidByOthers)}'
-              : null,
-        )
-      else
-        _MoneyCellData('دفع $paidFor', paidByOthers),
-    ];
-  }
-
-  /// D114: the groom's mahr outside the budget, on its own line: what it
-  /// is, where it stands, what was handed over and what is left.
-  String _mahrOutsideLine(DashboardHomeMahr mahr, String Function(double) f) {
-    final handed = context.ownerDid(
-      'سلّمت',
-      'سلّمتِ',
-      groom: 'العريس سلّم',
-      bride: 'العروسة سلّمت',
-    );
-    final left = mahr.total - mahr.settled;
-    final where = 'المهر ${f(mahr.total)}، برّا الميزانية.';
-    if (mahr.settled <= 0) {
-      return '$where ${context.ownerDid('ما سلّمت منه شي بعد', 'ما سلّمتِ منه شي بعد', groom: 'العريس ما سلّم منه شي بعد', bride: 'العروسة ما سلّمت منه شي بعد')}.';
-    }
-    if (left <= 0) return '$where $handed كله.';
-    return '$where $handed ${f(mahr.settled)} وباقي ${f(left)}.';
-  }
-
   @override
   Widget build(BuildContext context) {
     final amountsHidden = widget.onToggleAmounts != null
@@ -270,19 +195,40 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           )
         : null;
     final budgetLeft = dashboardAmount(summary.remainingBudgetForDisplay);
-    List<_MoneyCellData> cells(String Function(double) write) => _cells(
-      budget: budget,
-      budgetLeft: budgetLeft,
-      over: over,
-      overBy: overBy,
-      agreed: agreed,
-      paidByOwner: paidByOwner,
-      paidByOthers: paidByOthers,
-      mahrInside: mahrInside ? mahr.total : null,
-      figure: write,
-    );
-    String? mahrLine(String Function(double) write) =>
-        withMahr && !mahrInside ? _mahrOutsideLine(mahr, write) : null;
+    // The budget's figures, then what was agreed and paid, and the mahr on
+    // its own line: the money tab's own writer, so the two never differ.
+    // [write] writes each amount, for the screen or for the screen reader.
+    List<_MoneyCellData> cells(String Function(double) write) => [
+      for (final cell in moneyBudgetCells(
+        context,
+        budget: budget,
+        budgetLeft: budgetLeft,
+        over: over,
+        overBy: overBy,
+        agreed: agreed,
+        paidByOwner: paidByOwner,
+        paidByOthers: paidByOthers,
+        mahrInside: mahrInside ? mahr.total : null,
+        figure: (value) => write(value.toDouble()),
+      ))
+        _MoneyCellData(
+          cell.label,
+          cell.value?.toDouble(),
+          note: cell.note,
+          danger: cell.danger,
+          joined: cell.joined,
+        ),
+    ];
+    String? mahrLine(String Function(double) write) => withMahr && !mahrInside
+        ? mahrOnItsOwnWords(
+            context,
+            total: mahr.total,
+            settled: mahr.settled,
+            left: mahr.total - mahr.settled,
+            hasBudget: budget > 0,
+            figure: (value) => write(value.toDouble()),
+          )
+        : null;
     String spoken(double value) => _spokenFigure(value, currency);
 
     final ownerLeft = funding?.ownerLeft;

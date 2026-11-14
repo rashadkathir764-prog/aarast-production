@@ -327,9 +327,49 @@ void main() {
       expect(saved, isEmpty);
       expect(shown(), isTrue);
 
+      // The press that did not save says why, beside the choice.
+      expect(
+        find.byKey(const ValueKey('mahr-budget-choice-prompt')),
+        findsOneWidget,
+      );
+
       await tester.tap(save);
       await tester.pumpAndSettle();
       expect(saved.single.budgetTotal, '8000000');
+    });
+
+    // From the code review of the field-notes branch: the first «حفظ» was
+    // spent on showing the choice whatever was edited. A groom who changed
+    // only the plan's name, with the keyboard up, pressed save, saw the
+    // page move, and left with nothing saved and nothing said.
+    testWidgets('a change that is not the budget saves at the first press', (
+      tester,
+    ) async {
+      final saved = await _pump(
+        tester,
+        budgetIncludesMahr: false,
+        mahrTotal: 2000000,
+        size: const Size(320, 700),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('plan-details-title')),
+          matching: find.byType(EditableText),
+        ),
+        'عرس محمد وأهله',
+      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('plan-details-save')));
+      await tester.pumpAndSettle();
+
+      expect(saved.single.title, 'عرس محمد وأهله');
+      expect(
+        find.byKey(const ValueKey('mahr-budget-choice-prompt')),
+        findsNothing,
+      );
     });
 
     testWidgets('a bride\'s plan is never asked', (tester) async {

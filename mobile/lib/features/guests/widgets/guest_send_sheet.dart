@@ -46,6 +46,12 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
 
   Future<void> _send() async {
     final guest = widget.guests[_index];
+    // Before the link: a new link ends the old one and marks the guest
+    // invited, and this number cannot be written to.
+    if (!guestChatCanOpen(guest.phone)) {
+      setState(() => _error = guestNumberWithoutCountry(guest.name));
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

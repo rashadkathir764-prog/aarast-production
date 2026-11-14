@@ -203,8 +203,10 @@ extension _Sections on _GuestInviteScreenState {
           ),
           if (audience == GuestReminderAudience.everyone)
             plan(
-              'اللي أكدوا يوصلهم نفس الكلام، وتأكيدهم يبقى مثل ما هو.',
-              'اللي أكدن يوصلهن نفس الكلام، وتأكيدهن يبقى مثل ما هو.',
+              // The server's reminder to a guest who confirmed
+              // (`buildRsvpMessage`, `confirmed`).
+              'اللي أكدوا يوصلهم تذكير بالموعد بدون طلب رد، وتأكيدهم يبقى مثل ما هو.',
+              'اللي أكدن يوصلهن تذكير بالموعد بدون طلب رد، وتأكيدهن يبقى مثل ما هو.',
             ),
         ].join(' '),
         icon: LucideIcons.link,

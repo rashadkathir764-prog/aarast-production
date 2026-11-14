@@ -172,6 +172,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
   final _mahrChoiceKey = GlobalKey();
   final _mahrFieldsKey = GlobalKey();
   bool _mahrChoiceSeen = false;
+  bool _mahrChoiceAsked = false;
 
   /// D114: asked once both figures are typed on a groom's plan: until the
   /// mahr is typed the question has nothing in it, and there each answer
@@ -202,6 +203,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
     if (_asksMahrInBudget && !_mahrChoiceSeen) {
       _mahrChoiceSeen = true;
       if (!mahrChoiceOnScreen(_mahrChoiceKey)) {
+        // The press went to showing the choice: it says so.
+        setState(() => _mahrChoiceAsked = true);
         revealMahrChoice(_mahrChoiceKey, near: _mahrFieldsKey);
         return;
       }
@@ -870,8 +873,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         choiceKey: _mahrChoiceKey,
         fieldsKey: _mahrFieldsKey,
         inside: _mahrInBudget,
+        choiceAsked: _mahrChoiceAsked,
         budget: _budget,
-        onInside: (inside) => setState(() => _mahrInBudget = inside),
+        onInside: (inside) => setState(() {
+          _mahrInBudget = inside;
+          _mahrChoiceAsked = false;
+        }),
         onNext: _confirmMahr,
         onSkip: _skipMahr,
         onBack: _back,

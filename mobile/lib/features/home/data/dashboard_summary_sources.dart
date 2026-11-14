@@ -487,6 +487,9 @@ class LocalDashboardMetrics {
         mahrDueDate: draft?.mahr?.remainingDueDate,
         budgetIncludesMahr: draft?.budgetIncludesMahr,
       ),
+      // Read above for the home's own lists: one read of each, not two.
+      costRows: costs,
+      scheduleRows: paymentSchedules,
     );
     final confirmedCostTotal = _moneyValue(money.costs.total);
     final paidTotal = _moneyValue(money.costs.paid);

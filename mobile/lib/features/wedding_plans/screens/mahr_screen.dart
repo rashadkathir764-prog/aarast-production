@@ -44,23 +44,16 @@ class _MahrScreenState extends State<MahrScreen> {
   bool get _isLocalPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
-  /// D114: a plan kept on the phone holds the groom's answer in its draft.
-  bool _draftInside = false;
-
   @override
   void initState() {
     super.initState();
     // D114: the help says where the groom's mahr counts, so the plan's
-    // money (or its draft, on the phone) is read when it was not yet.
+    // money is read when it was not yet. A plan kept on the phone too: its
+    // money is the one reading of the answer (the money tab's own save,
+    // else the welcome's), where this page read the welcome's draft alone
+    // and said the old answer after it was changed in the money tab.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      if (_isLocalPlan) {
-        final draft = await context.read<GuestOnboardingStorage>().loadDraft();
-        if (mounted && draft != null) {
-          setState(() => _draftInside = draft.mahrInsideBudget);
-        }
-        return;
-      }
       final finance = context.read<FinanceProvider>();
       if (finance.loadedPlanId != widget.weddingPlanId && !finance.isLoading) {
         await finance.loadMoney(widget.weddingPlanId);
@@ -70,7 +63,6 @@ class _MahrScreenState extends State<MahrScreen> {
 
   /// D114: the groom's budget holds the mahr.
   bool _inside(BuildContext context) {
-    if (_isLocalPlan) return _draftInside;
     final finance = context.watch<FinanceProvider>();
     return finance.loadedPlanId == widget.weddingPlanId &&
         finance.summary.budget.includesMahr;
@@ -104,6 +96,7 @@ class _MahrScreenState extends State<MahrScreen> {
     var saved = false;
     if (_isLocalPlan) {
       final storage = context.read<GuestOnboardingStorage>();
+      final finance = context.read<FinanceProvider>();
       final draft = await storage.loadDraft();
       if (draft != null) {
         await storage.saveDraft(
@@ -116,6 +109,8 @@ class _MahrScreenState extends State<MahrScreen> {
           ),
         );
         saved = true;
+        // The money this page opened with holds the mahr as it was.
+        await finance.loadMoney(widget.weddingPlanId);
       }
     } else {
       final finance = context.read<FinanceProvider>();

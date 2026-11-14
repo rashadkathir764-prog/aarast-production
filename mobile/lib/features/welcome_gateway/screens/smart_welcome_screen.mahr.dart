@@ -19,6 +19,7 @@ class _MahrStep extends StatelessWidget {
     required this.choiceKey,
     required this.fieldsKey,
     required this.inside,
+    required this.choiceAsked,
     required this.budget,
     required this.onInside,
     required this.onNext,
@@ -48,6 +49,9 @@ class _MahrStep extends StatelessWidget {
   /// The fields, built while the choice far below may not be yet.
   final GlobalKey fieldsKey;
   final bool inside;
+
+  /// «التالي» was spent on showing the choice: the choice says so.
+  final bool choiceAsked;
   final int? budget;
   final ValueChanged<bool> onInside;
   final VoidCallback onNext;
@@ -121,6 +125,7 @@ class _MahrStep extends StatelessWidget {
             inside: inside,
             budget: budget,
             mahr: MahrFields.amountOf(totalController),
+            asksBeforeGoingOn: choiceAsked,
             onChanged: onInside,
           ),
         ],

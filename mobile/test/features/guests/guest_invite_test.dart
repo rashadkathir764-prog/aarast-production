@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -15,6 +18,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.da
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -130,6 +134,8 @@ Future<_Api> _pump(
   List<Guest> guests, {
   bool reminder = false,
   InvitationCard card = const InvitationCard(),
+  MediaUploadApi? uploads,
+  Future<XFile?> Function(ImageSource source)? pickPhoto,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1400);
@@ -142,11 +148,16 @@ Future<_Api> _pump(
       providers: [
         Provider<GuestsApi>.value(value: api),
         ChangeNotifierProvider<GuestsProvider>.value(value: provider),
+        if (uploads != null) Provider<MediaUploadApi>.value(value: uploads),
       ],
       child: MaterialApp(
         builder: (context, child) =>
             Directionality(textDirection: TextDirection.rtl, child: child!),
-        home: GuestInviteScreen(weddingPlanId: 'plan-1', reminder: reminder),
+        home: GuestInviteScreen(
+          weddingPlanId: 'plan-1',
+          reminder: reminder,
+          pickPhoto: pickPhoto,
+        ),
       ),
     ),
   );
@@ -201,21 +212,23 @@ class _Events extends PlanEventsProvider {
 
 /// The plan in Sana'a: the place the card stands in while it has no venue.
 class _Dashboard extends DashboardSummaryProvider {
-  _Dashboard()
-    : super(
+  _Dashboard({Map<String, dynamic>? location})
+    : _summary = DashboardSummary.fromJson({
+        'planId': 'plan-1',
+        'title': 'عرس محمد',
+        'city': 'صنعاء',
+        'location': ?location,
+        'currency': 'YER',
+        'status': 'PLANNING',
+        'permissions': {'isOwner': true, 'role': 'OWNER'},
+      }),
+      super(
         weddingPlansApi: WeddingPlansApi(
           ApiClient(tokenProvider: () async => null),
         ),
       );
 
-  final _summary = DashboardSummary.fromJson({
-    'planId': 'plan-1',
-    'title': 'عرس محمد',
-    'city': 'صنعاء',
-    'currency': 'YER',
-    'status': 'PLANNING',
-    'permissions': {'isOwner': true, 'role': 'OWNER'},
-  });
+  final DashboardSummary _summary;
 
   @override
   DashboardSummary? get summary => _summary;
@@ -228,6 +241,7 @@ Future<_Api> _pumpWithEvents(
   WidgetTester tester,
   _Events events, {
   Guest? guest,
+  Map<String, dynamic>? location,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1400);
@@ -242,7 +256,7 @@ Future<_Api> _pumpWithEvents(
         ChangeNotifierProvider<GuestsProvider>.value(value: provider),
         ChangeNotifierProvider<PlanEventsProvider>.value(value: events),
         ChangeNotifierProvider<DashboardSummaryProvider>.value(
-          value: _Dashboard(),
+          value: _Dashboard(location: location),
         ),
       ],
       child: MaterialApp(
@@ -266,7 +280,55 @@ String _venueField(WidgetTester tester) => tester
     .controller!
     .text;
 
+/// A one-pixel PNG, enough for the picture to decode.
+final _pixel = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// Takes the picked photo up and answers with its stored address, which
+/// the bucket keeps private.
+class _Uploads extends MediaUploadApi {
+  _Uploads() : super(ApiClient(tokenProvider: () async => null));
+
+  @override
+  Future<MediaUploadTicket> uploadImage({
+    required XFile file,
+    required String purpose,
+  }) async => const MediaUploadTicket(
+    key: 'guest-invitation-card/owner-1/a.png',
+    attachmentRef: '',
+    uploadUrl: 'https://upload.example/a',
+    publicUrl: 'https://media.example/guest-invitation-card/owner-1/a.png',
+    contentType: 'image/png',
+    byteSize: 68,
+  );
+}
+
 void main() {
+  // From the code review of the field-notes branch: the photo just picked
+  // was drawn from its stored address, which the bucket keeps private, so
+  // the slot made to show the guest's view said «ما قدرنا نعرض الصورة».
+  // It is drawn from the picked file itself.
+  testWidgets('a photo just picked is drawn in the preview', (tester) async {
+    await _pump(
+      tester,
+      [_guest('g1', 'صالح')],
+      uploads: _Uploads(),
+      pickPhoto: (_) async => XFile.fromData(_pixel, name: 'a.png'),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('invite-photo-pick')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختر صورة'));
+    await tester.pumpAndSettle();
+
+    final photo = tester.widget<Image>(
+      find.byKey(const ValueKey('invite-card-photo')),
+    );
+    expect(photo.image, isA<MemoryImage>());
+    expect(find.text('ما قدرنا نعرض الصورة الحين'), findsNothing);
+  });
+
   test('the WhatsApp link opens the guest chat with the text ready', () {
     final uri = guestWhatsAppUri('+967777000111', 'أهلًا')!;
     expect(uri.host, 'wa.me');
@@ -420,6 +482,41 @@ void main() {
       expect(events.saved, isEmpty);
     },
   );
+
+  // From the review of this branch: the server writes «المكان» from the
+  // plan's medium label (`locationLabel`), and the preview wrote the full
+  // one, street and all: the owner read one message and the guest got
+  // another.
+  testWidgets('the plan\'s place on the card is the one the server writes', (
+    tester,
+  ) async {
+    final events = _Events(
+      const PlanEvent(id: 'e-wedding', type: PlanEventType.wedding),
+    )..arrive();
+    await _pumpWithEvents(
+      tester,
+      events,
+      location: const {
+        'shortLabel': 'أمانة العاصمة، صنعاء',
+        'mediumLabel': 'أمانة العاصمة، صنعاء، حدة',
+        'fullLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
+        'displayLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
+      },
+    );
+
+    final card = find.byKey(const ValueKey('invite-card'));
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text('المكان: أمانة العاصمة، صنعاء، حدة'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.textContaining('شارع الخمسين')),
+      findsNothing,
+    );
+  });
 
   testWidgets('the hall read after the plan keeps its venue', (tester) async {
     final events = _Events(

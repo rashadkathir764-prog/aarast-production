@@ -175,6 +175,8 @@ test("contributor dashboard keeps owner budget private while reporting only scop
   // may say the plan has no items or that every essential is missing.
   assert.equal(result.budgetItemsCount, null);
   assert.equal(result.essentials, null);
+  // D114: where the mahr counts is the owner's budget's business.
+  assert.equal(result.budgetIncludesMahr, null);
   assert.equal(
     result.financialWarnings.some((warning) => warning.type === "BUDGET_EXCEEDED"),
     false,
@@ -187,6 +189,30 @@ test("contributor dashboard keeps owner budget private while reporting only scop
   assert.equal(fixture.authorizationTx, fixture.notificationTx);
 });
 
+// From the review of the field-notes branch: with no budget typed the home
+// was told nothing of the mahr's place (null), while the money tab reads the
+// plan's own choice. A groom who chose «inside» and then cleared the budget
+// read «منها المهر» on the tab and a separate mahr line on the home.
+test("D114: with no budget typed the owner's home is told the plan's choice, as the money tab is", async () => {
+  for (const budgetIncludesMahr of [true, false]) {
+    const fixture = dashboardFixture({
+      canManageTasks: true,
+      tasks: [],
+      qualifyingTaskIds: [],
+      estimatedBudget: null,
+      owner: { persona: "GROOM", budgetIncludesMahr },
+    });
+
+    const result = await fixture.service.getWeddingPlanDashboardSummary(
+      { id: plan.ownerUserId } as any,
+      plan.id,
+    );
+
+    assert.equal(result.moneySummary.totalBudget, null);
+    assert.equal(result.budgetIncludesMahr, budgetIncludesMahr);
+  }
+});
+
 function dashboardFixture(input: {
   canManageTasks: boolean;
   tasks: ReturnType<typeof task>[];
@@ -195,6 +221,8 @@ function dashboardFixture(input: {
   estimatedBudget?: string | null;
   costs?: Array<{ id: string; totalAmount: string; paidAmount: string }>;
   qualifyingCostIds?: string[];
+  /** The reader is the plan's owner, with the plan's own D114 choice. */
+  owner?: { persona: string; budgetIncludesMahr: boolean };
 }) {
   const taskQueries: any[] = [];
   const qualifyingCalls: Array<Record<string, unknown>> = [];
@@ -303,16 +331,17 @@ function dashboardFixture(input: {
       return {
         plan: {
           ...plan,
+          ...(input.owner ?? {}),
           estimatedBudget:
             input.estimatedBudget === undefined || input.estimatedBudget === null
               ? null
               : { toString: () => input.estimatedBudget },
         },
-        isOwner: false,
-        sharedMember,
+        isOwner: input.owner !== undefined,
+        sharedMember: input.owner ? null : sharedMember,
       };
     },
-    canViewMoney: () => input.canViewMoney ?? false,
+    canViewMoney: () => input.owner !== undefined || (input.canViewMoney ?? false),
     canManageMoney: () => false,
     canManageTasks: () => input.canManageTasks,
     canManageGuests: () => false,

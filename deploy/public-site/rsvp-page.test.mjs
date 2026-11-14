@@ -23,6 +23,7 @@ class FakeElement {
     this.children = [];
     this.attributes = {};
     this.listeners = [];
+    this.otherListeners = {};
   }
   setAttribute(name, value) {
     this.attributes[name] = String(value);
@@ -32,9 +33,14 @@ class FakeElement {
   }
   addEventListener(type, listener) {
     if (type === "click") this.listeners.push(listener);
+    else (this.otherListeners[type] ??= []).push(listener);
   }
   click() {
     for (const listener of this.listeners) listener();
+  }
+  /** What the browser does when the element's own load fails or ends. */
+  dispatch(type) {
+    for (const listener of this.otherListeners[type] ?? []) listener();
   }
   append(...nodes) {
     this.children.push(...nodes);
@@ -159,6 +165,23 @@ test("the card photo is read through the link's own route on the page's origin",
     assert.equal(page.element("rsvp-photo").hidden, true, foreign);
     assert.equal(page.element("rsvp-photo").src, undefined, foreign);
   }
+});
+
+// From the second review of the field-notes branch: a photo the route
+// could not give (its signed link refused, the connection dropped) stayed
+// on the page as a broken picture over the invitation.
+test("a card photo that fails to load is taken off the page, the invitation stays", async () => {
+  const route = `/api/v1/public/rsvp/${token}/card-photo`;
+  const page = await openPage([
+    [200, { ...invitation([]), card: { photoUrl: `https://3.121.198.183${route}` } }],
+  ]);
+  const photo = page.element("rsvp-photo");
+  assert.equal(photo.hidden, false);
+
+  photo.dispatch("error");
+
+  assert.equal(photo.hidden, true);
+  assert.equal(page.element("rsvp-title").hidden, false);
 });
 
 // 6a: a crawler reads the head without running the script. The page keeps

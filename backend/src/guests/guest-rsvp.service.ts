@@ -423,6 +423,7 @@ export class GuestRsvpService {
       ...(place ? [`المكان: ${place}`] : []),
     ].join(" · ");
     const photoUrl = context.card?.photoUrl ?? null;
+    const photoRoute = await this.offeredCardPhoto(token, photoUrl);
     return {
       title: invitationLine(
         hostPhrase(context.card?.hostLine, plan.persona),
@@ -432,9 +433,10 @@ export class GuestRsvpService {
         ? `${details}. نرجو تأكيد حضورك من الرابط.`
         : "نرجو تأكيد حضورك من الرابط.",
       url: new URL(`/rsvp/${token}`, rsvpPublicOrigin()).toString(),
-      image: photoUrl
-        ? { url: this.cardPhotoRoute(token), type: imageTypeOf(photoUrl) }
-        : null,
+      image:
+        photoUrl && photoRoute
+          ? { url: photoRoute, type: imageTypeOf(photoUrl) }
+          : null,
     };
   }
 
@@ -455,18 +457,17 @@ export class GuestRsvpService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
-    if (!photoUrl) {
+    // A photo that cannot be signed is no photo to this link, not a server
+    // error: the page and the preview no longer name it either.
+    const read = photoUrl ? await this.signedCardPhoto(photoUrl) : null;
+    if (!read) {
       throw new NotFoundException({
         statusCode: 404,
         code: "RSVP_CARD_PHOTO_NOT_FOUND",
         message: "This invitation has no photo",
       });
     }
-    const read = await this.media.createStoredMediaDownloadUrl(
-      photoUrl,
-      CARD_PHOTO_PURPOSE,
-    );
-    return read.downloadUrl;
+    return read;
   }
 
   /**
@@ -809,6 +810,20 @@ export class GuestRsvpService {
     }
   }
 
+  /**
+   * The link's own photo route, offered only for a photo that can be read.
+   * One that cannot be signed was named all the same: the guest's page drew
+   * a broken picture and the link's preview a picture that answers with an
+   * error. Signing is a local computation, no call to the storage.
+   */
+  private async offeredCardPhoto(
+    token: string,
+    photoUrl: string | null | undefined,
+  ): Promise<string | null> {
+    if (!photoUrl) return null;
+    return (await this.signedCardPhoto(photoUrl)) ? this.cardPhotoRoute(token) : null;
+  }
+
   /** 6a: the card photo through the guest's own link, on the public origin. */
   private cardPhotoRoute(token: string): string {
     return new URL(
@@ -851,12 +866,13 @@ export class GuestRsvpService {
    * The guest's page. 6a: the card photo is the link's own route, never the
    * stored address, which a private bucket would refuse anyway.
    */
-  private publicView(
+  private async publicView(
     token: string,
     guest: RsvpGuest,
     plan: WeddingPlan,
     context: InvitationContext,
-  ): PublicInvitation {
+  ): Promise<PublicInvitation> {
+    const photoRoute = await this.offeredCardPhoto(token, context.card?.photoUrl);
     return {
       guestName: guest.name,
       planTitle: plan.title,
@@ -872,7 +888,7 @@ export class GuestRsvpService {
       card: context.card
         ? {
             ...this.cardFields(context.card),
-            photoUrl: context.card.photoUrl ? this.cardPhotoRoute(token) : null,
+            photoUrl: photoRoute,
           }
         : null,
       hostPhrase: hostPhrase(context.card?.hostLine, plan.persona),

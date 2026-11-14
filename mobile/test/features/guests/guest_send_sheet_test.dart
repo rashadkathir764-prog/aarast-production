@@ -26,6 +26,63 @@ Guest _guest(String id, String name) {
 }
 
 void main() {
+  // From the code review of the field-notes branch: the link was made
+  // before the number was looked at. Making it replaces the guest's old
+  // link and marks them invited, so a guest whose number has no country
+  // code lost a working link and left «ما انرسل لهم» with nothing sent.
+  testWidgets('a number without its country makes no link and sends nothing', (
+    tester,
+  ) async {
+    var linksMade = 0;
+    final passed = <String>[];
+    final now = DateTime.utc(2026, 10, 15);
+    final guest = Guest(
+      editable: true,
+      id: 'g1',
+      weddingPlanId: 'plan-1',
+      name: 'فهد',
+      phone: '0551234567',
+      side: 'GROOM',
+      status: 'INVITED',
+      attendanceStatus: 'PENDING',
+      invitationStatus: 'NOT_SENT',
+      seatsCount: 1,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showJourneySheet<int>(
+                context: context,
+                builder: (_) => GuestSendSheet(
+                  title: 'أرسل',
+                  guests: [guest],
+                  makeLink: (_) async {
+                    linksMade++;
+                    throw StateError('no link is to be made');
+                  },
+                  onPassed: (guest) => passed.add(guest.id),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('guest-send-open')));
+    await tester.pumpAndSettle();
+
+    expect(linksMade, 0);
+    expect(passed, isEmpty);
+    expect(find.textContaining('مفتاح الدولة'), findsOneWidget);
+  });
+
   testWidgets('«وقّف هنا» closes the sending and says how many went', (
     tester,
   ) async {

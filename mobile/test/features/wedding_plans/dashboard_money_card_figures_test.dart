@@ -308,10 +308,10 @@ void main() {
   // figure that was all mahr.
   group('D114 the budget is always said, the mahr in its place', () {
     DashboardSummary plan({
-      required bool inside,
+      required bool? inside,
       bool over = false,
       String? overBy,
-      String budget = '7000000',
+      String? budget = '7000000',
     }) {
       return DashboardSummary.fromJson({
         'planId': 'plan-1',
@@ -338,7 +338,11 @@ void main() {
           'paidByOwner': '500000',
           'paidByOthers': '0',
           'outstanding': '1500000',
-          'remainingBudget': inside ? '5000000' : '7000000',
+          'remainingBudget': budget == null
+              ? null
+              : (inside ?? false)
+              ? '5000000'
+              : '7000000',
           'overBudget': over,
         },
         'financialWarnings': [
@@ -424,6 +428,31 @@ void main() {
       expect(
         find.descendant(of: card, matching: find.textContaining('العرس')),
         findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    // From the review of this branch: with no budget typed the server says
+    // nothing of the mahr's place, and the home still wrote «برّا
+    // الميزانية» of a budget that is not there; the money tab says the mahr
+    // alone. One writer for both now.
+    testWidgets('no budget typed: the mahr line names no budget', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        plan(inside: null, budget: null),
+        mahr: mahr,
+        funding: funding,
+      );
+
+      expect(
+        find.descendant(of: card, matching: find.textContaining('الميزانية')),
+        findsNothing,
+      );
+      expect(
+        inCard('المهر 2$_nbspمليون. سلّمت 500$_nbspألف وباقي 1.5$_nbspمليون.'),
+        findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     });

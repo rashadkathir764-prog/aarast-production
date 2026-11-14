@@ -469,8 +469,41 @@ void main() {
       await tester.tap(done);
       await tester.pumpAndSettle();
       expect(done, findsOneWidget);
+      // The press closes the keyboard, and the system takes its space back
+      // (the test's own inset stays until it is reset). Changed on purpose:
+      // this used to ask for the whole choice above a keyboard still up,
+      // which held only while the choice was short enough; with the line
+      // that says why the press did not close the sheet it is not.
+      expect(tester.testTextInput.isVisible, isFalse);
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
       expect(shown(), isTrue);
+      expect(
+        find.byKey(const ValueKey('mahr-budget-choice-prompt')),
+        findsOneWidget,
+        reason: 'a press that did not close the sheet says why',
+      );
 
+      await tester.tap(done);
+      await tester.pumpAndSettle();
+      expect(done, findsNothing);
+    });
+
+    // From the review of this branch: «تمام» was spent on showing the
+    // choice even when the total was not touched, and nothing said so.
+    testWidgets('the total as it was: «تمام» closes at the first press', (
+      tester,
+    ) async {
+      await pumpBudget(tester, inside: false);
+      tester.view.physicalSize = const Size(320, 700);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+      await tester.pumpAndSettle();
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      final done = find.byKey(const ValueKey('money-budget-total-done'));
       await tester.tap(done);
       await tester.pumpAndSettle();
       expect(done, findsNothing);

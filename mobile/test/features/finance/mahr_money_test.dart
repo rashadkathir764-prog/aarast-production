@@ -14,11 +14,14 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/payer_payments_screen.dart';
+import 'package:aarast_mobile/features/onboarding/onboarding_api.dart'
+    show GuestOnboardingStorage;
 import 'package:aarast_mobile/features/wedding_plans/screens/mahr_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // B5, the mahr (a06, C1): the groom's agreement with the bride's family and
 // the bride's mahr coming in, beside the wedding (c01), in its own section
@@ -583,6 +586,34 @@ void main() {
       expect(find.textContaining('لحاله'), findsNothing);
     });
 
+    // From the second review of the field-notes branch: on a plan kept on
+    // the phone this page read the answer from the welcome's draft alone,
+    // while the money (and the home) read the money tab's own save first.
+    // An answer changed in the money tab was said one way there and the
+    // old way here.
+    testWidgets('a plan kept on the phone reads the answer the money reads', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pumpMahr(
+        tester,
+        JourneyProfile.groom,
+        withApi: _Api(budgetIncludesMahr: true),
+        planId: 'local-guest-plan',
+        // The draft never named the answer (the welcome's mahr question was
+        // skipped); the money tab's save did.
+        draft: GuestOnboardingStorage(await SharedPreferences.getInstance()),
+      );
+
+      expect(
+        find.text(
+          'اللي بتسلّمه لأهل العروسة. نحسبه من ميزانيتك، مثل ما اخترت. '
+          'ونذكرك بموعد تسليمه.',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('the bride receives it, in her words', (tester) async {
       await _pumpMahr(tester, JourneyProfile.bride);
 
@@ -760,6 +791,8 @@ Future<_Api> _pumpMahr(
   WidgetTester tester,
   JourneyProfile profile, {
   _Api? withApi,
+  String planId = 'plan-1',
+  GuestOnboardingStorage? draft,
 }) async {
   tester.view.physicalSize = const Size(390, 1400);
   tester.view.devicePixelRatio = 1;
@@ -774,14 +807,19 @@ Future<_Api> _pumpMahr(
       ),
       GoRoute(
         path: '/mahr',
-        builder: (_, _) => const MahrScreen(weddingPlanId: 'plan-1'),
+        builder: (_, _) => MahrScreen(weddingPlanId: planId),
       ),
     ],
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<FinanceProvider>(
-      create: (_) => FinanceProvider(api),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<FinanceProvider>(
+          create: (_) => FinanceProvider(api),
+        ),
+        if (draft != null) Provider<GuestOnboardingStorage>.value(value: draft),
+      ],
       child: MaterialApp.router(
         routerConfig: router,
         builder: (context, child) =>

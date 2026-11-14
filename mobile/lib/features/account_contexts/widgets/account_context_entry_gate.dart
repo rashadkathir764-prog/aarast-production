@@ -34,46 +34,79 @@ class AccountContextEntryGate extends StatefulWidget {
 }
 
 class _AccountContextEntryGateState extends State<AccountContextEntryGate> {
+  AccountContextController? _controller;
   int _automaticRetries = 0;
   Timer? _retryTimer;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = context.read<AccountContextController>();
+    if (identical(controller, _controller)) return;
+    _controller?.removeListener(_onRead);
+    _controller = controller..addListener(_onRead);
+    _onRead();
+  }
+
+  @override
   void dispose() {
+    _controller?.removeListener(_onRead);
     _retryTimer?.cancel();
     super.dispose();
   }
 
-  /// True while a failed read is waiting to be tried again by itself.
-  bool _retryingByItself(AccountContextController controller) {
-    if (_retryTimer?.isActive ?? false) return true;
-    final delays = AccountContextEntryGate.automaticRetryDelays;
-    if (_automaticRetries >= delays.length) return false;
-    final delay = delays[_automaticRetries];
-    _automaticRetries += 1;
-    _retryTimer = Timer(delay, () {
-      if (mounted) unawaited(controller.refresh());
-    });
-    return true;
+  /// Follows the read of the account's paths: a failure waits and is tried
+  /// again by itself, and the wait is taken back as soon as the read moves
+  /// on. It was armed while the page was drawn and never taken back, so a
+  /// read asked for meanwhile was asked for a second time.
+  void _onRead() {
+    final controller = _controller;
+    if (controller == null) return;
+    switch (resolveAccountContextEntry(controller)) {
+      case AccountContextEntryState.error:
+        if (_retryTimer?.isActive ?? false) return;
+        final delays = AccountContextEntryGate.automaticRetryDelays;
+        if (_automaticRetries >= delays.length) return;
+        _retryTimer = Timer(delays[_automaticRetries], () {
+          if (!mounted) return;
+          // The page under the wait is redrawn as the read starts.
+          unawaited(controller.refresh());
+        });
+        _automaticRetries += 1;
+      case AccountContextEntryState.loading:
+        // A read on its way is the try: its answer decides what is next.
+        _retryTimer?.cancel();
+      case AccountContextEntryState.noPaths ||
+          AccountContextEntryState.choosePath ||
+          AccountContextEntryState.planDashboard ||
+          AccountContextEntryState.providerDashboard:
+        // The paths were read: a later failure gets its own tries.
+        _retryTimer?.cancel();
+        _automaticRetries = 0;
+    }
   }
+
+  /// A failed read is waiting to be tried again by itself.
+  bool get _waitingToRetry => _retryTimer?.isActive ?? false;
+
+  /// What the person waits for, once the first read failed.
+  Widget _loading() => AarastScaffold(
+    child: AarastScreenLoading(
+      label: _automaticRetries > 0 ? 'نحاول مرة ثانية' : null,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AccountContextController>();
     final resumeLocation = widget.resumeLocation;
     final entry = resolveAccountContextEntry(controller);
-    if (entry != AccountContextEntryState.error &&
-        entry != AccountContextEntryState.loading) {
-      // The paths were read: a later failure gets its own tries.
-      _automaticRetries = 0;
-    }
 
     switch (entry) {
       case AccountContextEntryState.loading:
-        return const AarastScaffold(child: AarastScreenLoading());
+        return _loading();
       case AccountContextEntryState.error:
-        if (_retryingByItself(controller)) {
-          return const AarastScaffold(child: AarastScreenLoading());
-        }
+        if (_waitingToRetry) return _loading();
         return AarastScaffold(
           child: Align(
             alignment: Alignment.topCenter,

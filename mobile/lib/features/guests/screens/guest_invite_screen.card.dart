@@ -19,9 +19,14 @@ class _PhotoState {
     required this.error,
     required this.onChange,
     required this.onRetry,
+    this.picked,
   });
 
   final bool uploading;
+
+  /// The photo picked on this screen, drawn from the file itself: its
+  /// stored address is private until the saved card is read again.
+  final Uint8List? picked;
 
   /// Why the picked photo did not go up.
   final String? error;
@@ -476,8 +481,13 @@ class _PhotoSlot extends StatelessWidget {
       body = Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            url,
+          Image(
+            // The photo picked here is drawn from its own file; a saved
+            // one from the server's signed read.
+            image: switch (photo.picked) {
+              final bytes? => MemoryImage(bytes),
+              null => NetworkImage(url),
+            },
             key: const ValueKey('invite-card-photo'),
             fit: BoxFit.cover,
             semanticLabel: 'صورة الدعوة',

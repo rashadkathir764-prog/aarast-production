@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/release_field_focus.dart';
 import 'mahr_fields.dart' show mahrWords;
 
 /// D114: whether the groom's budget holds his mahr, asked wherever he types
@@ -61,6 +62,60 @@ class MahrBudgetChoice extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Whether the choice under [key] is on screen whole: inside its scrolling
+/// area and above the keyboard. Seen on a phone: typed with the keyboard
+/// up, the choice sat under it and the step was left without it.
+bool mahrChoiceOnScreen(GlobalKey key) {
+  final context = key.currentContext;
+  final box = context?.findRenderObject();
+  if (context == null || box is! RenderBox || !box.attached) return false;
+  final rect = box.localToGlobal(Offset.zero) & box.size;
+  var bottom =
+      MediaQuery.sizeOf(context).height -
+      MediaQuery.viewInsetsOf(context).bottom;
+  var top = 0.0;
+  final scrollable = Scrollable.maybeOf(context)?.context.findRenderObject();
+  if (scrollable is RenderBox && scrollable.attached) {
+    final view = scrollable.localToGlobal(Offset.zero) & scrollable.size;
+    top = view.top;
+    if (view.bottom < bottom) bottom = view.bottom;
+  }
+  return rect.top >= top - 0.5 && rect.bottom <= bottom + 0.5;
+}
+
+/// Closes the keyboard and brings the choice under [key] into view, never
+/// while the person types: only from the press that would leave without it.
+/// A list builds what is far below lazily, so a choice not built yet is
+/// reached through [near] (anything built in the same list): the list goes
+/// to its end, where the choice is.
+void revealMahrChoice(GlobalKey key, {GlobalKey? near}) {
+  releaseFieldFocus();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final context = key.currentContext ?? near?.currentContext;
+    if (context == null || !context.mounted) return;
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : AarastV3Motion.standard;
+    if (key.currentContext == null) {
+      final position = Scrollable.maybeOf(context)?.position;
+      if (position == null) return;
+      position.animateTo(
+        position.maxScrollExtent,
+        duration: duration == Duration.zero
+            ? const Duration(milliseconds: 1)
+            : duration,
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    Scrollable.ensureVisible(
+      context,
+      duration: duration,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+  });
 }
 
 /// What each answer means: in the person's numbers once the budget (and

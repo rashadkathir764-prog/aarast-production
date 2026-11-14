@@ -12,11 +12,13 @@ import '../../onboarding/onboarding_api.dart'
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         DashboardFinancialWarning,
+        DashboardHomeMahr,
         DashboardImportantItem,
         DashboardMoneySummary,
         DashboardNextPaymentSchedule,
         DashboardPermissionSummary,
-        DashboardSummary;
+        DashboardSummary,
+        MahrHomeSide;
 
 class LocalGuestDashboardSummarySource {
   const LocalGuestDashboardSummarySource(
@@ -76,9 +78,35 @@ class LocalGuestDashboardSummary {
     this.remainingBudget,
     this.overBudget,
     this.budgetIncludesMahr = false,
+    this.providerAgreementsCount,
   });
 
   final GuestOnboardingDraft plan;
+
+  /// The plan's mahr for the home's cards, from the answer the plan's
+  /// questions kept (a06): the groom hands it over, the bride receives it.
+  /// Null on a plan of neither.
+  DashboardHomeMahr? get homeMahr {
+    final side = switch (plan.persona) {
+      GuestPersona.groom => MahrHomeSide.pays,
+      GuestPersona.bride => MahrHomeSide.receives,
+      _ => null,
+    };
+    if (side == null) return null;
+    final draft = plan.mahr;
+    if (draft == null) return DashboardHomeMahr.notRecorded(side);
+    return DashboardHomeMahr.fromDraft(
+      side: side,
+      total: draft.total,
+      settled: draft.settled,
+      remainingDueDate: draft.remainingDueDate,
+    );
+  }
+
+  /// The plan's agreements with providers (`budget.count`: the mahr is
+  /// never one), for the home's «سجّل أول اتفاق». Null before the money is
+  /// worked out.
+  final int? providerAgreementsCount;
 
   /// The budget as the money tab reads it (D59): what is left after the
   /// agreements, and whether what is expected passes it (D105). D114: the
@@ -141,6 +169,9 @@ class LocalGuestDashboardSummary {
           ? _moneyValue(metrics.budgetLeft) < 0
           : false,
       budgetIncludesMahr: metrics.budgetIncludesMahr,
+      providerAgreementsCount: metrics.moneyWorkedOut
+          ? metrics.providerAgreementsCount
+          : null,
       plan: plan,
       seed: GeneratedDashboardSeed.fromDraft(plan),
       // Not clamped at zero: a wedding that has passed is a negative
@@ -208,6 +239,7 @@ class LocalGuestDashboardSummary {
       outstandingTotal: outstandingTotal,
       remainingBudget: remainingBudget,
       budgetIncludesMahr: budgetIncludesMahr,
+      providerAgreementsCount: providerAgreementsCount,
       duePaymentSchedulesCount: duePaymentSchedulesCount,
       totalTasks: taskCount,
       completedTasks: completedTaskCount,
@@ -312,6 +344,7 @@ class LocalDashboardMetrics {
     this.remainingBudget,
     this.budgetLeft,
     this.budgetIncludesMahr = false,
+    this.providerAgreementsCount,
     this.moneyWorkedOut = false,
   });
 
@@ -367,6 +400,10 @@ class LocalDashboardMetrics {
   final String? remainingBudget;
   final String? budgetLeft;
   final bool budgetIncludesMahr;
+
+  /// The agreements with providers, the mahr's never counted
+  /// (`budget.count`).
+  final int? providerAgreementsCount;
 
   /// The money figures above and the totals were worked out by the money
   /// tab's formula; false for [empty].
@@ -528,6 +565,7 @@ class LocalDashboardMetrics {
       remainingBudget: money.budget.remaining,
       budgetLeft: money.expected?.budgetLeft,
       budgetIncludesMahr: money.budget.includesMahr,
+      providerAgreementsCount: money.budget.count,
       moneyWorkedOut: true,
     );
   }

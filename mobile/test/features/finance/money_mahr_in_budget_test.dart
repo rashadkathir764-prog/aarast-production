@@ -434,6 +434,48 @@ void main() {
       expect(api.sent, [true]);
     });
 
+    // The keyboard up on a 320 phone hides the choice under the budget:
+    // the first «تمام» brings it into view, the next closes the sheet.
+    testWidgets('the keyboard up: the first «تمام» shows the choice', (
+      tester,
+    ) async {
+      await pumpBudget(tester, inside: false);
+      tester.view.physicalSize = const Size(320, 700);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('money-budget-total')),
+        '8000000',
+      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      final choice = find.byKey(const ValueKey('mahr-budget-choice'));
+      bool shown() {
+        if (choice.evaluate().isEmpty) return false;
+        final rect = tester.getRect(choice);
+        final view = tester.getRect(
+          find.ancestor(of: choice, matching: find.byType(Scrollable)).first,
+        );
+        return rect.top >= view.top - 0.5 &&
+            rect.bottom <= view.bottom + 0.5 &&
+            rect.bottom <= 700 - tester.view.viewInsets.bottom;
+      }
+
+      expect(shown(), isFalse, reason: 'the keyboard hides it');
+      final done = find.byKey(const ValueKey('money-budget-total-done'));
+      await tester.tap(done);
+      await tester.pumpAndSettle();
+      expect(done, findsOneWidget);
+      expect(shown(), isTrue);
+
+      await tester.tap(done);
+      await tester.pumpAndSettle();
+      expect(done, findsNothing);
+    });
+
     testWidgets('an untouched answer is not sent', (tester) async {
       final api = await pumpBudget(tester, inside: false);
 
@@ -448,6 +490,38 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('mahr-budget-choice')), findsNothing);
+    });
+
+    // From the review of this branch: the server lets only a plan that
+    // pays the mahr count it in its budget, and a plan that names neither
+    // a groom nor a bride pays none. It was asked all the same (anything
+    // that is not a bride's was taken for a groom's), the server refused
+    // the answer, and the whole budget save was lost with it.
+    testWidgets('a plan that names no groom is not asked', (tester) async {
+      await pumpBudget(
+        tester,
+        inside: false,
+        profile: JourneyProfile.of(planPersona: null, readerFeminine: false),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsNothing);
+    });
+
+    test('only a groom\'s plan pays the mahr', () {
+      expect(JourneyProfile.groom.paysMahr, isTrue);
+      expect(JourneyProfile.bride.paysMahr, isFalse);
+      expect(JourneyProfile.fromPersona('GROOM').paysMahr, isTrue);
+      expect(JourneyProfile.fromPersona(' groom ').paysMahr, isTrue);
+      expect(JourneyProfile.fromPersona(null).paysMahr, isFalse);
+      expect(JourneyProfile.fromPersona('BRIDE').paysMahr, isFalse);
+      expect(
+        JourneyProfile.of(planPersona: 'GROOM', readerFeminine: true).paysMahr,
+        isTrue,
+      );
+      // The same plan read by someone else is still the groom's.
+      expect(JourneyProfile.groom.readBy(feminine: true).paysMahr, isTrue);
     });
   });
 

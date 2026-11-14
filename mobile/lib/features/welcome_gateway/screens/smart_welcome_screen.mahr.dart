@@ -16,6 +16,8 @@ class _MahrStep extends StatelessWidget {
     required this.signedIn,
     required this.totalMissing,
     required this.askInside,
+    required this.choiceKey,
+    required this.fieldsKey,
     required this.inside,
     required this.budget,
     required this.onInside,
@@ -39,6 +41,12 @@ class _MahrStep extends StatelessWidget {
 
   /// D114: the budget is typed and so is the mahr, on a groom's plan.
   final bool askInside;
+
+  /// Where the choice is, so «التالي» can bring it into view.
+  final GlobalKey choiceKey;
+
+  /// The fields, built while the choice far below may not be yet.
+  final GlobalKey fieldsKey;
   final bool inside;
   final int? budget;
   final ValueChanged<bool> onInside;
@@ -80,6 +88,7 @@ class _MahrStep extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x3),
         MahrFields(
+          key: fieldsKey,
           pays: !bride,
           totalController: totalController,
           settledController: settledController,
@@ -108,6 +117,7 @@ class _MahrStep extends StatelessWidget {
         if (askInside) ...[
           const SizedBox(height: AarastV3Space.x4),
           MahrBudgetChoice(
+            key: choiceKey,
             inside: inside,
             budget: budget,
             mahr: MahrFields.amountOf(totalController),

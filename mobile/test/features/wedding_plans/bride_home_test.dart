@@ -215,7 +215,20 @@ void main() {
         ),
         JourneyProfile.bride,
       );
-      expect(planJourneyProfile(), JourneyProfile.groom);
+      // With no plan open the app keeps the groom's look and speaks in the
+      // masculine. It is not a groom's plan, though: nobody here pays a
+      // mahr, so nothing asks whether the budget holds one (D114).
+      final none = planJourneyProfile();
+      expect(none.isBride, isFalse);
+      expect(none.feminine, isFalse);
+      expect(none.accent, JourneyProfile.groom.accent);
+      expect(none.paysMahr, isFalse);
+      expect(
+        planJourneyProfile(
+          summary: _summary(dataScope: 'LOCAL', persona: 'GROOM'),
+        ),
+        JourneyProfile.groom,
+      );
     });
   });
 

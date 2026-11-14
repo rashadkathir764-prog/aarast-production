@@ -48,6 +48,24 @@ void main() {
     );
   });
 
+  // D114: the first agreement is the first one with a provider. On a phone
+  // plan the mahr is now part of what was agreed, and it used to tick the
+  // step by itself, while the money tab still asked for a first agreement.
+  test('a phone plan with its mahr alone still asks for a first agreement', () {
+    expect(
+      resolveDashboardFocus(
+        _summary(onPhone: true, agreed: '2000000', providerAgreements: 0),
+      ).title,
+      'سجّل أول اتفاق',
+    );
+    expect(
+      resolveDashboardFocus(
+        _summary(onPhone: true, agreed: '2400000', providerAgreements: 1),
+      ).title,
+      'أضف أول ضيف',
+    );
+  });
+
   // D78 (RA-MO-147): an account plan's chain is the server's. An empty list
   // means it found nothing missing for this reader; the phone used to add
   // «أضف أول بند» and «أضف أول مهمة» of its own.
@@ -95,11 +113,15 @@ DashboardSummary _summary({
   /// A plan kept on the phone, no account behind it.
   bool onPhone = false,
   String? agreed,
+
+  /// The phone plan's agreements with providers (the mahr is never one).
+  int? providerAgreements,
 }) {
   return DashboardSummary(
     accountBacked: !onPhone,
     dataScope: onPhone ? 'LOCAL' : 'ACCOUNT_BACKED',
     confirmedCostTotal: agreed,
+    providerAgreementsCount: providerAgreements,
     planId: 'plan-focus',
     title: 'خطة الاختبار',
     status: 'PLANNING',

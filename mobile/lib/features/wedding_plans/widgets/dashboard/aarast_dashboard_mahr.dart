@@ -30,6 +30,28 @@ class DashboardHomeMahr {
       nextDueAt = null,
       complete = false;
 
+  /// A plan kept on the phone: a06's answer as its draft keeps it, the
+  /// amounts as they were typed.
+  factory DashboardHomeMahr.fromDraft({
+    required MahrHomeSide side,
+    required String total,
+    required String settled,
+    DateTime? remainingDueDate,
+  }) {
+    double amount(String text) =>
+        double.tryParse(text.replaceAll(',', '')) ?? 0;
+    final whole = amount(total);
+    final handed = amount(settled);
+    return DashboardHomeMahr(
+      side: side,
+      recorded: true,
+      total: whole,
+      settled: handed,
+      nextDueAt: handed < whole ? remainingDueDate : null,
+      complete: whole > 0 && handed >= whole,
+    );
+  }
+
   final MahrHomeSide side;
   final bool recorded;
   final double total;

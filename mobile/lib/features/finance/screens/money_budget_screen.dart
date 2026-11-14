@@ -55,7 +55,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   /// groom pays the mahr; a bride's plan receives it).
   bool _savedInside(FinanceProvider provider) =>
       provider.summary.budget.includesMahr;
-  bool get _asked => !context.journeyProfile.isBride;
+  bool get _asked => context.journeyProfile.paysMahr;
 
   bool _inside(FinanceProvider provider) =>
       _asked && (_includesMahr ?? _savedInside(provider));
@@ -270,6 +270,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     final provider = context.read<FinanceProvider>();
     final currencyLocked = provider.summary.currencyFixed;
     final mahr = provider.summary.mahrCategory;
+    // The choice is seen once before the sheet closes: with the keyboard up
+    // on a small phone it sat under it.
+    final choiceKey = GlobalKey();
+    var choiceSeen = false;
     return showJourneySheet<void>(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
@@ -287,7 +291,16 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
               label: 'تمام',
               expand: true,
               large: true,
-              onPressed: () => Navigator.of(sheetContext).pop(),
+              onPressed: () {
+                if (_asked && !choiceSeen) {
+                  choiceSeen = true;
+                  if (!mahrChoiceOnScreen(choiceKey)) {
+                    revealMahrChoice(choiceKey);
+                    return;
+                  }
+                }
+                Navigator.of(sheetContext).pop();
+              },
             ),
             children: [
               JourneyTextField(
@@ -342,6 +355,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
               if (_asked) ...[
                 const SizedBox(height: AarastV3Space.x4),
                 MahrBudgetChoice(
+                  key: choiceKey,
                   inside: _inside(provider),
                   budget: total,
                   mahr: moneyValue(mahr?.confirmedCost),

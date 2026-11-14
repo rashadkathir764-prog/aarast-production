@@ -218,6 +218,87 @@ void main() {
     },
   );
 
+  // RA-MO-314 (the owner's own plan, seen on an Android 16 emulator): a plan
+  // kept on the phone answered the mahr question, and its home showed
+  // neither the mahr's card nor where the mahr stands against the budget.
+  // The phone home is its own screen and never handed the mahr to the cards.
+  group('a phone plan\'s home says its mahr', () {
+    Future<void> pumpHome(WidgetTester tester, {required bool inside}) async {
+      tester.view.physicalSize = const Size(390, 2600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final plan = _guestPlan().copyWith(
+        estimatedBudget: '7000000',
+        mahr: const DraftMahr(total: '2000000', settled: '500000'),
+        budgetIncludesMahr: inside,
+      );
+      final metrics = LocalDashboardMetrics(
+        taskCount: 0,
+        completedTaskCount: 0,
+        overdueTaskCount: 0,
+        todayTaskCount: 0,
+        guestCount: 0,
+        confirmedGuestCount: 0,
+        pendingGuestCount: 0,
+        declinedGuestCount: 0,
+        incompleteGuestCount: 0,
+        confirmedCostTotal: 2000000,
+        paidTotal: 500000,
+        outstandingTotal: 1500000,
+        ownerOutstandingTotal: 1500000,
+        duePaymentSchedulesCount: 0,
+        overduePaymentSchedulesCount: 0,
+        dueSoonPaymentSchedulesCount: 0,
+        nextPaymentScheduleDue: null,
+        importantItems: const [],
+        recentActivity: const [],
+        budgetTotal: '7000000',
+        remainingBudget: inside ? '5000000' : '7000000',
+        budgetLeft: inside ? '5000000' : '7000000',
+        budgetIncludesMahr: inside,
+        providerAgreementsCount: 0,
+        moneyWorkedOut: true,
+      );
+      await tester.pumpWidget(
+        Provider<AuthStorage>.value(
+          value: AuthStorage(preferences),
+          child: MaterialApp(
+            home: LocalGuestDashboardScreen(
+              summary: LocalGuestDashboardSummary.fromPlan(
+                plan,
+                metrics: metrics,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('inside the budget: its card, and «منها المهر»', (
+      tester,
+    ) async {
+      await pumpHome(tester, inside: true);
+
+      expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
+      expect(find.textContaining('منها المهر'), findsOneWidget);
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      // The mahr is not an agreement with a provider: the step stays.
+      expect(find.text('سجّل أول اتفاق'), findsOneWidget);
+    });
+
+    testWidgets('on its own: its card, and its own line', (tester) async {
+      await pumpHome(tester, inside: false);
+
+      expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
+      expect(find.textContaining('برّا الميزانية'), findsOneWidget);
+      expect(find.textContaining('منها المهر'), findsNothing);
+      expect(find.text('سجّل أول اتفاق'), findsOneWidget);
+    });
+  });
+
   // RA-MO-22: D22 and C12 make the home after the wedding the debt. A plan
   // kept on the phone used to drop it (its debt was assumed the server's),
   // leaving the greeting and the box alone.

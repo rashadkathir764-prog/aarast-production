@@ -263,11 +263,14 @@ class LocalPlanMigrationService {
       // The budget the plan's money shows now: what was changed there, else
       // what the plan began with (the same order the phone reads it in).
       'estimatedBudget': ?(_amount(snapshot.budgetTotal) ?? _budget(draft)),
-      // D114: the groom's answer, the money's own first; sent only when he
-      // gave one (the account refuses it on a plan that receives the mahr).
-      if (draft.persona == GuestPersona.groom)
-        'budgetIncludesMahr':
-            ?(snapshot.budgetIncludesMahr ?? draft.budgetIncludesMahr),
+      // D114: the groom's answer, the money's own first; written only when
+      // the mahr is inside. «لحاله» is what a new plan starts with, so it is
+      // not sent: a server that does not know the field yet would refuse
+      // the whole plan for it, and the account refuses it on a plan that
+      // receives the mahr.
+      if (draft.persona == GuestPersona.groom &&
+          (snapshot.budgetIncludesMahr ?? draft.budgetIncludesMahr) == true)
+        'budgetIncludesMahr': true,
       'currency': draft.currency ?? 'YER',
       // The items as they are in the plan's money now (added, renamed or
       // removed there), not the list the plan started with.

@@ -159,9 +159,13 @@ AarastDashboardFocus resolveDashboardFocus(
   final agreed = _amount(
     summary.confirmedCostTotal ?? summary.moneySummary.confirmedCost,
   );
-  if (phoneChain &&
-      (agreed == null || agreed <= 0) &&
-      summary.permissions.canManageMoney) {
+  // D114: the first agreement is the first with a provider. What was agreed
+  // holds the mahr, which is not one; the count says it when it is known.
+  final noAgreementYet = switch (summary.providerAgreementsCount) {
+    final count? => count == 0,
+    null => agreed == null || agreed <= 0,
+  };
+  if (phoneChain && noAgreementYet && summary.permissions.canManageMoney) {
     return AarastDashboardFocus(
       eyebrow: 'خطوتك الجاية',
       title: say('سجّل أول اتفاق', 'سجّلي أول اتفاق'),

@@ -108,6 +108,9 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
           sourcesCount: 0,
           ownerLeft: summary.ownerOutstandingTotal.toDouble(),
         ),
+        // RA-MO-314: the mahr the plan's questions recorded, for its card
+        // and for where it stands against the budget (D114).
+        mahr: summary.homeMahr,
         afterWedding: DashboardAfterWedding(
           left: owed.left,
           paid: owed.total - owed.left,

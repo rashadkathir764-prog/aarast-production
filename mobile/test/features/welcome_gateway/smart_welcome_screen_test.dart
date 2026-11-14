@@ -556,6 +556,62 @@ void main() {
       expect(finance.includesMahr, [true]);
     });
 
+    // Seen on an Android 16 emulator: with the keyboard up after typing the
+    // mahr, the choice sat under it and «التالي» left the step without it.
+    testWidgets('the keyboard up: the first «التالي» shows the choice, the '
+        'next goes on', (tester) async {
+      final plans = _RecordingPlans(succeed: true);
+      await _pump(tester, signedInPlans: plans, size: const Size(320, 900));
+      await upToMahr(tester);
+      await typeMahr(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      final choice = find.byKey(const ValueKey('mahr-budget-choice'));
+      bool shown() {
+        if (choice.evaluate().isEmpty) return false;
+        final rect = tester.getRect(choice);
+        final view = tester.getRect(find.byType(Scrollable).first);
+        final keyboardTop = 900 - tester.view.viewInsets.bottom;
+        return rect.top >= view.top - 0.5 &&
+            rect.bottom <= view.bottom + 0.5 &&
+            rect.bottom <= keyboardTop;
+      }
+
+      expect(shown(), isFalse, reason: 'the keyboard hides it, as seen');
+      await tester.tap(find.widgetWithText(JourneyButton, 'التالي'));
+      await tester.pumpAndSettle();
+      // Still on the step, the choice brought into view.
+      expect(find.text('خطتك جاهزة يا محمد'), findsNothing);
+      expect(find.byKey(const ValueKey('mahr-total')), findsOneWidget);
+      expect(shown(), isTrue);
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
+      expect(shown(), isTrue);
+
+      await tester.tap(find.widgetWithText(JourneyButton, 'التالي'));
+      await tester.pumpAndSettle();
+      expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+      await _tap(tester, 'افتح خطتي');
+      expect(plans.request!.budgetIncludesMahr, isNull);
+    });
+
+    testWidgets('no choice to show: «التالي» goes on at once', (tester) async {
+      await _pump(tester, size: const Size(320, 900));
+      await _answerUpToPlace(tester);
+      await _tap(tester, 'صنعاء');
+      await _tap(tester, 'أكمل بدون ميزانية');
+      await typeMahr(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(JourneyButton, 'التالي'));
+      await tester.pumpAndSettle();
+      expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+    });
+
     testWidgets('a bride is never asked', (tester) async {
       await _pump(tester, size: const Size(390, 1400));
       await upToMahr(tester, persona: 'persona-bride');

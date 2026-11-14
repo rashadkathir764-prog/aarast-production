@@ -468,15 +468,11 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       }
       final draft = plan?.mahr;
       if (draft == null) return DashboardHomeMahr.notRecorded(side);
-      final total = double.tryParse(draft.total.replaceAll(',', '')) ?? 0;
-      final settled = double.tryParse(draft.settled.replaceAll(',', '')) ?? 0;
-      return DashboardHomeMahr(
+      return DashboardHomeMahr.fromDraft(
         side: side,
-        recorded: true,
-        total: total,
-        settled: settled,
-        nextDueAt: settled < total ? draft.remainingDueDate : null,
-        complete: total > 0 && settled >= total,
+        total: draft.total,
+        settled: draft.settled,
+        remainingDueDate: draft.remainingDueDate,
       );
     }
     final selected = context

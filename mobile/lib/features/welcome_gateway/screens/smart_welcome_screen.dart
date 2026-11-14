@@ -27,6 +27,8 @@ import '../../finance/finance_api.dart'
         FinanceApi,
         MahrBudgetChoice,
         MahrFields,
+        mahrChoiceOnScreen,
+        revealMahrChoice,
         MoneyInputFormatter,
         formatMoneyInputValue,
         mahrWords,
@@ -166,6 +168,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
   /// D114: the groom's answer, the mahr on its own until he says otherwise.
   bool _mahrInBudget = false;
 
+  /// The choice on a06; it is seen once before the step is left.
+  final _mahrChoiceKey = GlobalKey();
+  final _mahrFieldsKey = GlobalKey();
+  bool _mahrChoiceSeen = false;
+
   /// D114: asked once both figures are typed on a groom's plan: until the
   /// mahr is typed the question has nothing in it, and there each answer
   /// can say what it means in his own numbers.
@@ -189,6 +196,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
     if (settled > total) {
       setState(() => _mahrSettledError = 'أكثر من المهر نفسه');
       return;
+    }
+    // D114: typed with the keyboard up, the choice sat under it and this
+    // press left the step without it; the first press brings it into view.
+    if (_asksMahrInBudget && !_mahrChoiceSeen) {
+      _mahrChoiceSeen = true;
+      if (!mahrChoiceOnScreen(_mahrChoiceKey)) {
+        revealMahrChoice(_mahrChoiceKey, near: _mahrFieldsKey);
+        return;
+      }
     }
     _toReady();
   }
@@ -851,6 +867,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         signedIn: _isAuthenticated(),
         totalMissing: _mahrTotalMissing,
         askInside: _asksMahrInBudget,
+        choiceKey: _mahrChoiceKey,
+        fieldsKey: _mahrFieldsKey,
         inside: _mahrInBudget,
         budget: _budget,
         onInside: (inside) => setState(() => _mahrInBudget = inside),

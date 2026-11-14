@@ -422,6 +422,49 @@ void main() {
   // J1-13: the server takes at most so many starting items; a phone plan
   // with more is never refused for it. Items that carry an agreement go
   // with the agreement (the server keeps each agreement's item), so they
+  // From the review of this branch: «لحاله» is what a new plan starts with,
+  // so it is not written. Sent as `false` it made a server that does not
+  // know the field yet refuse the whole save of the plan.
+  test(
+    'the import says the mahr is inside the budget only when it is',
+    () async {
+      final service = await buildService();
+      Map<String, dynamic> payloadOf(GuestOnboardingDraft draft) =>
+          service.buildImportPayload(
+            LocalPlanSnapshot(
+              draft: draft,
+              costs: const [],
+              costPayments: const [],
+              paymentSchedules: const [],
+              tasks: const [],
+              guests: const [],
+              categoryNameById: const {},
+            ),
+          );
+      final groom = buildDraft().copyWith(persona: GuestPersona.groom);
+
+      expect(
+        payloadOf(
+          groom.copyWith(budgetIncludesMahr: true),
+        )['budgetIncludesMahr'],
+        true,
+      );
+      expect(
+        payloadOf(
+          groom.copyWith(budgetIncludesMahr: false),
+        ).containsKey('budgetIncludesMahr'),
+        isFalse,
+      );
+      expect(payloadOf(groom).containsKey('budgetIncludesMahr'), isFalse);
+      expect(
+        payloadOf(
+          buildDraft().copyWith(persona: GuestPersona.bride),
+        ).containsKey('budgetIncludesMahr'),
+        isFalse,
+      );
+    },
+  );
+
   // are the ones left out of the list when it is full.
   test('the import never sends more items than the server takes', () async {
     final service = await buildService();
@@ -657,7 +700,11 @@ void main() {
       ],
       tasks: const [],
       guests: const [],
-      categoryNameById: const {'food': 'الغداء', 'dress': 'الفستان', 'car': 'السيارة'},
+      categoryNameById: const {
+        'food': 'الغداء',
+        'dress': 'الفستان',
+        'car': 'السيارة',
+      },
       categories: const [
         {'id': 'food', 'name': 'الغداء', 'estimatedAmount': '1600'},
         {'id': 'dress', 'name': 'الفستان', 'allocatedAmount': '300'},
@@ -697,7 +744,10 @@ void main() {
     final schedule = (lunch['paymentSchedules'] as List).single as Map;
     expect(schedule['remindAt'], '2026-11-28');
     expect(schedule['rescheduledFrom'], '2026-11-20');
-    expect(((lunch['payments'] as List).single as Map)['lowersScheduleIndex'], 0);
+    expect(
+      ((lunch['payments'] as List).single as Map)['lowersScheduleIndex'],
+      0,
+    );
     final dress = costs.firstWhere((cost) => cost['title'] == 'الفستان');
     expect(dress['entryKind'], 'EXPENSE');
     expect(dress.containsKey('lowersScheduleIndex'), isFalse);
@@ -706,10 +756,18 @@ void main() {
       {'name': 'الغداء', 'estimatedAmount': '1600'},
       {'name': 'الفستان', 'allocatedAmount': '300'},
     ]);
-    final sources = [for (final source in payload['fundingSources'] as List) source as Map];
-    expect(sources.map((source) => source['sourceName']), ['وعد الوالد', 'خالي']);
+    final sources = [
+      for (final source in payload['fundingSources'] as List) source as Map,
+    ];
+    expect(sources.map((source) => source['sourceName']), [
+      'وعد الوالد',
+      'خالي',
+    ]);
     expect(sources.first['contributorName'], 'الوالد');
     expect(sources.first['status'], 'PLEDGED');
-    expect((sources.last['repayments'] as List).single, {'amount': '100', 'status': 'PAID'});
+    expect((sources.last['repayments'] as List).single, {
+      'amount': '100',
+      'status': 'PAID',
+    });
   });
 }

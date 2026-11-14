@@ -18,18 +18,26 @@ class JourneyProfile {
     required this.isBride,
     required this.feminine,
     this.readerIsOwner = true,
+    this.paysMahr = false,
   });
 
   /// The groom's plan, read by the groom.
-  static const groom = JourneyProfile._(isBride: false, feminine: false);
+  static const groom = JourneyProfile._(
+    isBride: false,
+    feminine: false,
+    paysMahr: true,
+  );
 
   /// The bride's plan, read by the bride.
   static const bride = JourneyProfile._(isBride: true, feminine: true);
 
   /// The plan persona the server and the phone plan store («GROOM»,
   /// «BRIDE»), read by its own owner; anything else is the groom's profile.
-  static JourneyProfile fromPersona(String? persona) =>
-      _isBridePersona(persona) ? JourneyProfile.bride : JourneyProfile.groom;
+  static JourneyProfile fromPersona(String? persona) => _isBridePersona(persona)
+      ? JourneyProfile.bride
+      : _isGroomPersona(persona)
+      ? JourneyProfile.groom
+      : const JourneyProfile._(isBride: false, feminine: false);
 
   /// Whose plan it is ([planPersona]), who reads it ([readerFeminine]) and
   /// whether the reader is the plan's owner ([readerIsOwner]).
@@ -41,10 +49,17 @@ class JourneyProfile {
     isBride: _isBridePersona(planPersona),
     feminine: readerFeminine,
     readerIsOwner: readerIsOwner,
+    paysMahr: _isGroomPersona(planPersona),
   );
 
   /// The bride's plan: her colour and her words.
   final bool isBride;
+
+  /// The plan is a groom's by its own word («GROOM»), so its owner hands
+  /// the mahr over. A plan that names neither party looks like the groom's
+  /// ([isBride] is false) and pays none: the server counts a mahr in the
+  /// budget only for a plan that pays it (D114).
+  final bool paysMahr;
 
   /// The reader is spoken to in the feminine.
   final bool feminine;
@@ -62,6 +77,7 @@ class JourneyProfile {
     isBride: isBride,
     feminine: feminine,
     readerIsOwner: readerIsOwner,
+    paysMahr: paysMahr,
   );
 
   /// One sentence to the reader in its two forms: masculine or feminine
@@ -87,15 +103,19 @@ class JourneyProfile {
   static bool _isBridePersona(String? persona) =>
       persona?.trim().toUpperCase() == 'BRIDE';
 
+  static bool _isGroomPersona(String? persona) =>
+      persona?.trim().toUpperCase() == 'GROOM';
+
   @override
   bool operator ==(Object other) =>
       other is JourneyProfile &&
       other.isBride == isBride &&
       other.feminine == feminine &&
-      other.readerIsOwner == readerIsOwner;
+      other.readerIsOwner == readerIsOwner &&
+      other.paysMahr == paysMahr;
 
   @override
-  int get hashCode => Object.hash(isBride, feminine, readerIsOwner);
+  int get hashCode => Object.hash(isBride, feminine, readerIsOwner, paysMahr);
 
   @override
   String toString() =>

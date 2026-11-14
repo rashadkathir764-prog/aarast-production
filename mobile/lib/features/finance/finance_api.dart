@@ -25,7 +25,8 @@ export 'screens/money_receipts_screen.dart' show MoneyReceiptsScreen;
 export 'screens/money_overview_screen.dart' show MoneyOverviewScreen;
 export 'widgets/money_cost_action_picker.dart'
     show MoneyCostActionIntent, openMoneyCostAction;
-export 'widgets/mahr_budget_choice.dart' show MahrBudgetChoice;
+export 'widgets/mahr_budget_choice.dart'
+    show MahrBudgetChoice, mahrChoiceOnScreen, revealMahrChoice;
 export 'widgets/mahr_fields.dart' show MahrFields, mahrWords, pickMahrDueDate;
 export 'widgets/money_cover_words.dart' show MoneyCoverWords, moneyCoverWords;
 export 'widgets/money_input_formatter.dart'

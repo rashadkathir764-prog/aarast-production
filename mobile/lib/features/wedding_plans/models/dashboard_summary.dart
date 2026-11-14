@@ -99,6 +99,7 @@ class DashboardSummary {
     this.essentials = const [],
     this.budgetItemsCount,
     this.budgetIncludesMahr = false,
+    this.providerAgreementsCount,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -319,6 +320,11 @@ class DashboardSummary {
   /// plan that receives it, without money rights, and from an older server.
   final bool budgetIncludesMahr;
 
+  /// A plan kept on the phone: its agreements with providers (the mahr is
+  /// never one, D114), for the home's «سجّل أول اتفاق». Null for an account
+  /// plan, whose steps are the server's.
+  final int? providerAgreementsCount;
+
   /// Whose plan it is: `GROOM` or `BRIDE`. A plan kept on the phone has it
   /// only here, so the starters read it from the summary.
   final String? persona;
@@ -400,6 +406,7 @@ class DashboardSummary {
       essentials: essentials,
       budgetItemsCount: budgetItemsCount,
       budgetIncludesMahr: budgetIncludesMahr,
+      providerAgreementsCount: providerAgreementsCount,
     );
   }
 

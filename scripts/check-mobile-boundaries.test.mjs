@@ -1906,7 +1906,12 @@ const trackedOwnerApiContracts = [
         show: ['MoneyCostActionIntent', 'openMoneyCostAction'],
       },
       // D114: «المهر من الميزانية؟», wherever the budget is typed.
-      { uri: 'widgets/mahr_budget_choice.dart', show: ['MahrBudgetChoice'] },
+      // mahrChoiceOnScreen, revealMahrChoice: the choice is seen once before
+      // its step is left; under the keyboard it was not.
+      {
+        uri: 'widgets/mahr_budget_choice.dart',
+        show: ['MahrBudgetChoice', 'mahrChoiceOnScreen', 'revealMahrChoice'],
+      },
       // B5 (D55): a06's mahr fields, for the welcome steps and MahrScreen.
       {
         uri: 'widgets/mahr_fields.dart',
@@ -2444,10 +2449,14 @@ const trackedOwnerApiContracts = [
         // DashboardAfterWedding: the home of a plan kept on the phone shows
         // its debt after the wedding (RA-MO-22). DashboardHomeFunding: and
         // the owner's own share of what is left (RA-MO-91, D59).
+        // DashboardHomeMahr, MahrHomeSide: and its mahr, which its home
+        // never handed to the cards (RA-MO-314).
         show: [
           'AarastDashboardView',
           'DashboardAfterWedding',
           'DashboardHomeFunding',
+          'DashboardHomeMahr',
+          'MahrHomeSide',
         ],
       },
       {
@@ -3075,7 +3084,13 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/widgets/plan_details_view.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['MahrBudgetChoice', 'MoneyInputFormatter', 'formatMoneyInputValue'],
+    show: [
+      'MahrBudgetChoice',
+      'MoneyInputFormatter',
+      'formatMoneyInputValue',
+      'mahrChoiceOnScreen',
+      'revealMahrChoice',
+    ],
   },
   // g03: after the wedding moves, the open tasks move by the same days.
   {
@@ -3171,11 +3186,13 @@ const trackedShellEntryBatchContracts = [
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: [
       'DashboardFinancialWarning',
+      'DashboardHomeMahr',
       'DashboardImportantItem',
       'DashboardMoneySummary',
       'DashboardNextPaymentSchedule',
       'DashboardPermissionSummary',
       'DashboardSummary',
+      'MahrHomeSide',
     ],
   },
   {
@@ -3328,9 +3345,11 @@ const trackedShellEntryBatchContracts = [
       'MahrFields',
       'MoneyInputFormatter',
       'formatMoneyInputValue',
+      'mahrChoiceOnScreen',
       'mahrWords',
       'moneyStarterPlanItemNames',
       'pickMahrDueDate',
+      'revealMahrChoice',
     ],
   },
   {

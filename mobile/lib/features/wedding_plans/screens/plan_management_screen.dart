@@ -240,7 +240,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   /// budget; the plan's own word, else the plan's profile.
   bool _groomPlan(WeddingPlan plan) => switch (plan.persona?.toUpperCase()) {
     'GROOM' => true,
-    null => !context.journeyProfile.isBride,
+    // The server counts a mahr in the budget only for a plan that pays it;
+    // a plan that names no party is not asked.
+    null => context.journeyProfile.paysMahr,
     _ => false,
   };
 

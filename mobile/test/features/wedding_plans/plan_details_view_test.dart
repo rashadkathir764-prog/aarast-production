@@ -288,6 +288,50 @@ void main() {
       expect(saved, isEmpty);
     });
 
+    // The keyboard up on a 320 phone hides the choice under the budget:
+    // the first «حفظ» brings it into view, the next one saves.
+    testWidgets('the keyboard up: the first save shows the choice', (
+      tester,
+    ) async {
+      final saved = await _pump(
+        tester,
+        budgetIncludesMahr: false,
+        mahrTotal: 2000000,
+        size: const Size(320, 700),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('plan-details-budget')),
+          matching: find.byType(EditableText),
+        ),
+        '8000000',
+      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      final choice = find.byKey(const ValueKey('mahr-budget-choice'));
+      bool shown() {
+        if (choice.evaluate().isEmpty) return false;
+        final rect = tester.getRect(choice);
+        final view = tester.getRect(find.byType(Scrollable).first);
+        return rect.top >= view.top - 0.5 &&
+            rect.bottom <= view.bottom + 0.5 &&
+            rect.bottom <= 700 - tester.view.viewInsets.bottom;
+      }
+
+      expect(shown(), isFalse, reason: 'the keyboard hides it');
+      final save = find.byKey(const ValueKey('plan-details-save'));
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(saved, isEmpty);
+      expect(shown(), isTrue);
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(saved.single.budgetTotal, '8000000');
+    });
+
     testWidgets('a bride\'s plan is never asked', (tester) async {
       await _pump(tester);
 

@@ -279,8 +279,17 @@ void main() {
         find.byKey(const ValueKey('money-budget-total')),
         '2500000',
       );
-      await tester.tap(find.byKey(const ValueKey('money-budget-total-done')));
+      // D114: at 320 with the text at 1.3 the groom's choice of the mahr's
+      // place is below the field; the first «تمام» brings it into view
+      // (it is seen once), the second closes the sheet.
+      final done = find.byKey(const ValueKey('money-budget-total-done'));
+      await tester.tap(done);
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsOneWidget);
+      expect(done, findsOneWidget);
+      await tester.tap(done);
+      await tester.pumpAndSettle();
+      expect(done, findsNothing);
       await tester.tap(find.byKey(const ValueKey('money-budget-save')));
       await tester.pumpAndSettle();
 

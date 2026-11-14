@@ -8,7 +8,12 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../finance/finance_api.dart'
-    show MahrBudgetChoice, MoneyInputFormatter, formatMoneyInputValue;
+    show
+        MahrBudgetChoice,
+        MoneyInputFormatter,
+        formatMoneyInputValue,
+        mahrChoiceOnScreen,
+        revealMahrChoice;
 import '../models/wedding_plan.dart';
 
 /// w10 «بيانات الخطة»: the plan's name, its day and the wedding budget.
@@ -153,7 +158,20 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
     setState(() => _firstDay = picked);
   }
 
+  /// The choice under the budget is seen once before a save: with the
+  /// keyboard up on a small phone it sat under it.
+  final _choiceKey = GlobalKey();
+  final _budgetKey = GlobalKey();
+  bool _choiceSeen = false;
+
   Future<void> _save() async {
+    if (widget.budgetIncludesMahr != null && !_choiceSeen) {
+      _choiceSeen = true;
+      if (!mahrChoiceOnScreen(_choiceKey)) {
+        revealMahrChoice(_choiceKey, near: _budgetKey);
+        return;
+      }
+    }
     releaseFieldFocus();
     final title = _title.text.trim();
     if (title.isEmpty) {
@@ -248,22 +266,26 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
               ],
               const SizedBox(height: AarastV3Space.x3),
               // D114: the mahr's place in it is his choice, under the field.
-              JourneyTextField(
-                key: const ValueKey('plan-details-budget'),
-                label: 'ميزانيتك',
-                hint: 'مثلًا: 3,000,000',
-                controller: _budget,
-                keyboardType: TextInputType.number,
-                inputFormatters: [MoneyInputFormatter()],
-                suffix: currency,
-                helper: total > 0
-                    ? amountInWords(total.round(), currency: currency)
-                    : null,
-                onChanged: (_) => setState(() {}),
+              KeyedSubtree(
+                key: _budgetKey,
+                child: JourneyTextField(
+                  key: const ValueKey('plan-details-budget'),
+                  label: 'ميزانيتك',
+                  hint: 'مثلًا: 3,000,000',
+                  controller: _budget,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [MoneyInputFormatter()],
+                  suffix: currency,
+                  helper: total > 0
+                      ? amountInWords(total.round(), currency: currency)
+                      : null,
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
               if (widget.budgetIncludesMahr case final saved?) ...[
                 const SizedBox(height: AarastV3Space.x4),
                 MahrBudgetChoice(
+                  key: _choiceKey,
                   inside: _inside ?? saved,
                   budget: total,
                   mahr: widget.mahrTotal,

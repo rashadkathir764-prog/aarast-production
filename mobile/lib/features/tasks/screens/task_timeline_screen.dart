@@ -30,6 +30,7 @@ import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../utils/task_groups.dart';
 import '../utils/task_people.dart';
+import '../utils/task_plan_title.dart';
 import '../widgets/task_group_title.dart';
 import '../widgets/task_postpone.dart';
 import '../widgets/task_row.dart';
@@ -481,16 +482,13 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));
 
   void _share(List<WeddingTask> tasks, String person) {
-    final selected = context.read<AccountContextController?>()?.selectedContext;
-    final name = selected?.weddingPlanId?.toString() == widget.weddingPlanId
-        ? selected?.displayName.trim() ?? ''
-        : '';
+    final name = taskPlanTitle(context, widget.weddingPlanId);
     showAarastShareSheet(
       context: context,
       title: 'مشاركة تقدّم المهام',
       buildText: (_) => taskShareText(
         tasks,
-        planTitle: name.isEmpty ? 'خطتنا' : name,
+        planTitle: name ?? 'خطتنا',
         // RA-MO-204: «متأخرة» counted from today in Sana'a, as the list.
         today: sanaaToday(),
         scope: switch (person) {

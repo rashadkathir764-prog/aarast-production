@@ -29,7 +29,11 @@ extension _CreateTaskWho on _CreateTaskScreenState {
   /// Manual responsible people from the plan's other tasks, by name.
   Map<String, _KnownPerson> _knownPeople(TaskTimelineProvider provider) {
     final people = <String, _KnownPerson>{};
-    for (final task in provider.tasks) {
+    // The edited task names its own person even before the plan's tasks
+    // are read (opened from a notice): saving it found nobody and stopped
+    // on a hidden «اكتب اسمه».
+    final edited = _isEditMode ? _editingTask(provider) : null;
+    for (final task in [...provider.tasks, ?edited]) {
       if (task.weddingPlanId != widget.weddingPlanId) continue;
       if (task.hasResponsibleParticipant) continue;
       final name = task.responsibleName?.trim();
@@ -79,6 +83,42 @@ extension _CreateTaskWho on _CreateTaskScreenState {
     final name = task.responsibleName?.trim();
     if (name == null || name.isEmpty || isSelfTaskLabel(name)) return _whoMe;
     return '$_namePrefix$name';
+  }
+
+  /// The message for the task's person, when it went to someone other than
+  /// the reader who has a number: on a new task, and on an edit that
+  /// changed the person or gave a named person their number. [before] is
+  /// the task as the edit opened it.
+  ({String name, String phone, String text})? _messageFor(
+    _Responsible who,
+    String? currentUserId,
+    WeddingTask? before,
+  ) {
+    String? id(String? value) =>
+        value == null || value.trim().isEmpty ? null : value.trim();
+    final assignee = id(who.assigneeUserId);
+    if (assignee != null && assignee == currentUserId) return null;
+    final name = id(who.responsibleName) ?? id(who.assigneeName);
+    final phone = id(who.responsiblePhone) ?? id(who.assigneePhone);
+    if (phone == null || (assignee == null && name == null)) return null;
+    if (before != null &&
+        id(before.assigneeUserId) == assignee &&
+        id(before.responsibleName) == id(who.responsibleName) &&
+        (assignee != null || id(before.responsiblePhone) != null)) {
+      return null;
+    }
+    final note = _descriptionController.text.trim();
+    return (
+      name: name ?? 'عضو مشارك',
+      phone: phone,
+      text: taskMessageText(
+        title: _titleController.text,
+        dueDate: _dueDate,
+        note: note,
+        planTitle: taskPlanTitle(context, widget.weddingPlanId),
+        senderName: context.read<AuthController?>()?.user?.name,
+      ),
+    );
   }
 
   /// What the chosen person saves as, or null (with the field's message)

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_links.dart';
+import '../../../core/phone/phone_message_links.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
@@ -25,14 +25,18 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
+import '../models/task_message_text.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../utils/task_people.dart';
+import '../utils/task_plan_title.dart';
 import '../widgets/task_checklist_section.dart';
 import '../widgets/task_link_sheet.dart';
+import '../widgets/task_message_offer.dart';
 import '../widgets/task_postpone.dart';
 
+part 'task_details_screen.reminder.dart';
 part 'task_details_screen.sheets.dart';
 
 /// d04 «تفاصيل مهمة» (and d05, a task made of steps): when, who, the steps,
@@ -444,23 +448,42 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           _ContactCard(
             name: task.responsibleLabel,
             phone: phone,
-            onCall: () => _launch(phoneCallUri(phone)),
+            onCall: () => openFromPhone(context, phoneCallUri(phone)),
+            // The task goes written, read when tapped (D04: who sends it,
+            // the plan, the day, the note).
             onWhatsApp: whatsAppChatUri(phone) == null
                 ? null
-                : () => _launch(whatsAppChatUri(phone)),
+                : () => openFromPhone(
+                    context,
+                    whatsAppMessageUri(phone, _message(task)),
+                  ),
+            onSms: smsMessageUri(phone, '') == null
+                ? null
+                : () => openFromPhone(
+                    context,
+                    smsMessageUri(phone, _message(task)),
+                  ),
+          ),
+        ] else if (!mine && !task.hasResponsibleParticipant) ...[
+          // A member's number is their account's; a named person's is
+          // written in «لمين؟», where «أضف رقمه» leads.
+          const SizedBox(height: AarastV3Space.x2),
+          _NoPhoneNote(
+            name: task.responsibleLabel,
+            onAdd: () => _onMenu(provider, task, _TaskAction.edit),
           ),
         ],
       ],
     );
   }
 
-  Future<void> _launch(Uri? uri) async {
-    if (uri == null) return;
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      AarastToast.showError(context, 'ما قدرنا نفتحه من جوالك');
-    }
-  }
+  String _message(WeddingTask task) => taskMessageText(
+    title: task.title,
+    dueDate: task.dueDate,
+    note: task.description,
+    planTitle: taskPlanTitle(context, widget.weddingPlanId),
+    senderName: context.read<AuthController?>()?.user?.name,
+  );
 
   void _pulse(TaskTimelineProvider provider) {
     publishTaskPlanPulse(
@@ -534,72 +557,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final date = await showTaskPostponeSheet(context, task);
     if (date == null || !mounted) return;
     await _reschedule(provider, task, date);
-  }
-
-  static String _reminderWords(DateTime at) {
-    final local = at.toLocal();
-    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-    final minute = local.minute.toString().padLeft(2, '0');
-    // RA-MO-187: 12:30 at noon was said «12:30 المساء».
-    final half = local.hour < 12
-        ? 'الصبح'
-        : local.hour < 15
-        ? 'الظهر'
-        : local.hour < 18
-        ? 'العصر'
-        : 'المساء';
-    return '${formatArabicWeekdayDayMonth(local)} · $hour:$minute $half';
-  }
-
-  Future<void> _removeReminder(
-    TaskTimelineProvider provider,
-    WeddingTask task,
-  ) async {
-    final ok = await provider.setTaskReminder(widget.weddingPlanId, task, null);
-    if (!mounted) return;
-    if (ok) {
-      AarastToast.showSuccess(context, 'انشال التذكير');
-    } else {
-      AarastToast.showError(
-        context,
-        provider.errorMessage ?? 'ما قدرنا نشيل التذكير',
-      );
-    }
-  }
-
-  /// G36: a day and a time to be reminded; clearing it removes the reminder.
-  Future<void> _pickReminder(
-    TaskTimelineProvider provider,
-    WeddingTask task,
-  ) async {
-    final current = task.reminderAt?.toLocal();
-    final day = await pickTaskDate(context, initial: current ?? task.dueDate);
-    if (day == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: current == null
-          ? const TimeOfDay(hour: 9, minute: 0)
-          : TimeOfDay.fromDateTime(current),
-    );
-    if (time == null || !mounted) return;
-    final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
-    if (!at.isAfter(appNow())) {
-      AarastToast.showError(
-        context,
-        context.say('اختر وقت جاي، مو فات', 'اختاري وقت جاي، مو فات'),
-      );
-      return;
-    }
-    final ok = await provider.setTaskReminder(widget.weddingPlanId, task, at);
-    if (!mounted) return;
-    if (ok) {
-      AarastToast.showSuccess(context, 'بنذكّرك ${_reminderWords(at)}');
-    } else {
-      AarastToast.showError(
-        context,
-        provider.errorMessage ?? 'ما قدرنا نحفظ التذكير',
-      );
-    }
   }
 
   Future<void> _pickDate(
@@ -715,31 +672,5 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         AarastToast.showSuccess(context, 'انحذفت المهمة');
         _back();
     }
-  }
-}
-
-/// y14: the night box over a fireworks task, painted with solid colours
-/// (D3).
-class _FireworksHero extends StatelessWidget {
-  const _FireworksHero();
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: Container(
-        key: const ValueKey('task-fireworks-hero'),
-        height: 120,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: context.accent.night,
-          borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        ),
-        child: CustomPaint(
-          painter: JourneyFireworksPainter(
-            bursts: JourneyFireworksPainter.burstsFor(context.accent),
-          ),
-        ),
-      ),
-    );
   }
 }

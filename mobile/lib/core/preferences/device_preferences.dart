@@ -4,6 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../diagnostics/crash_report_switch.dart';
 
+/// What happens right after a task is given to someone with a number: the
+/// phone asks («اسألني»), opens WhatsApp with the message, or sends nothing.
+/// The message always leaves from this phone, never from the server.
+enum TaskMessageMode { ask, whatsApp, off }
+
 /// How the app looks and behaves on this phone (g02 «شكل التطبيق» and
 /// «أخفِ المبالغ»). Kept on the device, never sent to the server.
 class DevicePreferences extends ChangeNotifier {
@@ -19,6 +24,7 @@ class DevicePreferences extends ChangeNotifier {
   static const _hideAmountsKey = 'aarast_pref_hide_amounts';
   static const _pushCardKey = 'aarast_pref_push_card_hidden_until';
   static const _crashReportsKey = 'aarast_pref_crash_reports';
+  static const _taskMessageKey = 'aarast_pref_task_message';
 
   /// How long «لاحقًا» on w39 keeps the card away.
   static const pushCardPause = Duration(days: 7);
@@ -72,6 +78,18 @@ class DevicePreferences extends ChangeNotifier {
   Future<void> setLargeText(bool value) => _set(_largeTextKey, value);
   Future<void> setDataSaver(bool value) => _set(_dataSaverKey, value);
   Future<void> setHideAmounts(bool value) => _set(_hideAmountsKey, value);
+
+  /// After a task is given to someone: ask first unless told otherwise.
+  TaskMessageMode get taskMessageMode =>
+      TaskMessageMode.values.asNameMap()[_preferences.getString(
+        _taskMessageKey,
+      )] ??
+      TaskMessageMode.ask;
+
+  Future<void> setTaskMessageMode(TaskMessageMode mode) async {
+    await _preferences.setString(_taskMessageKey, mode.name);
+    notifyListeners();
+  }
 
   /// D63 (w40): crash and error reports leave this phone (on by default).
   bool get crashReports => storedCrashReports(_preferences);

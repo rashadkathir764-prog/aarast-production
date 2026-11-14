@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/push/push_notifications_controller.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -158,6 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   context.canPop() ? context.pop() : context.go(AppRouter.more),
             ),
             body,
+            if (!_isCheckingAccount) const _TaskMessageChoice(),
           ],
         ),
       ),
@@ -187,6 +189,64 @@ bool _maybeDevicePushAvailable(BuildContext context) {
     return context.watch<PushNotificationsController>().isAvailable;
   } on ProviderNotFoundException {
     return false;
+  }
+}
+
+/// What happens right after a task is given to someone with a number. A
+/// choice of this phone, kept with its other preferences: the message
+/// leaves from here, so it shows without an account too.
+class _TaskMessageChoice extends StatelessWidget {
+  const _TaskMessageChoice();
+
+  @override
+  Widget build(BuildContext context) {
+    final preferences = context.watch<DevicePreferences?>();
+    if (preferences == null) return const SizedBox.shrink();
+    final current = preferences.taskMessageMode;
+    return Padding(
+      padding: const EdgeInsets.only(top: AarastV3Space.x4),
+      child: JourneyBox(
+        key: const Key('settings-task-message'),
+        padding: const EdgeInsets.all(AarastV3Space.x3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.say('لما تعطي مهمة لأحد', 'لما تعطين مهمة لأحد'),
+              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            ),
+            Text(
+              context.say(
+                'نجهّز له رسالة فيها المهمة وموعدها، تنرسل من جوالك أنت.',
+                'نجهّز له رسالة فيها المهمة وموعدها، تنرسل من جوالك أنتِ.',
+              ),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            const SizedBox(height: AarastV3Space.x2),
+            Wrap(
+              spacing: AarastV3Space.x2,
+              children: [
+                for (final (mode, label) in const [
+                  (TaskMessageMode.ask, 'اسألني'),
+                  (TaskMessageMode.whatsApp, 'افتح واتساب مباشرة'),
+                  (TaskMessageMode.off, 'لا ترسل'),
+                ])
+                  JourneyChip(
+                    key: Key('settings-task-message-${mode.name}'),
+                    label: label,
+                    selected: current == mode,
+                    selectedColor: context.accent.primary,
+                    onTap: () => preferences.setTaskMessageMode(mode),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

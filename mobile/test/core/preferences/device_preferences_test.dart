@@ -76,4 +76,31 @@ void main() {
     expect(money.amountsHidden, isFalse);
     money.dispose();
   });
+
+  // A task given to someone: the phone asks first, until told otherwise.
+  test('the task message asks by default and keeps the choice', () async {
+    SharedPreferences.setMockInitialValues({});
+    final stored = await SharedPreferences.getInstance();
+    final preferences = DevicePreferences(stored);
+    expect(preferences.taskMessageMode, TaskMessageMode.ask);
+
+    var notified = 0;
+    preferences.addListener(() => notified += 1);
+    await preferences.setTaskMessageMode(TaskMessageMode.whatsApp);
+    expect(notified, 1);
+    expect(DevicePreferences(stored).taskMessageMode, TaskMessageMode.whatsApp);
+
+    await preferences.setTaskMessageMode(TaskMessageMode.off);
+    expect(DevicePreferences(stored).taskMessageMode, TaskMessageMode.off);
+  });
+
+  test('an unknown stored task message choice reads as «اسألني»', () async {
+    SharedPreferences.setMockInitialValues({
+      'aarast_pref_task_message': 'later',
+    });
+    final preferences = DevicePreferences(
+      await SharedPreferences.getInstance(),
+    );
+    expect(preferences.taskMessageMode, TaskMessageMode.ask);
+  });
 }

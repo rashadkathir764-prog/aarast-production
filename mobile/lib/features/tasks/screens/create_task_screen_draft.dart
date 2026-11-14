@@ -50,6 +50,14 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
     _assigneePhone = task.assigneePhone;
     _assigneeRole = task.assigneeRole;
     _who = _whoForTask(task, currentUserId);
+    // A named person with no number opens typed in «شخص ثاني», where the
+    // number is written: the task page's «أضف الرقم» leads here, and a
+    // known name alone has no number field.
+    final phone = task.responsiblePhone?.trim() ?? '';
+    if (_who.startsWith(_namePrefix) && phone.isEmpty) {
+      _otherNameController.text = _who.substring(_namePrefix.length);
+      _who = createTaskOtherPerson;
+    }
     _pickedDate = task.dueDate;
     _when = task.dueDate == null ? _When.none : _When.date;
     _priority = task.priority;

@@ -9,6 +9,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/plan_day.dart';
@@ -19,9 +20,12 @@ import '../../../shared/models/contact_phone_draft.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
+import '../models/task_message_text.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
+import '../utils/task_plan_title.dart';
 import '../widgets/create_task_components.dart';
+import '../widgets/task_message_offer.dart';
 
 part 'create_task_screen_draft.dart';
 part 'create_task_screen_privacy.dart';
@@ -498,11 +502,30 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       weddingPlanId: widget.weddingPlanId,
       summary: provider.summary,
     );
+    final message = _messageFor(who, currentUserId, task);
     await _draft?.clear();
     if (!mounted) return;
     _showSaveSuccess(provider);
     _leavingSaved = true;
+    // The offer to send it waits until the form has closed, over the page
+    // it went back to: the task is saved whatever is chosen.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final profile = context.journeyProfile;
+    final mode =
+        context.read<DevicePreferences?>()?.taskMessageMode ??
+        TaskMessageMode.ask;
     _goBack();
+    if (message == null) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!navigator.mounted) return;
+    await offerTaskMessage(
+      navigator.context,
+      mode: mode,
+      name: message.name,
+      phone: message.phone,
+      text: message.text,
+      profile: profile,
+    );
   }
 
   Future<void> _inviteResponsibleAsParticipant() async {

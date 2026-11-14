@@ -41,69 +41,181 @@ class _Fact extends StatelessWidget {
   }
 }
 
-/// The responsible person, with a call and a WhatsApp chat.
+/// y14: the night box over a fireworks task, painted with solid colours
+/// (D3).
+class _FireworksHero extends StatelessWidget {
+  const _FireworksHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Container(
+        key: const ValueKey('task-fireworks-hero'),
+        height: 120,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: context.accent.night,
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
+        ),
+        child: CustomPaint(
+          painter: JourneyFireworksPainter(
+            bursts: JourneyFireworksPainter.burstsFor(context.accent),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The responsible person, with a call, and the task sent to them on
+/// WhatsApp or as a text.
 class _ContactCard extends StatelessWidget {
   const _ContactCard({
     required this.name,
     required this.phone,
     required this.onCall,
     required this.onWhatsApp,
+    required this.onSms,
   });
 
   final String name;
   final String phone;
   final VoidCallback onCall;
   final VoidCallback? onWhatsApp;
+  final VoidCallback? onSms;
+
+  @override
+  Widget build(BuildContext context) {
+    final send = context.say('أرسل', 'أرسلي');
+    Widget sendButton(
+      String key,
+      String label,
+      IconData icon,
+      String how,
+      VoidCallback onPressed,
+    ) => Expanded(
+      child: Semantics(
+        button: true,
+        label: '$send المهمة لـ$name $how',
+        onTap: onPressed,
+        excludeSemantics: true,
+        child: JourneyButton.outline(
+          key: ValueKey(key),
+          label: label,
+          icon: icon,
+          expand: true,
+          onPressed: onPressed,
+        ),
+      ),
+    );
+    return JourneyBox(
+      key: const ValueKey('task-contact'),
+      padding: const EdgeInsets.all(AarastV3Space.x3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _contactRow(context),
+          if (onWhatsApp != null || onSms != null) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            Row(
+              children: [
+                if (onWhatsApp case final onWhatsApp?)
+                  sendButton(
+                    'task-contact-whatsapp',
+                    'واتساب',
+                    LucideIcons.messageCircle,
+                    'على واتساب',
+                    onWhatsApp,
+                  ),
+                if (onWhatsApp != null && onSms != null)
+                  const SizedBox(width: AarastV3Space.x2),
+                if (onSms case final onSms?)
+                  sendButton(
+                    'task-contact-sms',
+                    'رسالة نصية',
+                    LucideIcons.messageSquare,
+                    'برسالة نصية',
+                    onSms,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _contactRow(BuildContext context) {
+    return Row(
+      children: [
+        JourneyAvatar(
+          letter: nameLetter(name),
+          color: context.accent.primary,
+          size: 40,
+        ),
+        const SizedBox(width: AarastV3Space.x3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              Text(
+                PhoneNumberUtils.directionalDisplay(phone) ?? phone,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        JourneyRoundButton(
+          key: const ValueKey('task-contact-call'),
+          icon: LucideIcons.phone,
+          tooltip: '${context.say('اتصل', 'اتصلي')} بـ$name',
+          onPressed: onCall,
+        ),
+      ],
+    );
+  }
+}
+
+/// A named person with no number: nothing can be sent to them until it is
+/// written, and [onAdd] leads to where it is.
+class _NoPhoneNote extends StatelessWidget {
+  const _NoPhoneNote({required this.name, required this.onAdd});
+
+  final String name;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      key: const ValueKey('task-contact'),
+      key: const ValueKey('task-contact-no-phone'),
       padding: const EdgeInsets.all(AarastV3Space.x3),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          JourneyAvatar(
-            letter: nameLetter(name),
-            color: context.accent.primary,
-            size: 40,
-          ),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-                Text(
-                  PhoneNumberUtils.directionalDisplay(phone) ?? phone,
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-              ],
+          Text(
+            'ما عندنا رقم لـ$name، فما نقدر نرسل المهمة.',
+            style: JourneyType.of(
+              JourneyType.bodySmall,
+              color: AarastV3Color.textMuted,
             ),
           ),
-          JourneyRoundButton(
-            key: const ValueKey('task-contact-call'),
+          JourneyTextAction(
+            key: const ValueKey('task-contact-add-phone'),
+            label: context.say('أضف الرقم', 'أضيفي الرقم'),
             icon: LucideIcons.phone,
-            tooltip: '${context.say('اتصل', 'اتصلي')} بـ$name',
-            onPressed: onCall,
+            color: context.accent.primary,
+            onPressed: onAdd,
           ),
-          if (onWhatsApp != null) ...[
-            const SizedBox(width: AarastV3Space.x1),
-            JourneyRoundButton(
-              key: const ValueKey('task-contact-whatsapp'),
-              icon: LucideIcons.messageCircle,
-              tooltip: '${context.say('كلّم', 'كلّمي')} $name على واتساب',
-              onPressed: onWhatsApp!,
-            ),
-          ],
         ],
       ),
     );

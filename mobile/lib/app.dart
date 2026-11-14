@@ -13,6 +13,7 @@ import 'core/experience_v3/aarast_v3.dart';
 import 'core/preferences/device_preferences.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
+import 'core/routing/last_place_keeper.dart';
 import 'core/push/push_lifecycle_bridge.dart';
 import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
@@ -111,6 +112,10 @@ class _AarastAppState extends State<AarastApp> {
         routeInformationParser: _router.routeInformationParser,
         routerDelegate: _router.routerDelegate,
         backButtonDispatcher: _backButtonDispatcher,
+        // RA-MO-311: what the system is told about back includes the places
+        // the dispatcher goes back to, not the navigator's pages alone.
+        onNavigationNotification:
+            _backButtonDispatcher.onNavigationNotification,
         builder: (context, child) {
           final auth = context.watch<AuthController>();
           // g02 «خط كبير»: every text a step bigger, on top of the phone's;
@@ -150,7 +155,13 @@ class _AarastAppState extends State<AarastApp> {
                             // D93: «حدّث التطبيق» once the server stops
                             // serving this app's contract.
                             child: AppUpdateGate(
-                              child: child ?? const SizedBox.shrink(),
+                              // RA-MO-312: an app the system closed in the
+                              // background comes back to its page, not to
+                              // the opening screen.
+                              child: LastPlaceKeeper(
+                                router: _router,
+                                child: child ?? const SizedBox.shrink(),
+                              ),
                             ),
                           ),
                         ),
@@ -545,28 +556,9 @@ String sessionExpiredLoginLocation({String? phone, String? from}) {
     queryParameters: {
       'expired': '1',
       'phone': ?phone,
-      'resume': ?_resumableLocation(from),
+      'resume': ?resumableLocation(from),
     },
   ).toString();
-}
-
-const _doorPaths = {
-  AppRouter.splash,
-  AppRouter.welcome,
-  AppRouter.onboarding,
-  AppRouter.login,
-  AppRouter.register,
-  AppRouter.resetPassword,
-  AppRouter.otp,
-};
-
-String? _resumableLocation(String? location) {
-  final value = location?.trim() ?? '';
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
-  final uri = Uri.tryParse(value);
-  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
-  if (_doorPaths.contains(uri.path)) return null;
-  return value;
 }
 
 /// Handles navigation that must survive the account-scoped subtree being

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -45,22 +48,64 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   String? _currentWeddingPlanId;
   bool _restoringHistory = false;
   bool _discardCurrentOnNextRoute = false;
+  bool _navigatorHandlesPop = false;
 
   @override
   Future<bool> didPopRoute() async {
     if (await super.didPopRoute()) return true;
 
-    while (_history.isNotEmpty) {
-      final previous = _history.removeLast();
+    final target = _backTarget(consume: true);
+    if (target == null) return false;
+    _restoringHistory = true;
+    router.go(target);
+    return true;
+  }
+
+  /// RA-MO-311: the navigator's own word on back (a pushed page, an open
+  /// sheet, a page that holds the press), handed over by the app in place
+  /// of Flutter's default listener. An app that targets Android 16 is asked
+  /// for back only while it says it has somewhere to go, and the navigator
+  /// knows nothing of the places this dispatcher goes back to: a page
+  /// reached by `go` has no page under it, so Android closed the app without
+  /// asking. The system is told the two together.
+  bool onNavigationNotification(NavigationNotification notification) {
+    _navigatorHandlesPop = notification.canHandlePop;
+    _tellSystemWhoHandlesBack();
+    return true;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Nothing is said while the app is not attached; say it once it is.
+    if (state == AppLifecycleState.resumed) _tellSystemWhoHandlesBack();
+  }
+
+  void _tellSystemWhoHandlesBack() {
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state == null || state == AppLifecycleState.detached) return;
+    unawaited(
+      SystemNavigator.setFrameworkHandlesBack(
+        _navigatorHandlesPop || _backTarget(consume: false) != null,
+      ),
+    );
+  }
+
+  /// Where back leads when no page is left to pop: the last place of this
+  /// context that can be reopened, else the page's parent. Null on a root,
+  /// where back leaves the app. [consume] drops the history it passes, as a
+  /// real press does; without it nothing changes.
+  String? _backTarget({required bool consume}) {
+    for (var index = _history.length - 1; index >= 0; index--) {
+      final previous = _history[index];
+      if (consume) _history.removeLast();
       if (previous.contextKey != _currentContextKey ||
           previous.location == _currentLocation ||
           !_restorableByLocation(previous.location) ||
           _homeAgain(previous.location)) {
         continue;
       }
-      _restoringHistory = true;
-      router.go(previous.location);
-      return true;
+      return previous.location;
     }
 
     var fallback = fallbackLocationFor(router.state.uri);
@@ -77,12 +122,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
     if (fallback == null ||
         fallback == _currentLocation ||
         _homeAgain(fallback)) {
-      return false;
+      return null;
     }
-
-    _restoringHistory = true;
-    router.go(fallback);
-    return true;
+    return fallback;
   }
 
   void dispose() {
@@ -126,7 +168,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   static bool _restorableByLocation(String location) =>
       Uri.tryParse(location)?.path != AppRouter.otp;
 
-  @visibleForTesting
+  /// The page [uri] belongs under: where back leads from a page opened by
+  /// its address alone, and where the app returns in place of a one-time
+  /// celebration (LastPlaceKeeper). Null on a root.
   static String? fallbackLocationFor(Uri uri) {
     final path = uri.path;
     if (_isNavigationRoot(path)) return null;
@@ -204,6 +248,11 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   }
 
   void _handleRouteChanged() {
+    _noteRouteChange();
+    _tellSystemWhoHandlesBack();
+  }
+
+  void _noteRouteChange() {
     final next = router.state.uri.toString();
     if (next == _currentLocation) return;
     appLogEvent(
@@ -297,6 +346,7 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
     _history.clear();
     _restoringHistory = false;
     _discardCurrentOnNextRoute = true;
+    _tellSystemWhoHandlesBack();
   }
 
   static bool _isNavigationRoot(String path) {

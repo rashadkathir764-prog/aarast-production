@@ -1,8 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/routing/aarast_back_button_dispatcher.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/routing/root_tab_back_scope.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -338,6 +342,133 @@ void main() {
     expect(harness.router.state.uri.path, '/wedding-plans/plan-1/dashboard');
   });
 
+  // RA-MO-311: an app that targets Android 16 is asked for back only while
+  // it says it has somewhere to go; a page reached by `go` leaves no page
+  // to pop, Flutter answered «no», and the system closed the app without
+  // ever asking this dispatcher.
+  group('what the system is told about back', () {
+    testWidgets('a page reached by go keeps back inside the app', (
+      tester,
+    ) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      expect(told.last, isFalse, reason: 'the home is where back leaves');
+
+      harness.router.go('/first');
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue);
+
+      harness.router.go('/second');
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue);
+
+      expect(await harness.dispatcher.didPopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue, reason: '/first still leads to the home');
+
+      expect(await harness.dispatcher.didPopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, AppRouter.home);
+      expect(told.last, isFalse);
+    });
+
+    testWidgets('a page opened by a link has its parent to go back to', (
+      tester,
+    ) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness(
+        initialLocation: '/wedding-plans/plan-1/money/costs/create',
+      );
+      addTearDown(harness.dispose);
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      expect(told.last, isTrue);
+    });
+
+    testWidgets('a pushed page is the navigator\'s to pop', (tester) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      unawaited(harness.router.push<void>('/first'));
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue);
+
+      harness.router.pop();
+      await tester.pumpAndSettle();
+      expect(told.last, isFalse);
+    });
+
+    testWidgets('the selected plan\'s home is where back leaves', (
+      tester,
+    ) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+      final selected = ValueNotifier<String?>('plan-1');
+      addTearDown(selected.dispose);
+      harness.dispatcher.bindContext(
+        listenable: selected,
+        readContextKey: () => 'plan:${selected.value}:owner',
+        readWeddingPlanId: () => selected.value,
+      );
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      harness.router.go('/wedding-plans/plan-1/dashboard');
+      await tester.pumpAndSettle();
+      // RA-MO-162: /home is this same home.
+      expect(told.last, isFalse);
+
+      harness.router.go('/wedding-plans/plan-1/money');
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue);
+    });
+
+    testWidgets('it is said again when the app comes back to the front', (
+      tester,
+    ) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+      await tester.pumpWidget(harness.app);
+      harness.router.go('/first');
+      await tester.pumpAndSettle();
+
+      told.clear();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+
+      expect(told, isNotEmpty);
+      expect(told.last, isTrue);
+    });
+  });
+
+  test('the app hands the navigator\'s word to the dispatcher', () {
+    final app = File(
+      'lib/app.dart',
+    ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+    expect(
+      app,
+      contains(
+        'onNavigationNotification: '
+        '_backButtonDispatcher.onNavigationNotification',
+      ),
+    );
+    // One behaviour from Android 13 up, not only where 16 turns it on.
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    expect(manifest, contains('android:enableOnBackInvokedCallback="true"'));
+  });
+
   test('deep-link routes have a logical back fallback', () {
     expect(
       AarastBackButtonDispatcher.fallbackLocationFor(
@@ -381,46 +512,71 @@ class _CollectingLogSink implements AppLogSink {
   void add(AppLogEvent event) => events.add(event);
 }
 
+/// Every value the app gives `SystemNavigator.setFrameworkHandlesBack`, in
+/// order, as Android receives it.
+List<bool> _listenToBackHandling(WidgetTester tester) {
+  final told = <bool>[];
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'SystemNavigator.setFrameworkHandlesBack') {
+        told.add(call.arguments as bool);
+      }
+      return null;
+    },
+  );
+  addTearDown(
+    () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    ),
+  );
+  return told;
+}
+
 class _RouterHarness {
-  _RouterHarness({bool Function(String planId)? keptOnPhone})
-    : router = GoRouter(
-        initialLocation: AppRouter.home,
-        routes: [
-          GoRoute(
-            path: AppRouter.home,
-            builder: (context, state) => const _Screen('home'),
-          ),
-          GoRoute(
-            path: '/first',
-            builder: (context, state) => const _Screen('first'),
-          ),
-          GoRoute(
-            path: '/second',
-            builder: (context, state) => const _Screen('second'),
-          ),
-          for (final tab in const [
-            'dashboard',
-            'money',
-            'tasks',
-            'guests',
-            'providers',
-          ])
-            GoRoute(
-              path: '/wedding-plans/:id/$tab',
-              builder: (context, state) => _Screen(tab),
-            ),
-          GoRoute(
-            path: '/wedding-plans/:id/money/costs/create',
-            builder: (context, state) => const _Screen('create cost'),
-          ),
-          for (final path in [
-            AppRouter.login,
-            AppRouter.otp,
-            AppRouter.resetPassword,
-          ])
-            GoRoute(path: path, builder: (context, state) => _Screen(path)),
-        ],
-      ) {
+  _RouterHarness({
+    bool Function(String planId)? keptOnPhone,
+    String initialLocation = AppRouter.home,
+  }) : router = GoRouter(
+         initialLocation: initialLocation,
+         routes: [
+           GoRoute(
+             path: AppRouter.home,
+             builder: (context, state) => const _Screen('home'),
+           ),
+           GoRoute(
+             path: '/first',
+             builder: (context, state) => const _Screen('first'),
+           ),
+           GoRoute(
+             path: '/second',
+             builder: (context, state) => const _Screen('second'),
+           ),
+           for (final tab in const [
+             'dashboard',
+             'money',
+             'tasks',
+             'guests',
+             'providers',
+           ])
+             GoRoute(
+               path: '/wedding-plans/:id/$tab',
+               builder: (context, state) => _Screen(tab),
+             ),
+           GoRoute(
+             path: '/wedding-plans/:id/money/costs/create',
+             builder: (context, state) => const _Screen('create cost'),
+           ),
+           for (final path in [
+             AppRouter.login,
+             AppRouter.otp,
+             AppRouter.resetPassword,
+           ])
+             GoRoute(path: path, builder: (context, state) => _Screen(path)),
+         ],
+       ) {
     dispatcher = AarastBackButtonDispatcher(router, keptOnPhone: keptOnPhone);
   }
 
@@ -433,6 +589,7 @@ class _RouterHarness {
       routeInformationParser: router.routeInformationParser,
       routerDelegate: router.routerDelegate,
       backButtonDispatcher: dispatcher,
+      onNavigationNotification: dispatcher.onNavigationNotification,
     );
   }
 

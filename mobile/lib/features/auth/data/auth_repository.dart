@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
@@ -316,17 +317,27 @@ class AuthRepository implements SessionAuthTeardownPort {
   /// The note is readable at once ([recalledCodeRequest]); its write to
   /// the phone's storage is not awaited, so the request leaves without
   /// waiting for it.
+  ///
+  /// [boundTo] is what the server ties the code to beyond the number and
+  /// the purpose (an invite's code is that invite's alone). The note keeps
+  /// a digest of it, so a code is never reopened for another invite and
+  /// the invite's token is not written a second time on the phone.
   CodeRequestNote noteCodeRequest({
     required String phone,
     required String purpose,
     required DateTime at,
+    String? boundTo,
   }) {
     final earlier = recalledCodeRequest();
-    unawaited(rememberCodeRequest(phone: phone, purpose: purpose, at: at));
+    final notedAs = boundTo == null
+        ? purpose
+        : '$purpose:${sha256.convert(utf8.encode(boundTo)).toString().substring(0, 16)}';
+    unawaited(rememberCodeRequest(phone: phone, purpose: notedAs, at: at));
     return CodeRequestNote._(
       this,
       phone: phone,
       purpose: purpose,
+      notedAs: notedAs,
       at: at,
       earlier: earlier,
     );
@@ -643,13 +654,20 @@ class CodeRequestNote {
     this._repository, {
     required this.phone,
     required this.purpose,
+    required this.notedAs,
     required this.at,
     required this.earlier,
   });
 
   final AuthRepository _repository;
   final String phone;
+
+  /// The server's purpose, as the code screen reads it.
   final String purpose;
+
+  /// What the phone's note says of this request: [purpose], with what the
+  /// code is bound to when there is something (an invite).
+  final String notedAs;
   final DateTime at;
   final CodeRequestMark? earlier;
 
@@ -745,7 +763,7 @@ class CodeRequestNote {
   }
 
   bool _sameRequest(CodeRequestMark? mark) =>
-      mark != null && mark.purpose == purpose && _samePhone(mark.phone, phone);
+      mark != null && mark.purpose == notedAs && _samePhone(mark.phone, phone);
 
   /// Puts back the note this request replaced: asking again never
   /// lengthens the earlier code's minute.

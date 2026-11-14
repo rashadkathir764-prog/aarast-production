@@ -137,7 +137,12 @@ function fakeDatabase() {
 
 function service(
   db: ReturnType<typeof fakeDatabase>,
-  options: { contributorOwns?: string[]; planStatus?: string; persona?: string } = {},
+  options: {
+    contributorOwns?: string[];
+    planStatus?: string;
+    persona?: string;
+    signingFails?: boolean;
+  } = {},
 ) {
   const context = (user: any) => ({
     isOwner: user.id === "owner-1",
@@ -188,6 +193,7 @@ function service(
     // 6a: the bucket keeps the card photo private; a read is a short-lived
     // signed link of the saved address.
     createStoredMediaDownloadUrl: async (value: string, purpose: string) => {
+      if (options.signingFails) throw new Error("the photo cannot be signed");
       db.signed.push([value, purpose]);
       return {
         downloadUrl: `https://signed.example/${encodeURIComponent(value)}?X-Amz-Expires=120`,
@@ -535,6 +541,26 @@ test("the owner's card carries a signed read of its photo", async () => {
   const read = await rsvp.getInvitationCard(member, "plan-1");
   assert.match(read.photoReadUrl ?? "", /^https:\/\/signed\.example\//);
   assert.equal((await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: null })).photoReadUrl, null);
+});
+
+// From the review of this branch: the signed read is made after the card is
+// saved. A photo that cannot be signed (kept on an older media host, or the
+// storage not configured) failed the read of the whole card, and reported a
+// save that had gone through as failed.
+test("a photo that cannot be signed leaves the card readable and its save answered", async () => {
+  const db = fakeDatabase();
+  const stored = "https://old-media.example/guest-invitation-card/owner-1/a.jpg";
+  await service(db).setInvitationCard(owner, "plan-1", { photoUrl: stored, hostLine: "آل الحمدي" });
+
+  const failing = service(db, { signingFails: true });
+  const read = await failing.getInvitationCard(member, "plan-1");
+  assert.equal(read.photoUrl, stored);
+  assert.equal(read.photoReadUrl, null);
+  assert.equal(read.hostLine, "آل الحمدي");
+
+  const saved = await failing.setInvitationCard(owner, "plan-1", { freeText: "نورتوا" });
+  assert.equal(saved.freeText, "نورتوا");
+  assert.equal(saved.photoReadUrl, null);
 });
 
 // «ذكّر الكل» (2026-11-14): a guest who already confirmed is reminded of the

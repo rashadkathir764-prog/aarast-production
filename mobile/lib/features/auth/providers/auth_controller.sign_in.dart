@@ -164,6 +164,10 @@ mixin _AuthSignIn on _AuthControllerCore {
     required String purpose,
     required Future<OtpRequestResult> Function() send,
     required String networkFailureMessage,
+
+    /// What the server ties the code to beyond number and purpose (an
+    /// invite): the cooldown never reopens it for another one.
+    String? boundTo,
   }) async {
     final typed = phone.trim();
     final earlierResult = _otpRequest;
@@ -175,6 +179,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         phone: typed,
         purpose: purpose,
         at: _now(),
+        boundTo: boundTo,
       );
       try {
         result = await send();
@@ -269,8 +274,10 @@ mixin _AuthSignIn on _AuthControllerCore {
     }
     return _requestCode(
       phone: phone,
-      // The server's purpose for an invite's code.
+      // The server's purpose for an invite's code, which is this invite's
+      // alone.
       purpose: 'INVITE_ACCESS',
+      boundTo: token.trim(),
       send: () => _authRepository.requestInviteOtp(
         token: token.trim(),
         phone: phone.trim(),

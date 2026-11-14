@@ -15,6 +15,7 @@ import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/routing/last_place_keeper.dart';
 import 'core/push/push_lifecycle_bridge.dart';
+import 'core/security/app_lock_controller.dart';
 import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/aarast_loading_state.dart' show AarastInlineSpinner;
@@ -77,6 +78,17 @@ class _AarastAppState extends State<AarastApp> {
       );
     } on ProviderNotFoundException {
       // Isolated app-shell tests may omit account context wiring.
+    }
+    try {
+      // The app lock stands over every page (AppLockGate): back is not the
+      // pages' while it does.
+      final lock = context.read<AppLockController>();
+      _backButtonDispatcher.bindCover(
+        listenable: lock,
+        covered: () => lock.isPending || lock.isLocked,
+      );
+    } on ProviderNotFoundException {
+      // No lock in this tree.
     }
   }
 

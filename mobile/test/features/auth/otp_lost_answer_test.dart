@@ -305,6 +305,46 @@ void main() {
       expect(asked.notice, isNull);
     });
 
+    // From the review of this branch: the server ties an invite's code to
+    // that invite. The note kept only the number and «INVITE_ACCESS», so a
+    // second invite for the same number, asked within the minute, reopened
+    // the code screen for a code that belongs to the first.
+    test('an invite code is never reopened for another invite', () async {
+      final (auth, _) = controller([_unknownFailure, _cooldown]);
+      expect(
+        await auth.requestInviteOtp(token: 'invite-token-a', phone: _phone),
+        isNull,
+      );
+
+      now = now.add(const Duration(seconds: 20));
+      expectRefused(
+        auth,
+        await auth.requestInviteOtp(token: 'invite-token-b', phone: _phone),
+      );
+    });
+
+    test(
+      'an invite code is reopened for its own invite after a restart',
+      () async {
+        final (auth, _) = controller([_unknownFailure]);
+        await auth.requestInviteOtp(token: 'invite-token-a', phone: _phone);
+
+        // A new app: only what the phone's storage kept.
+        now = now.add(const Duration(seconds: 20));
+        final (reopened, _) = controller([_cooldown]);
+        final otp = await reopened.requestInviteOtp(
+          token: 'invite-token-a',
+          phone: _phone,
+        );
+        expectReopened(reopened, otp, purpose: 'INVITE_ACCESS');
+        // The invite's own token is not what the phone keeps.
+        expect(
+          storage.recalledCodeRequest()?.purpose,
+          isNot(contains('invite-token-a')),
+        );
+      },
+    );
+
     test('an invite code whose answer was lost opens the code', () async {
       final (auth, _) = controller([_lostAnswer]);
       expectLostAnswerOpened(

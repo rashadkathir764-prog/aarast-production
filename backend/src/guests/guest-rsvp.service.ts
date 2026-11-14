@@ -779,12 +779,7 @@ export class GuestRsvpService {
     card: GuestInvitationCardRow | null,
   ): Promise<InvitationCardResponse> {
     const photoReadUrl = card?.photoUrl
-      ? (
-          await this.media.createStoredMediaDownloadUrl(
-            card.photoUrl,
-            CARD_PHOTO_PURPOSE,
-          )
-        ).downloadUrl
+      ? await this.signedCardPhoto(card.photoUrl)
       : null;
     return {
       weddingPlanId,
@@ -794,6 +789,24 @@ export class GuestRsvpService {
       photoReadUrl,
       updatedAt: card?.updatedAt ?? null,
     };
+  }
+
+  /**
+   * The owner's signed read of the card photo, or null when it cannot be
+   * signed (a photo kept on an older media host, storage not configured).
+   * The card is read, and a save already committed is answered, without it:
+   * the preview draws no photo, which is what the owner would see anyway.
+   */
+  private async signedCardPhoto(photoUrl: string): Promise<string | null> {
+    try {
+      const read = await this.media.createStoredMediaDownloadUrl(
+        photoUrl,
+        CARD_PHOTO_PURPOSE,
+      );
+      return read.downloadUrl;
+    } catch {
+      return null;
+    }
   }
 
   /** 6a: the card photo through the guest's own link, on the public origin. */

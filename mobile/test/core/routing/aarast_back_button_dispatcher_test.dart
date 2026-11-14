@@ -431,6 +431,41 @@ void main() {
       expect(told.last, isTrue);
     });
 
+    // From the review of this branch: the app lock covers the pages. With
+    // back handled by the app, a press on the lock moved the hidden pages
+    // under it. Covered, back is the system's: it leaves the app.
+    testWidgets('while the app is covered, back is not the pages\'', (
+      tester,
+    ) async {
+      final told = _listenToBackHandling(tester);
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+      final covered = ValueNotifier<bool>(false);
+      addTearDown(covered.dispose);
+      harness.dispatcher.bindCover(
+        listenable: covered,
+        covered: () => covered.value,
+      );
+      await tester.pumpWidget(harness.app);
+      harness.router.go('/first');
+      await tester.pumpAndSettle();
+      expect(told.last, isTrue);
+
+      covered.value = true;
+      await tester.pump();
+      expect(told.last, isFalse);
+      expect(await harness.dispatcher.didPopRoute(), isFalse);
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, '/first');
+
+      covered.value = false;
+      await tester.pump();
+      expect(told.last, isTrue);
+      expect(await harness.dispatcher.didPopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, AppRouter.home);
+    });
+
     testWidgets('it is said again when the app comes back to the front', (
       tester,
     ) async {

@@ -49,9 +49,14 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   bool _restoringHistory = false;
   bool _discardCurrentOnNextRoute = false;
   bool _navigatorHandlesPop = false;
+  Listenable? _coverListenable;
+  bool Function()? _covered;
 
   @override
   Future<bool> didPopRoute() async {
+    // Covered (the app lock, w07): a press must not move the pages nobody
+    // can see. It is the system's, which leaves the app.
+    if (_isCovered) return false;
     if (await super.didPopRoute()) return true;
 
     final target = _backTarget(consume: true);
@@ -84,11 +89,31 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   void _tellSystemWhoHandlesBack() {
     final state = WidgetsBinding.instance.lifecycleState;
     if (state == null || state == AppLifecycleState.detached) return;
+    // Before the first page there is nowhere to go back from.
+    if (router.routerDelegate.currentConfiguration.isEmpty) return;
     unawaited(
       SystemNavigator.setFrameworkHandlesBack(
-        _navigatorHandlesPop || _backTarget(consume: false) != null,
+        !_isCovered &&
+            (_navigatorHandlesPop || _backTarget(consume: false) != null),
       ),
     );
+  }
+
+  bool get _isCovered => _covered?.call() ?? false;
+
+  /// Tells the dispatcher when something stands over every page (the app
+  /// lock). While it does, back is not handled here.
+  void bindCover({
+    required Listenable listenable,
+    required bool Function() covered,
+  }) {
+    if (identical(_coverListenable, listenable)) return;
+    _coverListenable?.removeListener(_tellSystemWhoHandlesBack);
+    _coverListenable = listenable;
+    _covered = covered;
+    // Nothing is said here: the app binds this before its first page
+    // exists. The first route and every change of the cover say it.
+    listenable.addListener(_tellSystemWhoHandlesBack);
   }
 
   /// Where back leads when no page is left to pop: the last place of this
@@ -128,6 +153,7 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   }
 
   void dispose() {
+    _coverListenable?.removeListener(_tellSystemWhoHandlesBack);
     _contextListenable?.removeListener(_handleContextChanged);
     router.routerDelegate.removeListener(_handleRouteChanged);
   }

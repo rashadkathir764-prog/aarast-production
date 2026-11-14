@@ -173,6 +173,51 @@ void main() {
     expect(find.byKey(const ValueKey('task-message-sheet')), findsNothing);
   });
 
+  // From the review of this branch: a member whose number the phone does
+  // not have fell back to the number of whoever had the task before, so the
+  // offer named the new person and opened the old one's chat.
+  testWidgets('a task moved to a member without a number goes to nobody else', (
+    tester,
+  ) async {
+    final task = WeddingTask(
+      id: 'task-1',
+      weddingPlanId: _accountPlan,
+      title: 'حجز القاعة',
+      assigneeUserId: 'user-saleh',
+      assigneeName: 'صالح',
+      assigneePhone: '+967777000222',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      createdAt: DateTime.utc(2026, 11, 1),
+      updatedAt: DateTime.utc(2026, 11, 1),
+    );
+    final provider = await _pumpAccount(
+      tester,
+      editing: task,
+      more: [
+        SharedMember(
+          id: 'member-user-ali',
+          weddingPlanId: _accountPlan,
+          userId: 'user-ali',
+          role: 'HELPER',
+          canViewMoney: false,
+          canManageTasks: true,
+          canManageMoney: false,
+          isOwner: false,
+          createdAt: DateTime(2026, 11, 1),
+          updatedAt: DateTime(2026, 11, 1),
+        ),
+      ],
+    );
+    await tester.tap(find.byKey(const ValueKey('task-who-member:user-ali')));
+    await tester.pumpAndSettle();
+    await _save(tester);
+
+    expect(provider.updates, 1);
+    expect(find.byKey(const ValueKey('task-message-sheet')), findsNothing);
+    expect(launched, isEmpty);
+  });
+
   testWidgets('an edit offers it only when the person changed', (tester) async {
     final task = WeddingTask(
       id: 'task-1',
@@ -242,7 +287,11 @@ Future<_SavingProvider> _pumpNew(
   return provider;
 }
 
-Future<_SavingProvider> _pumpAccount(WidgetTester tester) async {
+Future<_SavingProvider> _pumpAccount(
+  WidgetTester tester, {
+  WeddingTask? editing,
+  List<SharedMember> more = const [],
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 1400);
   addTearDown(tester.view.reset);
@@ -274,12 +323,19 @@ Future<_SavingProvider> _pumpAccount(WidgetTester tester) async {
           value: _Members(api, [
             _member('user-1', 'رشاد', '+967777000111'),
             _member('user-saleh', 'صالح', '+967777000222'),
+            ...more,
           ]),
         ),
       ],
       child: MaterialApp.router(
         routerConfig: _router(
-          const CreateTaskScreen(weddingPlanId: _accountPlan),
+          editing == null
+              ? const CreateTaskScreen(weddingPlanId: _accountPlan)
+              : CreateTaskScreen(
+                  weddingPlanId: _accountPlan,
+                  taskId: editing.id,
+                  initialTask: editing,
+                ),
         ),
       ),
     ),

@@ -186,11 +186,15 @@ extension _CreateTaskWho on _CreateTaskScreenState {
       for (final item in members) {
         if (item.userId == userId) member = item;
       }
+      // What the task already said of its person stands in only for that
+      // same person (a member not read yet); another member never takes the
+      // name or the number of whoever had the task before.
+      final same = userId == _assigneeUserId;
       return (
         assigneeUserId: userId,
-        assigneeName: member?.displayName ?? _assigneeName,
-        assigneePhone: member?.user?.phone ?? _assigneePhone,
-        assigneeRole: member?.role ?? _assigneeRole,
+        assigneeName: member?.displayName ?? (same ? _assigneeName : null),
+        assigneePhone: member?.user?.phone ?? (same ? _assigneePhone : null),
+        assigneeRole: member?.role ?? (same ? _assigneeRole : null),
         responsibleName: null,
         responsiblePhone: null,
         responsibleSource: null,

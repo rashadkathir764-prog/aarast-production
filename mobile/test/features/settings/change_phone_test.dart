@@ -7,8 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 // V1 checklist 4.14 and g09: moving the account to a new phone number.
 
+/// The code was sent and nothing more needs saying.
+const ({String? error, String? notice}) _sent = (error: null, notice: null);
+
 Widget _app({
-  required Future<String?> Function(String newPhone) requestCode,
+  required Future<({String? error, String? notice})> Function(String newPhone)
+  requestCode,
   required Future<String?> Function(String newPhone, String code) confirmCode,
   String? currentPhone = '+967 777 123 456',
 }) {
@@ -44,7 +48,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      _app(requestCode: (_) async => null, confirmCode: (_, _) async => null),
+      _app(requestCode: (_) async => _sent, confirmCode: (_, _) async => null),
     );
     await tester.tap(find.byKey(const Key('settings-change-phone')));
     await tester.pumpAndSettle();
@@ -73,7 +77,7 @@ void main() {
         _app(
           requestCode: (phone) async {
             requested.add(phone);
-            return null;
+            return _sent;
           },
           confirmCode: (phone, code) async {
             confirmed.add('$phone:$code');
@@ -130,7 +134,8 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         _app(
-          requestCode: (_) async => phoneChangeErrorMessage('PHONE_IN_USE'),
+          requestCode: (_) async =>
+              (error: phoneChangeErrorMessage('PHONE_IN_USE'), notice: null),
           confirmCode: (_, _) async => null,
         ),
       );
@@ -147,4 +152,32 @@ void main() {
       expect(find.byKey(const Key('change-phone-number')), findsOneWidget);
     },
   );
+
+  // The answer to the request was lost: the code may be in WhatsApp, so
+  // the code step opens and says so, without claiming it was sent.
+  testWidgets('a code that may have arrived opens the code step and says so', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        requestCode: (_) async => (
+          error: null,
+          notice: 'ما وصلنا رد، بس الرمز يمكن وصلك على واتساب.',
+        ),
+        confirmCode: (_, _) async => null,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('settings-change-phone')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('change-phone-number')),
+      '771234567',
+    );
+    await tester.tap(find.text('أرسل الرمز للرقم الجديد'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('change-phone-code')), findsOneWidget);
+    expect(find.textContaining('ما وصلنا رد'), findsOneWidget);
+    expect(find.textContaining('أرسلنا لك رمز'), findsNothing);
+  });
 }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/server_reachability.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/session/session_teardown_coordinator.dart';
 import '../../../core/storage/auth_storage.dart';
@@ -295,7 +296,7 @@ class AuthRepository implements SessionAuthTeardownPort {
 
   Future<String?> readAccessToken() => _authStorage.readAccessToken();
 
-  /// RA-MO-109: the last code this phone got, kept past a closed app.
+  /// RA-MO-109: the last code this phone asked for, kept past a closed app.
   Future<void> rememberCodeRequest({
     required String phone,
     required String purpose,
@@ -303,10 +304,33 @@ class AuthRepository implements SessionAuthTeardownPort {
   }) =>
       _authStorage.rememberCodeRequest(phone: phone, purpose: purpose, at: at);
 
-  ({String phone, String purpose, DateTime at})? recalledCodeRequest() =>
-      _authStorage.recalledCodeRequest();
+  CodeRequestMark? recalledCodeRequest() => _authStorage.recalledCodeRequest();
 
   Future<void> forgetCodeRequest() => _authStorage.forgetCodeRequest();
+
+  /// Notes a code request on this phone before it is sent, so whatever
+  /// becomes of its answer the code it may have sent can still be reached.
+  /// Every flow that asks for a code goes through it; [CodeRequestNote.settle]
+  /// decides what a failed request leaves behind.
+  ///
+  /// The note is readable at once ([recalledCodeRequest]); its write to
+  /// the phone's storage is not awaited, so the request leaves without
+  /// waiting for it.
+  CodeRequestNote noteCodeRequest({
+    required String phone,
+    required String purpose,
+    required DateTime at,
+  }) {
+    final earlier = recalledCodeRequest();
+    unawaited(rememberCodeRequest(phone: phone, purpose: purpose, at: at));
+    return CodeRequestNote._(
+      this,
+      phone: phone,
+      purpose: purpose,
+      at: at,
+      earlier: earlier,
+    );
+  }
 
   Future<bool> refreshSession() async {
     final sessionEpoch = _authStorage.sessionEpoch;
@@ -605,3 +629,166 @@ bool accessTokenExpired(String token, {required DateTime now}) {
     return false;
   }
 }
+
+/// One code request noted on this phone before it was sent ([phone] as
+/// typed, [purpose], [at]), with the note it replaced ([earlier]).
+///
+/// RA-MO-109, RA-MO-308: a refusal to send another code within the
+/// server's minute (`OTP_LIMIT_COOLDOWN`) reopens the code screen only for
+/// a code this phone itself asked for, for the same number and purpose,
+/// under a minute ago; never for another number's code or another
+/// purpose's.
+class CodeRequestNote {
+  CodeRequestNote._(
+    this._repository, {
+    required this.phone,
+    required this.purpose,
+    required this.at,
+    required this.earlier,
+  });
+
+  final AuthRepository _repository;
+  final String phone;
+  final String purpose;
+  final DateTime at;
+  final CodeRequestMark? earlier;
+
+  /// The server sends one code per number a minute, whoever asks and for
+  /// whatever purpose (`PHONE_COOLDOWN` in
+  /// `backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts`).
+  static const cooldown = Duration(minutes: 1);
+
+  /// What the code screen opens after [error] ended this request, or null
+  /// when [error] stands. Leaves the note saying what is now true.
+  ///
+  /// [earlierResult] is the answer this phone got for its earlier request,
+  /// when it still has it; it fills in what the note does not keep.
+  OtpRequestResult? settle(Object error, {OtpRequestResult? earlierResult}) {
+    if (error is ApiException && error.serverCode == 'OTP_LIMIT_COOLDOWN') {
+      // This request made no code; an earlier one may still be live.
+      _restoreEarlier();
+      return _reopenEarlier(earlierResult);
+    }
+    if (error is ApiException && error.isNetworkFailure) {
+      switch (_fateOf(error)) {
+        case _RequestFate.neverLeft:
+          _restoreEarlier();
+          return null;
+        case _RequestFate.leftWithoutAnswer:
+          return OtpRequestResult(
+            phone: phone.trim(),
+            purpose: purpose,
+            // Not known without the answer; the code screen does not read it.
+            expiresAt: at,
+            delivery: 'WHATSAPP',
+            deliveryStatus: 'UNCERTAIN',
+            message: otpLostAnswerNotice,
+          );
+        case _RequestFate.unknown:
+          // It may have left: the note stays, so the next tap's cooldown
+          // reopens the code screen.
+          return null;
+      }
+    }
+    if (error is FormatException) {
+      // The number was refused on the phone, before anything was sent.
+      _restoreEarlier();
+      return null;
+    }
+    if (error is ApiException && _isServerRefusal(error)) {
+      // The server answered and made no code for this request. A refused
+      // delivery also ended the code it replaced for this number and purpose.
+      final ended =
+          error.serverCode == 'OTP_DELIVERY_UNAVAILABLE' &&
+          _sameRequest(earlier);
+      if (ended) {
+        unawaited(_repository.forgetCodeRequest());
+      } else {
+        _restoreEarlier();
+      }
+      return null;
+    }
+    // An answer the phone could not read: the code may exist, the note stays.
+    return null;
+  }
+
+  /// A 4xx, or a 5xx that names its reason, comes from the server itself.
+  /// A bare 5xx may be a proxy's while the server went on and sent the code.
+  static bool _isServerRefusal(ApiException error) {
+    final status = error.statusCode;
+    if (status == null) return false;
+    return status < 500 || error.serverCode != null;
+  }
+
+  OtpRequestResult? _reopenEarlier(OtpRequestResult? earlierResult) {
+    final mark = earlier;
+    if (mark == null || !_sameRequest(mark)) return null;
+    if (at.difference(mark.at) >= cooldown) return null;
+    final known =
+        earlierResult != null &&
+            earlierResult.purpose == purpose &&
+            _samePhone(earlierResult.phone, phone)
+        ? earlierResult
+        : null;
+    return OtpRequestResult(
+      phone: phone.trim(),
+      purpose: purpose,
+      // After a restart the code's expiry is not known; the code screen
+      // does not read it.
+      expiresAt: known?.expiresAt ?? mark.at,
+      delivery: known?.delivery ?? 'WHATSAPP',
+      deliveryStatus: known?.deliveryStatus ?? 'PENDING',
+      accountSetupRequired: known?.accountSetupRequired ?? false,
+      code: known?.code,
+      message: otpEarlierCodeStillLiveNotice,
+    );
+  }
+
+  bool _sameRequest(CodeRequestMark? mark) =>
+      mark != null && mark.purpose == purpose && _samePhone(mark.phone, phone);
+
+  /// Puts back the note this request replaced: asking again never
+  /// lengthens the earlier code's minute.
+  void _restoreEarlier() {
+    final mark = earlier;
+    unawaited(
+      mark == null
+          ? _repository.forgetCodeRequest()
+          : _repository.rememberCodeRequest(
+              phone: mark.phone,
+              purpose: mark.purpose,
+              at: mark.at,
+            ),
+    );
+  }
+
+  static bool _samePhone(String a, String b) {
+    try {
+      return normalizeYemeniPhone(a) == normalizeYemeniPhone(b);
+    } on FormatException {
+      return false;
+    }
+  }
+
+  /// Whether the request left the phone, from what the transport measured.
+  ///
+  /// A timeout is "left without an answer" only once the connection had
+  /// opened: a connection that never opened sent nothing
+  /// ([ApiException.connectionNeverOpened]).
+  static _RequestFate _fateOf(ApiException error) {
+    if (error.connectionNeverOpened) return _RequestFate.neverLeft;
+    return switch (error.transportCause) {
+      ReachabilityCause.noNetwork ||
+      ReachabilityCause.dns ||
+      ReachabilityCause.refused ||
+      ReachabilityCause.tls => _RequestFate.neverLeft,
+      ReachabilityCause.timeout ||
+      ReachabilityCause.interrupted => _RequestFate.leftWithoutAnswer,
+      ReachabilityCause.serverError ||
+      ReachabilityCause.unknown ||
+      null => _RequestFate.unknown,
+    };
+  }
+}
+
+enum _RequestFate { neverLeft, leftWithoutAnswer, unknown }

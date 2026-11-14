@@ -5,6 +5,8 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
+  OnModuleDestroy,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -66,6 +68,7 @@ import {
   OtpChannel,
 } from "./otp-channel";
 import {
+  type OtpDeliveryResult,
   OtpDeliveryUncertainError,
 } from "../../../../platform/otp-transport/otp-delivery";
 import { OpenWaOtpChannel } from "../../../../platform/otp-transport/openwa-otp.channel";
@@ -194,12 +197,58 @@ interface OtpChannelSelection {
   generateCode: () => string;
 }
 
+/**
+ * The longest an OTP request's HTTP answer waits for the channel's delivery
+ * receipt. OpenWA answers only after WhatsApp confirms the device received the
+ * message, which can take longer than a phone keeps a request open. Past this
+ * bound the code is reported as possibly delivered (UNCERTAIN) and the receipt
+ * is recorded in the background when it lands.
+ */
+export const OTP_DELIVERY_RESPONSE_BOUND_MS = 4_000;
+
+/** How a channel's delivery attempt ended, once it ended. */
+type SettledOtpDelivery =
+  | { outcome: "sent"; result: OtpDeliveryResult }
+  | { outcome: "uncertain" }
+  | { outcome: "rejected" };
+
+/** Turns a channel's attempt into an outcome; the returned promise never rejects. */
+function settleOtpDelivery(
+  attempt: Promise<OtpDeliveryResult>,
+): Promise<SettledOtpDelivery> {
+  return attempt.then(
+    (result): SettledOtpDelivery => ({ outcome: "sent", result }),
+    (error: unknown): SettledOtpDelivery =>
+      error instanceof OtpDeliveryUncertainError
+        ? { outcome: "uncertain" }
+        : { outcome: "rejected" },
+  );
+}
+
+/** The outcome if it settles within the bound, otherwise null. */
+async function withinOtpResponseBound(
+  delivery: Promise<SettledOtpDelivery>,
+): Promise<SettledOtpDelivery | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const bound = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), OTP_DELIVERY_RESPONSE_BOUND_MS);
+  });
+  try {
+    return await Promise.race([delivery, bound]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 @Injectable()
-export class AuthService implements IdentityAuthPort {
+export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   private readonly users = new AuthUserRepository();
   private readonly otps = new AuthOtpRepository();
   private readonly challenges = new AuthChallengeRepository();
   private readonly sessions = new AuthSessionRepository();
+  private readonly logger = new Logger(AuthService.name);
+  /** Deliveries still running after their request was answered. */
+  private readonly lateOtpDeliveries = new Set<Promise<void>>();
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   /** After the code is proven, the admin has this long to choose a password. */
@@ -219,6 +268,15 @@ export class AuthService implements IdentityAuthPort {
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly collaboration: CollaborationPermissionPort,
   ) {}
+
+  /**
+   * Lets every delivery that outlived its HTTP answer finish its bookkeeping
+   * before the database connection closes. Each one is bounded by its
+   * channel's own request timeout.
+   */
+  async onModuleDestroy(): Promise<void> {
+    await Promise.allSettled([...this.lateOtpDeliveries]);
+  }
 
   async startRegistration(
     dto: RegisterDto,
@@ -1373,30 +1431,28 @@ export class AuthService implements IdentityAuthPort {
       allowAcceptedCredentialRecovery,
     );
 
-    let delivered;
-    try {
-      delivered = await selection.channel.deliver(phone, code, purpose);
-    } catch (error) {
-      if (error instanceof OtpDeliveryUncertainError) {
-        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "uncertain" });
-        delivered = {
-          delivery: "WHATSAPP" as const,
-          deliveryStatus: "UNCERTAIN" as const,
-          message: AuthService.otpDeliveryUncertainMessage,
-        };
-      } else {
-        await this.otps.consumeIfActive(this.prisma, otp.id, new Date());
-        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "rejected" });
-        throw otpDeliveryUnavailableError();
-      }
+    const delivery = settleOtpDelivery(
+      selection.channel.deliver(phone, code, purpose),
+    );
+    const settled = await withinOtpResponseBound(delivery);
+    if (settled === null) {
+      // The code is saved and may already be on its way: answer now and let
+      // the receipt be recorded exactly as if it had arrived in time.
+      this.recordLateOtpDelivery(delivery, otp.id, purpose);
+    } else {
+      await this.recordOtpDelivery(settled, otp.id, purpose);
+      if (settled.outcome === "rejected") throw otpDeliveryUnavailableError();
     }
-    if (delivered.deliveryStatus !== "UNCERTAIN") {
-      otpDeliveryOutcomesTotal.inc({
-        purpose,
-        outcome: delivered.deliveryStatus.toLowerCase(),
-      });
-    }
-    otpRequestsTotal.inc({ delivery: delivered.delivery });
+    const delivered: Omit<OtpDeliveryResult, "deliveryStatus"> & {
+      deliveryStatus: IssuedOtpResponse["deliveryStatus"];
+    } =
+      settled?.outcome === "sent"
+        ? settled.result
+        : {
+            delivery: "WHATSAPP" as const,
+            deliveryStatus: "UNCERTAIN" as const,
+            message: AuthService.otpDeliveryUncertainMessage,
+          };
 
     return {
       otpId: otp.id,
@@ -1408,6 +1464,52 @@ export class AuthService implements IdentityAuthPort {
       ...(delivered.echoCode ? { code: delivered.echoCode } : {}),
       ...(delivered.message ? { message: delivered.message } : {}),
     };
+  }
+
+  /**
+   * The bookkeeping of one delivery outcome: an uncertain or sent code stays
+   * usable, a definitive rejection consumes it so it can never be verified.
+   */
+  private async recordOtpDelivery(
+    settled: SettledOtpDelivery,
+    otpId: string,
+    purpose: OtpPurpose,
+  ): Promise<void> {
+    if (settled.outcome === "rejected") {
+      await this.otps.consumeIfActive(this.prisma, otpId, new Date());
+      otpDeliveryOutcomesTotal.inc({ purpose, outcome: "rejected" });
+      return;
+    }
+    const delivery =
+      settled.outcome === "sent" ? settled.result.delivery : "WHATSAPP";
+    otpDeliveryOutcomesTotal.inc({
+      purpose,
+      outcome:
+        settled.outcome === "sent"
+          ? settled.result.deliveryStatus.toLowerCase()
+          : "uncertain",
+    });
+    otpRequestsTotal.inc({ delivery });
+  }
+
+  private recordLateOtpDelivery(
+    delivery: Promise<SettledOtpDelivery>,
+    otpId: string,
+    purpose: OtpPurpose,
+  ): void {
+    const late: Promise<void> = delivery
+      .then((settled) => this.recordOtpDelivery(settled, otpId, purpose))
+      .catch((error: unknown) => {
+        this.logger.error(
+          `A late OTP delivery outcome could not be recorded (purpose ${purpose}): ${
+            error instanceof Error ? error.name : "unknown error"
+          }`,
+        );
+      })
+      .finally(() => {
+        this.lateOtpDeliveries.delete(late);
+      });
+    this.lateOtpDeliveries.add(late);
   }
 
   /**

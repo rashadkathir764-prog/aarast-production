@@ -9,6 +9,7 @@ import { authService } from './support/owner-ports';
 import { RequestOtpDto } from '../src/modules/identity/api/auth-dto/request-otp.dto';
 import { VerifyOtpDto } from '../src/modules/identity/api/auth-dto/verify-otp.dto';
 import { getJwtSecret } from '../src/modules/identity/internal/auth/jwt-secret';
+import { OTP_DELIVERY_RESPONSE_BOUND_MS } from '../src/modules/identity/internal/auth/auth.service';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { otpDeliveryOutcomesTotal } from '../src/platform/observability/metrics';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
@@ -683,6 +684,181 @@ test('OpenWA definitive 5xx delivery failures consume the OTP and return 503', a
       }
     },
   );
+});
+
+const openWaTestEnvironment = {
+  AUTH_OTP_MODE: 'openwa',
+  OPENWA_BASE_URL: 'http://openwa:3000',
+  OPENWA_SESSION_ID: 'aarast-otp',
+  OPENWA_API_KEY: 'a-secure-openwa-api-key-for-tests-only',
+  NODE_ENV: 'test',
+};
+
+/** A fetch that stays open until the test releases WhatsApp's answer. */
+function heldOpenWaFetch() {
+  let markCalled!: () => void;
+  const called = new Promise<void>((resolve) => {
+    markCalled = resolve;
+  });
+  let release!: (response: Response) => void;
+  const answer = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const fetch = (async () => {
+    markCalled();
+    return answer;
+  }) as unknown as typeof globalThis.fetch;
+  return { fetch, called, release };
+}
+
+async function letPendingCallbacksRun() {
+  for (let round = 0; round < 5; round += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+async function findActiveOtp(service: any, purpose: OtpPurpose) {
+  return service.prisma.otpCode.findFirst({
+    where: { phone: '+967777123456', purpose, consumedAt: null },
+  });
+}
+
+test('a slow OpenWA receipt is answered as UNCERTAIN at the bound and recorded when it lands', async (t) => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(openWaTestEnvironment, async () => {
+    const purpose = OtpPurpose.VERIFY_PHONE;
+    const deliveredBefore = await otpDeliveryMetricValue(purpose, 'delivered');
+    const uncertainBefore = await otpDeliveryMetricValue(purpose, 'uncertain');
+    const held = heldOpenWaFetch();
+    globalThis.fetch = held.fetch;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const service = createService({ consume: async () => undefined });
+    try {
+      let answered = false;
+      const pending = service
+        .requestOtp({ phone: '777123456', purpose })
+        .finally(() => {
+          answered = true;
+        });
+      await held.called;
+      await letPendingCallbacksRun();
+      t.mock.timers.tick(OTP_DELIVERY_RESPONSE_BOUND_MS - 1);
+      await letPendingCallbacksRun();
+      assert.equal(answered, false, 'a delivery inside the bound is still awaited');
+
+      t.mock.timers.tick(1);
+      await letPendingCallbacksRun();
+      assert.equal(answered, true, 'the answer must not wait for the receipt past the bound');
+      const response = await pending;
+      assert.equal(response.delivery, 'WHATSAPP');
+      assert.equal(response.deliveryStatus, 'UNCERTAIN');
+      assert.equal(response.code, undefined);
+      assert.match(response.message ?? '', /إذا وصلك الرمز/);
+      assert.ok(await findActiveOtp(service, purpose), 'the code stays usable meanwhile');
+
+      held.release(
+        new Response(
+          JSON.stringify({
+            messageId: 'wa-message-id',
+            timestamp: 1706868000,
+            deliveryStatus: 'DELIVERED',
+          }),
+          { status: 201, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+      await service.onModuleDestroy();
+
+      assert.equal(await otpDeliveryMetricValue(purpose, 'delivered'), deliveredBefore + 1);
+      assert.equal(await otpDeliveryMetricValue(purpose, 'uncertain'), uncertainBefore);
+      assert.ok(await findActiveOtp(service, purpose), 'a delivered code stays usable');
+    } finally {
+      globalThis.fetch = originalFetch;
+      t.mock.timers.reset();
+    }
+  });
+});
+
+test('a slow OpenWA delivery that later fails definitively consumes the code in the background', async (t) => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(openWaTestEnvironment, async () => {
+    const purpose = OtpPurpose.RESET_PASSWORD;
+    const rejectedBefore = await otpDeliveryMetricValue(purpose, 'rejected');
+    const held = heldOpenWaFetch();
+    globalThis.fetch = held.fetch;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const service = createService({ consume: async () => undefined });
+    try {
+      let answered = false;
+      const pending = service.requestOtp({ phone: '777123456', purpose }).finally(() => {
+        answered = true;
+      });
+      await held.called;
+      await letPendingCallbacksRun();
+      t.mock.timers.tick(OTP_DELIVERY_RESPONSE_BOUND_MS);
+      await letPendingCallbacksRun();
+      assert.equal(answered, true, 'the answer must not wait for the receipt past the bound');
+      const response = await pending;
+      assert.equal(response.deliveryStatus, 'UNCERTAIN');
+
+      held.release(
+        new Response(JSON.stringify({ code: 'REJECTED' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+      await service.onModuleDestroy();
+
+      assert.equal(await findActiveOtp(service, purpose), undefined);
+      assert.equal(await otpDeliveryMetricValue(purpose, 'rejected'), rejectedBefore + 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      t.mock.timers.reset();
+    }
+  });
+});
+
+test('a late delivery whose bookkeeping fails is logged, never an unhandled rejection', async (t) => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(openWaTestEnvironment, async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    const held = heldOpenWaFetch();
+    globalThis.fetch = held.fetch;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const service = createService({ consume: async () => undefined });
+    try {
+      let answered = false;
+      const pending = service
+        .requestOtp({ phone: '777123456', purpose: OtpPurpose.LOGIN })
+        .finally(() => {
+          answered = true;
+        });
+      await held.called;
+      await letPendingCallbacksRun();
+      t.mock.timers.tick(OTP_DELIVERY_RESPONSE_BOUND_MS);
+      await letPendingCallbacksRun();
+      assert.equal(answered, true, 'the answer must not wait for the receipt past the bound');
+      assert.equal((await pending).deliveryStatus, 'UNCERTAIN');
+
+      (service as any).prisma.otpCode.updateMany = async () => {
+        throw new Error('database went away');
+      };
+      held.release(
+        new Response(JSON.stringify({ code: 'NOT_ATTEMPTED' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+      await service.onModuleDestroy();
+      await letPendingCallbacksRun();
+      assert.deepEqual(unhandled, []);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+      globalThis.fetch = originalFetch;
+      t.mock.timers.reset();
+    }
+  });
 });
 
 test('dev OTP mode never consumes the production delivery quota', async () => {

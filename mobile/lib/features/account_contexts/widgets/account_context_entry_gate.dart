@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,19 +14,66 @@ import '../providers/account_context_controller.dart';
 import '../screens/account_context_selection_screen.dart';
 import 'wedding_plan_context_gate.dart';
 
-class AccountContextEntryGate extends StatelessWidget {
+class AccountContextEntryGate extends StatefulWidget {
   const AccountContextEntryGate({this.resumeLocation, super.key});
 
   final String? resumeLocation;
 
+  /// A failed read of the account's paths is tried again by itself this
+  /// many times, after each of these waits, before its error shows: right
+  /// after a sign-in one failed read put an error in front of the person.
+  @visibleForTesting
+  static const automaticRetryDelays = [
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+  ];
+
+  @override
+  State<AccountContextEntryGate> createState() =>
+      _AccountContextEntryGateState();
+}
+
+class _AccountContextEntryGateState extends State<AccountContextEntryGate> {
+  int _automaticRetries = 0;
+  Timer? _retryTimer;
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  /// True while a failed read is waiting to be tried again by itself.
+  bool _retryingByItself(AccountContextController controller) {
+    if (_retryTimer?.isActive ?? false) return true;
+    final delays = AccountContextEntryGate.automaticRetryDelays;
+    if (_automaticRetries >= delays.length) return false;
+    final delay = delays[_automaticRetries];
+    _automaticRetries += 1;
+    _retryTimer = Timer(delay, () {
+      if (mounted) unawaited(controller.refresh());
+    });
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AccountContextController>();
+    final resumeLocation = widget.resumeLocation;
+    final entry = resolveAccountContextEntry(controller);
+    if (entry != AccountContextEntryState.error &&
+        entry != AccountContextEntryState.loading) {
+      // The paths were read: a later failure gets its own tries.
+      _automaticRetries = 0;
+    }
 
-    switch (resolveAccountContextEntry(controller)) {
+    switch (entry) {
       case AccountContextEntryState.loading:
         return const AarastScaffold(child: AarastScreenLoading());
       case AccountContextEntryState.error:
+        if (_retryingByItself(controller)) {
+          return const AarastScaffold(child: AarastScreenLoading());
+        }
         return AarastScaffold(
           child: Align(
             alignment: Alignment.topCenter,

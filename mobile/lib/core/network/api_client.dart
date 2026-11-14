@@ -798,10 +798,17 @@ class ApiException implements Exception {
     this.retryAfterSeconds,
     this.phoneProof,
     this.transportCause,
+    this.connectionNeverOpened = false,
   });
 
   /// D84: the measured cause when [isNetworkFailure]; null otherwise.
   final ReachabilityCause? transportCause;
+
+  /// True when the connection to the server never opened (a connect
+  /// timeout): the request was not sent, so nothing happened on the server.
+  /// [transportCause] alone cannot say it: a connection that never opened
+  /// and an answer that never came back are both a timeout to the reader.
+  final bool connectionNeverOpened;
 
   /// The number this sign-in code proved, for signing up without a second
   /// code (ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF); null otherwise.
@@ -853,6 +860,7 @@ class ApiException implements Exception {
                   '${reachabilityCauseAdvice(transportCause)}',
         isNetworkFailure: true,
         transportCause: transportCause,
+        connectionNeverOpened: error.type == DioExceptionType.connectionTimeout,
       );
     }
 

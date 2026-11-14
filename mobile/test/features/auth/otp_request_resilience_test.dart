@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -44,8 +45,12 @@ void main() {
     },
   );
 
-  test('registration timeout reports an operation-specific message', () async {
-    final harness = await _AuthHarness.create(_ReceiveTimeoutAdapter());
+  // A receive timeout used to end here too; the request had left and the
+  // code may be in WhatsApp, so it now opens the code screen
+  // (otp_lost_answer_test.dart). A request that never left keeps these words.
+  test('registration without a connection reports an operation-specific '
+      'message', () async {
+    final harness = await _AuthHarness.create(_NoConnectionAdapter());
     final controller = AuthController(harness.repository);
 
     final result = await controller.startRegistration(
@@ -60,21 +65,24 @@ void main() {
     );
   });
 
-  test('OTP timeout reports an operation-specific message', () async {
-    final harness = await _AuthHarness.create(_ReceiveTimeoutAdapter());
-    final controller = AuthController(harness.repository);
+  test(
+    'OTP without a connection reports an operation-specific message',
+    () async {
+      final harness = await _AuthHarness.create(_NoConnectionAdapter());
+      final controller = AuthController(harness.repository);
 
-    final result = await controller.requestOtp(
-      phone: '777123456',
-      purpose: 'LOGIN',
-    );
+      final result = await controller.requestOtp(
+        phone: '777123456',
+        purpose: 'LOGIN',
+      );
 
-    expect(result, isNull);
-    expect(
-      controller.errorMessage,
-      'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
-    );
-  });
+      expect(result, isNull);
+      expect(
+        controller.errorMessage,
+        'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
+      );
+    },
+  );
 
   test('registration reports an unavailable OTP service precisely', () async {
     final harness = await _AuthHarness.create(_OtpUnavailableAdapter());
@@ -172,7 +180,8 @@ class _OtpResponseAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-class _ReceiveTimeoutAdapter implements HttpClientAdapter {
+/// The server's name cannot be resolved: the request never leaves.
+class _NoConnectionAdapter implements HttpClientAdapter {
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -181,7 +190,8 @@ class _ReceiveTimeoutAdapter implements HttpClientAdapter {
   ) {
     throw DioException(
       requestOptions: options,
-      type: DioExceptionType.receiveTimeout,
+      type: DioExceptionType.connectionError,
+      error: const SocketException('Failed host lookup: api.example'),
     );
   }
 

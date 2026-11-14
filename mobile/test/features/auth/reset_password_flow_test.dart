@@ -3,6 +3,7 @@ import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/network/server_reachability.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
@@ -24,6 +25,9 @@ class _FakeAuthRepository extends AuthRepository {
   String? confirmFailureCode;
   bool failRequestWithNetworkError = false;
   ApiException? requestFailure;
+
+  /// Thrown one per request, in order, before [requestFailure].
+  final List<ApiException> queuedFailures = [];
   String delivery = 'LOCAL_DEV';
   String? deliveryMessage = 'رمز التحقق مؤقت للتجربة المحلية: 123456';
 
@@ -36,6 +40,7 @@ class _FakeAuthRepository extends AuthRepository {
         isNetworkFailure: true,
       );
     }
+    if (queuedFailures.isNotEmpty) throw queuedFailures.removeAt(0);
     if (requestFailure != null) throw requestFailure!;
     return OtpRequestResult(
       phone: phone,
@@ -491,6 +496,82 @@ void main() {
     expect(repository.loginCalls, ['+967777123456:new-secret']);
     expect(find.text('غيّرنا كلمة المرور'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
+  });
+
+  testWidgets('a lost answer opens «الرمز» with an honest notice', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..delivery = 'WHATSAPP'
+      ..requestFailure = const ApiException(
+        'ما وصلنا للخادم في الوقت.',
+        isNetworkFailure: true,
+        transportCause: ReachabilityCause.timeout,
+      );
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+
+    expect(repository.requestCalls, 1);
+    expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+    expect(find.textContaining('ما وصلنا رد'), findsOneWidget);
+    expect(find.textContaining('الخادم'), findsNothing);
+    expect(repository.recalledCodeRequest()?.purpose, 'RESET_PASSWORD');
+  });
+
+  testWidgets('after a request whose fate is not known, the refusal of the '
+      'next tap within the minute reopens «الرمز»', (tester) async {
+    final repository = await _fakeRepository()
+      ..delivery = 'WHATSAPP'
+      ..queuedFailures.addAll(const [
+        ApiException(
+          'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
+          isNetworkFailure: true,
+          transportCause: ReachabilityCause.unknown,
+        ),
+        ApiException(
+          'يتاح رمز جديد بعد دقيقة.',
+          statusCode: 429,
+          serverCode: 'OTP_LIMIT_COOLDOWN',
+        ),
+      ]);
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+    expect(find.byKey(const Key('reset-otp-field')), findsNothing);
+    expect(
+      find.text('ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.'),
+      findsOneWidget,
+    );
+
+    await _sendCode(tester, typePhone: false);
+
+    expect(repository.requestCalls, 2);
+    expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+    expect(find.textContaining('لسا شغال'), findsOneWidget);
+    expect(find.text('يتاح رمز جديد بعد دقيقة.'), findsNothing);
+  });
+
+  testWidgets('a cooldown after another number\'s code stays a refusal', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..requestFailure = const ApiException(
+        'يتاح رمز جديد بعد دقيقة.',
+        statusCode: 429,
+        serverCode: 'OTP_LIMIT_COOLDOWN',
+      );
+    await repository.rememberCodeRequest(
+      phone: '+967777000111',
+      purpose: 'RESET_PASSWORD',
+      at: DateTime.now(),
+    );
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+
+    expect(find.byKey(const Key('reset-otp-field')), findsNothing);
+    expect(find.text('يتاح رمز جديد بعد دقيقة.'), findsOneWidget);
   });
 
   testWidgets('the back arrow walks the steps back before it leaves', (

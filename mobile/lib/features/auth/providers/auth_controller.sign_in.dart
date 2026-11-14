@@ -130,124 +130,92 @@ mixin _AuthSignIn on _AuthControllerCore {
   Future<OtpRequestResult?> startRegistration({
     required String name,
     required String phone,
-  }) async {
-    OtpRequestResult? result;
-    final success = await _submit(
-      () async {
-        result = await _authRepository.startRegistration(
-          name: name.trim(),
-          phone: phone.trim(),
-        );
-        _noteCodeSent(result, phone, 'REGISTER');
-      },
+  }) {
+    return _requestCode(
+      phone: phone,
+      purpose: 'REGISTER',
+      send: () => _authRepository.startRegistration(
+        name: name.trim(),
+        phone: phone.trim(),
+      ),
       networkFailureMessage:
           'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
     );
-    return success ? result : _earlierCodeStillLive(phone, 'REGISTER');
   }
 
+  /// Every flow that asks for a code: the request is noted on this phone
+  /// before it is sent ([AuthRepository.noteCodeRequest]), so a code that
+  /// reached WhatsApp can still be typed when its answer did not reach the
+  /// phone.
+  ///
   /// RA-MO-109: the system closed the app while the person was in WhatsApp
-  /// reading the code; the app opened at its start, the number was typed
-  /// again, and the server refused a second code within the minute
-  /// (`OTP_LIMIT_COOLDOWN`), though the first was still good. That refusal
-  /// now opens the code screen for the code already sent; a new one can be
-  /// asked there once the minute is over.
+  /// reading the code, and the server refused a second code within the
+  /// minute (`OTP_LIMIT_COOLDOWN`), though the first was still good. That
+  /// refusal opens the code screen for the code already sent; a new one can
+  /// be asked there once the minute is over. RA-MO-308: only for a code this
+  /// phone itself asked for, for the same number and purpose, within the
+  /// minute ([CodeRequestNote.settle]); otherwise the server's refusal is
+  /// shown as it is, as the screen would refuse the code in WhatsApp.
   ///
-  /// RA-MO-308: the minute is per number, whoever asked and for whatever
-  /// purpose, and a code is good only for its own purpose. So the refusal
-  /// opens the code screen only when this phone itself got a code for the
-  /// same number and purpose within the minute. Otherwise (another purpose,
-  /// someone else, or the app was closed and that request is gone, as it is
-  /// kept in memory only) the server's refusal is shown as it is: the screen
-  /// would refuse the code in WhatsApp as wrong.
-  ///
-  /// After the app was closed, the request in memory is gone; the mark this
-  /// phone kept of it ([AuthRepository.recalledCodeRequest]) answers the
-  /// same three questions, so the case RA-MO-109 was written for keeps its
-  /// shortcut.
-  OtpRequestResult? _earlierCodeStillLive(String phone, String purpose) {
-    if (_errorCode != 'OTP_LIMIT_COOLDOWN') return null;
-    final inMemory = _otpRequest;
-    final inMemoryAt = _otpRequestAt;
-    final mark = inMemory != null && inMemoryAt != null
-        ? (phone: inMemory.phone, purpose: inMemory.purpose, at: inMemoryAt)
-        : _authRepository.recalledCodeRequest();
-    if (mark == null) return null;
-    if (mark.purpose != purpose || !_samePhone(mark.phone, phone)) {
-      return null;
-    }
-    if (_now().difference(mark.at) >= AuthController.otpCooldown) return null;
+  /// A request that left without an answer opens the code screen with a
+  /// notice that the code may have arrived; one that never left says so.
+  Future<OtpRequestResult?> _requestCode({
+    required String phone,
+    required String purpose,
+    required Future<OtpRequestResult> Function() send,
+    required String networkFailureMessage,
+  }) async {
+    final typed = phone.trim();
+    final earlierResult = _otpRequest;
+    CodeRequestNote? note;
+    Object? failure;
+    OtpRequestResult? result;
+    final success = await _submit(() async {
+      note = _authRepository.noteCodeRequest(
+        phone: typed,
+        purpose: purpose,
+        at: _now(),
+      );
+      try {
+        result = await send();
+      } on Object catch (error) {
+        failure = error;
+        rethrow;
+      }
+      _otpRequest = result;
+    }, networkFailureMessage: networkFailureMessage);
+    if (success) return result;
+    final sent = note;
+    final error = failure;
+    // A second tap while the first waits: nothing was sent.
+    if (sent == null || error == null) return null;
+    final reopened = sent.settle(error, earlierResult: earlierResult);
+    if (reopened == null) return null;
     _errorMessage = null;
     _errorCode = null;
     _failedOffline = false;
-    final earlier = inMemory != null && inMemoryAt != null ? inMemory : null;
-    final reopened = OtpRequestResult(
-      phone: phone.trim(),
-      purpose: mark.purpose,
-      // After a restart the code's expiry is not known; the code screen
-      // does not read it.
-      expiresAt: earlier?.expiresAt ?? mark.at,
-      delivery: earlier?.delivery ?? 'WHATSAPP',
-      deliveryStatus: earlier?.deliveryStatus ?? 'PENDING',
-      accountSetupRequired: earlier?.accountSetupRequired ?? false,
-      code: earlier?.code,
-      message:
-          'الرمز اللي طلبناه على هذا الرقم قبل أقل من دقيقة لسا شغال، '
-          'وهنا مكانه لو وصلك.',
-    );
-    _otpRequestAt ??= mark.at;
-    // [_otpRequestAt] stays: asking again does not lengthen the minute.
     _otpRequest = reopened;
     notifyListeners();
     return reopened;
   }
 
-  /// A code was sent from this phone: kept in memory, and its mark on the
-  /// phone for a closed app (RA-MO-109).
-  void _noteCodeSent(OtpRequestResult? result, String phone, String purpose) {
-    _otpRequest = result;
-    final at = _now();
-    _otpRequestAt = at;
-    unawaited(
-      _authRepository.rememberCodeRequest(
-        phone: phone.trim(),
-        purpose: purpose,
-        at: at,
-      ),
-    );
-  }
-
   /// The server took the code: nothing reopens it again (RA-MO-308).
   void _forgetCodeSent() {
-    _otpRequestAt = null;
     unawaited(_authRepository.forgetCodeRequest());
-  }
-
-  static bool _samePhone(String a, String b) {
-    try {
-      return normalizeYemeniPhone(a) == normalizeYemeniPhone(b);
-    } on FormatException {
-      return false;
-    }
   }
 
   Future<OtpRequestResult?> requestOtp({
     required String phone,
     required String purpose,
-  }) async {
-    OtpRequestResult? result;
-    final success = await _submit(
-      () async {
-        result = await _authRepository.requestOtp(
-          phone: phone.trim(),
-          purpose: purpose,
-        );
-        _noteCodeSent(result, phone, purpose);
-      },
+  }) {
+    return _requestCode(
+      phone: phone,
+      purpose: purpose,
+      send: () =>
+          _authRepository.requestOtp(phone: phone.trim(), purpose: purpose),
       networkFailureMessage:
           'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
     );
-    return success ? result : _earlierCodeStillLive(phone, purpose);
   }
 
   /// RA-MO-98: an invite opened with another number, on a phone signed in to
@@ -299,19 +267,17 @@ mixin _AuthSignIn on _AuthControllerCore {
       notifyListeners();
       return null;
     }
-    OtpRequestResult? result;
-    final success = await _submit(
-      () async {
-        result = await _authRepository.requestInviteOtp(
-          token: token.trim(),
-          phone: phone.trim(),
-        );
-        _noteCodeSent(result, phone, result?.purpose ?? '');
-      },
+    return _requestCode(
+      phone: phone,
+      // The server's purpose for an invite's code.
+      purpose: 'INVITE_ACCESS',
+      send: () => _authRepository.requestInviteOtp(
+        token: token.trim(),
+        phone: phone.trim(),
+      ),
       networkFailureMessage:
           'ما قدرنا نتأكد من الدعوة. تأكد من النت وجرّب مرة ثانية.',
     );
-    return success ? result : null;
   }
 
   Future<bool> verifyOtp({

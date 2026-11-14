@@ -1,5 +1,20 @@
 ﻿import '../../../core/session/safe_user.dart';
 
+/// Which number and purpose this phone asked a code for, and when
+/// (RA-MO-109): the number as typed.
+typedef CodeRequestMark = ({String phone, String purpose, DateTime at});
+
+/// The request left the phone and no answer came back: the code may be in
+/// WhatsApp. Said alike to a man and a woman.
+const otpLostAnswerNotice =
+    'ما وصلنا رد، بس الرمز يمكن وصلك على واتساب. لو وصلك، هنا مكانه.';
+
+/// A code asked again within the minute was refused, and the one this phone
+/// asked for a moment ago is still good (RA-MO-109).
+const otpEarlierCodeStillLiveNotice =
+    'الرمز اللي طلبناه على هذا الرقم قبل أقل من دقيقة لسا شغال، '
+    'وهنا مكانه لو وصلك.';
+
 class OtpRequestResult {
   const OtpRequestResult({
     required this.phone,

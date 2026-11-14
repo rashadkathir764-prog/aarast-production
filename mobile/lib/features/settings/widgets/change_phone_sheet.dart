@@ -14,7 +14,8 @@ import '../../../core/forms/latin_digits_formatter.dart';
 Future<void> showChangePhoneSheet(
   BuildContext context, {
   required String? currentPhone,
-  required Future<String?> Function(String newPhone) requestCode,
+  required Future<({String? error, String? notice})> Function(String newPhone)
+  requestCode,
   required Future<String?> Function(String newPhone, String code) confirmCode,
 }) {
   return showJourneySheet<void>(
@@ -36,8 +37,11 @@ class _ChangePhoneSheet extends StatefulWidget {
 
   final String? currentPhone;
 
-  /// Sends the code; returns an Arabic error or null.
-  final Future<String?> Function(String newPhone) requestCode;
+  /// Sends the code. An Arabic `error` keeps the sheet on the number;
+  /// without one the code step opens, saying `notice` when the code is not
+  /// known to have arrived.
+  final Future<({String? error, String? notice})> Function(String newPhone)
+  requestCode;
 
   /// Moves the account; returns an Arabic error or null (then signs out).
   final Future<String?> Function(String newPhone, String code) confirmCode;
@@ -50,6 +54,10 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
   String? _sentTo;
+
+  /// Said in place of «أرسلنا لك رمز» when the code is not known to have
+  /// arrived (its answer was lost, or it is the one asked a moment ago).
+  String? _notice;
   String? _error;
   bool _busy = false;
 
@@ -75,12 +83,15 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
       _busy = true;
       _error = null;
     });
-    final error = await widget.requestCode(input);
+    final asked = await widget.requestCode(input);
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _error = error;
-      if (error == null) _sentTo = input;
+      _error = asked.error;
+      if (asked.error == null) {
+        _sentTo = input;
+        _notice = asked.notice;
+      }
     });
   }
 
@@ -119,7 +130,9 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
     final current = widget.currentPhone?.trim() ?? '';
     return JourneySheetBody(
       title: 'تغيير رقم الجوال',
-      subtitle: sentTo == null ? null : 'أرسلنا لك رمز على واتساب على $sentTo',
+      subtitle: sentTo == null
+          ? null
+          : _notice ?? 'أرسلنا لك رمز على واتساب على $sentTo',
       bottom: JourneyButton(
         key: const ValueKey('change-phone-submit'),
         label: sentTo == null

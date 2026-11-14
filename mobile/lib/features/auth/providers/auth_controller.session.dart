@@ -356,12 +356,39 @@ mixin _AuthSession on _AuthControllerCore {
     return null;
   }
 
-  Future<String?> requestPhoneChange(String newPhone) async {
+  /// What this phone calls the new number's code in its own note; the
+  /// server has no purpose of this name.
+  static const _phoneChangeCodePurpose = 'PHONE_CHANGE';
+
+  /// Step 1: a code to the number the account moves to. [error] keeps the
+  /// sheet on the number; without it the code step opens, with [notice]
+  /// when the code is not known to have arrived. The request is noted like
+  /// every other code request ([AuthRepository.noteCodeRequest]): a code
+  /// whose answer was lost, or that a second tap within the minute was
+  /// refused for, can still be typed.
+  Future<({String? error, String? notice})> requestPhoneChange(
+    String newPhone,
+  ) async {
+    final note = _authRepository.noteCodeRequest(
+      phone: newPhone.trim(),
+      purpose: _phoneChangeCodePurpose,
+      at: _now(),
+    );
     try {
-      await _authRepository.requestPhoneChange(newPhone);
-      return null;
+      final sent = await _authRepository.requestPhoneChange(newPhone);
+      return (error: null, notice: sent.noticeMessage);
     } on ApiException catch (error) {
-      return phoneChangeErrorMessage(error.serverCode) ?? error.message;
+      final reopened = note.settle(error);
+      if (reopened != null) {
+        return (error: null, notice: reopened.noticeMessage);
+      }
+      return (
+        error: phoneChangeErrorMessage(error.serverCode) ?? error.message,
+        notice: null,
+      );
+    } on FormatException catch (error) {
+      note.settle(error);
+      rethrow;
     }
   }
 
@@ -374,6 +401,8 @@ mixin _AuthSession on _AuthControllerCore {
     } on ApiException catch (error) {
       return phoneChangeErrorMessage(error.serverCode) ?? error.message;
     }
+    // The server took the code: nothing reopens it again.
+    unawaited(_authRepository.forgetCodeRequest());
     // The same account under a new number: what it had not sent stays for
     // it (C58), as the sheet promises («خطتك ومشاركينك يبقون مثل ما هم»).
     // It used to be wiped like a chosen sign-out (RA-MO-134).

@@ -10,8 +10,10 @@ import '../../../core/network/api_client.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../data/auth_repository.dart';
+import '../models/auth_otp.dart';
 import '../providers/auth_controller.dart';
 import '../utils/application_password_policy.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -420,30 +422,41 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _errorMessage = null;
       _errorCode = null;
     });
+    final repository = context.read<AuthRepository>();
+    final phone = _phoneController.text.trim();
+    CodeRequestNote? note;
+    OtpRequestResult? result;
     try {
-      final result = await context.read<AuthRepository>().requestPasswordReset(
-        phone: _phoneController.text,
+      // Noted before it is sent, as every code request is: a code that
+      // reached WhatsApp can still be typed when its answer did not arrive
+      // ([CodeRequestNote.settle]).
+      note = repository.noteCodeRequest(
+        phone: phone,
+        purpose: 'RESET_PASSWORD',
+        at: appNow(),
       );
-      if (!mounted) return;
-      _otpNoticeMessage = result.noticeMessage;
-      onSuccess();
-      _startResendCooldown();
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.isNetworkFailure
-            ? 'ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.'
-            : error.message;
-        _errorCode = error.serverCode;
-      });
-    } on Object {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'ما قدرنا نرسل الرمز. جرّب مرة ثانية.';
-      });
+      result = await repository.requestPasswordReset(phone: phone);
+    } on Object catch (error) {
+      result = note?.settle(error);
+      if (result == null) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = switch (error) {
+            ApiException(isNetworkFailure: true) =>
+              'ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.',
+            ApiException(:final message) => message,
+            _ => 'ما قدرنا نرسل الرمز. جرّب مرة ثانية.',
+          };
+          _errorCode = error is ApiException ? error.serverCode : null;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+    if (result == null || !mounted) return;
+    _otpNoticeMessage = result.noticeMessage;
+    onSuccess();
+    _startResendCooldown();
   }
 
   /// «الرمز» only collects the six digits; the server checks them with the
@@ -467,12 +480,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _errorMessage = null;
       _errorCode = null;
     });
+    final repository = context.read<AuthRepository>();
     try {
-      await context.read<AuthRepository>().confirmPasswordReset(
+      await repository.confirmPasswordReset(
         phone: _phoneController.text,
         code: _codeController.text.trim(),
         newPassword: _passwordController.text,
       );
+      // The server took the code: nothing reopens it again (RA-MO-308).
+      unawaited(repository.forgetCodeRequest());
       if (!mounted) return;
       _resendTimer?.cancel();
       setState(() => _step = _ResetStep.done);

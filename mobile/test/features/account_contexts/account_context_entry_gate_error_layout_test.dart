@@ -46,6 +46,12 @@ void main() {
       ),
     );
     await tester.pump();
+    // The gate first tries the read again by itself; the card is what shows
+    // once those tries failed too.
+    for (final delay in AccountContextEntryGate.automaticRetryDelays) {
+      await tester.pump(delay);
+      await tester.pump();
+    }
 
     final card = find.byType(AarastErrorState);
     expect(card, findsOneWidget);

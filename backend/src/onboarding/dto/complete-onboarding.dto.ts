@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsISO8601,
   IsNotEmpty,
@@ -74,6 +75,14 @@ export class CompleteOnboardingDto {
 
   @IsOptional()
   estimatedBudget?: string | number;
+
+  /**
+   * D114: the groom counts the mahr inside the budget he typed. Omitted is
+   * false; `true` on a plan that does not pay the mahr is refused.
+   */
+  @IsBoolean()
+  @IsOptional()
+  budgetIncludesMahr?: boolean;
 
   @IsString()
   @MaxLength(8)

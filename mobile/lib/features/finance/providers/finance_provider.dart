@@ -490,12 +490,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// [budgetIncludesMahr] (D114): the groom's answer, when he gave one;
+  /// null keeps the saved answer (`MoneySummary.budget.includesMahr`).
   Future<bool> saveBudget({
     required String planId,
     required String? totalBudget,
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    bool? budgetIncludesMahr,
   }) {
     return _submit(planId, () async {
       await _replaceBudget(
@@ -503,6 +506,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         totalBudget: totalBudget,
         currency: currency,
         categories: categories,
+        budgetIncludesMahr: budgetIncludesMahr,
       );
     });
   }
@@ -1162,6 +1166,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    bool? budgetIncludesMahr,
   }) async {
     // The budget is replaced whole: every item not sent is removed on the
     // server. Built from a plan whose money was never read (a weak network:
@@ -1180,6 +1185,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       // D112 (Q-4): the budget this save is made from, as the server told
       // it; null for a picture the phone worked out itself.
       expectedBudgetVersion: _summary.budgetVersion,
+      budgetIncludesMahr: budgetIncludesMahr,
     );
     if (_loadedPlanId != planId || isSessionDisposed) return;
     _summary = result.summary;

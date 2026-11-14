@@ -19,10 +19,13 @@ class ActiveWeddingPlan {
     this.onboardingPath,
     this.persona,
     this.onboardingCompletedAt,
+    this.budgetIncludesMahr = false,
   });
 
   factory ActiveWeddingPlan.fromJson(Map<String, dynamic> json) {
     return ActiveWeddingPlan(
+      // D114: missing (an older server) or null (no money rights) is false.
+      budgetIncludesMahr: json['budgetIncludesMahr'] == true,
       id: json['id'].toString(),
       ownerUserId: json['ownerUserId'].toString(),
       title: json['title'].toString(),
@@ -50,6 +53,7 @@ class ActiveWeddingPlan {
       location: plan.location,
       weddingDate: plan.weddingDate,
       estimatedBudget: plan.estimatedBudget,
+      budgetIncludesMahr: plan.budgetIncludesMahr,
       priorities: plan.priorities,
       onboardingPath: plan.onboardingPath,
       persona: plan.persona,
@@ -68,6 +72,9 @@ class ActiveWeddingPlan {
   final DateTime? weddingDate;
   final List<String> priorities;
   final String? estimatedBudget;
+
+  /// D114: the groom counts the mahr inside [estimatedBudget].
+  final bool budgetIncludesMahr;
   final String currency;
   final String? onboardingPath;
   final String? persona;
@@ -93,6 +100,7 @@ class ActiveWeddingPlan {
       location: location,
       weddingDate: weddingDate,
       estimatedBudget: estimatedBudget,
+      budgetIncludesMahr: budgetIncludesMahr,
       priorities: priorities,
       onboardingPath: onboardingPath,
       persona: persona,

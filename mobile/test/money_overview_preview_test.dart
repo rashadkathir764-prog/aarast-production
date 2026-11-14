@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'features/finance/money_mahr_in_budget_test.dart' show ownerPlan;
 import 'support/preview_fonts.dart';
 
 const _planId = 'plan-money-preview';
@@ -99,12 +100,45 @@ void main() {
     // D102: the root opens on «الملخص», which leads with what is on the
     // owner. (The old root's «دفعة متأخرة» card is gone with it.)
     expect(find.text('الملخص'), findsOneWidget);
-    expect(find.text('عليك من العرس'), findsOneWidget);
+    // D114: his share holds the mahr; never called the wedding's.
+    expect(find.text('باقي عليك'), findsOneWidget);
     await expectLater(
       find.byType(MoneyOverviewScreen),
       matchesGoldenFile('goldens/money_overview.png'),
     );
   });
+
+  // D114: the owner's own plan, the top card in both modes.
+  for (final inside in [true, false]) {
+    testWidgets('money — owner\'s top card, mahr '
+        '${inside ? 'inside' : 'outside'} the budget (390)', (tester) async {
+      tester.view.physicalSize = const Size(390, 1100);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<FinanceProvider>(
+          create: (_) => FinanceProvider(_OwnerPlanApi(inside)),
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            home: const Directionality(
+              textDirection: TextDirection.rtl,
+              child: MoneyOverviewScreen(weddingPlanId: _planId),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MoneyOverviewScreen),
+        matchesGoldenFile(
+          'goldens/money_overview_mahr_${inside ? 'inside' : 'outside'}.png',
+        ),
+      );
+    });
+  }
 
   testWidgets('money — budget category action (420)', (tester) async {
     tester.view.physicalSize = const Size(420, 900);
@@ -140,6 +174,17 @@ void main() {
       matchesGoldenFile('goldens/money_budget_category_action.png'),
     );
   });
+}
+
+/// D114: the owner's plan ([ownerPlan]); its lists are the preview's.
+class _OwnerPlanApi extends _FakeFinanceApi {
+  _OwnerPlanApi(this.inside);
+
+  final bool inside;
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async =>
+      ownerPlan(inside: inside);
 }
 
 class _FakeFinanceApi extends FinanceApi {

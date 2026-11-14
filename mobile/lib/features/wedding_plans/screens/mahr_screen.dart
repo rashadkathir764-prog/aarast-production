@@ -44,6 +44,38 @@ class _MahrScreenState extends State<MahrScreen> {
   bool get _isLocalPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
+  /// D114: a plan kept on the phone holds the groom's answer in its draft.
+  bool _draftInside = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // D114: the help says where the groom's mahr counts, so the plan's
+    // money (or its draft, on the phone) is read when it was not yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (_isLocalPlan) {
+        final draft = await context.read<GuestOnboardingStorage>().loadDraft();
+        if (mounted && draft != null) {
+          setState(() => _draftInside = draft.mahrInsideBudget);
+        }
+        return;
+      }
+      final finance = context.read<FinanceProvider>();
+      if (finance.loadedPlanId != widget.weddingPlanId && !finance.isLoading) {
+        await finance.loadMoney(widget.weddingPlanId);
+      }
+    });
+  }
+
+  /// D114: the groom's budget holds the mahr.
+  bool _inside(BuildContext context) {
+    if (_isLocalPlan) return _draftInside;
+    final finance = context.watch<FinanceProvider>();
+    return finance.loadedPlanId == widget.weddingPlanId &&
+        finance.summary.budget.includesMahr;
+  }
+
   @override
   void dispose() {
     _total.dispose();
@@ -122,6 +154,10 @@ class _MahrScreenState extends State<MahrScreen> {
   Widget build(BuildContext context) {
     // The plan's side: the groom's plan pays it, the bride's receives it.
     final pays = !context.journeyProfile.isBride;
+    // D114: in the home step's own words.
+    final where = _inside(context)
+        ? 'نحسبه من ميزانيتك، مثل ما اخترت.'
+        : 'نحسبه لحاله، برا ميزانية العرس.';
     return AarastScreenFrame(
       maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
@@ -131,8 +167,8 @@ class _MahrScreenState extends State<MahrScreen> {
         question: 'اتفقتوا على المهر؟',
         help: pays
             ? context.say(
-                'اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
-                'اللي بتسلّمينه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
+                'اللي بتسلّمه لأهل العروسة. $where ونذكرك بموعد تسليمه.',
+                'اللي بتسلّمينه لأهل العروسة. $where ونذكرك بموعد تسليمه.',
               )
             : context.say(
                 'اللي بتستلمه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.',

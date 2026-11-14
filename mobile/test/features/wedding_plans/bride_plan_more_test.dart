@@ -48,7 +48,8 @@ Widget _details() => PlanDetailsView(
   ),
   budgetTotal: '3000000.00',
   onBack: () {},
-  onSave: ({title, firstDay, budgetTotal, city}) async => true,
+  onSave: ({title, firstDay, budgetTotal, city, budgetIncludesMahr}) async =>
+      true,
   onChangeDate: () {},
   onArchive: () {},
 );

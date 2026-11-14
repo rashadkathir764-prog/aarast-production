@@ -151,6 +151,15 @@ const WORDING: Readonly<Record<string, Wording>> = {
     code: 'FINANCE_ALLOCATIONS_EXCEED_BUDGET',
     ar: 'مجموع المخصص للبنود أكبر من الميزانية العامة.',
   },
+  // D114.
+  'Category allocations cannot exceed what the budget leaves after the mahr': {
+    code: 'FINANCE_ALLOCATIONS_EXCEED_BUDGET_AFTER_MAHR',
+    ar: 'المهر داخل الميزانية، ومجموع المخصص للبنود أكبر من اللي يبقى منها بعده.',
+  },
+  'Only the plan that pays the mahr can count it in its budget': {
+    code: 'FINANCE_MAHR_BUDGET_PAYER_ONLY',
+    ar: 'المهر يدخل في الميزانية في خطة العريس بس، لأنه هو اللي يدفعه.',
+  },
   'Set the general budget before allocating money to categories': {
     code: 'FINANCE_BUDGET_REQUIRED',
     ar: 'حدّد الميزانية العامة أول، بعدين وزّعها على البنود.',

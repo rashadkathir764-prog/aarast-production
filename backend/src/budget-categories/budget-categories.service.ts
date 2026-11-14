@@ -27,7 +27,11 @@ import {
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
-import { allocationWithinBudgetViolation } from "../modules/finance/domain/budget-allocation-policy";
+import {
+  allocationRoomViolation,
+  allocationWithinBudgetViolation,
+} from "../modules/finance/domain/budget-allocation-policy";
+import { mahrCountsInBudget } from "../modules/finance/domain/mahr-policy";
 import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import {
   runRetryableTransaction,
@@ -40,6 +44,7 @@ import {
   deleteBudgetCategory,
   findBudgetCategory,
   listBudgetCategories,
+  readMahrExpectedCost,
   setBudgetCategorySuggestion,
   sumOtherBudgetCategoryAllocations,
   updateBudgetCategory,
@@ -108,7 +113,7 @@ export class BudgetCategoriesService {
         await this.assertAllocationFits(
           tx,
           weddingPlanId,
-          context.plan.estimatedBudget,
+          context.plan,
           allocation,
         );
         const category = await createBudgetCategory(
@@ -216,18 +221,20 @@ export class BudgetCategoriesService {
             ? locked.allocatedAmount
             : this.optionalAllocation(dto.allocatedAmount);
         if (locked.kind === BudgetCategoryKind.MAHR && allocation !== null) {
-          // C1: the mahr is outside the wedding budget.
+          // C1: the mahr's amount is its agreement, never a share given to
+          // it from the budget; so too when the plan counts it in the budget
+          // (D114), which is why the words do not say «خارج الميزانية».
           throw new BadRequestException({
             code: "MAHR_OUTSIDE_BUDGET",
-            message: "المهر خارج ميزانية العرس، فما ينحط له مبلغ من الميزانية.",
+            message: "المهر مبلغه من اتفاقه، فما ينحط له مخصص من الميزانية.",
           });
         }
         await this.assertAllocationFits(
           tx,
           locked.weddingPlanId,
-          context.plan.estimatedBudget,
+          context.plan,
           allocation,
-          id,
+          locked,
         );
         const name =
           dto.name === undefined
@@ -413,19 +420,37 @@ export class BudgetCategoriesService {
   private async assertAllocationFits(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
-    totalBudget: Prisma.Decimal | null,
+    plan: {
+      estimatedBudget: Prisma.Decimal | null;
+      persona: string | null;
+      budgetIncludesMahr: boolean;
+    },
     allocation: Prisma.Decimal | null,
-    excludeId?: string,
+    existing?: { id: string; allocatedAmount: Prisma.Decimal | null },
   ) {
+    const totalBudget = plan.estimatedBudget;
     if (allocation?.gt(0) && totalBudget === null) {
       throw new BadRequestException(
         "Set the general budget before allocating money to categories",
       );
     }
-    const allocated = await sumOtherBudgetCategoryAllocations(tx, weddingPlanId, excludeId);
-    const sum = (allocated ?? new Prisma.Decimal(0)).plus(
-      allocation ?? 0,
-    );
+    const others =
+      (await sumOtherBudgetCategoryAllocations(tx, weddingPlanId, existing?.id)) ??
+      new Prisma.Decimal(0);
+    const sum = others.plus(allocation ?? 0);
+    // D114: with the mahr inside the budget, the items are not given what
+    // it takes; an item that is given no more than it had stays editable.
+    if (mahrCountsInBudget(plan.persona, plan.budgetIncludesMahr)) {
+      raiseFinanceViolation(
+        allocationRoomViolation(
+          totalBudget,
+          await readMahrExpectedCost(tx, weddingPlanId),
+          sum,
+          others.plus(existing?.allocatedAmount ?? 0),
+        ),
+      );
+      return;
+    }
     raiseFinanceViolation(allocationWithinBudgetViolation(totalBudget, sum));
   }
 

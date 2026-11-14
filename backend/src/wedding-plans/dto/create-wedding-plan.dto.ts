@@ -2,6 +2,7 @@ import { OnboardingPath, WeddingPersona } from '@prisma/client';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsObject,
@@ -41,6 +42,14 @@ export class CreateWeddingPlanDto {
 
   @IsOptional()
   estimatedBudget?: string | number;
+
+  /**
+   * D114: the groom counts the mahr inside the budget. Omitted is false;
+   * `true` on a plan that does not pay the mahr is refused.
+   */
+  @IsBoolean()
+  @IsOptional()
+  budgetIncludesMahr?: boolean;
 
   @IsString()
   @MaxLength(8)

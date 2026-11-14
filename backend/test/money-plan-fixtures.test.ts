@@ -248,6 +248,117 @@ const SCENARIOS: Scenario[] = [
       sources: [source("savings", "SAVINGS", "500")],
     },
   },
+  // D114: the owner's real plan (a 7,000,000 budget, a 2,000,000 mahr of
+  // which 500,000 handed over), with the mahr outside the budget and then
+  // inside it. Everything outside the budget is the same in both.
+  {
+    name: "owner's numbers, mahr outside",
+    input: {
+      today: "2026-11-14",
+      budget: "7000000",
+      mahrPays: true,
+      budgetIncludesMahr: false,
+      items: [item("mahr", { kind: "MAHR" })],
+      costs: [cost("mahr", "2000000", { paid: "500000", payer: null })],
+      schedules: [],
+      sources: [source("savings", "SAVINGS", "3000000")],
+    },
+  },
+  {
+    name: "owner's numbers, mahr inside",
+    input: {
+      today: "2026-11-14",
+      budget: "7000000",
+      mahrPays: true,
+      budgetIncludesMahr: true,
+      items: [item("mahr", { kind: "MAHR" })],
+      costs: [cost("mahr", "2000000", { paid: "500000", payer: null })],
+      schedules: [],
+      sources: [source("savings", "SAVINGS", "3000000")],
+    },
+  },
+  {
+    // With the mahr inside, the hall and the food's estimate cross the budget.
+    name: "mahr inside, over the budget",
+    input: {
+      today: "2026-11-14",
+      budget: "7000000",
+      mahrPays: true,
+      budgetIncludesMahr: true,
+      items: [
+        item("hall"),
+        item("food", { estimatedAmount: "2500000" }),
+        item("mahr", { kind: "MAHR" }),
+      ],
+      costs: [
+        cost("hall", "3000000", { paid: "1000000" }),
+        cost("mahr", "2000000", { paid: "500000", payer: null }),
+      ],
+      schedules: [schedule("h1", "hall", "2000000", "2026-12-20")],
+      sources: [source("savings", "SAVINGS", "3000000")],
+    },
+  },
+  {
+    // Allocations that fitted the budget no longer fit once the mahr is in it.
+    name: "mahr inside, allocations no longer fit",
+    input: {
+      today: "2026-11-14",
+      budget: "7000000",
+      mahrPays: true,
+      budgetIncludesMahr: true,
+      items: [
+        item("hall", { allocatedAmount: "4000000" }),
+        item("food", { allocatedAmount: "2000000" }),
+        item("mahr", { kind: "MAHR" }),
+      ],
+      costs: [cost("mahr", "2000000", { paid: "500000", payer: null })],
+      schedules: [],
+      sources: null,
+    },
+  },
+  {
+    // The bride's plan receives the mahr: the choice sent means nothing.
+    name: "bride, mahr inside sent",
+    input: {
+      today: "2026-11-14",
+      budget: "4000",
+      mahrPays: false,
+      budgetIncludesMahr: true,
+      items: [
+        item("dress", { estimatedAmount: "1000" }),
+        item("mahr", { kind: "MAHR", estimatedAmount: "500" }),
+      ],
+      costs: [cost("dress", "400", { payer: "BRIDE", paid: "100" })],
+      schedules: [],
+      sources: null,
+    },
+  },
+  // A groom's plan kept on the phone: its mahr from the plan's questions
+  // goes in as the account makes it (`_addDraftMahr`), outside and inside.
+  ...[false, true].map((inside) => ({
+    name: `phone plan, draft mahr ${inside ? "inside" : "outside"}`,
+    input: {
+      today: "2026-11-14",
+      budget: "7000000",
+      mahrPays: true,
+      budgetIncludesMahr: inside,
+      items: [item("hall", { estimatedAmount: "1500000" }), item("local-draft-mahr", { kind: "MAHR" })],
+      costs: [
+        cost("hall", "1000000", { paid: "250000", estimateCover: "PART", estimatePart: "1000000" }),
+        cost("local-draft-mahr-agreement", "2000000", {
+          budgetCategoryId: "local-draft-mahr",
+          title: "المهر",
+          paid: "500000",
+          payer: null,
+          estimateCover: null,
+        }),
+      ],
+      schedules: [
+        schedule("local-draft-mahr-date", "local-draft-mahr-agreement", "1500000", "2027-01-10"),
+      ],
+      sources: [],
+    },
+  })),
 ];
 
 const day = (value: unknown) =>
@@ -323,6 +434,7 @@ function answer(input: Json) {
     zero,
     budget: decOrNull(input.budget),
     mahrPays: input.mahrPays === true,
+    budgetIncludesMahr: input.budgetIncludesMahr === true,
     items,
     costs,
     schedules: list(input.schedules).map((row) => ({
@@ -386,6 +498,60 @@ test("the fixtures cover every verdict and the cases the phone must agree on", (
   assert.ok(
     ((groom.coverage as Json).pledgesIgnored as Json[]).some((pledge) => pledge.reason === "LATE"),
   );
+});
+
+test("D114: the owner's numbers, the mahr outside and inside the budget", () => {
+  const byName = new Map(
+    fixtures().scenarios.map((scenario) => [scenario.name, scenario.answer as Json]),
+  );
+  const figures = (name: string) => {
+    const answer = byName.get(name) as Json;
+    const budget = answer.budget as Json;
+    const expected = answer.expected as Json;
+    return {
+      includesMahr: budget.includesMahr,
+      confirmedCost: budget.confirmedCost,
+      paid: budget.paid,
+      outstanding: budget.outstanding,
+      remaining: budget.remaining,
+      unallocated: budget.unallocated,
+      count: budget.count,
+      budgetLeft: expected.budgetLeft,
+      mahr: (expected.mahr as Json).expected,
+    };
+  };
+  assert.deepEqual(figures("owner's numbers, mahr outside"), {
+    includesMahr: false,
+    confirmedCost: "0",
+    paid: "0",
+    outstanding: "0",
+    remaining: "7000000",
+    unallocated: "7000000",
+    count: 0,
+    budgetLeft: "7000000",
+    mahr: "2000000",
+  });
+  assert.deepEqual(figures("owner's numbers, mahr inside"), {
+    includesMahr: true,
+    confirmedCost: "2000000",
+    paid: "500000",
+    outstanding: "1500000",
+    remaining: "5000000",
+    unallocated: "5000000",
+    count: 0,
+    budgetLeft: "5000000",
+    mahr: "2000000",
+  });
+  const outside = byName.get("owner's numbers, mahr outside") as Json;
+  const inside = byName.get("owner's numbers, mahr inside") as Json;
+  for (const key of ["outstanding", "obligations", "duesByMonth", "coverage", "family"]) {
+    assert.deepEqual(inside[key], outside[key], key);
+  }
+  assert.equal(figures("mahr inside, over the budget").budgetLeft, "-500000");
+  assert.equal(figures("mahr inside, allocations no longer fit").unallocated, "-1000000");
+  assert.equal(figures("bride, mahr inside sent").includesMahr, false);
+  assert.equal(figures("phone plan, draft mahr outside").budgetLeft, "5500000");
+  assert.equal(figures("phone plan, draft mahr inside").budgetLeft, "3500000");
 });
 
 // Review 2026-11-09 (AGENTS.md rule 11, one implementation of each thing):

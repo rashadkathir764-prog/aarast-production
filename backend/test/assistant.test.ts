@@ -92,6 +92,7 @@ test('hidden money and missing market prices are said, never guessed', () => {
     facts({
       money: {
         budgetTotal: '20000.00',
+        mahrInsideBudget: false,
         committedTotal: '3000.00',
         paidTotal: '1000.00',
         paidByOwner: '1000.00',
@@ -117,6 +118,7 @@ const plan = {
   currency: 'YER',
   priorities: [],
   estimatedBudget: new Prisma.Decimal('20000'),
+  budgetIncludesMahr: false,
 };
 
 /** Finance's money picture with nothing in it. */
@@ -329,12 +331,50 @@ test('the assistant reads the money the app shows: the budget is the wedding\'s,
       weddingPlanId: 'plan-1',
       persona: 'GROOM',
       totalBudget: plan.estimatedBudget,
+      // D114: the plan's own choice goes to finance with the budget.
+      budgetIncludesMahr: false,
       scope: null,
       readerUserId: 'user-1',
       // The bride's mahr is her funding: only the owner's read carries it.
       fundingVisible: true,
     },
   ]);
+});
+
+// D114: the owner's own plan from the field notes (budget 7 million, mahr 2
+// million with 500 thousand handed over, nothing else agreed) with the mahr
+// counted in the budget. The assistant must not tell him it is outside.
+test('the assistant says the mahr is inside the budget when the plan counts it there (D114)', async () => {
+  const money = {
+    budget: { total: '7000000', confirmedCost: '2000000', paid: '500000', includesMahr: true },
+    costs: { total: '2000000', paid: '500000', paidByOwner: '500000' },
+    mahr: {
+      side: 'PAYS',
+      total: '2000000',
+      settled: '500000',
+      remaining: '1500000',
+      nextDueAt: null,
+      complete: false,
+    },
+    payers: [{ payer: 'GROOM', payerName: null, ownerMoney: true, paid: '500000' }],
+    categories: [],
+    expected: {
+      wedding: { agreed: '0', estimateLeft: '0', expected: '0', unknownCount: 0 },
+      mahr: { agreed: '2000000', estimateLeft: '0', expected: '2000000', unknownCount: 0 },
+      total: '2000000',
+      budgetLeft: '5000000',
+    },
+    outstanding: { total: '1500000', owner: '1500000', ownerMahr: '1500000', others: '0' },
+    coverage: null,
+  };
+  const { service, calls } = serviceFor({ money });
+  await service.ask(user, 'plan-1', ask);
+  const text = calls.asked[0];
+  assert.match(text, /الميزانية الإجمالية \(المهر داخلها باختيار صاحب الخطة\): 7000000.00/);
+  assert.match(text, /الملتزم به من الميزانية \(والمهر منه\): 2000000.00، المدفوع منه: 500000.00/);
+  assert.match(text, /المهر \(اتفاق العريس مع أهل العروسة، محسوب من الميزانية\): 2000000.00، سلّم منه 500000.00، الباقي 1500000.00/);
+  assert.match(text, /يبقى من الميزانية بعد المهر 5000000.00/);
+  assert.doesNotMatch(text, /خارج/);
 });
 
 test('a partner\'s assistant never reads the owner\'s funding (the bride\'s mahr included)', async () => {

@@ -195,7 +195,10 @@ void main() {
         ),
       );
 
-      expect(find.text('عليك من العرس'), findsOneWidget);
+      // D114: his share holds the mahr, so it is never called the
+      // wedding's («عليك من العرس» before).
+      expect(find.text('باقي عليك'), findsOneWidget);
+      expect(find.textContaining('من العرس'), findsNothing);
       expect(
         find.byKey(const ValueKey('dashboard-money-verdict')),
         findsOneWidget,
@@ -222,18 +225,25 @@ void main() {
     });
   });
 
+  // D79's «مع المهر» became D114's: the agreed total still holds the mahr;
+  // with the mahr outside the budget (every plan before D114) it has its
+  // own line saying so, and «منها المهر» is said when the budget holds it.
   group('D79 the mahr inside the agreed total', () {
-    testWidgets('a groom with his mahr reads «مع المهر»', (tester) async {
+    testWidgets('a groom with his mahr reads where it stands', (tester) async {
       await _pump(
         tester,
         _summary(agreed: '3000000', paid: '250000', outstanding: '2750000'),
         mahr: _groomMahr,
       );
 
-      // The side column is narrow: the figure keeps its line, and «مع
-      // المهر» is its own short line under it, never a three-line wrap.
       expect(find.text('اتفقت على 3$_nbspمليون'), findsOneWidget);
-      expect(find.text('مع المهر'), findsOneWidget);
+      expect(
+        find.text(
+          'المهر 3$_nbspمليون، برّا الميزانية. '
+          'سلّمت 2$_nbspمليون وباقي 1$_nbspمليون.',
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -252,7 +262,13 @@ void main() {
       );
 
       expect(find.text('اتفق العريس على 3$_nbspمليون'), findsOneWidget);
-      expect(find.text('مع المهر'), findsOneWidget);
+      expect(
+        find.text(
+          'المهر 3$_nbspمليون، برّا الميزانية. '
+          'العريس سلّم 2$_nbspمليون وباقي 1$_nbspمليون.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('no mahr yet: no «مع المهر»', (tester) async {
@@ -283,6 +299,202 @@ void main() {
 
       expect(find.text('اتفقتِ على 3$_nbspمليون'), findsOneWidget);
       expect(find.textContaining('مع المهر'), findsNothing);
+    });
+  });
+
+  // D114, the owner's own plan (2026-11-14): budget 7 million, mahr 2
+  // million of which 500 thousand handed over, nothing else agreed. The home
+  // hid the budget once anything was agreed, and «عليك من العرس» held a
+  // figure that was all mahr.
+  group('D114 the budget is always said, the mahr in its place', () {
+    DashboardSummary plan({
+      required bool inside,
+      bool over = false,
+      String? overBy,
+      String budget = '7000000',
+    }) {
+      return DashboardSummary.fromJson({
+        'planId': 'plan-1',
+        'title': 'خطة',
+        'currency': 'YER',
+        'status': 'PLANNING',
+        'progressPercentage': 0,
+        'totalTasks': 0,
+        'completedTasks': 0,
+        'overdueTasks': 0,
+        'todayTasks': 0,
+        'guestCount': 40,
+        'venueSecured': true,
+        'confirmedGuests': 0,
+        'providerCount': 0,
+        'quoteRequestsCount': 0,
+        'unreadNotificationsCount': 0,
+        'nextBestActions': const [],
+        'budgetIncludesMahr': inside,
+        'moneySummary': {
+          'totalBudget': budget,
+          'confirmedCost': '2000000',
+          'paid': '500000',
+          'paidByOwner': '500000',
+          'paidByOthers': '0',
+          'outstanding': '1500000',
+          'remainingBudget': inside ? '5000000' : '7000000',
+          'overBudget': over,
+        },
+        'financialWarnings': [
+          if (over)
+            {
+              'type': 'BUDGET_EXCEEDED',
+              'severity': 'DANGER',
+              'message': 'تكلفة العرس المتوقعة فاتت الميزانية.',
+              'amount': ?overBy,
+            },
+        ],
+        'permissions': {
+          'isOwner': true,
+          'canViewMoney': true,
+          'canManageTasks': true,
+          'canManageMoney': true,
+          'canManagePlan': true,
+        },
+      });
+    }
+
+    const mahr = DashboardHomeMahr(
+      side: MahrHomeSide.pays,
+      recorded: true,
+      total: 2000000,
+      settled: 500000,
+    );
+    // No source of money yet: what is on him is known, the money in is not.
+    const funding = DashboardHomeFunding(
+      inHand: 0,
+      pledged: 0,
+      shortfall: null,
+      sourcesCount: 0,
+      ownerLeft: 1500000,
+    );
+    final card = find.byKey(const ValueKey('aarast-dashboard-money-card'));
+    Finder inCard(String text) =>
+        find.descendant(of: card, matching: find.text(text));
+
+    testWidgets('inside: the budget, what is left of it, the mahr part of '
+        'what he agreed', (tester) async {
+      await _pump(tester, plan(inside: true), mahr: mahr, funding: funding);
+
+      expect(inCard('باقي عليك'), findsOneWidget);
+      expect(inCard('1.5 مليون ر.ي'), findsOneWidget);
+      expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
+      expect(inCard('باقي منها 5$_nbspمليون'), findsOneWidget);
+      expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
+      expect(inCard('منها المهر 2$_nbspمليون'), findsOneWidget);
+      expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
+      // No figure that is all mahr is called the wedding's.
+      expect(
+        find.descendant(of: card, matching: find.textContaining('العرس')),
+        findsNothing,
+      );
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      final label = tester.getSemantics(card).label;
+      expect(label, contains('الميزانية 7$_nbspمليون'));
+      expect(label, contains('باقي منها 5$_nbspمليون'));
+      expect(label, contains('منها المهر 2$_nbspمليون'));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('on its own: the budget untouched, the mahr its own line', (
+      tester,
+    ) async {
+      await _pump(tester, plan(inside: false), mahr: mahr, funding: funding);
+
+      expect(inCard('باقي عليك'), findsOneWidget);
+      expect(inCard('1.5 مليون ر.ي'), findsOneWidget);
+      expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
+      expect(inCard('باقي منها 7$_nbspمليون'), findsOneWidget);
+      expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
+      expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
+      expect(find.textContaining('منها المهر'), findsNothing);
+      expect(
+        inCard(
+          'المهر 2$_nbspمليون، برّا الميزانية. '
+          'سلّمت 500$_nbspألف وباقي 1.5$_nbspمليون.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.textContaining('العرس')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('over the budget by the expected cost', (tester) async {
+      await _pump(
+        tester,
+        plan(inside: true, over: true, overBy: '300000'),
+        mahr: mahr,
+        funding: funding,
+      );
+
+      expect(inCard('فوق الميزانية بـ300$_nbspألف'), findsOneWidget);
+      expect(find.textContaining('باقي منها'), findsNothing);
+    });
+
+    testWidgets('a bride\'s plan: her mahr comes in, no line for it', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        plan(inside: false),
+        profile: JourneyProfile.bride,
+        mahr: const DashboardHomeMahr(
+          side: MahrHomeSide.receives,
+          recorded: true,
+          total: 2000000,
+          settled: 500000,
+        ),
+      );
+
+      expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      expect(find.textContaining('منها المهر'), findsNothing);
+    });
+
+    testWidgets('amounts hidden: every figure, the mahr line too', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        plan(inside: false),
+        mahr: mahr,
+        funding: funding,
+        hidden: true,
+      );
+
+      expect(inCard('الميزانية ••••'), findsOneWidget);
+      expect(inCard('باقي منها ••••'), findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.textContaining('مليون')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: card, matching: find.textContaining('ألف')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('320 wide at text scale 1.3, both modes', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      for (final inside in [true, false]) {
+        await _pump(
+          tester,
+          plan(inside: inside),
+          mahr: mahr,
+          funding: funding,
+        );
+        expect(tester.takeException(), isNull, reason: 'inside: $inside');
+      }
     });
   });
 

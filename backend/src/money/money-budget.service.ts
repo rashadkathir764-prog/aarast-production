@@ -9,7 +9,14 @@ import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
-import { budgetAllocationViolation } from "../modules/finance/domain/budget-allocation-policy";
+import {
+  allocationRoomViolation,
+  budgetAllocationViolation,
+} from "../modules/finance/domain/budget-allocation-policy";
+import {
+  budgetIncludesMahrViolation,
+  mahrCountsInBudget,
+} from "../modules/finance/domain/mahr-policy";
 import {
   BUDGET_CHANGED_ELSEWHERE,
   budgetVersionOf,
@@ -54,6 +61,7 @@ import {
   deleteOmittedBudgetCategories,
   findBudgetCategoriesForReplacement,
   listReplacedBudgetCategories,
+  readMahrExpectedCost,
   replaceBudgetCategoryValues,
   temporarilyRekeyBudgetCategory,
 } from '../modules/finance/infrastructure/budget-category.repository';
@@ -136,6 +144,7 @@ export class MoneyBudgetService {
             budgetVersionOf({
               totalBudget: context.plan.estimatedBudget?.toString() ?? null,
               currency: context.plan.currency,
+              budgetIncludesMahr: context.plan.budgetIncludesMahr,
               categories: existing.map((item) => ({
                 id: item.id,
                 name: item.name,
@@ -149,6 +158,30 @@ export class MoneyBudgetService {
             code: BUDGET_CHANGED_ELSEWHERE,
             message: "الميزانية تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
           });
+        }
+        // D114: the mahr inside the budget is the groom's choice only, and
+        // the items are not given what it takes of the budget. An omitted
+        // choice keeps the saved one.
+        raiseFinanceViolation(
+          budgetIncludesMahrViolation(context.plan.persona, dto.budgetIncludesMahr),
+        );
+        if (
+          mahrCountsInBudget(
+            context.plan.persona,
+            dto.budgetIncludesMahr ?? context.plan.budgetIncludesMahr,
+          )
+        ) {
+          raiseFinanceViolation(
+            allocationRoomViolation(
+              totalBudget,
+              await readMahrExpectedCost(tx, weddingPlanId),
+              allocated,
+              existing.reduce(
+                (sum, item) => sum.plus(item.allocatedAmount ?? 0),
+                new Prisma.Decimal(0),
+              ),
+            ),
+          );
         }
         const existingById = new Map(existing.map((item) => [item.id, item]));
         const submittedIds = new Set(
@@ -212,6 +245,7 @@ export class MoneyBudgetService {
           weddingPlanId,
           estimatedBudget: totalBudget,
           currency,
+          budgetIncludesMahr: dto.budgetIncludesMahr,
         });
         const savedCategories = await listReplacedBudgetCategories(
           tx,

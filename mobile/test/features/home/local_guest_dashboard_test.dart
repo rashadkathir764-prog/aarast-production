@@ -102,6 +102,20 @@ void main() {
           'updatedAt': now.toIso8601String(),
         },
       );
+      // D59: the payments ledger the phone writes with every payment, which
+      // the home now reads as the money tab does.
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCostPayments,
+        json: {
+          'id': 'payment-hall',
+          'planId': planId,
+          'weddingPlanId': planId,
+          'costId': 'cost-hall',
+          'amount': '500000',
+          'entryType': 'PAYMENT',
+          'createdAt': now.toIso8601String(),
+        },
+      );
       await database.saveCachedItem(
         table: OfflineTables.cachedPaymentSchedules,
         json: {
@@ -197,7 +211,10 @@ void main() {
         find.byKey(const ValueKey('account-needed-register')),
         findsOneWidget,
       );
-      expect(find.byKey(const ValueKey('account-needed-login')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('account-needed-login')),
+        findsOneWidget,
+      );
     },
   );
 

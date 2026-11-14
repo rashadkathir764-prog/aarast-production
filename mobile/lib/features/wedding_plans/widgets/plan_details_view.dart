@@ -8,7 +8,7 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../finance/finance_api.dart'
-    show MoneyInputFormatter, formatMoneyInputValue;
+    show MahrBudgetChoice, MoneyInputFormatter, formatMoneyInputValue;
 import '../models/wedding_plan.dart';
 
 /// w10 «بيانات الخطة»: the plan's name, its day and the wedding budget.
@@ -28,22 +28,33 @@ class PlanDetailsView extends StatefulWidget {
     this.onChangeDate,
     this.repickStoredDay = false,
     this.onArchive,
+    this.budgetIncludesMahr,
+    this.mahrTotal,
     super.key,
   });
 
   final WeddingPlan plan;
 
-  /// The wedding budget as stored, or null before it is known.
+  /// The budget as stored, or null before it is known.
   final String? budgetTotal;
   final VoidCallback onBack;
 
-  /// Saves what changed: a new name, a first day, a new budget (null for
-  /// what did not change). True once everything saved.
+  /// D114: whether the groom's budget holds his mahr, as saved; null where
+  /// it is not asked (a bride's plan, a reader who may not change it, or
+  /// before the money is read).
+  final bool? budgetIncludesMahr;
+
+  /// The groom's recorded mahr, so the choice speaks in his numbers.
+  final num? mahrTotal;
+
+  /// Saves what changed: a new name, a first day, a new budget, the mahr's
+  /// place in it (null for what did not change). True once everything saved.
   final Future<bool> Function({
     String? title,
     DateTime? firstDay,
     String? budgetTotal,
     String? city,
+    bool? budgetIncludesMahr,
   })
   onSave;
 
@@ -109,8 +120,20 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
   bool get _budgetChanged =>
       _amount(_cleanBudget) != _amount(widget.budgetTotal ?? '');
 
+  /// D114: the answer picked here; null until he picks one.
+  bool? _inside;
+
+  bool get _insideChanged =>
+      _inside != null &&
+      widget.budgetIncludesMahr != null &&
+      _inside != widget.budgetIncludesMahr;
+
   bool get _dirty =>
-      _titleChanged || _budgetChanged || _firstDay != null || _cityChanged;
+      _titleChanged ||
+      _budgetChanged ||
+      _firstDay != null ||
+      _cityChanged ||
+      _insideChanged;
 
   Future<void> _pickFirstDay() async {
     releaseFieldFocus();
@@ -147,11 +170,15 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
           ? (_cleanBudget.isEmpty ? '' : '${_amount(_cleanBudget).round()}')
           : null,
       city: _cityChanged ? _city.text.trim() : null,
+      budgetIncludesMahr: _insideChanged ? _inside : null,
     );
     if (!mounted) return;
     setState(() {
       _saving = false;
-      if (saved) _firstDay = null;
+      if (saved) {
+        _firstDay = null;
+        _inside = null;
+      }
     });
   }
 
@@ -220,9 +247,10 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 ),
               ],
               const SizedBox(height: AarastV3Space.x3),
+              // D114: the mahr's place in it is his choice, under the field.
               JourneyTextField(
                 key: const ValueKey('plan-details-budget'),
-                label: 'ميزانية عرسك (بدون المهر)',
+                label: 'ميزانيتك',
                 hint: 'مثلًا: 3,000,000',
                 controller: _budget,
                 keyboardType: TextInputType.number,
@@ -233,6 +261,18 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                     : null,
                 onChanged: (_) => setState(() {}),
               ),
+              if (widget.budgetIncludesMahr case final saved?) ...[
+                const SizedBox(height: AarastV3Space.x4),
+                MahrBudgetChoice(
+                  inside: _inside ?? saved,
+                  budget: total,
+                  mahr: widget.mahrTotal,
+                  currency: plan.currency,
+                  onChanged: _saving
+                      ? null
+                      : (inside) => setState(() => _inside = inside),
+                ),
+              ],
               if (hasStoredDay) ...[
                 const SizedBox(height: AarastV3Space.x4),
                 JourneyNote(

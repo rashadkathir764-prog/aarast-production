@@ -19,6 +19,11 @@ export interface MoneyPictureQuery {
   persona: string | null;
   /** The owner's budget; null for a reader who may not see it (or none set). */
   totalBudget: Prisma.Decimal | null;
+  /**
+   * D114: the plan's `budgetIncludesMahr`. Counts only where the persona
+   * pays the mahr; omitted is false (the mahr outside the budget, C1).
+   */
+  budgetIncludesMahr?: boolean;
   /** A contributor's own costs and items; null reads the whole plan. */
   scope: {
     costIds: readonly string[];
@@ -40,11 +45,18 @@ export type MoneyWarningType =
   | 'LOAN_REPAYMENT_OVERDUE';
 
 export interface MoneyPicture {
-  /** The wedding budget (C1): WEDDING items only, the mahr outside it. */
+  /**
+   * The wedding budget (C1): WEDDING items, the mahr outside it unless the
+   * groom counts it inside (D114, `includesMahr`).
+   */
   budget: {
     total: string | null;
+    /** D114: the mahr counts against the budget (only on a plan that pays it). */
+    includesMahr: boolean;
     allocated: string;
+    /** The budget less the allocations, and the mahr's expected cost when inside. */
     unallocated: string | null;
+    /** The wedding agreements, and the mahr's when inside (D114). */
     confirmedCost: string;
     paid: string;
     /** D59: of `paid`, what the owner's own money paid. */
@@ -52,6 +64,7 @@ export interface MoneyPicture {
     /** D59: of `paid`, what others paid for the owner. */
     paidByOthers: string;
     outstanding: string;
+    /** The wedding agreements, never the mahr's, in both modes (RA-MO-147). */
     count: number;
     remaining: string | null;
   };
@@ -115,7 +128,10 @@ export interface MoneyPicture {
     mahr: MoneyExpectedTotals;
     /** The whole wedding, the mahr with it. */
     total: string;
-    /** The budget less the wedding items' expected cost; null without a budget. */
+    /**
+     * The budget less the wedding items' expected cost, and the mahr's when
+     * it counts inside the budget (D114); null without a budget.
+     */
     budgetLeft: string | null;
   };
   /** D102: what is left to pay, and on whom. */

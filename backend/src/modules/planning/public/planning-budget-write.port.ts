@@ -8,6 +8,8 @@ export interface UpdateWeddingPlanBudgetInput {
   weddingPlanId: string;
   estimatedBudget: Prisma.Decimal | null;
   currency: string;
+  /** D114: the mahr counts inside the budget; undefined leaves it as it is. */
+  budgetIncludesMahr?: boolean;
 }
 
 export interface PlanningBudgetWritePort {

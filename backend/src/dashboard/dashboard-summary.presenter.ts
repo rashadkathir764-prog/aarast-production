@@ -69,6 +69,7 @@ export function buildImportantItems({
   planPersona,
   mahrRecorded = null,
   weddingCostsCount = null,
+  mahrInsideBudget = false,
 }: {
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
@@ -107,6 +108,8 @@ export function buildImportantItems({
    * who does not see the plan's money.
    */
   weddingCostsCount?: number | null;
+  /** D114: the groom chose to count the mahr in his budget. */
+  mahrInsideBudget?: boolean;
 }): DashboardNextStepResponse[] {
   const items: DashboardNextStepResponse[] = [];
   const say = (masculine: string, feminine: string) =>
@@ -271,7 +274,9 @@ export function buildImportantItems({
         weddingPlanId,
         "RECORD_MAHR",
         "اتفقتوا على المهر؟",
-        "نحسبه لحاله، برا ميزانية العرس.",
+        mahrInsideBudget
+          ? "نحسبه من ميزانيتك، مثل ما اخترت."
+          : "نحسبه لحاله، برا ميزانية العرس.",
         say("سجّل المهر", "سجّلي المهر"),
         `/wedding-plans/${weddingPlanId}/money/mahr`,
       ),

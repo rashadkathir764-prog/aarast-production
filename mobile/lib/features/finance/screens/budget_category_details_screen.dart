@@ -332,7 +332,10 @@ class _BudgetCategoryDetailsScreenState
               subtitle: category == null
                   ? null
                   : category.isMahr
-                  ? 'برا الميزانية'
+                  // D114: where the groom put it.
+                  ? (summary.budget.includesMahr
+                        ? 'من الميزانية'
+                        : 'برا الميزانية')
                   : costs.isEmpty
                   ? context.ownerDid(
                       'ما اتفقت بعد',

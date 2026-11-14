@@ -98,6 +98,7 @@ class DashboardSummary {
     this.bookedServices = DashboardBookedServices.none,
     this.essentials = const [],
     this.budgetItemsCount,
+    this.budgetIncludesMahr = false,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -224,6 +225,8 @@ class DashboardSummary {
       budgetItemsCount: json['budgetItemsCount'] is num
           ? (json['budgetItemsCount'] as num).toInt()
           : null,
+      // D114: beside the closed summary contract; missing is false.
+      budgetIncludesMahr: json['budgetIncludesMahr'] == true,
       essentials: [
         for (final item
             in (json['essentials'] is List
@@ -311,6 +314,11 @@ class DashboardSummary {
   /// before the server sends it.
   final int? budgetItemsCount;
 
+  /// D114: the budget figures ([budgetTotal], `moneySummary.remainingBudget`
+  /// and `overBudget`) hold the groom's mahr inside the budget. False on a
+  /// plan that receives it, without money rights, and from an older server.
+  final bool budgetIncludesMahr;
+
   /// Whose plan it is: `GROOM` or `BRIDE`. A plan kept on the phone has it
   /// only here, so the starters read it from the summary.
   final String? persona;
@@ -391,6 +399,7 @@ class DashboardSummary {
       bookedServices: bookedServices,
       essentials: essentials,
       budgetItemsCount: budgetItemsCount,
+      budgetIncludesMahr: budgetIncludesMahr,
     );
   }
 
@@ -427,6 +436,7 @@ class DashboardSummary {
       location: location,
       weddingDate: weddingDate,
       estimatedBudget: budgetTotal,
+      budgetIncludesMahr: budgetIncludesMahr,
       currency: currency,
       status: status,
       createdAt: now,

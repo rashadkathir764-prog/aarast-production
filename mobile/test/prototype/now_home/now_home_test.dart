@@ -54,12 +54,18 @@ Future<void> _shot(
   String name,
   Widget home, {
   double h = 844,
+  double w = 390,
+  double textScale = 1,
   List<SingleChildWidget> providers = const [],
   Future<void> Function()? act,
 }) async {
-  tester.view.physicalSize = Size(390 * 2, h * 2);
+  tester.view.physicalSize = Size(w * 2, h * 2);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
+  if (textScale != 1) {
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  }
   final app = MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light(),
@@ -247,6 +253,46 @@ final _active = DashboardSummary.fromJson(
       'dueDate': DateTime(2026, 10, 25).toIso8601String(),
     },
   ),
+);
+
+/// D114, the owner's own plan (2026-11-14): budget 7 million, mahr 2
+/// million with 500 thousand handed over, nothing else agreed; the budget
+/// holds the mahr when [inside].
+DashboardSummary _ownerPlan({required bool inside}) {
+  final json = _base(
+    days: 93,
+    date: _wedding,
+    progress: 10,
+    budget: '7000000',
+    confirmedCost: '2000000',
+    paid: '500000',
+    outstanding: '1500000',
+  );
+  return DashboardSummary.fromJson({
+    ...json,
+    'budgetIncludesMahr': inside,
+    'moneySummary': {
+      ...json['moneySummary'] as Map<String, dynamic>,
+      'paidByOwner': '500000',
+      'paidByOthers': '0',
+      'remainingBudget': inside ? '5000000' : '7000000',
+    },
+  });
+}
+
+const _ownerMahr = DashboardHomeMahr(
+  side: MahrHomeSide.pays,
+  recorded: true,
+  total: 2000000,
+  settled: 500000,
+);
+
+const _ownerFunding = DashboardHomeFunding(
+  inHand: 0,
+  pledged: 0,
+  shortfall: null,
+  sourcesCount: 0,
+  ownerLeft: 1500000,
 );
 
 DashboardSummary _stage(int days, DateTime? date) => DashboardSummary.fromJson(
@@ -438,6 +484,7 @@ void main() {
     Widget? assistant,
     PlanEventsView? events,
     DashboardHomeFunding? funding,
+    DashboardHomeMahr? mahr,
     DashboardAfterWedding? afterWedding,
     VoidCallback? onOpenReviews,
   }) => AarastDashboardView(
@@ -446,6 +493,7 @@ void main() {
     bottomPadding: 158,
     now: now,
     funding: funding,
+    mahr: mahr,
     afterWedding: afterWedding,
     onOpenReviews: onOpenReviews,
     assistantEntry: assistant,
@@ -576,6 +624,33 @@ void main() {
       h: 1000,
     );
   });
+
+  // D114: the owner's plan in both modes, and the inside mode on a 320
+  // phone at text scale 1.3.
+  for (final (name, inside, w, scale) in [
+    ('home_mahr_inside', true, 390.0, 1.0),
+    ('home_mahr_outside', false, 390.0, 1.0),
+    ('home_mahr_inside_320_13', true, 320.0, 1.3),
+  ]) {
+    testWidgets(name, (tester) async {
+      await _shot(
+        tester,
+        name,
+        shell(
+          dash(
+            _ownerPlan(inside: inside),
+            now,
+            funding: _ownerFunding,
+            mahr: _ownerMahr,
+          ),
+          stage: 'التخطيط',
+        ),
+        h: scale == 1 ? 1000 : 1300,
+        w: w,
+        textScale: scale,
+      );
+    });
+  }
 
   testWidgets('home no date', (tester) async {
     final s = DashboardSummary.fromJson(

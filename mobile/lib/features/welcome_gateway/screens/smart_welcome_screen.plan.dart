@@ -555,12 +555,18 @@ class _PlaceBudgetStep extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
-          // C1: the budget is the wedding only; the mahr is its own
-          // question next, outside the budget.
-          text: context.say(
-            'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من صفحة المال.',
-            'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من صفحة المال.',
-          ),
+          // D114: the groom chooses whether the budget holds the mahr, on
+          // the mahr question next; the bride's mahr comes in, never out of
+          // her budget (C1).
+          text: context.journeyProfile.isBride
+              ? context.say(
+                  'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من صفحة المال.',
+                  'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من صفحة المال.',
+                )
+              : context.say(
+                  'بعدها نسألك عن المهر، وتختار هل هو من الميزانية. وتقدر تغيّرها بعدين من صفحة المال.',
+                  'بعدها نسألك عن المهر، وتختارين هل هو من الميزانية. وتقدرين تغيّرينها بعدين من صفحة المال.',
+                ),
           icon: LucideIcons.info,
           tone: JourneyNoteTone.paper,
         ),

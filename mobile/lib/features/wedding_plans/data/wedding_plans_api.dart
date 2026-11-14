@@ -340,6 +340,8 @@ class WeddingPlansApi {
         'weddingDate': plan.weddingDate!.toIso8601String(),
       'priorities': plan.priorities,
       if (plan.estimatedBudget != null) 'estimatedBudget': plan.estimatedBudget,
+      // D114: kept with the budget for a read without the server.
+      if (plan.budgetIncludesMahr) 'budgetIncludesMahr': true,
       'currency': plan.currency,
       if (plan.onboardingPath != null) 'onboardingPath': plan.onboardingPath,
       if (plan.persona != null) 'persona': plan.persona,

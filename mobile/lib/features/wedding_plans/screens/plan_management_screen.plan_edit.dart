@@ -9,6 +9,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     DateTime? firstDay,
     String? budgetTotal,
     String? city,
+    bool? budgetIncludesMahr,
   }) async {
     if (_isLocalPlan && (title != null || firstDay != null)) {
       final saved = await _saveLocalDetails(title: title, firstDay: firstDay);
@@ -41,6 +42,40 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       if (!saved) {
         _showError(
           finance.errorMessage ?? 'ما قدرنا نحفظ الميزانية. جرّب مرة ثانية.',
+        );
+        return false;
+      }
+    }
+    // D114: the mahr's place is saved after the budget, on its own: a
+    // refusal of it (a plan that does not pay the mahr, a server that does
+    // not know the choice yet) never takes the budget with it.
+    if (budgetIncludesMahr != null) {
+      final finance = context.read<FinanceProvider>();
+      if (finance.loadedPlanId != plan.id || !finance.hasLoadedMoney) {
+        await finance.loadMoney(plan.id);
+        if (!mounted) return false;
+      }
+      final saved = await finance.saveBudget(
+        planId: plan.id,
+        totalBudget: finance.summary.budget.total,
+        currency: finance.summary.currency,
+        categories: [
+          for (final item in finance.budgetItems)
+            (
+              id: item.id,
+              name: item.name,
+              allocatedAmount: item.allocatedAmount,
+            ),
+        ],
+        budgetIncludesMahr: budgetIncludesMahr,
+      );
+      if (!mounted) return false;
+      if (!saved) {
+        final reason = finance.errorMessage ?? 'جرّب مرة ثانية بعد شوي.';
+        _showError(
+          budgetTotal != null
+              ? 'انحفظت الميزانية، بس ما انحفظ مكان المهر منها. $reason'
+              : 'ما انحفظ مكان المهر من الميزانية. $reason',
         );
         return false;
       }

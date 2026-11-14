@@ -191,6 +191,8 @@ export class DashboardService {
             totalBudget: seesWholePlan(context)
               ? resolveBudgetDecimal(context.plan)
               : null,
+            // D114: the groom's mahr inside his budget, when he chose so.
+            budgetIncludesMahr: context.plan.budgetIncludesMahr,
             scope: contributorIds
               ? { costIds: contributorIds.costIds, categoryIds: [] }
               : null,
@@ -373,7 +375,8 @@ export class DashboardService {
     const paidByOwnerNumber = decimalOrNull(money?.costs.paidByOwner);
     const paidByOthersNumber = decimalOrNull(money?.costs.paidByOthers);
     const outstandingNumber = decimalOrNull(money?.costs.outstanding);
-    // C1: the budget is the wedding's; the groom's mahr item is outside it.
+    // C1: the budget is the wedding's; the groom's mahr item is outside it,
+    // unless he counts it inside (D114: finance's figures then hold it).
     const remainingBudgetNumber = decimalOrNull(money?.budget.remaining);
     // D105: «over the budget» is by the expected cost (agreements and the
     // estimates they have not settled), as in the money tab.
@@ -423,6 +426,8 @@ export class DashboardService {
       mahrRecorded: money && context.isOwner ? money.mahr !== null : null,
       weddingCostsCount:
         money && seesWholePlan(context) ? money.budget.count : null,
+      // D114: the mahr step says where the mahr is counted.
+      mahrInsideBudget: money?.budget.includesMahr === true,
     });
     const currentUserRole = this.currentUserRole(context);
     const notificationPreviews = latestNotifications.map((notification) =>
@@ -521,6 +526,10 @@ export class DashboardService {
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
       paidByOthers: moneyOrNull(paidByOthersNumber),
+      // D114: whether the budget figures hold the mahr, for the reader who
+      // sees the budget.
+      budgetIncludesMahr:
+        money && budgetTotalNumber !== null ? money.budget.includesMahr : null,
       moneySummary: {
         totalBudget: moneyOrNull(budgetTotalNumber),
         confirmedCost: moneyOrNull(confirmedCostNumber),

@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -45,6 +46,15 @@ export class ReplaceMoneyBudgetDto {
   @IsNotEmpty()
   @MaxLength(8)
   currency!: string;
+
+  /**
+   * D114: the groom counts the mahr inside the budget. Omitted: kept as it
+   * is (an older phone never changes it). `true` is refused on a plan that
+   * does not pay the mahr.
+   */
+  @IsOptional()
+  @IsBoolean()
+  budgetIncludesMahr?: boolean;
 
   @IsArray()
   @ArrayMaxSize(200)

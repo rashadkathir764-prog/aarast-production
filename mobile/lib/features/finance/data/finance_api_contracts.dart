@@ -10,10 +10,16 @@ class LocalFinancePlanContext {
     this.mahrTotal,
     this.mahrSettled,
     this.mahrDueDate,
+    this.budgetIncludesMahr,
   });
 
   final String? estimatedBudget;
   final String? currency;
+
+  /// D114: the groom's answer while writing the budget in the plan's
+  /// questions; the money tab's own save of the budget comes before it.
+  /// Null: not answered (the mahr outside the budget).
+  final bool? budgetIncludesMahr;
 
   /// RA-MO-89: the mahr the plan's questions recorded (a06), which the
   /// account makes an item and its agreement when the plan is saved there.

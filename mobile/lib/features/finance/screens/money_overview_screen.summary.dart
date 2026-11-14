@@ -87,6 +87,10 @@ class _RecordMahrEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pays = !context.journeyProfile.isBride;
+    // D114: where the groom's budget holds the mahr, it is counted there.
+    final inside = context.select<FinanceProvider?, bool>(
+      (provider) => provider?.summary.budget.includesMahr ?? false,
+    );
     return JourneyBox(
       key: const ValueKey('money-record-mahr'),
       padding: EdgeInsets.zero,
@@ -96,7 +100,9 @@ class _RecordMahrEntry extends StatelessWidget {
         soft: context.accent.primarySoft,
         title: context.say('سجّل المهر', 'سجّلي المهر'),
         subtitle: pays
-            ? 'اتفاقك مع أهل العروسة، برّا ميزانية العرس'
+            ? (inside
+                  ? 'اتفاقك مع أهل العروسة، نحسبه من ميزانيتك'
+                  : 'اتفاقك مع أهل العروسة، برّا ميزانية العرس')
             : 'المهر يوصلك من العريس، ونحسبه من فلوسك',
         trailing: const Icon(
           LucideIcons.chevronLeft,

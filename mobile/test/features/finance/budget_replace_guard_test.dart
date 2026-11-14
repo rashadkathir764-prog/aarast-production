@@ -27,6 +27,7 @@ class _UnreadableMoneyApi extends FinanceApi {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
     String? expectedBudgetVersion,
+    bool? budgetIncludesMahr,
   }) async {
     replaceCalls += 1;
     throw StateError('the budget must not be replaced unread');

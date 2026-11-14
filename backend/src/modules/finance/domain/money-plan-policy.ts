@@ -68,6 +68,11 @@ export interface MoneyPlanInput {
   budget: Amount | null;
   /** The owner pays the mahr (the groom's plan): its estimate is his «if». */
   mahrPays: boolean;
+  /**
+   * D114: the owner counts the mahr inside the budget. Read only where the
+   * owner pays it (`mahrPays`); missing is false, as every plan before it.
+   */
+  budgetIncludesMahr?: boolean;
   items: readonly MoneyPlanItem[];
   costs: readonly MoneyPlanCost[];
   schedules: readonly TimelineSchedule[];
@@ -77,11 +82,37 @@ export interface MoneyPlanInput {
   cash: Amount | null;
 }
 
+/**
+ * The budget's figures (C1, D114): the wedding items' agreements, and the
+ * mahr's with them when the owner counts it inside the budget.
+ */
+export interface MoneyPlanBudget {
+  total: Amount | null;
+  /** D114: the mahr counts against the budget (only where the owner pays it). */
+  includesMahr: boolean;
+  allocated: Amount;
+  /** The budget less the allocations (and the mahr's expected cost, D114). */
+  unallocated: Amount | null;
+  confirmedCost: Amount;
+  paid: Amount;
+  /** D59: of `paid`, what the owner's own money paid. */
+  paidByOwner: Amount;
+  paidByOthers: Amount;
+  outstanding: Amount;
+  /** The wedding agreements, the mahr's never among them (RA-MO-147). */
+  count: number;
+  remaining: Amount | null;
+}
+
 export interface MoneyPlan {
   items: ReadonlyMap<string, ExpectedItem>;
   wedding: ExpectedTotals;
   mahr: ExpectedTotals;
-  /** The budget less the wedding items' expected cost; null without one. */
+  budget: MoneyPlanBudget;
+  /**
+   * The budget less the wedding items' expected cost, and the mahr's when
+   * it counts inside the budget (D114); null without one.
+   */
   budgetLeft: Amount | null;
   outstanding: { total: Amount; owner: Amount; ownerMahr: Amount; others: Amount };
   obligations: Obligation[];
@@ -153,6 +184,36 @@ export function composeMoneyPlan(input: MoneyPlanInput): MoneyPlan {
       const left = cost.totalAmount.minus(cost.paid);
       return left.gt(0) ? sum.plus(left) : sum;
     }, zero);
+  // C1, D114: the budget holds the wedding items; the mahr with them only
+  // where the owner pays it and chose so.
+  const includesMahr = input.mahrPays && input.budgetIncludesMahr === true;
+  const inBudget = timelineCosts.filter((cost) => includesMahr || !cost.mahr);
+  const sumOf = (rows: readonly TimelineCost[], of: (cost: TimelineCost) => Amount) =>
+    rows.reduce((sum, cost) => sum.plus(of(cost)), zero);
+  const budgetCost = sumOf(inBudget, (cost) => cost.totalAmount);
+  const budgetPaid = sumOf(inBudget, (cost) => cost.paid);
+  const budgetPaidByOwner = sumOf(
+    inBudget.filter((cost) => cost.ownerMoney),
+    (cost) => cost.paid,
+  );
+  const allocated = input.items.reduce(
+    (sum, item) => sum.plus(item.allocatedAmount ?? zero),
+    zero,
+  );
+  const mahrTaken = includesMahr ? mahr.expected : zero;
+  const budget: MoneyPlanBudget = {
+    total: input.budget,
+    includesMahr,
+    allocated,
+    unallocated: input.budget?.minus(allocated).minus(mahrTaken) ?? null,
+    confirmedCost: budgetCost,
+    paid: budgetPaid,
+    paidByOwner: budgetPaidByOwner,
+    paidByOthers: budgetPaid.minus(budgetPaidByOwner),
+    outstanding: budgetCost.minus(budgetPaid),
+    count: timelineCosts.filter((cost) => !cost.mahr).length,
+    remaining: input.budget?.minus(budgetCost) ?? null,
+  };
   const coverage =
     input.sources && input.sources.length > 0 && input.cash
       ? coverageOf({
@@ -166,7 +227,8 @@ export function composeMoneyPlan(input: MoneyPlanInput): MoneyPlan {
     items,
     wedding,
     mahr,
-    budgetLeft: input.budget?.minus(wedding.expected) ?? null,
+    budget,
+    budgetLeft: input.budget?.minus(wedding.expected).minus(mahrTaken) ?? null,
     outstanding: {
       total: owed(timelineCosts),
       owner: owed(timelineCosts.filter((cost) => cost.ownerMoney)),

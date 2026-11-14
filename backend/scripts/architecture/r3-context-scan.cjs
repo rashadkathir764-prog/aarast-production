@@ -1223,11 +1223,13 @@ function exactR4BudgetUpdateStatement(statement) {
   const update = exactPropertyAssignments(call.arguments[0], ['where', 'data']);
   if (!update) return false;
   const where = exactPropertyAssignments(update.get('where'), ['id']);
-  const data = exactPropertyAssignments(update.get('data'), ['estimatedBudget', 'currency']);
+  // D114: the budget's three columns, each from the input of the same name.
+  const data = exactPropertyAssignments(update.get('data'), ['estimatedBudget', 'currency', 'budgetIncludesMahr']);
   return Boolean(where && data
     && exactPropertyAccess(where.get('id'), 'input', 'weddingPlanId')
     && exactPropertyAccess(data.get('estimatedBudget'), 'input', 'estimatedBudget')
-    && exactPropertyAccess(data.get('currency'), 'input', 'currency'));
+    && exactPropertyAccess(data.get('currency'), 'input', 'currency')
+    && exactPropertyAccess(data.get('budgetIncludesMahr'), 'input', 'budgetIncludesMahr'));
 }
 
 function exactR4BudgetDelegationStatement(statement) {

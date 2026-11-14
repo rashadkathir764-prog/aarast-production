@@ -312,6 +312,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": "5000",
+          "includesMahr": false,
+          "allocated": "1500",
+          "unallocated": "3500",
+          "confirmedCost": "3550",
+          "paid": "1450",
+          "paidByOwner": "1350",
+          "paidByOthers": "100",
+          "outstanding": "2100",
+          "count": 4,
+          "remaining": "1450"
+        },
         "expected": {
           "wedding": {
             "agreed": "3550",
@@ -719,6 +732,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": null,
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": null,
+          "confirmedCost": "1500",
+          "paid": "0",
+          "paidByOwner": "0",
+          "paidByOthers": "0",
+          "outstanding": "1500",
+          "count": 1,
+          "remaining": null
+        },
         "expected": {
           "wedding": {
             "agreed": "1500",
@@ -989,6 +1015,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": "3000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "3000",
+          "confirmedCost": "1600",
+          "paid": "0",
+          "paidByOwner": "0",
+          "paidByOthers": "0",
+          "outstanding": "1600",
+          "count": 2,
+          "remaining": "1400"
+        },
         "expected": {
           "wedding": {
             "agreed": "1600",
@@ -1260,6 +1299,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": "2000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "2000",
+          "confirmedCost": "1000",
+          "paid": "300",
+          "paidByOwner": "300",
+          "paidByOthers": "0",
+          "outstanding": "700",
+          "count": 1,
+          "remaining": "1000"
+        },
         "expected": {
           "wedding": {
             "agreed": "1000",
@@ -1516,6 +1568,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": "4000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "4000",
+          "confirmedCost": "700.75",
+          "paid": "0",
+          "paidByOwner": "0",
+          "paidByOthers": "0",
+          "outstanding": "700.75",
+          "count": 2,
+          "remaining": "3299.25"
+        },
         "expected": {
           "wedding": {
             "agreed": "700.75",
@@ -1665,6 +1730,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": null,
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": null,
+          "confirmedCost": "500",
+          "paid": "0",
+          "paidByOwner": "0",
+          "paidByOthers": "0",
+          "outstanding": "500",
+          "count": 1,
+          "remaining": null
+        },
         "expected": {
           "wedding": {
             "agreed": "500",
@@ -1896,6 +1974,19 @@
             "overBudget": null
           }
         ],
+        "budget": {
+          "total": "100",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "100",
+          "confirmedCost": "190",
+          "paid": "190",
+          "paidByOwner": "190",
+          "paidByOthers": "0",
+          "outstanding": "0",
+          "count": 3,
+          "remaining": "-90"
+        },
         "expected": {
           "wedding": {
             "agreed": "190",
@@ -1957,6 +2048,1279 @@
             "endAfter": "310"
           }
         },
+        "family": []
+      }
+    },
+    {
+      "name": "owner's numbers, mahr outside",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": false,
+        "items": [
+          {
+            "id": "mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "mahr",
+            "budgetCategoryId": "mahr",
+            "title": "mahr",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          }
+        ],
+        "schedules": [],
+        "sources": [
+          {
+            "id": "savings",
+            "kind": "SAVINGS",
+            "sourceName": "savings",
+            "contributorName": null,
+            "amount": "3000000",
+            "status": "RECEIVED",
+            "expectedAt": null,
+            "repayments": []
+          }
+        ]
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "7000000",
+          "confirmedCost": "0",
+          "paid": "0",
+          "paidByOwner": "0",
+          "paidByOthers": "0",
+          "outstanding": "0",
+          "count": 0,
+          "remaining": "7000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "0",
+            "estimateLeft": "0",
+            "expected": "0",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "2000000",
+          "budgetLeft": "7000000"
+        },
+        "outstanding": {
+          "total": "1500000",
+          "owner": "1500000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "UNDATED",
+            "id": "mahr",
+            "weddingCostId": "mahr",
+            "budgetCategoryId": "mahr",
+            "fundingSourceId": null,
+            "title": "mahr",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          }
+        ],
+        "duesByMonth": {
+          "months": [],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "1500000",
+            "ownerAmount": "1500000",
+            "count": 1
+          }
+        },
+        "coverage": {
+          "verdict": "COVERED",
+          "cash": "2500000",
+          "total": "1500000",
+          "undated": "1500000",
+          "lastDate": null,
+          "hasLoan": false,
+          "withoutPledges": {
+            "firstShort": null,
+            "deepest": null,
+            "end": "1000000"
+          },
+          "withPledges": {
+            "firstShort": null,
+            "deepest": null,
+            "end": "1000000"
+          },
+          "steps": [
+            {
+              "kind": "UNDATED",
+              "id": "mahr",
+              "date": null,
+              "late": false,
+              "title": "mahr",
+              "note": null,
+              "amount": "1500000",
+              "inflow": false,
+              "balance": "1000000"
+            }
+          ],
+          "pledgesCounted": [],
+          "pledgesIgnored": [],
+          "estimates": {
+            "left": "0",
+            "endAfter": "1000000"
+          }
+        },
+        "family": []
+      }
+    },
+    {
+      "name": "owner's numbers, mahr inside",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": true,
+        "items": [
+          {
+            "id": "mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "mahr",
+            "budgetCategoryId": "mahr",
+            "title": "mahr",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          }
+        ],
+        "schedules": [],
+        "sources": [
+          {
+            "id": "savings",
+            "kind": "SAVINGS",
+            "sourceName": "savings",
+            "contributorName": null,
+            "amount": "3000000",
+            "status": "RECEIVED",
+            "expectedAt": null,
+            "repayments": []
+          }
+        ]
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": true,
+          "allocated": "0",
+          "unallocated": "5000000",
+          "confirmedCost": "2000000",
+          "paid": "500000",
+          "paidByOwner": "500000",
+          "paidByOthers": "0",
+          "outstanding": "1500000",
+          "count": 0,
+          "remaining": "5000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "0",
+            "estimateLeft": "0",
+            "expected": "0",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "2000000",
+          "budgetLeft": "5000000"
+        },
+        "outstanding": {
+          "total": "1500000",
+          "owner": "1500000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "UNDATED",
+            "id": "mahr",
+            "weddingCostId": "mahr",
+            "budgetCategoryId": "mahr",
+            "fundingSourceId": null,
+            "title": "mahr",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          }
+        ],
+        "duesByMonth": {
+          "months": [],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "1500000",
+            "ownerAmount": "1500000",
+            "count": 1
+          }
+        },
+        "coverage": {
+          "verdict": "COVERED",
+          "cash": "2500000",
+          "total": "1500000",
+          "undated": "1500000",
+          "lastDate": null,
+          "hasLoan": false,
+          "withoutPledges": {
+            "firstShort": null,
+            "deepest": null,
+            "end": "1000000"
+          },
+          "withPledges": {
+            "firstShort": null,
+            "deepest": null,
+            "end": "1000000"
+          },
+          "steps": [
+            {
+              "kind": "UNDATED",
+              "id": "mahr",
+              "date": null,
+              "late": false,
+              "title": "mahr",
+              "note": null,
+              "amount": "1500000",
+              "inflow": false,
+              "balance": "1000000"
+            }
+          ],
+          "pledgesCounted": [],
+          "pledgesIgnored": [],
+          "estimates": {
+            "left": "0",
+            "endAfter": "1000000"
+          }
+        },
+        "family": []
+      }
+    },
+    {
+      "name": "mahr inside, over the budget",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": true,
+        "items": [
+          {
+            "id": "hall",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          },
+          {
+            "id": "food",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": "2500000",
+            "notNeeded": false
+          },
+          {
+            "id": "mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "hall",
+            "budgetCategoryId": "hall",
+            "title": "hall",
+            "totalAmount": "3000000",
+            "paid": "1000000",
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          },
+          {
+            "id": "mahr",
+            "budgetCategoryId": "mahr",
+            "title": "mahr",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          }
+        ],
+        "schedules": [
+          {
+            "id": "h1",
+            "weddingCostId": "hall",
+            "amount": "2000000",
+            "dueDate": "2026-12-20",
+            "status": "PENDING",
+            "note": null,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "partlyPaid": "0",
+            "createdAt": "2026-10-01T00:00:10.000Z"
+          }
+        ],
+        "sources": [
+          {
+            "id": "savings",
+            "kind": "SAVINGS",
+            "sourceName": "savings",
+            "contributorName": null,
+            "amount": "3000000",
+            "status": "RECEIVED",
+            "expectedAt": null,
+            "repayments": []
+          }
+        ]
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "hall",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "3000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          },
+          {
+            "id": "food",
+            "estimate": "2500000",
+            "estimateSource": "ESTIMATE",
+            "expectedCost": "2500000",
+            "estimateLeft": "2500000",
+            "costKnown": true,
+            "overBudget": null
+          },
+          {
+            "id": "mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": true,
+          "allocated": "0",
+          "unallocated": "5000000",
+          "confirmedCost": "5000000",
+          "paid": "1500000",
+          "paidByOwner": "1500000",
+          "paidByOthers": "0",
+          "outstanding": "3500000",
+          "count": 1,
+          "remaining": "2000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "3000000",
+            "estimateLeft": "2500000",
+            "expected": "5500000",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "7500000",
+          "budgetLeft": "-500000"
+        },
+        "outstanding": {
+          "total": "3500000",
+          "owner": "3500000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "DUE",
+            "id": "h1",
+            "weddingCostId": "hall",
+            "budgetCategoryId": "hall",
+            "fundingSourceId": null,
+            "title": "hall",
+            "note": null,
+            "amount": "2000000",
+            "scheduledAmount": "2000000",
+            "paidTowards": "0",
+            "dueDate": "2026-12-20",
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": false
+          },
+          {
+            "kind": "UNDATED",
+            "id": "mahr",
+            "weddingCostId": "mahr",
+            "budgetCategoryId": "mahr",
+            "fundingSourceId": null,
+            "title": "mahr",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          }
+        ],
+        "duesByMonth": {
+          "months": [
+            {
+              "month": "2026-12",
+              "amount": "2000000",
+              "ownerAmount": "2000000",
+              "count": 1
+            }
+          ],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "1500000",
+            "ownerAmount": "1500000",
+            "count": 1
+          }
+        },
+        "coverage": {
+          "verdict": "SHORT",
+          "cash": "1500000",
+          "total": "3500000",
+          "undated": "1500000",
+          "lastDate": "2026-12-20",
+          "hasLoan": false,
+          "withoutPledges": {
+            "firstShort": {
+              "date": "2026-12-20",
+              "amount": "500000",
+              "title": "hall",
+              "id": "h1"
+            },
+            "deepest": {
+              "date": null,
+              "amount": "2000000",
+              "title": "mahr",
+              "id": "mahr"
+            },
+            "end": "-2000000"
+          },
+          "withPledges": {
+            "firstShort": {
+              "date": "2026-12-20",
+              "amount": "500000",
+              "title": "hall",
+              "id": "h1"
+            },
+            "deepest": {
+              "date": null,
+              "amount": "2000000",
+              "title": "mahr",
+              "id": "mahr"
+            },
+            "end": "-2000000"
+          },
+          "steps": [
+            {
+              "kind": "DUE",
+              "id": "h1",
+              "date": "2026-12-20",
+              "late": false,
+              "title": "hall",
+              "note": null,
+              "amount": "2000000",
+              "inflow": false,
+              "balance": "-500000"
+            },
+            {
+              "kind": "UNDATED",
+              "id": "mahr",
+              "date": null,
+              "late": false,
+              "title": "mahr",
+              "note": null,
+              "amount": "1500000",
+              "inflow": false,
+              "balance": "-2000000"
+            }
+          ],
+          "pledgesCounted": [],
+          "pledgesIgnored": [],
+          "estimates": {
+            "left": "2500000",
+            "endAfter": "-4500000"
+          }
+        },
+        "family": []
+      }
+    },
+    {
+      "name": "mahr inside, allocations no longer fit",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": true,
+        "items": [
+          {
+            "id": "hall",
+            "kind": "WEDDING",
+            "allocatedAmount": "4000000",
+            "estimatedAmount": null,
+            "notNeeded": false
+          },
+          {
+            "id": "food",
+            "kind": "WEDDING",
+            "allocatedAmount": "2000000",
+            "estimatedAmount": null,
+            "notNeeded": false
+          },
+          {
+            "id": "mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "mahr",
+            "budgetCategoryId": "mahr",
+            "title": "mahr",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          }
+        ],
+        "schedules": [],
+        "sources": null
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "hall",
+            "estimate": "4000000",
+            "estimateSource": "ALLOCATION",
+            "expectedCost": "4000000",
+            "estimateLeft": "4000000",
+            "costKnown": true,
+            "overBudget": false
+          },
+          {
+            "id": "food",
+            "estimate": "2000000",
+            "estimateSource": "ALLOCATION",
+            "expectedCost": "2000000",
+            "estimateLeft": "2000000",
+            "costKnown": true,
+            "overBudget": false
+          },
+          {
+            "id": "mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": true,
+          "allocated": "6000000",
+          "unallocated": "-1000000",
+          "confirmedCost": "2000000",
+          "paid": "500000",
+          "paidByOwner": "500000",
+          "paidByOthers": "0",
+          "outstanding": "1500000",
+          "count": 0,
+          "remaining": "5000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "0",
+            "estimateLeft": "6000000",
+            "expected": "6000000",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "8000000",
+          "budgetLeft": "-1000000"
+        },
+        "outstanding": {
+          "total": "1500000",
+          "owner": "1500000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "UNDATED",
+            "id": "mahr",
+            "weddingCostId": "mahr",
+            "budgetCategoryId": "mahr",
+            "fundingSourceId": null,
+            "title": "mahr",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          }
+        ],
+        "duesByMonth": {
+          "months": [],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "1500000",
+            "ownerAmount": "1500000",
+            "count": 1
+          }
+        },
+        "coverage": null,
+        "family": null
+      }
+    },
+    {
+      "name": "bride, mahr inside sent",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "4000",
+        "mahrPays": false,
+        "budgetIncludesMahr": true,
+        "items": [
+          {
+            "id": "dress",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": "1000",
+            "notNeeded": false
+          },
+          {
+            "id": "mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": "500",
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "dress",
+            "budgetCategoryId": "dress",
+            "title": "dress",
+            "totalAmount": "400",
+            "paid": "100",
+            "payer": "BRIDE",
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "WHOLE",
+            "estimatePart": null
+          }
+        ],
+        "schedules": [],
+        "sources": null
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "dress",
+            "estimate": "1000",
+            "estimateSource": "ESTIMATE",
+            "expectedCost": "400",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          },
+          {
+            "id": "mahr",
+            "estimate": "500",
+            "estimateSource": "ESTIMATE",
+            "expectedCost": "500",
+            "estimateLeft": "500",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "4000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "4000",
+          "confirmedCost": "400",
+          "paid": "100",
+          "paidByOwner": "100",
+          "paidByOthers": "0",
+          "outstanding": "300",
+          "count": 1,
+          "remaining": "3600"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "400",
+            "estimateLeft": "0",
+            "expected": "400",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "0",
+            "estimateLeft": "500",
+            "expected": "500",
+            "unknownCount": 0
+          },
+          "total": "900",
+          "budgetLeft": "3600"
+        },
+        "outstanding": {
+          "total": "300",
+          "owner": "300",
+          "ownerMahr": "0",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "UNDATED",
+            "id": "dress",
+            "weddingCostId": "dress",
+            "budgetCategoryId": "dress",
+            "fundingSourceId": null,
+            "title": "dress",
+            "note": null,
+            "amount": "300",
+            "scheduledAmount": "300",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": "BRIDE",
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": false
+          }
+        ],
+        "duesByMonth": {
+          "months": [],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "300",
+            "ownerAmount": "300",
+            "count": 1
+          }
+        },
+        "coverage": null,
+        "family": null
+      }
+    },
+    {
+      "name": "phone plan, draft mahr outside",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": false,
+        "items": [
+          {
+            "id": "hall",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": "1500000",
+            "notNeeded": false
+          },
+          {
+            "id": "local-draft-mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "hall",
+            "budgetCategoryId": "hall",
+            "title": "hall",
+            "totalAmount": "1000000",
+            "paid": "250000",
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "PART",
+            "estimatePart": "1000000"
+          },
+          {
+            "id": "local-draft-mahr-agreement",
+            "budgetCategoryId": "local-draft-mahr",
+            "title": "المهر",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": null,
+            "estimatePart": null
+          }
+        ],
+        "schedules": [
+          {
+            "id": "local-draft-mahr-date",
+            "weddingCostId": "local-draft-mahr-agreement",
+            "amount": "1500000",
+            "dueDate": "2027-01-10",
+            "status": "PENDING",
+            "note": null,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "partlyPaid": "0",
+            "createdAt": "2026-10-01T00:00:11.000Z"
+          }
+        ],
+        "sources": []
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "hall",
+            "estimate": "1500000",
+            "estimateSource": "ESTIMATE",
+            "expectedCost": "1500000",
+            "estimateLeft": "500000",
+            "costKnown": true,
+            "overBudget": null
+          },
+          {
+            "id": "local-draft-mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": false,
+          "allocated": "0",
+          "unallocated": "7000000",
+          "confirmedCost": "1000000",
+          "paid": "250000",
+          "paidByOwner": "250000",
+          "paidByOthers": "0",
+          "outstanding": "750000",
+          "count": 1,
+          "remaining": "6000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "1000000",
+            "estimateLeft": "500000",
+            "expected": "1500000",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "3500000",
+          "budgetLeft": "5500000"
+        },
+        "outstanding": {
+          "total": "2250000",
+          "owner": "2250000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "DUE",
+            "id": "local-draft-mahr-date",
+            "weddingCostId": "local-draft-mahr-agreement",
+            "budgetCategoryId": "local-draft-mahr",
+            "fundingSourceId": null,
+            "title": "المهر",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": "2027-01-10",
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          },
+          {
+            "kind": "UNDATED",
+            "id": "hall",
+            "weddingCostId": "hall",
+            "budgetCategoryId": "hall",
+            "fundingSourceId": null,
+            "title": "hall",
+            "note": null,
+            "amount": "750000",
+            "scheduledAmount": "750000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": false
+          }
+        ],
+        "duesByMonth": {
+          "months": [
+            {
+              "month": "2027-01",
+              "amount": "1500000",
+              "ownerAmount": "1500000",
+              "count": 1
+            }
+          ],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "750000",
+            "ownerAmount": "750000",
+            "count": 1
+          }
+        },
+        "coverage": null,
+        "family": []
+      }
+    },
+    {
+      "name": "phone plan, draft mahr inside",
+      "input": {
+        "today": "2026-11-14",
+        "budget": "7000000",
+        "mahrPays": true,
+        "budgetIncludesMahr": true,
+        "items": [
+          {
+            "id": "hall",
+            "kind": "WEDDING",
+            "allocatedAmount": null,
+            "estimatedAmount": "1500000",
+            "notNeeded": false
+          },
+          {
+            "id": "local-draft-mahr",
+            "kind": "MAHR",
+            "allocatedAmount": null,
+            "estimatedAmount": null,
+            "notNeeded": false
+          }
+        ],
+        "costs": [
+          {
+            "id": "hall",
+            "budgetCategoryId": "hall",
+            "title": "hall",
+            "totalAmount": "1000000",
+            "paid": "250000",
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": "PART",
+            "estimatePart": "1000000"
+          },
+          {
+            "id": "local-draft-mahr-agreement",
+            "budgetCategoryId": "local-draft-mahr",
+            "title": "المهر",
+            "totalAmount": "2000000",
+            "paid": "500000",
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "estimateCover": null,
+            "estimatePart": null
+          }
+        ],
+        "schedules": [
+          {
+            "id": "local-draft-mahr-date",
+            "weddingCostId": "local-draft-mahr-agreement",
+            "amount": "1500000",
+            "dueDate": "2027-01-10",
+            "status": "PENDING",
+            "note": null,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "partlyPaid": "0",
+            "createdAt": "2026-10-01T00:00:12.000Z"
+          }
+        ],
+        "sources": []
+      },
+      "answer": {
+        "items": [
+          {
+            "id": "hall",
+            "estimate": "1500000",
+            "estimateSource": "ESTIMATE",
+            "expectedCost": "1500000",
+            "estimateLeft": "500000",
+            "costKnown": true,
+            "overBudget": null
+          },
+          {
+            "id": "local-draft-mahr",
+            "estimate": null,
+            "estimateSource": null,
+            "expectedCost": "2000000",
+            "estimateLeft": "0",
+            "costKnown": true,
+            "overBudget": null
+          }
+        ],
+        "budget": {
+          "total": "7000000",
+          "includesMahr": true,
+          "allocated": "0",
+          "unallocated": "5000000",
+          "confirmedCost": "3000000",
+          "paid": "750000",
+          "paidByOwner": "750000",
+          "paidByOthers": "0",
+          "outstanding": "2250000",
+          "count": 1,
+          "remaining": "4000000"
+        },
+        "expected": {
+          "wedding": {
+            "agreed": "1000000",
+            "estimateLeft": "500000",
+            "expected": "1500000",
+            "unknownCount": 0
+          },
+          "mahr": {
+            "agreed": "2000000",
+            "estimateLeft": "0",
+            "expected": "2000000",
+            "unknownCount": 0
+          },
+          "total": "3500000",
+          "budgetLeft": "3500000"
+        },
+        "outstanding": {
+          "total": "2250000",
+          "owner": "2250000",
+          "ownerMahr": "1500000",
+          "others": "0"
+        },
+        "obligations": [
+          {
+            "kind": "DUE",
+            "id": "local-draft-mahr-date",
+            "weddingCostId": "local-draft-mahr-agreement",
+            "budgetCategoryId": "local-draft-mahr",
+            "fundingSourceId": null,
+            "title": "المهر",
+            "note": null,
+            "amount": "1500000",
+            "scheduledAmount": "1500000",
+            "paidTowards": "0",
+            "dueDate": "2027-01-10",
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": null,
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": true
+          },
+          {
+            "kind": "UNDATED",
+            "id": "hall",
+            "weddingCostId": "hall",
+            "budgetCategoryId": "hall",
+            "fundingSourceId": null,
+            "title": "hall",
+            "note": null,
+            "amount": "750000",
+            "scheduledAmount": "750000",
+            "paidTowards": "0",
+            "dueDate": null,
+            "isOverdue": false,
+            "remindAt": null,
+            "rescheduledFrom": null,
+            "payer": "GROOM",
+            "payerName": null,
+            "ownerMoney": true,
+            "mahr": false
+          }
+        ],
+        "duesByMonth": {
+          "months": [
+            {
+              "month": "2027-01",
+              "amount": "1500000",
+              "ownerAmount": "1500000",
+              "count": 1
+            }
+          ],
+          "overdue": {
+            "amount": "0",
+            "ownerAmount": "0",
+            "count": 0
+          },
+          "undated": {
+            "amount": "750000",
+            "ownerAmount": "750000",
+            "count": 1
+          }
+        },
+        "coverage": null,
         "family": []
       }
     }

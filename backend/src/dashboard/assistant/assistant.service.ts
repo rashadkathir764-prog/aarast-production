@@ -347,6 +347,8 @@ export class AssistantService {
       weddingPlanId: context.plan.id,
       persona: context.plan.persona,
       totalBudget: context.plan.estimatedBudget,
+      // D114: the assistant reads the budget as the money tab does.
+      budgetIncludesMahr: context.plan.budgetIncludesMahr,
       scope: null,
       readerUserId,
       fundingVisible: context.isOwner,
@@ -356,6 +358,7 @@ export class AssistantService {
     const mahr = picture.mahr;
     return {
       budgetTotal: fixed(picture.budget.total),
+      mahrInsideBudget: picture.budget.includesMahr === true,
       committedTotal: fixed(picture.budget.confirmedCost) ?? '0.00',
       paidTotal: fixed(picture.budget.paid) ?? '0.00',
       paidByOwner: fixed(picture.costs.paidByOwner) ?? '0.00',

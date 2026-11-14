@@ -23,6 +23,9 @@ model WeddingPlan {
   weddingDate             DateTime?
   priorities              String[]                 @default([])
   estimatedBudget         Decimal?                 @db.Decimal(14, 2)
+  // D114: the groom counts the mahr inside his budget. Means something
+  // only on a plan that pays the mahr; every plan before it is false.
+  budgetIncludesMahr      Boolean                  @default(false)
   currency                String                   @default("YER")
   onboardingPath          OnboardingPath?
   persona                 WeddingPersona?

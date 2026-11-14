@@ -363,7 +363,8 @@ void main() {
       ),
     );
 
-    expect(find.text('عليكِ من العرس'), findsOneWidget);
+    // D114: «باقي عليكِ», no longer «من العرس».
+    expect(find.text('باقي عليكِ'), findsOneWidget);
     expect(find.text('ينقصك 300,000، يبدأ يوم 1 ديسمبر'), findsOneWidget);
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // V-01: every far-side figure with its unit.

@@ -60,8 +60,9 @@ void main() {
     );
 
     expect(_tabFill(tester, 0), AarastV3Color.rose);
-    expect(find.text('عليكِ من العرس'), findsOneWidget);
-    expect(find.text('عليك من العرس'), findsNothing);
+    // D114: «باقي عليكِ», no longer «من العرس».
+    expect(find.text('باقي عليكِ'), findsOneWidget);
+    expect(find.text('باقي عليك'), findsNothing);
     expect(
       find.byKey(const ValueKey('money-cover-unknown')),
       findsOneWidget,
@@ -186,7 +187,7 @@ void main() {
     );
 
     expect(_tabFill(tester, 0), AarastV3Color.primary);
-    expect(find.text('عليك من العرس'), findsOneWidget);
+    expect(find.text('باقي عليك'), findsOneWidget);
     expect(find.textContaining('ما سجلت من وين فلوسك'), findsOneWidget);
   });
 

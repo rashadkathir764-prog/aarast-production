@@ -8,6 +8,7 @@ import '../../../../core/utils/app_clock.dart';
 import '../../../../core/utils/arabic_count.dart';
 import '../../../../core/utils/arabic_date_formatter.dart';
 import '../../../../core/utils/compact_money_figure.dart';
+import '../../../../core/utils/currency_label.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/keep_currency_on_line.dart';
 import '../../../../core/utils/plan_day.dart';
@@ -21,6 +22,7 @@ import 'aarast_dashboard_focus.dart';
 
 part 'aarast_dashboard_week.dart';
 part 'aarast_dashboard_money_card.dart';
+part 'aarast_dashboard_money_card_parts.dart';
 part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
 part 'aarast_dashboard_journey.dart';

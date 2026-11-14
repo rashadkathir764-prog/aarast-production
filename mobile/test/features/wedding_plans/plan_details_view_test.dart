@@ -24,6 +24,7 @@ typedef _Saved = ({
   DateTime? firstDay,
   String? budgetTotal,
   String? city,
+  bool? budgetIncludesMahr,
 });
 
 Future<List<_Saved>> _pump(
@@ -33,9 +34,12 @@ Future<List<_Saved>> _pump(
   VoidCallback? onChangeDate,
   bool repickStoredDay = false,
   VoidCallback? onArchive,
+  bool? budgetIncludesMahr,
+  num? mahrTotal,
+  Size size = const Size(390, 844),
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   final saved = <_Saved>[];
   await tester.pumpWidget(
@@ -47,16 +51,26 @@ Future<List<_Saved>> _pump(
           body: PlanDetailsView(
             plan: _plan(day: day, city: city),
             budgetTotal: '7000000.00',
+            budgetIncludesMahr: budgetIncludesMahr,
+            mahrTotal: mahrTotal,
             onBack: () {},
-            onSave: ({title, firstDay, budgetTotal, city}) async {
-              saved.add((
-                title: title,
-                firstDay: firstDay,
-                budgetTotal: budgetTotal,
-                city: city,
-              ));
-              return true;
-            },
+            onSave:
+                ({
+                  title,
+                  firstDay,
+                  budgetTotal,
+                  city,
+                  budgetIncludesMahr,
+                }) async {
+                  saved.add((
+                    title: title,
+                    firstDay: firstDay,
+                    budgetTotal: budgetTotal,
+                    city: city,
+                    budgetIncludesMahr: budgetIncludesMahr,
+                  ));
+                  return true;
+                },
             onChangeDate: onChangeDate,
             repickStoredDay: repickStoredDay,
             onArchive: onArchive,
@@ -184,6 +198,102 @@ void main() {
     await tester.tap(find.text('حفظ'));
     await tester.pumpAndSettle();
     expect(saved.single.firstDay, DateTime(2027, 1, 28));
+  });
+
+  // D114, the owner's own plan: budget 7 million, mahr 2 million. The field
+  // said «ميزانية عرسك (بدون المهر)» as a fact he never chose.
+  group('D114 the budget and the mahr', () {
+    final outside = find.byKey(const ValueKey('mahr-budget-outside'));
+    final inside = find.byKey(const ValueKey('mahr-budget-inside'));
+
+    testWidgets('the field no longer decides for him', (tester) async {
+      await _pump(tester, budgetIncludesMahr: false, mahrTotal: 2000000);
+
+      expect(find.textContaining('بدون المهر'), findsNothing);
+      expect(find.text('ميزانيتك'), findsOneWidget);
+    });
+
+    testWidgets('a groom chooses, each answer in his numbers', (tester) async {
+      final saved = await _pump(
+        tester,
+        budgetIncludesMahr: false,
+        mahrTotal: 2000000,
+        size: const Size(390, 1200),
+      );
+
+      expect(find.text('المهر من الميزانية؟'), findsOneWidget);
+      expect(
+        find.text('الميزانية 7 مليون كلها للعرس، والمهر مليونين فوقها'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'من الميزانية 7 مليون يروح مليونين للمهر، ويبقى للعرس 5 مليون',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSemantics(outside),
+        isSemantics(isSelected: true, isButton: true),
+      );
+      expect(tester.getSize(inside).height, greaterThanOrEqualTo(48));
+
+      await tester.tap(inside);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('plan-details-save')));
+      await tester.pumpAndSettle();
+
+      expect(saved.single.budgetIncludesMahr, isTrue);
+      expect(saved.single.budgetTotal, isNull);
+    });
+
+    testWidgets('the line follows the budget as it is typed', (tester) async {
+      await _pump(
+        tester,
+        budgetIncludesMahr: true,
+        mahrTotal: 2000000,
+        size: const Size(390, 1200),
+      );
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('plan-details-budget')),
+          matching: find.byType(EditableText),
+        ),
+        '8000000',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'من الميزانية 8 مليون يروح مليونين للمهر، ويبقى للعرس 6 مليون',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('choosing what is saved already saves nothing', (tester) async {
+      final saved = await _pump(
+        tester,
+        budgetIncludesMahr: false,
+        mahrTotal: 2000000,
+        size: const Size(390, 1200),
+      );
+
+      await tester.tap(inside);
+      await tester.pumpAndSettle();
+      await tester.tap(outside);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('plan-details-save')));
+      await tester.pumpAndSettle();
+      expect(saved, isEmpty);
+    });
+
+    testWidgets('a bride\'s plan is never asked', (tester) async {
+      await _pump(tester);
+
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsNothing);
+      expect(find.textContaining('بدون المهر'), findsNothing);
+    });
   });
 
   testWidgets('a set day without g03 or a phone plan only reads', (

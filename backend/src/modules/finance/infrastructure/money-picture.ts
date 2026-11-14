@@ -12,6 +12,7 @@ import {
 import {
   type MahrPicture,
   type MahrSide,
+  mahrCountsInBudget,
   mahrPicture,
   mahrSideOf,
 } from '../domain/mahr-policy';
@@ -61,15 +62,13 @@ export async function readMoneyPicture(
   const zero = () => new Prisma.Decimal(0);
   const sum = <T>(rows: readonly T[], of: (row: T) => Prisma.Decimal) =>
     rows.reduce((total, row) => total.plus(of(row)), zero());
-  // C1: the groom's mahr item is outside the wedding budget. Its costs count
-  // in what he agreed, paid and owes, never against the budget.
+  // C1: the groom's mahr item is outside the wedding budget unless he counts
+  // it inside (D114, money-plan-policy). Its costs count in what he agreed,
+  // paid and owes either way.
   const mahrCategoryIds = new Set(
     categories
       .filter((category) => category.kind === BudgetCategoryKind.MAHR)
       .map((category) => category.id),
-  );
-  const weddingCosts = costs.filter(
-    (cost) => !mahrCategoryIds.has(cost.budgetCategoryId),
   );
   const netPaidByCost = new Map<string, Prisma.Decimal>();
   for (const payment of payments) {
@@ -115,10 +114,7 @@ export async function readMoneyPicture(
   }
 
   const totalCost = sum(costs, (cost) => cost.totalAmount);
-  const weddingCost = sum(weddingCosts, (cost) => cost.totalAmount);
   const allPaid = paidSplit(costs);
-  const weddingPaid = paidSplit(weddingCosts);
-  const allocated = sum(categories, (category) => category.allocatedAmount ?? zero());
   const totalBudget = query.totalBudget;
   const clock = query.now ?? new Date();
   const today = startOfTodayInRiyadh(clock);
@@ -133,6 +129,7 @@ export async function readMoneyPicture(
     zero: zero(),
     budget: totalBudget,
     mahrPays: mahrSideOf(query.persona) === 'PAYS',
+    budgetIncludesMahr: mahrCountsInBudget(query.persona, query.budgetIncludesMahr),
     items: categories.map((category) => ({
       id: category.id,
       kind: category.kind,
@@ -183,7 +180,6 @@ export async function readMoneyPicture(
       })) ?? null,
     cash: fundingTotals ? new Prisma.Decimal(fundingTotals.availableCash) : null,
   });
-  const weddingExpected = plan.wedding;
   const dueSoonEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const pendingSchedules = schedules.filter(
     (schedule) => schedule.status === PaymentScheduleStatus.PENDING,
@@ -241,13 +237,14 @@ export async function readMoneyPicture(
     count: number | null;
     amount: string | null;
   }> = [];
-  // D105: the early warning is the expected cost, not the agreements alone.
-  if (totalBudget !== null && weddingExpected.expected.gt(totalBudget)) {
+  // D105: the early warning is the expected cost, not the agreements alone;
+  // D114: the mahr's with it when it counts inside the budget.
+  if (plan.budgetLeft !== null && plan.budgetLeft.isNegative()) {
     warnings.push({
       type: 'BUDGET_EXCEEDED',
       severity: 'DANGER',
       count: null,
-      amount: weddingExpected.expected.minus(totalBudget).toString(),
+      amount: plan.budgetLeft.negated().toString(),
     });
   }
   for (const category of categoryRows) {
@@ -323,19 +320,10 @@ export async function readMoneyPicture(
     fundingSources,
   });
   return {
-    // The wedding budget (C1): the mahr item is not in it.
-    budget: {
-      total: totalBudget?.toString() ?? null,
-      allocated: allocated.toString(),
-      unallocated: totalBudget?.minus(allocated).toString() ?? null,
-      confirmedCost: weddingCost.toString(),
-      paid: weddingPaid.paid.toString(),
-      paidByOwner: weddingPaid.byOwner.toString(),
-      paidByOthers: weddingPaid.byOthers.toString(),
-      outstanding: weddingCost.minus(weddingPaid.paid).toString(),
-      count: weddingCosts.length,
-      remaining: totalBudget?.minus(weddingCost).toString() ?? null,
-    },
+    // D102-D109: budget (C1; the mahr in it only when the groom counts it
+    // there, D114), expected, outstanding, obligations, duesByMonth,
+    // coverage and family (money-plan.presenter).
+    ...presentMoneyPlan(plan),
     // Every agreement, the mahr's included.
     costs: {
       total: totalCost.toString(),
@@ -367,9 +355,6 @@ export async function readMoneyPicture(
         : null,
     },
     categories: categoryRows,
-    // D102-D109: expected, outstanding, obligations, duesByMonth,
-    // coverage and family (money-plan.presenter).
-    ...presentMoneyPlan(plan),
     /**
      * The plan's mahr (a06): the groom's agreement with the bride's family
      * (PAYS, from his MAHR item) or the bride's mahr coming in (RECEIVES,

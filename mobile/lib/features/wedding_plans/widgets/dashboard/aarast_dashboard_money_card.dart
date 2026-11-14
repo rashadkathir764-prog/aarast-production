@@ -1,16 +1,14 @@
 part of 'aarast_dashboard_view.dart';
 
 // b02 «المال» on the home: the plan's soft fill, «المال» with the eye that
-// hides the amounts, what is on the owner and the money tab's own verdict on
-// the reading side (D102, D103: «عليك من العرس» and «يكفي … بمواعيدها», the
-// same words as «الملخص», RA-MO-53), in hand and promised on the far side,
-// the four-part bar under them. Every number is a server field (C2).
+// hides the amounts, what is left to pay on the reading side and the money
+// tab's own verdict (D102, D103, RA-MO-53), in hand and promised on the far
+// side, the dues strip or the bar under them; then the budget's figures
+// (D114): the budget, what is left of it, what was agreed and paid, and the
+// mahr in its place. Every number is a server field (C2).
 // «حط 450 ألف كل شهر» is dropped (b02 row).
-// Every far-side line writes its figure one way, with its unit («3 مليون»,
-// «250 ألف», «0 ر.ي»), never the design's bare «5.4» beside a full figure
-// (V-01). Before the money in is known, the agreed line of a groom's plan
-// says the mahr is inside it, on its own short line: «اتفقت على 3 مليون»
-// then «مع المهر» (D79).
+// Every figure is written one way, with its unit («3 مليون», «250 ألف»,
+// «0 ر.ي»), never the design's bare «5.4» beside a full figure (V-01).
 
 /// The owner's funding from the money section (`GET P/money-summary`):
 /// what is in hand, what is promised and the server's shortfall.
@@ -29,8 +27,8 @@ class DashboardHomeFunding {
   /// the server names none.
   final List<DashboardHomeDue> dues;
 
-  /// D102: what is on the owner, the money tab's «عليك من العرس» (his
-  /// share, the mahr with it); null from a server before D102.
+  /// D102: what is on the owner, the money tab's «باقي عليك» (his share,
+  /// the mahr with it); null from a server before D102.
   final double? ownerLeft;
 
   /// D103: the money tab's verdict, in its words, and whether it is good
@@ -116,8 +114,9 @@ class _DashboardMoneyCard extends StatefulWidget {
   final DashboardHomeFunding? funding;
   final VoidCallback onTap;
 
-  /// D79: the groom's recorded mahr is inside the agreed total, so its line
-  /// reads «اتفقت على X مع المهر». Null (or the bride's) adds nothing.
+  /// D79, D114: the groom's recorded mahr is inside what he agreed. With the
+  /// budget holding it, «اتفقت على» says «منها المهر»; with the mahr on its
+  /// own, it has its own line. Null (or the bride's) adds nothing.
   final DashboardHomeMahr? mahr;
 
   /// G17: the phone's switch; with [onToggleAmounts] the eye flips it.
@@ -139,6 +138,81 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     } else {
       setState(() => _localHidden = !_localHidden);
     }
+  }
+
+  /// D114: the budget's figures, then what was agreed and paid, in the
+  /// reader's words; [figure] writes each amount (for the screen or for
+  /// the screen reader).
+  List<_MoneyCellData> _cells({
+    required double budget,
+    required double? budgetLeft,
+    required bool over,
+    required double? overBy,
+    required double agreed,
+    required double paidByOwner,
+    required double paidByOthers,
+    required double? mahrInside,
+    required String Function(double) figure,
+  }) {
+    final paidFor = context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها');
+    return [
+      if (budget > 0) ...[
+        _MoneyCellData('الميزانية', budget),
+        if (over)
+          // D105: over the budget by the expected cost, as the tab says it.
+          _MoneyCellData(
+            overBy == null ? 'فوق الميزانية' : 'فوق الميزانية بـ',
+            overBy,
+            danger: true,
+            joined: true,
+          )
+        else if (budgetLeft != null)
+          _MoneyCellData('باقي منها', budgetLeft),
+      ],
+      _MoneyCellData(
+        context.ownerDid(
+          'اتفقت على',
+          'اتفقتِ على',
+          groom: 'اتفق العريس على',
+          bride: 'اتفقت العروسة على',
+        ),
+        agreed,
+        note: mahrInside == null ? null : 'منها المهر ${figure(mahrInside)}',
+      ),
+      if (paidByOwner > 0 || paidByOthers <= 0)
+        _MoneyCellData(
+          context.ownerDid(
+            'دفعت',
+            'دفعتِ',
+            groom: 'العريس دفع',
+            bride: 'العروسة دفعت',
+          ),
+          paidByOwner,
+          note: paidByOthers > 0
+              ? 'ودفع $paidFor ${figure(paidByOthers)}'
+              : null,
+        )
+      else
+        _MoneyCellData('دفع $paidFor', paidByOthers),
+    ];
+  }
+
+  /// D114: the groom's mahr outside the budget, on its own line: what it
+  /// is, where it stands, what was handed over and what is left.
+  String _mahrOutsideLine(DashboardHomeMahr mahr, String Function(double) f) {
+    final handed = context.ownerDid(
+      'سلّمت',
+      'سلّمتِ',
+      groom: 'العريس سلّم',
+      bride: 'العروسة سلّمت',
+    );
+    final left = mahr.total - mahr.settled;
+    final where = 'المهر ${f(mahr.total)}، برّا الميزانية.';
+    if (mahr.settled <= 0) {
+      return '$where ${context.ownerDid('ما سلّمت منه شي بعد', 'ما سلّمتِ منه شي بعد', groom: 'العريس ما سلّم منه شي بعد', bride: 'العروسة ما سلّمت منه شي بعد')}.';
+    }
+    if (left <= 0) return '$where $handed كله.';
+    return '$where $handed ${f(mahr.settled)} وباقي ${f(left)}.';
   }
 
   @override
@@ -182,27 +256,57 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         mahr.recorded &&
         mahr.side == MahrHomeSide.pays &&
         mahr.total > 0;
+    final mahrInside = withMahr && summary.budgetIncludesMahr;
+
+    // D114: the budget is said once there is one, whatever was agreed.
+    final budget = dashboardAmount(summary.totalBudgetForDisplay) ?? 0;
+    final over = budget > 0 && summary.moneySummary.overBudget == true;
+    final overBy = over
+        ? dashboardAmount(
+            summary.financialWarnings
+                .where((warning) => warning.type == 'BUDGET_EXCEEDED')
+                .firstOrNull
+                ?.amount,
+          )
+        : null;
+    final budgetLeft = dashboardAmount(summary.remainingBudgetForDisplay);
+    List<_MoneyCellData> cells(String Function(double) write) => _cells(
+      budget: budget,
+      budgetLeft: budgetLeft,
+      over: over,
+      overBy: overBy,
+      agreed: agreed,
+      paidByOwner: paidByOwner,
+      paidByOthers: paidByOthers,
+      mahrInside: mahrInside ? mahr.total : null,
+      figure: write,
+    );
+    String? mahrLine(String Function(double) write) =>
+        withMahr && !mahrInside ? _mahrOutsideLine(mahr, write) : null;
+    String spoken(double value) => _spokenFigure(value, currency);
 
     final ownerLeft = funding?.ownerLeft;
     final verdict = known ? funding.verdict : null;
+    // D114: the owner's share, the mahr with it: never «من العرس».
+    final ownerLeftLabel = context.say('باقي عليك', 'باقي عليكِ');
     final Widget lead;
     // D103's verdict is the money tab's whole sentence («معك 4.2 مليون يكفي
     // دفعاتك وسداد السلفة بمواعيدها لين 1 مايو، ويبقى 2 مليون»), so its chip
     // takes the card's width under the figures; beside them it stood five
     // lines tall.
     ({bool ok, String words})? verdictShown;
-    if (ownerLeft != null && (agreed > 0 || ownerLeft > 0)) {
+    final agreedAny = agreed > 0;
+    if (ownerLeft != null && (agreedAny || ownerLeft > 0)) {
       // D102, D103: the owner reads what «الملخص» says, in its words.
       lead = _MoneyLead(
-        label: context.say('عليك من العرس', 'عليكِ من العرس'),
+        label: ownerLeftLabel,
         value: amount(ownerLeft),
         color: AarastV3Color.ink,
       );
       verdictShown = verdict;
-    } else if (agreed <= 0) {
+    } else if (!agreedAny) {
       // RA-MO-115: «جاهزة» promised «نقول لك كم باقي من الميزانية», and the
       // card then never named the budget that was just typed.
-      final budget = dashboardAmount(summary.totalBudgetForDisplay) ?? 0;
       lead = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -240,24 +344,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         _SideFigure('معك ${figure(funding.inHand)}', context.accent.primary),
         if (funding.pledged > 0)
           _SideFigure('موعود ${figure(funding.pledged)}', AarastV3Color.lilac),
-      ] else if (agreed > 0) ...[
-        _SideFigure(
-          '${context.ownerDid('اتفقت على', 'اتفقتِ على', groom: 'اتفق العريس على', bride: 'اتفقت العروسة على')} ${figure(agreed)}',
-          AarastV3Color.ink,
-        ),
-        // D79, on its own short line: the side column is narrow, and the
-        // figure's line never wraps around the words.
-        if (withMahr) const _SideFigure('مع المهر', AarastV3Color.textMuted),
-        if (paidByOwner > 0 || paidByOthers <= 0)
-          _SideFigure(
-            '${context.ownerDid('دفعت', 'دفعتِ', groom: 'العريس دفع', bride: 'العروسة دفعت')} ${figure(paidByOwner)}',
-            context.accent.primary,
-          ),
-        if (paidByOthers > 0)
-          _SideFigure(
-            'دفع ${context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} ${figure(paidByOthers)}',
-            context.accent.primaryDark,
-          ),
       ],
     ];
 
@@ -279,13 +365,20 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           : [
               'المال',
               if (ownerLeft != null)
-                '${context.say('عليك من العرس', 'عليكِ من العرس')} ${_spoken(ownerLeft, currency)}'
-              else if (agreed > 0)
+                '$ownerLeftLabel ${_spoken(ownerLeft, currency)}'
+              else if (agreedAny)
                 '$leftLabel ${_spoken(left, currency)}',
               ?verdict?.words,
               if (known) 'معك ${_spoken(funding.inHand, currency)}',
               if (known && funding.pledged > 0)
                 'موعود ${_spoken(funding.pledged, currency)}',
+              if (agreedAny) ...[
+                for (final cell in cells(spoken)) ...[
+                  cell.words(spoken),
+                  ?cell.note,
+                ],
+                ?mahrLine(spoken),
+              ],
             ].join('، '),
       child: AarastPressable(
         onTap: widget.onTap,
@@ -408,267 +501,21 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                 const SizedBox(height: AarastV3Space.x3),
                 _MoneySplitBar(pieces: pieces),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// «ومع الموعود ناقصك» over its 28 figure.
-class _MoneyLead extends StatelessWidget {
-  const _MoneyLead({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: JourneyType.of(
-            JourneyType.bodySmall,
-            color: AarastV3Color.textMuted,
-          ),
-        ),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            value,
-            key: const ValueKey('dashboard-money-lead'),
-            style: JourneyType.of(
-              JourneyType.headline,
-              weight: JourneyType.bold,
-              color: color,
-              height: 1.2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The money tab's verdict as a chip: a tick on the good news, a mark on
-/// the bad, the words beside it.
-class _VerdictChip extends StatelessWidget {
-  const _VerdictChip({required this.ok, required this.words});
-
-  final bool ok;
-  final String words;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = ok ? AarastV3Color.mint : AarastV3Color.danger;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: ok ? AarastV3Color.mintSoft : AarastV3Color.dangerSoft,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-      ),
-      child: Padding(
-        padding: AarastV3Density.tagInsets,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              ok ? LucideIcons.check : LucideIcons.alertCircle,
-              size: AarastV3Icon.sm,
-              color: color,
-            ),
-            const SizedBox(width: AarastV3Space.x1),
-            Flexible(
-              child: Text(
-                words,
-                key: const ValueKey('dashboard-money-verdict'),
-                style: JourneyType.of(
-                  JourneyType.small,
-                  weight: JourneyType.bold,
-                  color: color,
+              // Before any agreement the lead is the budget itself.
+              if (agreedAny) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                const Divider(
+                  height: AarastV3Space.hair,
+                  thickness: AarastV3Space.hair,
+                  color: AarastV3Color.line,
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One line of the far column: «باقي تدفع 5.4 مليون», «معك 2.9 مليون»,
-/// «موعود 250 ألف» (V-01: every line with its unit, see [_figure]).
-class _SideFigure extends StatelessWidget {
-  const _SideFigure(this.text, this.color);
-
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: TextAlign.end,
-      style: JourneyType.of(
-        JourneyType.bodySmall,
-        weight: JourneyType.bold,
-        color: color,
-      ),
-    );
-  }
-}
-
-/// When the owner pays: one bar cut by each piece's share, what is late in
-/// the warning colour and the nearest month in the plan's, and each piece
-/// named under it with its figure on a line of its own (side by side they
-/// were cut on a narrow phone, and the cut fell on the figure).
-class _DuesStrip extends StatelessWidget {
-  const _DuesStrip({
-    required this.dues,
-    required this.figure,
-    required this.hidden,
-    required this.color,
-    required this.soft,
-  });
-
-  final List<DashboardHomeDue> dues;
-  final String Function(double) figure;
-
-  /// G17: with the amounts hidden the bar is cut evenly, so the pieces'
-  /// widths say nothing of how the amounts compare.
-  final bool hidden;
-  final Color color;
-  final Color soft;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = dues.fold<double>(0, (sum, due) => sum + due.amount);
-    final nearest = dues.indexWhere((due) => !due.overdue);
-    return Column(
-      key: const ValueKey('dashboard-money-dues'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ExcludeSemantics(
-          child: SizedBox(
-            height: AarastV3Space.x1,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < dues.length; index++) ...[
-                  if (index > 0) const SizedBox(width: AarastV3Space.x1),
-                  Expanded(
-                    flex: hidden || total <= 0
-                        ? 1
-                        : (dues[index].amount / total * 1000).round().clamp(
-                            1,
-                            1000,
-                          ),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: dues[index].overdue
-                            ? AarastV3Color.danger
-                            : index == nearest
-                            ? color
-                            : soft,
-                        borderRadius: BorderRadius.circular(AarastV3Radius.xs),
-                      ),
-                    ),
+                const SizedBox(height: AarastV3Space.x3),
+                ExcludeSemantics(
+                  child: _MoneyFigures(
+                    cells: cells(figure),
+                    figure: figure,
+                    mahrLine: mahrLine(figure),
                   ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x1),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < dues.length; index++)
-              Expanded(
-                child: MergeSemantics(
-                  // A line too long for its third (a year, millions,
-                  // enlarged text) is drawn smaller, whole, like the
-                  // card's own figure; it is never cut.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: index == 0
-                        ? AlignmentDirectional.centerStart
-                        : index == dues.length - 1
-                        ? AlignmentDirectional.centerEnd
-                        : Alignment.center,
-                    child: Column(
-                      crossAxisAlignment: index == 0
-                          ? CrossAxisAlignment.start
-                          : index == dues.length - 1
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          dues[index].label,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            color: dues[index].overdue
-                                ? AarastV3Color.danger
-                                : AarastV3Color.textMuted,
-                          ),
-                        ),
-                        Text(
-                          figure(dues[index].amount),
-                          key: ValueKey('dashboard-money-due-$index'),
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            weight: JourneyType.bold,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// The 10-high bar split by amount; empty pieces are left out.
-class _MoneySplitBar extends StatelessWidget {
-  const _MoneySplitBar({required this.pieces});
-
-  final List<(double, Color)> pieces;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown = [
-      for (final piece in pieces)
-        if (piece.$1 > 0) piece,
-    ];
-    final total = shown.fold<double>(0, (sum, piece) => sum + piece.$1);
-    return ExcludeSemantics(
-      child: ClipRRect(
-        key: const ValueKey('dashboard-money-bar'),
-        borderRadius: BorderRadius.circular(AarastV3Radius.xs),
-        child: SizedBox(
-          height: AarastV3Space.x2,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var index = 0; index < shown.length; index++) ...[
-                if (index > 0) const SizedBox(width: AarastV3Space.x1),
-                Expanded(
-                  flex: (shown[index].$1 / total * 1000).round().clamp(1, 1000),
-                  child: ColoredBox(color: shown[index].$2),
                 ),
               ],
             ],
@@ -677,22 +524,4 @@ class _MoneySplitBar extends StatelessWidget {
       ),
     );
   }
-}
-
-String _money(double value, String currency) {
-  return compactMoneyParts(value, currencyCode: currency).plainText;
-}
-
-/// RA-MO-181: what the screen reader says: the currency by its name
-/// («ريال يمني»), not «ر.ي» read out letter by letter.
-String _spoken(double value, String currency) {
-  return compactMoneyParts(value, currencyCode: currency).semanticText;
-}
-
-/// b02's far column (V-01): every line the same way, the short figure with
-/// its unit («3 مليون», «250 ألف», «0 ر.ي»), its unit kept on its line. The
-/// design's bare «5.4» is dropped: beside a full figure it read as another
-/// unit («اتفقت على 3» over «دفعت 250,000 ر.ي»).
-String _figure(double value, String currency) {
-  return compactMoneyFigure(value, currencyCode: currency);
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/app_clock.dart';
@@ -55,11 +56,13 @@ class FinanceLocalDataSource {
     required String? totalBudget,
     required String currency,
     required List<Map<String, dynamic>> categories,
+    bool? budgetIncludesMahr,
   }) async {
     await saveBudgetMetadata(
       planId: planId,
       totalBudget: totalBudget,
       currency: currency,
+      budgetIncludesMahr: budgetIncludesMahr,
     );
     // D109: the whole budget names the items and their allocations; an
     // item's own estimate is kept unless the save names it (as the server).
@@ -89,16 +92,26 @@ class FinanceLocalDataSource {
     await _offline?.refreshStatus();
   }
 
+  /// The budget's own fields. D114: [budgetIncludesMahr] null keeps what
+  /// was saved (a save that did not name it, as the server).
   Future<void> saveBudgetMetadata({
     required String planId,
     required String? totalBudget,
     required String currency,
+    bool? budgetIncludesMahr,
   }) async {
+    final includesMahr =
+        budgetIncludesMahr ??
+        switch ((await readBudget(planId))?['budgetIncludesMahr']) {
+          final bool saved => saved,
+          _ => null,
+        };
     await _offline?.database.setMeta(
       budgetMetaKey(planId),
       jsonEncode({
         'totalBudget': totalBudget,
         'currency': currency,
+        'budgetIncludesMahr': ?includesMahr,
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );
@@ -113,13 +126,19 @@ class FinanceLocalDataSource {
     MoneyFundingSummary? funding,
     String? persona,
     LocalFinancePlanContext? draftMahr,
-  }) => _localMoneySummary(
+  }) => localPlanMoneySummary(
+    _offline?.database,
     planId,
-    estimatedBudget: estimatedBudget,
-    currency: currency,
+    plan: LocalFinancePlanContext(
+      estimatedBudget: estimatedBudget,
+      currency: currency,
+      persona: persona,
+      mahrTotal: draftMahr?.mahrTotal,
+      mahrSettled: draftMahr?.mahrSettled,
+      mahrDueDate: draftMahr?.mahrDueDate,
+      budgetIncludesMahr: draftMahr?.budgetIncludesMahr,
+    ),
     funding: funding,
-    persona: persona,
-    draftMahr: draftMahr,
   );
 
   Future<BudgetCategory> createBudgetCategory({

@@ -1,8 +1,10 @@
 import {
   BudgetCategoryKind,
-  type BudgetItemSuggestion,
-  type Prisma,
+  BudgetItemSuggestion,
+  Prisma,
+  WeddingCostStatus,
 } from '@prisma/client';
+import { expectedItem, sumExpected } from '../domain/expected-cost-policy';
 
 export function createBudgetCategory(
   tx: Prisma.TransactionClient,
@@ -120,6 +122,45 @@ export async function sumOtherBudgetCategoryAllocations(
     _sum: { allocatedAmount: true },
   });
   return result._sum.allocatedAmount;
+}
+
+/**
+ * D114: what the mahr is expected to cost (D105: its live agreements plus
+ * any estimate they have not settled), the share of the budget it takes
+ * when the groom counts it inside. The plan's whole mahr, as the money
+ * summary's `expected.mahr.expected` reads it for the owner.
+ */
+export async function readMahrExpectedCost(
+  tx: Prisma.TransactionClient,
+  weddingPlanId: string,
+): Promise<Prisma.Decimal> {
+  const zero = new Prisma.Decimal(0);
+  const items = await tx.budgetCategory.findMany({
+    where: { weddingPlanId, kind: BudgetCategoryKind.MAHR },
+    select: {
+      allocatedAmount: true,
+      estimatedAmount: true,
+      suggestion: true,
+      weddingCosts: {
+        where: { status: { not: WeddingCostStatus.CANCELLED } },
+        select: { totalAmount: true, estimateCover: true, estimatePart: true },
+      },
+    },
+  });
+  return sumExpected(
+    items.map((item) =>
+      expectedItem(
+        {
+          allocatedAmount: item.allocatedAmount,
+          estimatedAmount: item.estimatedAmount,
+          notNeeded: item.suggestion === BudgetItemSuggestion.NOT_NEEDED,
+        },
+        item.weddingCosts,
+        zero,
+      ),
+    ),
+    zero,
+  ).expected;
 }
 
 /**

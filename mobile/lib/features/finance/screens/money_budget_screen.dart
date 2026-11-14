@@ -19,6 +19,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
+import '../widgets/mahr_budget_choice.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart' show shownMoney;
 
@@ -45,6 +46,25 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   bool _hydrated = false;
   String? _formError;
   AarastFormDraftBinding? _draft;
+
+  /// D114: the groom's answer picked here; null until he picks one, so a
+  /// save that did not touch it sends nothing.
+  bool? _includesMahr;
+
+  /// D114: the saved answer, and whether this plan is asked at all (the
+  /// groom pays the mahr; a bride's plan receives it).
+  bool _savedInside(FinanceProvider provider) =>
+      provider.summary.budget.includesMahr;
+  bool get _asked => !context.journeyProfile.isBride;
+
+  bool _inside(FinanceProvider provider) =>
+      _asked && (_includesMahr ?? _savedInside(provider));
+
+  /// What the mahr takes of the budget when it is inside: its expected
+  /// cost, as the server holds the items' room (D114).
+  num _mahrTaken(FinanceProvider provider) => _inside(provider)
+      ? moneyValue(provider.summary.expected?.mahr.expected)
+      : 0;
 
   @override
   void initState() {
@@ -100,7 +120,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
       0,
       (sum, row) => sum + moneyValue(row.amount.text),
     );
-    final reserve = total - allocated;
+    final inside = _inside(provider);
+    final mahrTaken = _mahrTaken(provider);
+    final reserve = total - mahrTaken - allocated;
 
     return AarastScreenFrame(
       maxWidth: 600,
@@ -117,7 +139,12 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
             ),
             child: JourneySubHeader(
               title: 'توزيع الميزانية',
-              subtitle: total > 0
+              // D114: the mahr where the groom put it.
+              subtitle: inside
+                  ? (total > 0
+                        ? '${_plain(total)} · فيها المهر'
+                        : 'الميزانية فيها المهر')
+                  : total > 0
                   ? '${_plain(total)} لعرسك · المهر لحاله'
                   : 'المهر لحاله، برا الميزانية',
               onBack: () => _close(false),
@@ -149,6 +176,17 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   over: total > 0 && reserve < 0,
                   onTap: _editTotal,
                 ),
+                if (mahrTaken > 0 && total > 0) ...[
+                  const SizedBox(height: AarastV3Space.x2),
+                  Text(
+                    'المهر ${_plain(mahrTaken)} من الميزانية، والاحتياط بعده.',
+                    key: const ValueKey('money-budget-mahr-note'),
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AarastV3Space.x3),
                 if (_rows.isEmpty)
                   const JourneyListState(
@@ -226,20 +264,31 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     );
   }
 
-  /// «ميزانية عرسك» and its currency, in a sheet over the split.
+  /// «ميزانيتك» and its currency, in a sheet over the split; on a groom's
+  /// plan, whether it holds the mahr (D114).
   Future<void> _editTotal() {
-    final currencyLocked = context
-        .read<FinanceProvider>()
-        .summary
-        .currencyFixed;
+    final provider = context.read<FinanceProvider>();
+    final currencyLocked = provider.summary.currencyFixed;
+    final mahr = provider.summary.mahrCategory;
     return showJourneySheet<void>(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
           final total = moneyValue(_totalController.text);
           return JourneySheetBody(
-            title: 'ميزانية عرسك',
-            subtitle: 'المهر لحاله، برا الميزانية',
+            title: 'ميزانيتك',
+            subtitle: _asked
+                ? 'كم تقريبًا، وهل فيها المهر'
+                : 'المهر لحاله، برا الميزانية',
+            // Pinned under what scrolls: with the mahr's question the sheet
+            // is taller than a 320 phone at 1.3, and «تمام» fell off it.
+            bottom: JourneyButton(
+              key: const ValueKey('money-budget-total-done'),
+              label: 'تمام',
+              expand: true,
+              large: true,
+              onPressed: () => Navigator.of(sheetContext).pop(),
+            ),
             children: [
               JourneyTextField(
                 key: const ValueKey('money-budget-total'),
@@ -290,14 +339,20 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                       ),
                   ],
                 ),
-              const SizedBox(height: AarastV3Space.x4),
-              JourneyButton(
-                key: const ValueKey('money-budget-total-done'),
-                label: 'تمام',
-                expand: true,
-                large: true,
-                onPressed: () => Navigator.of(sheetContext).pop(),
-              ),
+              if (_asked) ...[
+                const SizedBox(height: AarastV3Space.x4),
+                MahrBudgetChoice(
+                  inside: _inside(provider),
+                  budget: total,
+                  mahr: moneyValue(mahr?.confirmedCost),
+                  currency: _currency,
+                  onChanged: (inside) {
+                    setSheetState(() {});
+                    setState(() => _includesMahr = inside);
+                    _draft?.changed();
+                  },
+                ),
+              ],
             ],
           );
         },
@@ -473,6 +528,15 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     if (total > 0 && allocated > total) {
       return '${context.say('وزّعت', 'وزّعتِ')} ${_plain(allocated)}، وهذا أكثر من ميزانيتك بـ ${_plain(allocated - total)}';
     }
+    // D114, as the server holds it: with the mahr inside, the items get
+    // what is left after it; a split given no more than before still saves.
+    final provider = context.read<FinanceProvider>();
+    final room = total - _mahrTaken(provider);
+    if (total > 0 &&
+        allocated > room &&
+        allocated > moneyValue(provider.summary.budget.allocated)) {
+      return 'المهر ${_plain(_mahrTaken(provider))} من الميزانية، و${context.say('وزّعت', 'وزّعتِ')} ${_plain(allocated)}، أكثر من اللي يبقى بعده بـ ${_plain(allocated - room)}';
+    }
     return null;
   }
 
@@ -486,10 +550,19 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     setState(() => _formError = _problem(totalText, total, allocated));
     if (_formError != null) return;
     final provider = context.read<FinanceProvider>();
+    // D114: sent only when he changed it, so a server that does not know
+    // the choice is never sent it for nothing.
+    final includesMahr = _includesMahr;
     final ok = await provider.saveBudget(
       planId: widget.weddingPlanId,
       totalBudget: totalText.isEmpty ? null : totalText,
       currency: _currency,
+      budgetIncludesMahr:
+          _asked &&
+              includesMahr != null &&
+              includesMahr != _savedInside(provider)
+          ? includesMahr
+          : null,
       categories: [
         for (final row in _rows)
           (
@@ -524,6 +597,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
       fields: {'total': _totalController},
       readExtras: () => {
         'currency': _currency,
+        'includesMahr': ?_includesMahr,
         'shares': {
           for (final row in _rows)
             if (row.id != null) row.id!: row.amount.text,
@@ -534,6 +608,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
         final currency = data['currency']?.toString();
         final shares = data['shares'];
         setState(() {
+          if (data['includesMahr'] case final bool kept) _includesMahr = kept;
           if (currency != null &&
               weddingCurrencyOptions.any((option) => option.$1 == currency)) {
             _currency = currency;

@@ -192,6 +192,8 @@ export class DataExportService {
           weddingPlanId: plan.id,
           persona: plan.persona,
           totalBudget: plan.estimatedBudget,
+          // D114: the export reads the budget as the app shows it.
+          budgetIncludesMahr: plan.budgetIncludesMahr,
           scope: null,
           readerUserId: userId,
           fundingVisible: true,

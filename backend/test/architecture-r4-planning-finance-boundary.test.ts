@@ -516,9 +516,23 @@ test('R4 writer delegates one exact update and preserves the original error iden
       return true;
     },
   );
+  // D114: an omitted choice is passed as undefined, which Prisma does not write.
   assert.deepEqual(calls, [{
     where: { id: 'plan-1' },
-    data: { estimatedBudget: null, currency: 'YER' },
+    data: { estimatedBudget: null, currency: 'YER', budgetIncludesMahr: undefined },
+  }]);
+  calls.length = 0;
+  await assert.rejects(
+    writer.updateBudgetInTransaction(tx, {
+      weddingPlanId: 'plan-1',
+      estimatedBudget: null,
+      currency: 'YER',
+      budgetIncludesMahr: true,
+    }),
+  );
+  assert.deepEqual(calls, [{
+    where: { id: 'plan-1' },
+    data: { estimatedBudget: null, currency: 'YER', budgetIncludesMahr: true },
   }]);
 });
 
@@ -539,6 +553,7 @@ test('R4 writer isolation rejects dependencies, nested transactions, remapped er
     '      data: {',
     '        estimatedBudget: input.estimatedBudget,',
     '        currency: input.currency,',
+    '        budgetIncludesMahr: input.budgetIncludesMahr,',
     '      },',
     '    });',
   ].join('\n');
@@ -595,7 +610,7 @@ test('R4 writer accepts one infrastructure update and rejects an extra infrastru
     'export async function updateWeddingPlanBudgetInTransaction(tx: any, input: any): Promise<void> {',
     '  await tx.weddingPlan.update({',
     '    where: { id: input.weddingPlanId },',
-    '    data: { estimatedBudget: input.estimatedBudget, currency: input.currency },',
+    '    data: { estimatedBudget: input.estimatedBudget, currency: input.currency, budgetIncludesMahr: input.budgetIncludesMahr },',
     '  });',
     '}',
   ].join('\n');

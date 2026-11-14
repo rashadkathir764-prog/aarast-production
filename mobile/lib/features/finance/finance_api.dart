@@ -1,5 +1,6 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/finance_api.dart' show FinanceApi, LocalFinancePlanContext;
+export 'data/finance_local_data_source.dart' show localPlanMoneySummary;
 export 'data/funding_api.dart' show FundingApi;
 export 'providers/funding_provider.dart' show FundingProvider;
 export 'screens/funding_sources_screen.dart' show FundingSourcesScreen;
@@ -24,6 +25,7 @@ export 'screens/money_receipts_screen.dart' show MoneyReceiptsScreen;
 export 'screens/money_overview_screen.dart' show MoneyOverviewScreen;
 export 'widgets/money_cost_action_picker.dart'
     show MoneyCostActionIntent, openMoneyCostAction;
+export 'widgets/mahr_budget_choice.dart' show MahrBudgetChoice;
 export 'widgets/mahr_fields.dart' show MahrFields, mahrWords, pickMahrDueDate;
 export 'widgets/money_cover_words.dart' show MoneyCoverWords, moneyCoverWords;
 export 'widgets/money_input_formatter.dart'

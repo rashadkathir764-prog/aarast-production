@@ -36,16 +36,21 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     required String currency,
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
+    bool? budgetIncludesMahr,
   }) async {
     final result = await replaceMoneyBudget(
       planId: planId,
       totalBudget: totalBudget,
       currency: currency,
       categories: categories,
+      budgetIncludesMahr: budgetIncludesMahr,
     );
     return result.summary;
   }
 
+  /// [budgetIncludesMahr] (D114): the groom's answer, sent only when the
+  /// person gave one; null keeps what is saved, so a server that does not
+  /// know the field is not broken by a budget whose answer was not touched.
   Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
     required String planId,
     required String? totalBudget,
@@ -53,6 +58,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
     String? expectedBudgetVersion,
+    bool? budgetIncludesMahr,
   }) async {
     final version = _nullableTrimmed(expectedBudgetVersion);
     final payload = {
@@ -62,6 +68,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       'expectedBudgetVersion': ?version,
       'totalBudget': _nullableTrimmed(totalBudget),
       'currency': currency.trim().toUpperCase(),
+      'budgetIncludesMahr': ?budgetIncludesMahr,
       'categories': [
         for (final category in categories)
           {
@@ -360,13 +367,25 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     return text == null || text.isEmpty ? null : text;
   }
 
+  /// D114: the groom's answer as a plan kept on the phone holds it in its
+  /// money (its own budget save); null when that save never named it.
+  Future<bool?> localBudgetIncludesMahr(String planId) async {
+    return switch ((await _local.readBudget(planId))?['budgetIncludesMahr']) {
+      final bool answer => answer,
+      _ => null,
+    };
+  }
+
   Future<MoneyBudgetReplaceResult> _localBudgetResult(String planId) async {
     final context = await _localPlanContextLoader?.call(planId);
+    // RA-MO-89, D114: the same picture the money tab reads, the draft mahr
+    // and the groom's answer with it.
     final summary = await _local.moneySummary(
       planId,
       estimatedBudget: context?.estimatedBudget,
       currency: context?.currency,
       persona: context?.persona,
+      draftMahr: context,
     );
     final categories = (await _readCachedPlanList(
       OfflineTables.cachedBudgetCategories,
@@ -402,6 +421,10 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
       totalBudget: _nullableTrimmed(payload['totalBudget']?.toString()),
       currency: payload['currency']?.toString() ?? 'YER',
       categories: categories,
+      budgetIncludesMahr: switch (payload['budgetIncludesMahr']) {
+        final bool answer => answer,
+        _ => null,
+      },
     );
   }
 

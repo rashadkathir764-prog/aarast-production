@@ -286,6 +286,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         mahrTotal: draft.mahr?.total,
         mahrSettled: draft.mahr?.settled,
         mahrDueDate: draft.mahr?.remainingDueDate,
+        budgetIncludesMahr: draft.budgetIncludesMahr,
       );
     },
   );

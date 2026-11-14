@@ -16,6 +16,27 @@ export function allocationWithinBudgetViolation(
 }
 
 /**
+ * D114: what the items may be given when the mahr counts inside the budget
+ * (`mahrTaken` is its expected cost then, zero otherwise). The budget is the
+ * hard cap; the mahr's share is room the items cannot be given more of. A
+ * write that gives no more than the items held before (`previous`) stays
+ * allowed even when they no longer fit (the choice turned on, the mahr
+ * agreed later): that is an over-budget state, not an error.
+ */
+export function allocationRoomViolation(
+  totalBudget: Amount | null,
+  mahrTaken: Amount,
+  allocated: Amount,
+  previous: Amount,
+): FinanceViolation | null {
+  const hard = allocationWithinBudgetViolation(totalBudget, allocated);
+  if (hard || totalBudget === null) return hard;
+  return allocated.gt(totalBudget.minus(mahrTaken)) && allocated.gt(previous)
+    ? invalid('Category allocations cannot exceed what the budget leaves after the mahr')
+    : null;
+}
+
+/**
  * A whole budget (general budget plus its category allocations): allocating
  * needs a general budget, and the allocations never exceed it.
  */

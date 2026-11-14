@@ -179,6 +179,9 @@ abstract class _FinanceApiCore {
       planId: planId,
       totalBudget: summary.budget.total,
       currency: summary.currency,
+      // D114: the server's answer, so a budget saved later without a
+      // connection is worked out the way the server works it out.
+      budgetIncludesMahr: summary.budget.includesMahr,
     );
   }
 

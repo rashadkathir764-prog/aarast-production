@@ -16,7 +16,26 @@ import {
  * (`scripts/contracts/money-plan-fixtures.ts`) present a plan this one way.
  */
 export function presentMoneyPlan(plan: MoneyPlan) {
+  const { budget } = plan;
   return {
+    /**
+     * The budget (C1): the wedding items, and the mahr with them when the
+     * owner counts it inside the budget (D114, `includesMahr`). `count` is
+     * the wedding agreements, the mahr's never among them.
+     */
+    budget: {
+      total: budget.total?.toString() ?? null,
+      includesMahr: budget.includesMahr,
+      allocated: budget.allocated.toString(),
+      unallocated: budget.unallocated?.toString() ?? null,
+      confirmedCost: budget.confirmedCost.toString(),
+      paid: budget.paid.toString(),
+      paidByOwner: budget.paidByOwner.toString(),
+      paidByOthers: budget.paidByOthers.toString(),
+      outstanding: budget.outstanding.toString(),
+      count: budget.count,
+      remaining: budget.remaining?.toString() ?? null,
+    },
     /**
      * D105, D109: what the wedding is expected to cost: agreements plus the
      * estimates no agreement settled. The budget is the wedding items' (C1);

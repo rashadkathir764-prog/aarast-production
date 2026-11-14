@@ -1,6 +1,8 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/plan_day.dart';
+import '../../finance/finance_api.dart'
+    show LocalFinancePlanContext, localPlanMoneySummary;
 import '../../onboarding/onboarding_api.dart'
     show
         GeneratedDashboardSeed,
@@ -39,6 +41,7 @@ class LocalGuestDashboardSummarySource {
         GuestPersona.bride => 'BRIDE',
         _ => null,
       },
+      draft: plan,
     );
     return LocalGuestDashboardSummary.fromPlan(plan, metrics: metrics);
   }
@@ -69,9 +72,21 @@ class LocalGuestDashboardSummary {
     required this.localImportantItems,
     required this.localRecentActivity,
     required this.financialWarnings,
+    this.budgetTotal,
+    this.remainingBudget,
+    this.overBudget,
+    this.budgetIncludesMahr = false,
   });
 
   final GuestOnboardingDraft plan;
+
+  /// The budget as the money tab reads it (D59): what is left after the
+  /// agreements, and whether what is expected passes it (D105). D114: the
+  /// mahr's in both when the groom counts it inside the budget.
+  final String? budgetTotal;
+  final String? remainingBudget;
+  final bool? overBudget;
+  final bool budgetIncludesMahr;
   final GeneratedDashboardSeed seed;
   final int? daysRemaining;
   final int progressPercent;
@@ -108,8 +123,24 @@ class LocalGuestDashboardSummary {
     final daysRemaining = weddingDate == null
         ? null
         : daysUntilPlanDay(weddingDate, now: now);
+    // Without the phone's records (no database) the plan's own budget, and
+    // nothing agreed against it.
+    final budget = metrics.moneyWorkedOut
+        ? metrics.budgetTotal
+        : _cleanAmount(plan.estimatedBudget);
+    final remainingBudget = metrics.moneyWorkedOut
+        ? metrics.remainingBudget
+        : budget;
 
     return LocalGuestDashboardSummary(
+      budgetTotal: budget,
+      remainingBudget: remainingBudget,
+      overBudget: budget == null
+          ? null
+          : metrics.moneyWorkedOut
+          ? _moneyValue(metrics.budgetLeft) < 0
+          : false,
+      budgetIncludesMahr: metrics.budgetIncludesMahr,
       plan: plan,
       seed: GeneratedDashboardSeed.fromDraft(plan),
       // Not clamped at zero: a wedding that has passed is a negative
@@ -137,7 +168,7 @@ class LocalGuestDashboardSummary {
       localImportantItems: metrics.importantItems,
       localRecentActivity: metrics.recentActivity,
       financialWarnings: metrics.financialWarnings(
-        budget: _cleanAmount(plan.estimatedBudget),
+        budget: budget,
         hasLocation: plan.weddingLocation.shortLabel != null,
       ),
     );
@@ -153,10 +184,7 @@ class LocalGuestDashboardSummary {
   );
 
   DashboardSummary toDashboardSummary() {
-    final budget = _cleanAmount(plan.estimatedBudget);
-    final remainingBudget = budget == null
-        ? null
-        : _amountString(_moneyValue(budget) - _moneyValue(confirmedCostTotal));
+    final budget = budgetTotal;
     return DashboardSummary(
       dataScope: 'LOCAL',
       accountBacked: false,
@@ -178,7 +206,8 @@ class LocalGuestDashboardSummary {
       confirmedCostTotal: confirmedCostTotal,
       paidTotal: paidTotal,
       outstandingTotal: outstandingTotal,
-      remainingBudget: remainingBudget ?? budget,
+      remainingBudget: remainingBudget,
+      budgetIncludesMahr: budgetIncludesMahr,
       duePaymentSchedulesCount: duePaymentSchedulesCount,
       totalTasks: taskCount,
       completedTasks: completedTaskCount,
@@ -213,10 +242,10 @@ class LocalGuestDashboardSummary {
         confirmedCost: confirmedCostTotal,
         paid: paidTotal,
         outstanding: outstandingTotal,
-        remainingBudget: remainingBudget ?? budget,
-        overBudget: budget == null
-            ? null
-            : _moneyValue(confirmedCostTotal) > _moneyValue(budget),
+        // As the account's home: the budget less the agreements, and over
+        // it by the expected cost (D105; the mahr's with it inside, D114).
+        remainingBudget: remainingBudget,
+        overBudget: overBudget,
       ),
       financialWarnings: financialWarnings,
       generatedAt: plan.createdAt,
@@ -279,6 +308,11 @@ class LocalDashboardMetrics {
     required this.nextPaymentScheduleDue,
     required this.importantItems,
     required this.recentActivity,
+    this.budgetTotal,
+    this.remainingBudget,
+    this.budgetLeft,
+    this.budgetIncludesMahr = false,
+    this.moneyWorkedOut = false,
   });
 
   static const empty = LocalDashboardMetrics(
@@ -324,6 +358,20 @@ class LocalDashboardMetrics {
   final List<DashboardImportantItem> importantItems;
   final List<DashboardImportantItem> recentActivity;
 
+  /// The money tab's figures for the plan (`localPlanMoneySummary`, one
+  /// formula with the money tab and the account, D59): the budget, what is
+  /// left of it after the agreements (`budget.remaining`) and after what is
+  /// expected (`expected.budgetLeft`, D105; the mahr's in both when the
+  /// groom counts it inside the budget, D114). Null without a budget.
+  final String? budgetTotal;
+  final String? remainingBudget;
+  final String? budgetLeft;
+  final bool budgetIncludesMahr;
+
+  /// The money figures above and the totals were worked out by the money
+  /// tab's formula; false for [empty].
+  final bool moneyWorkedOut;
+
   int get progressPercent {
     if (taskCount == 0) return 0;
     return ((completedTaskCount / taskCount) * 100).round().clamp(0, 100);
@@ -335,6 +383,10 @@ class LocalDashboardMetrics {
 
     /// Whose plan it is (`GROOM`, `BRIDE`): whose side's agreements are his.
     String? persona,
+
+    /// What the plan's questions recorded: the budget, the mahr (RA-MO-89)
+    /// and whether the groom counts it inside the budget (D114).
+    GuestOnboardingDraft? draft,
   }) async {
     final guests = await database.readCachedList(
       table: OfflineTables.cachedGuests,
@@ -381,35 +433,28 @@ class LocalDashboardMetrics {
     final activeCosts = costs.where((cost) {
       return _statusOf(cost) != 'CANCELLED';
     }).toList();
-    final confirmedCostTotal = activeCosts.fold<num>(
-      0,
-      (sum, cost) => sum + _moneyValue(cost['totalAmount']),
+    // D59: the money tab's own picture of the plan, so the home says what
+    // the money tab says, and what the account says once the plan is saved
+    // there: every agreement with the draft mahr (D79, RA-MO-89), what was
+    // paid by the payments ledger, the owner's share by the money's own
+    // rule (RA-MO-91), and the budget by the expected cost (D105, D114).
+    final money = await localPlanMoneySummary(
+      database,
+      planId,
+      plan: LocalFinancePlanContext(
+        estimatedBudget: draft?.estimatedBudget,
+        currency: draft?.currency,
+        persona: persona,
+        mahrTotal: draft?.mahr?.total,
+        mahrSettled: draft?.mahr?.settled,
+        mahrDueDate: draft?.mahr?.remainingDueDate,
+        budgetIncludesMahr: draft?.budgetIncludesMahr,
+      ),
     );
-    final paidTotal = activeCosts.fold<num>(
-      0,
-      (sum, cost) => sum + _moneyValue(cost['paidAmount']),
-    );
-    final outstandingTotal = (confirmedCostTotal - paidTotal).clamp(
-      0,
-      confirmedCostTotal,
-    );
-    // RA-MO-91 (D59): what is on the owner, by the money's own rule: no
-    // payer, a shared agreement, or the owner's own side. The home said the
-    // whole of it was on him, the father's agreements with it.
-    bool ownersOwn(Map<String, dynamic> cost) {
-      final payer = cost['payer']?.toString();
-      if (payer == null || payer.isEmpty || payer == 'SHARED') return true;
-      return payer == persona;
-    }
-
-    final ownerOutstandingTotal = activeCosts.where(ownersOwn).fold<num>(0, (
-      sum,
-      cost,
-    ) {
-      final left =
-          _moneyValue(cost['totalAmount']) - _moneyValue(cost['paidAmount']);
-      return sum + (left < 0 ? 0 : left);
-    });
+    final confirmedCostTotal = _moneyValue(money.costs.total);
+    final paidTotal = _moneyValue(money.costs.paid);
+    final outstandingTotal = _moneyValue(money.costs.outstanding);
+    final ownerOutstandingTotal = _moneyValue(money.outstanding?.owner);
     final activeCostIds = activeCosts
         .map((cost) => cost['id']?.toString())
         .whereType<String>()
@@ -479,6 +524,11 @@ class LocalDashboardMetrics {
         tasks: activeTasks,
         costs: activeCosts,
       ),
+      budgetTotal: money.budget.total,
+      remainingBudget: money.budget.remaining,
+      budgetLeft: money.expected?.budgetLeft,
+      budgetIncludesMahr: money.budget.includesMahr,
+      moneyWorkedOut: true,
     );
   }
 
@@ -488,6 +538,11 @@ class LocalDashboardMetrics {
   }) {
     final warnings = <DashboardFinancialWarning>[];
     final budgetValue = _moneyValue(budget);
+    // D105: over the budget by the expected cost, as the account warns;
+    // D114: the mahr's with it when the groom counts it inside.
+    final over = moneyWorkedOut
+        ? (budgetLeft == null ? 0 : -_moneyValue(budgetLeft))
+        : confirmedCostTotal - budgetValue;
     if (!hasLocation) {
       warnings.add(
         const DashboardFinancialWarning(
@@ -505,13 +560,13 @@ class LocalDashboardMetrics {
           message: 'أضف الميزانية المتوقعة حتى نعرض المتبقي بدقة.',
         ),
       );
-    } else if (confirmedCostTotal > budgetValue) {
+    } else if (over > 0) {
       warnings.add(
         DashboardFinancialWarning(
           type: 'BUDGET_EXCEEDED',
           severity: 'DANGER',
           message: 'التكاليف المؤكدة تجاوزت الميزانية العامة.',
-          amount: _amountString(confirmedCostTotal - budgetValue),
+          amount: _amountString(over),
         ),
       );
     }

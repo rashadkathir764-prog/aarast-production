@@ -165,6 +165,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       });
     }
     final canManage = plan != null && _canManagePlan(auth, dashboard, plan);
+    final moneyRead =
+        plan != null &&
+        finance.loadedPlanId == plan.id &&
+        finance.hasLoadedMoney;
     return AarastScreenFrame(
       maxWidth: 560,
       backgroundColor: AarastV3Color.canvas,
@@ -186,18 +190,27 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
           : PlanDetailsView(
               key: ValueKey(plan.id),
               plan: plan,
-              budgetTotal:
-                  finance.loadedPlanId == plan.id && finance.hasLoadedMoney
-                  ? finance.summary.budget.total
+              budgetTotal: moneyRead ? finance.summary.budget.total : null,
+              // D114: asked of a groom's plan, from what the money says.
+              budgetIncludesMahr: moneyRead && canManage && _groomPlan(plan)
+                  ? finance.summary.budget.includesMahr
                   : null,
+              // The groom's mahr item (C1); a bride's plan has none.
+              mahrTotal: switch (finance.summary.mahrCategory) {
+                final item? when moneyRead => moneyValue(item.confirmedCost),
+                _ => null,
+              },
               onBack: _goBack,
-              onSave: ({title, firstDay, budgetTotal, city}) => _saveDetails(
-                plan,
-                title: title,
-                firstDay: firstDay,
-                budgetTotal: budgetTotal,
-                city: city,
-              ),
+              onSave:
+                  ({title, firstDay, budgetTotal, city, budgetIncludesMahr}) =>
+                      _saveDetails(
+                        plan,
+                        title: title,
+                        firstDay: firstDay,
+                        budgetTotal: budgetTotal,
+                        city: city,
+                        budgetIncludesMahr: budgetIncludesMahr,
+                      ),
               onChangeDate: canManage && !_isLocalPlan
                   ? () => _postpone(plan)
                   : null,
@@ -222,6 +235,14 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         auth.user?.id == plan.ownerUserId ||
         widget.sharedMember?.role == 'MANAGER';
   }
+
+  /// D114: the groom's plan pays the mahr, so it may count it in its
+  /// budget; the plan's own word, else the plan's profile.
+  bool _groomPlan(WeddingPlan plan) => switch (plan.persona?.toUpperCase()) {
+    'GROOM' => true,
+    null => !context.journeyProfile.isBride,
+    _ => false,
+  };
 
   WeddingPlan _weddingPlanFromDraft(GuestOnboardingDraft draft) {
     return WeddingPlan(

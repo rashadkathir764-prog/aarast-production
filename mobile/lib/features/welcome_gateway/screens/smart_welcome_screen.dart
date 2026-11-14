@@ -25,6 +25,7 @@ import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../finance/finance_api.dart'
     show
         FinanceApi,
+        MahrBudgetChoice,
         MahrFields,
         MoneyInputFormatter,
         formatMoneyInputValue,
@@ -47,6 +48,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 part 'smart_welcome_screen.start.dart';
 part 'smart_welcome_screen.plan.dart';
 part 'smart_welcome_screen.day.dart';
+part 'smart_welcome_screen.mahr.dart';
 
 /// The start of the journey (prototype a02 to a08): what you want to do,
 /// whose wedding, your name and the date, the city and a rough budget, the
@@ -161,6 +163,23 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
   bool get _mahrTotalMissing =>
       (MahrFields.amountOf(_mahrTotalController) ?? 0) <= 0;
 
+  /// D114: the groom's answer, the mahr on its own until he says otherwise.
+  bool _mahrInBudget = false;
+
+  /// D114: asked once both figures are typed on a groom's plan: until the
+  /// mahr is typed the question has nothing in it, and there each answer
+  /// can say what it means in his own numbers.
+  bool get _asksMahrInBudget =>
+      _persona != GuestPersona.bride &&
+      !_budgetSkipped &&
+      _budget != null &&
+      !_mahrTotalMissing;
+
+  /// What the plan is made with: «inside» only where it was asked and
+  /// chosen; otherwise nothing, so the plan keeps the start (on its own).
+  bool? get _budgetIncludesMahr =>
+      _asksMahrInBudget && _mahrInBudget ? true : null;
+
   /// «التالي» on a06: what is typed must hold together. It is only enabled
   /// with an amount (_mahrTotalMissing), and the line under the fields says
   /// so while it is missing.
@@ -273,6 +292,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       budgetSkipped: _budgetSkipped,
       selectedCategoryKeys: const [],
       mahr: _mahr,
+      budgetIncludesMahr: _budgetIncludesMahr,
     );
   }
 
@@ -503,6 +523,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         _mahrSettledController.text = formatMoneyInputValue(mahr.settled);
         _mahrDueDate = mahr.remainingDueDate;
       }
+      _mahrInBudget = draft.budgetIncludesMahr ?? false;
     });
     return dayPassed;
   }
@@ -533,6 +554,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
       startingItemNames: _catalogs().items,
       mahr: _mahr,
+      budgetIncludesMahr: _budgetIncludesMahr,
     );
   }
 
@@ -590,6 +612,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         planId: planId,
         totalBudget: draft.estimatedBudget,
         currency: 'YER',
+        // D114: the plan's money reads it from the budget it keeps.
+        budgetIncludesMahr: draft.budgetIncludesMahr,
         categories: [
           for (final name in draft.selectedCategoryKeys)
             (id: null, name: name, allocatedAmount: null),
@@ -666,6 +690,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       currency: 'YER',
       selectedCategories: _catalogs().items,
       mahr: _mahr?.toRequestJson(),
+      budgetIncludesMahr: _budgetIncludesMahr,
     );
     final response = await plans.completeOnboarding(
       request,
@@ -811,70 +836,27 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         onSkipBudget: _skipBudget,
         onBack: _back,
       ),
-      _WelcomeStep.mahr => JourneyQuestionPage(
-        step: 2,
-        total: _questionCount,
-        question: 'اتفقتوا على المهر؟',
-        help: _persona == GuestPersona.bride
-            ? 'اللي بتستلمينه من العريس. نحسبه برّا الميزانية ونقول لك كم باقي.'
-            : 'اللي بتسلّمه لأهل العروسة. نحسبه برّا الميزانية ونقول لك كم باقي.',
-        primaryLabel: 'التالي',
-        // J1-18, as the two steps before it: «التالي» waits, greyed, and a
-        // quiet line says what it waits for. This step alone kept it live
-        // and answered a press with a red error, so a reader who had learnt
-        // «grey means something is missing» over two steps met a green
-        // button on the third and was told off for trusting it. «ما اتفقنا
-        // بعد» stays the way past, which is the real answer when there is
-        // no mahr yet.
-        onPrimary: _mahrTotalMissing ? null : _confirmMahr,
-        onBack: _back,
-        skipLabel: 'ما اتفقنا بعد',
+      _WelcomeStep.mahr => _MahrStep(
+        bride: _persona == GuestPersona.bride,
+        totalController: _mahrTotalController,
+        settledController: _mahrSettledController,
+        dueDate: _mahrDueDate,
+        onPickDueDate: _pickMahrDueDate,
+        onChanged: () => setState(() => _mahrSettledError = null),
+        settledError: _mahrSettledError,
+        remindsOfRest:
+            _persona != GuestPersona.bride &&
+            _mahrDueDate != null &&
+            _mahrRemaining > 0,
+        signedIn: _isAuthenticated(),
+        totalMissing: _mahrTotalMissing,
+        askInside: _asksMahrInBudget,
+        inside: _mahrInBudget,
+        budget: _budget,
+        onInside: (inside) => setState(() => _mahrInBudget = inside),
+        onNext: _confirmMahr,
         onSkip: _skipMahr,
-        children: [
-          JourneyNote(
-            text: context.say(
-              'أرقام المهر ما يشوفها غيرك، إلا اللي تسمح له يشوف المال.',
-              'أرقام المهر ما يشوفها غيرك، إلا اللي تسمحين له يشوف المال.',
-            ),
-            icon: LucideIcons.lock,
-            tone: JourneyNoteTone.bare,
-            color: AarastV3Color.textMuted,
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-          MahrFields(
-            pays: _persona != GuestPersona.bride,
-            totalController: _mahrTotalController,
-            settledController: _mahrSettledController,
-            dueDate: _mahrDueDate,
-            onPickDueDate: _pickMahrDueDate,
-            onChanged: () => setState(() => _mahrSettledError = null),
-            settledError: _mahrSettledError,
-          ),
-          // A reminder needs a day to remind of, and an account to send
-          // it to: before the account it is a promise kept on saving.
-          // J1-16: only the groom's rest becomes a payment the server
-          // reminds of; the bride is promised none.
-          if (_persona != GuestPersona.bride &&
-              _mahrDueDate != null &&
-              _mahrRemaining > 0) ...[
-            const SizedBox(height: AarastV3Space.x2),
-            JourneyNote(
-              text: _isAuthenticated()
-                  ? 'نذكّرك قبل الموعد.'
-                  : context.say(
-                      'لو حفظت خطتك برقمك، نذكّرك قبل الموعد.',
-                      'لو حفظتي خطتك برقمك، نذكّرك قبل الموعد.',
-                    ),
-              icon: LucideIcons.bell,
-              tone: JourneyNoteTone.bare,
-            ),
-          ],
-          ..._missingLine(
-            _mahrTotalMissing
-                ? context.say('اكتب كم المهر', 'اكتبي كم المهر')
-                : null,
-          ),
-        ],
+        onBack: _back,
       ),
       _WelcomeStep.ready => _ReadyStep(
         name: _name,
@@ -914,7 +896,13 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
   String? _readyMoneyLine() {
     final parts = <String>[];
     final budget = _budgetSkipped ? null : _budget;
-    if (budget != null) parts.add('الميزانية ${mahrWords(budget)}');
+    if (budget != null) {
+      parts.add(
+        _budgetIncludesMahr == true
+            ? 'الميزانية ${mahrWords(budget)}، فيها المهر'
+            : 'الميزانية ${mahrWords(budget)}',
+      );
+    }
     final mahr = MahrFields.amountOf(_mahrTotalController);
     if (mahr != null && mahr > 0) {
       final rest = _mahrRemaining;

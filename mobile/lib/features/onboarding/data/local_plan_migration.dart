@@ -24,9 +24,14 @@ class LocalPlanSnapshot {
     this.categories = const [],
     this.fundingSources = const [],
     this.budgetTotal,
+    this.budgetIncludesMahr,
   });
 
   final GuestOnboardingDraft draft;
+
+  /// D114: the groom's answer as the plan's money holds it now (its own
+  /// budget save), else null and the draft's answer stands.
+  final bool? budgetIncludesMahr;
 
   /// RA-MO-106: the budget as the plan's money holds it now. It is changed
   /// there, not in the draft, so the draft's figure is only where it began.
@@ -155,6 +160,9 @@ class LocalPlanMigrationService {
       budgetTotal: planId == null
           ? null
           : await financeApi.localBudgetTotal(planId),
+      budgetIncludesMahr: planId == null
+          ? null
+          : await financeApi.localBudgetIncludesMahr(planId),
     );
   }
 
@@ -255,6 +263,11 @@ class LocalPlanMigrationService {
       // The budget the plan's money shows now: what was changed there, else
       // what the plan began with (the same order the phone reads it in).
       'estimatedBudget': ?(_amount(snapshot.budgetTotal) ?? _budget(draft)),
+      // D114: the groom's answer, the money's own first; sent only when he
+      // gave one (the account refuses it on a plan that receives the mahr).
+      if (draft.persona == GuestPersona.groom)
+        'budgetIncludesMahr':
+            ?(snapshot.budgetIncludesMahr ?? draft.budgetIncludesMahr),
       'currency': draft.currency ?? 'YER',
       // The items as they are in the plan's money now (added, renamed or
       // removed there), not the list the plan started with.
@@ -418,7 +431,9 @@ class LocalPlanMigrationService {
   }
 
   /// The plan's money in, with its loans' repayments.
-  static List<Map<String, dynamic>> _fundingSources(LocalPlanSnapshot snapshot) {
+  static List<Map<String, dynamic>> _fundingSources(
+    LocalPlanSnapshot snapshot,
+  ) {
     return [
       for (final row in snapshot.fundingSources)
         if (_enumOrNull(row['kind'], _fundingKinds) case final kind?)
@@ -430,10 +445,9 @@ class LocalPlanMigrationService {
                 'sourcePhone': ?_text(row['sourcePhone']),
                 'contributorName': ?_text(row['contributorName']),
                 'amount': amount,
-                'status':
-                    _text(row['status'])?.toUpperCase() == 'PLEDGED'
-                        ? 'PLEDGED'
-                        : 'RECEIVED',
+                'status': _text(row['status'])?.toUpperCase() == 'PLEDGED'
+                    ? 'PLEDGED'
+                    : 'RECEIVED',
                 'receivedAt': ?_text(row['receivedAt']),
                 'expectedAt': ?_text(row['expectedAt']),
                 'note': ?_text(row['note']),
@@ -441,16 +455,16 @@ class LocalPlanMigrationService {
                   'repayments': [
                     for (final repayment in row['repayments'] as List)
                       if (repayment is Map)
-                        if (_positiveMoney(repayment['amount']) case final paid?)
+                        if (_positiveMoney(repayment['amount'])
+                            case final paid?)
                           {
                             'amount': paid,
                             'dueDate': ?_text(repayment['dueDate']),
-                            'status':
-                                ?_enumOrNull(repayment['status'], const {
-                                  'PLANNED',
-                                  'PAID',
-                                  'CANCELLED',
-                                }),
+                            'status': ?_enumOrNull(repayment['status'], const {
+                              'PLANNED',
+                              'PAID',
+                              'CANCELLED',
+                            }),
                             'paidAt': ?_text(repayment['paidAt']),
                             'note': ?_text(repayment['note']),
                           },

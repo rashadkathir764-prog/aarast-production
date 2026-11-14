@@ -16,6 +16,28 @@ export function mahrSideOf(persona: string | null): MahrSide | null {
   return null;
 }
 
+/**
+ * D114: the mahr counts inside the budget only on a plan that pays it (the
+ * groom's) and whose owner chose so. On a plan that receives it, or has no
+ * mahr side, the choice is always false.
+ */
+export function mahrCountsInBudget(
+  persona: string | null,
+  budgetIncludesMahr: boolean | null | undefined,
+): boolean {
+  return budgetIncludesMahr === true && mahrSideOf(persona) === 'PAYS';
+}
+
+/** D114: the choice is written only on a plan that pays the mahr. */
+export function budgetIncludesMahrViolation(
+  persona: string | null,
+  budgetIncludesMahr: boolean | null | undefined,
+): FinanceViolation | null {
+  return budgetIncludesMahr === true && mahrSideOf(persona) !== 'PAYS'
+    ? invalid('Only the plan that pays the mahr can count it in its budget')
+    : null;
+}
+
 /** What a06 records: the agreed mahr, what was handed over, and when the rest is due. */
 export interface MahrAgreement {
   total: Amount;

@@ -15,6 +15,7 @@ class OnboardingCompleteRequest {
     this.currency,
     this.selectedCategories = const [],
     this.mahr,
+    this.budgetIncludesMahr,
   });
 
   final String? path;
@@ -32,6 +33,11 @@ class OnboardingCompleteRequest {
   /// it with the plan (C1).
   final Map<String, dynamic>? mahr;
 
+  /// D114: the groom's answer while writing the budget, whether the mahr
+  /// counts inside it. Sent only when he gave one; the server refuses
+  /// `true` on a plan that does not pay the mahr.
+  final bool? budgetIncludesMahr;
+
   Map<String, dynamic> toJson() {
     return {
       if (_hasText(path)) 'path': path!.trim(),
@@ -42,6 +48,7 @@ class OnboardingCompleteRequest {
       if (_hasText(weddingDate)) 'weddingDate': weddingDate!.trim(),
       if (priorities.isNotEmpty) 'priorities': priorities,
       if (_hasText(estimatedBudget)) 'estimatedBudget': estimatedBudget!.trim(),
+      'budgetIncludesMahr': ?budgetIncludesMahr,
       if (_hasText(currency)) 'currency': currency!.trim(),
       if (selectedCategories.isNotEmpty)
         'selectedCategories': selectedCategories,

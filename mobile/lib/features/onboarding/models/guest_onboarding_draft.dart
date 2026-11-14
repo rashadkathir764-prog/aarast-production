@@ -80,6 +80,7 @@ class GuestOnboardingDraft {
     required this.estimatedBudget,
     required this.selectedCategoryKeys,
     this.mahr,
+    this.budgetIncludesMahr,
   });
 
   const GuestOnboardingDraft.empty()
@@ -103,7 +104,8 @@ class GuestOnboardingDraft {
       currency = null,
       estimatedBudget = null,
       selectedCategoryKeys = const [],
-      mahr = null;
+      mahr = null,
+      budgetIncludesMahr = null;
 
   factory GuestOnboardingDraft.quickLocalPlanSetup({
     required String planName,
@@ -116,6 +118,7 @@ class GuestOnboardingDraft {
     String? estimatedBudget,
     List<String> startingItemNames = const [],
     DraftMahr? mahr,
+    bool? budgetIncludesMahr,
   }) {
     final budget = estimatedBudget?.replaceAll(',', '').trim();
     final skipped = budget == null || budget.isEmpty;
@@ -143,6 +146,7 @@ class GuestOnboardingDraft {
       // The plan's starting budget items, sent by name on import.
       selectedCategoryKeys: List.unmodifiable(startingItemNames),
       mahr: mahr,
+      budgetIncludesMahr: skipped ? null : budgetIncludesMahr,
     );
   }
 
@@ -169,6 +173,16 @@ class GuestOnboardingDraft {
 
   /// a06's answer; null when the mahr was not agreed yet («ما اتفقنا بعد»).
   final DraftMahr? mahr;
+
+  /// D114: the groom's answer while writing the budget, whether the mahr
+  /// counts inside it. Null: never asked or answered, so nothing is sent
+  /// and the account keeps its own (false); see [mahrInsideBudget].
+  final bool? budgetIncludesMahr;
+
+  /// D114: the mahr counts inside the budget: the groom said so (the bride
+  /// receives the mahr, so never on her plan).
+  bool get mahrInsideBudget =>
+      budgetIncludesMahr == true && persona == GuestPersona.groom;
 
   bool get hasPath => selectedPath != null;
 
@@ -270,7 +284,17 @@ class GuestOnboardingDraft {
     List<String>? selectedCategoryKeys,
     DraftMahr? mahr,
     bool clearMahr = false,
+    bool? budgetIncludesMahr,
   }) {
+    // D114: a plan whose persona changes starts over with the mahr outside
+    // the budget, as the account does.
+    final personaChanged =
+        !clearPersona && persona != null && persona != this.persona;
+    final nextBudgetIncludesMahr =
+        budgetIncludesMahr ??
+        (clearBudget || clearPersona || personaChanged
+            ? null
+            : this.budgetIncludesMahr);
     final nextWeddingDateUnknown =
         weddingDateUnknown ?? this.weddingDateUnknown;
     final nextWeddingDate = clearWeddingDate || nextWeddingDateUnknown
@@ -307,6 +331,7 @@ class GuestOnboardingDraft {
         selectedCategoryKeys ?? this.selectedCategoryKeys,
       ),
       mahr: clearMahr ? null : mahr ?? this.mahr,
+      budgetIncludesMahr: nextBudgetIncludesMahr,
     );
   }
 
@@ -333,6 +358,7 @@ class GuestOnboardingDraft {
       'estimatedBudget': estimatedBudget,
       'selectedCategoryKeys': selectedCategoryKeys,
       'mahr': mahr?.toJson(),
+      'budgetIncludesMahr': ?budgetIncludesMahr,
     };
   }
 
@@ -380,6 +406,10 @@ class GuestOnboardingDraft {
         _stringList(json['selectedCategoryKeys']),
       ),
       mahr: DraftMahr.fromJson(json['mahr']),
+      // D114: a draft saved before it has none.
+      budgetIncludesMahr: json['budgetIncludesMahr'] is bool
+          ? json['budgetIncludesMahr'] as bool
+          : null,
     );
   }
 
@@ -430,7 +460,8 @@ class GuestOnboardingDraft {
         other.currency == currency &&
         other.estimatedBudget == estimatedBudget &&
         _sameList(other.selectedCategoryKeys, selectedCategoryKeys) &&
-        other.mahr == mahr;
+        other.mahr == mahr &&
+        other.budgetIncludesMahr == budgetIncludesMahr;
   }
 
   @override
@@ -457,6 +488,7 @@ class GuestOnboardingDraft {
       estimatedBudget,
       Object.hashAll(selectedCategoryKeys),
       mahr,
+      budgetIncludesMahr,
     ]);
   }
 

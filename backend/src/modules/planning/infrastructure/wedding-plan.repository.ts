@@ -15,6 +15,8 @@ export async function updateWeddingPlanBudgetInTransaction(
     data: {
       estimatedBudget: input.estimatedBudget,
       currency: input.currency,
+      // D114: undefined is "unchanged" (Prisma writes no column for it).
+      budgetIncludesMahr: input.budgetIncludesMahr,
     },
   });
 }
@@ -27,6 +29,8 @@ export interface WeddingPlanCreateData {
   weddingDate: Date | null;
   priorities: string[];
   estimatedBudget: string | Prisma.Decimal | null;
+  /** D114: omitted is false, the mahr outside the budget. */
+  budgetIncludesMahr?: boolean;
   currency: string;
   onboardingPath: OnboardingPath | null;
   persona: WeddingPersona | null;
@@ -43,6 +47,8 @@ export interface WeddingPlanUpdateData {
   priorities?: string[];
   onboardingPath?: OnboardingPath | null;
   persona?: WeddingPersona | null;
+  /** D114: set back to false when the persona changes. */
+  budgetIncludesMahr?: boolean;
 }
 
 export function createWeddingPlan(tx: Prisma.TransactionClient, data: WeddingPlanCreateData) {

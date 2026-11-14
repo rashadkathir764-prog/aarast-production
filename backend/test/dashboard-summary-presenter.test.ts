@@ -503,6 +503,11 @@ test('dashboard next step: a new plan without its mahr asks for the mahr first',
   assert.equal(groom[0].priority, 'LOW');
   assert.equal(groom[0].id, 'record_mahr:plan-1');
 
+  // D114: a groom who chose to count the mahr in his budget is told so.
+  const [inside] = setupItems({ mahrInsideBudget: true });
+  assert.equal(inside.type, 'RECORD_MAHR');
+  assert.equal(inside.subtitle, 'نحسبه من ميزانيتك، مثل ما اخترت.');
+
   const [bride] = setupItems({ form: 'FEMININE', planPersona: 'BRIDE' });
   assert.equal(bride.type, 'RECORD_MAHR');
   assert.equal(bride.title, 'اتفقتوا على المهر؟');

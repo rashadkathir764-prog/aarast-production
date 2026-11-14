@@ -295,10 +295,29 @@ class _ItemsBudgetBox extends StatelessWidget {
     }
     final total = moneyValue(budget);
     final estimates = moneyValue(wedding.estimateLeft);
-    final expected = moneyValue(wedding.expected);
+    // D114: a budget that holds the groom's mahr is held against it too.
+    final mahr = summary.budget.includesMahr
+        ? moneyValue(summary.expected?.mahr.expected)
+        : 0;
+    final expected = moneyValue(wedding.expected) + mahr;
     final free = total > expected ? total - expected : 0;
     final over = expected - total;
-    final status = expected <= 0
+    final itemsExpected = moneyValue(wedding.expected);
+    final status = mahr > 0
+        ? [
+            'المهر ${money(mahr)}',
+            if (itemsExpected > 0)
+              'وبنود العرس ${money(itemsExpected)}'
+            else
+              'والبنود ما لها تقدير بعد',
+            if (over > 0)
+              'فوق الميزانية بـ${money(over)}'
+            else if (over < 0)
+              'باقي منها ${money(-over)}'
+            else
+              'على قد الميزانية',
+          ].join('، ')
+        : expected <= 0
         ? context.ownerDid(
             'ما قدّرت البنود بعد، فما نعرف وين أنت من الميزانية',
             'ما قدّرتِ البنود بعد، فما نعرف وين أنتِ من الميزانية',
@@ -311,6 +330,7 @@ class _ItemsBudgetBox extends StatelessWidget {
         ? 'بنود العرس ${money(expected)}، تحت الميزانية بـ${money(-over)}'
         : 'بنود العرس ${money(expected)}، على قد الميزانية';
     final agreedColour = context.accent.primary;
+    final mahrColour = context.accent.primaryDark;
     final estimateColour = context.accent.primary.withValues(alpha: 0.35);
     return JourneyBox(
       key: const ValueKey('money-items-budget'),
@@ -324,7 +344,7 @@ class _ItemsBudgetBox extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ميزانية العرس',
+                      mahr > 0 ? 'الميزانية، فيها المهر' : 'ميزانية العرس',
                       style: JourneyType.of(
                         JourneyType.detail,
                         color: AarastV3Color.textMuted,
@@ -352,6 +372,7 @@ class _ItemsBudgetBox extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x3),
           _SplitBar(
             parts: [
+              (mahr, mahrColour),
               (agreed, agreedColour),
               (estimates, estimateColour),
               (free, AarastV3Color.line),
@@ -362,6 +383,8 @@ class _ItemsBudgetBox extends StatelessWidget {
             spacing: AarastV3Space.x3,
             runSpacing: AarastV3Space.x1,
             children: [
+              if (mahr > 0)
+                _Legend(color: mahrColour, text: 'المهر ${money(mahr)}'),
               _Legend(color: agreedColour, text: 'اتفاقات ${money(agreed)}'),
               _Legend(
                 color: estimateColour,
@@ -429,7 +452,8 @@ class _RecordedCostBox extends StatelessWidget {
         children: [
           Text.rich(
             TextSpan(
-              text: 'تكلفة العرس المسجّلة',
+              // D114: the wedding's items and the mahr.
+              text: 'التكلفة المسجّلة',
               children: [
                 if (!complete)
                   const TextSpan(
@@ -456,7 +480,9 @@ class _RecordedCostBox extends StatelessWidget {
             [
               'بنود العرس ${money(expected.wedding.expected)}',
               if (moneyValue(expected.mahr.expected) > 0)
-                'والمهر ${money(expected.mahr.expected)}، وهو برا الميزانية',
+                summary.budget.includesMahr
+                    ? 'والمهر ${money(expected.mahr.expected)}، من الميزانية'
+                    : 'والمهر ${money(expected.mahr.expected)}، وهو برا الميزانية',
             ].join(' · '),
             style: JourneyType.of(
               JourneyType.small,
@@ -546,8 +572,9 @@ class _ItemsExplainSheet extends StatelessWidget {
           icon: LucideIcons.scale,
           color: AarastV3Color.textMuted,
           soft: AarastV3Color.paperQuiet,
+          // D114: whether the budget holds the mahr is the groom's choice.
           text:
-              'الميزانية حدّ لبنود العرس. وتكلفة العرس المسجّلة هي بنود العرس ومعها المهر، لأن المهر ما يدخل في الميزانية.',
+              'الميزانية حدّ لبنود العرس، ويدخل فيها المهر لو اخترت كذا. والتكلفة المسجّلة هي بنود العرس ومعها المهر.',
         ),
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(

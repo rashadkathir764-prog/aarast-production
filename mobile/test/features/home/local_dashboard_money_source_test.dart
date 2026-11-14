@@ -41,6 +41,21 @@ void main() {
           'createdAt': now.toIso8601String(),
         },
       );
+      // D59: what an agreement was paid is its payments ledger, which the
+      // phone writes with every payment (finance_local_data_source.dart), as
+      // the money tab and the account read it; `paidAmount` alone was the
+      // home's own second formula.
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCostPayments,
+        json: {
+          'id': 'payment-active',
+          'planId': planId,
+          'weddingPlanId': planId,
+          'costId': 'cost-active',
+          'amount': '400',
+          'entryType': 'PAYMENT',
+        },
+      );
       await database.saveCachedItem(
         table: OfflineTables.cachedPaymentSchedules,
         json: {
@@ -107,20 +122,41 @@ void main() {
     final database = JsonLocalDatabase(await SharedPreferences.getInstance());
     await database.initialize();
     const planId = 'local-share-plan';
-    Future<void> cost(String id, String payer, String total, String paid) =>
-        database.saveCachedItem(
-          table: OfflineTables.cachedCosts,
+    Future<void> cost(
+      String id,
+      String payer,
+      String total,
+      String paid,
+    ) async {
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCosts,
+        json: {
+          'id': id,
+          'planId': planId,
+          'weddingPlanId': planId,
+          'title': id,
+          'totalAmount': total,
+          'paidAmount': paid,
+          'payer': payer,
+          'status': 'PARTIALLY_PAID',
+        },
+      );
+      // D59: the payments ledger the phone writes with every payment.
+      if (paid != '0') {
+        await database.saveCachedItem(
+          table: OfflineTables.cachedCostPayments,
           json: {
-            'id': id,
+            'id': 'payment-$id',
             'planId': planId,
             'weddingPlanId': planId,
-            'title': id,
-            'totalAmount': total,
-            'paidAmount': paid,
-            'payer': payer,
-            'status': 'PARTIALLY_PAID',
+            'costId': id,
+            'amount': paid,
+            'entryType': 'PAYMENT',
           },
         );
+      }
+    }
+
     await cost('hall', 'GROOM', '1000', '400');
     await cost('photo', 'FAMILY', '800', '0');
     await cost('cake', 'SHARED', '300', '100');

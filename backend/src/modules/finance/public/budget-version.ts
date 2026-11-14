@@ -15,6 +15,11 @@ import { createHash } from 'node:crypto';
 export interface BudgetVersionInput {
   totalBudget: string | null;
   currency: string;
+  /**
+   * D114: the mahr counts inside the budget. Part of the version only when
+   * true, so every version read before the choice existed stays valid.
+   */
+  budgetIncludesMahr?: boolean;
   categories: readonly {
     id: string;
     name: string;
@@ -36,10 +41,10 @@ export function budgetVersionOf(input: BudgetVersionInput): string {
       item.allocatedAmount,
       item.estimatedAmount,
     ]);
+  const content: unknown[] = [input.totalBudget, input.currency.toUpperCase(), items];
+  if (input.budgetIncludesMahr === true) content.push('MAHR_INSIDE');
   return createHash('sha256')
-    .update(
-      JSON.stringify([input.totalBudget, input.currency.toUpperCase(), items]),
-    )
+    .update(JSON.stringify(content))
     .digest('hex')
     .slice(0, 24);
 }

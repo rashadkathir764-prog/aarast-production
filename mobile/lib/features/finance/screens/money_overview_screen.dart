@@ -42,6 +42,7 @@ import '../widgets/money_widgets.dart';
 import 'money_item_market.dart';
 
 part 'money_overview_screen.answer.dart';
+part 'money_overview_screen.budget_figures.dart';
 part 'money_overview_screen.funding.dart';
 part 'money_overview_screen.items.dart';
 part 'money_overview_screen.items_view.dart';
@@ -331,7 +332,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       (category) => category.estimate != null,
     );
     final sourced = (summary.funding?.sourcesCount ?? 0) > 0;
-    final agreed = summary.costs.count > 0;
+    // RA-MO-147, D114: «سجّل أول اتفاق» is the first agreement with a
+    // provider, as the home asks it; the mahr is never one.
+    final agreed = summary.budget.count > 0;
     final firstSteps =
         owner &&
         manage &&

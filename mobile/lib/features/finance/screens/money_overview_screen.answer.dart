@@ -220,10 +220,9 @@ class _ShareHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // D114: his share holds the mahr, so it is never «من العرس».
           Text(
-            owner
-                ? context.say('عليك من العرس', 'عليكِ من العرس')
-                : 'باقي على العرس',
+            owner ? context.say('باقي عليك', 'باقي عليكِ') : 'باقي يندفع',
             style: JourneyType.of(JourneyType.detail, color: soft),
           ),
           const SizedBox(height: AarastV3Space.x1),
@@ -282,6 +281,13 @@ class _ShareHero extends StatelessWidget {
                   );
                 },
               ),
+          ],
+          // D114: then the rest of the picture, complete.
+          if (summary.hasBudget || moneyValue(summary.costs.total) > 0) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            Divider(height: 1, color: soft.withValues(alpha: 0.3)),
+            const SizedBox(height: AarastV3Space.x3),
+            _BudgetFigures(summary: summary),
           ],
         ],
       ),
@@ -465,11 +471,8 @@ class _ComingDues extends StatelessWidget {
       key: const ValueKey('money-coming-dues'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        JourneySectionTitle(
-          'دفعات العرس الجاية',
-          action: 'كلها',
-          onAction: onAll,
-        ),
+        // D114: the mahr's dates are among them.
+        JourneySectionTitle('الدفعات الجاية', action: 'كلها', onAction: onAll),
         JourneyList(
           children: [
             for (final line in lines)
@@ -636,7 +639,8 @@ class _WholePicture extends StatelessWidget {
               icon: LucideIcons.fileSignature,
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              title: 'باقي على العرس كله',
+              // D114: every agreement, the mahr's with them.
+              title: 'باقي على الاتفاقات كلها',
               // Who it is on; all of it on him is said, not its figure
               // again (the row's own figure, and the card's above).
               subtitleMaxLines: 2,
@@ -679,11 +683,14 @@ class _WholePicture extends StatelessWidget {
               icon: LucideIcons.tag,
               color: AarastV3Color.amber,
               soft: AarastV3Color.amberSoft,
-              title: 'تكلفة العرس المسجّلة',
+              // D114: the wedding's items and the mahr.
+              title: 'التكلفة المسجّلة',
               subtitleMaxLines: 2,
               subtitle: [
                 summary.budget.total == null
                     ? context.say('ما حطيت ميزانية', 'ما حطيتِ ميزانية')
+                    : summary.budget.includesMahr
+                    ? 'الميزانية ${money(summary.budget.total)}، فيها المهر'
                     : 'الميزانية ${money(summary.budget.total)} لبنود العرس',
                 completeness,
               ].join(' · '),

@@ -268,7 +268,8 @@ void main() {
         find.byKey(const ValueKey('money-coming-due-schedule-upcoming')),
         findsOneWidget,
       );
-      expect(find.text('دفعات العرس الجاية'), findsOneWidget);
+      // D114: the mahr's dates are among them.
+      expect(find.text('الدفعات الجاية'), findsOneWidget);
       expect(find.byKey(const ValueKey('money-late-due')), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -569,6 +570,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // D114: the top card now reads the budget too, so the last section is
+      // built once scrolled to; every section on the way is drawn.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('money-whole-picture')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.byKey(const ValueKey('money-whole-picture')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

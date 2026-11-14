@@ -1524,6 +1524,7 @@ class _MoneyProductApi extends FinanceApi {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
     String? expectedBudgetVersion,
+    bool? budgetIncludesMahr,
   }) async {
     replaceBudgetCalls += 1;
     savedTotalBudget = totalBudget;

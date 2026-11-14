@@ -405,7 +405,10 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
               brideMahr != null
                   ? 'المهر يوصلك من العريس'
                   : 'الاتفاق مع أهل العروسة',
-              action: 'برا الميزانية',
+              // D114: where the groom put it.
+              action: brideMahr == null && summary.budget.includesMahr
+                  ? 'من الميزانية'
+                  : 'برا الميزانية',
               actionColor: AarastV3Color.textMuted,
             ),
             JourneyBox(

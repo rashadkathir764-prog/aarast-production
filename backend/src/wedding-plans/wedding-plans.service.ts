@@ -44,6 +44,10 @@ import {
   type FinancePort,
   riyadhDay,
 } from "../modules/finance/public/finance.port";
+import {
+  budgetIncludesMahrViolation,
+  mahrCountsInBudget,
+} from "../modules/finance/public/budget-mahr";
 import { GUESTS_PORT, type GuestsPort } from "../modules/guests/public/guests.port";
 import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from "../modules/guests/public/guest-text-limits";
 import {
@@ -107,6 +111,8 @@ export interface WeddingPlanResponse {
   weddingDate: Date | null;
   priorities: string[];
   estimatedBudget: string | null;
+  /** D114: the mahr counts inside the budget; null for a reader without money. */
+  budgetIncludesMahr: boolean | null;
   currency: string;
   onboardingPath: OnboardingPath | null;
   persona: WeddingPersona | null;
@@ -193,6 +199,10 @@ export class WeddingPlansService {
           weddingDate: this.optionalDate(dto.weddingDate),
           priorities: this.normalizePriorities(dto.priorities),
           estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
+          budgetIncludesMahr: this.budgetIncludesMahr(
+            dto.persona,
+            dto.budgetIncludesMahr,
+          ),
           currency: this.normalizedCurrency(dto.currency),
           onboardingPath: dto.onboardingPath ?? null,
           persona: dto.persona ?? null,
@@ -356,6 +366,12 @@ export class WeddingPlansService {
             ? { onboardingPath: dto.onboardingPath }
             : {}),
           ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
+          // D114: the mahr inside the budget was the groom's choice; a plan
+          // whose persona changes (only before any money, Q-1) starts over
+          // with the mahr outside it.
+          ...(dto.persona !== undefined && dto.persona !== context.plan.persona
+            ? { budgetIncludesMahr: false }
+            : {}),
       });
       // RA-BE-72: a wedding moved from one day to another takes its dated
       // events with it («نرتب كل شيء على الموعد الجديد»); they stayed on
@@ -499,6 +515,10 @@ export class WeddingPlansService {
           weddingDate: this.optionalDate(dto.weddingDate),
           priorities: this.normalizePriorities(dto.priorities),
           estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
+          budgetIncludesMahr: this.budgetIncludesMahr(
+            dto.persona,
+            dto.budgetIncludesMahr,
+          ),
           currency: this.normalizedCurrency(dto.currency),
           onboardingPath: path,
           persona: dto.persona ?? null,
@@ -881,6 +901,10 @@ export class WeddingPlansService {
             weddingDate: this.optionalDate(dto.weddingDate),
             priorities: this.normalizePriorities(dto.priorities),
             estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
+            budgetIncludesMahr: this.budgetIncludesMahr(
+              dto.persona,
+              dto.budgetIncludesMahr,
+            ),
             currency: this.normalizedCurrency(dto.currency),
             onboardingPath: path,
             persona: dto.persona ?? null,
@@ -1158,6 +1182,23 @@ export class WeddingPlansService {
     return new Date(timestamp);
   }
 
+  /** D114: the mahr inside the budget is written only on a plan that pays it. */
+  private budgetIncludesMahr(
+    persona: WeddingPersona | null | undefined,
+    value: boolean | undefined,
+  ): boolean {
+    const violation = budgetIncludesMahrViolation(persona ?? null, value);
+    if (violation) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: violation.code,
+        message: violation.userMessage,
+        detail: violation.message,
+      });
+    }
+    return value === true;
+  }
+
   private optionalPositiveBudget(
     value: string | number | undefined,
   ): string | null {
@@ -1308,6 +1349,11 @@ export class WeddingPlansService {
       priorities: plan.priorities,
       estimatedBudget: canViewMoney
         ? (plan.estimatedBudget?.toString() ?? null)
+        : null,
+      // D114: as the budget, for a reader who sees money; the choice means
+      // something only on a plan that pays the mahr.
+      budgetIncludesMahr: canViewMoney
+        ? mahrCountsInBudget(plan.persona, plan.budgetIncludesMahr)
         : null,
       currency: plan.currency,
       onboardingPath: plan.onboardingPath,

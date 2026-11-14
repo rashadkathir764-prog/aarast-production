@@ -98,7 +98,8 @@ void main() {
       );
 
       expect(find.byKey(const ValueKey('money-mahr-card')), findsNothing);
-      expect(find.text('عليك من العرس'), findsOneWidget);
+      // D114: his share holds the mahr, never called the wedding's.
+      expect(find.text('باقي عليك'), findsOneWidget);
       // All that is left on him is the mahr: said once, not its figure
       // under the same figure.
       expect(find.text('كله باقي المهر'), findsOneWidget);
@@ -117,7 +118,7 @@ void main() {
       );
 
       expect(find.byKey(const ValueKey('money-mahr-card')), findsNothing);
-      expect(find.text('عليكِ من العرس'), findsOneWidget);
+      expect(find.text('باقي عليكِ'), findsOneWidget);
       // Her mahr is money coming in: not a part of what is on her.
       expect(find.textContaining('باقي المهر'), findsNothing);
       // D59: what is left on the hall is her father's, said as his.
@@ -178,10 +179,11 @@ void main() {
         mahr: _groomMahr,
       );
 
-      expect(find.text('باقي على العرس'), findsOneWidget);
+      // D114: everything left, the mahr with it: not «العرس».
+      expect(find.text('باقي يندفع'), findsOneWidget);
       expect(find.textContaining('على العريس'), findsWidgets);
       expect(find.textContaining('على الوالد'), findsWidgets);
-      expect(find.text('عليكِ من العرس'), findsNothing);
+      expect(find.text('باقي عليكِ'), findsNothing);
       expect(find.textContaining('دفعتِ'), findsNothing);
       // Only the owner records the mahr.
       expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
@@ -549,6 +551,38 @@ void main() {
       expect(api.recorded, isEmpty);
     });
 
+    // D114: where the groom counts it, in the home step's own words.
+    testWidgets('the groom\'s mahr on its own is said so', (tester) async {
+      await _pumpMahr(tester, JourneyProfile.groom);
+
+      expect(
+        find.text(
+          'اللي بتسلّمه لأهل العروسة. نحسبه لحاله، برا ميزانية العرس. '
+          'ونذكرك بموعد تسليمه.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the groom\'s budget holding the mahr is said so', (
+      tester,
+    ) async {
+      await _pumpMahr(
+        tester,
+        JourneyProfile.groom,
+        withApi: _Api(budgetIncludesMahr: true),
+      );
+
+      expect(
+        find.text(
+          'اللي بتسلّمه لأهل العروسة. نحسبه من ميزانيتك، مثل ما اخترت. '
+          'ونذكرك بموعد تسليمه.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('لحاله'), findsNothing);
+    });
+
     testWidgets('the bride receives it, in her words', (tester) async {
       await _pumpMahr(tester, JourneyProfile.bride);
 
@@ -812,10 +846,13 @@ FundingSource _source(
 });
 
 class _Api extends FinanceApi {
-  _Api({this.mahr, this.groomItem = false})
+  _Api({this.mahr, this.groomItem = false, this.budgetIncludesMahr = false})
     : super(ApiClient(tokenProvider: () async => null));
 
   final MoneyMahrSummary? mahr;
+
+  /// D114: the groom's budget holds his mahr.
+  final bool budgetIncludesMahr;
 
   /// The groom's mahr is an item of its own (outside the budget) with its
   /// agreement and its rest's schedule; the bride's is her money in.
@@ -827,7 +864,8 @@ class _Api extends FinanceApi {
     planId: planId,
     currency: 'YER',
     // The hall is the father's (D59): its payments are not the owner's.
-    budget: const MoneyBudgetSummary(
+    budget: MoneyBudgetSummary(
+      includesMahr: budgetIncludesMahr,
       total: '7000000',
       confirmedCost: '2400000',
       paid: '1200000',

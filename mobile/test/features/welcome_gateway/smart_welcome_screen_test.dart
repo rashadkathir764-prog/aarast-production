@@ -356,12 +356,15 @@ void main() {
     await _answerUpToPlace(tester);
 
     expect(find.text('ميزانية عرسك'), findsOneWidget);
+    // D114: the mahr's place in the budget is the groom's to choose, with
+    // the mahr question next; never said here as a fact.
     expect(
       find.text(
-        'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من صفحة المال.',
+        'بعدها نسألك عن المهر، وتختار هل هو من الميزانية. وتقدر تغيّرها بعدين من صفحة المال.',
       ),
       findsOneWidget,
     );
+    expect(find.textContaining('مش منها'), findsNothing);
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
     expect(find.text('سبعة مليون ريال'), findsOneWidget);
@@ -412,10 +415,9 @@ void main() {
 
     expect(_progress('السؤال 3 من 3'), findsOneWidget);
     expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    // D114: where it counts is his answer below, not a fact said here.
     expect(
-      find.text(
-        'اللي بتسلّمه لأهل العروسة. نحسبه برّا الميزانية ونقول لك كم باقي.',
-      ),
+      find.text('اللي بتسلّمه لأهل العروسة. نتابع كم سلّمت وكم باقي.'),
       findsOneWidget,
     );
     expect(
@@ -453,6 +455,122 @@ void main() {
     await _tap(tester, 'افتح خطتي');
 
     expect(plans.request!.mahr, {'total': '3000000', 'settled': '2000000'});
+  });
+
+  // D114, the owner's own numbers: budget 7 million, mahr 2 million of
+  // which 500 thousand handed over. The choice comes once the mahr is
+  // typed, where both figures are known and each answer can say them.
+  group('D114 the mahr in the budget or on its own', () {
+    Future<void> typeMahr(WidgetTester tester) async {
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('mahr-total')),
+          matching: find.byType(TextField),
+        ),
+        '2000000',
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('mahr-settled')),
+          matching: find.byType(TextField),
+        ),
+        '500000',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> upToMahr(
+      WidgetTester tester, {
+      String persona = 'persona-groom',
+    }) async {
+      await _answerUpToPlace(tester, persona: persona);
+      await _tap(tester, 'صنعاء');
+      await tester.enterText(find.byType(TextField).first, '7000000');
+      await tester.pumpAndSettle();
+      await _tap(tester, 'التالي');
+    }
+
+    testWidgets('inside: the groom chooses it in his numbers, and it is '
+        'sent', (tester) async {
+      final plans = _RecordingPlans(succeed: true);
+      await _pump(tester, signedInPlans: plans, size: const Size(390, 1400));
+      await upToMahr(tester);
+
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsNothing);
+      await typeMahr(tester);
+      expect(find.text('المهر من الميزانية؟'), findsOneWidget);
+      expect(
+        find.text('الميزانية 7 مليون كلها للعرس، والمهر مليونين فوقها'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'من الميزانية 7 مليون يروح مليونين للمهر، ويبقى للعرس 5 مليون',
+        ),
+        findsOneWidget,
+      );
+      await _tapKey(tester, 'mahr-budget-inside');
+      await _tap(tester, 'التالي');
+
+      expect(
+        find.text(
+          'الميزانية 7 مليون، فيها المهر · المهر مليونين، باقي 1.5 مليون',
+        ),
+        findsOneWidget,
+      );
+      await _tap(tester, 'افتح خطتي');
+      expect(plans.request!.budgetIncludesMahr, isTrue);
+    });
+
+    testWidgets('on its own (the start): nothing is sent', (tester) async {
+      final plans = _RecordingPlans(succeed: true);
+      await _pump(tester, signedInPlans: plans, size: const Size(390, 1400));
+      await upToMahr(tester);
+      await typeMahr(tester);
+      await _tap(tester, 'التالي');
+
+      expect(
+        find.text('الميزانية 7 مليون · المهر مليونين، باقي 1.5 مليون'),
+        findsOneWidget,
+      );
+      await _tap(tester, 'افتح خطتي');
+      expect(plans.request!.budgetIncludesMahr, isNull);
+    });
+
+    testWidgets('kept on the phone, the plan keeps the answer', (tester) async {
+      final finance = _RecordingFinance();
+      final storage = await _pump(
+        tester,
+        finance: finance,
+        size: const Size(390, 1400),
+      );
+      await upToMahr(tester);
+      await typeMahr(tester);
+      await _tapKey(tester, 'mahr-budget-inside');
+      await _tap(tester, 'التالي');
+      await _tapKey(tester, 'ready-later');
+
+      final draft = await storage.loadDraft();
+      expect(draft!.budgetIncludesMahr, isTrue);
+      expect(draft.mahrInsideBudget, isTrue);
+      expect(finance.includesMahr, [true]);
+    });
+
+    testWidgets('a bride is never asked', (tester) async {
+      await _pump(tester, size: const Size(390, 1400));
+      await upToMahr(tester, persona: 'persona-bride');
+      await typeMahr(tester);
+
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsNothing);
+    });
+
+    testWidgets('320 wide with the text at 1.3', (tester) async {
+      await _pump(tester, size: const Size(320, 1600), textScale: 1.3);
+      await upToMahr(tester);
+      await typeMahr(tester);
+      expect(find.byKey(const ValueKey('mahr-budget-choice')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets('a06: a settled part over the mahr is said under it', (
@@ -1281,6 +1399,7 @@ class _RecordingFinance extends FinanceApi {
   final planIds = <String>[];
   final budgets = <String?>[];
   final names = <String>[];
+  final includesMahr = <bool?>[];
 
   @override
   Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
@@ -1290,10 +1409,12 @@ class _RecordingFinance extends FinanceApi {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
     String? expectedBudgetVersion,
+    bool? budgetIncludesMahr,
   }) async {
     if (fail) throw StateError('disk full');
     planIds.add(planId);
     budgets.add(totalBudget);
+    includesMahr.add(budgetIncludesMahr);
     names.addAll([for (final category in categories) category.name]);
     return MoneyBudgetReplaceResult(
       summary: MoneySummary.empty(planId),

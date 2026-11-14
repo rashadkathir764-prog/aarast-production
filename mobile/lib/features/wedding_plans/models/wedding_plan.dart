@@ -17,10 +17,13 @@ class WeddingPlan {
     this.priorities = const [],
     this.onboardingPath,
     this.persona,
+    this.budgetIncludesMahr = false,
   });
 
   factory WeddingPlan.fromJson(Map<String, dynamic> json) {
     return WeddingPlan(
+      // D114: missing (an older server) or null (no money rights) is false.
+      budgetIncludesMahr: json['budgetIncludesMahr'] == true,
       id: json['id'].toString(),
       ownerUserId: json['ownerUserId'].toString(),
       title: json['title'].toString(),
@@ -45,6 +48,11 @@ class WeddingPlan {
   final Map<String, dynamic>? location;
   final DateTime? weddingDate;
   final String? estimatedBudget;
+
+  /// D114: the groom counts the mahr inside [estimatedBudget]. False on a
+  /// plan that receives the mahr, for a reader without money rights, and
+  /// from a server before D114.
+  final bool budgetIncludesMahr;
   final List<String> priorities;
   final String? onboardingPath;
   final String? persona;

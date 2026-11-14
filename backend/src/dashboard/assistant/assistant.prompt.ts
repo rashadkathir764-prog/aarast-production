@@ -78,6 +78,8 @@ export interface AssistantPlanFacts {
    */
   money: {
     budgetTotal: string | null;
+    /** D114: the plan counts the groom's mahr in its budget. */
+    mahrInsideBudget: boolean;
     committedTotal: string;
     paidTotal: string;
     /** Every agreement's payments (the mahr's included) out of the owner's own money. */
@@ -169,9 +171,18 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
   if (facts.money) {
     const money = facts.money;
     lines.push('', 'المال:');
-    lines.push(`- الميزانية الإجمالية للعرس (المهر خارجها): ${money.budgetTotal ?? 'غير محددة'}`);
+    // D114: where the mahr is counted is the plan's own choice; the model
+    // is told which, so it never says «خارج الميزانية» of a mahr inside it.
+    const mahrInside = money.mahrInsideBudget;
     lines.push(
-      `- الملتزم به من ميزانية العرس: ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`,
+      mahrInside
+        ? `- الميزانية الإجمالية (المهر داخلها باختيار صاحب الخطة): ${money.budgetTotal ?? 'غير محددة'}`
+        : `- الميزانية الإجمالية للعرس (المهر خارجها): ${money.budgetTotal ?? 'غير محددة'}`,
+    );
+    lines.push(
+      mahrInside
+        ? `- الملتزم به من الميزانية (والمهر منه): ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`
+        : `- الملتزم به من ميزانية العرس: ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`,
     );
     lines.push(`- دفعه صاحب الخطة من فلوسه (كل الاتفاقات): ${money.paidByOwner}`);
     for (const other of money.paidByOthers) {
@@ -182,12 +193,12 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
       const due = mahr.nextDueAt ? `، موعد الباقي ${mahr.nextDueAt}` : '';
       lines.push(
         mahr.side === 'PAYS'
-          ? `- المهر (اتفاق العريس مع أهل العروسة، خارج ميزانية العرس): ${mahr.total}، سلّم منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`
+          ? `- المهر (اتفاق العريس مع أهل العروسة، ${mahrInside ? 'محسوب من الميزانية' : 'خارج ميزانية العرس'}): ${mahr.total}، سلّم منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`
           : `- المهر (يصل العروسة من العريس، خارج ميزانية العرس): ${mahr.total}، وصل منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`,
       );
     }
     if (money.expected) {
-      lines.push(`- ${expectedLine(money.expected)}`);
+      lines.push(`- ${expectedLine(money.expected, mahrInside)}`);
       if (money.expected.unknownItems > 0) {
         lines.push(
           `- بنود بلا تقدير ولا اتفاق: ${money.expected.unknownItems}، فالتكلفة المسجلة ليست نهائية.`,
@@ -281,13 +292,18 @@ export function renderAssistantRequest(
 }
 
 /** D105: the expected cost against the budget, said once. */
-function expectedLine(expected: NonNullable<NonNullable<AssistantPlanFacts['money']>['expected']>): string {
+function expectedLine(
+  expected: NonNullable<NonNullable<AssistantPlanFacts['money']>['expected']>,
+  mahrInside: boolean,
+): string {
   const head = `التكلفة المتوقعة لبنود العرس (الاتفاقات وتقدير اللي ما انتفق عليه): ${expected.wedding}، منها تقديرات ${expected.estimateLeft}`;
   if (expected.budgetLeft === null) return head;
   const over = expected.budgetLeft.startsWith('-');
+  // D114: with the mahr inside, what is left is after it too.
+  const after = mahrInside ? ' بعد المهر' : '';
   return over
-    ? `${head}، فوق الميزانية بـ ${expected.budgetLeft.slice(1)}`
-    : `${head}، يبقى من الميزانية ${expected.budgetLeft}`;
+    ? `${head}، فوق الميزانية${after} بـ ${expected.budgetLeft.slice(1)}`
+    : `${head}، يبقى من الميزانية${after} ${expected.budgetLeft}`;
 }
 
 /** D103, as the money tab says it: from what he holds, on the days things are due. */

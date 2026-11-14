@@ -7,8 +7,9 @@ import 'wedding_cost.dart' show moneyValue;
 /// (the owner's private money, 4.3; the bride's mahr is one of them). With
 /// [hideAmounts] it shares shares of the budget instead of figures.
 ///
-/// D59: the budget lines are the wedding budget's own figures (the mahr is
-/// outside it, C1), the groom's mahr is its own line and never one of the
+/// D59, D114: the budget lines are the budget's own figures (the groom's
+/// mahr with them only when he counts it inside), the groom's mahr is its
+/// own line, saying where it stands, and never one of the
 /// biggest items, and what someone other than the plan's owner paid is said
 /// as such. D105: the cost and what is left of the budget are by the
 /// expected cost, as the tab says them. In the app's voice (RA-MO-42).
@@ -26,12 +27,18 @@ String moneyShareText(
   final total = summary.hasBudget ? moneyValue(budget.total) : 0;
   final committed = moneyValue(budget.confirmedCost);
   final paid = moneyValue(budget.paid);
+  // D114: the groom's budget may hold his mahr; its figures then do.
+  final inside = budget.includesMahr;
   // D105: the wedding's cost is what is expected of its items (agreements,
   // and the estimates they have not settled), as «البنود» says it; a
   // server before D105 sends only the agreements.
   final expected = summary.expected == null
       ? committed
-      : moneyValue(summary.expected!.wedding.expected);
+      : moneyValue(summary.expected!.wedding.expected) +
+            (inside ? moneyValue(summary.expected!.mahr.expected) : 0);
+  final costWords = inside
+      ? 'التكلفة المتوقعة مع المهر'
+      : 'تكلفة العرس المتوقعة';
   final left = summary.expected?.budgetLeft ?? budget.remaining;
   final owner = bridePlan ? 'العروسة' : 'العريس';
   final lines = <String>['ملخص ميزانية «${planTitle.trim()}»', ''];
@@ -39,7 +46,9 @@ String moneyShareText(
   if (hideAmounts) {
     if (total > 0) {
       lines.add(
-        '• التكلفة المتوقعة ${_percent(expected, total)}٪ من الميزانية',
+        inside
+            ? '• $costWords ${_percent(expected, total)}٪ من الميزانية'
+            : '• التكلفة المتوقعة ${_percent(expected, total)}٪ من الميزانية',
       );
     }
     if (committed > 0) {
@@ -47,11 +56,17 @@ String moneyShareText(
     }
     lines.add('• عدد الاتفاقات: ${budget.count}');
   } else {
-    if (summary.hasBudget) lines.add('• الميزانية: ${money(budget.total)}');
+    if (summary.hasBudget) {
+      lines.add(
+        inside
+            ? '• الميزانية: ${money(budget.total)}، فيها المهر'
+            : '• الميزانية: ${money(budget.total)}',
+      );
+    }
     lines.add(
       total > 0
-          ? '• تكلفة العرس المتوقعة: ${money(expected)} (${_percent(expected, total)}٪ من الميزانية)'
-          : '• تكلفة العرس المتوقعة: ${money(expected)}',
+          ? '• $costWords: ${money(expected)} (${_percent(expected, total)}٪ من الميزانية)'
+          : '• $costWords: ${money(expected)}',
     );
     if (expected != committed) {
       lines.add('• منها اتفاقات: ${money(committed)}');
@@ -74,10 +89,11 @@ String moneyShareText(
   // the bride's is money coming to her, private like every source.
   final mahr = summary.mahr;
   if (mahr != null && mahr.side == MahrSide.pays) {
+    final where = inside ? 'من الميزانية' : 'برا الميزانية';
     lines.add(
       hideAmounts
-          ? '• المهر (برا الميزانية): انسلّم ${_percent(moneyValue(mahr.settled), moneyValue(mahr.total))}٪ منه'
-          : '• المهر (برا الميزانية): ${money(mahr.total)}، انسلّم منه ${money(mahr.settled)}',
+          ? '• المهر ($where): انسلّم ${_percent(moneyValue(mahr.settled), moneyValue(mahr.total))}٪ منه'
+          : '• المهر ($where): ${money(mahr.total)}، انسلّم منه ${money(mahr.settled)}',
     );
   }
 

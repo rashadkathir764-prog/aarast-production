@@ -13,7 +13,8 @@ part 'finance_local_money_plan.timeline.dart';
 part 'finance_local_money_plan.family.dart';
 
 /// One plan's money as the phone keeps it, in the fixtures' shape:
-/// `{today, budget, mahrPays, items, costs, schedules, sources}`. Amounts
+/// `{today, budget, mahrPays, budgetIncludesMahr, items, costs, schedules,
+/// sources}` (`budgetIncludesMahr` missing is false, D114). Amounts
 /// are decimal strings, days YYYY-MM-DD; `sources` is null for a reader who
 /// may not see them.
 Map<String, dynamic> localMoneyPlan(Map<String, dynamic> input) {
@@ -296,6 +297,7 @@ class _Plan {
     required this.today,
     required this.budget,
     required this.mahrPays,
+    required this.budgetIncludesMahr,
     required this.items,
     required this.costs,
     required this.schedules,
@@ -322,6 +324,7 @@ class _Plan {
       today: _day(json['today'])!,
       budget: _centsOrNull(json['budget']),
       mahrPays: json['mahrPays'] == true,
+      budgetIncludesMahr: json['budgetIncludesMahr'] == true,
       items: items,
       costs: costs,
       schedules: [
@@ -338,6 +341,10 @@ class _Plan {
   final String today;
   final int? budget;
   final bool mahrPays;
+
+  /// D114: the owner counts the mahr inside the budget; read only where he
+  /// pays it (backend money-plan-policy).
+  final bool budgetIncludesMahr;
   final List<_Item> items;
   final List<_Cost> costs;
   final List<_Schedule> schedules;
@@ -438,7 +445,40 @@ class _Plan {
     final estimateLeft =
         (wedding['estimateLeft'] as int) +
         (mahrPays ? mahr['estimateLeft'] as int : 0);
+    // C1, D114: the budget holds the wedding items; the mahr with them only
+    // where the owner pays it and chose so.
+    final includesMahr = mahrPays && budgetIncludesMahr;
+    final inBudget = [
+      for (final cost in costs)
+        if (includesMahr || !cost.mahr) cost,
+    ];
+    final budgetCost = inBudget.fold<int>(0, (sum, cost) => sum + cost.total);
+    final budgetPaid = inBudget.fold<int>(0, (sum, cost) => sum + cost.paid);
+    final budgetPaidByOwner = inBudget
+        .where((cost) => cost.ownerMoney)
+        .fold<int>(0, (sum, cost) => sum + cost.paid);
+    final allocated = items.fold<int>(
+      0,
+      (sum, item) => sum + (item.allocated ?? 0),
+    );
+    final mahrTaken = includesMahr ? mahr['expected'] as int : 0;
     return {
+      'budget': {
+        'total': budget == null ? null : _money(budget!),
+        'includesMahr': includesMahr,
+        'allocated': _money(allocated),
+        'unallocated': budget == null
+            ? null
+            : _money(budget! - allocated - mahrTaken),
+        'confirmedCost': _money(budgetCost),
+        'paid': _money(budgetPaid),
+        'paidByOwner': _money(budgetPaidByOwner),
+        'paidByOthers': _money(budgetPaid - budgetPaidByOwner),
+        'outstanding': _money(budgetCost - budgetPaid),
+        // The wedding agreements, the mahr's never among them (RA-MO-147).
+        'count': costs.where((cost) => !cost.mahr).length,
+        'remaining': budget == null ? null : _money(budget! - budgetCost),
+      },
       'items': [
         for (final item in items)
           {
@@ -463,7 +503,7 @@ class _Plan {
         ),
         'budgetLeft': budget == null
             ? null
-            : _money(budget! - (wedding['expected'] as int)),
+            : _money(budget! - (wedding['expected'] as int) - mahrTaken),
       },
       'outstanding': {
         'total': _money(owed(costs)),

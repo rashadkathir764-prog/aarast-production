@@ -129,6 +129,8 @@ export async function buildMoneySummaryInTransaction(
       // value (or a remaining/unallocated derivative) based on the owner's
       // budget.
       totalBudget: contributionScope ? null : plan.estimatedBudget,
+      // D114: the groom's choice to count the mahr inside the budget.
+      budgetIncludesMahr: plan.budgetIncludesMahr,
       scope: contributionScope,
       readerUserId: access.sharedMember?.userId ?? access.plan.ownerUserId,
       // Funding (savings, family support, gifts, loans) is the owner's
@@ -165,6 +167,7 @@ export async function buildMoneySummaryInTransaction(
         ? budgetVersionOf({
             totalBudget: plan.estimatedBudget?.toString() ?? null,
             currency: plan.currency,
+            budgetIncludesMahr: plan.budgetIncludesMahr,
             categories: picture.categories
               .filter((category) => category.kind === 'WEDDING')
               .map((category) => ({

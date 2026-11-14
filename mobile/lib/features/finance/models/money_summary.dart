@@ -160,6 +160,21 @@ class MoneySummary {
       paymentSchedules.overdueCount > 0;
   bool get hasBudget => budget.total != null;
 
+  /// D114: the wedding's own agreements, what was paid and what is left of
+  /// them, the mahr apart, whichever way the budget counts it. With the mahr
+  /// outside the budget they are [budget]'s figures; inside, the groom's
+  /// mahr ([mahr], which pays) is taken back out of them.
+  num get weddingAgreed => _weddingOnly(budget.confirmedCost, mahr?.total);
+  num get weddingPaid => _weddingOnly(budget.paid, mahr?.settled);
+  num get weddingOutstanding =>
+      _weddingOnly(budget.outstanding, mahr?.remaining);
+
+  num _weddingOnly(String inBudget, String? ofMahr) {
+    final value = moneyValue(inBudget);
+    if (!budget.includesMahr || mahr?.side != MahrSide.pays) return value;
+    return value - moneyValue(ofMahr);
+  }
+
   /// Categories whose confirmed costs passed their allocation, from the
   /// server's CATEGORY_EXCEEDED warnings, with the overrun amount.
   List<({String name, String? overrun})> get exceededCategories => [
@@ -365,10 +380,13 @@ class MoneyBudgetSummary {
     this.outstanding = '0',
     this.count = 0,
     this.remaining,
+    this.includesMahr = false,
   });
 
   factory MoneyBudgetSummary.fromJson(Map<String, dynamic> json) {
     return MoneyBudgetSummary(
+      // D114: a server before it does not send it: the mahr is outside.
+      includesMahr: json['includesMahr'] == true,
       total: _nullableString(json['total'] ?? json['amount']),
       allocated: json['allocated']?.toString() ?? '0',
       unallocated: _nullableString(json['unallocated']),
@@ -383,23 +401,33 @@ class MoneyBudgetSummary {
   }
 
   final String? total;
+
+  /// D114: the groom counts the mahr inside the budget, so [confirmedCost],
+  /// [paid], [outstanding], [remaining] and [unallocated] hold it. False on
+  /// a plan that receives the mahr, and from a server before D114.
+  final bool includesMahr;
   final String allocated;
+
+  /// The budget less the allocations (and the mahr's expected cost when
+  /// [includesMahr]); negative when the allocations no longer fit.
   final String? unallocated;
 
-  /// The wedding's agreements: the mahr item is outside the budget (C1).
+  /// The wedding's agreements: the mahr item is outside the budget (C1),
+  /// unless [includesMahr].
   final String confirmedCost;
 
-  /// What was paid of the wedding's agreements (c01 «عرسك · دفعت»).
+  /// What was paid of the budget's agreements (c01 «عرسك · دفعت»).
   final String paid;
 
   /// D59: of [paid], what the owner's own money paid and what others paid.
   final String paidByOwner;
   final String paidByOthers;
 
-  /// The wedding's agreements not paid yet.
+  /// The budget's agreements not paid yet.
   final String outstanding;
 
-  /// How many wedding agreements there are.
+  /// How many wedding agreements there are, the mahr's never among them
+  /// (RA-MO-147: «سجّل أول اتفاق» means the first with a provider).
   final int count;
   final String? remaining;
 }

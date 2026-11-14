@@ -419,6 +419,7 @@ class _ChangedElsewhereApi extends _CountingFinanceApi {
     required List<({String? id, String name, String? allocatedAmount})>
     categories,
     String? expectedBudgetVersion,
+    bool? budgetIncludesMahr,
   }) async {
     sentVersions.add(expectedBudgetVersion);
     throw const ApiException(

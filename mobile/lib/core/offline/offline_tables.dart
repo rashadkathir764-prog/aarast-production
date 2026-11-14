@@ -75,6 +75,7 @@
     'plan_member',
     'guest',
     'guest_group',
+    'guest_invitation_card',
     'plan_event',
     'funding_source',
     'task',

@@ -22,6 +22,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
+import '../models/guest_reminder.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
@@ -345,6 +346,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         .where((guest) => guest.canBeRemindedOnWhatsApp)
         .length;
     final uninvited = guests.any((guest) => guest.awaitsInvitation);
+    final remindAll = remindable == 0 && !uninvited && _remindsAll(guests);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -354,10 +356,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
               context.push(AppRouter.guestAttendance(widget.weddingPlanId)),
           action: _isLocalPlan
               ? null
-              : remindable > 0
+              : remindable > 0 || remindAll
               ? JourneyButton(
                   key: const ValueKey('guests-remind'),
-                  label: remindable == 1
+                  label: remindAll
+                      ? '${context.say('ذكّر', 'ذكّري')} الكل على واتساب'
+                      : remindable == 1
                       ? '${context.say('ذكّر', 'ذكّري')} ${words.count(1)} على واتساب'
                       : '${context.say('ذكّر', 'ذكّري')} الـ $remindable على واتساب',
                   icon: LucideIcons.send,

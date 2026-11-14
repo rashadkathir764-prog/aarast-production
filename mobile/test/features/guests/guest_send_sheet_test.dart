@@ -60,4 +60,45 @@ void main() {
     expect(find.byType(GuestSendSheet), findsNothing);
     expect(result, 0);
   });
+
+  // e08: a reminder round continues from where it stopped, so each guest
+  // passed (skipped, or their chat opened) is told to the caller at once.
+  testWidgets('each guest passed is told to the caller as it happens', (
+    tester,
+  ) async {
+    final passed = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showJourneySheet<int>(
+                context: context,
+                builder: (_) => GuestSendSheet(
+                  title: 'ذكّر',
+                  guests: [_guest('g1', 'صالح'), _guest('g2', 'علي')],
+                  makeLink: (_) async => throw StateError('not in this test'),
+                  onPassed: (guest) => passed.add(guest.id),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('guest-send-skip')));
+    await tester.pumpAndSettle();
+    expect(passed, ['g1']);
+    expect(find.text('علي'), findsOneWidget);
+
+    // A link that could not be made passes nobody: the guest waits.
+    await tester.tap(find.byKey(const ValueKey('guest-send-open')));
+    await tester.pumpAndSettle();
+    expect(passed, ['g1']);
+    expect(find.text('علي'), findsOneWidget);
+  });
 }

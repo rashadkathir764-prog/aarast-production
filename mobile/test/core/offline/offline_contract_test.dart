@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // D85: every feature's data layer reads through the phone's copy and
@@ -70,4 +71,44 @@ void main() {
     }
     expect(problems, isEmpty, reason: problems.join('\n'));
   });
+
+  // The queue refuses a write whose plan scope disagrees with its entity
+  // type: a card queued with its plan threw instead of waiting on the phone,
+  // because 'guest_invitation_card' was not in the plan-scoped set.
+  test('every queued write with a plan is a plan-scoped entity type', () {
+    final problems = <String>[];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final source = entity.readAsStringSync();
+      for (final call in _queuedCalls(source)) {
+        final type = _entityType.firstMatch(call)?.group(1);
+        if (type == null) continue;
+        final withPlan = RegExp(r'\bplanId:').hasMatch(call);
+        final scoped = OfflineTables.planScopedQueueEntityTypes.contains(type);
+        if (withPlan != scoped) {
+          problems.add(
+            '${entity.path}: "$type" is queued ${withPlan ? 'with' : 'without'} a plan but is ${scoped ? '' : 'not '}plan-scoped',
+          );
+        }
+      }
+    }
+    expect(problems, isEmpty, reason: problems.join('\n'));
+  });
+}
+
+final _entityType = RegExp(r"entityType:\s*'([a-z_]+)'");
+
+/// The argument lists of every `.queued(` call, by balanced parentheses.
+Iterable<String> _queuedCalls(String source) sync* {
+  for (final match in RegExp(r'\.queued\(').allMatches(source)) {
+    var depth = 1;
+    var index = match.end;
+    while (index < source.length && depth > 0) {
+      final char = source[index];
+      if (char == '(') depth++;
+      if (char == ')') depth--;
+      index++;
+    }
+    yield source.substring(match.end, index);
+  }
 }

@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart' show ApiException;
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/sync_status.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -19,21 +21,24 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../data/guests_api.dart';
 import '../models/guest.dart';
 import '../models/guest_invite_text.dart';
+import '../models/guest_reminder.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
 import '../widgets/guest_send_sheet.dart';
 
 part 'guest_invite_screen.card.dart';
+part 'guest_invite_screen.sections.dart';
 
-/// e04 «بطاقة الدعوة» and e08 «تذكير اللي ما ردّوا»: the card as guests
-/// will read it, then a step-through sender that opens each guest's
-/// WhatsApp chat with their own link (C30).
+/// e04 «بطاقة الدعوة» and e08 «تذكير الضيوف»: what each guest will receive,
+/// then a step-through sender that opens each guest's WhatsApp chat with
+/// their own link and the server's text (C30: one by one, from this phone).
 ///
 /// D83: the card is the plan's, kept in the account: the host line, a word
 /// or a verse, a photo, and where (a map link or an address). The venue is
-/// the wedding event's (b12). The WhatsApp text is the server's, built from
-/// the same card and each guest's events.
+/// the wedding event's (b12). One page, in the order the owner prepares it:
+/// what the guest sees (the picture is changed there), the words, the
+/// place, who, then send.
 class GuestInviteScreen extends StatefulWidget {
   const GuestInviteScreen({
     required this.weddingPlanId,
@@ -43,7 +48,8 @@ class GuestInviteScreen extends StatefulWidget {
 
   final String weddingPlanId;
 
-  /// e08: only who has not answered, with a new link each.
+  /// e08: a new link and a short reminder, to who has not answered or to
+  /// everyone the invitation reached.
   final bool reminder;
 
   @override
@@ -54,11 +60,11 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   final _host = TextEditingController();
   final _freeText = TextEditingController();
   final _mapUrl = TextEditingController();
+  final _address = TextEditingController();
+  final _place = TextEditingController();
 
   /// Why the map link cannot be saved (RA-MO-226).
   String? _mapError;
-  final _address = TextEditingController();
-  final _place = TextEditingController();
 
   /// The card as the account keeps it; null until read.
   InvitationCard? _card;
@@ -72,6 +78,20 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   bool _placeFilled = false;
   bool _saving = false;
   bool _uploading = false;
+
+  /// Why the picked photo did not go up, said under the picture; the file
+  /// is kept so trying again does not ask for it again.
+  String? _photoError;
+  XFile? _photoFile;
+
+  /// Why the last save failed, said above the button with what was typed.
+  String? _saveError;
+
+  /// 0: the WhatsApp message, 1: the page its link opens.
+  int _view = 0;
+
+  /// e08: who the reminder goes to, once the owner chose.
+  GuestReminderAudience? _audience;
 
   @override
   void initState() {
@@ -88,7 +108,8 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         provider.loadGuests(widget.weddingPlanId);
       }
       readPlanEventsOnce(context, widget.weddingPlanId);
-      if (!widget.reminder) _readCard();
+      // The reminder's link preview is the card's too (its title and photo).
+      _readCard();
     });
   }
 
@@ -124,29 +145,15 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     }
   }
 
-  /// Who it goes to: not invited yet, or (e08) invited and not answered;
-  /// only guests with a number can be reached.
-  List<Guest> _recipients(List<Guest> guests) => [
-    for (final guest in guests)
-      if (guest.weddingPlanId == widget.weddingPlanId &&
-          (widget.reminder ? guest.canBeReminded : guest.awaitsInvitation))
-        guest,
-  ];
-
   /// The plan's events are read: a missing wedding event is known missing.
   bool _eventsRead = false;
 
-  /// The wedding event (b12): its venue and time are the card's.
-  PlanEvent? _wedding(BuildContext context) {
+  List<PlanEvent> _planEvents(BuildContext context) {
     final view = context.watch<PlanEventsProvider?>()?.viewOf(
       widget.weddingPlanId,
     );
     _eventsRead = view != null;
-    if (view == null) return null;
-    for (final event in view.items) {
-      if (event.type == PlanEventType.wedding) return event;
-    }
-    return null;
+    return view?.items ?? const [];
   }
 
   String? get _photoUrl => switch (_photo) {
@@ -178,7 +185,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       title: mine?.title.trim().isNotEmpty == true ? mine!.title : 'زفافنا',
       host: _host.text,
       weddingDate: mine?.weddingDate,
-      timeLabel: wedding?.timeLabel,
+      timeLabel: guestTimeLabel(wedding),
       place: typed.isNotEmpty ? typed : standIn,
       freeText: _freeText.text,
       photoUrl: _photoUrl,
@@ -214,7 +221,8 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   bool _dirty(PlanEvent? wedding) =>
       _cardChanges().isNotEmpty || _placeChanged(wedding);
 
-  /// Saves the card, and the venue on the wedding event. True when done.
+  /// Saves the card, and the venue on the wedding event. True when done
+  /// (D85: with no connection it is kept on the phone and sent later).
   Future<bool> _save(PlanEvent? wedding) async {
     if (_saving) return false;
     // RA-MO-226: the server takes an https map link only, and refused any
@@ -229,8 +237,11 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       );
       return false;
     }
-    if (_mapError != null) setState(() => _mapError = null);
-    setState(() => _saving = true);
+    setState(() {
+      _mapError = null;
+      _saveError = null;
+      _saving = true;
+    });
     try {
       final changes = _cardChanges();
       if (changes.isNotEmpty) {
@@ -268,16 +279,22 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         }
       }
       return true;
-    } on ApiException catch (error) {
-      if (mounted) AarastToast.showError(context, error.message);
-      return false;
-    } catch (_) {
-      if (mounted) AarastToast.showError(context, 'ما انحفظت البطاقة');
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _saveError = error is ApiException
+              ? error.message
+              : 'ما انحفظت البطاقة. اللي كتبته باقي، جرّب مرة ثانية.',
+        );
+      }
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  /// For the section builders in the part files.
+  void _update(VoidCallback change) => setState(change);
 
   bool _leaving = false;
 
@@ -296,24 +313,68 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GuestsProvider>();
-    final wedding = _wedding(context);
+    final sync = context.watch<OfflineSyncService?>();
+    final offline = sync?.state == SyncState.offline;
+    final events = _planEvents(context);
+    final wedding = events
+        .where((event) => event.type == PlanEventType.wedding)
+        .firstOrNull;
     final card = _preview(context, wedding);
-    final candidates = _recipients(provider.guests);
-    final reachable = candidates.where((guest) => guest.hasPhone).toList();
-    final unreachable = candidates.length - reachable.length;
     final words = GuestWords.of(context);
-    // B5: what is said to the reader takes their form; the guests, the host
-    // and the venue are the plan's.
-    final say = words.profile.say;
     final plan = words.profile.plan;
-    final count = words.count(reachable.length);
+    final mine = [
+      for (final guest in provider.guests)
+        if (guest.weddingPlanId == widget.weddingPlanId) guest,
+    ];
     // Before the plan's guests are read, nobody is known to be left out:
     // the list loads, or says it could not, instead of «ما فيه أحد».
-    final known = provider.guests.any(
-      (guest) => guest.weddingPlanId == widget.weddingPlanId,
+    final reading = mine.isEmpty && provider.isLoading;
+    final unread =
+        mine.isEmpty && !reading && provider.loadErrorMessage != null;
+    final audience = _audienceOf(provider, mine);
+    final round = provider.reminderRound(widget.weddingPlanId);
+    final roundHere = widget.reminder && round?.audience == audience
+        ? round
+        : null;
+    final candidates = [
+      for (final guest in mine)
+        if (widget.reminder ? audience.includes(guest) : guest.awaitsInvitation)
+          guest,
+    ];
+    final reachable = candidates.where((guest) => guest.hasPhone).toList();
+    final left = roundHere?.left(reachable) ?? reachable;
+    final sample = reachable.firstOrNull ?? candidates.firstOrNull;
+    final who = _Who(
+      candidates: candidates,
+      reachable: reachable,
+      left: left,
+      alreadyInvited: mine
+          .where(
+            (guest) => guest.editable && guest.invitationStatus != 'NOT_SENT',
+          )
+          .length,
+      reading: reading,
+      unread: unread,
     );
-    final reading = !known && provider.isLoading;
-    final unread = !known && !reading && provider.loadErrorMessage != null;
+    final preview = _GuestPreview(
+      card: card,
+      guestName: sample?.name ?? plan('اسم الضيف', 'اسم الضيفة'),
+      guestConfirmed: sample?.attendanceStatus == 'CONFIRMED',
+      occasions: sample == null
+          ? const []
+          : guestInviteOccasions(sample, events, words.profile),
+      reminder: widget.reminder,
+      view: widget.reminder ? 0 : _view,
+      onView: (view) => setState(() => _view = view),
+      photo: _PhotoState(
+        uploading: _uploading,
+        error: _photoError,
+        onChange: widget.reminder || _cardUnread || _uploading
+            ? null
+            : () => _changePhoto(hasPhoto: _photoUrl != null),
+        onRetry: _photoFile == null || _uploading ? null : _uploadPicked,
+      ),
+    );
     final dirty = !widget.reminder && _dirty(wedding);
 
     return PopScope(
@@ -336,12 +397,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
               ),
               child: JourneySubHeader(
                 title: widget.reminder
-                    ? 'تذكير اللي ${words.pending}'
+                    ? plan('تذكير الضيوف', 'تذكير الضيفات')
                     : 'بطاقة الدعوة',
                 subtitle: widget.reminder
                     ? plan(
-                        'كل واحد يوصله باسمه ورابطه',
-                        'كل وحدة يوصلها باسمها ورابطها',
+                        'كل واحد يوصله تذكير ورابط جديد يرد منه',
+                        'كل وحدة يوصلها تذكير ورابط جديد ترد منه',
                       )
                     : plan(
                         'كل ضيف يوصله رابط خاص يرد منه بضغطة',
@@ -351,107 +412,42 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
               ),
             ),
             Expanded(
-              child: ListView(
+              child: SingleChildScrollView(
+                key: const ValueKey('invite-scroll'),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: AarastV3Density.pageInsets,
-                children: [
-                  if (widget.reminder)
-                    _ReminderPreview(profile: words.profile)
-                  else
-                    _InviteCardPreview(card: card),
-                  const SizedBox(height: AarastV3Space.x3),
-                  if (!widget.reminder) ...[
-                    if (_cardUnread)
-                      JourneyListState(
-                        phase: JourneyListPhase.error,
-                        section: JourneySection.guests,
-                        errorMessage: _cardError,
-                        onRetry: _readCard,
-                      )
-                    else
-                      ..._cardFields(context, say, plan, dirty, wedding),
-                    const SizedBox(height: AarastV3Space.x3),
-                  ],
-                  if (reading)
-                    const JourneyListState(
-                      phase: JourneyListPhase.loading,
-                      section: JourneySection.guests,
-                    )
-                  else if (unread)
-                    JourneyListState(
-                      phase: JourneyListPhase.error,
-                      section: JourneySection.guests,
-                      onRetry: () => provider.loadGuests(widget.weddingPlanId),
-                    )
-                  else if (reachable.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final guest in reachable.take(6))
-                          JourneyChip(label: guest.name, selected: false),
-                        if (reachable.length > 6)
-                          JourneyChip(
-                            label: '+${reachable.length - 6}',
-                            selected: false,
-                          ),
-                      ],
-                    ),
-                  if (!reading && !unread && unreachable > 0) ...[
-                    const SizedBox(height: AarastV3Space.x2),
-                    JourneyNote(
-                      key: const ValueKey('invite-no-phone'),
-                      text:
-                          '${words.count(unreachable)} بدون رقم، ${say('ما توصل', 'ما توصلين')}${unreachable == 1 ? plan('ه', 'ها') : plan('هم', 'هن')} على واتساب.',
-                      icon: LucideIcons.phoneOff,
-                      color: AarastV3Color.brandAccentStrong,
-                      soft: AarastV3Color.brandAccentSoft,
-                    ),
-                  ],
-                  // Nobody waited on at all; who waits without a number is
-                  // the note above, not «nobody» (RA-MO-66).
-                  if (!reading && !unread && candidates.isEmpty) ...[
-                    const SizedBox(height: AarastV3Space.x2),
-                    Text(
-                      widget.reminder
-                          ? plan(
-                              'ما فيه أحد ينتظر رده.',
-                              'ما فيه وحدة تنتظر ردها.',
-                            )
-                          : plan(
-                              'ما فيه أحد ما وصلته دعوة.',
-                              'ما فيه وحدة ما وصلتها دعوة.',
-                            ),
-                      textAlign: TextAlign.center,
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: widget.reminder
+                      ? _reminderBody(
+                          provider: provider,
+                          mine: mine,
+                          audience: audience,
+                          round: roundHere,
+                          preview: preview,
+                          who: who,
+                          offline: offline,
+                        )
+                      : _inviteBody(
+                          wedding: wedding,
+                          preview: preview,
+                          who: who,
+                          offline: offline,
+                        ),
+                ),
               ),
             ),
             Padding(
               padding: AarastV3Density.actionInsets,
-              child: JourneyButton(
-                key: const ValueKey('invite-send'),
-                // No «لـ 0 ضيوف»: with nobody to send to the button only
-                // waits; with changes unsaved it saves the card first.
-                label: reachable.isEmpty
-                    ? dirty
-                          ? '${say('احفظ', 'احفظي')} البطاقة'
-                          : say('أرسل', 'أرسلي')
-                    : dirty
-                    ? '${say('احفظ', 'احفظي')} و${say('أرسل', 'أرسلي')} لـ $count'
-                    : '${say('أرسل', 'أرسلي')} لـ $count',
-                icon: LucideIcons.send,
-                background: context.accent.primary,
-                expand: true,
-                large: true,
-                loading: _saving,
-                onPressed: _saving || (reachable.isEmpty && !dirty)
-                    ? null
-                    : () => _sendOrSave(provider, reachable, wedding),
+              child: _sendButton(
+                provider: provider,
+                who: who,
+                audience: audience,
+                resuming: (roundHere?.passedCount ?? 0) > 0,
+                wedding: wedding,
+                dirty: dirty,
+                offline: offline,
               ),
             ),
           ],
@@ -460,75 +456,76 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     );
   }
 
-  List<Widget> _cardFields(
-    BuildContext context,
-    String Function(String, String) say,
-    String Function(String, String) plan,
-    bool dirty,
-    PlanEvent? wedding,
-  ) {
-    return [
-      _PhotoField(
-        url: _photoUrl,
-        uploading: _uploading,
-        onPick: _uploading ? null : _pickPhoto,
-        onRemove: _uploading || _photoUrl == null
-            ? null
-            : () => setState(() => _photo = ''),
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-host'),
-        label: say('باسم مين الدعوة؟ (لو تبي)', 'باسم مين الدعوة؟ (لو تبين)'),
-        hint: plan('مثلًا: عبدالرحمن الحمدي', 'مثلًا: أم سلمى'),
-        controller: _host,
-        icon: LucideIcons.user,
-        maxLength: 80,
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-free-text'),
-        label: say('كلمة أو بيت شعر (لو تبي)', 'كلمة أو بيت شعر (لو تبين)'),
-        hint: 'مثلًا: يا مرحبا بالحاضرين',
-        controller: _freeText,
-        icon: LucideIcons.feather,
-        minLines: 2,
-        maxLines: 4,
-        maxLength: 300,
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-place'),
-        label: 'المكان',
-        hint: plan('مثلًا: قاعة سبأ', 'مثلًا: صالة الياسمين'),
-        controller: _place,
-        icon: LucideIcons.mapPin,
-        helper: wedding == null && !_eventsRead
-            ? null
-            : 'ينحفظ على موعد ${plan('الزفاف', 'الزفة')} في «يوم العرس»',
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-map-url'),
-        label: 'رابط الموقع على الخريطة',
-        hint: 'https://maps.app.goo.gl/…',
-        controller: _mapUrl,
-        icon: LucideIcons.map,
-        keyboardType: TextInputType.url,
-        textDirection: TextDirection.ltr,
-        maxLength: 500,
-        errorText: _mapError,
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-address'),
-        label: 'العنوان (لو ما فيه خريطة)',
-        hint: 'مثلًا: شارع تعز، جوار جامع النور',
-        controller: _address,
-        icon: LucideIcons.navigation,
-        maxLength: 160,
-      ),
-    ];
+  /// The owner's choice, else who has not answered while anyone has not,
+  /// else everyone; a round under way keeps its own choice.
+  GuestReminderAudience _audienceOf(GuestsProvider provider, List<Guest> mine) {
+    if (_audience case final chosen?) return chosen;
+    if (provider.reminderRound(widget.weddingPlanId) case final round?) {
+      return round.audience;
+    }
+    return mine.any(GuestReminderAudience.notConfirmed.includes)
+        ? GuestReminderAudience.notConfirmed
+        : GuestReminderAudience.everyone;
+  }
+
+  Widget _sendButton({
+    required GuestsProvider provider,
+    required _Who who,
+    required GuestReminderAudience audience,
+    required bool resuming,
+    required PlanEvent? wedding,
+    required bool dirty,
+    required bool offline,
+  }) {
+    final say = context.say;
+    final words = GuestWords.of(context);
+    final send = say('أرسل', 'أرسلي');
+    final save = say('احفظ', 'احفظي');
+    final count = words.count(who.left.length);
+    final String label;
+    VoidCallback? action;
+    if (widget.reminder) {
+      label = offline
+          ? 'التذكير يحتاج نت'
+          : who.left.isEmpty && resuming
+          ? '${say('ذكّر', 'ذكّري')} من جديد'
+          : resuming
+          ? '${say('كمّل', 'كمّلي')} التذكير لـ $count'
+          : '${say('ذكّر', 'ذكّري')} $count';
+      if (!offline && who.reachable.isNotEmpty) {
+        action = () => _remind(provider, audience, who);
+      }
+    } else if (offline) {
+      // D85: the card is kept on the phone; the links are the server's.
+      label = dirty ? '$save البطاقة' : 'الإرسال يحتاج نت';
+      if (dirty) action = () => _saveOnly(wedding);
+    } else {
+      // No «لـ 0 ضيوف»: with nobody to send to the button only saves.
+      label = who.left.isEmpty
+          ? dirty
+                ? '$save البطاقة'
+                : send
+          : dirty
+          ? '$save و$send لـ $count'
+          : '$send لـ $count';
+      if (who.left.isNotEmpty || dirty) {
+        action = () => _sendOrSave(provider, who.left, wedding);
+      }
+    }
+    return JourneyButton(
+      key: const ValueKey('invite-send'),
+      label: label,
+      icon: LucideIcons.send,
+      background: context.accent.primary,
+      expand: true,
+      large: true,
+      loading: _saving,
+      onPressed: _saving ? null : action,
+    );
+  }
+
+  Future<void> _saveOnly(PlanEvent? wedding) async {
+    if (await _save(wedding) && mounted) _savedToast();
   }
 
   Future<void> _sendOrSave(
@@ -536,11 +533,13 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     List<Guest> guests,
     PlanEvent? wedding,
   ) async {
-    if (!widget.reminder && _dirty(wedding)) {
+    if (_dirty(wedding)) {
       if (!await _save(wedding)) return;
       if (!mounted) return;
-      if (guests.isEmpty) {
-        AarastToast.showSuccess(context, 'انحفظت البطاقة');
+      // Saved with no answer from the server: the links need it.
+      if (guests.isEmpty ||
+          context.read<OfflineSyncService?>()?.state == SyncState.offline) {
+        _savedToast();
         return;
       }
     }
@@ -550,21 +549,73 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       isDismissible: false,
       builder: (_) => GuestSendSheet(
         guests: guests,
-        title: widget.reminder
-            ? 'تذكير اللي ${GuestWords.of(context).pending}'
-            : 'إرسال الدعوات',
-        makeLink: (guest) =>
-            api.createInvitationLink(guest.id, reminder: widget.reminder),
+        title: 'إرسال الدعوات',
+        makeLink: (guest) => api.createInvitationLink(guest.id),
       ),
     );
     if (mounted) await provider.loadGuests(widget.weddingPlanId);
   }
 
-  Future<void> _pickPhoto() async {
-    final uploads = context.read<MediaUploadApi?>();
-    if (uploads == null) return;
-    final source = await showImageSourceSheet(context);
-    if (source == null || !mounted) return;
+  void _savedToast() {
+    final offline =
+        context.read<OfflineSyncService?>()?.state == SyncState.offline;
+    AarastToast.showSuccess(
+      context,
+      offline
+          ? 'انحفظت البطاقة في جوالك، وتوصل لما يرجع النت'
+          : 'انحفظت البطاقة',
+    );
+  }
+
+  Future<void> _remind(
+    GuestsProvider provider,
+    GuestReminderAudience audience,
+    _Who who,
+  ) async {
+    var round = provider.reminderRoundFor(widget.weddingPlanId, audience);
+    if (round.left(who.reachable).isEmpty) {
+      provider.endReminderRound(widget.weddingPlanId);
+      round = provider.reminderRoundFor(widget.weddingPlanId, audience);
+    }
+    final api = context.read<GuestsApi>();
+    await showJourneySheet<int>(
+      context: context,
+      isDismissible: false,
+      builder: (_) => GuestSendSheet(
+        guests: round.left(who.reachable),
+        title: _audienceTitle(audience),
+        makeLink: (guest) => api.createInvitationLink(guest.id, reminder: true),
+        onPassed: (guest) => round.pass(guest.id),
+      ),
+    );
+    if (mounted) await provider.loadGuests(widget.weddingPlanId);
+  }
+
+  String _audienceTitle(GuestReminderAudience audience) {
+    final plan = context.planWord;
+    return switch (audience) {
+      GuestReminderAudience.notConfirmed => plan(
+        'تذكير اللي ما أكدوا',
+        'تذكير اللي ما أكدن',
+      ),
+      GuestReminderAudience.everyone => 'تذكير الكل',
+    };
+  }
+
+  Future<void> _changePhoto({required bool hasPhoto}) async {
+    final choice = await _showPhotoSheet(context, hasPhoto: hasPhoto);
+    if (choice == null || !mounted) return;
+    if (choice == _PhotoChoice.remove) {
+      setState(() {
+        _photo = '';
+        _photoError = null;
+        _photoFile = null;
+      });
+      return;
+    }
+    final source = choice == _PhotoChoice.camera
+        ? ImageSource.camera
+        : ImageSource.gallery;
     final XFile? file;
     try {
       file = await ImagePicker().pickImage(
@@ -593,18 +644,38 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       return;
     }
     if (file == null || !mounted) return;
-    setState(() => _uploading = true);
+    _photoFile = file;
+    await _uploadPicked();
+  }
+
+  Future<void> _uploadPicked() async {
+    final file = _photoFile;
+    final uploads = context.read<MediaUploadApi?>();
+    if (file == null || uploads == null) return;
+    setState(() {
+      _uploading = true;
+      _photoError = null;
+    });
     try {
       final ticket = await uploads.uploadImage(
         file: file,
         purpose: 'guest-invitation-card',
       );
       if (!mounted) return;
-      setState(() => _photo = ticket.publicUrl);
+      setState(() {
+        _photo = ticket.publicUrl;
+        _photoFile = null;
+      });
     } on ApiException catch (error) {
-      if (mounted) AarastToast.showError(context, error.message);
+      if (mounted) {
+        setState(
+          () => _photoError = error.isNetworkFailure
+              ? 'ما ارتفعت الصورة: رفعها يحتاج نت.'
+              : 'ما ارتفعت الصورة: ${error.message}',
+        );
+      }
     } catch (_) {
-      if (mounted) AarastToast.showError(context, 'ما قدرنا نرفع الصورة');
+      if (mounted) setState(() => _photoError = 'ما قدرنا نرفع الصورة.');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

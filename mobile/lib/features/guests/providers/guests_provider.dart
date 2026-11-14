@@ -7,6 +7,7 @@ import '../../../core/offline/offline_contract.dart' show OfflineWrites;
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
+import '../models/guest_reminder.dart';
 
 class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   GuestsProvider(this._api);
@@ -29,6 +30,28 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   GuestSummary? _summary;
   bool _isSavingGroups = false;
   String? _groupsErrorMessage;
+
+  /// e08: the reminder round of each plan, on this phone only (the server
+  /// records no reminder). It outlives the screen, so leaving the walk and
+  /// coming back continues with who is left.
+  final Map<String, GuestReminderRound> _reminderRounds = {};
+
+  GuestReminderRound? reminderRound(String weddingPlanId) =>
+      _reminderRounds[weddingPlanId];
+
+  /// The round for [audience]: the one under way, or a new one.
+  GuestReminderRound reminderRoundFor(
+    String weddingPlanId,
+    GuestReminderAudience audience,
+  ) {
+    final kept = _reminderRounds[weddingPlanId];
+    if (kept != null && kept.audience == audience) return kept;
+    return _reminderRounds[weddingPlanId] = GuestReminderRound(audience);
+  }
+
+  void endReminderRound(String weddingPlanId) {
+    if (_reminderRounds.remove(weddingPlanId) != null) notifyListeners();
+  }
 
   bool get isSavingGroups => _isSavingGroups;
   String? get groupsErrorMessage => _groupsErrorMessage;

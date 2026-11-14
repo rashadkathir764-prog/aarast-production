@@ -17,10 +17,15 @@ class GuestSendSheet extends StatefulWidget {
     required this.guests,
     required this.makeLink,
     required this.title,
+    this.onPassed,
     super.key,
   });
 
   final List<Guest> guests;
+
+  /// Told of each guest left behind (their chat opened, or skipped), as it
+  /// happens: a reminder round continues from here (e08).
+  final ValueChanged<Guest>? onPassed;
 
   /// The guest's own RSVP link and message, made now (a new link replaces
   /// the old).
@@ -47,8 +52,16 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
     });
     try {
       final link = await widget.makeLink(guest);
+      // The server's own normalised number first; the row's is the same.
+      final chat = guestWhatsAppUri(link.phone ?? guest.phone, link.message);
+      if (chat == null) {
+        if (mounted) {
+          setState(() => _error = guestNumberWithoutCountry(guest.name));
+        }
+        return;
+      }
       final opened = await launchUrl(
-        guestWhatsAppUri(guest.phone ?? link.phone, link.message),
+        chat,
         mode: LaunchMode.externalApplication,
       );
       if (!mounted) return;
@@ -56,6 +69,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
         setState(() => _error = 'ما قدرنا نفتح واتساب في هذا الجوال');
         return;
       }
+      widget.onPassed?.call(guest);
       setState(() {
         _sent++;
         _index++;
@@ -67,6 +81,14 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _skip() {
+    widget.onPassed?.call(widget.guests[_index]);
+    setState(() {
+      _index++;
+      _error = null;
+    });
   }
 
   @override
@@ -157,7 +179,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
                 key: const ValueKey('guest-send-skip'),
                 label:
                     '${context.say('تخطّا', 'تخطّي')}${context.planWord('ه', 'ها')}',
-                onPressed: _busy ? null : () => setState(() => _index++),
+                onPressed: _busy ? null : _skip,
               ),
               // RA-MO-233: stopping midway was only a swipe down; it keeps
               // what was sent and leaves the rest for later.

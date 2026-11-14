@@ -3,6 +3,12 @@ part of 'guest_list_screen.dart';
 const _allGroups = '*';
 const _noGroup = '';
 
+/// Everyone answered or apologised: a reminder of the day can still go to
+/// who is coming («الكل» on the reminder screen).
+bool _remindsAll(List<Guest> guests) => guests.any(
+  (guest) => GuestReminderAudience.everyone.includes(guest) && guest.hasPhone,
+);
+
 /// What the page lists under its header (RA-MO-16): fixed [widgets], then
 /// the guest [rows], which the page builds only as they scroll in, so every
 /// name of a list of hundreds is reached by scrolling.

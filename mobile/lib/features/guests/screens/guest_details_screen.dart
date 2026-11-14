@@ -19,6 +19,7 @@ import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
+import '../models/guest_invite_text.dart' show guestNumberWithoutCountry;
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
@@ -437,8 +438,15 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     setState(() => _sending = true);
     try {
       final link = await api.createInvitationLink(guest.id);
+      final chat = link.whatsAppUri;
+      if (chat == null) {
+        if (mounted) {
+          AarastToast.showError(context, guestNumberWithoutCountry(guest.name));
+        }
+        return;
+      }
       final opened = await launchUrl(
-        link.whatsAppUri,
+        chat,
         mode: LaunchMode.externalApplication,
       );
       if (!mounted) return;

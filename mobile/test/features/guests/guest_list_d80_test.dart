@@ -109,64 +109,68 @@ Finder _pressableAround(String name) =>
     find.ancestor(of: find.text(name), matching: find.byType(AarastPressable));
 
 void main() {
-  test('editable reads the server flag and defaults to true for older servers', () {
-    final base = {
-      'id': 'g1',
-      'weddingPlanId': 'plan-1',
-      'name': 'سالم',
-      'side': 'GROOM',
-      'status': 'INVITED',
-    };
-    expect(Guest.fromJson(base).editable, isTrue);
-    expect(Guest.fromJson({...base, 'editable': true}).editable, isTrue);
-    expect(Guest.fromJson({...base, 'editable': false}).editable, isFalse);
-    final group = {'id': 'x', 'weddingPlanId': 'plan-1', 'name': 'الأهل'};
-    expect(GuestGroup.fromJson(group).editable, isTrue);
-    expect(
-      GuestGroup.fromJson({...group, 'editable': false}).editable,
-      isFalse,
-    );
-    // A guest whose number is kept by the owner is neither missing data nor
-    // someone this reader can remind or invite.
-    final kept = _guest('k', 'خالد', editable: false);
-    expect(kept.hasMissingData, isFalse);
-    expect(kept.canBeReminded, isFalse);
-    expect(kept.awaitsInvitation, isFalse);
-    expect(kept.withoutGroup().editable, isFalse);
-  });
+  test(
+    'editable reads the server flag and defaults to true for older servers',
+    () {
+      final base = {
+        'id': 'g1',
+        'weddingPlanId': 'plan-1',
+        'name': 'سالم',
+        'side': 'GROOM',
+        'status': 'INVITED',
+      };
+      expect(Guest.fromJson(base).editable, isTrue);
+      expect(Guest.fromJson({...base, 'editable': true}).editable, isTrue);
+      expect(Guest.fromJson({...base, 'editable': false}).editable, isFalse);
+      final group = {'id': 'x', 'weddingPlanId': 'plan-1', 'name': 'الأهل'};
+      expect(GuestGroup.fromJson(group).editable, isTrue);
+      expect(
+        GuestGroup.fromJson({...group, 'editable': false}).editable,
+        isFalse,
+      );
+      // A guest whose number is kept by the owner is neither missing data nor
+      // someone this reader can remind or invite.
+      final kept = _guest('k', 'خالد', editable: false);
+      expect(kept.hasMissingData, isFalse);
+      expect(kept.canBeReminded, isFalse);
+      expect(kept.awaitsInvitation, isFalse);
+      expect(kept.withoutGroup().editable, isFalse);
+    },
+  );
 
-  testWidgets('a helper sees the whole plan, controls only on their own guests', (
-    tester,
-  ) async {
-    await _pumpList(tester, guests: _mixed);
+  testWidgets(
+    'a helper sees the whole plan, controls only on their own guests',
+    (tester) async {
+      await _pumpList(tester, guests: _mixed);
 
-    // The figures count the whole plan.
-    expect(find.text('3 مدعو · 1 أكدوا · 2 ما ردّوا'), findsOneWidget);
-    expect(find.text('أكدوا من 3'), findsOneWidget);
-    // Only the helper's own waiting guest can be reminded from here.
-    expect(find.text('ذكّر ضيف واحد على واتساب'), findsOneWidget);
-    expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
-    expect(find.byKey(const ValueKey('guests-helper-note')), findsOneWidget);
-    expect(find.textContaining('عند العريس'), findsOneWidget);
+      // The figures count the whole plan.
+      expect(find.text('3 مدعو · 1 أكدوا · 2 ما ردّوا'), findsOneWidget);
+      expect(find.text('أكدوا من 3'), findsOneWidget);
+      // Only the helper's own waiting guest can be reminded from here.
+      expect(find.text('ذكّر ضيف واحد على واتساب'), findsOneWidget);
+      expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
+      expect(find.byKey(const ValueKey('guests-helper-note')), findsOneWidget);
+      expect(find.textContaining('عند العريس'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('سالم'), findsOneWidget);
-    expect(find.text('خالد'), findsOneWidget);
-    expect(find.text('ناصر'), findsOneWidget);
-    // Name, reply and companions for the groom's guest.
-    expect(find.text('أكّد مع 2'), findsOneWidget);
-    // His guests' numbers are his, not missing.
-    expect(find.textContaining('بدون رقم ·'), findsNothing);
-    expect(find.text('بدون رقم 0'), findsOneWidget);
-    expect(find.textContaining('بدون رقم'), findsOneWidget);
-    // The helper's own guest opens; the groom's guests are plain rows.
-    expect(_pressableAround('سالم'), findsOneWidget);
-    expect(_pressableAround('خالد'), findsNothing);
-    expect(_pressableAround('ناصر'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('سالم'), findsOneWidget);
+      expect(find.text('خالد'), findsOneWidget);
+      expect(find.text('ناصر'), findsOneWidget);
+      // Name, reply and companions for the groom's guest.
+      expect(find.text('أكّد مع 2'), findsOneWidget);
+      // His guests' numbers are his, not missing.
+      expect(find.textContaining('بدون رقم ·'), findsNothing);
+      expect(find.text('بدون رقم 0'), findsOneWidget);
+      expect(find.textContaining('بدون رقم'), findsOneWidget);
+      // The helper's own guest opens; the groom's guests are plain rows.
+      expect(_pressableAround('سالم'), findsOneWidget);
+      expect(_pressableAround('خالد'), findsNothing);
+      expect(_pressableAround('ناصر'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a helper adds only to the groups they made', (tester) async {
     await _pumpList(tester, guests: _mixed);
@@ -211,30 +215,56 @@ void main() {
     expect(find.text('ما أضفت أحد بعد.'), findsOneWidget);
   });
 
-  testWidgets('the groups sheet renames and removes only the reader\'s groups', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: GuestGroupsSheet(
-            groups: const [_ownerGroup, _ownGroup],
-            guestCounts: const {},
-            saving: false,
-            onCreate: (_) async => true,
-            onRename: (_, _) async => true,
-            onDelete: (_) async => true,
+  testWidgets(
+    'the groups sheet renames and removes only the reader\'s groups',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GuestGroupsSheet(
+              groups: const [_ownerGroup, _ownGroup],
+              guestCounts: const {},
+              saving: false,
+              onCreate: (_) async => true,
+              onRename: (_, _) async => true,
+              onDelete: (_) async => true,
+            ),
           ),
         ),
-      ),
+      );
+
+      expect(find.byTooltip('شيل مجموعة أصحابي'), findsOneWidget);
+      expect(find.byTooltip('شيل مجموعة أهل العريس'), findsNothing);
+
+      await tester.tap(find.text('أهل العريس'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('guest-group-rename-field')),
+        findsNothing,
+      );
+    },
+  );
+
+  // «ذكّر» went away once every guest answered, so the reminder of the day
+  // to who is coming had no door; it now opens the reminder on «الكل».
+  testWidgets('with everyone answered, the reminder to all stays', (
+    tester,
+  ) async {
+    await _pumpList(
+      tester,
+      guests: [
+        _guest(
+          'a',
+          'سالم',
+          editable: true,
+          status: 'CONFIRMED',
+          phone: '+967777000003',
+        ),
+      ],
     );
 
-    expect(find.byTooltip('شيل مجموعة أصحابي'), findsOneWidget);
-    expect(find.byTooltip('شيل مجموعة أهل العريس'), findsNothing);
-
-    await tester.tap(find.text('أهل العريس'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('guest-group-rename-field')), findsNothing);
+    expect(find.text('ذكّر الكل على واتساب'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-invite-now')), findsNothing);
   });
 }
 

@@ -266,7 +266,9 @@ class InvitationCard {
     return InvitationCard(
       hostLine: text(json['hostLine']),
       freeText: text(json['freeText']),
-      photoUrl: text(json['photoUrl']),
+      // 6a: the bucket keeps the photo private; the server's short signed
+      // read is what draws. A photo picked here and still queued has none.
+      photoUrl: text(json['photoReadUrl']) ?? text(json['photoUrl']),
       mapUrl: text(json['mapUrl']),
       address: text(json['address']),
       updatedAt: Guest._dateTimeOrNull(json['updatedAt']),
@@ -275,6 +277,11 @@ class InvitationCard {
 
   final String? hostLine;
   final String? freeText;
+
+  /// The photo as the phone can draw it: the server's signed read (valid
+  /// two minutes, re-issued on every read of the card), or the address of a
+  /// photo picked on this phone that the server has not answered for yet.
+  /// The phone never sends it back; a new photo is sent as its own upload.
   final String? photoUrl;
   final String? mapUrl;
   final String? address;
@@ -523,5 +530,6 @@ class GuestInvitationLink {
 
   /// WhatsApp with the message ready: to the guest's chat when the number is
   /// known, otherwise WhatsApp's own picker.
-  Uri get whatsAppUri => guestWhatsAppUri(phone, message);
+  /// Null when the number has no country ([guestWhatsAppUri]).
+  Uri? get whatsAppUri => guestWhatsAppUri(phone, message);
 }

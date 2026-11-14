@@ -387,12 +387,7 @@ class GuestsApi {
       for (final entry in changes.entries) entry.key: entry.value ?? '',
     };
     final cached = await _reads.cachedBlob(_cardKey(weddingPlanId)) ?? {};
-    final localJson = {
-      ...cached,
-      for (final entry in changes.entries)
-        entry.key: (entry.value ?? '').isEmpty ? null : entry.value,
-      'updatedAt': DateTime.now().toIso8601String(),
-    };
+    final localJson = localInvitationCard(cached, changes, DateTime.now());
     final json = await _writes.queued(
       entityType: 'guest_invitation_card',
       operation: 'update',
@@ -593,4 +588,22 @@ class GuestsApi {
         value.startsWith('guest-plan-') ||
         value.startsWith('local-guest-');
   }
+}
+
+/// The card as the phone keeps it while [changes] wait for the server. 6a:
+/// the server's signed read belongs to the photo it was made for, so a
+/// changed or cleared photo drops it; the new photo has none until the
+/// server answers.
+Map<String, dynamic> localInvitationCard(
+  Map<String, dynamic> cached,
+  Map<String, String?> changes,
+  DateTime now,
+) {
+  return {
+    ...cached,
+    if (changes.containsKey('photoUrl')) 'photoReadUrl': null,
+    for (final entry in changes.entries)
+      entry.key: (entry.value ?? '').isEmpty ? null : entry.value,
+    'updatedAt': now.toIso8601String(),
+  };
 }

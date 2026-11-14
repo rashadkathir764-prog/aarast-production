@@ -14,7 +14,9 @@ export type MediaPurpose =
   // only after review, and a refused one is deleted.
   | 'provider-portfolio'
   // D83: the plan's invitation card photo, read by its guests on their
-  // public RSVP page; public like service images, no review.
+  // public RSVP page. Uploaded and saved by its address like service
+  // images, but the bucket keeps it private: it is read only through
+  // createStoredMediaDownloadUrl, by the guest's link or a plan member.
   | 'guest-invitation-card';
 
 /**
@@ -53,6 +55,19 @@ export interface VerifiedMediaUpload {
 
 export interface MediaStoragePort {
   createDownloadUrl(storageKey: string): Promise<{
+    downloadUrl: string;
+    expiresInSeconds: number;
+    expiresAt: Date;
+  }>;
+  /**
+   * A short-lived signed read of an object saved by its address for
+   * `purpose` (under AARAST_MEDIA_PUBLIC_BASE_URL), whoever uploaded it.
+   * The caller authorises the read; an address outside that purpose is a 400.
+   */
+  createStoredMediaDownloadUrl(
+    publicUrl: string,
+    purpose: MediaPurpose,
+  ): Promise<{
     downloadUrl: string;
     expiresInSeconds: number;
     expiresAt: Date;

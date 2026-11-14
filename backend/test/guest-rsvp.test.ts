@@ -9,6 +9,8 @@ import {
   rsvpTokenHash,
 } from "../src/guests/guest-rsvp.service";
 import { assertWeddingPlanWritable } from "../src/modules/collaboration/public/collaboration-permission.port";
+import { PublicRsvpController } from "../src/guests/guest-rsvp.controller";
+import { renderRsvpPreviewHead } from "../src/guests/rsvp-preview";
 
 // Personal invitation links and RSVP (V1 checklist 4.7).
 
@@ -130,7 +132,7 @@ function fakeDatabase() {
     ...tx,
     $transaction: async (operation: (client: any) => Promise<unknown>) => operation(tx),
   };
-  return { prisma, guests, eventInvites, cards, notifications, media: [] as any[] };
+  return { prisma, guests, eventInvites, cards, notifications, media: [] as any[], signed: [] as any[] };
 }
 
 function service(
@@ -182,6 +184,16 @@ function service(
     },
     scheduleTargetDeletion: async (target: unknown) => {
       db.media.push(["delete", target]);
+    },
+    // 6a: the bucket keeps the card photo private; a read is a short-lived
+    // signed link of the saved address.
+    createStoredMediaDownloadUrl: async (value: string, purpose: string) => {
+      db.signed.push([value, purpose]);
+      return {
+        downloadUrl: `https://signed.example/${encodeURIComponent(value)}?X-Amz-Expires=120`,
+        expiresInSeconds: 120,
+        expiresAt: new Date(Date.now() + 120_000),
+      };
     },
   };
   return new GuestRsvpService(db.prisma, permissions, scope, plans, notifications, media);
@@ -378,6 +390,7 @@ test("the card is saved once per plan, read by the guest, and spoken in the mess
     hostLine: null,
     freeText: null,
     photoUrl: null,
+    photoReadUrl: null,
     mapUrl: null,
     address: null,
     updatedAt: null,
@@ -458,4 +471,189 @@ test("the link origin must be HTTPS", () => {
       .includes("الموعد"),
     false,
   );
+});
+
+// 6b: WhatsApp previews the first link of a text. The guest's own link
+// comes first, so the preview is the invitation and not the venue's map.
+test("the invitation link comes before the map link in the message", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  await rsvp.setInvitationCard(owner, "plan-1", {
+    hostLine: "أبو أحمد",
+    mapUrl: "https://maps.app.goo.gl/abc",
+  });
+  const link = await rsvp.createInvitationLink(owner, "guest-1");
+  const urls = link.message.match(/https:\/\/\S+/g) ?? [];
+  assert.deepEqual(urls, [link.url, "https://maps.app.goo.gl/abc"]);
+  // The details still follow the link.
+  assert.ok(link.message.indexOf(link.url) < link.message.indexOf("قاعة سبأ"));
+  assert.match(link.message, /نرجو تأكيد حضورك من الرابط:\n/);
+  // The reminder keeps its short text with the new link last.
+  const reminder = await rsvp.createInvitationLink(owner, "guest-1", { reminder: true });
+  assert.ok(reminder.message.endsWith(reminder.url));
+  assert.doesNotMatch(reminder.message, /maps\.app/);
+});
+
+// 6a: the card photo is private in the bucket; the guest's link reads it.
+test("the guest page and the crawler read the card photo through the link, never the bucket address", async () => {
+  process.env.INVITE_PUBLIC_ORIGIN = "https://3.121.198.183";
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const stored = "https://media.example/guest-invitation-card/owner-1/a.jpg";
+  await rsvp.setInvitationCard(owner, "plan-1", { hostLine: "أبو أحمد", photoUrl: stored });
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+
+  const view = await rsvp.getInvitation(token);
+  assert.equal(view.card?.photoUrl, `https://3.121.198.183/api/v1/public/rsvp/${token}/card-photo`);
+  assert.ok(!JSON.stringify(view).includes("media.example"), "the stored address stays on the server");
+
+  db.signed.length = 0;
+  const read = await rsvp.cardPhotoDownloadUrl(token);
+  assert.match(read, /^https:\/\/signed\.example\//);
+  assert.deepEqual(db.signed, [[stored, "guest-invitation-card"]]);
+
+  // A dead link reads nothing; a card without a photo is a 404 too.
+  await assert.rejects(rsvp.cardPhotoDownloadUrl("C".repeat(43)), (error: any) =>
+    error.getStatus() === 404 && error.response.code === "RSVP_LINK_NOT_FOUND");
+  await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: null });
+  await assert.rejects(rsvp.cardPhotoDownloadUrl(token), (error: any) =>
+    error.getStatus() === 404 && error.response.code === "RSVP_CARD_PHOTO_NOT_FOUND");
+  assert.equal((await rsvp.getInvitation(token)).card?.photoUrl, null);
+  // A revoked link (a new one replaced it) reads nothing either.
+  await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: stored });
+  await rsvp.createInvitationLink(owner, "guest-1");
+  await assert.rejects(rsvp.cardPhotoDownloadUrl(token), /not valid/);
+});
+
+test("the owner's card carries a signed read of its photo", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const stored = "https://media.example/guest-invitation-card/owner-1/a.jpg";
+  const saved = await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: stored });
+  assert.equal(saved.photoUrl, stored, "the saved address stays the card's identity");
+  assert.match(saved.photoReadUrl ?? "", /^https:\/\/signed\.example\//);
+  const read = await rsvp.getInvitationCard(member, "plan-1");
+  assert.match(read.photoReadUrl ?? "", /^https:\/\/signed\.example\//);
+  assert.equal((await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: null })).photoReadUrl, null);
+});
+
+// «ذكّر الكل» (2026-11-14): a guest who already confirmed is reminded of the
+// day, not asked to answer again.
+test("a reminder to a guest who confirmed says the day and keeps the link, without asking for an answer", () => {
+  const base = {
+    guestName: "مراد",
+    planTitle: "عرس أحمد",
+    weddingDate: new Date(Date.UTC(2027, 1, 18)),
+    locationLabel: null,
+    url: "https://x/rsvp/t",
+    reminder: true,
+  };
+  const confirmed = buildRsvpMessage({ ...base, confirmed: true });
+  assert.match(confirmed, /نذكرك بعرس أحمد يوم 18\/2\/2027/);
+  assert.match(confirmed, /ننتظرك/);
+  assert.doesNotMatch(confirmed, /للرد/);
+  assert.ok(confirmed.endsWith("https://x/rsvp/t"));
+
+  const pending = buildRsvpMessage(base);
+  assert.match(pending, /هذا رابطك الجديد للرد بضغطة:/);
+  assert.doesNotMatch(pending, /ننتظرك/);
+});
+
+test("a crawler gets this invitation's head; an unknown, revoked or archived link gets none", async () => {
+  process.env.INVITE_PUBLIC_ORIGIN = "https://3.121.198.183";
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  await rsvp.setInvitationCard(owner, "plan-1", {
+    hostLine: "أبو أحمد",
+    photoUrl: "https://media.example/guest-invitation-card/owner-1/a.webp",
+  });
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+
+  const preview = await rsvp.invitationPreview(token);
+  assert.ok(preview);
+  assert.equal(preview.title, "يتشرف أبو أحمد بدعوتكم لحضور عرس أحمد");
+  assert.match(preview.description, /18\/2\/2027/);
+  assert.match(preview.description, /قاعة سبأ/);
+  assert.equal(preview.url, `https://3.121.198.183/rsvp/${token}`);
+  assert.deepEqual(preview.image, {
+    url: `https://3.121.198.183/api/v1/public/rsvp/${token}/card-photo`,
+    type: "image/webp",
+  });
+
+  assert.equal(await rsvp.invitationPreview("short"), null);
+  assert.equal(await rsvp.invitationPreview("D".repeat(43)), null);
+  assert.equal(await service(db, { planStatus: "ARCHIVED" }).invitationPreview(token), null);
+  await rsvp.createInvitationLink(owner, "guest-1");
+  assert.equal(await rsvp.invitationPreview(token), null, "a replaced link names nobody");
+
+  // Without a photo the head has no image.
+  const fresh = fakeDatabase();
+  const plain = service(fresh);
+  const plainToken = tokenOf((await plain.createInvitationLink(owner, "guest-1")).url);
+  const plainPreview = await plain.invitationPreview(plainToken);
+  assert.equal(plainPreview?.image, null);
+  assert.equal(plainPreview?.title, "يسعدنا دعوتك لحضور عرس أحمد");
+});
+
+test("the head escapes what the hosts typed and names the image only when there is one", () => {
+  const head = renderRsvpPreviewHead({
+    title: `زفاف "سعيد" <script>&`,
+    description: "الموعد: 18/2/2027",
+    url: "https://3.121.198.183/rsvp/t",
+    image: { url: "https://3.121.198.183/api/v1/public/rsvp/t/card-photo", type: "image/jpeg" },
+  });
+  assert.match(head, /<meta property="og:title" content="زفاف &quot;سعيد&quot; &lt;script&gt;&amp;">/);
+  assert.doesNotMatch(head, /<script/);
+  assert.match(head, /<meta property="og:url" content="https:\/\/3\.121\.198\.183\/rsvp\/t">/);
+  assert.match(head, /<meta property="og:image" content="https:\/\/3\.121\.198\.183\/api\/v1\/public\/rsvp\/t\/card-photo">/);
+  assert.match(head, /<meta property="og:image:type" content="image\/jpeg">/);
+  assert.match(head, /<meta name="twitter:card" content="summary_large_image">/);
+
+  const bare = renderRsvpPreviewHead({ title: "عرس", description: "د", url: "https://x/rsvp/t", image: null });
+  assert.doesNotMatch(bare, /og:image/);
+  assert.match(bare, /<meta name="twitter:card" content="summary">/);
+});
+
+function fakeResponse() {
+  const sent: any = { headers: {} as Record<string, string> };
+  const res: any = {
+    set(name: string, value: string) { sent.headers[name.toLowerCase()] = value; return res; },
+    status(code: number) { sent.status = code; return res; },
+    type(value: string) { sent.headers["content-type"] = value; return res; },
+    send(body: string) { sent.body = body; return res; },
+    end() { sent.ended = true; return res; },
+    redirect(code: number, url: string) { sent.status = code; sent.location = url; return res; },
+  };
+  return { res, sent };
+}
+
+test("the head route answers 204 for a dead link and HTML for a live one; the photo route redirects, uncached", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  await rsvp.setInvitationCard(owner, "plan-1", {
+    photoUrl: "https://media.example/guest-invitation-card/owner-1/a.png",
+  });
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  const controller = new PublicRsvpController(rsvp);
+
+  const dead = fakeResponse();
+  await controller.preview("E".repeat(43), dead.res);
+  assert.equal(dead.sent.status, 204);
+  assert.equal(dead.sent.body, undefined);
+  assert.equal(dead.sent.headers["cache-control"], "private, no-store");
+
+  const live = fakeResponse();
+  await controller.preview(token, live.res);
+  assert.equal(live.sent.status, 200);
+  assert.match(live.sent.headers["content-type"], /^text\/html/);
+  assert.match(live.sent.body, /og:image:type" content="image\/png"/);
+  assert.equal(live.sent.headers["cache-control"], "private, no-store");
+
+  const photo = fakeResponse();
+  await controller.cardPhoto(token, photo.res);
+  assert.equal(photo.sent.status, 302);
+  assert.match(photo.sent.location, /^https:\/\/signed\.example\//);
+  assert.equal(photo.sent.headers["cache-control"], "private, no-store");
+  assert.equal(photo.sent.headers["referrer-policy"], "no-referrer");
+  await assert.rejects(controller.cardPhoto("F".repeat(43), fakeResponse().res), /not valid/);
 });

@@ -138,9 +138,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       CORS_ORIGINS: https://${AARAST_ADMIN_HOST:?AARAST_ADMIN_HOST is required}
-      # Sharing invites and guest RSVP links open on this host's public site;
-      # without it they pointed at the old production domain.
-      INVITE_PUBLIC_ORIGIN: https://${AARAST_SITE_HOST:?AARAST_SITE_HOST is required}
+      # 6c: the origin of every link the server writes (guest RSVP links and
+      # participant invitation links). sslip.io names do not resolve on many
+      # networks in Yemen, so it is the Elastic IP, which Caddy serves the
+      # public pages on, until AARAST_PUBLIC_ORIGIN names the real domain.
+      INVITE_PUBLIC_ORIGIN: ${AARAST_PUBLIC_ORIGIN:-https://${AARAST_DIRECT_API_IP:?AARAST_DIRECT_API_IP is required}}
       REDIS_URL: redis://redis:6379
       READINESS_REQUIRE_REDIS: "true"
       READINESS_REQUIRE_MEDIA: "true"

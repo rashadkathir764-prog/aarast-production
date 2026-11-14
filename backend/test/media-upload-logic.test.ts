@@ -225,6 +225,56 @@ test("private chat uploads never return a public URL and GET links expire quickl
   }
 });
 
+// 6a: the invitation card photo stays private in the bucket; the server signs
+// a short read of the saved address, whoever of the plan uploaded it.
+test("a stored card photo is read through a short signed URL of its own key only", async () => {
+  const names = [
+    "AARAST_MEDIA_ENDPOINT",
+    "AARAST_MEDIA_SIGNED_ENDPOINT",
+    "AARAST_MEDIA_BUCKET",
+    "AARAST_MEDIA_PUBLIC_BASE_URL",
+    "AARAST_MEDIA_ACCESS_KEY_ID",
+    "AARAST_MEDIA_SECRET_ACCESS_KEY",
+  ] as const;
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  Object.assign(process.env, {
+    AARAST_MEDIA_ENDPOINT: "https://storage.example.test",
+    AARAST_MEDIA_SIGNED_ENDPOINT: "https://signed.example.test",
+    AARAST_MEDIA_BUCKET: "aarast-media",
+    AARAST_MEDIA_PUBLIC_BASE_URL: "https://aarast-media.s3.eu-central-1.amazonaws.com",
+    AARAST_MEDIA_ACCESS_KEY_ID: "test-access-key",
+    AARAST_MEDIA_SECRET_ACCESS_KEY: "test-secret-key",
+  });
+  try {
+    const storage = new MediaStorageService(signingTicketStore() as never);
+    const saved =
+      "https://aarast-media.s3.eu-central-1.amazonaws.com/guest-invitation-card/user-2/0b1c2d3e-4f50-4a61-8b72-938495a6b7c8.jpg";
+    const read = await storage.createStoredMediaDownloadUrl(saved, "guest-invitation-card");
+    const signed = new URL(read.downloadUrl);
+    assert.match(signed.hostname, /(^|\.)signed\.example\.test$/);
+    assert.match(signed.pathname, /guest-invitation-card\/user-2\/0b1c2d3e-4f50-4a61-8b72-938495a6b7c8\.jpg$/);
+    assert.equal(signed.searchParams.get("X-Amz-Expires"), "120");
+    assert.equal(read.expiresInSeconds, 120);
+
+    for (const foreign of [
+      "https://elsewhere.example/guest-invitation-card/user-2/a.jpg",
+      "https://aarast-media.s3.eu-central-1.amazonaws.com/chat-image/user-2/a.jpg",
+      "https://aarast-media.s3.eu-central-1.amazonaws.com/guest-invitation-card/../chat-image/user-2/a.jpg",
+    ]) {
+      await assert.rejects(
+        storage.createStoredMediaDownloadUrl(foreign, "guest-invitation-card"),
+        BadRequestException,
+        foreign,
+      );
+    }
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
+
 test("media upload route is authenticated and storage is environment configured", () => {
   const controller = readFileSync(
     join(process.cwd(), "src/media/media.controller.ts"),

@@ -85,6 +85,17 @@
     return typeof value === "string" && /^https:/.test(value) ? value : "";
   }
 
+  /**
+   * 6a: the bucket keeps the card photo private. The server names this
+   * link's own photo route (on whichever host of the site it writes); the
+   * page reads that route on its own origin and loads nothing else.
+   */
+  function photoSource(value) {
+    const route = `${endpoint}/card-photo`;
+    const path = typeof value === "string" ? /^https:\/\/[^/?#]+(\/.*)$/.exec(value) : null;
+    return path && path[1] === route ? route : "";
+  }
+
   function chipLabel(count) {
     return count === 0 ? "لحالي" : `+${count}`;
   }
@@ -130,7 +141,7 @@
     inviteLine.textContent = invitation.hostPhrase || "يسعدنا حضورك";
     title.textContent = invitation.planTitle;
 
-    const photoUrl = secureLink(card.photoUrl);
+    const photoUrl = photoSource(card.photoUrl);
     photo.hidden = !photoUrl;
     if (photoUrl) photo.src = photoUrl;
     else photo.removeAttribute("src");

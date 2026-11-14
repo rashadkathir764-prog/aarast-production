@@ -69,6 +69,12 @@ async function main(): Promise<void> {
       scheduleTargetDeletion: async (target: unknown) => {
         mediaCalls.push(["delete", target]);
       },
+      // 6a: the private photo is read through a short signed link.
+      createStoredMediaDownloadUrl: async (value: string) => ({
+        downloadUrl: `https://signed.example/${encodeURIComponent(value)}`,
+        expiresInSeconds: 120,
+        expiresAt: new Date(Date.now() + 120_000),
+      }),
     } as any,
   );
   // D83: the plan's lunch, which this guest is invited to as well.
@@ -148,13 +154,22 @@ async function main(): Promise<void> {
     assert.equal(await prisma.guestInvitationCard.count({ where: { weddingPlanId: plan.id } }), 1);
     const pageView = await rsvp.getInvitation(firstToken);
     assert.equal(pageView.card?.mapUrl, "https://maps.app.goo.gl/smoke");
-    assert.equal(pageView.card?.photoUrl, "https://media.example/guest-invitation-card/owner/a.jpg");
+    // 6a: the page reads the photo through the link, never the bucket address.
+    assert.ok(pageView.card?.photoUrl?.endsWith(`/api/v1/public/rsvp/${firstToken}/card-photo`));
+    assert.equal(
+      await rsvp.cardPhotoDownloadUrl(firstToken),
+      `https://signed.example/${encodeURIComponent("https://media.example/guest-invitation-card/owner/a.jpg")}`,
+    );
+    assert.match(card.photoReadUrl ?? "", /^https:\/\/signed\.example\//);
+    assert.equal((await rsvp.invitationPreview(firstToken))?.title, "يتشرف عبدالرحمن الحمدي بدعوتكم لحضور " + plan.title);
     console.log("PASS - the plan's card is saved once and read by the guest");
 
     const second = await rsvp.createInvitationLink(owner as any, guest.id);
     assert.match(second.message, /يتشرف عبدالرحمن الحمدي بدعوتكم/);
     assert.match(second.message, /الغداء/);
     assert.match(second.message, /maps\.app\.goo\.gl\/smoke/);
+    // 6b: the guest's link is the first link, so WhatsApp previews it.
+    assert.equal(second.message.match(/https:\/\/\S+/)?.[0], second.url);
     const reminder = await rsvp.createInvitationLink(owner as any, guest.id, { reminder: true });
     assert.match(reminder.message, /نذكرك ب/);
     console.log("PASS - the WhatsApp text is built by the server from the card and the events");

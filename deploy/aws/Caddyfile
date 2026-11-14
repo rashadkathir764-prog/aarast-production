@@ -6,6 +6,11 @@
 
 # The Elastic IP is an additional API origin, independent of client DNS.
 # Its public certificate is renewed automatically in the persistent Caddy volume.
+# 6c: sslip.io names do not resolve on many networks in Yemen, so until the
+# real domain exists the links the server writes open on this address
+# (AARAST_PUBLIC_ORIGIN, compose.yml): the guest RSVP and participant invite
+# pages, their assets, the public pages the app opens and the Android
+# association file are the static site here too. Everything else is the API.
 https://{$AARAST_DIRECT_API_IP} {
 	tls {
 		issuer acme {
@@ -15,7 +20,13 @@ https://{$AARAST_DIRECT_API_IP} {
 		}
 	}
 	encode gzip
-	reverse_proxy backend:3000
+	@public_site path /rsvp/* /invites/* /.well-known/* /rsvp.js /rsvp.css /invite.js /invite.css /invite-preview.png /public.css /privacy /privacy/ /terms /terms/ /support /support/ /download /download/ /download.js /qrcode-generator.js
+	handle @public_site {
+		reverse_proxy public-site:80
+	}
+	handle {
+		reverse_proxy backend:3000
+	}
 }
 
 # Existing names remain available for already-installed clients.

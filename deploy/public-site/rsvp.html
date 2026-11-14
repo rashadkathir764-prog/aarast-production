@@ -10,8 +10,12 @@
     <meta property="og:locale" content="ar_YE">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="اعّرست">
+    <!-- nginx SSI puts this link's own preview tags here; without it, the generic ones stay. -->
+    <!--# block name="rsvp_preview" -->
     <meta property="og:title" content="دعوة عرس">
     <meta property="og:description" content="يسعدنا حضورك. رد من الرابط بضغطة.">
+    <!--# endblock -->
+    <!--# include virtual="/__rsvp_preview/$rsvp_token" stub="rsvp_preview" -->
     <link rel="stylesheet" href="/rsvp.css">
     <script src="/rsvp.js" defer></script>
   </head>

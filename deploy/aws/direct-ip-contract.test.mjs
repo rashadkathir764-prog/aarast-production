@@ -45,11 +45,38 @@ test('direct IP uses public short-lived ACME, no-SNI selection, and the existing
   assert.ok(nodes.some((x) => x.default_sni === ip), 'IP clients may omit TLS SNI');
   const route = nodes.find((x) => x.match?.some((m) => m.host?.includes(ip)));
   assert.ok(route);
-  const upstreams = allNodes(route).filter((x) => x.handler === 'reverse_proxy').flatMap((x) => x.upstreams);
-  assert.deepEqual(upstreams, [{ dial: 'backend:3000' }]);
+  const dials = (node) => allNodes(node).filter((x) => x.handler === 'reverse_proxy').flatMap((x) => x.upstreams);
+  // 6c: the public pages the server's links open are the static site on the
+  // IP too; every other path stays the API, as the installed APK needs.
+  const inner = allNodes(route).filter((x) => Array.isArray(x.routes)).flatMap((x) => x.routes);
+  const publicRoute = inner.find((x) => x.match?.some((m) => m.path?.includes('/rsvp/*')));
+  assert.ok(publicRoute, 'The IP must serve the RSVP pages');
+  const publicPaths = publicRoute.match.flatMap((m) => m.path);
+  for (const path of ['/rsvp/*', '/invites/*', '/.well-known/*', '/rsvp.js', '/rsvp.css', '/invite.js',
+    '/invite.css', '/invite-preview.png', '/public.css', '/privacy', '/terms', '/support', '/download']) {
+    assert.ok(publicPaths.includes(path), `${path} must be the static site on the IP`);
+  }
+  assert.ok(!publicPaths.some((path) => path.startsWith('/api') || path === '/*' || path === '/ready'),
+    'No API path may move to the static site');
+  assert.deepEqual(dials(publicRoute), [{ dial: 'public-site:80' }]);
+  const fallback = inner.find((x) => !x.match && dials(x).length > 0);
+  assert.ok(fallback, 'Every other path on the IP is the API');
+  assert.deepEqual(dials(fallback), [{ dial: 'backend:3000' }]);
   for (const host of [env.AARAST_API_HOST, env.AARAST_ADMIN_HOST, env.AARAST_SITE_HOST]) {
     assert.ok(nodes.some((x) => x.host?.includes(host)), `Existing host ${host} must remain`);
   }
+});
+
+test('the links the server writes come from one variable that defaults to the IP origin', () => {
+  const args = ['compose', '-f', 'deploy/aws/compose.yml', 'config', '--format', 'json'];
+  const byDefault = JSON.parse(execFileSync('docker', args, { env, encoding: 'utf8' }));
+  // RSVP links and participant invitation links both read INVITE_PUBLIC_ORIGIN.
+  assert.equal(byDefault.services.backend.environment.INVITE_PUBLIC_ORIGIN, `https://${ip}`);
+  const domain = { ...env, AARAST_PUBLIC_ORIGIN: 'https://aarast.proof.example.org' };
+  const later = JSON.parse(execFileSync('docker', args, { env: domain, encoding: 'utf8' }));
+  assert.equal(later.services.backend.environment.INVITE_PUBLIC_ORIGIN, 'https://aarast.proof.example.org');
+  const compose = readFileSync(resolve('deploy/aws/compose.yml'), 'utf8');
+  assert.equal((compose.match(/INVITE_PUBLIC_ORIGIN:/g) ?? []).length, 1, 'One origin for every link');
 });
 
 test('Compose supplies the direct IP explicitly and rejects absent configuration', () => {

@@ -105,6 +105,23 @@ assert.doesNotMatch(
   "Inline scripts are forbidden by CSP.",
 );
 
+// 6c: the invite page's preview names the host it is served on (the IP until
+// the domain exists), not a domain that does not resolve. The file keeps the
+// canonical origin, which the staging build rewrites; nginx swaps it per
+// request for a plain host name only, and never caches the answer.
+const invitesLocation = /location \^~ \/invites\/ \{([^}]*)\}/.exec(nginx)?.[1] ?? "";
+assert.match(invitesLocation, /sub_filter 'https:\/\/aarast\.shadowgardn\.com' \$invite_origin;/);
+assert.match(invitesLocation, /sub_filter_once off;/);
+assert.match(invitesLocation, /Cache-Control "no-store"/);
+assert.match(
+  nginx,
+  /map \$host \$invite_origin \{\s*"~\^\(\?<invite_host>\[a-z0-9\.-\]\{1,253\}\)\$" https:\/\/\$invite_host;\s*default https:\/\/aarast\.shadowgardn\.com;\s*\}/,
+);
+for (const tag of ["og:url", "og:image", "og:image:secure_url", "twitter:image"]) {
+  assert.match(inviteHtml, new RegExp(`"${tag}"\\s+content="https://aarast\\.shadowgardn\\.com/`), tag);
+}
+assert.match(inviteHtml, /<link rel="canonical" href="https:\/\/aarast\.shadowgardn\.com\/invites\/">/);
+
 assert.match(inviteJs, /segments\.length === 2 && segments\[0\] === "invites"/);
 assert.match(inviteJs, /\^\[A-Za-z0-9_-\]\{43\}\$/);
 assert.match(inviteJs, /aarast:\/\/open\/invites\/\$\{encodeURIComponent\(token\)\}/);
@@ -187,10 +204,30 @@ assert.match(rsvpJs, /body\.planEventId = options\.planEventId/);
 assert.match(rsvpJs, /\/\^https:\/\.test\(value\)/, "Only HTTPS links from the server are opened or shown.");
 assert.match(rsvpJs, /hostPhrase \|\| "يسعدنا حضورك"/);
 // The card photo comes from the public media bucket and nowhere else.
+// 6a: through the link's own route, which redirects to a signed read there.
 assert.match(
   nginx,
   /img-src 'self' https:\/\/\*\.s3\.eu-central-1\.amazonaws\.com https:\/\/aarast-media\.shadowgardn\.com;/,
 );
+// 6a: a link crawler reads the invitation's own tags without the script:
+// the page includes the API's preview of its token through SSI, and every
+// failure of that include leaves the page's generic tags (an empty 204).
+assert.match(nginx, /location \^~ \/rsvp\/ \{[^}]*\bssi on;[^}]*try_files \/rsvp\.html =404;/);
+assert.equal((nginx.match(/\bssi on;/g) ?? []).length, 1, "SSI runs on the RSVP page only.");
+assert.match(
+  nginx,
+  /map \$request_uri \$rsvp_token \{\s*"~\^\/rsvp\/\(\?<rsvp_link>\[A-Za-z0-9_-\]\{43\}\)\(\?:\\\?\.\*\)\?\$" \$rsvp_link;\s*default none;\s*\}/,
+);
+const preview = /location ~ "\^\/__rsvp_preview\/\(\[A-Za-z0-9_-\]\{43\}\)\$" \{([^}]*)\}/.exec(nginx)?.[1] ?? "";
+assert.match(preview, /\binternal;/);
+assert.match(preview, /proxy_pass http:\/\/backend:3000\/api\/v1\/public\/rsvp\/\$1\/preview;/);
+assert.match(preview, /resolver 127\.0\.0\.11 /, "The API's address is looked up at request time.");
+assert.match(preview, /proxy_set_header Accept-Encoding "";/, "A compressed answer would land raw in the head.");
+assert.match(preview, /proxy_set_header X-Forwarded-For \$http_x_forwarded_for;/, "The API limits the guest, not the site.");
+assert.match(preview, /proxy_intercept_errors on;/);
+assert.match(preview, /error_page [0-9 ]*\b502\b[0-9 ]* = @rsvp_preview_none;/);
+assert.match(nginx, /location = \/__rsvp_preview\/none \{\s*internal;\s*return 204;\s*\}/);
+assert.match(nginx, /location @rsvp_preview_none \{\s*return 204;\s*\}/);
 
 // V1 checklist 6.3: the terms say plainly that no money moves through the
 // app and that providers are independent parties.

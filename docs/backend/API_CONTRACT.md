@@ -2250,8 +2250,11 @@ opens); whoever manages the plan's guests (the owner, a partner with the
 guests right, a helper with it) writes it:
 
 - `GET .../guests/invitation-card` returns `{ weddingPlanId, hostLine,
-  freeText, photoUrl, mapUrl, address, updatedAt }`; every field is `null`
-  (and `updatedAt` null) before the first write.
+  freeText, photoUrl, photoReadUrl, mapUrl, address, updatedAt }`; every
+  field is `null` (and `updatedAt` null) before the first write. `photoUrl`
+  is the saved address (what a write sends); the bucket keeps the object
+  private, so `photoReadUrl` is a signed read of it valid for 120 seconds,
+  for the members' own preview.
 - `PUT .../guests/invitation-card` takes any of `hostLine` (≤80), `freeText`
   (≤300), `photoUrl`, `mapUrl` (≤500, HTTPS, else `400
   INVITATION_CARD_MAP_URL_INVALID`), `address` (≤160). A missing field keeps
@@ -3205,15 +3208,20 @@ without an account.
   SHA-256 is stored, and a new link retires the previous one. A `NOT_SENT`
   invitation becomes `SENT`. `message` is the Arabic WhatsApp text the app
   sends as is (D83, one source): the host line of the card in the plan's form
-  («يتشرف … بدعوتكم» / «تتشرف … بدعوتكن»), the card's free text, the wedding's
-  date with its time and venue, the events beyond the wedding this guest is
-  invited to, the map link or the address, and the link. With `reminder:
-  true` it is the short reminder text with the new link instead.
+  («يتشرف … بدعوتكم» / «تتشرف … بدعوتكن»), the card's free text,
+  then the link (the first link of the text, so WhatsApp previews the
+  invitation and not the map), then the wedding's date with its time and
+  venue, the events beyond the wedding this guest is invited to, and the map
+  link or the address. With `reminder: true` it is the short reminder text
+  with the new link instead.
 - `GET /api/v1/public/rsvp/:token` (no auth, 30/min) returns `{ guestName,
   planTitle, weddingDate, locationLabel, attendanceStatus, companionsCount,
   maxCompanions, respondedAt, wedding, card, hostPhrase, events }`. `wedding`
   is the wedding row's `{ timeSlot, exactTime, timeLabel, placeLabel }` or
-  null; `card` is `{ hostLine, freeText, photoUrl, mapUrl, address }` or null;
+  null; `card` is `{ hostLine, freeText, photoUrl, mapUrl, address }` or null,
+  where `photoUrl` is this link's own photo route
+  (`INVITE_PUBLIC_ORIGIN/api/v1/public/rsvp/<token>/card-photo`) or null,
+  never the stored address;
   `hostPhrase` is the host line as a sentence in the plan's form, or null;
   `events` lists the events beyond the wedding this guest is invited to:
   `{ id, label, date, timeSlot, exactTime, timeLabel, placeLabel,
@@ -3227,11 +3235,25 @@ without an account.
   wedding reply as it is. The plan owner is notified (`GUEST_RESPONDED`, the
   event named in the title) when the reply changes the attendance or the
   companions; the same reply sent again notifies nobody (RA-BE-87).
+- `GET /api/v1/public/rsvp/:token/card-photo` (no auth, 60/min) redirects
+  (`302`) to a signed read of the card photo valid for 120 seconds; the
+  bucket keeps the photo private. `404 RSVP_CARD_PHOTO_NOT_FOUND` when the
+  card has none. `Cache-Control: private, no-store`: a replaced link stops
+  showing it.
+- `GET /api/v1/public/rsvp/:token/preview` (no auth, 30/min) returns the
+  link's Open Graph tags as an HTML fragment (`og:title`, `og:description`,
+  `og:url`, and `og:image` with its type when the card has a photo, plus
+  `twitter:card`), for the public site to include in the page's head so a
+  link crawler reads the invitation without running the script. A
+  malformed, unknown or replaced token, or an archived plan, returns `204`
+  with no body, and the page keeps its generic tags. `Cache-Control:
+  private, no-store`.
 
 An unknown or malformed token, or an archived plan, returns
-`404 RSVP_LINK_NOT_FOUND`. The public page `/rsvp/<token>` on the public site
-calls these routes on its own origin; the edge proxy forwards
-`/api/v1/public/rsvp/*` on the site host to the API.
+`404 RSVP_LINK_NOT_FOUND` (the preview: `204`). The public page
+`/rsvp/<token>` on the public site calls these routes on its own origin and
+includes the preview through nginx SSI; the edge proxy forwards
+`/api/v1/public/rsvp/*` on the site host, and on the IP host, to the API.
 
 ## Wedding Events (b12, b13; D65)
 
@@ -3930,6 +3952,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/providers/:id/views` | `marketplace.recordProviderView` |  |
 | GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |
 | POST | `/api/v1/public/rsvp/:token` | `guest-rsvp.respond` |  |
+| GET | `/api/v1/public/rsvp/:token/card-photo` | `guest-rsvp.cardPhoto` |  |
+| GET | `/api/v1/public/rsvp/:token/preview` | `guest-rsvp.preview` |  |
 | DELETE | `/api/v1/push/installations/current` | `push.unregister` | 🔒 |
 | PUT | `/api/v1/push/installations/current` | `push.register` | 🔒 |
 | PATCH | `/api/v1/quote-offers/:id/accept` | `marketplace.acceptOffer` | 🔒 |

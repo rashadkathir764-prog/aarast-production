@@ -21,8 +21,14 @@ files, or runtime secrets into the image.
   QR code of the serving origin's `/download` with the vendored, unmodified
   `qrcode-generator.js` 1.4.4 (MIT, Kazuhiko Arase); the source check pins the
   file's hash. The Google Play button works once the store listing is live.
-- `/rsvp/:token` - a guest's personal RSVP page.
-- `/invites/:token` - generic participant-invite landing page.
+- `/rsvp/:token` - a guest's personal RSVP page. Nginx SSI puts the link's
+  own Open Graph tags in its head from the API's
+  `GET /api/v1/public/rsvp/:token/preview` (resolved at request time through
+  Docker's DNS at `127.0.0.11`); a dead link, an error or a slow API leaves
+  the page's generic tags.
+- `/invites/:token` - generic participant-invite landing page. Its preview
+  tags name the host it is served on: nginx `sub_filter` swaps the canonical
+  origin in `invite.html` for `https://$host` when the host is a plain name.
 - `/invite-preview.png` - generic social preview used by the landing page.
 - `/.well-known/assetlinks.json` - Android App Link association for the signed
   MVP APK.

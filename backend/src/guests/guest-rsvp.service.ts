@@ -76,6 +76,7 @@ import {
   runSerializableTransaction,
 } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
+import { imageTypeOf, type RsvpPreview } from "./rsvp-preview";
 
 /** A guest may bring at most this many companions through the link. */
 export const RSVP_MAX_COMPANIONS = 20;
@@ -137,7 +138,18 @@ export function hostPhrase(
 
 export interface InvitationCardResponse extends InvitationCardFields {
   weddingPlanId: string;
+  /**
+   * 6a: the bucket keeps the photo private, so the members' own preview
+   * reads it through this short-lived signed link; `photoUrl` stays the
+   * saved address (the card's identity, what a write sends back).
+   */
+  photoReadUrl: string | null;
   updatedAt: Date | null;
+}
+
+/** The invitation's own sentence, in the message and in the link preview. */
+function invitationLine(host: string | null, planTitle: string): string {
+  return host ? `${host} ${planTitle}` : `يسعدنا دعوتك لحضور ${planTitle}`;
 }
 
 /** What the message and the page need beyond the guest and the plan. */
@@ -200,8 +212,13 @@ export interface RsvpMessageInput {
     exactTime: string | null;
     placeLabel: string | null;
   }>;
-  /** e08: the reminder for who has not answered, with their new link. */
+  /** e08: the reminder, with the guest's new link. */
   reminder?: boolean;
+  /**
+   * The guest already said they are coming. A reminder then says the day and
+   * keeps the link for a change of mind; it does not ask for an answer again.
+   */
+  confirmed?: boolean;
 }
 
 function whenLine(event: {
@@ -219,6 +236,8 @@ function whenLine(event: {
 /**
  * The WhatsApp text the plan owner sends; the link is the guest's own. One
  * source for the words (D83): the app sends what the server built.
+ * WhatsApp previews the first link of a text, so the guest's link comes
+ * before the details and the map link (6b): the preview is the invitation.
  */
 export function buildRsvpMessage(input: RsvpMessageInput): string {
   const name = input.guestName.trim();
@@ -228,7 +247,9 @@ export function buildRsvpMessage(input: RsvpMessageInput): string {
       input.weddingDate
         ? `نذكرك ب${input.planTitle} يوم ${formatDay(input.weddingDate)}.`
         : `نذكرك ب${input.planTitle}.`,
-      "هذا رابطك الجديد للرد بضغطة:",
+      input.confirmed
+        ? "ننتظرك. ولو تغيّر شي، هذا رابطك:"
+        : "هذا رابطك الجديد للرد بضغطة:",
       input.url,
     ].join("\n");
   }
@@ -247,10 +268,10 @@ export function buildRsvpMessage(input: RsvpMessageInput): string {
   });
   return [
     `أهلًا ${name} 🌸`,
-    host
-      ? `${host} ${input.planTitle}.`
-      : `يسعدنا دعوتك لحضور ${input.planTitle}.`,
+    `${invitationLine(host, input.planTitle)}.`,
     ...(input.card?.freeText ? [input.card.freeText] : []),
+    "نرجو تأكيد حضورك من الرابط:",
+    input.url,
     ...(weddingWhen ? [`الموعد: ${weddingWhen}`] : []),
     ...(weddingPlace ? [`المكان: ${weddingPlace}`] : []),
     ...(events.length ? ["والدعوة تشمل أيضًا:", ...events] : []),
@@ -259,8 +280,6 @@ export function buildRsvpMessage(input: RsvpMessageInput): string {
       : input.card?.address
         ? [`العنوان: ${input.card.address}`]
         : []),
-    "نرجو تأكيد حضورك من الرابط:",
-    input.url,
   ].join("\n");
 }
 
@@ -346,6 +365,7 @@ export class GuestRsvpService {
             placeLabel: event.placeLabel,
           })),
           reminder: options.reminder === true,
+          confirmed: stored.attendanceStatus === GuestAttendanceStatus.CONFIRMED,
         }),
       };
     });
@@ -360,6 +380,7 @@ export class GuestRsvpService {
         if (!guest) throw this.linkNotFound();
         const plan = await this.livePlan(tx, guest.weddingPlanId);
         return this.publicView(
+          token,
           guest,
           plan,
           await this.invitationContext(tx, plan.id, guest.id),
@@ -367,6 +388,85 @@ export class GuestRsvpService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+  }
+
+  /**
+   * 6a: what a link crawler reads of this link (the public site includes it
+   * in the page's head). A malformed, unknown or replaced link, or an
+   * archived plan, is null: the page keeps its generic head, naming nobody.
+   */
+  async invitationPreview(token: string): Promise<RsvpPreview | null> {
+    if (!TOKEN_PATTERN.test(token)) return null;
+    const hash = rsvpTokenHash(token);
+    const found = await runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const guest = await findRsvpGuestByTokenHash(tx, hash);
+        if (!guest) return null;
+        const plan = await this.plans.getPlan(tx, guest.weddingPlanId);
+        if (!plan || plan.status === WeddingPlanStatus.ARCHIVED) return null;
+        return { plan, context: await this.invitationContext(tx, plan.id, guest.id) };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+    if (!found) return null;
+    const { plan, context } = found;
+    const wedding = this.weddingMoment(context.events);
+    const when = whenLine({
+      date: plan.weddingDate,
+      timeSlot: wedding?.timeSlot ?? null,
+      exactTime: wedding?.exactTime ?? null,
+    });
+    const place = wedding?.placeLabel?.trim() || this.locationLabel(plan);
+    const details = [
+      ...(when ? [`الموعد: ${when}`] : []),
+      ...(place ? [`المكان: ${place}`] : []),
+    ].join(" · ");
+    const photoUrl = context.card?.photoUrl ?? null;
+    return {
+      title: invitationLine(
+        hostPhrase(context.card?.hostLine, plan.persona),
+        plan.title,
+      ),
+      description: details
+        ? `${details}. نرجو تأكيد حضورك من الرابط.`
+        : "نرجو تأكيد حضورك من الرابط.",
+      url: new URL(`/rsvp/${token}`, rsvpPublicOrigin()).toString(),
+      image: photoUrl
+        ? { url: this.cardPhotoRoute(token), type: imageTypeOf(photoUrl) }
+        : null,
+    };
+  }
+
+  /**
+   * 6a: the card photo, read by the link: a short-lived signed URL of the
+   * private object. A dead link, an archived plan or a card without a
+   * photo is a 404.
+   */
+  async cardPhotoDownloadUrl(token: string): Promise<string> {
+    const hash = this.hashOrThrow(token);
+    const photoUrl = await runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const guest = await findRsvpGuestByTokenHash(tx, hash);
+        if (!guest) throw this.linkNotFound();
+        const plan = await this.livePlan(tx, guest.weddingPlanId);
+        return (await findGuestInvitationCard(tx, plan.id))?.photoUrl ?? null;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+    if (!photoUrl) {
+      throw new NotFoundException({
+        statusCode: 404,
+        code: "RSVP_CARD_PHOTO_NOT_FOUND",
+        message: "This invitation has no photo",
+      });
+    }
+    const read = await this.media.createStoredMediaDownloadUrl(
+      photoUrl,
+      CARD_PHOTO_PURPOSE,
+    );
+    return read.downloadUrl;
   }
 
   /**
@@ -378,7 +478,7 @@ export class GuestRsvpService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<InvitationCardResponse> {
-    return runRetryableTransaction(
+    const card = await runRetryableTransaction(
       this.prisma,
       async (tx) => {
         await this.permissions.assertPlanReadableInTransaction(
@@ -386,13 +486,11 @@ export class GuestRsvpService {
           weddingPlanId,
           currentUser,
         );
-        return this.cardResponse(
-          weddingPlanId,
-          await findGuestInvitationCard(tx, weddingPlanId),
-        );
+        return findGuestInvitationCard(tx, weddingPlanId);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+    return this.cardResponse(weddingPlanId, card);
   }
 
   /**
@@ -417,7 +515,7 @@ export class GuestRsvpService {
             CARD_PHOTO_PURPOSE,
           )
         : null;
-    return runSerializableTransaction(this.prisma, async (tx) => {
+    const saved = await runSerializableTransaction(this.prisma, async (tx) => {
       await this.permissions.assertGuestManageableInTransaction(
         tx,
         weddingPlanId,
@@ -442,18 +540,19 @@ export class GuestRsvpService {
           tx,
         );
       }
-      const saved = await upsertGuestInvitationCard(tx, weddingPlanId, next);
+      const row = await upsertGuestInvitationCard(tx, weddingPlanId, next);
       if (photoChanged && next.photoUrl) {
         await this.media.consumePublicMediaUrl(
           currentUser,
           next.photoUrl,
           CARD_PHOTO_PURPOSE,
-          { type: "GUEST_INVITATION_CARD", id: saved.id },
+          { type: "GUEST_INVITATION_CARD", id: row.id },
           tx,
         );
       }
-      return this.cardResponse(weddingPlanId, saved);
+      return row;
     });
+    return this.cardResponse(weddingPlanId, saved);
   }
 
   async respond(
@@ -485,7 +584,7 @@ export class GuestRsvpService {
       const respondedAt = new Date();
       const confirmed = attendance === "CONFIRMED";
       if (planEventId) {
-        return this.respondToEvent(tx, guest, plan, planEventId, {
+        return this.respondToEvent(tx, token, guest, plan, planEventId, {
           confirmed,
           companions,
           respondedAt,
@@ -527,6 +626,7 @@ export class GuestRsvpService {
         });
       }
       return this.publicView(
+        token,
         updated,
         plan,
         await this.invitationContext(tx, plan.id, guest.id),
@@ -537,6 +637,7 @@ export class GuestRsvpService {
   /** D83: the guest's reply to one event beyond the wedding. */
   private async respondToEvent(
     tx: Prisma.TransactionClient,
+    token: string,
     guest: RsvpGuest,
     plan: WeddingPlan,
     planEventId: string,
@@ -609,7 +710,7 @@ export class GuestRsvpService {
         dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${planEventId}:${answer.respondedAt.getTime()}`,
       });
     }
-    return this.publicView(current, plan, context);
+    return this.publicView(token, current, plan, context);
   }
 
   private async invitationContext(
@@ -673,17 +774,34 @@ export class GuestRsvpService {
     };
   }
 
-  private cardResponse(
+  private async cardResponse(
     weddingPlanId: string,
     card: GuestInvitationCardRow | null,
-  ): InvitationCardResponse {
+  ): Promise<InvitationCardResponse> {
+    const photoReadUrl = card?.photoUrl
+      ? (
+          await this.media.createStoredMediaDownloadUrl(
+            card.photoUrl,
+            CARD_PHOTO_PURPOSE,
+          )
+        ).downloadUrl
+      : null;
     return {
       weddingPlanId,
       ...(card
         ? this.cardFields(card)
         : { hostLine: null, freeText: null, photoUrl: null, mapUrl: null, address: null }),
+      photoReadUrl,
       updatedAt: card?.updatedAt ?? null,
     };
+  }
+
+  /** 6a: the card photo through the guest's own link, on the public origin. */
+  private cardPhotoRoute(token: string): string {
+    return new URL(
+      `/api/v1/public/rsvp/${token}/card-photo`,
+      rsvpPublicOrigin(),
+    ).toString();
   }
 
   private hashOrThrow(token: string): string {
@@ -716,7 +834,12 @@ export class GuestRsvpService {
     return location?.mediumLabel ?? location?.displayLabel ?? null;
   }
 
+  /**
+   * The guest's page. 6a: the card photo is the link's own route, never the
+   * stored address, which a private bucket would refuse anyway.
+   */
   private publicView(
+    token: string,
     guest: RsvpGuest,
     plan: WeddingPlan,
     context: InvitationContext,
@@ -733,7 +856,12 @@ export class GuestRsvpService {
       maxCompanions: RSVP_MAX_COMPANIONS,
       respondedAt: guest.respondedAt,
       wedding: this.weddingMoment(context.events),
-      card: context.card ? this.cardFields(context.card) : null,
+      card: context.card
+        ? {
+            ...this.cardFields(context.card),
+            photoUrl: context.card.photoUrl ? this.cardPhotoRoute(token) : null,
+          }
+        : null,
       hostPhrase: hostPhrase(context.card?.hostLine, plan.persona),
       events: this.publicEvents(context),
     };

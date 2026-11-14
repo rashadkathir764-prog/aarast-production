@@ -72,6 +72,39 @@ export function ownedMediaKeyFromUrl(
   purpose: MediaPurpose,
   userId: string,
 ): string {
+  return mediaKeyUnderPrefix(
+    value,
+    publicBaseUrl,
+    `${purpose}/${userId}/`,
+    'Media URL is not owned by this account',
+  );
+}
+
+/**
+ * The storage key of an address the server saved for `purpose`, whoever
+ * uploaded it. For a read the caller has already authorised (the guest
+ * invitation card photo is read by the link's guest and the plan's members,
+ * through a signed URL; the bucket keeps it private).
+ */
+export function storedMediaKeyFromUrl(
+  value: string,
+  publicBaseUrl: string,
+  purpose: MediaPurpose,
+): string {
+  return mediaKeyUnderPrefix(
+    value,
+    publicBaseUrl,
+    `${purpose}/`,
+    'Media URL is not a stored object of this purpose',
+  );
+}
+
+function mediaKeyUnderPrefix(
+  value: string,
+  publicBaseUrl: string,
+  keyPrefix: string,
+  refusal: string,
+): string {
   let actual: URL;
   let base: URL;
   try {
@@ -81,14 +114,14 @@ export function ownedMediaKeyFromUrl(
     throw new BadRequestException('Media URL is invalid');
   }
   const basePath = base.pathname.replace(/\/$/, '');
-  const expectedPrefix = `${basePath}/${purpose}/${userId}/`;
+  const expectedPrefix = `${basePath}/${keyPrefix}`;
   if (
     actual.protocol !== base.protocol ||
     (process.env.NODE_ENV === 'production' && actual.protocol !== 'https:') ||
     actual.origin !== base.origin ||
     !actual.pathname.startsWith(expectedPrefix)
   ) {
-    throw new BadRequestException('Media URL is not owned by this account');
+    throw new BadRequestException(refusal);
   }
   return actual.pathname.slice(basePath.length + 1);
 }

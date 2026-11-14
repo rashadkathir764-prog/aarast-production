@@ -111,9 +111,13 @@ flutter build appbundle --release `
 Every Android release names `AARAST_INVITE_HOST` (RA-MO-01): the public site
 host that serves the invite links, `assetlinks.json` and the privacy, terms and
 support pages. It must be the host of the server's `INVITE_PUBLIC_ORIGIN`
-(`AARAST_SITE_HOST` on AWS: `3-121-198-183.sslip.io` until the domain moves,
-then `aarast.shadowgardn.com`). Without it the build fails; it used to fall
+(`AARAST_PUBLIC_ORIGIN` on AWS, which defaults to the Elastic IP
+`3.121.198.183` because sslip.io names do not resolve on many networks in
+Yemen; the domain once it exists). Without it the build fails; it used to fall
 back to `aarast.shadowgardn.com`, which today is the old server on rk-server.
+App Link verification is for domain names, so on the IP the link is expected
+to open the invite page in the browser (not yet tried on a device), and its
+button opens the app through the custom scheme.
 
 Release also rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`. The API URL must be
 an explicit public HTTPS host without credentials, query, fragment, localhost,

@@ -138,6 +138,43 @@ test("RA-BE-74: a reply to an event taken out of the invitation reloads it and s
   assert.match(page.element("rsvp-status").textContent, /سجّلنا حضورك/);
 });
 
+// 6a: the bucket keeps the photo private; the page reads it through this
+// link's own route on its own origin (the server may name another host of
+// the same site), and loads nothing else.
+test("the card photo is read through the link's own route on the page's origin", async () => {
+  const route = `/api/v1/public/rsvp/${token}/card-photo`;
+  for (const origin of ["https://3.121.198.183", "https://3-121-198-183.sslip.io"]) {
+    const page = await openPage([
+      [200, { ...invitation([]), card: { photoUrl: `${origin}${route}` } }],
+    ]);
+    assert.equal(page.element("rsvp-photo").hidden, false);
+    assert.equal(page.element("rsvp-photo").src, route);
+  }
+  for (const foreign of [
+    "https://aarast-media.s3.eu-central-1.amazonaws.com/guest-invitation-card/u/a.jpg",
+    `https://3.121.198.183/api/v1/public/rsvp/${"B".repeat(43)}/card-photo`,
+    `http://3.121.198.183${route}`,
+  ]) {
+    const page = await openPage([[200, { ...invitation([]), card: { photoUrl: foreign } }]]);
+    assert.equal(page.element("rsvp-photo").hidden, true, foreign);
+    assert.equal(page.element("rsvp-photo").src, undefined, foreign);
+  }
+});
+
+// 6a: a crawler reads the head without running the script. The page keeps
+// its generic tags as the SSI stub; nginx puts the link's own in their place.
+test("the page head names the link's own preview through SSI, generic without it", () => {
+  const head = html.slice(0, html.indexOf("</head>"));
+  const block = /<!--# block name="rsvp_preview" -->([\s\S]*?)<!--# endblock -->/.exec(head);
+  assert.ok(block, "the generic tags are the stub block");
+  assert.match(block[1], /<meta property="og:title" content="دعوة عرس">/);
+  assert.match(block[1], /<meta property="og:description" content="[^"]+">/);
+  assert.match(head, /<!--# include virtual="\/__rsvp_preview\/\$rsvp_token" stub="rsvp_preview" -->/);
+  // Outside the stub the page names no title or image of its own.
+  const rest = head.replace(block[0], "");
+  assert.doesNotMatch(rest, /og:title|og:description|og:image/);
+});
+
 test("a link the server does not know is still a dead link", async () => {
   const page = await openPage([
     [200, invitation([lunch])],

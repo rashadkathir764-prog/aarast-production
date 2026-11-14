@@ -38,11 +38,17 @@ The live system runs on one AWS host in Frankfurt with Docker Compose (`deploy/a
 
 ## Media
 
-Chat images stay private and open only through short signed links. Anonymous reads are limited to the public prefixes: `user-avatar/`, `provider-logo/`, `provider-cover/` and `service-image/`.
+Chat images stay private and open only through short signed links. Anonymous reads are limited to the public prefixes: `user-avatar/`, `provider-logo/`, `provider-cover/` and `service-image/`. The guest invitation card photo (`guest-invitation-card/`) is private too: the guest reads it through `GET /api/v1/public/rsvp/:token/card-photo`, a redirect to a short signed link, and the plan's members through the card's `photoReadUrl`.
 
 ## Guest RSVP
 
-The public site serves `/rsvp/<token>`, and the edge proxy forwards `/api/v1/public/rsvp/*` on the same host to the backend (`deploy/aws/Caddyfile`). `INVITE_PUBLIC_ORIGIN` must be the site host.
+The public site serves `/rsvp/<token>`, and the edge proxy forwards `/api/v1/public/rsvp/*` on the same host to the backend (`deploy/aws/Caddyfile`). The page's head carries the link's own Open Graph tags: nginx includes `GET /api/v1/public/rsvp/:token/preview` through SSI (`deploy/public-site/nginx.conf`), and a dead link or an unreachable backend leaves the page's generic tags.
+
+## Link origin
+
+`sslip.io` names do not resolve on many networks in Yemen, so every link the server writes (guest RSVP links and participant invitation links) uses `INVITE_PUBLIC_ORIGIN`, which `deploy/aws/compose.yml` takes from one host variable, `AARAST_PUBLIC_ORIGIN`, and defaults to `https://${AARAST_DIRECT_API_IP}` (`https://3.121.198.183`). Caddy serves the public pages on that IP as well as on `AARAST_SITE_HOST`: `/rsvp/*`, `/invites/*`, `/.well-known/*`, the privacy, terms, support and download pages and their assets. Every other path on the IP stays the API, and the `api.`, `admin.` and sslip site names keep working. When the real domain exists, set `AARAST_PUBLIC_ORIGIN=https://<domain>` in the host environment, point `AARAST_SITE_HOST` at that domain so Caddy holds its certificate, and redeploy.
+
+Android App Link verification is for domain names, so a participant link on the IP is expected to open the invite page in the browser (not yet tried on a device), whose button hands it to the app through `aarast://open/invites/TOKEN`.
 
 ## Mobile release
 

@@ -4,9 +4,11 @@ import {
   Get,
   Param,
   Post,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import type { Response } from "express";
 import {
   IsBoolean,
   IsIn,
@@ -21,6 +23,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { GuestRsvpService, RSVP_MAX_COMPANIONS } from "./guest-rsvp.service";
+import { renderRsvpPreviewHead } from "./rsvp-preview";
 
 export class RsvpAnswerDto {
   @IsIn(["CONFIRMED", "DECLINED"])
@@ -87,5 +90,41 @@ export class PublicRsvpController {
       dto.companionsCount,
       dto.planEventId?.trim() || undefined,
     );
+  }
+
+  /**
+   * 6a: this link's Open Graph tags as an HTML fragment, which the public
+   * site's page includes in its head (nginx SSI) so a link crawler reads the
+   * invitation without running the script. A dead link is a 204: the page
+   * keeps its generic tags. Never cached: the link can be replaced.
+   */
+  @Get(":token/preview")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async preview(@Param("token") token: string, @Res() response: Response) {
+    const preview = await this.rsvp.invitationPreview(token);
+    response.set("Cache-Control", "private, no-store");
+    if (!preview) {
+      response.status(204).end();
+      return;
+    }
+    response
+      .status(200)
+      .type("text/html; charset=utf-8")
+      .send(renderRsvpPreviewHead(preview));
+  }
+
+  /**
+   * 6a: the card photo, read by the link: a redirect to a short-lived signed
+   * URL of the private object. Neither the redirect nor the link it names is
+   * kept by a cache, so a replaced link stops showing the photo.
+   */
+  @Get(":token/card-photo")
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  async cardPhoto(@Param("token") token: string, @Res() response: Response) {
+    const url = await this.rsvp.cardPhotoDownloadUrl(token);
+    response
+      .set("Cache-Control", "private, no-store")
+      .set("Referrer-Policy", "no-referrer")
+      .redirect(302, url);
   }
 }

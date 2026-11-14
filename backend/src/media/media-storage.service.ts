@@ -23,6 +23,7 @@ import {
   assertOwnedMediaKey,
   normalizeMediaUpload,
   ownedMediaKeyFromUrl,
+  storedMediaKeyFromUrl,
 } from './media-upload-policy';
 import { MediaUploadTicketService } from '../modules/media/infrastructure/media-upload-ticket.service';
 import type {
@@ -108,6 +109,16 @@ export class MediaStorageService implements MediaStoragePort {
     } finally {
       config.client.destroy();
     }
+  }
+
+  async createStoredMediaDownloadUrl(publicUrl: string, purpose: MediaPurpose) {
+    const publicBaseUrl = process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim();
+    if (!publicBaseUrl) {
+      throw new ServiceUnavailableException('Media storage is not configured');
+    }
+    return this.createDownloadUrl(
+      storedMediaKeyFromUrl(publicUrl.trim(), publicBaseUrl, purpose),
+    );
   }
 
   async verifyUpload(

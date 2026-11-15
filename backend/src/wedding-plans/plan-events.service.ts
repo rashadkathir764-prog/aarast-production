@@ -21,6 +21,7 @@ import {
 import {
   assertEventFacts,
   cleanEventText,
+  isAcceptableEventMapUrl,
   eventDayText,
   eventStartMinutes,
   parseEventDay,
@@ -33,6 +34,7 @@ import {
   suggestedEventTypes,
 } from "../modules/planning/domain/plan-event-rules";
 import {
+  changesWhatGuestsWereTold,
   countPlanEventRows,
   createPlanEventRow,
   deletePlanEventRow,
@@ -60,9 +62,17 @@ export interface PlanEventView {
   timeSlot: PlanEventTimeSlot | null;
   exactTime: string | null;
   placeLabel: string | null;
+  /** D116: the occasion's own map link and address, for its guests. */
+  mapUrl: string | null;
+  address: string | null;
   responsibleName: string | null;
   note: string | null;
   isMain: boolean;
+  /**
+   * D116: raised when the day, the time, the place or the map link changes;
+   * a guest told or answering an older one is behind.
+   */
+  version: number;
 }
 
 export interface PlanEventsView {
@@ -81,6 +91,8 @@ export interface PlanEventInput {
   timeSlot?: PlanEventTimeSlot | null;
   exactTime?: string | null;
   placeLabel?: string | null;
+  mapUrl?: string | null;
+  address?: string | null;
   responsibleName?: string | null;
   note?: string | null;
 }
@@ -157,7 +169,9 @@ export class PlanEventsService {
       const current = await findPlanEventRow(tx, weddingPlanId, eventId);
       if (!current) throw new NotFoundException("Event not found");
       const data = this.facts(current.type, input, current);
-      const row = await updatePlanEventRow(tx, eventId, data);
+      const row = await updatePlanEventRow(tx, eventId, data, {
+        raiseVersion: changesWhatGuestsWereTold(current, data),
+      });
       return toView(row, context.plan);
     });
   }
@@ -244,6 +258,8 @@ export class PlanEventsService {
       placeLabel: cleanEventText(
         pick("placeLabel", current?.placeLabel ?? null) as string | null,
       ),
+      mapUrl: cleanEventText(pick("mapUrl", current?.mapUrl ?? null) as string | null),
+      address: cleanEventText(pick("address", current?.address ?? null) as string | null),
       responsibleName: cleanEventText(
         pick("responsibleName", current?.responsibleName ?? null) as string | null,
       ),
@@ -256,6 +272,12 @@ export class PlanEventsService {
       timeSlot: data.timeSlot as PlanEventSlot | null,
       exactTime: data.exactTime,
     });
+    if (data.mapUrl && !isAcceptableEventMapUrl(data.mapUrl)) {
+      throw new PlanEventRuleViolation(
+        "EVENT_MAP_URL_INVALID",
+        "رابط الخريطة لازم يكون رابط كامل يبدأ بـ https.",
+      );
+    }
     return data;
   }
 
@@ -271,9 +293,12 @@ export class PlanEventsService {
         timeSlot: null,
         exactTime: null,
         placeLabel: null,
+        mapUrl: null,
+        address: null,
         responsibleName: null,
         note: null,
         isMain: true,
+        version: 1,
       });
     }
     items.sort(compareEvents);
@@ -307,9 +332,12 @@ function toView(row: PlanEventRow, plan: Pick<WeddingPlan, "weddingDate">): Plan
     timeSlot: row.timeSlot,
     exactTime: row.exactTime,
     placeLabel: row.placeLabel,
+    mapUrl: row.mapUrl,
+    address: row.address,
     responsibleName: row.responsibleName,
     note: row.note,
     isMain,
+    version: row.version,
   };
 }
 

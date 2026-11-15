@@ -8,4 +8,6 @@ export 'screens/guest_import_screen.dart'
     show GuestImportScreen, GuestImportSource;
 export 'screens/guest_invite_screen.dart' show GuestInviteScreen;
 export 'screens/guest_list_screen.dart' show GuestListScreen;
+// D116: the round of sends.
+export 'screens/guest_send_screen.dart' show GuestSendScreen;
 export 'screens/participant_guests_screen.dart' show ParticipantGuestsScreen;

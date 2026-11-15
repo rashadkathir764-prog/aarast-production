@@ -78,6 +78,8 @@ function database(seed: any[] = []) {
       },
     },
     guestEventInvite: { findMany: async () => [] },
+    // D116: the guest list reads what each guest was told.
+    guestInvitationSend: { findMany: async () => [] },
   };
   tx.$transaction = async (operation: (client: any) => Promise<unknown>) => operation(tx);
   return { tx, rows, log };

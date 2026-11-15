@@ -142,6 +142,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(seconds: 1));
+    // Changed on purpose (D116): «+» opened the guest form → it opens the add menu, whose first choice is the form.
+    await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(seconds: 1));
 
     // e06 «ضيف جديد» (GuestWords.newGuest).
     expect(find.text('ضيف جديد'), findsWidgets);

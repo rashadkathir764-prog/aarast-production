@@ -20,9 +20,11 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../wedding_day/wedding_day_api.dart'
+    show PlanEvent, PlanEventsProvider, showPlanEventSheet;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
-import '../models/guest_reminder.dart';
+import '../models/guest_invitations.dart';
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
@@ -30,9 +32,10 @@ import '../widgets/guest_form_sheet.dart';
 import '../widgets/guest_groups_sheet.dart';
 import '../widgets/guest_row.dart';
 import '../widgets/guest_search_field.dart';
-import '../widgets/guest_summary_figures.dart';
+import '../widgets/occasion_invitees_sheet.dart';
 
 part 'guest_list_screen_helpers.dart';
+part 'guest_list_screen.occasions.dart';
 
 /// e01 «الضيوف»: how many confirmed out of how many invited and who has not
 /// answered, the guests by family with each group's progress, and every
@@ -74,6 +77,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
   /// null: the overview; otherwise the group being looked at.
   String? _openGroup;
   _ReplyFilter _reply = _ReplyFilter.all;
+
+  /// D116: the occasion the overview follows; null, the wedding.
+  String? _occasion;
   bool _searching = false;
   String _query = '';
 
@@ -134,8 +140,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
     final helps = widget.ownerWord != null;
     final emptyLine = helps ? _emptyPlanLine(context) : words.noneAdded;
 
+    // D1 of the closing round: until the plan's list is read (the phone's
+    // copy or the server's answer) an empty list is «not read yet», not «no
+    // guests»; the first-guests page flashed before the copy arrived.
+    final notReadYet =
+        !provider.hasRead(widget.weddingPlanId) &&
+        provider.loadErrorMessage == null;
     final _ListPart body;
-    if (provider.isLoading && guests.isEmpty) {
+    if ((provider.isLoading || notReadYet) && guests.isEmpty) {
       body = const _ListPart([
         JourneyListState(
           phase: JourneyListPhase.loading,
@@ -247,7 +259,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                             tooltip: words.newGuest,
                             onPressed: provider.isSubmitting
                                 ? null
-                                : () => _showGuestSheet(provider: provider),
+                                : () => _onAdd(provider),
                           ),
                       ],
                     ),
@@ -342,88 +354,129 @@ class _GuestListScreenState extends State<GuestListScreen> {
         )
         .toList();
     final words = GuestWords.of(context);
-    final remindable = guests
-        .where((guest) => guest.canBeRemindedOnWhatsApp)
-        .length;
-    final uninvited = guests.any((guest) => guest.awaitsInvitation);
-    final remindAll = remindable == 0 && !uninvited && _remindsAll(guests);
+    // D116: the occasion the figures, the send and the families follow.
+    final planId = widget.weddingPlanId;
+    final occasions = planOccasions(
+      context.watch<PlanEventsProvider?>()?.viewOf(planId)?.items ?? const [],
+      planId,
+    );
+    final selected =
+        occasions
+            .where((event) => occasionKey(event, planId) == _occasion)
+            .firstOrNull ??
+        occasions.first;
+    final selectedKey = occasionKey(selected, planId);
+    OccasionStanding? standingOf(Guest guest) =>
+        guestOccasion(guest, occasions, planId, selectedKey)?.standing;
+    final invited = [
+      for (final guest in guests)
+        if (standingOf(guest) != null) guest,
+    ];
+    final counts = occasionCountsOf(guests, occasions, planId, selectedKey);
+    final due = _isLocalPlan
+        ? null
+        : SendAudience.values
+              .map(
+                (audience) => (
+                  audience: audience,
+                  count: invited
+                      .where(
+                        (guest) =>
+                            guest.editable &&
+                            audience.includes(standingOf(guest)!),
+                      )
+                      .length,
+                ),
+              )
+              .where((entry) => entry.count > 0)
+              .firstOrNull;
+    void openSend([SendAudience? audience]) => context.push(
+      AppRouter.guestSend(
+        planId,
+        event: selected.isMain ? null : selectedKey,
+        audience: audience?.wire,
+      ),
+    );
+    bool isConfirmedHere(Guest guest) => standingOf(guest)?.isConfirmed == true;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _GuestSummaryCard(
-          summary: summary,
-          onTap: () =>
-              context.push(AppRouter.guestAttendance(widget.weddingPlanId)),
-          action: _isLocalPlan
+        if (occasions.length > 1) ...[
+          _OccasionPicker(
+            occasions: occasions,
+            selected: selectedKey,
+            weddingPlanId: planId,
+            onSelected: (key) => setState(() => _occasion = key),
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
+        _OccasionSummaryCard(
+          label: guestEventLabel(selected, context.journeyProfile),
+          showLabel: occasions.length > 1,
+          counts: counts,
+          onTap: () => context.push(AppRouter.guestAttendance(planId)),
+          action: due == null
               ? null
-              : remindable > 0 || remindAll
-              ? JourneyButton(
-                  key: const ValueKey('guests-remind'),
-                  label: remindAll
-                      ? '${context.say('ذكّر', 'ذكّري')} الكل على واتساب'
-                      : remindable == 1
-                      ? '${context.say('ذكّر', 'ذكّري')} ${words.count(1)} على واتساب'
-                      : '${context.say('ذكّر', 'ذكّري')} الـ $remindable على واتساب',
+              : JourneyButton(
+                  key: ValueKey('guests-send-${due.audience.wire}'),
+                  label: switch (due.audience) {
+                    SendAudience.notTold =>
+                      '${context.say('أرسل', 'أرسلي')} الدعوة لـ ${words.count(due.count)}',
+                    SendAudience.changed =>
+                      '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير',
+                    SendAudience.silent =>
+                      '${context.say('ذكّر', 'ذكّري')} ${words.count(due.count)}',
+                  },
                   icon: LucideIcons.send,
                   background: context.accent.primary,
                   expand: true,
-                  onPressed: () => context.push(
-                    AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
-                  ),
-                )
-              : uninvited
-              ? JourneyButton(
-                  key: const ValueKey('guests-invite-now'),
-                  label: '${context.say('أرسل', 'أرسلي')} الدعوة على واتساب',
-                  icon: LucideIcons.send,
-                  background: context.accent.primary,
-                  expand: true,
-                  onPressed: () =>
-                      context.push(AppRouter.guestInvite(widget.weddingPlanId)),
-                )
-              : null,
+                  onPressed: () => openSend(due.audience),
+                ),
+          allOptions: _isLocalPlan || invited.every((guest) => !guest.editable)
+              ? null
+              : JourneyTextAction(
+                  key: const ValueKey('guests-send-all-options'),
+                  label: 'كل خيارات الإرسال',
+                  color: context.accent.primary,
+                  onPressed: openSend,
+                ),
         ),
-        // The door to the invitation card, except while the card's own
-        // button is right above it going to the very same place: «أرسل
-        // الدعوة على واتساب» and this link were two controls, one under the
-        // other, with one destination. The reminder button is a different
-        // destination, so the link stays beside it.
-        if (!_isLocalPlan && !(uninvited && remindable == 0)) ...[
+        // D116: an occasion beyond the wedding chooses its own guests, a
+        // whole group at a time.
+        if (!selected.isMain && !_isLocalPlan && selected.id != null) ...[
           const SizedBox(height: AarastV3Space.x1),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: JourneyTextAction(
-              key: const ValueKey('guests-invite-card'),
-              label: 'بطاقة الدعوة',
-              icon: LucideIcons.mail,
+              key: const ValueKey('guests-occasion-invitees'),
+              label:
+                  '${context.say('اختر', 'اختاري')} مدعوين ${guestEventLabel(selected, context.journeyProfile)}',
+              icon: LucideIcons.userCheck,
               color: context.accent.primary,
-              onPressed: () =>
-                  context.push(AppRouter.guestInvite(widget.weddingPlanId)),
+              onPressed: provider.isSubmitting
+                  ? null
+                  : () => showJourneySheet<int>(
+                      context: context,
+                      builder: (_) => OccasionInviteesSheet(
+                        provider: provider,
+                        weddingPlanId: planId,
+                        eventId: selected.id!,
+                        label: guestEventLabel(
+                          selected,
+                          context.journeyProfile,
+                        ),
+                      ),
+                    ),
             ),
           ),
         ],
-        const SizedBox(height: AarastV3Space.x1),
-        Wrap(
-          spacing: 4,
-          children: [
-            if (ContactPickerService.isAvailable)
-              JourneyTextAction(
-                key: const ValueKey('guests-from-contacts'),
-                label: 'من جهات الاتصال',
-                icon: LucideIcons.contact,
-                color: context.accent.primary,
-                onPressed: () => _openImport(contacts: true),
-              ),
-            JourneyTextAction(
-              key: const ValueKey('guests-paste-list'),
-              label: context.say('الصق قائمة', 'الصقي قائمة'),
-              icon: LucideIcons.clipboardList,
-              color: context.accent.primary,
-              onPressed: () => _openImport(contacts: false),
-            ),
-          ],
+        const SizedBox(height: AarastV3Space.x3),
+        _InvitationDoors(
+          weddingPlanId: planId,
+          occasionCount: occasions.length,
+          localPlan: _isLocalPlan,
         ),
-        const SizedBox(height: AarastV3Space.x2),
+        const SizedBox(height: AarastV3Space.x3),
         JourneySectionTitle(
           'حسب المجموعة',
           action: _isLocalPlan ? null : 'المجموعات',
@@ -435,25 +488,32 @@ class _GuestListScreenState extends State<GuestListScreen> {
           padding: EdgeInsets.zero,
           child: JourneyList(
             children: [
+              // D116: each family counts the guests of the occasion followed.
               _GroupRow(
                 key: const ValueKey('guest-group-all'),
                 name: GuestWords.of(context).allGuests,
-                guests: guests,
+                guests: invited,
+                isConfirmed: isConfirmedHere,
                 icon: LucideIcons.users,
                 onTap: () => _openGroupView(_allGroups),
               ),
               for (final row in groupRows)
-                _GroupRow(
-                  key: ValueKey('guest-group-${row.key}'),
-                  name: row.name,
-                  guests: row.guests,
-                  onTap: () => _openGroupView(row.key),
-                ),
-              if (ungrouped.isNotEmpty && groupRows.isNotEmpty)
+                if (row.guests.where(invited.contains).toList()
+                    case final members when members.isNotEmpty)
+                  _GroupRow(
+                    key: ValueKey('guest-group-${row.key}'),
+                    name: row.name,
+                    guests: members,
+                    isConfirmed: isConfirmedHere,
+                    onTap: () => _openGroupView(row.key),
+                  ),
+              if (ungrouped.where(invited.contains).toList() case final members
+                  when members.isNotEmpty && groupRows.isNotEmpty)
                 _GroupRow(
                   key: const ValueKey('guest-group-none'),
                   name: 'بدون مجموعة',
-                  guests: ungrouped,
+                  guests: members,
+                  isConfirmed: isConfirmedHere,
                   icon: LucideIcons.userX,
                   onTap: () => _openGroupView(_noGroup),
                 ),
@@ -638,8 +698,38 @@ class _GuestListScreenState extends State<GuestListScreen> {
   });
 
   /// Groups are saved on the account, so a device-only plan has none (w27).
+  /// D116: «+» adds what the guests tab holds: a guest, many at once, an
+  /// occasion, a group.
+  Future<void> _onAdd(GuestsProvider provider) async {
+    final choice = await _showAddMenu(context, localPlan: _isLocalPlan);
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _AddChoice.guest:
+        await _showGuestSheet(provider: provider);
+      case _AddChoice.contacts:
+        _openImport(contacts: true);
+      case _AddChoice.paste:
+        _openImport(contacts: false);
+      case _AddChoice.group:
+        await _showGroupsSheet();
+      case _AddChoice.occasion:
+        final events = context.read<PlanEventsProvider?>();
+        if (events == null) return;
+        await showPlanEventSheet(
+          context,
+          weddingPlanId: widget.weddingPlanId,
+          provider: events,
+        );
+    }
+  }
+
   Future<void> _showGroupsSheet() {
     final provider = context.read<GuestsProvider>()..clearGroupsError();
+    // D8 of the closing round: the plan's own guests; the counts took every
+    // guest the phone held, another plan's among them.
+    Iterable<Guest> planGuests() => provider.guests.where(
+      (guest) => guest.weddingPlanId == widget.weddingPlanId,
+    );
     return showJourneySheet<void>(
       context: context,
       useRootNavigator: true,
@@ -649,11 +739,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
           groups: provider.groups,
           guestCounts: {
             for (final group in provider.groups)
-              group.id: provider.guests
+              group.id: planGuests()
                   .where((guest) => guest.groupId == group.id)
                   .length,
           },
-          ungroupedCount: provider.guests
+          ungroupedCount: planGuests()
               .where(
                 (guest) =>
                     guestGroupLabel(guest, provider.groups) == 'بدون مجموعة',
@@ -696,6 +786,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
         // another's group.
         groups: provider.editableGroups,
         events: events,
+        onAddEvent: _isLocalPlan
+            ? null
+            : () => addOccasionFromForm(context, widget.weddingPlanId),
         blockDuplicatePhone: !_isLocalPlan,
         onCreateGroup: _isLocalPlan ? null : _createGroup,
       ),

@@ -14,6 +14,8 @@ import {
   Guest,
   GuestAttendanceStatus,
   GuestGroup,
+  GuestInvitationSendKind,
+  GuestInvitationSendStatus,
   GuestInvitationStatus,
   GuestSide,
   GuestStatus,
@@ -80,10 +82,16 @@ import {
   lockGuestForUpdate,
   lockGuestGroupForShare,
   lockGuestGroupForUpdate,
+  recordGuestEventAnswer,
   replaceGuestEventInvites,
   updateGuest,
   updateGuestGroup,
 } from '../modules/guests/infrastructure/guests.repository';
+import {
+  listGuestInvitationSends,
+  sendEvents,
+} from '../modules/guests/infrastructure/guest-rsvp.repository';
+import { toldOccasions } from '../modules/guests/domain/guest-invitations';
 
 /**
  * RA-BE-82: the refusal of a name of only spaces, by what is named. Said to
@@ -100,6 +108,29 @@ export interface GuestEventReply {
   attendanceStatus: GuestAttendanceStatus;
   companionsCount: number;
   respondedAt: Date | null;
+  /** D116: the event's version answered; null for an answer from before versions. */
+  answeredVersion: number | null;
+}
+
+/**
+ * D116: what the guest was told of one occasion (the wedding's row among
+ * them): the last version a send the person said they sent named, when,
+ * and the last reminder. Read from the send record; kept nowhere else.
+ */
+export interface GuestToldOccasion {
+  planEventId: string;
+  version: number;
+  at: Date;
+  remindedAt: Date | null;
+}
+
+/** D116: the guest's last send, so a round left half way can be picked up. */
+export interface GuestLastSend {
+  id: string;
+  kind: GuestInvitationSendKind;
+  planEventId: string | null;
+  status: GuestInvitationSendStatus;
+  createdAt: Date;
 }
 
 /** D83: one event's figures in the guests summary. */
@@ -135,6 +166,19 @@ export interface GuestResponse {
   editable: boolean;
   /** D83: the events beyond the wedding this guest is invited to, each with its reply. */
   events: GuestEventReply[];
+  /** D116: the wedding row's version the wedding answer was given to. */
+  weddingAnsweredVersion: number | null;
+  /** D116: when the guest's page was first drawn in a browser. */
+  linkOpenedAt: Date | null;
+  /** D116: what the guest was told of each occasion. */
+  told: GuestToldOccasion[];
+  lastSend: GuestLastSend | null;
+}
+
+/** D116: the send record of the guests a response names. */
+interface GuestSendRecord {
+  told: GuestToldOccasion[];
+  lastSend: GuestLastSend | null;
 }
 
 export interface GuestGroupResponse {
@@ -226,15 +270,18 @@ export class GuestsService {
         // D80: a helper reads every guest of the plan; the phone, the notes
         // and the edit stay with the owner and with whoever added the guest.
         const guests = await listPlanGuests(tx, weddingPlanId, null, query);
+        const guestIds = guests.map((guest) => guest.id);
         const events = this.groupEventReplies(
-          await listGuestEventInvites(tx, guests.map((guest) => guest.id)),
+          await listGuestEventInvites(tx, guestIds),
         );
+        const records = await this.sendRecords(tx, guestIds);
         return guests.map((guest) =>
           this.toResponse(
             guest,
             canManageGuests &&
               (contributorScope === null || contributorScope.has(guest.id)),
             events.get(guest.id),
+            records.get(guest.id),
           ),
         );
       },
@@ -268,6 +315,7 @@ export class GuestsService {
           guest,
           this.permissions.canManageGuests(context),
           await this.guestEvents(tx, guest.id),
+          (await this.sendRecords(tx, [guest.id])).get(guest.id),
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -422,6 +470,18 @@ export class GuestsService {
           excludeGuestId: current.id,
         });
 
+        // D116: an answer the owner records is to each occasion as it is now.
+        const weddingAnswered =
+          dto.status !== undefined || dto.attendanceStatus !== undefined;
+        const planEvents =
+          weddingAnswered || dto.eventReplies?.length
+            ? await this.plans.listPlanEvents(tx, current.weddingPlanId)
+            : [];
+        const versionOf = (planEventId: string) =>
+          planEvents.find((event) => event.id === planEventId)?.version ?? 1;
+        const weddingVersion =
+          planEvents.find((event) => event.type === "WEDDING")?.version ?? 1;
+
         const updated = await updateGuest(
           tx,
           id,
@@ -474,13 +534,35 @@ export class GuestsService {
             ...(dto.notes !== undefined
               ? { notes: this.optionalText(dto.notes) }
               : {}),
+            ...(weddingAnswered ? { weddingAnsweredVersion: weddingVersion } : {}),
           },
         );
-        const events = await this.linkGuestEvents(
+        let events = await this.linkGuestEvents(
           tx,
           current.id,
           await this.resolveEventIds(tx, current.weddingPlanId, dto.eventIds),
         );
+        if (dto.eventReplies?.length) {
+          const invited = new Set(events.map((event) => event.planEventId));
+          for (const reply of dto.eventReplies) {
+            if (!invited.has(reply.planEventId)) {
+              throw new BadRequestException({
+                statusCode: 400,
+                code: "GUEST_EVENT_NOT_INVITED",
+                message: "الضيف مش مدعو لهذي المناسبة.",
+              });
+            }
+            await recordGuestEventAnswer(tx, current.id, reply.planEventId, {
+              attendanceStatus: reply.attendanceStatus,
+              companionsCount:
+                reply.attendanceStatus === GuestAttendanceStatus.CONFIRMED
+                  ? this.validCompanionsCount(reply.companionsCount ?? 0)
+                  : 0,
+              answeredVersion: versionOf(reply.planEventId),
+            });
+          }
+          events = await this.guestEvents(tx, current.id);
+        }
         const action = this.guestUpdateAction(current, updated);
         await this.recordGuestContribution(tx, context, updated, action);
         return { guest: updated, events };
@@ -783,7 +865,15 @@ export class GuestsService {
     if (eventIds === undefined) return undefined;
     const events = await this.plans.listPlanEvents(tx, weddingPlanId);
     const allowed = new Set(invitableEvents(events).map((event) => event.id));
-    const wanted = [...new Set(eventIds.map((id) => id.trim()))];
+    // D116: every guest is invited to the wedding, whose row is now always
+    // there and may come back in a list the phone built from it; it is no
+    // event to link, and no reason to refuse the rest.
+    const weddingIds = new Set(
+      events.filter((event) => event.type === "WEDDING").map((event) => event.id),
+    );
+    const wanted = [
+      ...new Set(eventIds.map((id) => id.trim()).filter((id) => !weddingIds.has(id))),
+    ];
     if (wanted.some((id) => !allowed.has(id))) {
       throw new BadRequestException({
         statusCode: 400,
@@ -836,6 +926,7 @@ export class GuestsService {
       attendanceStatus: row.attendanceStatus,
       companionsCount: row.companionsCount,
       respondedAt: row.respondedAt,
+      answeredVersion: row.answeredVersion,
     };
   }
 
@@ -1320,6 +1411,7 @@ export class GuestsService {
     guest: Guest,
     editable = true,
     events: GuestEventReply[] = [],
+    record: GuestSendRecord = { told: [], lastSend: null },
   ): GuestResponse {
     return {
       id: guest.id,
@@ -1340,7 +1432,59 @@ export class GuestsService {
       updatedAt: guest.updatedAt,
       editable,
       events,
+      weddingAnsweredVersion: guest.weddingAnsweredVersion,
+      linkOpenedAt: guest.linkOpenedAt,
+      told: record.told,
+      lastSend: record.lastSend,
     };
+  }
+
+  /**
+   * D116: per guest, what they were told of each occasion and their last
+   * send, read from the send record (only sends said sent are told).
+   */
+  private async sendRecords(
+    tx: Prisma.TransactionClient,
+    guestIds: readonly string[],
+  ): Promise<Map<string, GuestSendRecord>> {
+    const rows = await listGuestInvitationSends(tx, guestIds);
+    const byGuest = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const list = byGuest.get(row.guestId) ?? [];
+      list.push(row);
+      byGuest.set(row.guestId, list);
+    }
+    const records = new Map<string, GuestSendRecord>();
+    for (const [guestId, list] of byGuest) {
+      const told = toldOccasions(
+        list
+          .filter((row) => row.status === GuestInvitationSendStatus.SENT)
+          .map((row) => ({
+            kind: row.kind,
+            sentAt: row.settledAt ?? row.createdAt,
+            events: sendEvents(row),
+          })),
+      );
+      const last = list[list.length - 1];
+      records.set(guestId, {
+        told: [...told.entries()].map(([planEventId, entry]) => ({
+          planEventId,
+          version: entry.version,
+          at: entry.at,
+          remindedAt: entry.remindedAt,
+        })),
+        lastSend: last
+          ? {
+              id: last.id,
+              kind: last.kind,
+              planEventId: last.planEventId,
+              status: last.status,
+              createdAt: last.createdAt,
+            }
+          : null,
+      });
+    }
+    return records;
   }
 
   private toGroupResponse(

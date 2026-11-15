@@ -30,8 +30,8 @@
     {
       "owner": "guests",
       "file": "guests.prisma",
-      "models": ["Guest", "GuestGroup", "GuestInvitationCard", "GuestEventInvite"],
-      "enums": ["GuestSide", "GuestStatus", "GuestInvitationStatus", "GuestAttendanceStatus"]
+      "models": ["Guest", "GuestGroup", "GuestInvitationCard", "GuestEventInvite", "GuestInvitationSend"],
+      "enums": ["GuestSide", "GuestStatus", "GuestInvitationStatus", "GuestAttendanceStatus", "GuestInvitationCardPhotoKind", "GuestInvitationSendKind", "GuestInvitationSendStatus", "GuestInvitationSendChannel"]
     },
     {
       "owner": "identity",
@@ -121,6 +121,7 @@
     "GuestGroup",
     "GuestInvitationCard",
     "GuestEventInvite",
+    "GuestInvitationSend",
     "City",
     "Governorate",
     "District",

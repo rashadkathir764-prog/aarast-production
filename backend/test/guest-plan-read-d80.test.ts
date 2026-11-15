@@ -122,6 +122,8 @@ function database() {
     },
     // D83: no events beyond the wedding here.
     guestEventInvite: { findMany: async () => [] },
+    // D116: the guest list reads what each guest was told.
+    guestInvitationSend: { findMany: async () => [] },
     $queryRaw: async () => [{ id: "locked" }],
   };
   tx.$transaction = async (operation: (client: any) => Promise<unknown>) =>

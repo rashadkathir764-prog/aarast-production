@@ -71,17 +71,34 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
+  // D116: the round of sends, from the person's own WhatsApp.
   GoRoute(
-    path: '/wedding-plans/:id/guests/invite',
+    path: '/wedding-plans/:id/guests/send',
     builder: (context, state) {
       final id = state.pathParameters['id'] ?? '';
       return WeddingPlanContextGate(
         weddingPlanId: id,
         requiredAccess: WeddingPlanRouteAccess.manageGuests,
-        child: GuestInviteScreen(
+        child: GuestSendScreen(
           weddingPlanId: id,
-          reminder: state.uri.queryParameters['mode'] == 'remind',
+          initialEvent: state.uri.queryParameters['event'],
+          initialAudience: state.uri.queryParameters['audience'],
         ),
+      );
+    },
+  ),
+  GoRoute(
+    path: '/wedding-plans/:id/guests/invite',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      // D116: the card is prepared here; a reminder is a send, so an old
+      // link to the reminder opens the round of sends at «ما ردّوا».
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.manageGuests,
+        child: state.uri.queryParameters['mode'] == 'remind'
+            ? GuestSendScreen(weddingPlanId: id, initialAudience: 'remind')
+            : GuestInviteScreen(weddingPlanId: id),
       );
     },
   ),

@@ -41,6 +41,14 @@ Guest _guest(
   editable: editable,
   createdAt: DateTime(2026, 10, 1),
   updatedAt: DateTime(2026, 10, 1),
+  // D116: told of the wedding, as the record of sends says.
+  told: [
+    GuestToldOccasion(
+      planEventId: 'wedding_plan-1',
+      version: 1,
+      at: DateTime(2026, 10, 2),
+    ),
+  ],
 );
 
 const _ownerGroup = GuestGroup(
@@ -138,44 +146,48 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a helper sees the whole plan, controls only on their own guests',
-    (tester) async {
-      await _pumpList(tester, guests: _mixed);
+  testWidgets('a helper sees the whole plan, controls only on their own guests', (
+    tester,
+  ) async {
+    await _pumpList(tester, guests: _mixed);
 
-      // The figures count the whole plan.
-      expect(find.text('3 مدعو · 1 أكدوا · 2 ما ردّوا'), findsOneWidget);
-      expect(find.text('أكدوا من 3'), findsOneWidget);
-      // Only the helper's own waiting guest can be reminded from here.
-      expect(find.text('ذكّر ضيف واحد على واتساب'), findsOneWidget);
-      expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
-      expect(find.byKey(const ValueKey('guests-helper-note')), findsOneWidget);
-      expect(find.textContaining('عند العريس'), findsOneWidget);
+    // The figures count the whole plan.
+    expect(find.text('3 مدعو · 1 أكدوا · 2 ما ردّوا'), findsOneWidget);
+    expect(find.text('أكدوا من 3'), findsOneWidget);
+    // Only the helper's own waiting guest can be reminded from here.
+    // Changed on purpose (D116): «ذكّر ضيف واحد على واتساب» → the summary's one send action guests-send-remind.
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);
+    expect(find.text('ذكّر ضيف واحد'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-helper-note')), findsOneWidget);
+    expect(find.textContaining('عند العريس'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('guest-group-all')));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+    await tester.pumpAndSettle();
 
-      expect(find.text('سالم'), findsOneWidget);
-      expect(find.text('خالد'), findsOneWidget);
-      expect(find.text('ناصر'), findsOneWidget);
-      // Name, reply and companions for the groom's guest.
-      expect(find.text('أكّد مع 2'), findsOneWidget);
-      // His guests' numbers are his, not missing.
-      expect(find.textContaining('بدون رقم ·'), findsNothing);
-      expect(find.text('بدون رقم 0'), findsOneWidget);
-      expect(find.textContaining('بدون رقم'), findsOneWidget);
-      // The helper's own guest opens; the groom's guests are plain rows.
-      expect(_pressableAround('سالم'), findsOneWidget);
-      expect(_pressableAround('خالد'), findsNothing);
-      expect(_pressableAround('ناصر'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(find.text('سالم'), findsOneWidget);
+    expect(find.text('خالد'), findsOneWidget);
+    expect(find.text('ناصر'), findsOneWidget);
+    // Name, reply and companions for the groom's guest.
+    expect(find.text('أكّد مع 2'), findsOneWidget);
+    // His guests' numbers are his, not missing.
+    expect(find.textContaining('بدون رقم ·'), findsNothing);
+    expect(find.text('بدون رقم 0'), findsOneWidget);
+    expect(find.textContaining('بدون رقم'), findsOneWidget);
+    // The helper's own guest opens; the groom's guests are plain rows.
+    expect(_pressableAround('سالم'), findsOneWidget);
+    expect(_pressableAround('خالد'), findsNothing);
+    expect(_pressableAround('ناصر'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a helper adds only to the groups they made', (tester) async {
     await _pumpList(tester, guests: _mixed);
 
     await tester.tap(find.byKey(const ValueKey('guests-add')));
+    await tester.pumpAndSettle();
+    // Changed on purpose (D116): «+» opened the guest form → it opens the add menu, whose first choice is the form.
+    await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
     await tester.pumpAndSettle();
 
     final sheet = find.byType(BottomSheet);
@@ -246,8 +258,8 @@ void main() {
   );
 
   // «ذكّر» went away once every guest answered, so the reminder of the day
-  // to who is coming had no door; it now opens the reminder on «الكل».
-  testWidgets('with everyone answered, the reminder to all stays', (
+  // to who is coming had no door. D116: the send screen's door stays.
+  testWidgets('with everyone answered, the door to sending stays', (
     tester,
   ) async {
     await _pumpList(
@@ -263,8 +275,23 @@ void main() {
       ],
     );
 
-    expect(find.text('ذكّر الكل على واتساب'), findsOneWidget);
-    expect(find.byKey(const ValueKey('guests-invite-now')), findsNothing);
+    // Changed on purpose (D116): «ذكّر الكل على واتساب» → no send is due, and «كل خيارات الإرسال» opens the send screen.
+    expect(find.byKey(const ValueKey('guests-send-new')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('guests-send-all-options')),
+      findsOneWidget,
+    );
+  });
+
+  // D116: a helper's tab offers sending only for their own guests.
+  testWidgets('a helper with none of their own guests has no send', (
+    tester,
+  ) async {
+    await _pumpList(tester, guests: [_mixed[1], _mixed[2]]);
+
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-send-all-options')), findsNothing);
   });
 }
 

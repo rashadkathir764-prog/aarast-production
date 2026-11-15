@@ -121,9 +121,14 @@ void main() {
     // counted as «ما ردّوا».
     expect(find.text('2 مدعو · 1 أكدوا · 1 بلا دعوة'), findsOneWidget);
     expect(find.text('أكدوا من 2'), findsOneWidget);
-    // RA-MO-59: the confirmed and who comes with them, not the one who has
-    // not replied (3 to 10 take the plural, arabicSeats).
+    // RA-MO-59: the occasion's card keeps the seats with companions.
     expect(find.text('مع المرافقين: 3 مقاعد'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('guests-summary-parts')))
+          .data,
+      '1 بلا دعوة',
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -176,6 +181,11 @@ void main() {
     expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);
     // A phone-only plan has no groups to manage.
     expect(find.text('المجموعات'), findsNothing);
+    // D116: nor a card, occasions or sending; it says why.
+    expect(find.byKey(const ValueKey('guests-doors-local')), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-invite-card')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-send-new')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-send-all-options')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('guest-group-all')));
     await tester.pumpAndSettle();
 
@@ -267,6 +277,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('guests-add')));
+    await tester.pumpAndSettle();
+    // Changed on purpose (D116): «+» opened the form → it opens the add menu; a phone-only plan offers no occasion or group.
+    expect(find.byKey(const ValueKey('guests-add-occasion')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-add-group')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('guest-form-name')),

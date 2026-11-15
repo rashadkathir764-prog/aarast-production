@@ -1,0 +1,995 @@
+{
+  "standings": [
+    {
+      "name": "never told anything",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 1
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          },
+          {
+            "planEventId": "lunch",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          }
+        ],
+        "sends": [],
+        "scope": null
+      },
+      "answer": {
+        "told": [],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "NOT_TOLD"
+          },
+          {
+            "planEventId": "lunch",
+            "standing": "NOT_TOLD"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 1,
+            "toldOld": 0,
+            "companions": 0
+          },
+          "lunch": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 1,
+            "toldOld": 0,
+            "companions": 0
+          }
+        },
+        "due": "INVITATION",
+        "names": {
+          "INVITATION": [
+            "wedding",
+            "lunch"
+          ],
+          "ADDITION": [
+            "wedding",
+            "lunch"
+          ],
+          "CHANGE": [],
+          "REMINDER": []
+        }
+      }
+    },
+    {
+      "name": "told the wedding, the lunch added after",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 1
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          },
+          {
+            "planEventId": "lunch",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          }
+        ],
+        "sends": [
+          {
+            "kind": "INVITATION",
+            "sentAt": "2026-11-16T09:01:00.000Z",
+            "events": [
+              {
+                "planEventId": "wedding",
+                "version": 1
+              }
+            ]
+          }
+        ],
+        "scope": null
+      },
+      "answer": {
+        "told": [
+          {
+            "planEventId": "wedding",
+            "version": 1,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          }
+        ],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "WAITING"
+          },
+          {
+            "planEventId": "lunch",
+            "standing": "NOT_TOLD"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 1,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 0
+          },
+          "lunch": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 1,
+            "toldOld": 0,
+            "companions": 0
+          }
+        },
+        "due": "ADDITION",
+        "names": {
+          "INVITATION": [
+            "wedding",
+            "lunch"
+          ],
+          "ADDITION": [
+            "lunch"
+          ],
+          "CHANGE": [],
+          "REMINDER": [
+            "wedding"
+          ]
+        }
+      }
+    },
+    {
+      "name": "told everything, silent",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 1
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          },
+          {
+            "planEventId": "lunch",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          }
+        ],
+        "sends": [
+          {
+            "kind": "INVITATION",
+            "sentAt": "2026-11-16T09:01:00.000Z",
+            "events": [
+              {
+                "planEventId": "wedding",
+                "version": 1
+              },
+              {
+                "planEventId": "lunch",
+                "version": 1
+              }
+            ]
+          },
+          {
+            "kind": "REMINDER",
+            "sentAt": "2026-11-16T09:09:00.000Z",
+            "events": [
+              {
+                "planEventId": "lunch",
+                "version": 1
+              }
+            ]
+          }
+        ],
+        "scope": null
+      },
+      "answer": {
+        "told": [
+          {
+            "planEventId": "wedding",
+            "version": 1,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1,
+            "at": "2026-11-16T09:09:00.000Z",
+            "remindedAt": "2026-11-16T09:09:00.000Z"
+          }
+        ],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "WAITING"
+          },
+          {
+            "planEventId": "lunch",
+            "standing": "WAITING"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 1,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 0
+          },
+          "lunch": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 1,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 0
+          }
+        },
+        "due": "REMINDER",
+        "names": {
+          "INVITATION": [
+            "wedding",
+            "lunch"
+          ],
+          "ADDITION": [],
+          "CHANGE": [],
+          "REMINDER": [
+            "wedding",
+            "lunch"
+          ]
+        }
+      }
+    },
+    {
+      "name": "the lunch moved after the guest confirmed it; the wedding declined",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 1
+          },
+          {
+            "planEventId": "lunch",
+            "version": 2
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "DECLINED",
+            "companionsCount": 0,
+            "respondedAt": "2026-11-16T09:30:00.000Z",
+            "answeredVersion": 1
+          },
+          {
+            "planEventId": "lunch",
+            "attendanceStatus": "CONFIRMED",
+            "companionsCount": 3,
+            "respondedAt": "2026-11-16T09:30:00.000Z",
+            "answeredVersion": 1
+          }
+        ],
+        "sends": [
+          {
+            "kind": "INVITATION",
+            "sentAt": "2026-11-16T09:01:00.000Z",
+            "events": [
+              {
+                "planEventId": "wedding",
+                "version": 1
+              },
+              {
+                "planEventId": "lunch",
+                "version": 1
+              }
+            ]
+          }
+        ],
+        "scope": null
+      },
+      "answer": {
+        "told": [
+          {
+            "planEventId": "wedding",
+            "version": 1,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          }
+        ],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "DECLINED"
+          },
+          {
+            "planEventId": "lunch",
+            "standing": "CONFIRMED_OLD"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 1,
+            "waiting": 0,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 0
+          },
+          "lunch": {
+            "invited": 1,
+            "confirmed": 1,
+            "confirmedOld": 1,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 3
+          }
+        },
+        "due": "CHANGE",
+        "names": {
+          "INVITATION": [
+            "wedding",
+            "lunch"
+          ],
+          "ADDITION": [],
+          "CHANGE": [
+            "lunch"
+          ],
+          "REMINDER": []
+        }
+      }
+    },
+    {
+      "name": "the wedding moved; told of the old day and silent",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 3
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          }
+        ],
+        "sends": [
+          {
+            "kind": "INVITATION",
+            "sentAt": "2026-11-16T09:01:00.000Z",
+            "events": [
+              {
+                "planEventId": "wedding",
+                "version": 2
+              }
+            ]
+          }
+        ],
+        "scope": null
+      },
+      "answer": {
+        "told": [
+          {
+            "planEventId": "wedding",
+            "version": 2,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          }
+        ],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "TOLD_OLD"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 0,
+            "toldOld": 1,
+            "companions": 0
+          }
+        },
+        "due": "CHANGE",
+        "names": {
+          "INVITATION": [
+            "wedding"
+          ],
+          "ADDITION": [],
+          "CHANGE": [
+            "wedding"
+          ],
+          "REMINDER": []
+        }
+      }
+    },
+    {
+      "name": "answered before versions, never sent from the app",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 2
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "CONFIRMED",
+            "companionsCount": 1,
+            "respondedAt": "2026-11-16T09:30:00.000Z",
+            "answeredVersion": null
+          }
+        ],
+        "sends": [],
+        "scope": null
+      },
+      "answer": {
+        "told": [],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "CONFIRMED"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 1,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 1
+          }
+        },
+        "due": null,
+        "names": {
+          "INVITATION": [
+            "wedding"
+          ],
+          "ADDITION": [],
+          "CHANGE": [],
+          "REMINDER": []
+        }
+      }
+    },
+    {
+      "name": "a separate invitation for the lunch only",
+      "input": {
+        "occasions": [
+          {
+            "planEventId": "wedding",
+            "version": 1
+          },
+          {
+            "planEventId": "lunch",
+            "version": 1
+          }
+        ],
+        "invites": [
+          {
+            "planEventId": "wedding",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          },
+          {
+            "planEventId": "lunch",
+            "attendanceStatus": "PENDING",
+            "companionsCount": 0,
+            "respondedAt": null,
+            "answeredVersion": null
+          }
+        ],
+        "sends": [
+          {
+            "kind": "INVITATION",
+            "sentAt": "2026-11-16T09:01:00.000Z",
+            "events": [
+              {
+                "planEventId": "wedding",
+                "version": 1
+              }
+            ]
+          }
+        ],
+        "scope": [
+          "lunch"
+        ]
+      },
+      "answer": {
+        "told": [
+          {
+            "planEventId": "wedding",
+            "version": 1,
+            "at": "2026-11-16T09:01:00.000Z",
+            "remindedAt": null
+          }
+        ],
+        "standings": [
+          {
+            "planEventId": "wedding",
+            "standing": "WAITING"
+          },
+          {
+            "planEventId": "lunch",
+            "standing": "NOT_TOLD"
+          }
+        ],
+        "counts": {
+          "wedding": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 1,
+            "notTold": 0,
+            "toldOld": 0,
+            "companions": 0
+          },
+          "lunch": {
+            "invited": 1,
+            "confirmed": 0,
+            "confirmedOld": 0,
+            "declined": 0,
+            "waiting": 0,
+            "notTold": 1,
+            "toldOld": 0,
+            "companions": 0
+          }
+        },
+        "due": "ADDITION",
+        "names": {
+          "INVITATION": [
+            "lunch"
+          ],
+          "ADDITION": [
+            "lunch"
+          ],
+          "CHANGE": [],
+          "REMINDER": []
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "name": "the wedding alone, no card",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "occasions": [
+          {
+            "label": "العرس",
+            "isWedding": true,
+            "date": "2026-11-30",
+            "timeSlot": "AFTER_ISHA",
+            "exactTime": null,
+            "placeLabel": "قاعة ذو ريدان، صنعاء",
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nيسعدنا دعوتك لحضور عرس رضوان.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 بعد العشاء\nالمكان: قاعة ذو ريدان، صنعاء\nالموقع على الخريطة: https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+    },
+    {
+      "name": "three occasions, the host and the words",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "persona": "GROOM",
+        "card": {
+          "hostLine": "صالح ناصر",
+          "freeText": "ارحبوا وحيّاكم الله"
+        },
+        "occasions": [
+          {
+            "label": "العرس",
+            "isWedding": true,
+            "date": "2026-11-30",
+            "timeSlot": "AFTER_ISHA",
+            "exactTime": null,
+            "placeLabel": "قاعة ذو ريدان، صنعاء",
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+          },
+          {
+            "label": "السمرة",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": null,
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/samra"
+          },
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nيتشرف صالح ناصر بدعوتكم لحضور عرس رضوان.\nارحبوا وحيّاكم الله\nنرجو تأكيد حضورك لكل مناسبة من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\n*العرس*\nالموعد: 30/11/2026 بعد العشاء\nالمكان: قاعة ذو ريدان، صنعاء\nالموقع على الخريطة: https://maps.app.goo.gl/K1xShZD5d9zSEoZu9\n\n*السمرة*\nالموعد: 27/11/2026 الساعة 20:30\nالموقع على الخريطة: https://maps.app.goo.gl/samra\n\n*الغداء*\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور"
+    },
+    {
+      "name": "a bride's card",
+      "input": {
+        "guestName": "أم سلمى",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "persona": "BRIDE",
+        "card": {
+          "hostLine": "أم رضوان",
+          "freeText": null
+        },
+        "occasions": [
+          {
+            "label": "العرس",
+            "isWedding": true,
+            "date": "2026-11-30",
+            "timeSlot": "AFTER_ISHA",
+            "exactTime": null,
+            "placeLabel": "قاعة ذو ريدان، صنعاء",
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+          }
+        ]
+      },
+      "text": "أهلًا أم سلمى 🌸\nتتشرف أم رضوان بدعوتكن لحضور عرس رضوان.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 بعد العشاء\nالمكان: قاعة ذو ريدان، صنعاء\nالموقع على الخريطة: https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+    },
+    {
+      "name": "an invitation of its own for the lunch",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "card": {
+          "hostLine": "صالح ناصر",
+          "freeText": null
+        },
+        "occasions": [
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nيتشرف صالح ناصر بدعوتكم لحضور الغداء في عرس رضوان.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور"
+    },
+    {
+      "name": "one more occasion",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "kind": "ADDITION",
+        "occasions": [
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          },
+          {
+            "label": "السمرة",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": null,
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/samra"
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nويسعدنا حضورك أيضًا في الغداء والسمرة، ضمن عرس رضوان.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\n*الغداء*\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور\n\n*السمرة*\nالموعد: 27/11/2026 الساعة 20:30\nالموقع على الخريطة: https://maps.app.goo.gl/samra"
+    },
+    {
+      "name": "a change",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "kind": "CHANGE",
+        "occasions": [
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nتغيّر موعد أو مكان الغداء في عرس رضوان، وهذا الجديد.\nنرجو تأكيد حضورك من جديد من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور"
+    },
+    {
+      "name": "a reminder, no answer yet",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "kind": "REMINDER",
+        "occasions": [
+          {
+            "label": "العرس",
+            "isWedding": true,
+            "date": "2026-11-30",
+            "timeSlot": "AFTER_ISHA",
+            "exactTime": null,
+            "placeLabel": "قاعة ذو ريدان، صنعاء",
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+          }
+        ]
+      },
+      "text": "أهلًا ياسر\nنذكرك بعرس رضوان.\nهذا رابطك للرد بضغطة:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 بعد العشاء\nالمكان: قاعة ذو ريدان، صنعاء\nالموقع على الخريطة: https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+    },
+    {
+      "name": "a reminder to a guest coming",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "kind": "REMINDER",
+        "confirmed": true,
+        "occasions": [
+          {
+            "label": "العرس",
+            "isWedding": true,
+            "date": "2026-11-30",
+            "timeSlot": "AFTER_ISHA",
+            "exactTime": null,
+            "placeLabel": "قاعة ذو ريدان، صنعاء",
+            "address": null,
+            "mapUrl": "https://maps.app.goo.gl/K1xShZD5d9zSEoZu9"
+          },
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          }
+        ]
+      },
+      "text": "أهلًا ياسر\nنذكرك بعرس رضوان.\nننتظرك. ولو تغيّر شي، هذا رابطك:\nhttps://3.121.198.183/rsvp/AAAA\n\n*العرس*\nالموعد: 30/11/2026 بعد العشاء\nالمكان: قاعة ذو ريدان، صنعاء\nالموقع على الخريطة: https://maps.app.goo.gl/K1xShZD5d9zSEoZu9\n\n*الغداء*\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور"
+    },
+    {
+      "name": "too long: the map links stay behind the link",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "occasions": [
+          {
+            "label": "مناسبة 1",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 1 في صنعاء القديمة",
+            "address": "شارع رقم 1، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1"
+          },
+          {
+            "label": "مناسبة 2",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 2 في صنعاء القديمة",
+            "address": "شارع رقم 2، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2"
+          },
+          {
+            "label": "مناسبة 3",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 3 في صنعاء القديمة",
+            "address": "شارع رقم 3، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx3"
+          },
+          {
+            "label": "مناسبة 4",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 4 في صنعاء القديمة",
+            "address": "شارع رقم 4، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx4"
+          },
+          {
+            "label": "مناسبة 5",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 5 في صنعاء القديمة",
+            "address": "شارع رقم 5، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx5"
+          },
+          {
+            "label": "مناسبة 6",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 6 في صنعاء القديمة",
+            "address": "شارع رقم 6، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx6"
+          },
+          {
+            "label": "مناسبة 7",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 7 في صنعاء القديمة",
+            "address": "شارع رقم 7، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx7"
+          },
+          {
+            "label": "مناسبة 8",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 8 في صنعاء القديمة",
+            "address": "شارع رقم 8، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx8"
+          },
+          {
+            "label": "مناسبة 9",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 9 في صنعاء القديمة",
+            "address": "شارع رقم 9، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx9"
+          },
+          {
+            "label": "مناسبة 10",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 10 في صنعاء القديمة",
+            "address": "شارع رقم 10، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx10"
+          },
+          {
+            "label": "مناسبة 11",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 11 في صنعاء القديمة",
+            "address": "شارع رقم 11، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx11"
+          },
+          {
+            "label": "مناسبة 12",
+            "isWedding": false,
+            "date": "2026-11-27",
+            "timeSlot": "EXACT",
+            "exactTime": "20:30",
+            "placeLabel": "مكان طويل الاسم رقم 12 في صنعاء القديمة",
+            "address": "شارع رقم 12، جوار الجامع الكبير، بعد الدوار الثاني",
+            "mapUrl": "https://maps.app.goo.gl/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx12"
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nيسعدنا دعوتك لحضور عرس رضوان.\nنرجو تأكيد حضورك لكل مناسبة من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\nومواقع الخريطة في الرابط.\n\n*مناسبة 1*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 1 في صنعاء القديمة\nالعنوان: شارع رقم 1، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 2*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 2 في صنعاء القديمة\nالعنوان: شارع رقم 2، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 3*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 3 في صنعاء القديمة\nالعنوان: شارع رقم 3، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 4*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 4 في صنعاء القديمة\nالعنوان: شارع رقم 4، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 5*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 5 في صنعاء القديمة\nالعنوان: شارع رقم 5، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 6*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 6 في صنعاء القديمة\nالعنوان: شارع رقم 6، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 7*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 7 في صنعاء القديمة\nالعنوان: شارع رقم 7، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 8*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 8 في صنعاء القديمة\nالعنوان: شارع رقم 8، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 9*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 9 في صنعاء القديمة\nالعنوان: شارع رقم 9، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 10*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 10 في صنعاء القديمة\nالعنوان: شارع رقم 10، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 11*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 11 في صنعاء القديمة\nالعنوان: شارع رقم 11، جوار الجامع الكبير، بعد الدوار الثاني\n\n*مناسبة 12*\nالموعد: 27/11/2026 الساعة 20:30\nالمكان: مكان طويل الاسم رقم 12 في صنعاء القديمة\nالعنوان: شارع رقم 12، جوار الجامع الكبير، بعد الدوار الثاني"
+    }
+  ]
+}

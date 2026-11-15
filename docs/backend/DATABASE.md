@@ -527,7 +527,7 @@ rewrite as permission to restore a removed live model.
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `AssistantAnswerReport` | 9 | `id`, `reporterUserId`, `resolvedAt`, `createdAt` |
 | `WeddingPlan` | 35 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
-| `PlanEvent` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `PlanEvent` | 17 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
@@ -547,10 +547,11 @@ rewrite as permission to restore a removed live model.
 | `PushInstallation` | 9 | `id`, `userId`, `lastSeenAt`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
-| `Guest` | 21 | `id`, `weddingPlanId`, `groupId`, `respondedAt`, `createdAt`, `updatedAt` |
+| `Guest` | 26 | `id`, `weddingPlanId`, `groupId`, `linkOpenedAt`, `respondedAt`, `createdAt`, `updatedAt` |
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `GuestInvitationCard` | 10 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `GuestEventInvite` | 10 | `id`, `guestId`, `planEventId`, `respondedAt`, `createdAt`, `updatedAt` |
+| `GuestInvitationCard` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `GuestEventInvite` | 11 | `id`, `guestId`, `planEventId`, `respondedAt`, `createdAt`, `updatedAt` |
+| `GuestInvitationSend` | 12 | `id`, `weddingPlanId`, `guestId`, `planEventId`, `createdByUserId`, `createdAt`, `settledAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `Governorate` | 11 | `id`, `createdAt`, `updatedAt` |
 | `District` | 13 | `id`, `governorateId`, `createdAt`, `updatedAt` |
@@ -586,5 +587,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 72
+Total models: 73
 <!-- DOCS-SYNC:END -->

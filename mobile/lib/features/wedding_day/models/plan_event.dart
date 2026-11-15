@@ -102,6 +102,9 @@ class PlanEvent {
     this.placeLabel,
     this.responsibleName,
     this.note,
+    this.mapUrl,
+    this.address,
+    this.version = 1,
   });
 
   factory PlanEvent.fromJson(Map<String, dynamic> json) {
@@ -120,6 +123,9 @@ class PlanEvent {
       placeLabel: text(json['placeLabel']),
       responsibleName: text(json['responsibleName']),
       note: text(json['note']),
+      mapUrl: text(json['mapUrl']),
+      address: text(json['address']),
+      version: int.tryParse(json['version']?.toString() ?? '') ?? 1,
     );
   }
 
@@ -139,6 +145,14 @@ class PlanEvent {
 
   /// b12's tag («القات عند صالح»).
   final String? note;
+
+  /// D116: the occasion's own map link and address, for its guests.
+  final String? mapUrl;
+  final String? address;
+
+  /// D116: raised by the server when the day, the time, the place or the map
+  /// link changes; a guest told or answering an older one is behind.
+  final int version;
 
   bool get isMain => type == PlanEventType.wedding;
 

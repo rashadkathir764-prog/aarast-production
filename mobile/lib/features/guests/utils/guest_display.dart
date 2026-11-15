@@ -89,10 +89,16 @@ String guestReplyLabel(Guest guest, JourneyProfile profile) {
         : say('أكّد', 'أكّدت');
   }
   if (guest.isDeclined) return say('اعتذر', 'اعتذرت');
-  return guest.invitationStatus == 'NOT_SENT'
-      ? say('ما وصلته دعوة', 'ما وصلتها دعوة')
-      : say('ما ردّ', 'ما ردّت');
+  return guestNoAnswerLabel(guest, profile);
 }
+
+/// A guest with no answer: «ما ردّ» once an invitation reached them, «ما
+/// وصلته دعوة» before. D22 of the closing round: the tag and the choice on
+/// the guest's page say the same of the same guest.
+String guestNoAnswerLabel(Guest guest, JourneyProfile profile) =>
+    guest.invitationStatus == 'NOT_SENT'
+    ? profile.plan('ما وصلته دعوة', 'ما وصلتها دعوة')
+    : profile.plan('ما ردّ', 'ما ردّت');
 
 /// The tag colours for [guestReplyLabel]: (text, background).
 (Color, Color) guestReplyColors(Guest guest) {

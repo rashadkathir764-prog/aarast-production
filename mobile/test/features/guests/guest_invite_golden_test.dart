@@ -10,6 +10,7 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_invite_screen.dart';
+import 'package:aarast_mobile/features/guests/screens/guest_send_screen.dart';
 import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
@@ -52,6 +53,15 @@ Guest _guest(
     events: [for (final id in events) GuestEventReply(planEventId: id)],
     createdAt: now,
     updatedAt: now,
+    // D116: what was told is the record of sends.
+    told: [
+      if (invitationStatus == 'SENT')
+        GuestToldOccasion(
+          planEventId: 'e-wedding',
+          version: 1,
+          at: DateTime(2026, 11, 1),
+        ),
+    ],
   );
 }
 
@@ -65,6 +75,7 @@ final _guests = [
   _guest('g3', 'فهد العريقي'),
   _guest('g4', 'نبيل الشرعبي', phone: null),
   _guest('g5', 'مراد الحكيمي', invitationStatus: 'SENT'),
+  _guest('g7', 'سامي الوصابي', invitationStatus: 'SENT', phone: null),
   _guest(
     'g6',
     'ياسر القدسي',
@@ -96,7 +107,6 @@ class _Api extends GuestsApi {
         hostLine: 'عبدالرحمن بن محمد الحمدي',
         freeText: 'يا مرحبا بالحاضرين، نورتوا فرحتنا',
         photoUrl: _photo,
-        mapUrl: 'https://maps.app.goo.gl/Hadda7Sanaa',
       );
 }
 
@@ -114,6 +124,7 @@ class _Events extends PlanEventsProvider {
         type: PlanEventType.wedding,
         slot: PlanEventSlot.afterIsha,
         placeLabel: 'قاعة سبأ الكبرى للمناسبات - حدة',
+        mapUrl: 'https://maps.app.goo.gl/Hadda7Sanaa',
       ),
       PlanEvent(
         id: 'e-samra',
@@ -208,7 +219,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required double width,
   double height = 3000,
-  bool reminder = false,
+  bool send = false,
   double textScale = 1,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -243,17 +254,26 @@ Future<void> _pump(
             ),
           ),
         ),
-        home: GuestInviteScreen(weddingPlanId: 'plan-1', reminder: reminder),
+        home: send
+            ? const GuestSendScreen(
+                weddingPlanId: 'plan-1',
+                initialAudience: 'remind',
+              )
+            : const GuestInviteScreen(weddingPlanId: 'plan-1'),
       ),
     ),
   );
   await tester.pumpAndSettle();
 }
 
-Future<void> _expectGolden(WidgetTester tester, String name) async {
+Future<void> _expectGolden(
+  WidgetTester tester,
+  String name, {
+  Type screen = GuestInviteScreen,
+}) async {
   expect(tester.takeException(), isNull);
   await expectLater(
-    find.byType(GuestInviteScreen),
+    find.byType(screen),
     matchesGoldenFile('goldens/$name.png'),
   );
 }
@@ -283,14 +303,24 @@ void main() {
     await _expectGolden(tester, 'guest_invite_page_360');
   });
 
+  // Changed on purpose (D116): the invite screen's reminder mode (guest_reminder_*) → the send screen's «ما ردّوا» audience (guest_send_remind_*).
   testWidgets('reminder at 360', (tester) async {
-    await _pump(tester, width: 360, reminder: true);
-    await _expectGolden(tester, 'guest_reminder_360');
+    await _pump(tester, width: 360, height: 1400, send: true);
+    expect(find.byKey(const ValueKey('send-unreachable')), findsOneWidget);
+    await _expectGolden(
+      tester,
+      'guest_send_remind_360',
+      screen: GuestSendScreen,
+    );
   });
 
   testWidgets('reminder at 320', (tester) async {
-    await _pump(tester, width: 320, reminder: true);
-    await _expectGolden(tester, 'guest_reminder_320');
+    await _pump(tester, width: 320, height: 1400, send: true);
+    await _expectGolden(
+      tester,
+      'guest_send_remind_320',
+      screen: GuestSendScreen,
+    );
   });
 
   testWidgets('a field typed into at 320 with the keyboard open', (
@@ -299,10 +329,11 @@ void main() {
     await _pump(tester, width: 320, height: 640);
     tester.view.viewInsets = const FakeViewPadding(bottom: 300);
     addTearDown(tester.view.resetViewInsets);
-    await tester.ensureVisible(find.byKey(const ValueKey('invite-map-url')));
+    // Changed on purpose (D116): the card's map link field → its free text (the map link is each occasion's).
+    await tester.ensureVisible(find.byKey(const ValueKey('invite-free-text')));
     await tester.showKeyboard(
       find.descendant(
-        of: find.byKey(const ValueKey('invite-map-url')),
+        of: find.byKey(const ValueKey('invite-free-text')),
         matching: find.byType(EditableText),
       ),
     );

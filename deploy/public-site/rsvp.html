@@ -6,14 +6,14 @@
     <meta name="robots" content="noindex,nofollow,noarchive">
     <meta name="theme-color" content="#064b47">
     <title>دعوة عرس</title>
-    <meta name="description" content="دعوة خاصة لحضور عرس. رد من هنا بضغطة.">
+    <meta name="description" content="دعوة خاصة لحضور عرس. الرد من هنا بضغطة.">
     <meta property="og:locale" content="ar_YE">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="اعّرست">
     <!-- nginx SSI puts this link's own preview tags here; without it, the generic ones stay. -->
     <!--# block name="rsvp_preview" -->
     <meta property="og:title" content="دعوة عرس">
-    <meta property="og:description" content="يسعدنا حضورك. رد من الرابط بضغطة.">
+    <meta property="og:description" content="يسعدنا حضورك. الرد من الرابط بضغطة.">
     <!--# endblock -->
     <!--# include virtual="/__rsvp_preview/$rsvp_token" stub="rsvp_preview" -->
     <link rel="stylesheet" href="/rsvp.css">
@@ -21,12 +21,13 @@
   </head>
   <body>
     <main class="rsvp-shell" aria-live="polite">
-      <section class="rsvp-card" aria-labelledby="rsvp-title">
+      <section id="rsvp-card" class="rsvp-card" aria-labelledby="rsvp-title">
         <img id="rsvp-photo" class="rsvp-photo" alt="" hidden>
         <p id="rsvp-greeting" class="rsvp-greeting"></p>
         <p id="rsvp-invite-line" class="rsvp-invite-line"></p>
         <h1 id="rsvp-title">نفتح الدعوة…</h1>
         <p id="rsvp-free-text" class="rsvp-free-text" hidden></p>
+        <button id="rsvp-retry" class="rsvp-retry" type="button" hidden>إعادة المحاولة</button>
         <dl id="rsvp-details" class="rsvp-details" hidden>
           <div id="rsvp-date-row">
             <dt>الموعد</dt>
@@ -42,8 +43,8 @@
           <div id="rsvp-where-row" hidden>
             <dt>الموقع</dt>
             <dd>
+              <span id="rsvp-address" class="rsvp-address" hidden></span>
               <a id="rsvp-map" class="rsvp-map" target="_blank" rel="noopener noreferrer" hidden>افتح الموقع على الخريطة</a>
-              <span id="rsvp-address" hidden></span>
             </dd>
           </div>
         </dl>
@@ -52,6 +53,7 @@
       <section id="rsvp-answer" class="rsvp-answer" hidden aria-labelledby="rsvp-companions-label">
         <p id="rsvp-notice" class="rsvp-status" role="status" hidden></p>
         <h2 id="rsvp-answer-title" class="rsvp-section-title" hidden>العرس</h2>
+        <p id="rsvp-reconfirm" class="rsvp-reconfirm" hidden></p>
         <p id="rsvp-companions-label" class="rsvp-question">كم معك؟</p>
         <div id="rsvp-companions" class="rsvp-chips" role="group" aria-labelledby="rsvp-companions-label"></div>
         <button id="rsvp-yes" class="rsvp-yes" type="button">إن شاء الله حاضر</button>
@@ -64,7 +66,7 @@
         <div id="rsvp-events-list" class="rsvp-events-list"></div>
       </section>
 
-      <p class="rsvp-footnote">ما تحتاج تنزل أي تطبيق.</p>
+      <p class="rsvp-footnote">ما يحتاج تنزيل أي تطبيق.</p>
     </main>
   </body>
 </html>

@@ -1,5 +1,6 @@
 import {
   GuestAttendanceStatus,
+  GuestInvitationCardPhotoKind,
   GuestInvitationStatus,
   GuestSide,
   GuestStatus,
@@ -57,6 +58,8 @@ export function updateGuest(
     seatsCount?: number;
     companionsCount?: number;
     notes?: string | null;
+    /** D116: the wedding row's version a recorded answer was given to. */
+    weddingAnsweredVersion?: number;
   },
 ) {
   return tx.guest.update({
@@ -88,6 +91,9 @@ export function updateGuest(
         ? { companionsCount: values.companionsCount }
         : {}),
       ...(values.notes !== undefined ? { notes: values.notes } : {}),
+      ...(values.weddingAnsweredVersion !== undefined
+        ? { weddingAnsweredVersion: values.weddingAnsweredVersion }
+        : {}),
     },
   });
 }
@@ -280,6 +286,7 @@ const guestEventInviteSelect = {
   attendanceStatus: true,
   companionsCount: true,
   respondedAt: true,
+  answeredVersion: true,
 } satisfies Prisma.GuestEventInviteSelect;
 
 export type GuestEventInviteRow = Prisma.GuestEventInviteGetPayload<{
@@ -333,7 +340,10 @@ export function recordGuestEventAnswer(
   answer: {
     attendanceStatus: GuestAttendanceStatus;
     companionsCount: number;
-    respondedAt: Date;
+    /** The guest's own answer through the link; absent when the owner records it. */
+    respondedAt?: Date;
+    /** D116: the event's version answered. */
+    answeredVersion: number;
   },
 ): Promise<GuestEventInviteRow> {
   return tx.guestEventInvite.update({
@@ -349,8 +359,7 @@ const invitationCardSelect = {
   hostLine: true,
   freeText: true,
   photoUrl: true,
-  mapUrl: true,
-  address: true,
+  photoKind: true,
   updatedAt: true,
 } satisfies Prisma.GuestInvitationCardSelect;
 
@@ -375,8 +384,7 @@ export function upsertGuestInvitationCard(
     hostLine: string | null;
     freeText: string | null;
     photoUrl: string | null;
-    mapUrl: string | null;
-    address: string | null;
+    photoKind: GuestInvitationCardPhotoKind;
   },
 ): Promise<GuestInvitationCardRow> {
   return tx.guestInvitationCard.upsert({

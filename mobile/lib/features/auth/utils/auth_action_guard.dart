@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -26,13 +27,7 @@ class AuthActionGuard {
   static const localPlanningSaveMessage =
       'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';
 
-  static bool isLocalGuestPlanId(String? planId) {
-    final value = planId?.trim() ?? '';
-    return value.isEmpty ||
-        value == 'local-guest-plan' ||
-        value.startsWith('guest-plan-') ||
-        value.startsWith('local-guest-');
-  }
+  static bool isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
   static Future<bool> hasAccount(BuildContext context) async {
     final token = await context.read<AuthStorage>().readAccessToken();

@@ -14,7 +14,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from '../../modules/guests/public/guest-text-limits';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
@@ -78,4 +80,32 @@ export class UpdateGuestDto {
   @MaxLength(64, { each: true })
   @IsOptional()
   eventIds?: string[];
+
+  /**
+   * D116: the owner records the guest's answer to events beyond the wedding
+   * (one the guest gave by phone or in person), as the wedding's own answer
+   * is recorded with `attendanceStatus`. Each event must be one the guest is
+   * invited to.
+   */
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => GuestEventReplyDto)
+  @IsOptional()
+  eventReplies?: GuestEventReplyDto[];
+}
+
+export class GuestEventReplyDto {
+  @IsString()
+  @MaxLength(64)
+  planEventId!: string;
+
+  @IsEnum(GuestAttendanceStatus)
+  attendanceStatus!: GuestAttendanceStatus;
+
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  @IsOptional()
+  companionsCount?: number;
 }

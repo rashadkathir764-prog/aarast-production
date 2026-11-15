@@ -3,12 +3,6 @@ part of 'guest_list_screen.dart';
 const _allGroups = '*';
 const _noGroup = '';
 
-/// Everyone answered or apologised: a reminder of the day can still go to
-/// who is coming («الكل» on the reminder screen).
-bool _remindsAll(List<Guest> guests) => guests.any(
-  (guest) => GuestReminderAudience.everyone.includes(guest) && guest.hasPhone,
-);
-
 /// What the page lists under its header (RA-MO-16): fixed [widgets], then
 /// the guest [rows], which the page builds only as they scroll in, so every
 /// name of a list of hundreds is reached by scrolling.
@@ -133,53 +127,6 @@ Set<String> _duplicateGuests(List<Guest> guests) {
   return duplicates;
 }
 
-/// «86 أكدوا من 124», who has not answered, the three-part bar and, inside
-/// the same card as e01 draws it, the reminder [action].
-/// Pressing the figures opens w38 «كم بيحضر؟».
-class _GuestSummaryCard extends StatelessWidget {
-  const _GuestSummaryCard({
-    required this.summary,
-    required this.onTap,
-    this.action,
-  });
-
-  final GuestSummary summary;
-  final VoidCallback onTap;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = summary.totalGuests;
-    final words = GuestWords.of(context);
-    return JourneyBox(
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AarastPressable(
-            key: const ValueKey('guests-summary'),
-            onTap: onTap,
-            semanticLabel:
-                'كم بيحضر؟ ${summary.confirmed} ${words.confirmed} من $total',
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-            child: GuestSummaryFigures(
-              words: words,
-              total: total,
-              confirmed: summary.confirmed,
-              pending: summary.pending,
-              confirmedSeats: summary.confirmedSeatsCount,
-            ),
-          ),
-          if (action != null) ...[
-            const SizedBox(height: AarastV3Space.x3),
-            action!,
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 /// A family (group) with how many of its guests confirmed.
 class _GroupRow extends StatelessWidget {
   const _GroupRow({
@@ -187,6 +134,7 @@ class _GroupRow extends StatelessWidget {
     required this.guests,
     required this.onTap,
     this.icon = LucideIcons.users,
+    this.isConfirmed,
     super.key,
   });
 
@@ -195,9 +143,14 @@ class _GroupRow extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
 
+  /// D116: whether a guest is coming to the occasion followed; the wedding's
+  /// answer when not given.
+  final bool Function(Guest guest)? isConfirmed;
+
   @override
   Widget build(BuildContext context) {
-    final yes = guests.where((guest) => guest.isConfirmed).length;
+    final confirmed = isConfirmed ?? (Guest guest) => guest.isConfirmed;
+    final yes = guests.where(confirmed).length;
     final all = guests.length;
     final words = GuestWords.of(context);
     return Semantics(

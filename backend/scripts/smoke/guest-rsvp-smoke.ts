@@ -96,10 +96,15 @@ async function main(): Promise<void> {
     const firstToken = first.url.split("/rsvp/")[1];
     assert.match(firstToken, /^[A-Za-z0-9_-]{43}$/);
     let row = await prisma.guest.findUniqueOrThrow({ where: { id: guest.id } });
+    // D116: preparing is not sending; the person says it was sent.
+    assert.equal(row.invitationStatus, "NOT_SENT");
+    assert.notEqual(row.rsvpLinkHash, null);
+    assert.notEqual(row.rsvpLinkHash, firstToken);
+    const settled = await rsvp.settleInvitationSend(owner as any, first.sendId, { sent: true });
+    assert.equal(settled.status, "SENT");
+    row = await prisma.guest.findUniqueOrThrow({ where: { id: guest.id } });
     assert.equal(row.invitationStatus, "SENT");
-    assert.notEqual(row.rsvpTokenHash, null);
-    assert.notEqual(row.rsvpTokenHash, firstToken);
-    console.log("PASS - the owner issues a personal link; only its hash is stored");
+    console.log("PASS - the owner prepares the guest's link; only its hash is kept; it counts once said sent");
 
     const view = await rsvp.getInvitation(firstToken);
     assert.equal(view.guestName, "عمي صالح");
@@ -164,7 +169,15 @@ async function main(): Promise<void> {
     assert.equal((await rsvp.invitationPreview(firstToken))?.title, "يتشرف عبدالرحمن الحمدي بدعوتكم لحضور " + plan.title);
     console.log("PASS - the plan's card is saved once and read by the guest");
 
-    const second = await rsvp.createInvitationLink(owner as any, guest.id);
+    // D116: the wedding's map link is new since the guest confirmed: the
+    // wedding row's version rose, and what the guest is due is the change.
+    const due = await rsvp.createInvitationLink(owner as any, guest.id);
+    assert.equal(due.kind, "CHANGE");
+    assert.match(due.message, /تغيّر موعد أو مكان العرس/);
+    console.log("PASS - a new map link for the wedding is told to the guest who confirmed before it");
+    const second = await rsvp.createInvitationLink(owner as any, guest.id, {
+      kind: "INVITATION",
+    });
     assert.match(second.message, /يتشرف عبدالرحمن الحمدي بدعوتكم/);
     assert.match(second.message, /الغداء/);
     assert.match(second.message, /maps\.app\.goo\.gl\/smoke/);
@@ -173,19 +186,23 @@ async function main(): Promise<void> {
     const reminder = await rsvp.createInvitationLink(owner as any, guest.id, { reminder: true });
     assert.match(reminder.message, /نذكرك ب/);
     console.log("PASS - the WhatsApp text is built by the server from the card and the events");
+    // D116: the link is the same on every send; replacing it retires it.
+    assert.equal(reminder.url, first.url);
+    assert.equal((await rsvp.getInvitation(firstToken)).attendanceStatus, "CONFIRMED");
+    const replaced = await rsvp.replaceInvitationLink(owner as any, guest.id);
     await assert.rejects(rsvp.getInvitation(firstToken), /not valid/);
     assert.equal(
-      (await rsvp.getInvitation(reminder.url.split("/rsvp/")[1])).attendanceStatus,
+      (await rsvp.getInvitation(replaced.url.split("/rsvp/")[1])).attendanceStatus,
       "CONFIRMED",
     );
-    console.log("PASS - a new link retires the old one and keeps the answer");
+    console.log("PASS - the guest keeps one link; a replaced one retires and the answer stays");
 
     await prisma.weddingPlan.update({
       where: { id: plan.id },
       data: { status: "ARCHIVED" },
     });
     await assert.rejects(
-      rsvp.getInvitation(second.url.split("/rsvp/")[1]),
+      rsvp.getInvitation(replaced.url.split("/rsvp/")[1]),
       /not valid/,
     );
     console.log("PASS - an archived plan closes its links");

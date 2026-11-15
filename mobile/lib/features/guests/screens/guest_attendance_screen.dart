@@ -129,7 +129,9 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   Widget? _nextAction(GuestWords words) {
     if (_isLocalPlan) return null;
     final say = words.profile.say;
-    final reminds = _guests.any((guest) => guest.canBeReminded);
+    // D4 of the closing round: a reminder goes to a number; the guests tab
+    // counts who it reaches the same way.
+    final reminds = _guests.any((guest) => guest.canBeRemindedOnWhatsApp);
     if (!reminds && !_guests.any((guest) => guest.awaitsInvitation)) {
       return null;
     }
@@ -146,9 +148,19 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       background: context.accent.primary,
       expand: true,
       large: true,
-      onPressed: () => context.push(
-        AppRouter.guestInvite(widget.weddingPlanId, reminder: reminds),
-      ),
+      onPressed: () async {
+        await context.push(
+          AppRouter.guestSend(
+            widget.weddingPlanId,
+            audience: reminds ? 'remind' : 'new',
+          ),
+        );
+        // D7 of the closing round: back from sending, the counts are read
+        // again instead of staying as they were.
+        // The read starts outside setState: a callback that returns a
+        // Future is refused there, and the counts stayed as they were.
+        if (mounted) _retry();
+      },
     );
   }
 
@@ -156,12 +168,24 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     final total = summary.totalGuests;
     final answered = summary.confirmed + summary.declined;
     final words = GuestWords.of(context);
+    // D2 of the closing round: a guest no invitation reached has not been
+    // asked yet; «لسا ما ردّوا» counted them, as the guests tab does not.
+    final notSent = _guests
+        .where(
+          (guest) => guest.isPending && guest.invitationStatus == 'NOT_SENT',
+        )
+        .length
+        .clamp(0, summary.pending);
+    final unanswered = summary.pending - notSent;
     final waiting = [
       summary.pending == 0
           ? 'كل ${words.yourGuests} ${words.profile.plan('ردّوا', 'ردّن')}'
-          : '${summary.pending} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
+          : unanswered > 0
+          ? '$unanswered ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}'
+          : null,
+      if (notSent > 0) '$notSent ${words.noInvitation}',
       if (summary.declined > 0) '${summary.declined} ${words.declined}',
-    ].join(' · ');
+    ].whereType<String>().join(' · ');
     return [
       JourneyBox(
         key: const ValueKey('guest-attendance-counts'),

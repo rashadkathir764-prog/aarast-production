@@ -12,19 +12,86 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/name_letter.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
+import '../models/guest_invitations.dart';
 import '../models/guest_invite_text.dart'
     show guestChatCanOpen, guestNumberWithoutCountry;
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
 import '../widgets/guest_form_sheet.dart';
+import '../widgets/invitation_queue_sheet.dart';
+
+/// D116: one occasion beyond the wedding on the guest's page: where they
+/// stand, and the answer the owner records for them.
+class _OccasionReply extends StatelessWidget {
+  const _OccasionReply({
+    required this.label,
+    required this.line,
+    required this.answer,
+    required this.onAnswer,
+    super.key,
+  });
+
+  final String label;
+  final String line;
+  final String answer;
+  final ValueChanged<String>? onAnswer;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = context.planWord;
+    return JourneyBox(
+      padding: const EdgeInsets.all(AarastV3Space.x3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+          ),
+          Text(
+            line,
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          if (onAnswer != null) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            Wrap(
+              spacing: AarastV3Space.x2,
+              runSpacing: AarastV3Space.x2,
+              children: [
+                for (final (value, words) in [
+                  ('CONFIRMED', plan('حاضر', 'حاضرة')),
+                  ('DECLINED', plan('معتذر', 'معتذرة')),
+                ])
+                  JourneyChip(
+                    key: ValueKey(
+                      '${key is ValueKey ? (key! as ValueKey).value : label}-$value',
+                    ),
+                    label: words,
+                    selected: answer == value,
+                    selectedColor: context.accent.primary,
+                    onTap: () => onAnswer!(value),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 /// e07 «تفاصيل ضيف»: who, their group and number, their answer (which can
 /// be set by hand), a call and a WhatsApp chat, and their invitation. The
@@ -79,8 +146,13 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     final provider = context.watch<GuestsProvider>();
     final guest = _guest(provider);
 
+    // D1 of the closing round: «ما عاد موجود» only once the plan's list was
+    // read and the guest is not in it; before, it flashed on every open.
+    final notReadYet =
+        !provider.hasRead(widget.weddingPlanId) &&
+        provider.loadErrorMessage == null;
     final Widget body;
-    if (guest == null && provider.isLoading) {
+    if (guest == null && (provider.isLoading || notReadYet)) {
       body = const JourneyListState(
         phase: JourneyListPhase.loading,
         section: JourneySection.guests,
@@ -256,7 +328,16 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             ],
           ),
         ],
-        const JourneySectionTitle('الرد'),
+        // With other occasions below, this answer is the wedding's and says
+        // so; alone, it is «الرد».
+        JourneySectionTitle(
+          _occasions(guest).length > 1
+              ? guestEventLabel(
+                  _occasions(guest).first.event,
+                  context.journeyProfile,
+                )
+              : 'الرد',
+        ),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -264,7 +345,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             for (final (value, label) in [
               ('CONFIRMED', context.planWord('أكّد', 'أكّدت')),
               ('DECLINED', context.planWord('اعتذر', 'اعتذرت')),
-              ('INVITED', context.planWord('ما ردّ', 'ما ردّت')),
+              ('INVITED', guestNoAnswerLabel(guest, context.journeyProfile)),
             ])
               JourneyChip(
                 key: ValueKey('guest-reply-$value'),
@@ -289,17 +370,18 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             ),
           ),
         ],
-        // D83: the guest's reply to each event beyond the wedding, as the
-        // guest gave it from their link.
-        for (final reply in guest.events) ...[
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            _eventReplyLine(context, reply),
-            key: ValueKey('guest-event-${reply.planEventId}'),
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
+        // D116: each occasion beyond the wedding with where the guest stands,
+        // and the owner records an answer given by phone or in person.
+        for (final entry in _occasions(guest).skip(1)) ...[
+          const SizedBox(height: AarastV3Space.x3),
+          _OccasionReply(
+            key: ValueKey('guest-event-${entry.key}'),
+            label: guestEventLabel(entry.event, context.journeyProfile),
+            line: _standingLine(context, entry),
+            answer: entry.invite.attendanceStatus,
+            onAnswer: !guest.editable || provider.isSubmitting
+                ? null
+                : (answer) => _setEventReply(provider, guest, entry, answer),
           ),
         ],
         if (!_isLocalPlan && !guest.id.startsWith('local-guest-')) ...[
@@ -309,27 +391,32 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             child: Row(
               children: [
                 Icon(
-                  guest.invitationStatus == 'NOT_SENT'
-                      ? LucideIcons.mail
-                      : LucideIcons.mailCheck,
+                  guest.everTold ? LucideIcons.mailCheck : LucideIcons.mail,
                   color: context.accent.primary,
                 ),
                 const SizedBox(width: AarastV3Space.x2),
                 Expanded(
-                  child: Text(
-                    guest.invitationStatus == 'NOT_SENT'
-                        ? context.planWord(
-                            'ما انرسلت له دعوة',
-                            'ما انرسلت لها دعوة',
-                          )
-                        : context.planWord(
-                            'انرسلت له الدعوة',
-                            'انرسلت لها الدعوة',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _invitationLine(context, guest),
+                        key: const ValueKey('guest-invitation-line'),
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      if (guest.linkOpenedAt != null)
+                        Text(
+                          context.planWord('فتح رابطه', 'فتحت رابطها'),
+                          key: const ValueKey('guest-link-opened'),
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
                           ),
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                    ),
+                        ),
+                    ],
                   ),
                 ),
                 // RA-MO-230: a guest added with no network has no invitation
@@ -339,16 +426,26 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                     !OfflineWrites.isLocalId(guest.id))
                   JourneyButton(
                     key: const ValueKey('guest-send-invitation'),
-                    label: guest.invitationStatus == 'NOT_SENT'
-                        ? context.say('أرسلها', 'أرسليها')
-                        : 'رابط جديد',
+                    label: context.say('أرسل', 'أرسلي'),
                     background: context.accent.primary,
-                    loading: _sending,
-                    onPressed: _sending ? null : () => _sendInvitation(guest),
+                    onPressed: () => _sendInvitation(guest),
                   ),
               ],
             ),
           ),
+          if (guest.editable &&
+              guest.everTold &&
+              !OfflineWrites.isLocalId(guest.id))
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: JourneyTextAction(
+                key: const ValueKey('guest-replace-link'),
+                label: 'رابط جديد بدل القديم',
+                icon: LucideIcons.link2Off,
+                color: AarastV3Color.textMuted,
+                onPressed: _sending ? null : () => _replaceLink(guest),
+              ),
+            ),
           if (guest.editable && OfflineWrites.isLocalId(guest.id))
             Padding(
               key: const ValueKey('guest-invite-waits'),
@@ -431,65 +528,157 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     }
   }
 
-  /// The guest's own link, from this phone's WhatsApp (V1 checklist 4.7).
-  /// A new link replaces the old one, so the old one stops working.
+  /// D116: the plan's occasions this guest is invited to, the wedding first.
+  /// [listen] is false outside `build` (a tap): a watch from a tap is
+  /// refused, and «أرسل» never opened the round.
+  List<GuestOccasion> _occasions(Guest guest, {bool listen = true}) =>
+      guestOccasions(
+        guest,
+        planOccasions(
+          Provider.of<PlanEventsProvider?>(
+                context,
+                listen: listen,
+              )?.viewOf(widget.weddingPlanId)?.items ??
+              const [],
+          widget.weddingPlanId,
+        ),
+        widget.weddingPlanId,
+      );
+
+  /// «ما وصلته الدعوة بعد», «وصلته الدعوة، آخرها 3 ديسمبر».
+  String _invitationLine(BuildContext context, Guest guest) {
+    if (!guest.everTold) {
+      return context.planWord('ما وصلته دعوة بعد', 'ما وصلتها دعوة بعد');
+    }
+    final last = guest.told
+        .map((entry) => entry.at)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    return '${context.planWord('وصلته الدعوة', 'وصلتها الدعوة')}، '
+        'آخرها ${formatArabicDayMonth(last)}';
+  }
+
+  /// Where the guest stands with one occasion, in a few words.
+  String _standingLine(BuildContext context, GuestOccasion entry) {
+    final plan = context.planWord;
+    final with_ = entry.invite.companionsCount > 0
+        ? ' · ${plan('معه', 'معها')} ${entry.invite.companionsCount}'
+        : '';
+    return switch (entry.standing) {
+      OccasionStanding.confirmed => '${plan('أكّد', 'أكّدت')}$with_',
+      OccasionStanding.confirmedOld =>
+        '${plan('أكّد', 'أكّدت')} قبل ما يتغيّر الموعد أو المكان$with_',
+      OccasionStanding.declined => plan('اعتذر', 'اعتذرت'),
+      OccasionStanding.waiting =>
+        '${plan('وصلته', 'وصلتها')} وما ${plan('ردّ', 'ردّت')}',
+      OccasionStanding.toldOld =>
+        '${plan('وصله', 'وصلها')} الموعد أو المكان القديم',
+      OccasionStanding.notTold => plan('ما وصلته بعد', 'ما وصلتها بعد'),
+    };
+  }
+
+  Future<void> _setEventReply(
+    GuestsProvider provider,
+    Guest guest,
+    GuestOccasion entry,
+    String answer,
+  ) async {
+    final ok = await provider.updateGuest(
+      guest: guest,
+      eventReplies: [
+        (
+          planEventId: entry.key,
+          attendanceStatus: answer,
+          companionsCount: answer == 'CONFIRMED'
+              ? entry.invite.companionsCount
+              : 0,
+        ),
+      ],
+    );
+    if (!mounted) return;
+    if (ok) {
+      _pulse(provider);
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نحفظ الرد',
+      );
+    }
+  }
+
+  /// D116: one send to this guest from this phone's WhatsApp: what the
+  /// guest is due across their occasions (an invitation, one more occasion,
+  /// a change, or a reminder), in the same two steps as a round.
   Future<void> _sendInvitation(Guest guest) async {
-    final api = context.read<GuestsApi>();
-    final provider = context.read<GuestsProvider>();
-    // Before the link: a new link ends the old one and marks the guest
-    // invited, and this number cannot be written to.
     if (!guestChatCanOpen(guest.phone)) {
       AarastToast.showError(context, guestNumberWithoutCountry(guest.name));
       return;
     }
+    final api = context.read<GuestsApi>();
+    final provider = context.read<GuestsProvider>();
+    final entries = _occasions(guest, listen: false);
+    final kind =
+        dueSend([
+          for (final entry in entries)
+            (planEventId: entry.key, standing: entry.standing),
+        ], everTold: guest.everTold) ??
+        InvitationSendKind.invitation;
+    await showJourneySheet<int>(
+      context: context,
+      isDismissible: false,
+      builder: (_) => InvitationQueueSheet(
+        turns: [(guest: guest, kind: kind, planEventId: null)],
+        api: api,
+        title: context.planWord('دعوة الضيف', 'دعوة الضيفة'),
+      ),
+    );
+    if (mounted) await provider.loadGuests(widget.weddingPlanId);
+  }
+
+  /// D116: a new link, for one sent to a wrong number: the old one stops.
+  Future<void> _replaceLink(Guest guest) async {
+    final sure = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'رابط جديد بدل القديم؟',
+        subtitle: context.planWord(
+          'الرابط اللي وصله يوقف، ويوصله الجديد مع الإرسال الجاي. استخدمه لو انرسل الرابط لرقم غلط.',
+          'الرابط اللي وصلها يوقف، ويوصلها الجديد مع الإرسال الجاي. استخدميه لو انرسل الرابط لرقم غلط.',
+        ),
+        children: [
+          JourneyButton(
+            key: const ValueKey('guest-replace-link-yes'),
+            label: 'أيوه، رابط جديد',
+            background: AarastV3Color.danger,
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton.outline(
+            label: 'لا، خله',
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) return;
     setState(() => _sending = true);
     try {
-      final link = await api.createInvitationLink(guest.id);
-      final chat = link.whatsAppUri;
-      if (chat == null) {
-        if (mounted) {
-          AarastToast.showError(context, guestNumberWithoutCountry(guest.name));
-        }
-        return;
+      await context.read<GuestsApi>().replaceInvitationLink(guest.id);
+      if (mounted) {
+        AarastToast.showSuccess(
+          context,
+          'تجهّز رابط جديد، والقديم ما عاد يفتح',
+        );
       }
-      final opened = await launchUrl(
-        chat,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!mounted) return;
-      if (!opened) {
-        AarastToast.showError(context, 'ما قدرنا نفتح واتساب في هذا الجوال');
-      }
-      await provider.loadGuests(widget.weddingPlanId);
     } on ApiException catch (error) {
       if (mounted) AarastToast.showError(context, error.message);
-    } catch (_) {
-      if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نجهّز رابط الدعوة');
-      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
   /// «الغداء: أكّد» or «الغداء: ما ردّ»; the event by its plan name.
-  String _eventReplyLine(BuildContext context, GuestEventReply reply) {
-    final events = guestFormEventsOf(context, widget.weddingPlanId);
-    final label = events
-        .where((event) => event.id == reply.planEventId)
-        .map((event) => event.label)
-        .firstOrNull;
-    final word = reply.isConfirmed
-        ? context.planWord('أكّد', 'أكّدت')
-        : reply.isDeclined
-        ? context.planWord('اعتذر', 'اعتذرت')
-        : context.planWord('ما ردّ', 'ما ردّت');
-    final with_ = reply.isConfirmed && reply.companionsCount > 0
-        ? ' · ${context.planWord('معه', 'معها')} ${reply.companionsCount}'
-        : '';
-    return '${label ?? 'مناسبة'}: $word$with_';
-  }
-
   Future<void> _edit(GuestsProvider provider, Guest guest) async {
     final scope = 'guest:${widget.weddingPlanId}:${guest.id}';
     final events = _isLocalPlan
@@ -503,6 +692,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         draftScope: scope,
         existingGuests: provider.guests,
         events: events,
+        onAddEvent: _isLocalPlan
+            ? null
+            : () => addOccasionFromForm(context, widget.weddingPlanId),
         // D80: the reader's own groups, and the one the guest is in now
         // even when the owner put it there.
         groups: [

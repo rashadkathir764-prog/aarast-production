@@ -20,6 +20,12 @@
   box-sizing: border-box;
 }
 
+/* The script hides parts with `hidden`; a class's own `display` (the photo,
+   the map link, the detail rows) would otherwise keep them on the page. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -51,6 +57,32 @@ body {
   margin: -28px -22px 18px;
   object-fit: cover;
   border-radius: 28px 28px 0 0;
+}
+
+/* D116: a card designed elsewhere, names and date written on it: shown
+   whole, at its own proportions, the column's width at most. */
+.rsvp-photo.rsvp-photo-card {
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+
+/* After a load that did not reach the invitation. */
+.rsvp-retry {
+  margin-top: 16px;
+  padding: 10px 20px;
+  color: var(--ink);
+  background: var(--saffron);
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rsvp-retry:focus-visible {
+  outline-color: var(--paper);
 }
 
 .rsvp-greeting {
@@ -124,6 +156,15 @@ body {
   outline-offset: 2px;
 }
 
+/* D116: the wedding's address, with its map link under it. */
+.rsvp-address {
+  display: block;
+}
+
+.rsvp-address:not([hidden]) + .rsvp-map {
+  margin-top: 8px;
+}
+
 /* D83: the events beyond the wedding, one reply each. */
 .rsvp-section-title {
   margin: 0;
@@ -160,6 +201,51 @@ body {
   margin: 0;
   color: var(--muted);
   font-size: 15px;
+}
+
+/* D116: each event's own place, address and map. */
+.rsvp-event-place {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rsvp-event-address {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.rsvp-event .rsvp-map {
+  justify-self: start;
+}
+
+.rsvp-event .rsvp-map:focus-visible {
+  outline-color: var(--primary);
+}
+
+/* D116: the occasion a separate message was about (`?e=`). */
+.rsvp-event.rsvp-focus,
+.rsvp-answer.rsvp-focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.rsvp-card,
+.rsvp-event {
+  scroll-margin-top: 16px;
+}
+
+/* D116: an answer given before the day, time or place changed. */
+.rsvp-reconfirm {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: rgb(242 169 59 / 16%);
+  border-inline-start: 4px solid var(--saffron);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .rsvp-event-actions {

@@ -75,9 +75,17 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
       },
     },
     // RA-BE-72: the moved wedding takes its dated events with it, in the
-    // same transaction.
-    $executeRaw: async () => {
-      operations.push("events:shift");
+    // same transaction. D116: and its own row's version rises (made first
+    // if a plan from before had none), so guests told the old day hear it.
+    $executeRaw: async (strings: readonly string[]) => {
+      const sql = strings.join("?");
+      operations.push(
+        sql.includes("INSERT INTO")
+          ? "wedding:ensure"
+          : sql.includes("'WEDDING'")
+            ? "wedding:version"
+            : "events:shift",
+      );
       return 0;
     },
   };
@@ -123,6 +131,8 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
     "transaction:start",
     "plan:locked",
     "plan:update",
+    "wedding:ensure",
+    "wedding:version",
     "events:shift",
     "history:record",
     "transaction:end",

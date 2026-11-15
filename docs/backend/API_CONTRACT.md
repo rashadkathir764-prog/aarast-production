@@ -3861,6 +3861,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/guests/:id` | `guests.findOne` | 🔒 |
 | PATCH | `/api/v1/guests/:id` | `guests.update` | 🔒 |
 | POST | `/api/v1/guests/:id/invitation-link` | `guest-rsvp.createInvitationLink` | 🔒 |
+| POST | `/api/v1/guests/:id/invitation-link/replace` | `guest-rsvp.replaceInvitationLink` | 🔒 |
+| POST | `/api/v1/guests/invitation-sends/:sendId/settle` | `guest-rsvp.settleInvitationSend` | 🔒 |
 | GET | `/api/v1/invites/:token` | `sharing.getInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/accept` | `sharing.acceptInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/decline` | `sharing.declineInvite` | 🔒 |
@@ -3953,6 +3955,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |
 | POST | `/api/v1/public/rsvp/:token` | `guest-rsvp.respond` |  |
 | GET | `/api/v1/public/rsvp/:token/card-photo` | `guest-rsvp.cardPhoto` |  |
+| POST | `/api/v1/public/rsvp/:token/opened` | `guest-rsvp.opened` |  |
 | GET | `/api/v1/public/rsvp/:token/preview` | `guest-rsvp.preview` |  |
 | DELETE | `/api/v1/push/installations/current` | `push.unregister` | 🔒 |
 | PUT | `/api/v1/push/installations/current` | `push.register` | 🔒 |

@@ -29,7 +29,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'catalog', file: 'catalog.prisma', models: ['City', 'Governorate', 'District', 'AdministrativeLocality', 'ReferenceCatalog', 'ReferenceCatalogItem', 'ReferenceCatalogItemRevision', 'ProviderCategory'], enums: ['AdministrativeLocalityType'] },
   { owner: 'collaboration', file: 'collaboration.prisma', models: ['SharedMember', 'ContributorHistoryScope', 'ContributorTenure', 'ContributionEvent', 'PlanInvite'], enums: ['SharedMemberRole', 'ContributionScopeStatus', 'ContributorTenureEndReason', 'ContributionSection', 'ContributionEntityType', 'ContributionAction', 'ContributionProvenance', 'ContributionPermission', 'PlanInviteDeliveryStatus'] },
   { owner: 'finance', file: 'finance.prisma', models: ['BudgetCategory', 'WeddingCost', 'CostPayment', 'CostReceipt', 'PaymentSchedule', 'FundingSource', 'LoanRepayment'], enums: ['WeddingCostStatus', 'CostPaymentType', 'PaymentScheduleStatus', 'FundingSourceKind', 'FundingSourceStatus', 'LoanRepaymentStatus', 'CostPayer', 'BudgetCategoryKind', 'BudgetItemSuggestion', 'CostEntryKind', 'EstimateCover'] },
-  { owner: 'guests', file: 'guests.prisma', models: ['Guest', 'GuestGroup', 'GuestInvitationCard', 'GuestEventInvite'], enums: ['GuestSide', 'GuestStatus', 'GuestInvitationStatus', 'GuestAttendanceStatus'] },
+  { owner: 'guests', file: 'guests.prisma', models: ['Guest', 'GuestGroup', 'GuestInvitationCard', 'GuestEventInvite', 'GuestInvitationSend'], enums: ['GuestSide', 'GuestStatus', 'GuestInvitationStatus', 'GuestAttendanceStatus', 'GuestInvitationCardPhotoKind', 'GuestInvitationSendKind', 'GuestInvitationSendStatus', 'GuestInvitationSendChannel'] },
   { owner: 'identity', file: 'identity.prisma', models: ['AccountDeletionReceipt', 'User', 'DataExport', 'AdminLoginChallenge', 'AdminPasswordResetChallenge', 'RefreshToken', 'LoginThrottle', 'OtpDispatchQuota', 'AssistantUsageDay', 'AssistantAnswerReport', 'OtpCode'], enums: ['UserRole', 'AppRole', 'UserStatus', 'OtpPurpose', 'AuthSessionScope'] },
   { owner: 'marketplace', file: 'marketplace.prisma', models: ['Provider', 'ProviderService', 'ProviderServiceImage', 'ProviderPackage', 'FavoriteProvider', 'ProviderReview', 'QuoteRequest', 'QuoteOffer', 'PlanProviderLink', 'Booking', 'BookingChange', 'ProviderBlockedDate', 'ProviderProfileViewDay', 'ProviderReviewEvent', 'ProviderReviewNote', 'ProviderClaimRequest', 'QuoteOfferVersion', 'ProviderFeaturedPeriod', 'PortfolioItem', 'ReviewReport'], enums: ['ProviderStatus', 'ReviewStatus', 'QuoteRequestStatus', 'QuoteOfferStatus', 'PlanProviderLinkStatus', 'BookingStatus', 'BookingParty', 'ProviderReviewEventKind', 'ProviderReviewField', 'ProviderClaimStatus', 'BookingChangeStatus', 'PortfolioItemStatus'] },
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
@@ -96,14 +96,15 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   // D83: + GuestInvitationCard and GuestEventInvite (the guests' card and
   // their events beyond the wedding).
   // RA-ST-05: + ReviewReport. RA-ST-04: + AssistantAnswerReport.
-  assert.equal(manifest.modelOrder.length, 72);
-  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 72);
+  // D116: + GuestInvitationSend and four guests enums.
+  assert.equal(manifest.modelOrder.length, 73);
+  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 73);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
-  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 58);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 72);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 58);
+  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 62);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 73);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 62);
 });
 
 test('R2 Prisma manifest equals the current registry and ordered live single-schema declarations', () => {
@@ -124,8 +125,8 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
-  assert.equal(manifest.modelOrder.length, 72);
-  assert.equal(orderedDeclarations('enum').length, 58);
+  assert.equal(manifest.modelOrder.length, 73);
+  assert.equal(orderedDeclarations('enum').length, 62);
 });
 
 test('manifest registry comparison rejects a User and IdempotencyKey owner swap', () => {

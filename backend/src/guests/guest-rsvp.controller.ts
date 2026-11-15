@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { GuestInvitationSendChannel, GuestInvitationSendKind } from "@prisma/client";
 import type { Response } from "express";
 import {
   IsBoolean,
@@ -43,10 +44,36 @@ export class RsvpAnswerDto {
 }
 
 export class InvitationLinkDto {
-  /** e08: the reminder text with the new link instead of the invitation. */
+  /** e08: the reminder text instead of the invitation (before D116: `kind`). */
   @IsOptional()
   @IsBoolean()
   reminder?: boolean;
+
+  /** D116: what the text is; absent, what the guest is due. */
+  @IsOptional()
+  @IsIn(Object.values(GuestInvitationSendKind))
+  kind?: GuestInvitationSendKind;
+
+  /** D116: an invitation of its own for this occasion; absent, one with all of them. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  planEventId?: string;
+
+  /** D116: how the person will send it from their phone. */
+  @IsOptional()
+  @IsIn(Object.values(GuestInvitationSendChannel))
+  channel?: GuestInvitationSendChannel;
+}
+
+/** D116: what the person says happened to a prepared send. */
+export class SettleInvitationSendDto {
+  @IsBoolean()
+  sent!: boolean;
+
+  @IsOptional()
+  @IsIn(Object.values(GuestInvitationSendChannel))
+  channel?: GuestInvitationSendChannel;
 }
 
 /** The plan side: a personal invitation link for one guest (V1 checklist 4.7). */
@@ -55,6 +82,7 @@ export class InvitationLinkDto {
 export class GuestInvitationLinksController {
   constructor(private readonly rsvp: GuestRsvpService) {}
 
+  /** Prepares one send: the text and the guest's stable link (D116). */
   @Post(":id/invitation-link")
   createInvitationLink(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -63,6 +91,31 @@ export class GuestInvitationLinksController {
   ) {
     return this.rsvp.createInvitationLink(currentUser, id, {
       reminder: dto?.reminder === true,
+      kind: dto?.kind,
+      planEventId: dto?.planEventId?.trim() || undefined,
+      channel: dto?.channel,
+    });
+  }
+
+  /** D116: a new link for the guest; the old one stops opening. */
+  @Post(":id/invitation-link/replace")
+  replaceInvitationLink(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+  ) {
+    return this.rsvp.replaceInvitationLink(currentUser, id);
+  }
+
+  /** D116: sent, or not: only the person can say. */
+  @Post("invitation-sends/:sendId/settle")
+  settleInvitationSend(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("sendId") sendId: string,
+    @Body() dto: SettleInvitationSendDto,
+  ) {
+    return this.rsvp.settleInvitationSend(currentUser, sendId, {
+      sent: dto.sent,
+      channel: dto.channel,
     });
   }
 }
@@ -79,6 +132,16 @@ export class PublicRsvpController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   getInvitation(@Param("token") token: string) {
     return this.rsvp.getInvitation(token);
+  }
+
+  /**
+   * D116: the page drew the invitation in a browser. A link preview's
+   * crawler reads the head and never makes this request.
+   */
+  @Post(":token/opened")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  opened(@Param("token") token: string) {
+    return this.rsvp.markInvitationOpened(token);
   }
 
   @Post(":token")

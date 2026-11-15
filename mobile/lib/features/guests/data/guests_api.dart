@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
@@ -203,6 +204,8 @@ class GuestsApi {
     int? companionsCount,
     String? notes,
     List<String>? eventIds,
+    List<({String planEventId, String attendanceStatus, int companionsCount})>?
+    eventReplies,
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name.trim();
@@ -220,18 +223,40 @@ class GuestsApi {
     if (notes != null) payload['notes'] = notes.trim();
     // D83: a list replaces the guest's events; null leaves them.
     if (eventIds != null) payload['eventIds'] = eventIds;
+    // D116: the owner records the guest's answer to events beyond the
+    // wedding, as the wedding's own is recorded with its status.
+    final replies = [
+      for (final reply in eventReplies ?? const [])
+        {
+          'planEventId': reply.planEventId,
+          'attendanceStatus': reply.attendanceStatus,
+          'companionsCount': reply.attendanceStatus == 'CONFIRMED'
+              ? reply.companionsCount
+              : 0,
+        },
+    ];
+    if (replies.isNotEmpty) payload['eventReplies'] = replies;
     if (id.startsWith('local-guest-')) {
       return _updateLocalGuest(id: id, payload: payload);
     }
     final cached =
         await _reads.cachedItem(OfflineTables.cachedGuests, id) ?? {'id': id};
-    final localJson = {
-      ...cached,
-      ...payload,
-      if (eventIds != null) 'events': _eventRows(eventIds),
-      'id': id,
-      'updatedAt': DateTime.now().toIso8601String(),
-    }..remove('eventIds');
+    final events = eventIds != null
+        ? _eventRows(eventIds, cached['events'])
+        : cached['events'];
+    final localJson =
+        {
+            ...cached,
+            ...payload,
+            if (eventIds != null || replies.isNotEmpty)
+              'events': replies.isEmpty
+                  ? events
+                  : _eventRowsWithReplies(events, replies),
+            'id': id,
+            'updatedAt': DateTime.now().toIso8601String(),
+          }
+          ..remove('eventIds')
+          ..remove('eventReplies');
     final planId = cached['weddingPlanId']?.toString();
     final json = await _writes.queued(
       entityType: 'guest',
@@ -275,24 +300,56 @@ class GuestsApi {
     );
   }
 
-  /// A new personal RSVP link for the guest and the WhatsApp text that
-  /// carries it (V1 checklist 4.7). The server issues both (D83), so it
-  /// cannot wait on the phone.
+  /// D116: prepares one send to one guest: the server's WhatsApp text and
+  /// the guest's own link, which stays the same on every send. [kind] null:
+  /// what the guest is due; [planEventId]: an invitation of its own for that
+  /// occasion. Nothing counts as sent until [settleInvitationSend].
   Future<GuestInvitationLink> createInvitationLink(
     String guestId, {
     bool reminder = false,
+    String? kind,
+    String? planEventId,
+    String? channel,
   }) async {
     final json = await _writes.serverOnly(
-      reason: 'رابط الدعوة يحتاج نت عشان يتجهّز.',
+      reason: 'الدعوة تحتاج نت عشان تتجهّز.',
       method: 'POST',
       path: '/api/v1/guests/$guestId/invitation-link',
-      body: {if (reminder) 'reminder': true},
+      body: {
+        if (reminder) 'reminder': true,
+        'kind': ?kind,
+        'planEventId': ?planEventId,
+        'channel': ?channel,
+      },
     );
-    return GuestInvitationLink(
-      url: json['url']?.toString() ?? '',
-      message: json['message']?.toString() ?? '',
-      phone: json['phone']?.toString(),
+    return GuestInvitationLink.fromJson(json);
+  }
+
+  /// D116: what the person says happened to a prepared send. Only the
+  /// person can say it was sent; opening WhatsApp is not sending.
+  Future<void> settleInvitationSend(
+    String sendId, {
+    required bool sent,
+    String? channel,
+  }) async {
+    await _writes.serverOnly(
+      reason: 'تسجيل الإرسال يحتاج نت.',
+      method: 'POST',
+      path: '/api/v1/guests/invitation-sends/$sendId/settle',
+      body: {'sent': sent, 'channel': ?channel},
+      clientRequestId: 'settle-$sendId-$sent',
     );
+  }
+
+  /// D116: a new link for the guest (one sent to a wrong number); the old
+  /// one stops opening.
+  Future<String> replaceInvitationLink(String guestId) async {
+    final json = await _writes.serverOnly(
+      reason: 'الرابط الجديد يحتاج نت.',
+      method: 'POST',
+      path: '/api/v1/guests/$guestId/invitation-link/replace',
+    );
+    return json['url']?.toString() ?? '';
   }
 
   Future<GuestGroup> createGroup({
@@ -502,10 +559,49 @@ class GuestsApi {
     };
   }
 
-  static List<Map<String, dynamic>> _eventRows(List<String> eventIds) => [
-    for (final id in eventIds)
-      {'planEventId': id, 'attendanceStatus': 'PENDING', 'companionsCount': 0},
-  ];
+  /// The guest's event rows on the phone after [eventIds]: an event kept
+  /// keeps its reply (it was reset to «ما رد» on every edit of the list until
+  /// the server answered), a new one waits for its reply.
+  static List<Map<String, dynamic>> _eventRows(
+    List<String> eventIds, [
+    Object? current,
+  ]) {
+    final kept = <String, Map<String, dynamic>>{
+      if (current is List)
+        for (final row in current)
+          if (row is Map && row['planEventId'] != null)
+            row['planEventId'].toString(): Map<String, dynamic>.from(row),
+    };
+    return [
+      for (final id in eventIds)
+        kept[id] ??
+            {
+              'planEventId': id,
+              'attendanceStatus': 'PENDING',
+              'companionsCount': 0,
+            },
+    ];
+  }
+
+  /// D116: the phone's copy of the guest's event rows after the owner
+  /// recorded [replies] (the version answered is the event's, unknown here).
+  static List<Map<String, dynamic>> _eventRowsWithReplies(
+    Object? current,
+    List<Map<String, dynamic>> replies,
+  ) {
+    final byEvent = {
+      for (final reply in replies) reply['planEventId'].toString(): reply,
+    };
+    return [
+      if (current is List)
+        for (final row in current)
+          if (row is Map)
+            {
+              ...Map<String, dynamic>.from(row),
+              ...?byEvent[row['planEventId']?.toString()],
+            },
+    ];
+  }
 
   String _cardKey(String weddingPlanId) => 'invitation-card:$weddingPlanId';
 
@@ -581,13 +677,8 @@ class GuestsApi {
     await _offline?.refreshStatus();
   }
 
-  bool _isLocalGuestPlanId(String? planId) {
-    final value = planId?.trim() ?? '';
-    return value.isEmpty ||
-        value == 'local-guest-plan' ||
-        value.startsWith('guest-plan-') ||
-        value.startsWith('local-guest-');
-  }
+  // D25 of the closing round: the offline layer's one rule.
+  bool _isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 }
 
 /// The card as the phone keeps it while [changes] wait for the server. 6a:

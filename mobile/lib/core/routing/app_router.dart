@@ -51,7 +51,8 @@ import '../../features/guests/guests_api.dart'
         GuestImportScreen,
         GuestImportSource,
         GuestInviteScreen,
-        GuestListScreen;
+        GuestListScreen,
+        GuestSendScreen;
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
@@ -433,6 +434,20 @@ class AppRouter {
       path: '/wedding-plans/$weddingPlanId/guests/invite',
       queryParameters: reminder ? {'mode': 'remind'} : null,
     ).toString();
+  }
+
+  /// D116: sending the invitations, the changes and the reminders, for one
+  /// occasion's guests ([event]: an occasion beyond the wedding) and to one
+  /// [audience] first (`new`, `change`, `remind`).
+  static String guestSend(
+    String weddingPlanId, {
+    String? event,
+    String? audience,
+  }) {
+    return Uri(
+      path: '/wedding-plans/$weddingPlanId/guests/send',
+      queryParameters: {'event': ?event, 'audience': ?audience},
+    ).toString().replaceFirst(RegExp(r'\?$'), '');
   }
 
   /// e03 from the phone's contacts, or w28 a pasted list.

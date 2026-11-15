@@ -15,6 +15,8 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import {
+  PLAN_EVENT_ADDRESS_MAX,
+  PLAN_EVENT_MAP_URL_MAX,
   PLAN_EVENT_NOTE_MAX,
   PLAN_EVENT_PERSON_MAX,
   PLAN_EVENT_PLACE_MAX,
@@ -52,6 +54,18 @@ export class PlanEventFieldsDto {
   @IsString()
   @MaxCharacters(PLAN_EVENT_PLACE_MAX)
   placeLabel?: string | null;
+
+  /** D116: the occasion's own address, for its guests. */
+  @IsOptional()
+  @IsString()
+  @MaxCharacters(PLAN_EVENT_ADDRESS_MAX)
+  address?: string | null;
+
+  /** D116: the occasion's own map link (HTTPS), for its guests. */
+  @IsOptional()
+  @IsString()
+  @MaxCharacters(PLAN_EVENT_MAP_URL_MAX)
+  mapUrl?: string | null;
 
   @IsOptional()
   @IsString()

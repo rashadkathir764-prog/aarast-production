@@ -93,8 +93,17 @@ model PlanEvent {
   timeSlot        PlanEventTimeSlot?
   exactTime       String?
   placeLabel      String?
+  // D116: each occasion carries its own place for its guests: a map link
+  // and an address (the wedding's moved here from the invitation card).
+  mapUrl          String?
+  address         String?
   responsibleName String?
   note            String?
+  // D116: raised when the day, the time, the place or the map link changes,
+  // so an answer given to an older version asks to be confirmed again and
+  // the guests told of the older one can be told of the change. The
+  // wedding's day is the plan's: moving it raises the wedding row's.
+  version         Int                @default(1)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)

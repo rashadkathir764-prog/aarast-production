@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D116: only the folder the invitation card is written to before it is
+     shared to WhatsApp; nothing else of the app is reachable. -->
+<paths>
+    <cache-path name="invitation" path="invitation/" />
+</paths>

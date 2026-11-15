@@ -33,8 +33,8 @@ void main() {
 
     await tester.tap(find.text('ذكّر اللي ما ردّوا'));
     await tester.pumpAndSettle();
-    // e08: the existing reminder flow.
-    expect(find.text('reminder plan-1 remind'), findsOneWidget);
+    // Changed on purpose (D116): the invite screen's ?mode=remind → the send screen's audience=remind.
+    expect(find.text('send plan-1 remind'), findsOneWidget);
   });
 
   testWidgets('past half answered the note goes, the counts stay real', (
@@ -65,7 +65,64 @@ void main() {
     expect(find.text('ذكّر اللي ما ردّوا'), findsNothing);
     await tester.tap(find.text('أرسل الدعوة على واتساب'));
     await tester.pumpAndSettle();
-    expect(find.text('reminder plan-1 null'), findsOneWidget);
+    // Changed on purpose (D116): the invite screen → the send screen for those never told.
+    expect(find.text('send plan-1 new'), findsOneWidget);
+  });
+
+  // D116: «لسا ما ردّوا» is who was told and is silent; a guest no
+  // invitation reached is said apart, and a reminder goes only to a number.
+  testWidgets('never-invited guests are said apart from the silent ones', (
+    tester,
+  ) async {
+    final api = _FakeGuestsApi(_summary(confirmed: 1, pending: 3))
+      ..guests = [
+        _guest('g1', 'CONFIRMED', invitation: 'SENT'),
+        _guest('g2', 'INVITED', invitation: 'SENT'),
+        _guest('g3', 'INVITED'),
+        _guest('g4', 'INVITED'),
+      ];
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    expect(find.text('1 لسا ما ردّوا · 2 بلا دعوة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // D116 (D7 of the closing round): back from sending, the counts are read
+  // again. Failed before the fix: the reload passed setState a closure that
+  // returned the Future, which Flutter refuses in debug.
+  testWidgets('back from the send screen the counts are read again', (
+    tester,
+  ) async {
+    final api = _FakeGuestsApi(_summary(confirmed: 0, pending: 1))
+      ..guests = [_guest('g1', 'INVITED', invitation: 'SENT')];
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    await tester.tap(find.text('ذكّر اللي ما ردّوا'));
+    await tester.pumpAndSettle();
+    expect(find.text('send plan-1 remind'), findsOneWidget);
+    expect(api.summaryCalls, ['plan-1']);
+    await tester.tap(find.text('back'));
+    await tester.pumpAndSettle();
+    expect(api.summaryCalls, ['plan-1', 'plan-1']);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a silent guest without a number gets no reminder', (
+    tester,
+  ) async {
+    final api = _FakeGuestsApi(_summary(confirmed: 0, pending: 2))
+      ..guests = [
+        _guest('g1', 'INVITED', invitation: 'SENT', phone: null),
+        _guest('g2', 'INVITED'),
+      ];
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    expect(find.text('1 لسا ما ردّوا · 1 بلا دعوة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guest-attendance-remind')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('guest-attendance-invite')),
+      findsOneWidget,
+    );
   });
 
   // D83: each event beyond the wedding counts its own replies.
@@ -174,20 +231,24 @@ GuestSummary _summary({
   });
 }
 
-Guest _guest(String id, String status, {String invitation = 'NOT_SENT'}) =>
-    Guest(
-      id: id,
-      weddingPlanId: 'plan-1',
-      name: 'ضيف $id',
-      phone: '+967777123456',
-      side: 'GROOM',
-      status: status,
-      attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
-      invitationStatus: invitation,
-      seatsCount: 1,
-      createdAt: DateTime(2026, 10, 1),
-      updatedAt: DateTime(2026, 10, 1),
-    );
+Guest _guest(
+  String id,
+  String status, {
+  String invitation = 'NOT_SENT',
+  String? phone = '+967777123456',
+}) => Guest(
+  id: id,
+  weddingPlanId: 'plan-1',
+  name: 'ضيف $id',
+  phone: phone,
+  side: 'GROOM',
+  status: status,
+  attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
+  invitationStatus: invitation,
+  seatsCount: 1,
+  createdAt: DateTime(2026, 10, 1),
+  updatedAt: DateTime(2026, 10, 1),
+);
 
 Future<void> _pump(
   WidgetTester tester,
@@ -211,10 +272,18 @@ Future<void> _pump(
             GuestAttendanceScreen(weddingPlanId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/guests/invite',
-        builder: (_, state) => Text(
-          'reminder ${state.pathParameters['id']} '
-          '${state.uri.queryParameters['mode']}',
+        path: '/wedding-plans/:id/guests/send',
+        builder: (context, state) => TextButton(
+          onPressed: () => context.pop(),
+          child: Column(
+            children: [
+              Text(
+                'send ${state.pathParameters['id']} '
+                '${state.uri.queryParameters['audience']}',
+              ),
+              const Text('back'),
+            ],
+          ),
         ),
       ),
     ],

@@ -268,11 +268,14 @@ void main() {
 
       await _openTab(tester, 'الضيوف');
       expect(find.byType(ParticipantGuestsScreen), findsOneWidget);
-      expect(find.text('3 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
+      // Changed on purpose (D116, D3 of the closing round): the reader does
+      // not see who an invitation reached, so no reply is «ما أكّد بعد»,
+      // never «ما ردّ» of a guest nobody asked yet.
+      expect(find.text('3 مدعو · 1 أكدوا · 1 ما أكدوا بعد'), findsOneWidget);
       expect(find.text('عبدالله الحمدي'), findsOneWidget);
       expect(find.text('أكّد'), findsOneWidget);
       expect(find.text('اعتذر'), findsOneWidget);
-      expect(find.text('ما ردّ'), findsOneWidget);
+      expect(find.text('ما أكّد بعد'), findsOneWidget);
       expect(
         find.text(
           'تشوف الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند العريس.',

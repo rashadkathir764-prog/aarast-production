@@ -1755,7 +1755,11 @@ const r19ProviderPortalApi = Object.freeze({
 // money card reads the budget's figures and the mahr's own line from the
 // finance owner API (money_budget_words.dart) instead of its own copy,
 // which had come apart from the money tab's.
-const r19LegalRecordCount = 272;
+// +4 (D116, 2026-11-15): guests and occasions as one system. The guest's
+// page and the guests tab read the plan's occasions, and the new round of
+// sends reads them and the plan's title (two tracked imports); the
+// occasions owner API exports its sheet (showPlanEventSheet).
+const r19LegalRecordCount = 276;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1962,6 +1966,8 @@ const trackedOwnerApiContracts = [
         show: ['GuestInviteScreen'],
       },
       { uri: 'screens/guest_list_screen.dart', show: ['GuestListScreen'] },
+      // D116: the round of sends, for the router.
+      { uri: 'screens/guest_send_screen.dart', show: ['GuestSendScreen'] },
       // D52: a participant who follows the plan reads its guests.
       {
         uri: 'screens/participant_guests_screen.dart',
@@ -2366,6 +2372,8 @@ const trackedOwnerApiContracts = [
         show: ['PlanEventsProvider'],
       },
       { uri: 'screens/plan_events_screen.dart', show: ['PlanEventsScreen'] },
+      // D116: the guests tab and the guest form add an occasion in place.
+      { uri: 'widgets/plan_event_sheet.dart', show: ['showPlanEventSheet'] },
     ],
   },
   {
@@ -2931,18 +2939,41 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider'],
   },
-  // D83: the card's venue is the wedding event's, and a guest is invited to
-  // the plan's other events.
+  // D83: a guest is invited to the plan's other events. D116: the card
+  // reads the occasions for its preview; the places are each occasion's.
   {
     source: 'mobile/lib/features/guests/screens/guest_invite_screen.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['PlanEvent', 'PlanEventDraft', 'PlanEventType', 'PlanEventsProvider'],
+    show: ['PlanEventsProvider'],
   },
   {
     source: 'mobile/lib/features/guests/utils/guest_plan_events.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    // RA-MO-315: an occasion's time, as the invitation's message says it.
-    show: ['PlanEvent', 'PlanEventSlot', 'PlanEventType', 'PlanEventsProvider'],
+    // D116: the guests tab's occasions, and an occasion made from the form.
+    show: ['PlanEvent', 'PlanEventType', 'PlanEventsProvider', 'showPlanEventSheet'],
+  },
+  // D116: the guest's page reads each occasion's answer.
+  {
+    source: 'mobile/lib/features/guests/screens/guest_details_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEventsProvider'],
+  },
+  // D116: the guests tab follows one occasion and adds one from «+».
+  {
+    source: 'mobile/lib/features/guests/screens/guest_list_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEvent', 'PlanEventsProvider', 'showPlanEventSheet'],
+  },
+  // D116: the round of sends reads the occasions and the plan's title.
+  {
+    source: 'mobile/lib/features/guests/screens/guest_send_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEvent', 'PlanEventsProvider'],
+  },
+  {
+    source: 'mobile/lib/features/guests/screens/guest_send_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
@@ -3492,6 +3523,7 @@ const trackedCompositionRootContracts = [
           'GuestImportSource',
           'GuestInviteScreen',
           'GuestListScreen',
+          'GuestSendScreen',
         ],
       },
       {

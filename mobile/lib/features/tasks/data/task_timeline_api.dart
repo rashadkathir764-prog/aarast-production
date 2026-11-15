@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
@@ -797,13 +798,7 @@ class TaskTimelineApi {
     return WeddingTask.fromJson(localJson);
   }
 
-  bool _isLocalGuestPlanId(String? planId) {
-    final value = planId?.trim() ?? '';
-    return value.isEmpty ||
-        value == 'local-guest-plan' ||
-        value.startsWith('guest-plan-') ||
-        value.startsWith('local-guest-');
-  }
+  bool _isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
   static String _nextLocalTaskId(DateTime now) {
     _localTaskSequence += 1;

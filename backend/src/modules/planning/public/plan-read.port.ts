@@ -22,6 +22,9 @@ export type ReadablePlanEvent = Pick<
   | 'timeSlot'
   | 'exactTime'
   | 'placeLabel'
+  | 'mapUrl'
+  | 'address'
+  | 'version'
 >;
 
 // Planning owns `WeddingPlan`. Every other context reads a plan row through
@@ -82,4 +85,14 @@ export interface PlanReadPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<ReadablePlanEvent[]>;
+  /**
+   * D116: the wedding's map link and address, which an app from before
+   * D116 still writes through the invitation card. They are the wedding
+   * row's (one place per occasion); a new map link raises its version.
+   */
+  setWeddingEventPlace(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    place: { mapUrl?: string | null; address?: string | null },
+  ): Promise<void>;
 }

@@ -5,7 +5,7 @@ import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
-import 'package:aarast_mobile/features/guests/models/guest_invite_text.dart';
+import 'package:aarast_mobile/features/guests/models/guest_invitations.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
 import 'package:aarast_mobile/features/guests/utils/guest_display.dart';
@@ -37,6 +37,16 @@ Guest _guest(
   companionsCount: 0,
   createdAt: DateTime(2026, 10, 1),
   updatedAt: DateTime(2026, 10, 1),
+  // D116: what was told is the record of sends; an invitation sent named
+  // the wedding (the id the server gives a plan's unsaved wedding row).
+  told: [
+    if (invitation == 'SENT')
+      GuestToldOccasion(
+        planEventId: 'wedding_plan-1',
+        version: 1,
+        at: DateTime(2026, 10, 2),
+      ),
+  ],
 );
 
 Future<void> _pumpList(
@@ -103,13 +113,16 @@ void main() {
   // (D83), proven in backend/test/guest-rsvp.test.ts; the card preview here
   // keeps her forms.
   test('e04: her card speaks as a woman to women guests', () {
-    const card = GuestInviteCard(
-      title: 'زفة سلمى',
-      host: 'أم سلمى',
-      profile: JourneyProfile.bride,
+    // Changed on purpose (D116): the removed GuestInviteCard's forms → the server text twin's host phrase.
+    expect(
+      invitationHostPhrase('أم سلمى', bride: true),
+      'تتشرف أم سلمى بدعوتكن لحضور',
     );
-    expect(card.profile.plan('بدعوتكم', 'بدعوتكن'), 'بدعوتكن');
-    expect(card.profile.plan('أكّد حضورك', 'أكّدي حضورك'), 'أكّدي حضورك');
+    expect(
+      invitationHostPhrase('أبو سالم', bride: false),
+      'يتشرف أبو سالم بدعوتكم لحضور',
+    );
+    expect(invitationHostPhrase('  ', bride: true), isNull);
   });
 
   testWidgets('e01: her list is «الضيفات» with «مدعوة · أكدن · ما ردّن»', (
@@ -133,9 +146,10 @@ void main() {
       guests: [_guest('g1', 'هدى', 'INVITED', invitation: 'NOT_SENT')],
     );
 
-    expect(find.byKey(const ValueKey('guests-remind')), findsNothing);
-    expect(find.byKey(const ValueKey('guests-invite-now')), findsOneWidget);
-    expect(find.text('أرسلي الدعوة على واتساب'), findsOneWidget);
+    // Changed on purpose (D116): guests-invite-now «أرسلي الدعوة على واتساب» → the summary's one send action guests-send-new.
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
+    expect(find.text('أرسلي الدعوة لـ ضيفة وحدة'), findsOneWidget);
   });
 
   testWidgets('the reminder counts only who was invited', (tester) async {
@@ -146,12 +160,32 @@ void main() {
         _guest('g1', 'هدى', 'INVITED'),
         _guest('g2', 'أسماء', 'INVITED'),
         _guest('g3', 'عبلة', 'INVITED', invitation: 'NOT_SENT'),
-        // RA-MO-61: a reminder goes to a number.
         _guest('g4', 'سلوى', 'INVITED', phone: null),
       ],
     );
 
-    expect(find.text('ذكّري الـ 2 على واتساب'), findsOneWidget);
+    // Changed on purpose (D116): «ذكّري الـ 2 على واتساب» → the send due first: the one never told is invited before anyone is reminded.
+    expect(find.text('أرسلي الدعوة لـ ضيفة وحدة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
+  });
+
+  testWidgets('with everyone told, the reminder counts the silent ones', (
+    tester,
+  ) async {
+    await _pumpList(
+      tester,
+      JourneyProfile.bride,
+      guests: [
+        _guest('g1', 'هدى', 'INVITED'),
+        _guest('g2', 'أسماء', 'INVITED'),
+        _guest('g3', 'عبلة', 'CONFIRMED'),
+        // Who has no number is named on the send screen, not dropped here.
+        _guest('g4', 'سلوى', 'INVITED', phone: null),
+      ],
+    );
+
+    expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);
+    expect(find.text('ذكّري 3 ضيفات'), findsOneWidget);
   });
 
   testWidgets('e01: the reminder sits in the summary card, the bar is drawn', (
@@ -163,32 +197,27 @@ void main() {
       of: find.byKey(const ValueKey('guests-summary')),
       matching: find.byType(JourneyBox),
     );
+    // Changed on purpose (D116): guests-remind «ذكّري ضيفة وحدة على واتساب» → the card's one send action guests-send-remind.
     expect(
       find.descendant(
         of: card.first,
-        matching: find.byKey(const ValueKey('guests-remind')),
+        matching: find.byKey(const ValueKey('guests-send-remind')),
       ),
       findsOneWidget,
     );
-    expect(find.text('ذكّري ضيفة وحدة على واتساب'), findsOneWidget);
-    // The confirmed and waiting pieces are 10 high, not collapsed.
-    final pieces = tester.widgetList<ColoredBox>(
+    expect(find.text('ذكّري ضيفة وحدة'), findsOneWidget);
+    // Changed on purpose (D116): the two-colour guests-summary-bar → one bar of who confirmed of who is invited.
+    final bar = tester.widget<JourneyBar>(
       find.descendant(
-        of: find.byKey(const ValueKey('guests-summary-bar')),
-        matching: find.byType(ColoredBox),
+        of: find.byKey(const ValueKey('guests-summary')),
+        matching: find.byType(JourneyBar),
       ),
     );
-    expect(pieces.map((piece) => piece.color), [
-      AarastV3Color.rose,
-      AarastV3Color.saffron,
-    ]);
-    final shown = find.descendant(
-      of: find.byKey(const ValueKey('guests-summary-bar')),
-      matching: find.byType(ColoredBox),
+    expect(bar.value, 0.5);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('guests-summary'))).height,
+      greaterThan(40),
     );
-    for (final element in shown.evaluate()) {
-      expect(element.size!.height, 10);
-    }
   });
 
   testWidgets('the groom keeps «الضيوف» and «أكدوا»', (tester) async {

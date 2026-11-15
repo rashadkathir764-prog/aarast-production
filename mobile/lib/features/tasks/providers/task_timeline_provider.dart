@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
@@ -802,13 +803,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 }
 
-bool _isLocalGuestPlanId(String? planId) {
-  final value = planId?.trim() ?? '';
-  return value.isEmpty ||
-      value == 'local-guest-plan' ||
-      value.startsWith('guest-plan-') ||
-      value.startsWith('local-guest-');
-}
+bool _isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
 class _TasksBundle {
   const _TasksBundle(this.tasks, this.timeline, this.summary);

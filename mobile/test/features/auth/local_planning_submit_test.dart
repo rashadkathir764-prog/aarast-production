@@ -48,7 +48,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Changed on purpose (D116): «+» opens the add menu (a guest, several,
+    // an occasion, a group); a guest is its first choice.
     await tester.tap(find.byKey(const ValueKey('guests-add')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('guest-form-name')),

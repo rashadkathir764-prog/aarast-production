@@ -175,10 +175,11 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
         ),
         const SizedBox(height: AarastV3Space.x2),
         Text(
-          context.say(
-            'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
-            'شيل المجموعة ما يشيل ضيفاتها، ينقلهن «بدون مجموعة». اضغطي على مجموعة تغيّرين اسمها.',
-          ),
+          // D14 of the closing round: the guests are the plan's side, the
+          // tap is the reader's.
+          '${context.planWord('شيل المجموعة ما يشيل ضيوفها، ينقلهم', 'شيل المجموعة ما يشيل ضيفاتها، ينقلهن')} '
+          '«بدون مجموعة». '
+          '${context.say('اضغط على مجموعة تغيّر اسمها.', 'اضغطي على مجموعة تغيّرين اسمها.')}',
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,

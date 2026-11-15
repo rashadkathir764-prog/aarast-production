@@ -106,14 +106,16 @@ test('the base file contains only generator and datasource while owner declarati
   // D83: + GuestInvitationCard and GuestEventInvite.
   // RA-ST-05: + ReviewReport (a review reported as offensive or false).
   // RA-ST-04: + AssistantAnswerReport (an assistant answer reported).
-  assert.equal(actualModels.length, 72);
-  assert.equal(new Set(actualModels).size, 72);
+  // D116: + GuestInvitationSend (what each guest was told), and four enums:
+  // the card's photo kind, the send's kind, status and channel.
+  assert.equal(actualModels.length, 73);
+  assert.equal(new Set(actualModels).size, 73);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
-  assert.equal(actualEnums.length, 58);
-  assert.equal(new Set(actualEnums).size, 58);
-  assert.equal(manifest.modelOrder.length, 72);
+  assert.equal(actualEnums.length, 62);
+  assert.equal(new Set(actualEnums).size, 62);
+  assert.equal(manifest.modelOrder.length, 73);
   assert.deepEqual([...manifest.modelOrder].sort(), [...actualModels].sort());
   assert.deepEqual(
     Object.keys(registry.owners).filter((owner) => registry.owners[owner].length > 0).sort(),
@@ -151,8 +153,8 @@ test('the canonical loader agrees with the exact manifest and combined current s
 
   assert.deepEqual(loaded.files.map((entry) => entry.file), [manifest.baseFile, ...manifest.owners.map((entry) => entry.file)]);
   assert.deepEqual(loaded.modelOrder, manifest.modelOrder);
-  assert.equal(declarations(loaded.combinedText, 'model').length, 72);
-  assert.equal(declarations(loaded.combinedText, 'enum').length, 58);
+  assert.equal(declarations(loaded.combinedText, 'model').length, 73);
+  assert.equal(declarations(loaded.combinedText, 'enum').length, 62);
 });
 
 test('the contributor migration rehearsal keeps migrations discoverable under the passed schema directory', () => {

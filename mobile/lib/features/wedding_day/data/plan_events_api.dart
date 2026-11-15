@@ -16,6 +16,9 @@ class PlanEventDraft {
     this.placeLabel,
     this.responsibleName,
     this.note,
+    this.mapUrl,
+    this.address,
+    this.setsPlaceLinks = false,
   });
 
   final String? title;
@@ -25,6 +28,15 @@ class PlanEventDraft {
   final String? placeLabel;
   final String? responsibleName;
   final String? note;
+
+  /// D116: the occasion's own map link and address, for its guests.
+  final String? mapUrl;
+  final String? address;
+
+  /// D116: this draft says the map link and the address (the sheet that
+  /// shows them); a draft from elsewhere (the card's venue) leaves them as
+  /// they are instead of clearing them.
+  final bool setsPlaceLinks;
 
   Map<String, dynamic> toJson({required bool isMain}) {
     String? text(String? value) {
@@ -41,6 +53,7 @@ class PlanEventDraft {
       'placeLabel': text(placeLabel),
       'responsibleName': text(responsibleName),
       'note': text(note),
+      if (setsPlaceLinks) ...{'mapUrl': text(mapUrl), 'address': text(address)},
     };
   }
 }
@@ -123,6 +136,9 @@ class PlanEventsApi {
       placeLabel: event.placeLabel,
       responsibleName: event.responsibleName,
       note: event.note,
+      mapUrl: event.mapUrl,
+      address: event.address,
+      setsPlaceLinks: true,
     ).toJson(isMain: event.isMain);
     final unsent = OfflineWrites.isLocalId(id);
     final changes = <String, dynamic>{

@@ -34,6 +34,7 @@ class GuestFormSheet extends StatefulWidget {
     this.draftScope,
     this.onCreateGroup,
     this.events = const [],
+    this.onAddEvent,
     super.key,
   });
 
@@ -45,6 +46,10 @@ class GuestFormSheet extends StatefulWidget {
 
   /// The plan's events beyond the wedding; none hides the choice.
   final List<GuestFormEvent> events;
+
+  /// D116: makes an occasion from the form and gives it back to be chosen;
+  /// null where occasions are not made (a plan kept on the phone).
+  final Future<GuestFormEvent?> Function()? onAddEvent;
 
   /// Makes a group by name and returns its id; null hides «جديدة» (a
   /// phone-only plan keeps no groups).
@@ -70,6 +75,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   static const _companionsMax = _seatsMax - 1;
   late List<GuestGroup> _groups = List.of(widget.groups);
   late Set<String> _eventIds;
+
+  /// D116: occasions made from this form, offered beside the plan's.
+  final List<GuestFormEvent> _addedEvents = [];
   late bool _showMore;
   String? _nameError;
   String? _phoneError;
@@ -426,13 +434,15 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           ],
         ),
         // D83: the wedding needs no choice; the plan's other events do.
-        if (widget.events.isNotEmpty) ...[
+        // D116: the wedding is every guest's; the other occasions are
+        // chosen here, and one not made yet is made from here.
+        if (widget.events.isNotEmpty || widget.onAddEvent != null) ...[
           _label(context.planWord('يحضر أيضًا', 'تحضر أيضًا')),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final event in widget.events)
+              for (final event in [...widget.events, ..._addedEvents])
                 JourneyChip(
                   key: ValueKey('guest-form-event-${event.id}'),
                   label: event.label,
@@ -441,6 +451,22 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   onTap: () => _mutate(() {
                     if (!_eventIds.remove(event.id)) _eventIds.add(event.id);
                   }),
+                ),
+              if (widget.onAddEvent case final addEvent?)
+                JourneyChip(
+                  key: const ValueKey('guest-form-add-event'),
+                  label: '+ مناسبة',
+                  selected: false,
+                  onTap: () async {
+                    final event = await addEvent();
+                    if (event == null || !mounted) return;
+                    _mutate(() {
+                      if (!widget.events.any((e) => e.id == event.id)) {
+                        _addedEvents.add(event);
+                      }
+                      _eventIds.add(event.id);
+                    });
+                  },
                 ),
             ],
           ),

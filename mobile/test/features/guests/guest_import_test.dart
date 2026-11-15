@@ -543,8 +543,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(reads, 0);
+    // Changed on purpose (D116): «تقدر تضيف الأسماء…» → said without a verb to the reader, right for a groom or a bride.
     expect(
-      find.text('ما قرأنا جهات الاتصال. تقدر تضيف الأسماء بالكتابة أو اللصق.'),
+      find.text('ما قرأنا جهات الاتصال. الأسماء تنضاف بالكتابة أو اللصق.'),
       findsOneWidget,
     );
 

@@ -120,7 +120,9 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
             ),
           )
         else ...[
-          JourneySectionTitle(words.allGuests, action: '${view.guestsTotal}'),
+          // D23 of the closing round: the count is part of the title; drawn
+          // as the title's link it looked tappable and did nothing.
+          JourneySectionTitle('${words.allGuests} (${view.guestsTotal})'),
           // RA-MO-235: one box slice per guest, each its own child of the
           // page's list, so only the guests on screen are built and laid out
           // (one box holding all of them built up to 5000 rows at once).
@@ -151,13 +153,18 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
           children: [
             JourneyTabHeader(
               title: words.guests,
+              // D3 of the closing round: the reader does not see who an
+              // invitation reached, so a guest with no reply is «ما أكّد
+              // بعد» (as the figures say), never «ما ردّ» of a guest nobody
+              // asked yet; and «0 أكدوا» is not said.
               status: view == null || view.guestsTotal == 0
                   ? ''
                   : [
                       '${view.guestsTotal} ${words.invited}',
-                      '${view.guestsConfirmed} ${words.confirmed}',
+                      if (view.guestsConfirmed > 0)
+                        '${view.guestsConfirmed} ${words.confirmed}',
                       if (view.guestsPending > 0)
-                        '${view.guestsPending} ${words.pending}',
+                        '${view.guestsPending} ${words.notYetConfirmed}',
                     ].join(' · '),
             ),
             const SizedBox(height: AarastV3Space.x3),
@@ -245,8 +252,10 @@ class _GuestLine extends StatelessWidget {
         AarastV3Color.textMuted,
         AarastV3Color.paper,
       ),
+      // D3: «ما أكّد بعد» holds both the invited who did not answer and
+      // the guest no invitation reached yet, which the reader cannot tell.
       _ => (
-        voice.plan('ما ردّ', 'ما ردّت'),
+        voice.plan('ما أكّد بعد', 'ما أكّدت بعد'),
         AarastV3Color.brandAccentStrong,
         AarastV3Color.brandAccentSoft,
       ),

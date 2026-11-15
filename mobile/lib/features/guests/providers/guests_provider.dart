@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/offline/offline_contract.dart' show OfflineWrites;
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
-import '../models/guest_reminder.dart';
 
 class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   GuestsProvider(this._api);
@@ -30,28 +30,6 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   GuestSummary? _summary;
   bool _isSavingGroups = false;
   String? _groupsErrorMessage;
-
-  /// e08: the reminder round of each plan, on this phone only (the server
-  /// records no reminder). It outlives the screen, so leaving the walk and
-  /// coming back continues with who is left.
-  final Map<String, GuestReminderRound> _reminderRounds = {};
-
-  GuestReminderRound? reminderRound(String weddingPlanId) =>
-      _reminderRounds[weddingPlanId];
-
-  /// The round for [audience]: the one under way, or a new one.
-  GuestReminderRound reminderRoundFor(
-    String weddingPlanId,
-    GuestReminderAudience audience,
-  ) {
-    final kept = _reminderRounds[weddingPlanId];
-    if (kept != null && kept.audience == audience) return kept;
-    return _reminderRounds[weddingPlanId] = GuestReminderRound(audience);
-  }
-
-  void endReminderRound(String weddingPlanId) {
-    if (_reminderRounds.remove(weddingPlanId) != null) notifyListeners();
-  }
 
   bool get isSavingGroups => _isSavingGroups;
   String? get groupsErrorMessage => _groupsErrorMessage;
@@ -79,9 +57,25 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isStale = false;
   bool get isStale => _isStale;
 
+  /// The plan whose list is what [guests] holds: set once its copy or the
+  /// server's answer was applied, so a screen tells «no guests yet» from
+  /// «not read yet» (D1, D10 of the closing round).
+  String? _readPlanId;
+
+  /// Whether [weddingPlanId]'s list was read (from the phone's copy or the
+  /// server), so an empty list means none and duplicates can be marked.
+  bool hasRead(String weddingPlanId) => _readPlanId == weddingPlanId;
+
+  /// D28 of the closing round: the newest load is the one that shows; an
+  /// older answer that arrives after it (another plan opened meanwhile, or
+  /// a second pull) is dropped.
+  int _loadSeq = 0;
+
   /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> loadGuests(String weddingPlanId) async {
     _noticeMessage = null;
+    final seq = ++_loadSeq;
+    if (_readPlanId != weddingPlanId) _readPlanId = null;
     await readCachedFirst<_GuestsBundle>(
       cached: () async {
         final guests = await _api.cachedGuests(weddingPlanId);
@@ -105,6 +99,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         return _GuestsBundle(guests, groups, summary);
       },
       apply: (bundle) {
+        if (seq != _loadSeq) return;
         _guests = bundle.guests;
         _groups = bundle.groups;
         _summary =
@@ -114,8 +109,10 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
               guests: _guests,
               groups: _groups,
             );
+        _readPlanId = weddingPlanId;
       },
       state: ({required loading, required stale, error}) {
+        if (seq != _loadSeq) return;
         _isLoading = loading;
         _isStale = stale;
         _loadErrorMessage = error;
@@ -227,7 +224,8 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         _errorMessage = created.isEmpty
             ? reason
             : 'انضاف ${created.length}، وما انضاف ${refused.length}: '
-                  '${reason ?? 'جرّب مرة ثانية'}';
+                  // D19: said without a verb to the reader (no voice here).
+                  '${reason ?? 'إعادة الإضافة تكمّل الباقي'}';
       } else if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
@@ -264,6 +262,8 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     int? companionsCount,
     String? notes,
     List<String>? eventIds,
+    List<({String planEventId, String attendanceStatus, int companionsCount})>?
+    eventReplies,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -283,6 +283,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         companionsCount: companionsCount,
         notes: notes,
         eventIds: eventIds,
+        eventReplies: eventReplies,
       );
       _replace(updated);
       _refreshSummary(updated.weddingPlanId);
@@ -443,16 +444,10 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 }
 
-bool _isLocalGuestPlanId(String? planId) {
-  final value = planId?.trim() ?? '';
-  return value.isEmpty ||
-      value == 'local-guest-plan' ||
-      value.startsWith('guest-plan-') ||
-      value.startsWith('local-guest-');
-}
+// D25 of the closing round: one rule for a plan kept on the phone, the
+// offline layer's; the tab held its own copies of it.
+bool _isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
-/// [savingGuest]: adding or editing a guest, where a conflict (409) means
-/// the guest is already on the list. Elsewhere (removing, reading, groups) a
 class _GuestsBundle {
   const _GuestsBundle(this.guests, this.groups, [this.summary]);
 
@@ -461,6 +456,8 @@ class _GuestsBundle {
   final GuestSummary? summary;
 }
 
+/// [savingGuest]: adding or editing a guest, where a conflict (409) means
+/// the guest is already on the list. Elsewhere (removing, reading, groups) a
 /// conflict means something else and keeps the server's own words.
 String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
   final normalized = error.message.trim();

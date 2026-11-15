@@ -52,7 +52,11 @@ export interface WeddingPlanUpdateData {
 }
 
 export function createWeddingPlan(tx: Prisma.TransactionClient, data: WeddingPlanCreateData) {
-  return tx.weddingPlan.create({ data: { ...data } });
+  // D116: every plan has its wedding row from the start; its day stays the
+  // plan's, and the row holds the time, the place and its version.
+  return tx.weddingPlan.create({
+    data: { ...data, events: { create: { type: 'WEDDING' } } },
+  });
 }
 
 export function updateWeddingPlan(

@@ -26,30 +26,43 @@ enum GuestAttendanceStatus {
 }
 
 model Guest {
-  id               String                @id @default(cuid())
-  weddingPlanId    String
-  groupId          String?
-  name             String
-  normalizedName   String
-  phone            String?
-  normalizedPhone  String?
-  side             GuestSide             @default(OTHER)
-  status           GuestStatus           @default(INVITED)
-  invitationStatus GuestInvitationStatus @default(NOT_SENT)
-  attendanceStatus GuestAttendanceStatus @default(PENDING)
-  seatsCount       Int                   @default(1)
-  companionsCount  Int                   @default(0)
-  notes            String?
+  id                     String                @id @default(cuid())
+  weddingPlanId          String
+  groupId                String?
+  name                   String
+  normalizedName         String
+  phone                  String?
+  normalizedPhone        String?
+  side                   GuestSide             @default(OTHER)
+  status                 GuestStatus           @default(INVITED)
+  invitationStatus       GuestInvitationStatus @default(NOT_SENT)
+  attendanceStatus       GuestAttendanceStatus @default(PENDING)
+  seatsCount             Int                   @default(1)
+  companionsCount        Int                   @default(0)
+  notes                  String?
   // SHA-256 of the guest's personal RSVP link token (V1 checklist 4.7);
-  // the token itself is never stored. A new link replaces the old one.
-  rsvpTokenHash    String?               @unique
+  // the token itself is never stored. Before D116 every send made a new
+  // random link; that last one keeps opening until the link is replaced.
+  rsvpTokenHash          String?               @unique
+  // D116: the guest's one stable link, derived on the server from its key,
+  // the guest and [rsvpLinkVersion]; only its hash is kept. Replacing the
+  // link raises the version, so the old one stops opening.
+  rsvpLinkHash           String?               @unique
+  rsvpLinkVersion        Int                   @default(0)
+  // D116: when the guest's page was first drawn in a browser (a request the
+  // page makes after drawing; a link preview's crawler never makes it).
+  linkOpenedAt           DateTime?
   // When the guest last answered through their RSVP link.
-  respondedAt      DateTime?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  group            GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  eventInvites     GuestEventInvite[]
+  respondedAt            DateTime?
+  // D116: the wedding row's version the wedding answer was given to; null
+  // for answers given before versions (taken as given to the current one).
+  weddingAnsweredVersion Int?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  weddingPlan            WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  group                  GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  eventInvites           GuestEventInvite[]
+  invitationSends        GuestInvitationSend[]
 
   @@unique([weddingPlanId, normalizedPhone])
   @@index([weddingPlanId, status])
@@ -79,17 +92,30 @@ model GuestGroup {
 // the host line («يتشرف فلان»), free text or a verse, and where (a map link
 // or an address). The names, the date, the time and the venue come from the
 // plan itself and are not stored here.
+// D116: what the card's picture is. PHOTO: a photo (the groom's, the
+// couple's) drawn inside the card Aarast lays out with the words. CARD: an
+// invitation card designed elsewhere, sent and shown whole, never cropped,
+// with nothing written over it.
+enum GuestInvitationCardPhotoKind {
+  PHOTO
+  CARD
+}
+
 model GuestInvitationCard {
-  id            String      @id @default(cuid())
-  weddingPlanId String      @unique
+  id            String                       @id @default(cuid())
+  weddingPlanId String                       @unique
   hostLine      String?
   freeText      String?
   photoUrl      String?
+  photoKind     GuestInvitationCardPhotoKind @default(PHOTO)
+  // Before D116 the wedding's map link and address were the card's; they
+  // moved to the wedding's own event row (one place per occasion) and these
+  // stay empty, kept only so an older column read finds nothing stale.
   mapUrl        String?
   address       String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  weddingPlan   WeddingPlan                  @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
 }
 
 // D83: a guest's invitation to one of the plan's events beyond the wedding
@@ -103,6 +129,9 @@ model GuestEventInvite {
   attendanceStatus GuestAttendanceStatus @default(PENDING)
   companionsCount  Int                   @default(0)
   respondedAt      DateTime?
+  // D116: the event's version this answer was given to; null for answers
+  // given before versions (taken as given to the current one).
+  answeredVersion  Int?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   guest            Guest                 @relation(fields: [guestId], references: [id], onDelete: Cascade)
@@ -110,4 +139,57 @@ model GuestEventInvite {
 
   @@unique([guestId, planEventId])
   @@index([planEventId])
+}
+
+// D116: what one send was about. INVITATION: the first word to a guest.
+// ADDITION: an occasion added to a guest already invited. CHANGE: an
+// occasion's day, time or place changed after the guest was told. REMINDER:
+// a guest told but not answering.
+enum GuestInvitationSendKind {
+  INVITATION
+  ADDITION
+  CHANGE
+  REMINDER
+}
+
+// D116: how far a send went, as far as anyone can know. The phone prepares
+// it and opens the person's own WhatsApp or SMS; only the person can say it
+// was sent (SENT) or not (NOT_SENT). Opening WhatsApp is never taken for a
+// send. A future official channel adds its own delivery states here.
+enum GuestInvitationSendStatus {
+  PREPARED
+  SENT
+  NOT_SENT
+}
+
+enum GuestInvitationSendChannel {
+  WHATSAPP
+  SMS
+  COPY
+}
+
+// D116: the record of what each guest was told, and of which occasions at
+// which version. Who has not been told, who holds an old time and who may be
+// reminded are all read from here; nothing else keeps a copy of it.
+model GuestInvitationSend {
+  id              String                     @id @default(cuid())
+  weddingPlanId   String
+  guestId         String
+  kind            GuestInvitationSendKind
+  // Null: one invitation with every occasion the guest is invited to; an
+  // event id: an invitation of its own for that occasion.
+  planEventId     String?
+  // The occasions the text named, each with the version it named:
+  // [{ "planEventId": "...", "version": 1 }].
+  events          Json
+  channel         GuestInvitationSendChannel @default(WHATSAPP)
+  status          GuestInvitationSendStatus  @default(PREPARED)
+  createdByUserId String?
+  createdAt       DateTime                   @default(now())
+  // When the person said it was sent, or that it was not.
+  settledAt       DateTime?
+  guest           Guest                      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([weddingPlanId, status])
+  @@index([guestId, createdAt])
 }

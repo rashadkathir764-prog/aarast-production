@@ -32,6 +32,19 @@ export const PLAN_EVENT_TITLE_MAX = 60;
 export const PLAN_EVENT_PLACE_MAX = 120;
 export const PLAN_EVENT_PERSON_MAX = 60;
 export const PLAN_EVENT_NOTE_MAX = 120;
+/** D116: each occasion's own address and map link (the card's limits). */
+export const PLAN_EVENT_ADDRESS_MAX = 160;
+export const PLAN_EVENT_MAP_URL_MAX = 500;
+
+/** D116: a map link a guest may open: a whole HTTPS link. */
+export function isAcceptableEventMapUrl(value: string): boolean {
+  if (value.length > PLAN_EVENT_MAP_URL_MAX) return false;
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 /** A plan holds at most this many events (a wedding has a handful). */
 export const PLAN_EVENTS_MAX = 30;
@@ -44,7 +57,8 @@ export type PlanEventRuleCode =
   | 'EVENT_EXACT_TIME_REQUIRED'
   | 'EVENT_EXACT_TIME_INVALID'
   | 'EVENT_DATE_INVALID'
-  | 'EVENT_LIMIT_REACHED';
+  | 'EVENT_LIMIT_REACHED'
+  | 'EVENT_MAP_URL_INVALID';
 
 export class PlanEventRuleViolation extends Error {
   constructor(

@@ -358,7 +358,8 @@ void main() {
 
     await tester.tap(find.byTooltip('تعديل المقيل'));
     await tester.pumpAndSettle();
-    expect(find.text('يظهر في برنامج الأسبوع ويوم العرس'), findsOneWidget);
+    // Changed on purpose (D116): «يظهر في برنامج الأسبوع ويوم العرس» → the sheet says its day and place reach its guests.
+    expect(find.text('موعدها ومكانها يوصلون ضيوفها مع الدعوة'), findsOneWidget);
     expect(find.text('الأربعاء 20'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('plan-event-slot-AFTER_ASR')));

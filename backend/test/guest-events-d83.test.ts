@@ -15,10 +15,12 @@ const ownerContext = {
   isOwner: true,
   sharedMember: null,
 };
+// D116: each event carries its version (raised when its day, time or place
+// changes); the wedding row is at 3 and the lunch at 2 here.
 const planEvents = [
-  { id: "event-wedding", weddingPlanId: "plan-1", type: "WEDDING", title: null, date: now, timeSlot: null, exactTime: null, placeLabel: null },
-  { id: "event-lunch", weddingPlanId: "plan-1", type: "LUNCH", title: null, date: now, timeSlot: "DHUHR", exactTime: null, placeLabel: null },
-  { id: "event-aqd", weddingPlanId: "plan-1", type: "AQD", title: "العقد", date: null, timeSlot: null, exactTime: null, placeLabel: null },
+  { id: "event-wedding", weddingPlanId: "plan-1", type: "WEDDING", title: null, date: now, timeSlot: null, exactTime: null, placeLabel: null, mapUrl: null, address: null, version: 3 },
+  { id: "event-lunch", weddingPlanId: "plan-1", type: "LUNCH", title: null, date: now, timeSlot: "DHUHR", exactTime: null, placeLabel: null, mapUrl: null, address: null, version: 2 },
+  { id: "event-aqd", weddingPlanId: "plan-1", type: "AQD", title: "العقد", date: null, timeSlot: null, exactTime: null, placeLabel: null, mapUrl: null, address: null, version: 1 },
 ];
 
 function database() {
@@ -59,12 +61,30 @@ function database() {
       createMany: async ({ data }: any) => {
         for (const entry of data) {
           if (!invites.some((row) => row.guestId === entry.guestId && row.planEventId === entry.planEventId)) {
-            invites.push({ ...entry, attendanceStatus: "PENDING", companionsCount: 0, respondedAt: null });
+            invites.push({
+              ...entry,
+              attendanceStatus: "PENDING",
+              companionsCount: 0,
+              respondedAt: null,
+              answeredVersion: null,
+            });
           }
         }
         return { count: data.length };
       },
+      // D116: the owner records an answer to one event.
+      update: async ({ where, data }: any) => {
+        const row = invites.find(
+          (entry) =>
+            entry.guestId === where.guestId_planEventId.guestId &&
+            entry.planEventId === where.guestId_planEventId.planEventId,
+        );
+        Object.assign(row, data);
+        return row;
+      },
     },
+    // D116: what each guest was told.
+    guestInvitationSend: { findMany: async () => [] },
     guestGroup: { count: async () => 0, findMany: async () => [] },
   };
   tx.$transaction = async (operation: (client: any) => Promise<unknown>) => operation(tx);
@@ -100,18 +120,71 @@ test("a new guest is invited to the chosen events; the wedding needs no choice",
   assert.deepEqual(plain.events, []);
 });
 
-test("an event the plan does not have, or the wedding row itself, is refused", async () => {
+test("an event the plan does not have is refused, and nothing is saved", async () => {
   const db = database();
   const guests = service(db);
   await assert.rejects(
     guests.create(owner, "plan-1", { name: "س", eventIds: ["event-other"] } as any),
     (error: any) => error?.response?.code === "GUEST_EVENT_UNKNOWN",
   );
-  await assert.rejects(
-    guests.create(owner, "plan-1", { name: "س", eventIds: ["event-wedding"] } as any),
-    (error: any) => error?.response?.code === "GUEST_EVENT_UNKNOWN",
-  );
   assert.equal(db.guests.size, 0, "nothing is saved when the events are refused");
+});
+
+// Changed on purpose (D116): the wedding row was refused here, when a plan
+// had it only once its venue was saved. Every plan has it now and the phone
+// may list it among a guest's occasions; every guest is invited to it, so
+// it is no event to link, and the rest of the list goes through.
+test("the wedding row among the events is no event to link, and refuses nothing", async () => {
+  const db = database();
+  const guests = service(db);
+  const created = await guests.create(owner, "plan-1", {
+    name: "س",
+    eventIds: ["event-wedding", "event-lunch"],
+  } as any);
+  assert.deepEqual(
+    created.events.map((event) => event.planEventId),
+    ["event-lunch"],
+  );
+});
+
+test("D116: the owner records a guest's answer to an event, at its version", async () => {
+  const db = database();
+  const guests = service(db);
+  const created = await guests.create(owner, "plan-1", {
+    name: "عمي صالح",
+    eventIds: ["event-lunch"],
+  } as any);
+  const updated = await guests.update(owner, created.id, {
+    eventReplies: [
+      { planEventId: "event-lunch", attendanceStatus: "CONFIRMED", companionsCount: 3 },
+    ],
+  } as any);
+  assert.deepEqual(
+    updated.events.map((event) => [
+      event.planEventId,
+      event.attendanceStatus,
+      event.companionsCount,
+      event.answeredVersion,
+    ]),
+    [["event-lunch", "CONFIRMED", 3, 2]],
+  );
+  // An answer to an event the guest is not invited to is refused.
+  await assert.rejects(
+    guests.update(owner, created.id, {
+      eventReplies: [{ planEventId: "event-aqd", attendanceStatus: "DECLINED" }],
+    } as any),
+    (error: any) => error?.response?.code === "GUEST_EVENT_NOT_INVITED",
+  );
+});
+
+test("D116: an answer the owner records to the wedding is at the wedding row's version", async () => {
+  const db = database();
+  const guests = service(db);
+  const created = await guests.create(owner, "plan-1", { name: "خالد" } as any);
+  const updated = await guests.update(owner, created.id, {
+    attendanceStatus: "CONFIRMED",
+  } as any);
+  assert.equal(updated.weddingAnsweredVersion, 3);
 });
 
 test("editing the events keeps the replies of the events that stay", async () => {

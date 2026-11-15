@@ -38,6 +38,8 @@ const plans = { listPlanEvents: async () => [] };
 function transactionalPrisma(models: Record<string, unknown>) {
   const prisma: any = {
     guestEventInvite: { findMany: async () => [] },
+    // D116: the guest list reads what each guest was told.
+    guestInvitationSend: { findMany: async () => [] },
     ...models,
   };
   prisma.$transaction = async (

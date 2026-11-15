@@ -11,3 +11,5 @@ export 'models/plan_event.dart'
         programMoments;
 export 'providers/plan_events_provider.dart' show PlanEventsProvider;
 export 'screens/plan_events_screen.dart' show PlanEventsScreen;
+// D116: the guests tab adds an occasion where the guests are.
+export 'widgets/plan_event_sheet.dart' show showPlanEventSheet;

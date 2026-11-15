@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/local_database.dart';
+import '../../../core/offline/local_plan_id.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/app_clock.dart';
@@ -34,13 +35,7 @@ class FinanceLocalDataSource {
 
   final OfflineSyncService? _offline;
 
-  static bool isLocalGuestPlanId(String? planId) {
-    final value = planId?.trim() ?? '';
-    return value.isEmpty ||
-        value == 'local-guest-plan' ||
-        value.startsWith('guest-plan-') ||
-        value.startsWith('local-guest-');
-  }
+  static bool isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
   static String budgetMetaKey(String planId) => 'money_budget:$planId';
 

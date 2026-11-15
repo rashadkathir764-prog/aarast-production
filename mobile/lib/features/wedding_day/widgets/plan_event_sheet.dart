@@ -70,6 +70,11 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
     text: widget.event?.responsibleName ?? '',
   );
   late final _note = TextEditingController(text: widget.event?.note ?? '');
+  late final _mapUrl = TextEditingController(text: widget.event?.mapUrl ?? '');
+  late final _address = TextEditingController(
+    text: widget.event?.address ?? '',
+  );
+  String? _mapError;
   late DateTime? _date = widget.event?.date;
   late PlanEventSlot? _slot = widget.event?.slot;
   late String? _exactTime = widget.event?.exactTime;
@@ -85,6 +90,8 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
     _place.dispose();
     _person.dispose();
     _note.dispose();
+    _mapUrl.dispose();
+    _address.dispose();
     super.dispose();
   }
 
@@ -138,9 +145,21 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
       );
       return;
     }
+    // The server keeps a whole https link only; said here, under the field.
+    final map = _mapUrl.text.trim();
+    if (map.isNotEmpty && !(Uri.tryParse(map)?.isScheme('https') ?? false)) {
+      setState(
+        () => _mapError = context.say(
+          'الرابط لازم يبدأ بـ https://. انسخه من «مشاركة» في تطبيق الخرائط.',
+          'الرابط لازم يبدأ بـ https://. انسخيه من «مشاركة» في تطبيق الخرائط.',
+        ),
+      );
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
+      _mapError = null;
     });
     try {
       await widget.provider.save(
@@ -155,6 +174,9 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
           placeLabel: _place.text,
           responsibleName: _person.text,
           note: _note.text,
+          mapUrl: _mapUrl.text,
+          address: _address.text,
+          setsPlaceLinks: true,
         ),
       );
       if (mounted) Navigator.of(context).pop();
@@ -171,7 +193,10 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'ما انحفظت المناسبة. جرّب مرة ثانية.';
+          _error = context.say(
+            'ما انحفظت المناسبة. جرّب مرة ثانية.',
+            'ما انحفظت المناسبة. جرّبي مرة ثانية.',
+          );
         });
       }
     }
@@ -208,7 +233,10 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'ما انحذفت المناسبة. جرّب مرة ثانية.';
+          _error = context.say(
+            'ما انحذفت المناسبة. جرّب مرة ثانية.',
+            'ما انحذفت المناسبة. جرّبي مرة ثانية.',
+          );
         });
       }
     }
@@ -224,7 +252,13 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
     final hijri = date == null ? null : HijriDate.fromGregorian(date);
     return JourneySheetBody(
       title: name,
-      subtitle: 'يظهر في برنامج الأسبوع ويوم العرس',
+      // D12 of the closing round: the line said the occasion shows in the
+      // week's program and on the day, which only the last week's do; it now
+      // says what reaches the guests. D14: the guests are the plan's side.
+      subtitle: profile.plan(
+        'موعدها ومكانها يوصلون ضيوفها مع الدعوة',
+        'موعدها ومكانها يوصلون ضيفاتها مع الدعوة',
+      ),
       bottom: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -342,11 +376,38 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
         ),
         const SizedBox(height: AarastV3Space.x4),
         JourneyTextField(
+          key: const ValueKey('event-place'),
           label: 'المكان',
           controller: _place,
           icon: LucideIcons.mapPin,
           hint: 'بيت الوالد · الحصبة',
           maxLength: 120,
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+        // D116: each occasion's own map link and address reach its guests,
+        // in their message and on their page.
+        JourneyTextField(
+          key: const ValueKey('event-map-url'),
+          label: 'رابط الموقع على الخريطة (اختياري)',
+          hint: 'https://maps.app.goo.gl/…',
+          helper: _mapError == null
+              ? 'من «مشاركة» في تطبيق الخرائط. يوصل الضيوف مع الدعوة.'
+              : null,
+          errorText: _mapError,
+          controller: _mapUrl,
+          icon: LucideIcons.map,
+          keyboardType: TextInputType.url,
+          textDirection: TextDirection.ltr,
+          maxLength: 500,
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyTextField(
+          key: const ValueKey('event-address'),
+          label: 'العنوان (اختياري)',
+          hint: 'شارع تعز، جوار جامع النور',
+          controller: _address,
+          icon: LucideIcons.navigation,
+          maxLength: 160,
         ),
         const SizedBox(height: AarastV3Space.x2),
         JourneyTextField(

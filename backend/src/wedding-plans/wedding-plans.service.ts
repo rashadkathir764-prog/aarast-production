@@ -62,7 +62,10 @@ import {
 } from "../modules/tasks/public/task-text-limits";
 import { withinCharacters } from "../shared-kernel/text/text-length";
 import { daysBetween } from "../shared-kernel/voice/day-words";
-import { shiftPlanEventDates } from "../modules/planning/infrastructure/plan-events.repository";
+import {
+  raiseWeddingEventVersion,
+  shiftPlanEventDates,
+} from "../modules/planning/infrastructure/plan-events.repository";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
@@ -376,6 +379,14 @@ export class WeddingPlansService {
       // RA-BE-72: a wedding moved from one day to another takes its dated
       // events with it («نرتب كل شيء على الموعد الجديد»); they stayed on
       // the old days in the wedding week, the reply page and the invite.
+      // D116: the wedding's day is the plan's; guests told the old one are
+      // asked to confirm again and can be told of the change.
+      if (
+        (previousWeddingDate?.getTime() ?? null) !==
+        (plan.weddingDate?.getTime() ?? null)
+      ) {
+        await raiseWeddingEventVersion(tx, id);
+      }
       if (previousWeddingDate && plan.weddingDate) {
         const days = daysBetween(previousWeddingDate, plan.weddingDate);
         if (days !== 0) {

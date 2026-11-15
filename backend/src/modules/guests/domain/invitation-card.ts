@@ -4,11 +4,23 @@ import type { PlanEventTimeSlot, PlanEventType } from '@prisma/client';
 // wedding. Pure rules, shared by the card writes, the public RSVP page and
 // the WhatsApp text the server builds (one source for the words).
 
-/** What the owner writes on the card; everything else comes from the plan. */
+/**
+ * D116: what the card's picture is: a photo drawn inside the card Aarast
+ * lays out (PHOTO), or a card designed elsewhere, shown whole (CARD).
+ */
+export type InvitationCardPhotoKind = 'PHOTO' | 'CARD';
+
+/**
+ * What the owner writes on the card; everything else comes from the plan.
+ * D116: the map link and the address are the wedding row's (each occasion
+ * has its own place); the card still names them, read from that row, so an
+ * app from before D116 keeps reading and writing them where it did.
+ */
 export interface InvitationCardFields {
   hostLine: string | null;
   freeText: string | null;
   photoUrl: string | null;
+  photoKind: InvitationCardPhotoKind;
   mapUrl: string | null;
   address: string | null;
 }
@@ -29,7 +41,9 @@ export const PLAN_EVENT_LABELS: Record<PlanEventType, string> = {
   SAMRA: 'السمرة',
   MAQEEL: 'المقيل',
   HAFLA: 'الحفلة',
-  NASHMA: 'النشمة',
+  // The bride's night, as the phone, the journey profile and the research
+  // write it (it was spelt «النشمة» here alone, so one event had two names).
+  NASHMA: 'النسمة',
   AQD: 'عقد القران',
   LUNCH: 'الغداء',
   DINNER: 'العشاء',
@@ -90,6 +104,7 @@ export function mergeInvitationCard(
     hostLine: null,
     freeText: null,
     photoUrl: null,
+    photoKind: 'PHOTO',
     mapUrl: null,
     address: null,
   };
@@ -97,6 +112,7 @@ export function mergeInvitationCard(
     hostLine: input.hostLine === undefined ? base.hostLine : cleaned(input.hostLine),
     freeText: input.freeText === undefined ? base.freeText : cleaned(input.freeText),
     photoUrl: input.photoUrl === undefined ? base.photoUrl : cleaned(input.photoUrl),
+    photoKind: input.photoKind ?? base.photoKind,
     mapUrl: input.mapUrl === undefined ? base.mapUrl : cleaned(input.mapUrl),
     address: input.address === undefined ? base.address : cleaned(input.address),
   };

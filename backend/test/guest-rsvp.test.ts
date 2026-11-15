@@ -5,51 +5,68 @@ import { test } from "node:test";
 import {
   buildRsvpMessage,
   GuestRsvpService,
+  rsvpLinkToken,
   rsvpPublicOrigin,
   rsvpTokenHash,
+  RSVP_MESSAGE_SOFT_LIMIT,
 } from "../src/guests/guest-rsvp.service";
 import { assertWeddingPlanWritable } from "../src/modules/collaboration/public/collaboration-permission.port";
 import { PublicRsvpController } from "../src/guests/guest-rsvp.controller";
 import { renderRsvpPreviewHead } from "../src/guests/rsvp-preview";
 
-// Personal invitation links and RSVP (V1 checklist 4.7).
+// Personal invitation links and RSVP (V1 checklist 4.7), and D116: one
+// stable link per guest, a record of every send and the occasions it named,
+// sent only when the person says so, and each occasion's own place and
+// version.
 
 const owner = { id: "owner-1" } as any;
 const member = { id: "member-1" } as any;
 
-// D83: the plan's events beyond the wedding, as planning lists them.
-const planEvents = [
-  {
-    id: "event-wedding",
-    weddingPlanId: "plan-1",
-    type: "WEDDING",
-    title: null,
-    date: new Date("2027-02-18T00:00:00Z"),
-    timeSlot: "AFTER_ISHA",
-    exactTime: null,
-    placeLabel: "قاعة سبأ",
-  },
-  {
-    id: "event-lunch",
-    weddingPlanId: "plan-1",
-    type: "LUNCH",
-    title: null,
-    date: new Date("2027-02-18T00:00:00Z"),
-    timeSlot: "DHUHR",
-    exactTime: null,
-    placeLabel: "بيت العريس",
-  },
-  {
-    id: "event-aqd",
-    weddingPlanId: "plan-1",
-    type: "AQD",
-    title: "عقد القران",
-    date: new Date("2027-02-11T00:00:00Z"),
-    timeSlot: null,
-    exactTime: "20:30",
-    placeLabel: null,
-  },
-];
+// D83: the plan's events, as planning lists them; the wedding row among
+// them. D116: each with its own map link, address and version.
+function planEventRows() {
+  return [
+    {
+      id: "event-wedding",
+      weddingPlanId: "plan-1",
+      type: "WEDDING",
+      title: null,
+      date: null,
+      timeSlot: "AFTER_ISHA",
+      exactTime: null,
+      placeLabel: "قاعة سبأ",
+      mapUrl: null as string | null,
+      address: null as string | null,
+      version: 1,
+    },
+    {
+      id: "event-lunch",
+      weddingPlanId: "plan-1",
+      type: "LUNCH",
+      title: null,
+      date: new Date("2027-02-18T00:00:00Z"),
+      timeSlot: "DHUHR",
+      exactTime: null,
+      placeLabel: "بيت العريس",
+      mapUrl: "https://maps.app.goo.gl/lunch" as string | null,
+      address: null as string | null,
+      version: 1,
+    },
+    {
+      id: "event-aqd",
+      weddingPlanId: "plan-1",
+      type: "AQD",
+      title: "عقد القران",
+      date: new Date("2027-02-11T00:00:00Z"),
+      timeSlot: null,
+      exactTime: "20:30",
+      placeLabel: null,
+      mapUrl: null as string | null,
+      address: null as string | null,
+      version: 1,
+    },
+  ];
+}
 
 function fakeDatabase() {
   const guests = new Map<string, any>([
@@ -67,6 +84,10 @@ function fakeDatabase() {
         companionsCount: 0,
         respondedAt: null,
         rsvpTokenHash: null,
+        rsvpLinkHash: null,
+        rsvpLinkVersion: 0,
+        linkOpenedAt: null,
+        weddingAnsweredVersion: null,
       },
     ],
   ]);
@@ -79,9 +100,12 @@ function fakeDatabase() {
       attendanceStatus: "PENDING",
       companionsCount: 0,
       respondedAt: null,
+      answeredVersion: null,
     },
   ];
+  const events = planEventRows();
   const cards = new Map<string, any>();
+  const sends: any[] = [];
   const notifications: any[] = [];
   const matches = (row: any, where: any) =>
     Object.entries(where).every(([key, value]) =>
@@ -93,14 +117,26 @@ function fakeDatabase() {
     $queryRaw: async (query: { values: unknown[] }) =>
       guests.has(query.values[0] as string) ? [{ id: query.values[0] }] : [],
     guest: {
-      findUnique: async ({ where }: any) => {
-        if (where.id) return guests.get(where.id) ?? null;
-        return [...guests.values()].find((row) => row.rsvpTokenHash === where.rsvpTokenHash) ?? null;
-      },
+      findUnique: async ({ where }: any) => guests.get(where.id) ?? null,
+      // D116: a link opens by its stable hash or by the last random one.
+      findFirst: async ({ where }: any) =>
+        [...guests.values()].find((row) =>
+          where.OR.some((condition: any) =>
+            Object.entries(condition).every(([key, value]) => value && row[key] === value),
+          ),
+        ) ?? null,
       update: async ({ where, data }: any) => {
         const row = { ...guests.get(where.id), ...data };
         guests.set(where.id, row);
         return row;
+      },
+      updateMany: async ({ where, data }: any) => {
+        const row = guests.get(where.id);
+        if (row && row.linkOpenedAt === where.linkOpenedAt) {
+          guests.set(where.id, { ...row, ...data });
+          return { count: 1 };
+        }
+        return { count: 0 };
       },
     },
     guestEventInvite: {
@@ -122,17 +158,48 @@ function fakeDatabase() {
         const current = cards.get(where.weddingPlanId);
         const row = current
           ? { ...current, ...update, updatedAt: new Date() }
-          : { id: `card-${where.weddingPlanId}`, ...create, updatedAt: new Date() };
+          : { id: `card-${where.weddingPlanId}`, photoKind: "PHOTO", ...create, updatedAt: new Date() };
         cards.set(where.weddingPlanId, row);
         return row;
       },
+    },
+    guestInvitationSend: {
+      create: async ({ data }: any) => {
+        const row = {
+          id: `send-${sends.length + 1}`,
+          status: "PREPARED",
+          settledAt: null,
+          createdAt: new Date(Date.UTC(2026, 10, 16, 9, sends.length)),
+          ...data,
+        };
+        sends.push(row);
+        return row;
+      },
+      findUnique: async ({ where }: any) => sends.find((row) => row.id === where.id) ?? null,
+      update: async ({ where, data }: any) => {
+        const row = sends.find((candidate) => candidate.id === where.id);
+        Object.assign(row, data);
+        return row;
+      },
+      findMany: async ({ where }: any) =>
+        sends.filter((row) => where.guestId.in.includes(row.guestId)),
     },
   };
   const prisma: any = {
     ...tx,
     $transaction: async (operation: (client: any) => Promise<unknown>) => operation(tx),
   };
-  return { prisma, guests, eventInvites, cards, notifications, media: [] as any[], signed: [] as any[] };
+  return {
+    prisma,
+    guests,
+    eventInvites,
+    events,
+    cards,
+    sends,
+    notifications,
+    media: [] as any[],
+    signed: [] as any[],
+  };
 }
 
 function service(
@@ -171,7 +238,14 @@ function service(
       city: null,
       location: { governorate: "أمانة العاصمة", cityOrDistrict: "شعوب" },
     }),
-    listPlanEvents: async () => planEvents,
+    listPlanEvents: async () => db.events.map((event) => ({ ...event })),
+    // D116: the wedding's map link and address are its row's.
+    setWeddingEventPlace: async (_tx: unknown, _plan: string, place: any) => {
+      const wedding = db.events.find((event) => event.type === "WEDDING")!;
+      if (place.mapUrl !== undefined && place.mapUrl !== wedding.mapUrl) wedding.version += 1;
+      if (place.mapUrl !== undefined) wedding.mapUrl = place.mapUrl;
+      if (place.address !== undefined) wedding.address = place.address;
+    },
   };
   const notifications: any = {
     createNotificationInTransaction: async (_tx: unknown, input: any) => {
@@ -209,7 +283,7 @@ function tokenOf(url: string): string {
   return url.split("/rsvp/")[1];
 }
 
-test("the owner gets a personal link and a WhatsApp message; only the hash is stored", async () => {
+test("the owner gets the guest's link and a WhatsApp text; only the hash is kept, and nothing is sent yet", async () => {
   process.env.INVITE_PUBLIC_ORIGIN = "https://3-121-198-183.sslip.io";
   const db = fakeDatabase();
   const link = await service(db).createInvitationLink(owner, "guest-1");
@@ -220,19 +294,199 @@ test("the owner gets a personal link and a WhatsApp message; only the hash is st
   assert.match(link.message, /18\/2\/2027/);
   assert.ok(link.message.includes(link.url));
   const stored = db.guests.get("guest-1");
-  assert.equal(stored.rsvpTokenHash, rsvpTokenHash(tokenOf(link.url)));
-  assert.equal(stored.invitationStatus, "SENT");
+  assert.equal(stored.rsvpLinkHash, rsvpTokenHash(tokenOf(link.url)));
   assert.ok(!JSON.stringify(stored).includes(tokenOf(link.url)));
+  // D116: preparing a send is not sending it.
+  assert.equal(stored.invitationStatus, "NOT_SENT");
+  assert.equal(link.kind, "INVITATION");
+  assert.deepEqual(link.events, [
+    { planEventId: "event-wedding", version: 1 },
+    { planEventId: "event-lunch", version: 1 },
+  ]);
+  assert.equal(db.sends.length, 1);
+  assert.equal(db.sends[0].status, "PREPARED");
 });
 
-test("a new link replaces the old one", async () => {
+// Changed on purpose (D116): before, every send made a new random link and
+// the one in the first message died; a reminder or an invitation to one
+// more occasion then opened «الرابط ما يشتغل» from the first message.
+test("D116: the link is the same on every send; replacing it is what retires the old one", async () => {
   const db = fakeDatabase();
   const rsvp = service(db);
   const first = await rsvp.createInvitationLink(owner, "guest-1");
-  const second = await rsvp.createInvitationLink(owner, "guest-1");
+  const again = await rsvp.createInvitationLink(owner, "guest-1", { reminder: true });
+  assert.equal(again.url, first.url);
+  assert.equal((await rsvp.getInvitation(tokenOf(first.url))).guestName, "عمي صالح");
 
+  const replaced = await rsvp.replaceInvitationLink(owner, "guest-1");
+  assert.notEqual(replaced.url, first.url);
   await assert.rejects(rsvp.getInvitation(tokenOf(first.url)), /not valid/);
-  assert.equal((await rsvp.getInvitation(tokenOf(second.url))).guestName, "عمي صالح");
+  assert.equal((await rsvp.getInvitation(tokenOf(replaced.url))).guestName, "عمي صالح");
+  // The next send carries the new link.
+  assert.equal((await rsvp.createInvitationLink(owner, "guest-1")).url, replaced.url);
+});
+
+test("D116: the last random link sent before stable links keeps opening until the link is replaced", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const legacy = "L".repeat(43);
+  db.guests.set("guest-1", { ...db.guests.get("guest-1"), rsvpTokenHash: rsvpTokenHash(legacy) });
+
+  assert.equal((await rsvp.getInvitation(legacy)).guestName, "عمي صالح");
+  // A send gives the stable link and leaves the old one opening.
+  const link = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.notEqual(tokenOf(link.url), legacy);
+  assert.equal((await rsvp.getInvitation(legacy)).guestName, "عمي صالح");
+
+  await rsvp.replaceInvitationLink(owner, "guest-1");
+  await assert.rejects(rsvp.getInvitation(legacy), /not valid/);
+});
+
+test("D116: the stable link is the guest's and its version's alone", () => {
+  const environment = { JWT_SECRET: "a".repeat(64) } as NodeJS.ProcessEnv;
+  const token = rsvpLinkToken("guest-1", 0, environment);
+  assert.match(token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(rsvpLinkToken("guest-1", 0, environment), token);
+  assert.notEqual(rsvpLinkToken("guest-1", 1, environment), token);
+  assert.notEqual(rsvpLinkToken("guest-2", 0, environment), token);
+  assert.notEqual(
+    rsvpLinkToken("guest-1", 0, { JWT_SECRET: "b".repeat(64) } as NodeJS.ProcessEnv),
+    token,
+  );
+  // A production server without its secret makes no link at all.
+  assert.throws(() =>
+    rsvpLinkToken("guest-1", 0, { NODE_ENV: "production" } as NodeJS.ProcessEnv),
+  );
+});
+
+test("D116: a send counts only once the person says it was sent", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const link = await rsvp.createInvitationLink(owner, "guest-1");
+
+  const notSent = await rsvp.settleInvitationSend(owner, link.sendId, { sent: false });
+  assert.equal(notSent.status, "NOT_SENT");
+  assert.equal(db.guests.get("guest-1").invitationStatus, "NOT_SENT");
+  // Not sent: the guest is still due the invitation.
+  const retry = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.equal(retry.kind, "INVITATION");
+
+  const sent = await rsvp.settleInvitationSend(owner, retry.sendId, { sent: true, channel: "SMS" });
+  assert.equal(sent.status, "SENT");
+  assert.ok(sent.settledAt instanceof Date);
+  assert.equal(db.sends[1].channel, "SMS");
+  // An app from before D116 reads the guest as invited.
+  assert.equal(db.guests.get("guest-1").invitationStatus, "SENT");
+  // Told of every occasion and silent: what is due now is a reminder.
+  assert.equal((await rsvp.createInvitationLink(owner, "guest-1")).kind, "REMINDER");
+});
+
+test("D116: only whoever may send to the guest settles their send", async () => {
+  const db = fakeDatabase();
+  const link = await service(db).createInvitationLink(owner, "guest-1");
+  await assert.rejects(
+    service(db).settleInvitationSend(member, link.sendId, { sent: true }),
+    /not found/i,
+  );
+  await assert.rejects(
+    service(db).settleInvitationSend(owner, "send-none", { sent: true }),
+    /not found/i,
+  );
+});
+
+test("D116: an occasion added after the invitation is what the guest is told next, alone", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  db.eventInvites.length = 0; // invited to the wedding only
+  const first = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.deepEqual(first.events, [{ planEventId: "event-wedding", version: 1 }]);
+  await rsvp.settleInvitationSend(owner, first.sendId, { sent: true });
+
+  db.eventInvites.push({
+    id: "invite-2",
+    guestId: "guest-1",
+    planEventId: "event-lunch",
+    attendanceStatus: "PENDING",
+    companionsCount: 0,
+    respondedAt: null,
+    answeredVersion: null,
+  });
+  const addition = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.equal(addition.kind, "ADDITION");
+  assert.deepEqual(addition.events, [{ planEventId: "event-lunch", version: 1 }]);
+  assert.match(addition.message, /ويسعدنا حضورك أيضًا في الغداء، ضمن عرس أحمد\./);
+  assert.doesNotMatch(addition.message, /قاعة سبأ/);
+  assert.match(addition.message, /https:\/\/maps\.app\.goo\.gl\/lunch/);
+});
+
+test("D116: a changed occasion is told to the guests who hold the old one, and a confirmation before it asks again", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const first = await rsvp.createInvitationLink(owner, "guest-1");
+  await rsvp.settleInvitationSend(owner, first.sendId, { sent: true });
+  const token = tokenOf(first.url);
+  await rsvp.respond(token, "CONFIRMED", 2, "event-lunch");
+  assert.equal(db.eventInvites[0].answeredVersion, 1);
+
+  // The lunch moves: its version rises.
+  const lunch = db.events.find((event) => event.id === "event-lunch")!;
+  lunch.timeSlot = "AFTER_ASR";
+  lunch.version = 2;
+
+  const view = await rsvp.getInvitation(token);
+  assert.equal(view.events[0].needsReconfirm, true);
+  assert.equal(view.events[0].attendanceStatus, "CONFIRMED", "the confirmation is kept");
+  assert.equal(view.wedding?.needsReconfirm, false);
+
+  const change = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.equal(change.kind, "CHANGE");
+  assert.deepEqual(change.events, [{ planEventId: "event-lunch", version: 2 }]);
+  assert.match(change.message, /تغيّر موعد أو مكان الغداء في عرس أحمد/);
+  assert.match(change.message, /نرجو تأكيد حضورك من جديد من الرابط:/);
+  assert.match(change.message, /بعد العصر/);
+
+  // Confirming again, with the same figures, is news to the owner.
+  const before = db.notifications.length;
+  const again = await rsvp.respond(token, "CONFIRMED", 2, "event-lunch");
+  assert.equal(again.events[0].needsReconfirm, false);
+  assert.equal(db.eventInvites[0].answeredVersion, 2);
+  assert.equal(db.notifications.length, before + 1);
+});
+
+test("D116: an invitation of its own for one occasion names that occasion, within the wedding", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  await rsvp.setInvitationCard(owner, "plan-1", { hostLine: "أبو أحمد" });
+  const lunch = await rsvp.createInvitationLink(owner, "guest-1", { planEventId: "event-lunch" });
+  assert.equal(lunch.kind, "INVITATION");
+  assert.deepEqual(lunch.events, [{ planEventId: "event-lunch", version: 1 }]);
+  assert.match(lunch.message, /يتشرف أبو أحمد بدعوتكم لحضور الغداء في عرس أحمد\./);
+  assert.doesNotMatch(lunch.message, /قاعة سبأ/);
+  // The same link: one page holds every occasion of the guest.
+  const unified = await rsvp.createInvitationLink(owner, "guest-1");
+  assert.equal(unified.url, lunch.url);
+  // An occasion the guest is not invited to is refused.
+  await assert.rejects(
+    rsvp.createInvitationLink(owner, "guest-1", { planEventId: "event-aqd" }),
+    (error: any) => error?.response?.code === "GUEST_EVENT_NOT_INVITED",
+  );
+});
+
+test("D116: the page drawn in a browser marks the link opened, once; the head a crawler reads does not", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+
+  await rsvp.invitationPreview(token);
+  await rsvp.getInvitation(token);
+  assert.equal(db.guests.get("guest-1").linkOpenedAt, null);
+
+  await rsvp.markInvitationOpened(token);
+  const first = db.guests.get("guest-1").linkOpenedAt;
+  assert.ok(first instanceof Date);
+  await rsvp.markInvitationOpened(token);
+  assert.equal(db.guests.get("guest-1").linkOpenedAt, first);
+  await assert.rejects(rsvp.markInvitationOpened("Z".repeat(43)), /not valid/);
 });
 
 test("a contributor sends links only for the guests they added", async () => {
@@ -252,13 +506,17 @@ test("the guest confirms with companions; the list updates and the owner is told
   assert.equal(view.weddingDate, "2027-02-18");
   assert.ok(view.locationLabel?.includes("شعوب"));
   assert.equal(view.attendanceStatus, "PENDING");
+  assert.equal(view.persona, "GROOM");
 
   const answered = await rsvp.respond(token, "CONFIRMED", 2);
   assert.equal(answered.attendanceStatus, "CONFIRMED");
   assert.equal(answered.companionsCount, 2);
   const row = db.guests.get("guest-1");
   assert.equal(row.status, "CONFIRMED");
+  assert.equal(row.weddingAnsweredVersion, 1);
   assert.ok(row.respondedAt instanceof Date);
+  // Answering is the proof the invitation arrived.
+  assert.equal(row.invitationStatus, "SENT");
   assert.equal(db.notifications.length, 1);
   assert.equal(db.notifications[0].userId, "owner-1");
   assert.equal(db.notifications[0].type, "GUEST_RESPONDED");
@@ -271,6 +529,9 @@ test("the guest confirms with companions; the list updates and the owner is told
   const declined = await rsvp.respond(token, "DECLINED", 5);
   assert.equal(declined.attendanceStatus, "DECLINED");
   assert.equal(declined.companionsCount, 0);
+  // The wedding's own id answers the wedding, as no id does.
+  const viaId = await rsvp.respond(token, "CONFIRMED", 1, "event-wedding");
+  assert.equal(viaId.attendanceStatus, "CONFIRMED");
 });
 
 test("bad tokens, too many companions and archived plans are refused", async () => {
@@ -301,12 +562,18 @@ test("the guest reads the events they are invited to and answers each one on its
   assert.equal(view.events[0].date, "2027-02-18");
   assert.equal(view.events[0].timeSlot, "DHUHR");
   assert.equal(view.events[0].placeLabel, "بيت العريس");
-  // The wedding row's time and venue reach the page too.
+  // D116: each occasion carries its own map link.
+  assert.equal(view.events[0].mapUrl, "https://maps.app.goo.gl/lunch");
+  // The wedding row's time, venue and place reach the page too.
   assert.deepEqual(view.wedding, {
+    id: "event-wedding",
     timeSlot: "AFTER_ISHA",
     exactTime: null,
     timeLabel: "بعد العشاء",
     placeLabel: "قاعة سبأ",
+    mapUrl: null,
+    address: null,
+    needsReconfirm: false,
   });
   assert.equal(view.events[0].timeLabel, "الظهر");
   assert.equal(view.hostPhrase, null);
@@ -385,7 +652,8 @@ test("the card of an archived plan still reads; only writing it is refused", asy
   );
 });
 
-// D83: one card per plan, kept in the account.
+// D83: one card per plan, kept in the account. D116: its map link and
+// address are the wedding row's.
 test("the card is saved once per plan, read by the guest, and spoken in the message", async () => {
   const db = fakeDatabase();
   const rsvp = service(db);
@@ -396,6 +664,7 @@ test("the card is saved once per plan, read by the guest, and spoken in the mess
     hostLine: null,
     freeText: null,
     photoUrl: null,
+    photoKind: "PHOTO",
     photoReadUrl: null,
     mapUrl: null,
     address: null,
@@ -413,28 +682,36 @@ test("the card is saved once per plan, read by the guest, and spoken in the mess
   assert.equal(saved.mapUrl, "https://maps.app.goo.gl/abc");
   assert.equal(saved.address, null);
   assert.ok(saved.updatedAt instanceof Date);
+  // The map link is the wedding row's, and a new one raises its version.
+  const wedding = db.events.find((event) => event.type === "WEDDING")!;
+  assert.equal(wedding.mapUrl, "https://maps.app.goo.gl/abc");
+  assert.equal(wedding.version, 2);
+  assert.equal(db.cards.get("plan-1").mapUrl, undefined, "the card keeps no copy");
   // A later save of one field keeps the others.
   const kept = await rsvp.setInvitationCard(owner, "plan-1", { address: "شارع تعز، جوار الجامع" });
   assert.equal(kept.hostLine, "عبدالرحمن الحمدي");
   assert.equal(kept.address, "شارع تعز، جوار الجامع");
+  assert.equal(wedding.version, 2, "an address alone changes nothing a guest was told");
   assert.equal((await rsvp.getInvitationCard(owner, "plan-1")).address, "شارع تعز، جوار الجامع");
 
   const link = await rsvp.createInvitationLink(owner, "guest-1");
   assert.match(link.message, /يتشرف عبدالرحمن الحمدي بدعوتكم لحضور عرس أحمد/);
   assert.match(link.message, /يا مرحبا بالحاضرين/);
-  assert.match(link.message, /الغداء/);
+  assert.match(link.message, /\*الغداء\*/);
   assert.match(link.message, /بيت العريس/);
   assert.match(link.message, /https:\/\/maps\.app\.goo\.gl\/abc/);
+  assert.match(link.message, /العنوان: شارع تعز، جوار الجامع/);
   assert.match(link.message, /قاعة سبأ/);
 
   const view = await rsvp.getInvitation(tokenOf(link.url));
   assert.equal(view.card?.hostLine, "عبدالرحمن الحمدي");
   assert.equal(view.card?.mapUrl, "https://maps.app.goo.gl/abc");
+  assert.equal(view.wedding?.mapUrl, "https://maps.app.goo.gl/abc");
   assert.equal(view.hostPhrase, "يتشرف عبدالرحمن الحمدي بدعوتكم لحضور");
 
-  // A reminder is the short text with the new link.
+  // A reminder is the short text with the guest's link.
   const reminder = await rsvp.createInvitationLink(owner, "guest-1", { reminder: true });
-  assert.match(reminder.message, /نذكرك بعرس أحمد يوم 18\/2\/2027/);
+  assert.match(reminder.message, /^أهلًا عمي صالح\nنذكرك بعرس أحمد\./);
   assert.doesNotMatch(reminder.message, /يتشرف/);
   assert.ok(reminder.message.includes(reminder.url));
 });
@@ -445,11 +722,23 @@ test("the bride's card speaks to women, and a map link must be HTTPS", async () 
   await rsvp.setInvitationCard(owner, "plan-1", { hostLine: "أم سلمى" });
   const link = await rsvp.createInvitationLink(owner, "guest-1");
   assert.match(link.message, /تتشرف أم سلمى بدعوتكن لحضور/);
+  assert.equal((await rsvp.getInvitation(tokenOf(link.url))).persona, "BRIDE");
 
   await assert.rejects(
     rsvp.setInvitationCard(owner, "plan-1", { mapUrl: "http://maps.app.goo.gl/abc" }),
     (error: any) => error?.response?.code === "INVITATION_CARD_MAP_URL_INVALID",
   );
+});
+
+test("D116: the card says what its picture is, a photo drawn in or a ready card shown whole", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const ready = await rsvp.setInvitationCard(owner, "plan-1", { photoKind: "CARD" });
+  assert.equal(ready.photoKind, "CARD");
+  // A save that does not name it keeps it.
+  assert.equal((await rsvp.setInvitationCard(owner, "plan-1", { hostLine: "س" })).photoKind, "CARD");
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  assert.equal((await rsvp.getInvitation(token)).card?.photoKind, "CARD");
 });
 
 test("the card photo is the owner's verified upload, consumed by the card and released when replaced", async () => {
@@ -473,15 +762,30 @@ test("the link origin must be HTTPS", () => {
   assert.equal(rsvpPublicOrigin({ INVITE_PUBLIC_ORIGIN: "https://example.org/x" }), "https://example.org");
   assert.throws(() => rsvpPublicOrigin({ INVITE_PUBLIC_ORIGIN: "http://example.org" }));
   assert.equal(
-    buildRsvpMessage({ guestName: "س", planTitle: "عرس", weddingDate: null, locationLabel: null, url: "https://x/rsvp/t" })
-      .includes("الموعد"),
+    buildRsvpMessage({
+      guestName: "س",
+      planTitle: "عرس",
+      url: "https://x/rsvp/t",
+      occasions: [
+        {
+          label: "العرس",
+          isWedding: true,
+          date: null,
+          timeSlot: null,
+          exactTime: null,
+          placeLabel: null,
+          address: null,
+          mapUrl: null,
+        },
+      ],
+    }).includes("الموعد"),
     false,
   );
 });
 
 // 6b: WhatsApp previews the first link of a text. The guest's own link
 // comes first, so the preview is the invitation and not the venue's map.
-test("the invitation link comes before the map link in the message", async () => {
+test("the invitation link comes before every map link in the message", async () => {
   const db = fakeDatabase();
   const rsvp = service(db);
   await rsvp.setInvitationCard(owner, "plan-1", {
@@ -490,14 +794,37 @@ test("the invitation link comes before the map link in the message", async () =>
   });
   const link = await rsvp.createInvitationLink(owner, "guest-1");
   const urls = link.message.match(/https:\/\/\S+/g) ?? [];
-  assert.deepEqual(urls, [link.url, "https://maps.app.goo.gl/abc"]);
-  // The details still follow the link.
+  assert.deepEqual(urls, [
+    link.url,
+    "https://maps.app.goo.gl/abc",
+    "https://maps.app.goo.gl/lunch",
+  ]);
+  // The details follow the link.
   assert.ok(link.message.indexOf(link.url) < link.message.indexOf("قاعة سبأ"));
-  assert.match(link.message, /نرجو تأكيد حضورك من الرابط:\n/);
-  // The reminder keeps its short text with the new link last.
-  const reminder = await rsvp.createInvitationLink(owner, "guest-1", { reminder: true });
-  assert.ok(reminder.message.endsWith(reminder.url));
-  assert.doesNotMatch(reminder.message, /maps\.app/);
+  assert.match(link.message, /نرجو تأكيد حضورك لكل مناسبة من الرابط:\n/);
+});
+
+test("D116: a text too long for WhatsApp drops its map links, and says they are behind the link", () => {
+  const occasion = (index: number) => ({
+    label: `مناسبة ${index}`,
+    isWedding: index === 0,
+    date: new Date(Date.UTC(2027, 1, 10 + index)),
+    timeSlot: "AFTER_ISHA" as const,
+    exactTime: null,
+    placeLabel: `مكان طويل الاسم رقم ${index} في صنعاء القديمة`,
+    address: `شارع رقم ${index}، جوار الجامع الكبير، بعد الدوار الثاني`,
+    mapUrl: `https://maps.app.goo.gl/${"x".repeat(40)}${index}`,
+  });
+  const message = buildRsvpMessage({
+    guestName: "ياسر",
+    planTitle: "عرس رضوان",
+    url: "https://x/rsvp/t",
+    occasions: Array.from({ length: 12 }, (_, index) => occasion(index)),
+  });
+  assert.ok(message.length <= RSVP_MESSAGE_SOFT_LIMIT || !message.includes("maps.app"));
+  assert.doesNotMatch(message, /maps\.app/);
+  assert.match(message, /ومواقع الخريطة في الرابط\./);
+  assert.match(message, /\*مناسبة 11\*/);
 });
 
 // 6a: the card photo is private in the bucket; the guest's link reads it.
@@ -525,9 +852,9 @@ test("the guest page and the crawler read the card photo through the link, never
   await assert.rejects(rsvp.cardPhotoDownloadUrl(token), (error: any) =>
     error.getStatus() === 404 && error.response.code === "RSVP_CARD_PHOTO_NOT_FOUND");
   assert.equal((await rsvp.getInvitation(token)).card?.photoUrl, null);
-  // A revoked link (a new one replaced it) reads nothing either.
+  // A replaced link reads nothing either.
   await rsvp.setInvitationCard(owner, "plan-1", { photoUrl: stored });
-  await rsvp.createInvitationLink(owner, "guest-1");
+  await rsvp.replaceInvitationLink(owner, "guest-1");
   await assert.rejects(rsvp.cardPhotoDownloadUrl(token), /not valid/);
 });
 
@@ -587,28 +914,42 @@ test("a photo that cannot be signed is not offered to the guest's page or to the
 });
 
 // «ذكّر الكل» (2026-11-14): a guest who already confirmed is reminded of the
-// day, not asked to answer again.
-test("a reminder to a guest who confirmed says the day and keeps the link, without asking for an answer", () => {
+// occasion, not asked to answer again. D116: the link is the same one, so
+// the text no longer calls it new; the day is said with the occasion's
+// details, not twice.
+test("a reminder to a guest who confirmed says the occasion and keeps the link, without asking for an answer", () => {
   const base = {
     guestName: "مراد",
     planTitle: "عرس أحمد",
-    weddingDate: new Date(Date.UTC(2027, 1, 18)),
-    locationLabel: null,
     url: "https://x/rsvp/t",
-    reminder: true,
+    kind: "REMINDER" as const,
+    occasions: [
+      {
+        label: "العرس",
+        isWedding: true,
+        date: new Date(Date.UTC(2027, 1, 18)),
+        timeSlot: null,
+        exactTime: null,
+        placeLabel: null,
+        address: null,
+        mapUrl: null,
+      },
+    ],
   };
   const confirmed = buildRsvpMessage({ ...base, confirmed: true });
-  assert.match(confirmed, /نذكرك بعرس أحمد يوم 18\/2\/2027/);
-  assert.match(confirmed, /ننتظرك/);
+  assert.equal(
+    confirmed,
+    "أهلًا مراد\nنذكرك بعرس أحمد.\nننتظرك. ولو تغيّر شي، هذا رابطك:\nhttps://x/rsvp/t\n\nالموعد: 18/2/2027",
+  );
   assert.doesNotMatch(confirmed, /للرد/);
-  assert.ok(confirmed.endsWith("https://x/rsvp/t"));
 
   const pending = buildRsvpMessage(base);
-  assert.match(pending, /هذا رابطك الجديد للرد بضغطة:/);
+  assert.match(pending, /هذا رابطك للرد بضغطة:/);
+  assert.doesNotMatch(pending, /الجديد/);
   assert.doesNotMatch(pending, /ننتظرك/);
 });
 
-test("a crawler gets this invitation's head; an unknown, revoked or archived link gets none", async () => {
+test("a crawler gets this invitation's head; an unknown, replaced or archived link gets none", async () => {
   process.env.INVITE_PUBLIC_ORIGIN = "https://3.121.198.183";
   const db = fakeDatabase();
   const rsvp = service(db);
@@ -632,7 +973,7 @@ test("a crawler gets this invitation's head; an unknown, revoked or archived lin
   assert.equal(await rsvp.invitationPreview("short"), null);
   assert.equal(await rsvp.invitationPreview("D".repeat(43)), null);
   assert.equal(await service(db, { planStatus: "ARCHIVED" }).invitationPreview(token), null);
-  await rsvp.createInvitationLink(owner, "guest-1");
+  await rsvp.replaceInvitationLink(owner, "guest-1");
   assert.equal(await rsvp.invitationPreview(token), null, "a replaced link names nobody");
 
   // Without a photo the head has no image.

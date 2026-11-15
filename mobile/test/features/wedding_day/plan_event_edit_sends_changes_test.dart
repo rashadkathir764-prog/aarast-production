@@ -57,6 +57,43 @@ void main() {
     expect(client.sent.single.data, {'note': null});
   });
 
+  // D116: the occasion sheet says the map link and the address, so a
+  // changed one is sent; a draft from elsewhere leaves them as they are.
+  test('the sheet sends a changed map link, and only that', () async {
+    final client = _Client();
+    final event = PlanEvent(
+      id: 'maqeel',
+      type: PlanEventType.maqeel,
+      date: DateTime(2027, 1, 20),
+      slot: PlanEventSlot.afterDhuhr,
+      placeLabel: 'بيت الوالد',
+      address: 'شارع حدة',
+      mapUrl: 'https://maps.app.goo.gl/old',
+    );
+
+    await PlanEventsApi(client).update(
+      'plan-1',
+      event,
+      PlanEventDraft(
+        date: event.date,
+        slot: event.slot,
+        placeLabel: event.placeLabel,
+        address: event.address,
+        mapUrl: 'https://maps.app.goo.gl/new',
+        setsPlaceLinks: true,
+      ),
+    );
+
+    expect(client.sent.single.data, {'mapUrl': 'https://maps.app.goo.gl/new'});
+  });
+
+  test('a draft that does not say the place links never clears them', () {
+    final draft = PlanEventDraft(placeLabel: 'الديوان');
+    final json = draft.toJson(isMain: false);
+    expect(json.containsKey('mapUrl'), isFalse);
+    expect(json.containsKey('address'), isFalse);
+  });
+
   test('a save that changed nothing asks the server for nothing', () async {
     final client = _Client();
 

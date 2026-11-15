@@ -19,6 +19,7 @@ class GuestEventReply {
     this.attendanceStatus = 'PENDING',
     this.companionsCount = 0,
     this.respondedAt,
+    this.answeredVersion,
   });
 
   factory GuestEventReply.fromJson(Map<String, dynamic> json) {
@@ -28,6 +29,7 @@ class GuestEventReply {
       companionsCount:
           int.tryParse(json['companionsCount']?.toString() ?? '') ?? 0,
       respondedAt: Guest._dateTimeOrNull(json['respondedAt']),
+      answeredVersion: int.tryParse(json['answeredVersion']?.toString() ?? ''),
     );
   }
 
@@ -36,9 +38,96 @@ class GuestEventReply {
   final int companionsCount;
   final DateTime? respondedAt;
 
+  /// D116: the event's version answered; null for an answer from before
+  /// versions (taken as given to the current one).
+  final int? answeredVersion;
+
+  Map<String, dynamic> toJson() => {
+    'planEventId': planEventId,
+    'attendanceStatus': attendanceStatus,
+    'companionsCount': companionsCount,
+    if (respondedAt != null) 'respondedAt': respondedAt!.toIso8601String(),
+    'answeredVersion': ?answeredVersion,
+  };
+
   bool get isConfirmed => attendanceStatus == 'CONFIRMED';
   bool get isDeclined => attendanceStatus == 'DECLINED';
   bool get isPending => !isConfirmed && !isDeclined;
+}
+
+/// D116: what the guest was told of one occasion (the wedding row among
+/// them), read by the server from the record of sends the person said were
+/// sent: the version named, when, and the last reminder.
+class GuestToldOccasion {
+  const GuestToldOccasion({
+    required this.planEventId,
+    required this.version,
+    required this.at,
+    this.remindedAt,
+  });
+
+  factory GuestToldOccasion.fromJson(Map<String, dynamic> json) {
+    return GuestToldOccasion(
+      planEventId: json['planEventId']?.toString() ?? '',
+      version: int.tryParse(json['version']?.toString() ?? '') ?? 1,
+      at: Guest._dateTimeOrNull(json['at']) ?? DateTime.now(),
+      remindedAt: Guest._dateTimeOrNull(json['remindedAt']),
+    );
+  }
+
+  final String planEventId;
+  final int version;
+  final DateTime at;
+  final DateTime? remindedAt;
+
+  Map<String, dynamic> toJson() => {
+    'planEventId': planEventId,
+    'version': version,
+    'at': at.toIso8601String(),
+    if (remindedAt != null) 'remindedAt': remindedAt!.toIso8601String(),
+  };
+}
+
+/// D116: the guest's last prepared send, so a round left half way is asked
+/// about («أرسلت له؟») instead of being taken as sent.
+class GuestLastSend {
+  const GuestLastSend({
+    required this.id,
+    required this.kind,
+    required this.status,
+    required this.createdAt,
+    this.planEventId,
+  });
+
+  static GuestLastSend? fromJson(Object? value) {
+    if (value is! Map) return null;
+    final json = Map<String, dynamic>.from(value);
+    final id = json['id']?.toString();
+    if (id == null || id.isEmpty) return null;
+    return GuestLastSend(
+      id: id,
+      kind: json['kind']?.toString() ?? 'INVITATION',
+      status: json['status']?.toString() ?? 'PREPARED',
+      planEventId: json['planEventId']?.toString(),
+      createdAt: Guest._dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
+    );
+  }
+
+  final String id;
+  final String kind;
+  final String status;
+  final String? planEventId;
+  final DateTime createdAt;
+
+  bool get awaitsAnswer => status == 'PREPARED';
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'kind': kind,
+    'status': status,
+    'planEventId': ?planEventId,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }
 
 class Guest {
@@ -59,10 +148,15 @@ class Guest {
     this.notes,
     this.editable = true,
     this.events = const [],
+    this.weddingAnsweredVersion,
+    this.linkOpenedAt,
+    this.told = const [],
+    this.lastSend,
   });
 
   factory Guest.fromJson(Map<String, dynamic> json) {
     final events = json['events'];
+    final told = json['told'];
     return Guest(
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
@@ -89,6 +183,17 @@ class Guest {
             if (item is Map)
               GuestEventReply.fromJson(Map<String, dynamic>.from(item)),
       ],
+      weddingAnsweredVersion: int.tryParse(
+        json['weddingAnsweredVersion']?.toString() ?? '',
+      ),
+      linkOpenedAt: _dateTimeOrNull(json['linkOpenedAt']),
+      told: [
+        if (told is List)
+          for (final item in told)
+            if (item is Map)
+              GuestToldOccasion.fromJson(Map<String, dynamic>.from(item)),
+      ],
+      lastSend: GuestLastSend.fromJson(json['lastSend']),
     );
   }
 
@@ -115,7 +220,23 @@ class Guest {
   /// D83: the plan's events beyond the wedding this guest is invited to.
   final List<GuestEventReply> events;
 
+  /// D116: the wedding row's version the wedding answer was given to.
+  final int? weddingAnsweredVersion;
+
+  /// D116: when the guest's page was first drawn in a browser.
+  final DateTime? linkOpenedAt;
+
+  /// D116: what the guest was told of each occasion.
+  final List<GuestToldOccasion> told;
+
+  /// D116: the guest's last prepared send.
+  final GuestLastSend? lastSend;
+
   List<String> get eventIds => [for (final event in events) event.planEventId];
+
+  /// D116: whether anything was ever sent to this guest, as far as the
+  /// person said; an answer through the link is proof too.
+  bool get everTold => told.isNotEmpty;
 
   bool get isConfirmed =>
       attendanceStatus == 'CONFIRMED' || status == 'CONFIRMED';
@@ -165,6 +286,10 @@ class Guest {
     notes: notes,
     editable: editable,
     events: events,
+    weddingAnsweredVersion: weddingAnsweredVersion,
+    linkOpenedAt: linkOpenedAt,
+    told: told,
+    lastSend: lastSend,
   );
 
   static DateTime? _dateTimeOrNull(Object? value) {
@@ -255,6 +380,7 @@ class InvitationCard {
     this.mapUrl,
     this.address,
     this.updatedAt,
+    this.isReadyCard = false,
   });
 
   factory InvitationCard.fromJson(Map<String, dynamic> json) {
@@ -272,11 +398,17 @@ class InvitationCard {
       mapUrl: text(json['mapUrl']),
       address: text(json['address']),
       updatedAt: Guest._dateTimeOrNull(json['updatedAt']),
+      isReadyCard: json['photoKind']?.toString() == 'CARD',
     );
   }
 
   final String? hostLine;
   final String? freeText;
+
+  /// D116: the picture is a card designed elsewhere, sent and shown whole,
+  /// with nothing written over it; otherwise a photo drawn inside the card
+  /// Aarast lays out.
+  final bool isReadyCard;
 
   /// The photo as the phone can draw it: the server's signed read (valid
   /// two minutes, re-issued on every read of the card), or the address of a
@@ -520,13 +652,43 @@ class GuestInvitationLink {
     required this.url,
     required this.message,
     this.phone,
+    this.sendId,
+    this.kind = 'INVITATION',
+    this.eventIds = const [],
   });
+
+  factory GuestInvitationLink.fromJson(Map<String, dynamic> json) {
+    final events = json['events'];
+    return GuestInvitationLink(
+      url: json['url']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+      sendId: json['sendId']?.toString(),
+      kind: json['kind']?.toString() ?? 'INVITATION',
+      eventIds: [
+        if (events is List)
+          for (final event in events)
+            if (event is Map && event['planEventId'] != null)
+              event['planEventId'].toString(),
+      ],
+    );
+  }
 
   final String url;
   final String message;
 
   /// The guest's number in E.164, when the plan has it.
   final String? phone;
+
+  /// D116: the prepared send, settled with what the person says happened;
+  /// null from a server before D116.
+  final String? sendId;
+
+  /// D116: INVITATION, ADDITION, CHANGE or REMINDER.
+  final String kind;
+
+  /// D116: the occasions the text names.
+  final List<String> eventIds;
 
   /// WhatsApp with the message ready: to the guest's chat when the number is
   /// known, otherwise WhatsApp's own picker.

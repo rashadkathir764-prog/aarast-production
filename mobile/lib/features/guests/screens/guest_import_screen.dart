@@ -109,7 +109,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
         if (mounted) {
           setState(
             () => _contactsError =
-                'ما قرأنا جهات الاتصال. تقدر تضيف الأسماء بالكتابة أو اللصق.',
+                'ما قرأنا جهات الاتصال. الأسماء تنضاف بالكتابة أو اللصق.',
           );
         }
         return;
@@ -163,6 +163,14 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     final words = GuestWords.of(context);
     final say = words.profile.say;
     final count = words.count(toAdd.length);
+    // D10 of the closing round: who is already on the list is marked only
+    // once the list is read; until then nothing is added, or a guest already
+    // invited would be added again. A list that could not be read at all
+    // does not stop the adding.
+    final listRead =
+        guests.isNotEmpty ||
+        provider.hasRead(widget.weddingPlanId) ||
+        provider.loadErrorMessage != null;
 
     return AarastScreenFrame(
       maxWidth: 600,
@@ -209,6 +217,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
               label: switch (provider.importProgress) {
                 final progress? when _saving =>
                   'نضيف ${progress.done} من ${progress.total}…',
+                _ when !listRead => 'نقرأ القائمة الحالية…',
                 _ when toAdd.isEmpty => say('أضف', 'أضيفي'),
                 _ => '${say('أضف', 'أضيفي')} $count',
               },
@@ -216,7 +225,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
               background: context.accent.primary,
               expand: true,
               large: true,
-              onPressed: toAdd.isEmpty || _saving
+              onPressed: toAdd.isEmpty || _saving || !listRead
                   ? null
                   : () => _add(provider, toAdd),
             ),
@@ -477,14 +486,18 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   }
 
   Future<void> _add(GuestsProvider provider, List<GuestCandidate> toAdd) async {
+    // D9 of the closing round: the button locks before anything is awaited;
+    // a second tap while the guard asked added the list twice.
+    if (_saving) return;
+    setState(() => _saving = true);
     if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
       context,
       weddingPlanId: widget.weddingPlanId,
     )) {
+      if (mounted) setState(() => _saving = false);
       return;
     }
     if (!mounted) return;
-    setState(() => _saving = true);
     final added = await provider.addGuests(
       weddingPlanId: widget.weddingPlanId,
       people: [
@@ -514,7 +527,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     if (provider.lastRefusedGuests.isNotEmpty) {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'ما انضاف بعضهم. جرّب مرة ثانية.',
+        provider.errorMessage ??
+            '${context.planWord('ما انضاف بعضهم.', 'ما انضاف بعضهن.')} '
+                '${context.say('جرّب مرة ثانية.', 'جرّبي مرة ثانية.')}',
       );
       return;
     }

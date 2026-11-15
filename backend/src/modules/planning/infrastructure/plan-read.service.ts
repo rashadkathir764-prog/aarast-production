@@ -5,6 +5,7 @@ import type {
   PlanReadPort,
   ReadablePlanEvent,
 } from '../public/plan-read.port';
+import { ensureWeddingEventRow } from './plan-events.repository';
 
 @Injectable()
 export class PlanReadService implements PlanReadPort {
@@ -131,8 +132,35 @@ export class PlanReadService implements PlanReadPort {
         timeSlot: true,
         exactTime: true,
         placeLabel: true,
+        mapUrl: true,
+        address: true,
+        version: true,
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  async setWeddingEventPlace(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    place: { mapUrl?: string | null; address?: string | null },
+  ): Promise<void> {
+    if (place.mapUrl === undefined && place.address === undefined) return;
+    await ensureWeddingEventRow(tx, weddingPlanId);
+    const wedding = await tx.planEvent.findFirst({
+      where: { weddingPlanId, type: 'WEDDING' },
+      select: { id: true, mapUrl: true },
+    });
+    if (!wedding) return;
+    const mapChanged =
+      place.mapUrl !== undefined && (place.mapUrl ?? null) !== (wedding.mapUrl ?? null);
+    await tx.planEvent.update({
+      where: { id: wedding.id },
+      data: {
+        ...(place.mapUrl !== undefined ? { mapUrl: place.mapUrl } : {}),
+        ...(place.address !== undefined ? { address: place.address } : {}),
+        ...(mapChanged ? { version: { increment: 1 } } : {}),
+      },
     });
   }
 }

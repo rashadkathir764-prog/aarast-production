@@ -48,8 +48,10 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
           ? null
           : day != null
           ? () => _postpone(day)
-          // RA-MO-196: no day yet: its first is set in «بيانات الخطة».
-          : () => context.push(AppRouter.weddingPlans),
+          // RA-MO-196: no day yet: its first is set in «بيانات الخطة»,
+          // the plan's own page (D11 of the closing round: this opened the
+          // list of plans, «خططك»).
+          : () => context.push(AppRouter.planCenter(widget.weddingPlanId)),
     );
   }
 
@@ -98,11 +100,9 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
           else ...[
             if (provider.isStale) ...[
               // D87: the copy is old; events queue on the phone (D85).
-              JourneyListNotice(
-                offline: true,
-                keepsChanges: true,
-                onRetry: () => provider.load(widget.weddingPlanId),
-              ),
+              // D24 of the closing round: an offline notice draws no retry,
+              // as on every tab; the callback given here never showed.
+              const JourneyListNotice(offline: true, keepsChanges: true),
               const SizedBox(height: AarastV3Space.x3),
             ],
             for (final event in view.items) ...[

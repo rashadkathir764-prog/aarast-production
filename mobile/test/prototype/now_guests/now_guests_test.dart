@@ -80,6 +80,15 @@ Guest _g(
     companionsCount: companions,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
+    // D116: what was told is the record of sends.
+    told: [
+      if (invitation == 'SENT')
+        GuestToldOccasion(
+          planEventId: 'wedding_$_plan',
+          version: 1,
+          at: DateTime.utc(2026, 10, 2),
+        ),
+    ],
   );
 }
 
@@ -216,6 +225,10 @@ void main() {
         // D32: guests add from the header «+».
         await tester.tap(find.byKey(const ValueKey('guests-add')));
         await tester.pump(const Duration(milliseconds: 500));
+        // Changed on purpose (D116): «+» opened the form → it opens the add menu; its first choice is the form.
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
+        await tester.pump(const Duration(milliseconds: 500));
       },
     );
   });
@@ -228,6 +241,10 @@ void main() {
       h: 1500,
       act: () async {
         await tester.tap(find.byKey(const ValueKey('guests-add')));
+        await tester.pump(const Duration(milliseconds: 500));
+        // Changed on purpose (D116): «+» opens the add menu first.
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.byKey(const ValueKey('guests-add-guest')));
         await tester.pump(const Duration(milliseconds: 500));
         final more = find.byKey(const ValueKey('guest-form-more'));
         await tester.ensureVisible(more);
@@ -298,6 +315,19 @@ void main() {
       act: () async {
         await tester.tap(find.byKey(const ValueKey('guest-menu')));
         await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  testWidgets('add menu', (tester) async {
+    await _shot(
+      tester,
+      'guest_add_menu',
+      guests: _guests,
+      h: 1100,
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('guests-add')));
         await tester.pump(const Duration(milliseconds: 500));
       },
     );

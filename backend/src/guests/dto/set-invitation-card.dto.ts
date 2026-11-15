@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import { INVITATION_CARD_LIMITS } from '../../modules/guests/domain/invitation-card';
 
@@ -23,6 +23,16 @@ export class SetInvitationCardDto {
   @IsOptional()
   photoUrl?: string | null;
 
+  /** D116: a photo drawn inside the card (PHOTO), or a ready card shown whole (CARD). */
+  @IsIn(['PHOTO', 'CARD'])
+  @IsOptional()
+  photoKind?: 'PHOTO' | 'CARD';
+
+  /**
+   * D116: the wedding's own map link and address, written on the wedding's
+   * row. An app from before D116 sends them here; the new app writes them
+   * with the wedding's other facts.
+   */
   @IsString()
   @MaxLength(INVITATION_CARD_LIMITS.mapUrl)
   @IsOptional()

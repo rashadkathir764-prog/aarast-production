@@ -10,8 +10,11 @@ import {
   ContributionSection,
   CostPaymentType,
   GuestAttendanceStatus,
+  GuestInvitationSendKind,
+  GuestInvitationSendStatus,
   GuestInvitationStatus,
   GuestStatus,
+  PlanEventType,
   LoanRepaymentStatus,
   OnboardingPath,
   PaymentScheduleStatus,
@@ -285,6 +288,16 @@ async function seedGuests(prisma: PrismaClient, planKey: string, spec: PlanSpec)
         const data = { weddingPlanId: planKey, name: group.name, sortOrder: index + 1 };
         await tx.guestGroup.upsert({ where: { id }, create: { id, ...data }, update: data });
       }
+      // D116: the plan's wedding row, which the invitations sent name.
+      const wedding =
+        (await tx.planEvent.findFirst({
+          where: { weddingPlanId: planKey, type: PlanEventType.WEDDING },
+          select: { id: true, version: true },
+        })) ??
+        (await tx.planEvent.create({
+          data: { id: `wedding_${planKey}`, weddingPlanId: planKey, type: PlanEventType.WEDDING },
+          select: { id: true, version: true },
+        }));
       const rows = buildGuestRows(spec);
       let phoneCounter = spec.key === 'groom' ? 10_000 : 20_000;
       for (const [position, row] of rows.entries()) {
@@ -305,6 +318,24 @@ async function seedGuests(prisma: PrismaClient, planKey: string, spec: PlanSpec)
           companionsCount: row.companions,
         };
         await tx.guest.upsert({ where: { id: row.id }, create: { id: row.id, ...data }, update: data });
+        // D116: «sent» is the send log's; every demo guest was invited three
+        // weeks ago, as a real plan's would read after the migration.
+        const sendId = demoId('send', row.id);
+        const sentAt = inDays(-21);
+        await tx.guestInvitationSend.upsert({
+          where: { id: sendId },
+          create: {
+            id: sendId,
+            weddingPlanId: planKey,
+            guestId: row.id,
+            kind: GuestInvitationSendKind.INVITATION,
+            events: [{ planEventId: wedding.id, version: wedding.version }],
+            status: GuestInvitationSendStatus.SENT,
+            createdAt: sentAt,
+            settledAt: sentAt,
+          },
+          update: {},
+        });
       }
     },
     { timeout: 120_000 },

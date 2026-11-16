@@ -475,6 +475,14 @@ class AppRouter {
     return '/wedding-plans/$id/guests/add';
   }
 
+  /// D116: the guests tab with its add menu opened once; each call carries
+  /// a new request, so the same «+» opens it again.
+  static String guestListAddMenu(String id) {
+    return '/wedding-plans/$id/guests?add=${++_guestAddMenuRequests}';
+  }
+
+  static int _guestAddMenuRequests = 0;
+
   /// f04: one service of the wedding, its offers and its booking.
   static String providerRequests(
     String weddingPlanId, {

@@ -152,6 +152,8 @@ Future<_Api> _pump(
   WidgetTester tester, {
   List<Guest>? guests,
   bool withEvents = true,
+  String? location,
+  void Function(GoRouter router)? onRouter,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1400);
@@ -159,12 +161,16 @@ Future<_Api> _pump(
   final api = _Api(guests ?? _guests());
   Widget route(GoRouterState state, String name) => Text('$name ${state.uri}');
   final router = GoRouter(
-    initialLocation: '/wedding-plans/$_plan/guests',
+    initialLocation: location ?? '/wedding-plans/$_plan/guests',
     routes: [
       GoRoute(
         path: '/wedding-plans/:id/guests',
-        builder: (_, state) =>
-            GuestListScreen(weddingPlanId: state.pathParameters['id']!),
+        // As the plan shell builds the tab: `?add=` is its «+» (D116).
+        builder: (_, state) => GuestListScreen(
+          weddingPlanId: state.pathParameters['id']!,
+          openAddMenuRequest:
+              int.tryParse(state.uri.queryParameters['add'] ?? '') ?? 0,
+        ),
         routes: [
           GoRoute(path: 'send', builder: (_, state) => route(state, 'send')),
           GoRoute(
@@ -185,6 +191,7 @@ Future<_Api> _pump(
     ],
   );
   addTearDown(router.dispose);
+  onRouter?.call(router);
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -239,7 +246,7 @@ void main() {
     expect(_parts(tester), '1 ما ردّوا · 1 بلا دعوة');
     // Who was never told comes first.
     expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
-    expect(find.text('أرسل الدعوة لـ ضيف واحد'), findsOneWidget);
+    expect(find.text('أرسل الدعوة لـضيف واحد'), findsOneWidget);
     expect(_inFamily('1/2'), findsOneWidget);
     // The wedding chooses no guests: every guest is invited to it.
     expect(
@@ -312,6 +319,26 @@ void main() {
 
     await _tap(tester, 'guests-occasions-door');
     expect(find.text('occasions /wedding-plans/plan-1/events'), findsOneWidget);
+  });
+
+  // D116: the plan shell's «+» on the tab (the app's only add button there)
+  // asks through `?add=`; the menu opens once per request, a screen the
+  // menu opens stays open, and back on the tab it does not open again.
+  testWidgets('the shell\'s «+» opens the add menu on the tab', (tester) async {
+    late GoRouter router;
+    await _pump(
+      tester,
+      location: '/wedding-plans/$_plan/guests?add=1',
+      onRouter: (value) => router = value,
+    );
+    expect(find.text('وش تضيف؟'), findsOneWidget);
+
+    await _tap(tester, 'guests-add-paste');
+    expect(find.textContaining('import '), findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('وش تضيف؟'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   group('«+» opens the add menu', () {

@@ -63,6 +63,21 @@ List<PlanEvent> planOccasions(List<PlanEvent> items, String weddingPlanId) {
   return [wedding, ...others];
 }
 
+/// [planOccasions] of the plan's events as read on this phone; [listen] is
+/// false outside `build`.
+List<PlanEvent> planOccasionsOf(
+  BuildContext context,
+  String weddingPlanId, {
+  bool listen = true,
+}) => planOccasions(
+  Provider.of<PlanEventsProvider?>(
+        context,
+        listen: listen,
+      )?.viewOf(weddingPlanId)?.items ??
+      const [],
+  weddingPlanId,
+);
+
 /// The id an occasion is known by in what the guest was told.
 String occasionKey(PlanEvent event, String weddingPlanId) =>
     event.id ?? 'wedding_$weddingPlanId';

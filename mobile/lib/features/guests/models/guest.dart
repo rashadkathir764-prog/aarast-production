@@ -234,8 +234,10 @@ class Guest {
 
   List<String> get eventIds => [for (final event in events) event.planEventId];
 
-  /// D116: whether anything was ever sent to this guest, as far as the
-  /// person said; an answer through the link is proof too.
+  /// D116: whether an invitation ever reached this guest: a send the person
+  /// said went (the send log, which also holds the guests invited before
+  /// it existed). The one source for «بلا دعوة» on every screen; the old
+  /// `invitationStatus` column is kept for older app versions only.
   bool get everTold => told.isNotEmpty;
 
   bool get isConfirmed =>
@@ -249,8 +251,7 @@ class Guest {
   /// guest the reader keeps: another's guest has no number or link to send.
   /// The reminder screen says who of them has no number; a count of who a
   /// reminder reaches is [canBeRemindedOnWhatsApp].
-  bool get canBeReminded =>
-      editable && isPending && invitationStatus != 'NOT_SENT';
+  bool get canBeReminded => editable && isPending && everTold;
 
   /// Waited on and reachable: the reminder goes to a number (RA-MO-61: «ذكّر
   /// الـ N» counted the guests without one; RA-MO-66: the rule belongs to the
@@ -258,8 +259,7 @@ class Guest {
   bool get canBeRemindedOnWhatsApp => canBeReminded && hasPhone;
 
   /// No invitation has gone out to this guest yet (e04), from this reader.
-  bool get awaitsInvitation =>
-      editable && invitationStatus == 'NOT_SENT' && !isDeclined;
+  bool get awaitsInvitation => editable && !everTold && !isDeclined;
 
   bool get hasPhone => phone?.trim().isNotEmpty == true;
 

@@ -222,6 +222,8 @@ export async function removeAdHocRows(prisma: PrismaClient): Promise<Record<stri
   removed.sharedMembers = (await prisma.sharedMember.deleteMany({ where: { id: like } })).count;
   removed.tasks = (await prisma.weddingTask.deleteMany({ where: { id: like } })).count;
   removed.guests = (await prisma.guest.deleteMany({ where: { id: like } })).count;
+  // D116: the migration gave these plans their wedding row; it goes first.
+  await prisma.planEvent.deleteMany({ where: { weddingPlanId: like } });
   removed.plans = (await prisma.weddingPlan.deleteMany({ where: { id: like } })).count;
   removed.users = (await prisma.user.deleteMany({ where: { id: like } })).count;
   return removed;

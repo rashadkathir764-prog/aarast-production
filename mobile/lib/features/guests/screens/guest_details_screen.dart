@@ -71,9 +71,10 @@ class _OccasionReply extends StatelessWidget {
               spacing: AarastV3Space.x2,
               runSpacing: AarastV3Space.x2,
               children: [
+                // The same words as the wedding's answer above them.
                 for (final (value, words) in [
-                  ('CONFIRMED', plan('حاضر', 'حاضرة')),
-                  ('DECLINED', plan('معتذر', 'معتذرة')),
+                  ('CONFIRMED', plan('أكّد', 'أكّدت')),
+                  ('DECLINED', plan('اعتذر', 'اعتذرت')),
                 ])
                   JourneyChip(
                     key: ValueKey(

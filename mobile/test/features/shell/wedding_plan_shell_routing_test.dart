@@ -241,7 +241,11 @@ void main() {
       }
     });
 
-    testWidgets('guest «+» opens the add route without page key reuse', (
+    // Changed on purpose (D116): the guests tab's «+» opens the tab's own add
+    // menu (a guest, several, an occasion, a group) through `?add=`, on the
+    // tab itself; it went to the guest form's route, so the menu Rashad
+    // approved was out of reach in the app.
+    testWidgets('guest «+» asks the guests tab for its add menu', (
       tester,
     ) async {
       final router = _buildPlanShellRouter(
@@ -260,8 +264,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(JourneySheetBody), findsNothing);
-      expect(find.text('guest-add'), findsOneWidget);
-      expect(router.state.uri.path, AppRouter.guestListAdd('plan-7'));
+      expect(find.text('guests'), findsOneWidget);
+      expect(router.state.uri.path, AppRouter.guestList('plan-7'));
+      expect(router.state.uri.queryParameters['add'], isNotNull);
     });
 
     testWidgets('tasks «+» opens the new task form straight away', (

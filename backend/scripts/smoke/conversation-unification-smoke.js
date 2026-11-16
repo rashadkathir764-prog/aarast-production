@@ -317,6 +317,8 @@ async function cleanupFixture() {
       await tx.guestGroup.deleteMany({ where: { weddingPlanId: { in: planIds } } });
       await tx.weddingTask.deleteMany({ where: { weddingPlanId: { in: planIds } } });
       await tx.budgetCategory.deleteMany({ where: { weddingPlanId: { in: planIds } } });
+      // D116: every plan has its wedding row; the events go before the plan.
+      await tx.planEvent.deleteMany({ where: { weddingPlanId: { in: planIds } } });
       await tx.weddingPlan.deleteMany({ where: { id: { in: planIds } } });
     }
     if (providerIds.length) {

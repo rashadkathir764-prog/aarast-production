@@ -428,7 +428,7 @@ export class GuestsService {
         ? this.statusFromAttendance(dto.attendanceStatus)
         : null;
 
-    const { guest, events } = await this.catchDuplicateGuestConflict(
+    const { guest, events, record } = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
         const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
@@ -565,11 +565,17 @@ export class GuestsService {
         }
         const action = this.guestUpdateAction(current, updated);
         await this.recordGuestContribution(tx, context, updated, action);
-        return { guest: updated, events };
+        // D116: the guest answered with what they were told, as every read
+        // does; without it the phone took a changed guest (invited to the
+        // lunch) as never told and said «بلا دعوة».
+        const record = (await this.sendRecords(tx, [current.id])).get(
+          current.id,
+        );
+        return { guest: updated, events, record };
       }),
     );
 
-    return this.toResponse(guest, true, events);
+    return this.toResponse(guest, true, events, record);
   }
 
   async remove(

@@ -79,7 +79,8 @@ String _statusLine(
   // RA-MO-219: «ما ردّوا» counted guests no invitation ever reached («100
   // مدعو · 100 ما ردّوا», each row «ما وصلته دعوة»). Those are said apart.
   final notSent = guests
-      .where((guest) => guest.isPending && guest.invitationStatus == 'NOT_SENT')
+      // D116: «بلا دعوة» from the send log, as the occasion's card says it.
+      .where((guest) => guest.isPending && !guest.everTold)
       .length;
   final waiting = summary.pending - notSent;
   return [

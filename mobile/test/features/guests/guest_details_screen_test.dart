@@ -243,7 +243,11 @@ void main() {
   testWidgets('a guest who has not answered can be marked by hand', (
     tester,
   ) async {
-    final api = await _pump(tester, _guest(invitationStatus: 'SENT'));
+    // D116: «ما ردّ» is of a guest an invitation reached (the send log).
+    final api = await _pump(
+      tester,
+      _guest(invitationStatus: 'SENT', told: _toldWedding),
+    );
 
     expect(find.text('ليلى سالم'), findsOneWidget);
     expect(find.text('ما ردّ'), findsWidgets);
@@ -276,9 +280,7 @@ void main() {
   // D116: «أرسل» opens the same two-step queue a round uses, for this guest.
   // Failed before the fix: the tap read the occasions through
   // `context.watch`, which Provider refuses outside build.
-  testWidgets('send opens the queue for this guest', (
-    tester,
-  ) async {
+  testWidgets('send opens the queue for this guest', (tester) async {
     await _pump(tester, _guest());
     await tester.tap(find.byKey(const ValueKey('guest-send-invitation')));
     await tester.pumpAndSettle();

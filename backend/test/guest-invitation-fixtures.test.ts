@@ -236,7 +236,11 @@ const messageCases: MessageCase[] = [
     input: { ...base, card: { hostLine: "صالح ناصر", freeText: null }, occasions: [lunch] },
   },
   { name: "one more occasion", input: { ...base, kind: "ADDITION", occasions: [lunch, samra] } },
-  { name: "a change", input: { ...base, kind: "CHANGE", occasions: [lunch] } },
+  { name: "a change, no answer yet", input: { ...base, kind: "CHANGE", occasions: [lunch] } },
+  {
+    name: "a change to a guest who confirmed before it",
+    input: { ...base, kind: "CHANGE", confirmed: true, occasions: [lunch] },
+  },
   { name: "a reminder, no answer yet", input: { ...base, kind: "REMINDER", occasions: [wedding] } },
   {
     name: "a reminder to a guest coming",
@@ -324,5 +328,8 @@ test("the cases mean what they are named for", () => {
   assert.ok(texts[1].indexOf(base.url) < texts[1].indexOf("maps.app"));
   assert.match(texts[2], /تتشرف أم رضوان بدعوتكن لحضور/);
   assert.match(texts[3], /لحضور الغداء في عرس رضوان\./);
-  assert.doesNotMatch(texts[8], /maps\.app/);
+  // A change asks «من جديد» only of who confirmed before it.
+  assert.match(texts[5], /نرجو تأكيد حضورك من الرابط:/);
+  assert.match(texts[6], /نرجو تأكيد حضورك من جديد من الرابط:/);
+  assert.doesNotMatch(texts[9], /maps\.app/);
 });

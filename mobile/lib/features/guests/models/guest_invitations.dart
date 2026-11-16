@@ -410,7 +410,10 @@ String _composeMessage({
         'أهلًا $name 🌸',
         'تغيّر موعد أو مكان $labels في $planTitle، وهذا الجديد.',
       ];
-      ask = 'نرجو تأكيد حضورك من جديد من الرابط:';
+      // «من جديد» only to who confirmed before the change.
+      ask = confirmed
+          ? 'نرجو تأكيد حضورك من جديد من الرابط:'
+          : 'نرجو تأكيد حضورك من الرابط:';
     case InvitationSendKind.invitation:
       final host = invitationHostPhrase(hostLine, bride: bride);
       final words = freeText?.trim() ?? '';

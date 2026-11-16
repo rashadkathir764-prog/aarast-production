@@ -25,6 +25,7 @@ import '../../wedding_day/wedding_day_api.dart'
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
 import '../models/guest_invitations.dart';
+import '../models/guest_invite_text.dart' show guestChatCanOpen;
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
 import '../utils/guest_plan_events.dart';
@@ -45,10 +46,15 @@ class GuestListScreen extends StatefulWidget {
     required this.weddingPlanId,
     this.openAddOnStart = false,
     this.openAddRequest = 0,
+    this.openAddMenuRequest = 0,
     this.ownerWord,
     this.showHeaderAdd = true,
     super.key,
   });
+
+  /// D116: raised by the plan shell's «+» on this tab; each new value opens
+  /// the add menu once (a guest, several, an occasion, a group).
+  final int openAddMenuRequest;
 
   final String weddingPlanId;
   final bool openAddOnStart;
@@ -73,6 +79,10 @@ class GuestListScreen extends StatefulWidget {
   State<GuestListScreen> createState() => _GuestListScreenState();
 }
 
+/// The last «+» request the guests tab answered, kept across rebuilds of the
+/// tab (AppRouter.guestListAddMenu numbers them).
+int _answeredAddMenuRequest = 0;
+
 class _GuestListScreenState extends State<GuestListScreen> {
   /// null: the overview; otherwise the group being looked at.
   String? _openGroup;
@@ -93,7 +103,20 @@ class _GuestListScreenState extends State<GuestListScreen> {
       if (!mounted) return;
       _load();
       unawaited(_openAddSheetIfRequested());
+      if (widget.openAddMenuRequest > 0) unawaited(_openAddMenuRequested());
     });
+  }
+
+  /// The shell's «+» on this tab: each request opens the menu once. The
+  /// address is left as it is: going back to the list address under the
+  /// menu took the sheet away with the old page on the device. A request
+  /// already answered (back from the import, the tab built again) does not
+  /// open it again.
+  Future<void> _openAddMenuRequested() async {
+    final request = widget.openAddMenuRequest;
+    if (request <= _answeredAddMenuRequest) return;
+    _answeredAddMenuRequest = request;
+    await _onAdd(context.read<GuestsProvider>());
   }
 
   @override
@@ -108,6 +131,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
         oldWidget.openAddRequest != widget.openAddRequest) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_openAddSheetIfRequested());
+      });
+    }
+    if (widget.openAddMenuRequest > 0 &&
+        oldWidget.openAddMenuRequest != widget.openAddMenuRequest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_openAddMenuRequested());
       });
     }
   }
@@ -379,10 +408,15 @@ class _GuestListScreenState extends State<GuestListScreen> {
               .map(
                 (audience) => (
                   audience: audience,
+                  // RA-MO-61: the button counts who a message reaches (a
+                  // number whose chat opens), as the send screen does; the
+                  // ones without are listed there.
                   count: invited
                       .where(
                         (guest) =>
                             guest.editable &&
+                            guest.hasPhone &&
+                            guestChatCanOpen(guest.phone) &&
                             audience.includes(standingOf(guest)!),
                       )
                       .length,
@@ -421,7 +455,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   key: ValueKey('guests-send-${due.audience.wire}'),
                   label: switch (due.audience) {
                     SendAudience.notTold =>
-                      '${context.say('أرسل', 'أرسلي')} الدعوة لـ ${words.count(due.count)}',
+                      '${context.say('أرسل', 'أرسلي')} الدعوة لـ${words.count(due.count)}',
                     SendAudience.changed =>
                       '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير',
                     SendAudience.silent =>

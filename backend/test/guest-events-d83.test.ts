@@ -84,11 +84,15 @@ function database() {
       },
     },
     // D116: what each guest was told.
-    guestInvitationSend: { findMany: async () => [] },
+    guestInvitationSend: {
+      findMany: async ({ where }: any) =>
+        sends.filter((row) => where?.guestId?.in?.includes(row.guestId) ?? true),
+    },
     guestGroup: { count: async () => 0, findMany: async () => [] },
   };
+  const sends: any[] = [];
   tx.$transaction = async (operation: (client: any) => Promise<unknown>) => operation(tx);
-  return { tx, guests, invites };
+  return { tx, guests, invites, sends };
 }
 
 function service(db: ReturnType<typeof database>) {
@@ -185,6 +189,33 @@ test("D116: an answer the owner records to the wedding is at the wedding row's v
     attendanceStatus: "CONFIRMED",
   } as any);
   assert.equal(updated.weddingAnsweredVersion, 3);
+});
+
+test("D116: a changed guest still says what they were told", async () => {
+  const db = database();
+  const guests = service(db);
+  const created = await guests.create(owner, "plan-1", { name: "جار" } as any);
+  db.sends.push({
+    id: "send-1",
+    guestId: created.id,
+    kind: "INVITATION",
+    planEventId: null,
+    events: [{ planEventId: "event-wedding", version: 3 }],
+    status: "SENT",
+    createdAt: now,
+    settledAt: now,
+  });
+
+  // Invited to the lunch from the tab: the answer kept the wedding's send,
+  // which it dropped, so the phone said «بلا دعوة» of a guest told.
+  const updated = await guests.update(owner, created.id, {
+    eventIds: ["event-lunch"],
+  } as any);
+  assert.deepEqual(
+    updated.told.map((entry) => [entry.planEventId, entry.version]),
+    [["event-wedding", 3]],
+  );
+  assert.equal(updated.lastSend?.id, "send-1");
 });
 
 test("editing the events keeps the replies of the events that stay", async () => {

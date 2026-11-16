@@ -79,6 +79,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
 
   /// Raised by the «+» to open the guests' add sheet on their tab.
   int _guestAddRequest = 0;
+  int _guestAddMenuRequest = 0;
 
   void _onItemTapped(int index) {
     appLogEvent(
@@ -118,6 +119,8 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
         _visitedTabs.add(3);
         _guestAddRequest += 1;
       }),
+      // D116: on the guests tab the «+» opens the tab's add menu.
+      onGuestsTabAdd: () => setState(() => _guestAddMenuRequest += 1),
       onFindProviders: () => _onItemTapped(4),
       onChanged: () => dashboard.loadDashboard(planId),
     );
@@ -221,6 +224,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                   key: ValueKey('guests-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
                   openAddRequest: _guestAddRequest,
+                  openAddMenuRequest: _guestAddMenuRequest,
                   // This shell floats «إضافة ضيف» over the tab.
                   showHeaderAdd: false,
                 ),

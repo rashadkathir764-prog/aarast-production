@@ -72,6 +72,9 @@ class WeddingPlanShell extends StatelessWidget {
           ? PlanQuickAddSignals.fromDashboard(summary!)
           : null,
       onAddGuest: () => context.go(AppRouter.guestListAdd(weddingPlanId)),
+      // D116: on the guests tab the «+» opens the tab's add menu.
+      onGuestsTabAdd: () =>
+          context.go(AppRouter.guestListAddMenu(weddingPlanId)),
       onFindProviders: () => context.go(AppRouter.planProviders(weddingPlanId)),
       // A plan kept on the phone has no home summary to fetch; its own
       // bridge republishes it.

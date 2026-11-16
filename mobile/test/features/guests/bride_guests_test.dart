@@ -149,7 +149,7 @@ void main() {
     // Changed on purpose (D116): guests-invite-now «أرسلي الدعوة على واتساب» → the summary's one send action guests-send-new.
     expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
     expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
-    expect(find.text('أرسلي الدعوة لـ ضيفة وحدة'), findsOneWidget);
+    expect(find.text('أرسلي الدعوة لـضيفة وحدة'), findsOneWidget);
   });
 
   testWidgets('the reminder counts only who was invited', (tester) async {
@@ -165,7 +165,7 @@ void main() {
     );
 
     // Changed on purpose (D116): «ذكّري الـ 2 على واتساب» → the send due first: the one never told is invited before anyone is reminded.
-    expect(find.text('أرسلي الدعوة لـ ضيفة وحدة'), findsOneWidget);
+    expect(find.text('أرسلي الدعوة لـضيفة وحدة'), findsOneWidget);
     expect(find.byKey(const ValueKey('guests-send-remind')), findsNothing);
   });
 
@@ -179,13 +179,14 @@ void main() {
         _guest('g1', 'هدى', 'INVITED'),
         _guest('g2', 'أسماء', 'INVITED'),
         _guest('g3', 'عبلة', 'CONFIRMED'),
-        // Who has no number is named on the send screen, not dropped here.
+        // RA-MO-61: the button counts who a reminder reaches; who has no
+        // number is named on the send screen instead.
         _guest('g4', 'سلوى', 'INVITED', phone: null),
       ],
     );
 
     expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);
-    expect(find.text('ذكّري 3 ضيفات'), findsOneWidget);
+    expect(find.text('ذكّري ضيفتين'), findsOneWidget);
   });
 
   testWidgets('e01: the reminder sits in the summary card, the bar is drawn', (

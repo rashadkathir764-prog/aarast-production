@@ -12,7 +12,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
+import '../models/guest_invitations.dart' show OccasionCounts;
 import '../utils/guest_display.dart';
+import '../utils/guest_plan_events.dart';
 
 /// w38 «كم بيحضر؟»: the guests' real answers from `GET P/guests/summary`,
 /// how many confirmed out of how many invited and how many have not
@@ -37,6 +39,9 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_summary == null && !_isLocalPlan) {
+      readPlanEventsOnce(context, widget.weddingPlanId);
+    }
     _summary ??= _load();
   }
 
@@ -125,6 +130,33 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     );
   }
 
+  /// D116: the plan's occasions beyond the wedding with their figures among
+  /// the plan's guests, the guests tab's own count.
+  List<({String key, String label, OccasionCounts counts})> _otherOccasions(
+    BuildContext context,
+  ) {
+    final planId = widget.weddingPlanId;
+    final occasions = planOccasionsOf(context, planId);
+    final guests = [
+      for (final guest in _guests)
+        if (guest.weddingPlanId == planId) guest,
+    ];
+    final profile = context.journeyProfile;
+    return [
+      for (final event in occasions.skip(1))
+        (
+          key: occasionKey(event, planId),
+          label: guestEventLabel(event, profile),
+          counts: occasionCountsOf(
+            guests,
+            occasions,
+            planId,
+            occasionKey(event, planId),
+          ),
+        ),
+    ];
+  }
+
   /// A reminder for who was invited, else the invitation itself (R17).
   Widget? _nextAction(GuestWords words) {
     if (_isLocalPlan) return null;
@@ -171,9 +203,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     // D2 of the closing round: a guest no invitation reached has not been
     // asked yet; «لسا ما ردّوا» counted them, as the guests tab does not.
     final notSent = _guests
-        .where(
-          (guest) => guest.isPending && guest.invitationStatus == 'NOT_SENT',
-        )
+        .where((guest) => guest.isPending && !guest.everTold)
         .length
         .clamp(0, summary.pending);
     final unanswered = summary.pending - notSent;
@@ -238,10 +268,13 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
         ),
       ),
       // D83: each event beyond the wedding counts its own invited and replies.
-      for (final event in summary.byEvent) ...[
+      // D116: counted as the guests tab counts it (occasionCountsOf), so a
+      // guest the lunch's invitation never reached is «بلا دعوة» here too,
+      // not «لسا ما ردّوا».
+      for (final event in _otherOccasions(context)) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyBox(
-          key: ValueKey('guest-attendance-event-${event.planEventId}'),
+          key: ValueKey('guest-attendance-event-${event.key}'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -253,7 +286,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                 ),
               ),
               Text(
-                '${event.confirmed} ${words.confirmed} من ${event.invited}',
+                '${event.counts.confirmed} ${words.confirmed} من ${event.counts.invited}',
                 style: JourneyType.of(
                   JourneyType.title,
                   weight: JourneyType.bold,
@@ -262,10 +295,14 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
               const SizedBox(height: AarastV3Space.x1),
               Text(
                 [
-                  event.pending == 0
-                      ? words.profile.plan('كلهم ردّوا', 'كلهن ردّن')
-                      : '${event.pending} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
-                  if (event.declined > 0) '${event.declined} ${words.declined}',
+                  if (event.counts.unanswered == 0 && event.counts.notTold == 0)
+                    words.profile.plan('كلهم ردّوا', 'كلهن ردّن')
+                  else if (event.counts.unanswered > 0)
+                    '${event.counts.unanswered} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
+                  if (event.counts.notTold > 0)
+                    '${event.counts.notTold} ${words.noInvitation}',
+                  if (event.counts.declined > 0)
+                    '${event.counts.declined} ${words.declined}',
                 ].join(' · '),
                 style: JourneyType.of(
                   JourneyType.detail,

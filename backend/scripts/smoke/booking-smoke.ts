@@ -404,6 +404,8 @@ async function main(): Promise<void> {
         where: { weddingPlanId: planId },
         data: { weddingPlanId: null },
       });
+      // D116: every plan has its wedding row; the events go before the plan.
+      await prisma.planEvent.deleteMany({ where: { weddingPlanId: planId } });
       await prisma.weddingPlan.deleteMany({ where: { id: planId } });
     }
     await prisma.provider.deleteMany({ where: { id: provider.id } });

@@ -20,7 +20,14 @@ class PlanQuickAddFlow {
     this.offerAgreementActions = false,
     this.refreshOnReturn = false,
     this.signals,
+    this.onGuestsTabAdd,
   });
+
+  /// D116: the «+» on the guests tab offers what the tab adds (a guest,
+  /// several, an occasion, a group) through the tab's own menu; null where
+  /// the shell has none, and the «+» adds a guest straight away. Picking
+  /// «إضافة ضيف» on another tab's sheet still opens the guest form.
+  final VoidCallback? onGuestsTabAdd;
 
   final String planId;
   final int tabIndex;
@@ -46,6 +53,9 @@ class PlanQuickAddFlow {
   /// elsewhere.
   Future<void> open(BuildContext context) async {
     final direct = planQuickAddDirectKind(tabIndex);
+    if (direct == PlanQuickAddKind.guest && onGuestsTabAdd != null) {
+      return onGuestsTabAdd!();
+    }
     if (direct != null) return _run(context, direct);
     final kind = await showPlanQuickAddSheet(context, actions: actions);
     if (kind != null && context.mounted) await _run(context, kind);

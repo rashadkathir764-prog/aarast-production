@@ -242,8 +242,14 @@ List<RouteBase> _planShellRoutes() => [
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return participantPlanTab(context, id, 3) ??
-              // The plan shell floats «إضافة ضيف» over this tab.
-              GuestListScreen(weddingPlanId: id, showHeaderAdd: false);
+              // The plan shell floats the tab's «+» over it; it opens the
+              // add menu through `?add=` (D116).
+              GuestListScreen(
+                weddingPlanId: id,
+                showHeaderAdd: false,
+                openAddMenuRequest:
+                    int.tryParse(state.uri.queryParameters['add'] ?? '') ?? 0,
+              );
         },
       ),
       GoRoute(

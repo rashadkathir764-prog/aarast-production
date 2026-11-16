@@ -784,12 +784,35 @@
       "text": "أهلًا ياسر 🌸\nويسعدنا حضورك أيضًا في الغداء والسمرة، ضمن عرس رضوان.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\n*الغداء*\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور\n\n*السمرة*\nالموعد: 27/11/2026 الساعة 20:30\nالموقع على الخريطة: https://maps.app.goo.gl/samra"
     },
     {
-      "name": "a change",
+      "name": "a change, no answer yet",
       "input": {
         "guestName": "ياسر",
         "planTitle": "عرس رضوان",
         "url": "https://3.121.198.183/rsvp/AAAA",
         "kind": "CHANGE",
+        "occasions": [
+          {
+            "label": "الغداء",
+            "isWedding": false,
+            "date": "2026-11-30",
+            "timeSlot": "DHUHR",
+            "exactTime": null,
+            "placeLabel": "بيت العريس",
+            "address": "حدة، جوار جامع النور",
+            "mapUrl": null
+          }
+        ]
+      },
+      "text": "أهلًا ياسر 🌸\nتغيّر موعد أو مكان الغداء في عرس رضوان، وهذا الجديد.\nنرجو تأكيد حضورك من الرابط:\nhttps://3.121.198.183/rsvp/AAAA\n\nالموعد: 30/11/2026 الظهر\nالمكان: بيت العريس\nالعنوان: حدة، جوار جامع النور"
+    },
+    {
+      "name": "a change to a guest who confirmed before it",
+      "input": {
+        "guestName": "ياسر",
+        "planTitle": "عرس رضوان",
+        "url": "https://3.121.198.183/rsvp/AAAA",
+        "kind": "CHANGE",
+        "confirmed": true,
         "occasions": [
           {
             "label": "الغداء",

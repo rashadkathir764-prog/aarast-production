@@ -216,7 +216,8 @@ bool planQuickAddShowsLabel(int tabIndex) {
 }
 
 /// On the tasks and the guests the «+» adds a task or a guest straight away
-/// (d01, e01); elsewhere it opens the sheet.
+/// (d01, e01); elsewhere it opens the sheet. D116: a shell that gives
+/// `onGuestsTabAdd` opens the guests tab's own menu instead, a guest first.
 PlanQuickAddKind? planQuickAddDirectKind(int tabIndex) {
   return switch (tabIndex) {
     _tasksTab => PlanQuickAddKind.task,

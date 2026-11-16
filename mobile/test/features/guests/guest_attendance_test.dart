@@ -6,6 +6,9 @@ import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_attendance_screen.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
+import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
+import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -126,35 +129,43 @@ void main() {
   });
 
   // D83: each event beyond the wedding counts its own replies.
+  // D116: the lunch is counted as the guests tab counts it, from the guests
+  // and what each was told (it was the server's per-event figures, which
+  // said «لسا ما ردّوا» of a guest the lunch's invitation never reached).
   testWidgets('the lunch counts its own invited and replies', (tester) async {
-    final api = _FakeGuestsApi(
-      GuestSummary.fromJson({
-        'weddingPlanId': 'plan-1',
-        'totalGuests': 3,
-        'confirmed': 1,
-        'pending': 2,
-        'byEvent': [
-          {
-            'planEventId': 'event-lunch',
-            'label': 'الغداء',
-            'invited': 2,
-            'confirmed': 1,
-            'declined': 1,
-            'pending': 0,
-            'companions': 1,
-          },
-        ],
-      }),
+    final told = GuestToldOccasion(
+      planEventId: 'event-lunch',
+      version: 1,
+      at: DateTime(2026, 10, 3),
     );
-    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+    Guest atLunch(String id, String answer, {bool toldLunch = true}) => _guest(
+      id,
+      'INVITED',
+      invitation: 'SENT',
+      events: [
+        GuestEventReply(planEventId: 'event-lunch', attendanceStatus: answer),
+      ],
+      alsoTold: toldLunch ? [told] : const [],
+    );
+    final api = _FakeGuestsApi(_summary(confirmed: 0, pending: 3))
+      ..guests = [
+        atLunch('g1', 'CONFIRMED'),
+        atLunch('g2', 'DECLINED'),
+        atLunch('g3', 'PENDING', toldLunch: false),
+      ];
+    await _pump(
+      tester,
+      api,
+      '/wedding-plans/plan-1/guests/attendance',
+      withLunch: true,
+    );
 
     expect(
       find.byKey(const ValueKey('guest-attendance-event-event-lunch')),
       findsOneWidget,
     );
-    expect(find.text('الغداء'), findsOneWidget);
-    expect(find.text('1 أكدوا من 2'), findsOneWidget);
-    expect(find.text('كلهم ردّوا · 1 اعتذروا'), findsOneWidget);
+    expect(find.text('1 أكدوا من 3'), findsOneWidget);
+    expect(find.text('1 بلا دعوة · 1 اعتذروا'), findsOneWidget);
   });
 
   testWidgets('everyone answered: no reminder', (tester) async {
@@ -236,7 +247,10 @@ Guest _guest(
   String status, {
   String invitation = 'NOT_SENT',
   String? phone = '+967777123456',
+  List<GuestEventReply> events = const [],
+  List<GuestToldOccasion> alsoTold = const [],
 }) => Guest(
+  events: events,
   id: id,
   weddingPlanId: 'plan-1',
   name: 'ضيف $id',
@@ -248,13 +262,25 @@ Guest _guest(
   seatsCount: 1,
   createdAt: DateTime(2026, 10, 1),
   updatedAt: DateTime(2026, 10, 1),
+  // D116: an invitation that went is in the record of sends, the one source
+  // of «بلا دعوة» (the migration writes it for guests invited before).
+  told: [
+    if (invitation != 'NOT_SENT')
+      GuestToldOccasion(
+        planEventId: 'wedding_plan-1',
+        version: 1,
+        at: DateTime(2026, 10, 2),
+      ),
+    ...alsoTold,
+  ],
 );
 
 Future<void> _pump(
   WidgetTester tester,
   _FakeGuestsApi api,
-  String location,
-) async {
+  String location, {
+  bool withLunch = false,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 1000);
   addTearDown(tester.view.reset);
@@ -296,6 +322,8 @@ Future<void> _pump(
         ChangeNotifierProvider<GuestsProvider>(
           create: (_) => GuestsProvider(api),
         ),
+        if (withLunch)
+          ChangeNotifierProvider<PlanEventsProvider>(create: (_) => _Events()),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -306,6 +334,26 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// The plan's wedding and its lunch, as read on the phone.
+class _Events extends PlanEventsProvider {
+  _Events()
+    : super(api: PlanEventsApi(ApiClient(tokenProvider: () async => null)));
+
+  @override
+  PlanEventsView? viewOf(String weddingPlanId) => PlanEventsView(
+    weddingPlanId: weddingPlanId,
+    canEdit: true,
+    items: const [
+      PlanEvent(id: 'wedding_plan-1', type: PlanEventType.wedding),
+      PlanEvent(id: 'event-lunch', type: PlanEventType.lunch, title: 'الغداء'),
+    ],
+    suggestions: const [],
+  );
+
+  @override
+  Future<void> load(String weddingPlanId) async {}
 }
 
 class _FakeGuestsApi extends GuestsApi {

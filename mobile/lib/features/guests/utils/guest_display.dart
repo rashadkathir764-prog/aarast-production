@@ -96,7 +96,7 @@ String guestReplyLabel(Guest guest, JourneyProfile profile) {
 /// وصلته دعوة» before. D22 of the closing round: the tag and the choice on
 /// the guest's page say the same of the same guest.
 String guestNoAnswerLabel(Guest guest, JourneyProfile profile) =>
-    guest.invitationStatus == 'NOT_SENT'
+    !guest.everTold
     ? profile.plan('ما وصلته دعوة', 'ما وصلتها دعوة')
     : profile.plan('ما ردّ', 'ما ردّت');
 

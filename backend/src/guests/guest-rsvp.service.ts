@@ -417,7 +417,10 @@ function composeMessage(input: RsvpMessageInput, withMaps: boolean): string {
         `أهلًا ${name} 🌸`,
         `تغيّر موعد أو مكان ${labels} في ${input.planTitle}، وهذا الجديد.`,
       ];
-      ask = "نرجو تأكيد حضورك من جديد من الرابط:";
+      // «من جديد» only to who confirmed before the change.
+      ask = input.confirmed
+        ? "نرجو تأكيد حضورك من جديد من الرابط:"
+        : "نرجو تأكيد حضورك من الرابط:";
       break;
     default: {
       const host = hostPhrase(input.card?.hostLine, input.persona);

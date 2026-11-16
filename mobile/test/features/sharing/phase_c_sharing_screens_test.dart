@@ -66,7 +66,9 @@ void main() {
       // Changed on purpose (critique ش1): said without a verb, right under a
       // man's name or a woman's.
       expect(find.text('مع المال'), findsOneWidget);
-      expect(find.text('معك'), findsOneWidget);
+      // Changed on purpose (critique ش2): no «معك» badge; «ينتظرون» says
+      // who waits, and the member row keeps its arrow.
+      expect(find.text('معك'), findsNothing);
       expect(find.text('ينتظرون'), findsOneWidget);
       expect(find.text('خالد'), findsOneWidget);
       expect(

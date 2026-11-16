@@ -236,6 +236,15 @@ class _MoreScreenState extends State<MoreScreen> {
                     ),
                   ),
                 ),
+              // w40 (D63, L8): privacy, the data download and w05. Critique
+              // ح1: under «الأمان والخصوصية», not beside the notifications.
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-privacy'),
+                  icon: LucideIcons.shieldCheck,
+                  title: 'الخصوصية',
+                  onTap: () => context.push(AppRouter.privacy),
+                ),
             ],
           ),
           const _GroupTitle('الحساب'),
@@ -248,14 +257,6 @@ class _MoreScreenState extends State<MoreScreen> {
                   icon: LucideIcons.bell,
                   title: 'التنبيهات',
                   onTap: () => context.push(AppRouter.settings),
-                ),
-              // w40 (D63, L8): privacy, the data download and w05.
-              if (hasAccount)
-                _Row(
-                  key: const ValueKey('account-privacy'),
-                  icon: LucideIcons.shieldCheck,
-                  title: 'الخصوصية',
-                  onTap: () => context.push(AppRouter.privacy),
                 ),
               // A participant's plans are listed above (q10).
               if (!participant)
@@ -279,15 +280,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 title: 'فحص الاتصال',
                 onTap: () => context.push(AppRouter.connectionCheck),
               ),
-              if (hasAccount)
-                _Row(
-                  key: const ValueKey('account-logout'),
-                  icon: LucideIcons.logOut,
-                  title: 'الخروج',
-                  color: AarastV3Color.danger,
-                  onTap: () => _logout(context),
-                )
-              else
+              if (!hasAccount)
                 _Row(
                   key: const ValueKey('account-login'),
                   icon: LucideIcons.logIn,
@@ -296,6 +289,23 @@ class _MoreScreenState extends State<MoreScreen> {
                 ),
             ],
           ),
+          // Critique ح3: leaving is a card of its own at the end, not one
+          // row under «فحص الاتصال».
+          if (hasAccount) ...[
+            const SizedBox(height: AarastV3Space.x4),
+            JourneyList(
+              dividers: false,
+              children: [
+                _Row(
+                  key: const ValueKey('account-logout'),
+                  icon: LucideIcons.logOut,
+                  title: 'الخروج',
+                  color: AarastV3Color.danger,
+                  onTap: () => _logout(context),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

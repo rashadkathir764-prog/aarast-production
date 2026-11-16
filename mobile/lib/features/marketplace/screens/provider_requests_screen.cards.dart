@@ -226,10 +226,11 @@ class _OfferCard extends StatelessWidget {
           if (provider != null && provider.ratingCount > 0)
             Row(
               children: [
+                // Critique ز2: the one dark star colour everywhere.
                 const Icon(
                   LucideIcons.star,
                   size: 14,
-                  color: AarastV3Color.saffron,
+                  color: AarastV3Color.brandAccentStrong,
                 ),
                 Flexible(
                   child: Text(

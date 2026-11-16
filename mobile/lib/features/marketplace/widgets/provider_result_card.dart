@@ -228,10 +228,13 @@ class ProviderResultCard extends StatelessWidget {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // Critique ز2: one dark colour for the
+                                  // star, as on the provider's page; the
+                                  // saffron read 2.0 on white.
                                   const Icon(
                                     LucideIcons.star,
                                     size: 15,
-                                    color: AarastV3Color.saffron,
+                                    color: AarastV3Color.brandAccentStrong,
                                   ),
                                   Flexible(
                                     child: Text(
@@ -407,7 +410,23 @@ class _FavoriteHeart extends StatelessWidget {
         // A 48 target around the heart (DESIGN_SYSTEM: touch ≥ 48).
         child: SizedBox.square(
           dimension: AarastV3Space.x12,
-          child: Center(child: heart),
+          // Critique ز3: saved is a filled disc behind the heart, not its
+          // colour alone (the icon set has no filled heart).
+          child: Center(
+            child: isFavorite
+                ? DecoratedBox(
+                    key: const ValueKey('favorite-heart-saved'),
+                    decoration: const BoxDecoration(
+                      color: AarastV3Color.roseSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AarastV3Space.x1),
+                      child: heart,
+                    ),
+                  )
+                : heart,
+          ),
         ),
       ),
     );

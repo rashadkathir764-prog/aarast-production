@@ -535,7 +535,6 @@ class _SharingScreenState extends State<SharingScreen>
               _MemberRow(
                 member: members[i],
                 color: JourneyAvatar.paletteAt(context, i),
-                withTag: pending.isNotEmpty,
                 // RA-MO-274: a participant who may invite is in this list
                 // too, and opened their own permissions; the server lets no
                 // one change their own, so saving said «هذا ما عاد موجود».
@@ -669,16 +668,12 @@ class _MemberRow extends StatelessWidget {
   const _MemberRow({
     required this.member,
     required this.color,
-    required this.withTag,
     required this.onTap,
     this.mine = false,
   });
 
   final SharedMember member;
   final Color color;
-
-  /// x07: next to people still waiting, the ones with you say «معك».
-  final bool withTag;
 
   /// The reader's own row: «أنت», and nothing to open (RA-MO-274).
   final bool mine;
@@ -737,12 +732,9 @@ class _MemberRow extends StatelessWidget {
                 color: AarastV3Color.textMuted,
                 soft: AarastV3Color.canvas,
               )
-            else if (withTag)
-              const JourneyTag(
-                label: 'معك',
-                color: AarastV3Color.mint,
-                soft: AarastV3Color.mintSoft,
-              )
+            // Critique ش2: no «معك» on every member (the «ينتظرون» section
+            // already says who waits); it hid the arrow that says the row
+            // opens.
             else
               const Icon(
                 LucideIcons.chevronLeft,

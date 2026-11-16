@@ -27,7 +27,10 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final toggle = switchValue;
     final color = this.color ?? context.accent.primary;
-    final row = Padding(
+    // Critique ح2: 48 high at least, the kit's touch target (D74); the
+    // padding alone made 44.
+    final row = Container(
+      constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
       padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [

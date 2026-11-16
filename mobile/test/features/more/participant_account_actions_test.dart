@@ -530,12 +530,15 @@ void main() {
       addTearDown(harness.dispose);
       await harness.pump(tester);
 
+      // Critique ح3: «الخروج» is its own card at the page's end.
       await tester.scrollUntilVisible(
-        find.text('الخروج'),
+        find.byKey(const ValueKey('account-logout')),
         320,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.text('الخروج'));
+      await tester.ensureVisible(find.byKey(const ValueKey('account-logout')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('account-logout')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('account-logout-confirm')));
       await tester.pumpAndSettle();

@@ -297,7 +297,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     // RA-MO-158 (D85): the home's suggestions are worked out by the server,
     // so the answer does not wait on the phone; offline it says why.
     await OfflineWrites(_apiClient, _offline).serverOnly(
-      reason: 'الاقتراحات يرتبها الخادم، فجوابك يحتاج النت.',
+      reason: 'الاقتراحات نرتبها عندنا، فجوابك يحتاج النت.',
       method: 'PUT',
       path: '/api/v1/budget-categories/$categoryId/suggestion',
       body: {'choice': choice},

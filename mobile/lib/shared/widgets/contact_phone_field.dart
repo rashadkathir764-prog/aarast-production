@@ -157,10 +157,9 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
   }
 
   String? _statusMessage(PhoneNumberAnalysis analysis) {
-    if (analysis.isEmpty) {
-      return widget.helperText ??
-          (widget.optional ? PhoneNumberUtils.optionalPhoneMessage : null);
-    }
+    // Critique ض5: an empty optional field says nothing more (its label says
+    // «اختياري»); the note named «شاشة الضيف» on every screen it was on.
+    if (analysis.isEmpty) return widget.helperText;
     if (analysis.isWarning || analysis.isValid) return analysis.message;
     return widget.helperText;
   }

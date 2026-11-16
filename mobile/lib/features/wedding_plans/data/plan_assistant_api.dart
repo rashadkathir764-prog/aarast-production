@@ -19,7 +19,7 @@ class PlanAssistantApi {
   static String _statusKey(String weddingPlanId) =>
       'plan-assistant-status:$weddingPlanId';
 
-  static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج الخادم.';
+  static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج النت.';
 
   /// The longest answer a report carries (the server's bound); a longer
   /// answer is cut to its start.

@@ -233,7 +233,8 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               JourneyNote(
                 key: const ValueKey('money-pending-changes'),
                 text:
-                    '${arabicCount(provider.pendingMoneyChanges, one: 'تغيير واحد', two: 'تغييران', few: 'تغييرات', many: 'تغيير')} في المال ${provider.pendingMoneyChanges == 1 ? 'ينتظر' : 'تنتظر'} الإرسال للخادم. الأرقام فوق من آخر رد الخادم.',
+                    // Critique م9: people's words, not «الخادم» or «تغييران».
+                    '${arabicCount(provider.pendingMoneyChanges, one: 'تغيير واحد', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} في المال ${provider.pendingMoneyChanges == 1 ? 'ينتظر' : 'تنتظر'} النت. الأرقام فوق من آخر مرة وصلنا فيها.',
                 icon: LucideIcons.clock,
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,

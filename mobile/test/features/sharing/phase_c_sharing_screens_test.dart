@@ -63,7 +63,9 @@ void main() {
       expect(find.text('أمينة'), findsOneWidget);
       // The line is built from the stored flags: no section, money seen.
       expect(find.text('يشوف بس'), findsWidgets);
-      expect(find.text('يشوف المال'), findsOneWidget);
+      // Changed on purpose (critique ش1): said without a verb, right under a
+      // man's name or a woman's.
+      expect(find.text('مع المال'), findsOneWidget);
       expect(find.text('معك'), findsOneWidget);
       expect(find.text('ينتظرون'), findsOneWidget);
       expect(find.text('خالد'), findsOneWidget);
@@ -540,7 +542,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('مين يساعدك في عرسك'), findsOneWidget);
-      expect(find.text('يساعد في المهام والضيوف · بدون المال'), findsOneWidget);
+      expect(find.text('المهام والضيوف · بدون المال'), findsOneWidget);
       expect(find.text('معك'), findsNothing);
       expect(find.text('ينتظرون'), findsNothing);
       // D80: what every participant reads, and what stays the owner's.

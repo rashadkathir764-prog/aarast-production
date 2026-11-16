@@ -131,7 +131,8 @@ void main() {
     await _pumpList(tester, JourneyProfile.bride);
 
     expect(find.text('الضيفات'), findsOneWidget);
-    expect(find.text('2 مدعوة · 1 أكدن · 1 ما ردّن'), findsOneWidget);
+    // Changed on purpose (critique ض1): each word agrees with its count.
+    expect(find.text('ضيفتين · 1 أكدت · 1 ما ردّت'), findsOneWidget);
     expect(find.text('أكدن من 2'), findsOneWidget);
     expect(find.text('الضيوف'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -225,7 +226,7 @@ void main() {
     await _pumpList(tester, JourneyProfile.groom);
 
     expect(find.text('الضيوف'), findsOneWidget);
-    expect(find.text('2 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
+    expect(find.text('ضيفين · 1 أكد · 1 ما ردّ'), findsOneWidget);
   });
 }
 

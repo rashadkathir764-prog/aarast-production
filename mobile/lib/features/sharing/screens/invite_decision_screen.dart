@@ -339,10 +339,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   Future<void> _accept(PlanInvite invite) async {
     final provider = context.read<SharingProvider>();
-    final ok = await provider.respondToInvite(
-      _actionKey(invite),
-      accept: true,
-    );
+    final ok = await provider.respondToInvite(_actionKey(invite), accept: true);
     if (!mounted || !ok) return;
     await _openPlan(provider.selectedInvite ?? invite);
   }
@@ -545,7 +542,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       if (error != null) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
-          text: auth.failedOffline ? 'ما قدرنا نرسل الرمز، ما وصلنا للخادم.' : error,
+          text: auth.failedOffline
+              ? 'ما قدرنا نرسل الرمز، النت ما وصل.'
+              : error,
           icon: LucideIcons.alertCircle,
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,
@@ -801,8 +800,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         );
       case _InviteStep.code:
         return null;
-      case _InviteStep.closed
-          when _closedReason == _ClosedReason.signInFirst:
+      case _InviteStep.closed when _closedReason == _ClosedReason.signInFirst:
         return JourneyEntryActions(
           primary: JourneyButton(
             key: const Key('invite-sign-in-first'),

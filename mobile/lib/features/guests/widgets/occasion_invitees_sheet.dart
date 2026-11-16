@@ -110,7 +110,7 @@ class _OccasionInviteesSheetState extends State<OccasionInviteesSheet> {
             ? 'نحفظ $_done من $changed'
             : changed == 0
             ? 'ما تغيّر شي'
-            : '${context.say('احفظ', 'احفظي')} (${words.count(changed)})',
+            : 'حفظ المدعوين (${words.count(changed)})',
         expand: true,
         large: true,
         loading: _saving,

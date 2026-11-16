@@ -837,7 +837,7 @@ class _OfferCard extends StatelessWidget {
                     Expanded(
                       child: JourneyButton(
                         key: const Key('chat-offer-accept'),
-                        label: 'اقبل العرض',
+                        label: context.say('اقبل العرض', 'اقبلي العرض'),
                         background: context.accent.primary,
                         expand: true,
                         onPressed: onOpen,
@@ -847,7 +847,7 @@ class _OfferCard extends StatelessWidget {
                     Expanded(
                       child: JourneyButton(
                         key: const Key('chat-offer-compare'),
-                        label: 'قارن',
+                        label: context.say('قارن', 'قارني'),
                         background: context.accent.primarySoft,
                         foreground: context.accent.primary,
                         expand: true,
@@ -917,7 +917,7 @@ class _OptionsSheet extends StatelessWidget {
               icon: LucideIcons.flag,
               color: AarastV3Color.amber,
               soft: AarastV3Color.amberSoft,
-              title: 'بلّغ عن مشكلة',
+              title: 'الإبلاغ عن مشكلة',
               subtitle: 'تأخير، كلام غير لائق، احتيال',
               onTap: () => Navigator.of(context).pop('report'),
             ),
@@ -1091,7 +1091,7 @@ class _Composer extends StatelessWidget {
                   ),
                   JourneyRoundButton(
                     icon: LucideIcons.x,
-                    tooltip: 'شيل الصورة',
+                    tooltip: 'إزالة الصورة',
                     size: 36,
                     onPressed: onRemoveAttachment,
                   ),
@@ -1106,7 +1106,9 @@ class _Composer extends StatelessWidget {
 
   Widget _imageButton(BuildContext context) => Semantics(
     button: true,
-    label: 'أرسل صورة',
+    // Critique د1: the couple's and the provider's composer alike, so the
+    // action is named without a verb to a man or a woman.
+    label: 'إرسال صورة',
     child: AarastPressable(
       onTap: isBusy ? null : onPickImage,
       borderRadius: BorderRadius.circular(AarastV3Radius.card),
@@ -1121,7 +1123,7 @@ class _Composer extends StatelessWidget {
   Widget _sendButton(BuildContext context, double size, double icon) =>
       Semantics(
         button: true,
-        label: 'أرسل',
+        label: 'إرسال',
         child: AarastPressable(
           onTap: isBusy ? null : onSend,
           borderRadius: BorderRadius.circular(size / 2),
@@ -1172,7 +1174,8 @@ class _Composer extends StatelessWidget {
               style: JourneyType.of(JourneyType.body),
               cursorColor: _accentOf(context),
               decoration: InputDecoration(
-                hintText: 'اكتب رسالة…',
+                // Critique د2: one hint for the field, neutral on this side.
+                hintText: 'رسالتك…',
                 hintStyle: JourneyType.of(
                   JourneyType.body,
                   color: AarastV3Color.textFaint,
@@ -1209,7 +1212,7 @@ class _Composer extends StatelessWidget {
             maxLength: 2000,
             style: JourneyType.of(JourneyType.body),
             decoration: InputDecoration(
-              hintText: context.say('اكتب رسالتك...', 'اكتبي رسالتك...'),
+              hintText: context.say('اكتب رسالتك…', 'اكتبي رسالتك…'),
               hintStyle: JourneyType.of(
                 JourneyType.body,
                 color: AarastV3Color.textFaint,

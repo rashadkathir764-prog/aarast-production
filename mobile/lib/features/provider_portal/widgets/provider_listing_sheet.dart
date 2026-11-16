@@ -159,7 +159,7 @@ class _ListingSheetState extends State<_ListingSheet> {
         title: _isService ? 'عدّل الخدمة' : 'عدّل الباقة',
         bottom: JourneyButton(
           key: const Key('provider-listing-save'),
-          label: 'احفظ',
+          label: _isService ? 'حفظ الخدمة' : 'حفظ الباقة',
           large: true,
           expand: true,
           loading: _saving,

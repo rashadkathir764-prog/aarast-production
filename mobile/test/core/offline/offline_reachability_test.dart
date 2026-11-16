@@ -79,11 +79,12 @@ void main() {
     await _pumpBanner(tester, service);
 
     expect(find.textContaining('بدون نت'), findsNothing);
+    // Changed on purpose (Q-32, critique ع3, 2026-11-16): no «الخادم».
     expect(
-      find.text('ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك'),
+      find.text('ما نقدر نوصل الحين. المال والمهام تنحفظ في جوالك'),
       findsOneWidget,
     );
-    expect(find.text('الخادم تأخر في الرد · اضغط للفحص'), findsOneWidget);
+    expect(find.text('الرد تأخر · اضغط للفحص'), findsOneWidget);
   });
 
   testWidgets('the provider is told what his phone keeps: his offers', (
@@ -101,7 +102,7 @@ void main() {
     await _pumpBanner(tester, service, audience: OfflineAudience.provider);
 
     expect(
-      find.text('ما نقدر نوصل للخادم الحين. عروضك تنحفظ في جوالك'),
+      find.text('ما نقدر نوصل الحين. عروضك تنحفظ في جوالك'),
       findsOneWidget,
     );
   });
@@ -124,7 +125,7 @@ void main() {
     // with the app's font is test/prototype/now_home (home_offline.png),
     // which shows the sentence whole on two lines.
     final sentence = tester.widget<Text>(
-      find.text('ما نقدر نوصل للخادم الحين. المال والمهام تنحفظ في جوالك'),
+      find.text('ما نقدر نوصل الحين. المال والمهام تنحفظ في جوالك'),
     );
     expect(sentence.maxLines, greaterThanOrEqualTo(2));
   });

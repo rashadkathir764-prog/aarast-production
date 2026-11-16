@@ -344,7 +344,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
             ),
             child: JourneyButton(
               key: const ValueKey('plan-details-save'),
-              label: 'حفظ',
+              label: 'حفظ بيانات الخطة',
               large: true,
               expand: true,
               loading: _saving,

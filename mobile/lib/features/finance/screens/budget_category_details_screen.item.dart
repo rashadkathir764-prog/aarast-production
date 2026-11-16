@@ -635,7 +635,8 @@ class _EstimateSheetState extends State<_EstimateSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('item-estimate-save'),
-          label: 'احفظ',
+          // Critique ع1: «حفظ + الاسم», the same for any reader.
+          label: 'حفظ التقدير',
           loading: _saving,
           onPressed: _saving || value == null ? null : () => _save('$value'),
         ),

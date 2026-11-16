@@ -33,7 +33,7 @@ class NotificationsApi {
     final json = page == 1
         ? await _reads.blob(path, metaKey: _pageKey(weddingPlanId))
         : await _writes.serverOnly(
-            reason: 'الصفحات التالية عند الخادم.',
+            reason: 'الصفحات التالية تحتاج النت.',
             method: 'GET',
             path: path,
           );

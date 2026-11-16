@@ -129,25 +129,28 @@ ReachabilityCause? _classifyError(Object? error) {
 /// What happened, in the reader's words.
 String reachabilityCauseLabel(ReachabilityCause cause) => switch (cause) {
   ReachabilityCause.noNetwork => 'ما فيه نت في الجوال الحين',
-  ReachabilityCause.dns => 'ما لقينا عنوان الخادم على هذي الشبكة',
-  ReachabilityCause.tls => 'الاتصال الآمن بالخادم ما اكتمل',
-  ReachabilityCause.refused => 'الخادم ما يستقبل اتصالات الحين',
-  ReachabilityCause.timeout => 'الخادم تأخر في الرد',
+  // Q-32, critique ع3: the app's name, never «الخادم».
+  ReachabilityCause.dns => 'ما لقينا عنوان اعّرست على هذي الشبكة',
+  ReachabilityCause.tls => 'الاتصال الآمن ما اكتمل',
+  ReachabilityCause.refused => 'اعّرست ما يرد الحين',
+  ReachabilityCause.timeout => 'الرد تأخر',
   ReachabilityCause.interrupted => 'الاتصال انقطع قبل ما يكمل',
-  ReachabilityCause.serverError => 'الخادم رد بخطأ من عنده',
-  ReachabilityCause.unknown => 'ما قدرنا نوصل للخادم',
+  ReachabilityCause.serverError => 'صار خطأ عندنا',
+  ReachabilityCause.unknown => 'ما قدرنا نوصل لاعّرست',
 };
 
 /// What to do about it.
+// Critique ط2: the network layer does not know who reads, so the step is
+// said without a verb to a man or a woman.
 String reachabilityCauseAdvice(ReachabilityCause cause) => switch (cause) {
-  ReachabilityCause.noNetwork => 'شغّل النت وجرّب مرة ثانية.',
-  ReachabilityCause.dns => 'غيّر الشبكة أو جرّب بعدين.',
-  ReachabilityCause.tls => 'حدّث التطبيق أو جرّب شبكة ثانية.',
+  ReachabilityCause.noNetwork => 'لما يرجع النت تمشي.',
+  ReachabilityCause.dns => 'شبكة ثانية أو بعد شوي تمشي غالبًا.',
+  ReachabilityCause.tls => 'تحديث التطبيق أو شبكة ثانية يحلّها غالبًا.',
   ReachabilityCause.refused ||
   ReachabilityCause.timeout ||
   ReachabilityCause.interrupted ||
-  ReachabilityCause.serverError => 'جرّب مرة ثانية بعد شوي.',
-  ReachabilityCause.unknown => 'تأكد من النت وجرّب مرة ثانية.',
+  ReachabilityCause.serverError => 'بعد شوي تمشي.',
+  ReachabilityCause.unknown => 'لما يرجع النت تمشي.',
 };
 
 /// The one place that knows whether the server answered last. Every
@@ -155,8 +158,7 @@ String reachabilityCauseAdvice(ReachabilityCause cause) => switch (cause) {
 /// failure marks it unreachable with its measured cause. The sync service
 /// and the banner read this instead of guessing from a single failure.
 class ServerReachability extends ChangeNotifier {
-  ServerReachability({DateTime Function()? clock})
-    : _clock = clock ?? appNow;
+  ServerReachability({DateTime Function()? clock}) : _clock = clock ?? appNow;
 
   final DateTime Function() _clock;
   bool _reachable = true;

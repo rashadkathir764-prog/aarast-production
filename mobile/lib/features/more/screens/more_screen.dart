@@ -220,7 +220,8 @@ class _MoreScreenState extends State<MoreScreen> {
                   key: const ValueKey('account-password'),
                   icon: LucideIcons.keyRound,
                   title: 'كلمة المرور',
-                  value: user.hasPassword ? 'موجودة' : 'ما فيه',
+                  // Critique ح5: «ما فيه» left the reader guessing.
+                  value: user.hasPassword ? 'موجودة' : 'ما انحددت بعد',
                   onTap: () => showSetPasswordSheet(
                     context,
                     hasPassword: user.hasPassword,

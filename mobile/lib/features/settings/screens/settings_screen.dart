@@ -154,7 +154,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
-              title: 'التنبيهات',
+              // Critique ع1ت: the list is «التنبيهات»; this is its settings.
+              title: 'إعدادات التنبيهات',
               onBack: () =>
                   context.canPop() ? context.pop() : context.go(AppRouter.more),
             ),

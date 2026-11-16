@@ -510,7 +510,7 @@ void main() {
       expect(find.text('باقي مليون'), findsOneWidget);
       expect(find.text('موعد تسليم الباقي'), findsOneWidget);
 
-      await tester.tap(find.text('احفظ المهر'));
+      await tester.tap(find.text('حفظ المهر'));
       await tester.pumpAndSettle();
 
       expect(api.recorded, [(total: '3000000', settled: '2000000')]);
@@ -532,11 +532,11 @@ void main() {
         '3500000',
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('احفظ المهر'));
+      await tester.tap(find.text('حفظ المهر'));
       await tester.pumpAndSettle();
 
       // The form stays, with the server's reason.
-      expect(find.text('احفظ المهر'), findsOneWidget);
+      expect(find.text('حفظ المهر'), findsOneWidget);
       expect(find.textContaining('ما انسجّل المبلغ المكتوب'), findsOneWidget);
       expect(find.text('الرئيسية'), findsNothing);
       // The item became the mahr on the server: the phone reads it.
@@ -547,7 +547,7 @@ void main() {
     testWidgets('no mahr typed, nothing is sent', (tester) async {
       final api = await _pumpMahr(tester, JourneyProfile.groom);
 
-      await tester.tap(find.text('احفظ المهر'));
+      await tester.tap(find.text('حفظ المهر'));
       await tester.pumpAndSettle();
 
       expect(find.text('اكتب كم المهر'), findsOneWidget);

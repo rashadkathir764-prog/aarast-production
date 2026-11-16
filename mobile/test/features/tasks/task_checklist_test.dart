@@ -201,7 +201,8 @@ void main() {
       find.byKey(const ValueKey('task-checklist-rename-field')),
       'الاتصال بالقاعة',
     );
-    await tester.tap(find.text('حفظ'));
+    // Critique ع1: «حفظ + الاسم».
+    await tester.tap(find.text('حفظ الخطوة'));
     await tester.pumpAndSettle();
     expect(renamed, ['a:الاتصال بالقاعة']);
 

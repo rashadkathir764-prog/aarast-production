@@ -1050,7 +1050,8 @@ void main() {
       expect(find.text('مصورين · فيلم 10 دقائق · ألبوم مطبوع'), findsOneWidget);
       expect(find.text('اقبل العرض'), findsOneWidget);
       expect(find.text('قارن'), findsOneWidget);
-      expect(find.text('اكتب رسالتك...'), findsOneWidget);
+      // Changed on purpose (critique د2): one kind of dots in the hint.
+      expect(find.text('اكتب رسالتك…'), findsOneWidget);
       // Nothing the design does not show: no avatar, no menu button, no
       // formal event cards or read receipts.
       expect(find.byType(CircleAvatar), findsNothing);
@@ -1075,7 +1076,9 @@ void main() {
 
       expect(find.text('كتم المحادثة'), findsOneWidget);
       expect(find.text('الرسائل توصل بدون تنبيه'), findsOneWidget);
-      expect(find.text('بلّغ عن مشكلة'), findsOneWidget);
+      // Changed on purpose (critique د1): said without a verb to a man or a
+      // woman, the couple's and the provider's menu alike.
+      expect(find.text('الإبلاغ عن مشكلة'), findsOneWidget);
       expect(find.text('تأخير، كلام غير لائق، احتيال'), findsOneWidget);
       expect(find.text('احظر المزود'), findsOneWidget);
       expect(find.text('ما يقدر يراسلك'), findsOneWidget);
@@ -1092,7 +1095,7 @@ void main() {
         isTrue,
       );
 
-      await tester.tap(find.text('بلّغ عن مشكلة'));
+      await tester.tap(find.text('الإبلاغ عن مشكلة'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('احتيال'));
       await tester.pumpAndSettle();

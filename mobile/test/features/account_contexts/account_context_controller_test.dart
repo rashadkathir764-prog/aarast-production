@@ -92,7 +92,9 @@ void main() {
       await controller.refresh(allowInitialSingleContext: true);
 
       expect(controller.selectedContext, isNull);
-      expect(controller.errorMessage, contains('ما وصلنا للخادم'));
+      // Changed on purpose (Q-32): «ما وصلنا», without «الخادم».
+      expect(controller.errorMessage, contains('ما وصلنا'));
+      expect(controller.errorMessage, isNot(contains('الخادم')));
     });
 
     // D112 (Q-17), the owner's word (2026-11-12): a participant reads the

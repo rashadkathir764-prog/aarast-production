@@ -491,7 +491,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('funding-save'),
-          label: 'حفظ',
+          label: 'حفظ المصدر',
           expand: true,
           large: true,
           loading: _saving,

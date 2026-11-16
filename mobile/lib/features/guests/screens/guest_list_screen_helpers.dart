@@ -83,10 +83,13 @@ String _statusLine(
       .where((guest) => guest.isPending && !guest.everTold)
       .length;
   final waiting = summary.pending - notSent;
+  // Critique ض1: «3 ضيوف · 1 أكد», each word agreeing with its count
+  // («3 مدعو · 1 أكدوا» was right only from eleven up).
   return [
-    '${summary.totalGuests} ${words.invited}',
-    if (summary.confirmed > 0) '${summary.confirmed} ${words.confirmed}',
-    if (waiting > 0) '$waiting ${words.pending}',
+    words.count(summary.totalGuests),
+    if (summary.confirmed > 0)
+      '${summary.confirmed} ${words.confirmedOf(summary.confirmed)}',
+    if (waiting > 0) '$waiting ${words.pendingOf(waiting)}',
     if (notSent > 0) '$notSent ${words.noInvitation}',
   ].join(' · ');
 }

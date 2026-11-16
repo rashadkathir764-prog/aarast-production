@@ -142,12 +142,14 @@ class _OtpScreenState extends State<OtpScreen> {
       _otpNoticeMessage = result.noticeMessage;
     });
     _startResendCooldown(notify: true);
+    // Critique بد16: the app's own words, not the formal register, and
+    // nothing said to a man or a woman (the reader is not known yet).
     if (result.isDeliveryConfirmed) {
-      AarastToast.showSuccess(context, 'تم تسليم الرمز إلى واتساب');
+      AarastToast.showSuccess(context, 'الرمز وصل واتساب');
     } else {
       AarastToast.showInfo(
         context,
-        'طلبنا إعادة الإرسال، لكن لم نتأكد من وصول الرمز بعد.',
+        'طلبنا رمز جديد، وما تأكدنا للحين إنه وصل.',
       );
     }
   }
@@ -170,7 +172,7 @@ class _OtpScreenState extends State<OtpScreen> {
     final purpose =
         widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
     if (phone == null || phone.isEmpty) {
-      AarastToast.showInfo(context, 'اطلب رمز تحقق جديد للمتابعة.');
+      AarastToast.showInfo(context, 'نحتاج رمز جديد عشان نكمل.');
       return;
     }
 
@@ -310,7 +312,7 @@ class _OtpScreenState extends State<OtpScreen> {
       context: context,
       builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
-        changeLabel: _changeLabel(registration: registration),
+        changeLabel: _changeLabel,
         onResend: () {
           Navigator.of(sheetContext).pop();
           _resendOtp();
@@ -337,12 +339,9 @@ class _OtpScreenState extends State<OtpScreen> {
     );
   }
 
-  /// «غيّر الرقم» in the plan owner's words while saving a plan; the
-  /// neutral «تغيير الرقم» everywhere else.
-  String _changeLabel({required bool registration}) =>
-      registration && _keptPlan != null && !_forProvider
-      ? context.say('غيّر الرقم', 'غيّري الرقم')
-      : 'تغيير الرقم';
+  /// «تغيير الرقم», one name for the one action (critique بد17: «غيّر
+  /// الرقم» and «تغيير الرقم» stood on the same screen while saving a plan).
+  static const _changeLabel = 'تغيير الرقم';
 
   /// The kept plan's owner: the colour and voice of every line here.
   /// «عرس سلمى» → «سلمى»: the owner's name the kept plan carries.
@@ -539,7 +538,7 @@ class _OtpScreenState extends State<OtpScreen> {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: JourneyTextAction(
-                label: _changeLabel(registration: isRegistration),
+                label: _changeLabel,
                 color: dark,
                 onPressed: _goBack,
               ),

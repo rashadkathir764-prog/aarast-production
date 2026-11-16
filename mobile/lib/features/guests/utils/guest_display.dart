@@ -67,6 +67,19 @@ class GuestWords {
   /// «ما أضفت أحد بعد» / «ما أضفتِ أحد بعد»: said to the reader.
   String get noneAdded => profile.say('ما أضفت أحد بعد', 'ما أضفتِ أحد بعد');
 
+  /// Critique ض1: the word after a count agrees with it. One guest
+  /// «أكد», more «أكدوا» (the plan's side for her guests).
+  String confirmedOf(int count) =>
+      count == 1 ? _say('أكد', 'أكدت') : confirmed;
+
+  /// «ما ردّ» for one, «ما ردّوا» for more.
+  String pendingOf(int count) =>
+      count == 1 ? _say('ما ردّ', 'ما ردّت') : pending;
+
+  /// «ما أكد بعد» for one, «ما أكدوا بعد» for more.
+  String notYetConfirmedOf(int count) =>
+      count == 1 ? _say('ما أكد بعد', 'ما أكدت بعد') : notYetConfirmed;
+
   /// «ضيف واحد», «ضيفين», «12 ضيف» or their feminine forms.
   String count(int count) => arabicCount(
     count,

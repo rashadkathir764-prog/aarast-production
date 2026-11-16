@@ -244,8 +244,8 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               icon: LucideIcons.wallet,
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
-              title: 'حساباتك',
-              subtitle: 'وصلك وباقي لك من حجوزاتك',
+              title: 'اللي سجّله العرسان لك',
+              subtitle: 'وصلك وباقي لك، كما سجّلوه في خططهم',
               onTap: () => context.push(AppRouter.providerLedger),
             ),
             // B-20: how many weddings he takes on one day; not drawn on

@@ -59,7 +59,8 @@ void main() {
       // w41: the refused change is named and says why in plain words.
       expect(find.text('تغيير واحد ينتظر'), findsOneWidget);
       expect(find.text('إضافة مهمة'), findsOneWidget);
-      expect(find.textContaining('الخادم رفضه'), findsOneWidget);
+      // Changed on purpose (Q-32): «ما انقبل», without «الخادم».
+      expect(find.textContaining('ما انقبل، ويحتاج مراجعة'), findsOneWidget);
       expect(find.textContaining('title should'), findsNothing);
       expect(find.byKey(const Key('sync-issues-retry')), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -106,7 +107,7 @@ void main() {
 
     expect(find.text('تغيير واحد ينتظر'), findsOneWidget);
     expect(find.text('مهمة: احجز القاعة'), findsOneWidget);
-    expect(find.textContaining('الخادم رفضه'), findsNothing);
+    expect(find.textContaining('ما انقبل'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

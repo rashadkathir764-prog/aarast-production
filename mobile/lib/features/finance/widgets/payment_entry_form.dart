@@ -256,7 +256,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
         context,
         // One wording for both readers: nothing in it is addressed to a
         // person, so say() only promised a difference that is not there.
-        'الدفعة انحفظت في جوالك. الإيصال يُضاف من تفاصيلها بعد ما توصل للخادم.',
+        'الدفعة انحفظت في جوالك. الإيصال ينضاف من تفاصيلها لما يرجع النت.',
       );
       return;
     }

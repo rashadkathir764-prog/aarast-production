@@ -240,7 +240,7 @@ class _GroupNameDialogState extends State<_GroupNameDialog> {
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _controller.text),
-          child: const Text('حفظ'),
+          child: const Text('حفظ الاسم'),
         ),
       ],
     );

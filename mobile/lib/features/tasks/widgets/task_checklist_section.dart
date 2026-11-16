@@ -229,7 +229,7 @@ class _RenameStepSheetState extends State<_RenameStepSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('task-checklist-rename-save'),
-          label: 'حفظ',
+          label: 'حفظ الخطوة',
           background: context.accent.primary,
           expand: true,
           large: true,

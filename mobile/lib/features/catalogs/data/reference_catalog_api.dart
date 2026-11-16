@@ -32,7 +32,7 @@ class ReferenceCatalogApi {
       // The version query makes this read its own: the copy is kept only
       // when the server says the catalog changed.
       final response = await _writes.serverOnly(
-        reason: 'الكتالوج يتحدّث من الخادم.',
+        reason: 'تحديث القوائم يحتاج النت.',
         method: 'GET',
         path: '/api/v1/catalogs/bootstrap$versionQuery',
       );

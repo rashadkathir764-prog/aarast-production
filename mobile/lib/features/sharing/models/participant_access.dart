@@ -58,7 +58,9 @@ extension ParticipantLevels on PlanRolePermissions {
 }
 
 /// The one line under a participant's name, built from the stored flags
-/// (g01): «يساعد في المهام والضيوف · بدون المال».
+/// (g01): «المهام والضيوف · بدون المال». Critique ش1: said without a verb,
+/// so it reads right under «أم العريس» as under «أخو العريس» (it was «يساعد…
+/// يشوف المال» for everyone).
 String participantSummary(PlanRolePermissions permissions) {
   final sections = [
     if (permissions.canManageTasks) 'المهام',
@@ -66,14 +68,14 @@ String participantSummary(PlanRolePermissions permissions) {
     if (permissions.canManageProviders) 'المزودين',
   ];
   final money = switch (permissions.moneyLevel) {
-    MoneyLevel.manage => 'يسجّل في المال',
-    MoneyLevel.view => 'يشوف المال',
+    MoneyLevel.manage => 'تسجيل في المال',
+    MoneyLevel.view => 'مع المال',
     MoneyLevel.none => 'بدون المال',
   };
   if (sections.isEmpty) {
-    return permissions.moneyLevel == MoneyLevel.none ? 'يتابع الخطة بس' : money;
+    return permissions.moneyLevel == MoneyLevel.none ? 'متابعة بس' : money;
   }
-  return 'يساعد في ${sections.join(' و')} · $money';
+  return '${sections.join(' و')} · $money';
 }
 
 /// An invite's role said to the one invited before we know who they are

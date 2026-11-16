@@ -20,7 +20,7 @@ const aarastBackendConnectionErrorMessage =
 /// …»): the app is newer than the server. Retrying changes nothing; the
 /// server must be updated, and the screen says so instead of «حاول».
 const aarastServerOlderMessage =
-    'الخادم أقدم من التطبيق. هذي الشاشة تشتغل بعد ما يتحدّث الخادم.';
+    'هذي الشاشة تشتغل بعد تحديث عندنا، وما يحتاج منك شي.';
 const aarastServerOlderCode = 'SERVER_OLDER_THAN_APP';
 // A number without WhatsApp and a channel outage look the same to the server
 // (field test Q07), so the message names what the user can check.
@@ -855,7 +855,7 @@ class ApiException implements Exception {
     if (transportCause != null) {
       return ApiException(
         transportCause == ReachabilityCause.unknown
-            ? 'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.'
+            ? 'ما وصلنا. لما يرجع النت تمشي.'
             : '${reachabilityCauseLabel(transportCause)}. '
                   '${reachabilityCauseAdvice(transportCause)}',
         isNetworkFailure: true,
@@ -957,16 +957,18 @@ class ApiException implements Exception {
   static bool hasArabic(String message) => _arabicLetter.hasMatch(message);
 
   /// An Arabic message with a clear next step, by what kind of failure it is.
+  /// Critique ط2: the network layer does not know who reads, so these say
+  /// the step without a verb to a man or a woman, and without «الخادم» (Q-32).
   static String _arabicMessageForStatus(int? statusCode) {
     return switch (statusCode) {
-      400 || 422 => 'ما قدرنا نحفظ. راجع اللي كتبته وجرّب مرة ثانية.',
-      403 => 'ما عندك صلاحية لهذي. اطلبها من صاحب الخطة.',
-      404 => 'هذا ما عاد موجود. ارجع وحدّث الشاشة.',
-      409 => 'تغيّرت البيانات قبل ما نحفظ. حدّث الشاشة وجرّب مرة ثانية.',
-      413 => 'الملف أكبر من المسموح. اختر ملف أصغر.',
-      429 => 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.',
-      final code? when code >= 500 => 'الخادم ما رد زي ما لازم. جرّب بعد شوي.',
-      _ => 'صار خطأ عندنا. جرّب مرة ثانية.',
+      400 || 422 => 'ما انحفظ: فيه شي في المكتوب يحتاج تعديل.',
+      403 => 'هذي تحتاج صلاحية من صاحب الخطة.',
+      404 => 'هذا ما عاد موجود. تحديث الشاشة يجيب الجديد.',
+      409 => 'تغيّر شي قبل ما نحفظ، فما انحفظ. بعد تحديث الشاشة تمشي.',
+      413 => 'الملف أكبر من المسموح، والأصغر منه يمشي.',
+      429 => 'طلبات كثيرة ورا بعض. بعد شوي تمشي.',
+      final code? when code >= 500 => 'ما وصلنا رد سليم. بعد شوي تمشي.',
+      _ => 'صار خطأ عندنا. مرة ثانية غالبًا تمشي.',
     };
   }
 
@@ -1136,16 +1138,17 @@ class ApiException implements Exception {
 
   static String _genericAuthMessage(int? statusCode) {
     // RA-MO-116: «المصادقة» is the developer's word. Said as what happened.
+    // Critique ط2: said for any reader, without «الخادم».
     if (statusCode == 400 || statusCode == 422) {
-      return 'ما قدرنا نكمل الطلب. تأكد من اللي كتبته وجرّب مرة ثانية.';
+      return 'ما كمل الطلب: فيه شي في المكتوب يحتاج تعديل.';
     }
     if (statusCode == 429) {
-      return 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.';
+      return 'طلبات كثيرة ورا بعض. بعد شوي تمشي.';
     }
     if (statusCode != null && statusCode >= 500) {
-      return 'الخادم ما رد زي ما لازم. جرّب بعد شوي.';
+      return 'ما وصلنا رد سليم. بعد شوي تمشي.';
     }
-    return 'ما قدرنا نكمل الطلب. جرّب مرة ثانية.';
+    return 'ما كمل الطلب. مرة ثانية غالبًا تمشي.';
   }
 }
 

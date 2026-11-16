@@ -116,7 +116,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
                 ? 'ما قدرنا نتأكد إن هذا التغيير لخطتك، فما راح نرسله من نفسنا عشان نحمي بياناتك.'
                 : item.retryCount >= SyncQueueItem.maxAutoRetries
                 ? 'ما قدرنا نرسل التغيير بعد كم محاولة. جرّب مرة ثانية.'
-                : 'الخادم رفض التغيير. راجع بيانات $entityLabel في شاشته وجرّب مرة ثانية.',
+                : 'ما انقبل التغيير، فبيانات $entityLabel تحتاج مراجعة قبل ما ينرسل مرة ثانية.',
             retryCount: item.retryCount,
             canRetry: !ownershipQuarantined,
           );
@@ -1224,8 +1224,8 @@ String _pendingChangeTitle(SyncQueueItem item) {
 String _refusalReason(String? lastError) {
   final reason = lastError?.trim() ?? '';
   return ApiException.hasArabic(reason)
-      ? 'الخادم رفضه: $reason'
-      : 'الخادم رفضه، راجعه وجرّب مرة ثانية';
+      ? 'ما انقبل: $reason'
+      : 'ما انقبل، ويحتاج مراجعة قبل ما ينرسل مرة ثانية';
 }
 
 String _syncEntityLabel(String entityType) {

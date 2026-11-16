@@ -66,8 +66,9 @@ void main() {
 
     expect(find.text('فحص الاتصال'), findsOneWidget);
     expect(find.textContaining('نسخة تطوير'), findsOneWidget);
-    expect(find.textContaining('الخادم: 127.0.0.1'), findsOneWidget);
-    expect(find.textContaining('الخادم تأخر في الرد'), findsOneWidget);
+    // Changed on purpose (Q-32, critique ع3): the app's name, not «الخادم».
+    expect(find.textContaining('عنوان اعّرست: 127.0.0.1'), findsOneWidget);
+    expect(find.textContaining('الرد تأخر'), findsOneWidget);
     expect(find.text('افحص الحين'), findsOneWidget);
   });
 
@@ -79,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.probes, 1);
-    expect(find.textContaining('الخادم رد الحين'), findsOneWidget);
+    expect(find.textContaining('اعّرست رد الحين'), findsOneWidget);
   });
 
   testWidgets('a probe that fails names the measured cause', (tester) async {
@@ -95,7 +96,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('ما فيه نت في الجوال الحين'), findsOneWidget);
-    expect(find.textContaining('شغّل النت'), findsOneWidget);
+    expect(find.textContaining('لما يرجع النت'), findsOneWidget);
   });
 
   testWidgets('the report is copied as text with the cause code', (

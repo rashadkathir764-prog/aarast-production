@@ -220,7 +220,9 @@ void main() {
     expect(saved, isFalse);
     expect(
       dashboard.errorMessage,
-      'ما قدرنا نوصل للخادم الحين. ردك يحتاج الخادم، جرّب لما يرجع.',
+      // Changed on purpose (Q-32, critique ب3/ب6): no «الخادم», nothing
+      // said to a man or a woman.
+      'ما قدرنا نوصل الحين. ردك يحتاج النت، ويمشي لما يرجع.',
     );
     await _done(tester, dashboard);
   });

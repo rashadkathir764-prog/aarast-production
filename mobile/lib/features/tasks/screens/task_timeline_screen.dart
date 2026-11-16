@@ -224,22 +224,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   if (_showCancelled)
                     _taskBox(provider, cancelled, person, selfLetter),
                 ],
-                if (groups.keys.any(isOpenTaskGroup)) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  Center(
-                    child: Text(
-                      context.say(
-                        'اسحب المهمة لما تخلصها',
-                        'اسحبي المهمة لما تخلصينها',
-                      ),
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: AarastV3Color.textFaint,
-                      ),
-                    ),
-                  ),
-                ],
+                // Critique مه2: no standing line teaching the swipe; the
+                // task's circle is the way to finish it, the swipe a shortcut.
               ],
             );
     }

@@ -19,7 +19,7 @@ class ChatApi {
   final OfflineReads _reads;
   final OfflineWrites _writes;
 
-  static const _sendReason = 'الرسالة تحتاج الخادم عشان توصل للطرف الثاني.';
+  static const _sendReason = 'الرسالة تحتاج النت عشان توصل للطرف الثاني.';
 
   Future<ChatConversationPage> listConversations({String? cursor}) async {
     if (cursor == null) {
@@ -30,7 +30,7 @@ class ChatApi {
     final suffix = '?cursor=${Uri.encodeQueryComponent(cursor)}';
     return ChatConversationPage.fromJson(
       await _writes.serverOnly(
-        reason: 'الصفحات التالية عند الخادم.',
+        reason: 'الصفحات التالية تحتاج النت.',
         method: 'GET',
         path: '/api/v1/conversations$suffix',
       ),
@@ -76,7 +76,7 @@ class ChatApi {
     final suffix = '?cursor=${Uri.encodeQueryComponent(cursor)}';
     return ChatTimelinePage.fromJson(
       await _writes.serverOnly(
-        reason: 'الرسائل الأقدم عند الخادم.',
+        reason: 'الرسائل الأقدم تحتاج النت.',
         method: 'GET',
         path: '/api/v1/conversations/$conversationId/timeline$suffix',
       ),
@@ -133,7 +133,7 @@ class ChatApi {
     String attachmentId,
   ) async {
     final json = await _writes.serverOnly(
-      reason: 'رابط الملف يصدره الخادم لمدة قصيرة.',
+      reason: 'فتح الملف يحتاج النت.',
       method: 'GET',
       path:
           '/api/v1/conversations/$conversationId/attachments/$attachmentId/download',
@@ -174,7 +174,7 @@ class ChatApi {
 
   Future<void> setBlocked(String conversationId, bool enabled) async {
     await _writes.serverOnly(
-      reason: 'الحظر يُسجَّل عند الخادم.',
+      reason: 'الحظر يحتاج النت.',
       method: 'PATCH',
       path: '/api/v1/conversations/$conversationId/block',
       body: {'enabled': enabled},
@@ -183,7 +183,7 @@ class ChatApi {
 
   Future<void> report(String conversationId, String reason) async {
     await _writes.serverOnly(
-      reason: 'البلاغ يوصل للإدارة من الخادم.',
+      reason: 'البلاغ يوصل فريق اعّرست، فيحتاج النت.',
       method: 'POST',
       path: '/api/v1/conversations/$conversationId/report',
       body: {'reason': reason},

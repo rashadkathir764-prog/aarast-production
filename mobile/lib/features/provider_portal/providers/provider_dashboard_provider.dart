@@ -212,7 +212,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         await loadClaim();
         return _claim?.isPending ?? false;
       }
-      _errorMessage = _said(error, 'طلب الاستلام يحتاج الخادم');
+      _errorMessage = _said(error, 'طلب الاستلام يحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
@@ -264,7 +264,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       final message = switch (error.serverCode) {
         'PROVIDER_SERVICE_REQUIRED' => 'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
-        _ => _said(error, 'ملفك يحتاج الخادم'),
+        _ => _said(error, 'ملفك يحتاج النت'),
       };
       // The state changed elsewhere (the team decided, or rewrote its
       // notes, meanwhile): read it, then say why; reading it clears the
@@ -343,7 +343,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       return true;
     } on ApiException catch (error) {
       _endAttemptIfFinal('joining-service', error);
-      _errorMessage = _said(error, 'خدمتك تحتاج الخادم');
+      _errorMessage = _said(error, 'خدمتك تحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
@@ -573,7 +573,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       if (sectionErrors.isNotEmpty) {
         final names = sectionErrors.join('، ');
         _errorMessage = _offline
-            ? 'ما قدرنا نوصل للخادم، و$names ما لها نسخة في جوالك بعد.'
+            ? 'ما قدرنا نوصل، و$names ما لها نسخة في جوالك بعد.'
             : 'ما قدرنا نجيب $names. اسحب للتحديث.';
       }
     } on ApiException catch (error) {
@@ -834,7 +834,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       }
       _errorMessage = error.serverCode == 'PROVIDER_SERVICE_REQUIRED'
           ? 'اكتب خدمتك وسعرها قبل ما ترسل.'
-          : _said(error, 'طلبك يحتاج الخادم');
+          : _said(error, 'طلبك يحتاج النت');
       return ProviderJoinResult.failed;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';
@@ -905,7 +905,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _hasProviderProfile = true;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'ملفك يحتاج الخادم');
+      _errorMessage = _said(error, 'ملفك يحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما انحفظ ملفك الحين. جرّب مرة ثانية.';
@@ -929,7 +929,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _hasProviderProfile = true;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'صورة ملفك تحتاج الخادم');
+      _errorMessage = _said(error, 'صورة ملفك تحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما انحفظت الصورة الحين. جرّب مرة ثانية.';
@@ -1038,7 +1038,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       return true;
     } on ApiException catch (error) {
       _endAttemptIfFinal('service', error);
-      _errorMessage = _said(error, 'الخدمة الجديدة تحتاج الخادم');
+      _errorMessage = _said(error, 'الخدمة الجديدة تحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما انضافت الخدمة الحين. جرّب مرة ثانية.';
@@ -1118,7 +1118,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'تعديل الخدمة يحتاج الخادم');
+      _errorMessage = _said(error, 'تعديل الخدمة يحتاج النت');
       notifyListeners();
       return false;
     } catch (_) {
@@ -1166,7 +1166,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       return true;
     } on ApiException catch (error) {
       _endAttemptIfFinal('package', error);
-      _errorMessage = _said(error, 'الباقة الجديدة تحتاج الخادم');
+      _errorMessage = _said(error, 'الباقة الجديدة تحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما انضافت الباقة الحين. جرّب مرة ثانية.';
@@ -1247,7 +1247,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'تعديل الباقة يحتاج الخادم');
+      _errorMessage = _said(error, 'تعديل الباقة يحتاج النت');
       notifyListeners();
       return false;
     } catch (_) {
@@ -1305,7 +1305,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'حالة الطلب تحتاج الخادم');
+      _errorMessage = _said(error, 'حالة الطلب تحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما اتغيّرت حالة الطلب الحين. جرّب مرة ثانية.';
@@ -1393,7 +1393,7 @@ class ProviderDashboardProvider extends ChangeNotifier
           )) {
         return ProviderOfferSend.queued;
       }
-      _errorMessage = _said(error, 'عرضك يحتاج الخادم');
+      _errorMessage = _said(error, 'عرضك يحتاج النت');
       return ProviderOfferSend.failed;
     } catch (_) {
       _errorMessage = 'ما انرسل عرضك الحين. جرّب مرة ثانية.';
@@ -1434,7 +1434,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      final refusal = _said(error, 'تعديل العرض يحتاج الخادم');
+      final refusal = _said(error, 'تعديل العرض يحتاج النت');
       // RA-MO-289: changed from his other phone: the newer offer is read,
       // and the refusal stays said.
       if (error.serverCode == 'QUOTE_OFFER_CHANGED') await loadDashboard();
@@ -1461,7 +1461,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _said(error, 'سحب العرض يحتاج الخادم');
+      _errorMessage = _said(error, 'سحب العرض يحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نسحب العرض. جرّب مرة ثانية.';
@@ -1500,7 +1500,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         _errorMessage = 'رديت على هذا التقييم من قبل.';
         return false;
       }
-      _errorMessage = _said(error, 'ردك يحتاج الخادم');
+      _errorMessage = _said(error, 'ردك يحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = 'ما انرسل ردك الحين. جرّب مرة ثانية.';
@@ -1609,7 +1609,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       _ledgers[_monthKey(month)] = await _api.getLedger(month);
     } on ApiException catch (error) {
-      _ledgerError = _said(error, 'حساباتك تحتاج الخادم');
+      _ledgerError = _said(error, 'حساباتك تحتاج النت');
     } catch (_) {
       _ledgerError = 'ما قدرنا نقرأ حساباتك. جرّب مرة ثانية.';
     }
@@ -1648,7 +1648,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _lastChangeOffline = error.isNetworkFailure;
       _errorMessage =
           providerBookingErrorMessage(error.serverCode) ??
-          _said(error, 'التغيير يحتاج الخادم');
+          _said(error, 'التغيير يحتاج النت');
       return false;
     } catch (_) {
       _errorMessage = fallback;
@@ -1668,7 +1668,7 @@ class ProviderDashboardProvider extends ChangeNotifier
 /// D87: a failure said as measured (D84): the server out of reach is not
 /// the server refusing; [needs] names what waits («ردك يحتاج الخادم»).
 String _said(ApiException error, String needs) => error.isNetworkFailure
-    ? 'ما قدرنا نوصل للخادم الحين. $needs، جرّب لما يرجع.'
+    ? 'ما قدرنا نوصل الحين. $needs، ويمشي لما يرجع.'
     // RA-MO-297: the shared sentence is the customer's («المزود موقوف»);
     // to a provider waiting for approval it was untrue.
     : error.serverCode == 'PROVIDER_NOT_ACTIVE'

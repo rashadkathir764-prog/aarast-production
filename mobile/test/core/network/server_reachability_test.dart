@@ -113,7 +113,8 @@ void main() {
       );
       expect(exception.isNetworkFailure, isTrue);
       expect(exception.transportCause, ReachabilityCause.timeout);
-      expect(exception.message, 'الخادم تأخر في الرد. جرّب مرة ثانية بعد شوي.');
+      // Changed on purpose (Q-32, critique ط2, 2026-11-16).
+      expect(exception.message, 'الرد تأخر. بعد شوي تمشي.');
     });
 
     test('no network says so', () {
@@ -129,7 +130,7 @@ void main() {
       expect(exception.transportCause, ReachabilityCause.noNetwork);
       expect(
         exception.message,
-        'ما فيه نت في الجوال الحين. شغّل النت وجرّب مرة ثانية.',
+        'ما فيه نت في الجوال الحين. لما يرجع النت تمشي.',
       );
     });
 
@@ -141,10 +142,7 @@ void main() {
         ),
       );
       expect(exception.transportCause, ReachabilityCause.unknown);
-      expect(
-        exception.message,
-        'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
-      );
+      expect(exception.message, 'ما وصلنا. لما يرجع النت تمشي.');
     });
   });
 

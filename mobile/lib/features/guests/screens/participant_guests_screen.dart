@@ -159,12 +159,14 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
               // asked yet; and «0 أكدوا» is not said.
               status: view == null || view.guestsTotal == 0
                   ? ''
+                  // Critique ض1: each word agrees with its count, as on the
+                  // owner's list.
                   : [
-                      '${view.guestsTotal} ${words.invited}',
+                      words.count(view.guestsTotal),
                       if (view.guestsConfirmed > 0)
-                        '${view.guestsConfirmed} ${words.confirmed}',
+                        '${view.guestsConfirmed} ${words.confirmedOf(view.guestsConfirmed)}',
                       if (view.guestsPending > 0)
-                        '${view.guestsPending} ${words.notYetConfirmed}',
+                        '${view.guestsPending} ${words.notYetConfirmedOf(view.guestsPending)}',
                     ].join(' · '),
             ),
             const SizedBox(height: AarastV3Space.x3),

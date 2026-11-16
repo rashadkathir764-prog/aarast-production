@@ -86,7 +86,8 @@ AarastDashboardFocus resolveDashboardFocus(
       title: count == 1 ? 'موعد دفع قريب' : 'مواعيد دفع قريبة',
       reason:
           'عندك ${arabicCount(count, one: 'موعد دفع واحد', two: 'موعدين دفع', few: 'مواعيد دفع', many: 'موعد دفع')}، '
-          '${say('شوفها قبل لا يجي وقتها.', 'شوفيها قبل لا يجي وقتها.')}',
+          // Critique ر2: «موعد» is masculine; one date is «شوفه … وقته».
+          '${count == 1 ? say('شوفه قبل لا يجي وقته.', 'شوفيه قبل لا يجي وقته.') : say('شوفها قبل لا يجي وقتها.', 'شوفيها قبل لا يجي وقتها.')}',
       actionLabel: say('افتح المال', 'افتحي المال'),
       icon: LucideIcons.calendarClock,
       tone: AarastDashboardFocusTone.urgent,

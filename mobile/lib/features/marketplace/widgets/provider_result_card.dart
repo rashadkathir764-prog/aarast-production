@@ -123,18 +123,14 @@ class ProviderResultCard extends StatelessWidget {
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
         )
+      // Critique ز1: «جديد» stood for «not verified», so a provider with 125
+      // reviews read as new. Only «موثّق» is said; the rest say nothing.
       else if (isVerified)
         JourneyTag(
           key: const Key('provider-card-verified'),
           label: 'موثّق',
           color: context.accent.primary,
           soft: context.accent.primarySoft,
-        )
-      else
-        const JourneyTag(
-          label: 'جديد',
-          color: AarastV3Color.textMuted,
-          soft: AarastV3Color.line,
         ),
       // The drawn «مميز» (f02). It is a paid placement (B-43), so a tap
       // says so plainly: not a recommendation from اعّرست.

@@ -195,7 +195,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الخميس 28 يناير 2027'), findsOneWidget);
-    await tester.tap(find.text('حفظ'));
+    // Critique ع1: «حفظ + الاسم».
+    await tester.tap(find.text('حفظ بيانات الخطة'));
     await tester.pumpAndSettle();
     expect(saved.single.firstDay, DateTime(2027, 1, 28));
   });

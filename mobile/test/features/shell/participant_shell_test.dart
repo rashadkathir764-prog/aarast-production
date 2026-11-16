@@ -271,7 +271,8 @@ void main() {
       // Changed on purpose (D116, D3 of the closing round): the reader does
       // not see who an invitation reached, so no reply is «ما أكّد بعد»,
       // never «ما ردّ» of a guest nobody asked yet.
-      expect(find.text('3 مدعو · 1 أكدوا · 1 ما أكدوا بعد'), findsOneWidget);
+      // Changed on purpose (critique ض1): each word agrees with its count.
+      expect(find.text('3 ضيوف · 1 أكد · 1 ما أكد بعد'), findsOneWidget);
       expect(find.text('عبدالله الحمدي'), findsOneWidget);
       expect(find.text('أكّد'), findsOneWidget);
       expect(find.text('اعتذر'), findsOneWidget);

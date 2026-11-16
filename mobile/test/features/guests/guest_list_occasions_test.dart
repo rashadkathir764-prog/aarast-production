@@ -405,7 +405,8 @@ void main() {
     // The family: Yasser was in, Murad joins; Fahd stays out.
     await _tap(tester, 'invitees-group-العائلة');
     expect(find.text('العائلة 2/2'), findsOneWidget);
-    expect(find.text('احفظ (ضيف واحد)'), findsOneWidget);
+    // Critique ع1: «حفظ + الاسم», the same for any reader.
+    expect(find.text('حفظ المدعوين (ضيف واحد)'), findsOneWidget);
     await _tap(tester, 'invitees-save');
 
     expect(api.updates, {

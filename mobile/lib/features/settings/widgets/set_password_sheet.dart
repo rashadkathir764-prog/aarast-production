@@ -125,7 +125,7 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('set-password-save'),
-          label: 'احفظ',
+          label: 'حفظ كلمة المرور',
           expand: true,
           large: true,
           loading: _busy,

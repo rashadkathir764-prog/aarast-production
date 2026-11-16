@@ -22,7 +22,7 @@ class SharingApi {
   final OfflineReads _reads;
   final OfflineWrites _writes;
 
-  static const _reachesSomeone = 'هذا يوصل لشخص ثاني، فيحتاج الخادم.';
+  static const _reachesSomeone = 'هذا يوصل لشخص ثاني، فيحتاج النت.';
 
   Future<PlanAccessPermissions> getMyPlanPermissions(
     String weddingPlanId,
@@ -86,7 +86,7 @@ class SharingApi {
   }) async {
     final normalizedPhone = _normalizePhone(phone);
     final json = await _writes.serverOnly(
-      reason: 'الدعوة تُرسل من رقم اعّرست، فتحتاج الخادم.',
+      reason: 'الدعوة تُرسل من رقم اعّرست، فتحتاج النت.',
       method: 'POST',
       path: '/api/v1/wedding-plans/$weddingPlanId/invites',
       body: {
@@ -132,7 +132,7 @@ class SharingApi {
     bool? receiveNotifications,
   }) async {
     final json = await _writes.serverOnly(
-      reason: 'التذكير يُرسل من رقم اعّرست، فيحتاج الخادم.',
+      reason: 'التذكير يُرسل من رقم اعّرست، فيحتاج النت.',
       method: 'POST',
       path: '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
       body: {
@@ -152,7 +152,7 @@ class SharingApi {
 
   Future<PlanInvite> getInvite(String token) async {
     final json = await _writes.serverOnly(
-      reason: 'الدعوة تُقرأ من الخادم.',
+      reason: 'قراءة الدعوة تحتاج النت.',
       method: 'GET',
       path: '/api/v1/invites/$token',
     );
@@ -169,7 +169,7 @@ class SharingApi {
 
   Future<AcceptedPlanInvite> acceptInvite(String token) async {
     final json = await _writes.serverOnly(
-      reason: 'القبول يسجّلك في الخطة عند الخادم.',
+      reason: 'القبول يسجّلك في الخطة، فيحتاج النت.',
       method: 'POST',
       path: '/api/v1/invites/$token/accept',
     );
@@ -241,7 +241,7 @@ class SharingApi {
     required String clientRequestId,
   }) async {
     await _writes.serverOnly(
-      reason: 'الخروج من الخطة يُسجَّل عند الخادم.',
+      reason: 'الخروج من الخطة يحتاج النت.',
       method: 'DELETE',
       path: '/api/v1/wedding-plans/$weddingPlanId/members/me',
       body: {

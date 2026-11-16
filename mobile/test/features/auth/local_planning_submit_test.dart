@@ -75,7 +75,8 @@ void main() {
     expect(guestsProvider.guests.single.name, 'محمد علي');
     expect(guestsProvider.guests.single.phone, '+967777123456');
     expect(guestsProvider.noticeMessage, localMessage);
-    expect(find.textContaining('1 مدعو'), findsOneWidget);
+    // Critique ض1: one guest is «ضيف واحد», not «1 مدعو».
+    expect(find.textContaining('ضيف واحد'), findsWidgets);
     expect(find.text(cloudMessage), findsNothing);
     expect(tester.takeException(), isNull);
   });

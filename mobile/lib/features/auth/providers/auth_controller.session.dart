@@ -349,7 +349,7 @@ mixin _AuthSession on _AuthControllerCore {
       // A failed connection is not proof the net is down: the server, or
       // its name, may be the one out of reach. Say what is known.
       return error.isNetworkFailure
-          ? 'ما قدرنا نوصل للخادم. تأكد من النت وجرّب مرة ثانية.'
+          ? 'ما قدرنا نوصل. لما يرجع النت تمشي.'
           : error.message;
     }
     await refreshCurrentUser();

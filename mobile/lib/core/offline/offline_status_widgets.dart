@@ -56,7 +56,7 @@ class OfflineStatusBanner extends StatelessWidget {
       SyncState.offline =>
         phoneOffline
             ? 'بدون نت. $kept تنحفظ في جوالك لين يرجع'
-            : 'ما نقدر نوصل للخادم الحين. $kept تنحفظ في جوالك',
+            : 'ما نقدر نوصل الحين. $kept تنحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك',
       _ => 'تغييراتك تنرسل لما يرجع النت',
@@ -281,7 +281,7 @@ class OfflineSyncNowTile extends StatelessWidget {
       ),
       subtitle: Text(
         service.blockedCount > 0
-            ? 'الخادم رفض ${service.blockedCount}، راجعها'
+            ? '${service.blockedCount} ما انقبلت، تحتاج مراجعة'
             : service.pendingCount > 0
             ? '${service.pendingCount} تنتظر النت'
             : 'كل تغييراتك وصلت',

@@ -31,7 +31,7 @@ class CostReceiptsApi {
     String? costPaymentId,
   }) async {
     final json = await _writes.serverOnly(
-      reason: 'الصورة تُحفظ عند الخادم.',
+      reason: 'حفظ الصورة يحتاج النت.',
       method: 'POST',
       path: '/api/v1/costs/$costId/receipts',
       body: {'attachmentRef': attachmentRef, 'costPaymentId': ?costPaymentId},
@@ -41,7 +41,7 @@ class CostReceiptsApi {
 
   Future<void> delete(String costId, String receiptId) async {
     await _writes.serverOnly(
-      reason: 'الصورة عند الخادم.',
+      reason: 'فتح الصورة يحتاج النت.',
       method: 'DELETE',
       path: '/api/v1/costs/$costId/receipts/$receiptId',
     );

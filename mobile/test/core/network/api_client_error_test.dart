@@ -14,10 +14,10 @@ void main() {
         ),
       );
 
-      expect(
-        exception.message,
-        'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.',
-      );
+      // Changed on purpose (Q-32, critique ط2/ع3, 2026-11-16): no «الخادم»,
+      // and no verb to a man or a woman from a layer that does not know who
+      // reads.
+      expect(exception.message, 'ما وصلنا. لما يرجع النت تمشي.');
       expect(exception.isNetworkFailure, isTrue);
       expect(exception.isAmbiguousMutationFailure, isTrue);
     });
@@ -149,7 +149,8 @@ void main() {
         );
       }
 
-      const generic = 'طلبات كثيرة ورا بعض. انتظر شوي وجرّب مرة ثانية.';
+      // Changed on purpose (critique ط2): said for any reader.
+      const generic = 'طلبات كثيرة ورا بعض. بعد شوي تمشي.';
       expect(
         refused(const {
           'statusCode': 429,
@@ -311,7 +312,8 @@ void main() {
 
       expect(exception.statusCode, 400);
       // In the app's dialect (RA-MO-116): asks to check what was typed.
-      expect(exception.message, contains('تأكد من اللي كتبته'));
+      // Changed on purpose (critique ط2): said for any reader.
+      expect(exception.message, contains('فيه شي في المكتوب يحتاج تعديل'));
       expect(exception.message, isNot(contains('newPassword')));
       expect(exception.message, isNot(contains('characters')));
     });
@@ -406,13 +408,15 @@ void main() {
     }
 
     test('untyped English errors become Arabic with a next step', () {
+      // Changed on purpose (critique ط2, Q-32): each still names its next
+      // step, said for any reader and without «الخادم».
       final cases = <int, String>{
-        400: 'راجع اللي كتبته',
-        403: 'ما عندك صلاحية',
+        400: 'فيه شي في المكتوب يحتاج تعديل',
+        403: 'صلاحية من صاحب الخطة',
         404: 'ما عاد موجود',
-        409: 'حدّث الشاشة',
-        429: 'انتظر شوي',
-        500: 'الخادم ما رد',
+        409: 'بعد تحديث الشاشة',
+        429: 'بعد شوي',
+        500: 'ما وصلنا رد سليم',
       };
       for (final entry in cases.entries) {
         final exception = failure(entry.key, const {

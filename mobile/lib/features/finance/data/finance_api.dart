@@ -146,7 +146,7 @@ class FinanceApi extends _FinanceApiCore
     // not wait on the phone; without the network the failure says why
     // (RA-MO-173, D85).
     final json = await OfflineWrites(_apiClient, _offline).serverOnly(
-      reason: 'المهر يحسبه الخادم مع مالك كله، فيحتاج النت.',
+      reason: 'المهر ينحسب مع مالك كله، فيحتاج النت.',
       method: 'POST',
       path: '/api/v1/wedding-plans/$planId/mahr',
       body: {

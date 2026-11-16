@@ -533,7 +533,10 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             Expanded(
               child: JourneyButton(
                 key: const ValueKey('guest-form-save'),
-                label: _editing ? 'حفظ التعديل' : 'حفظ',
+                // Critique ض8, ع1: «حفظ + الاسم»; one word for an edit.
+                label: _editing
+                    ? 'حفظ التعديلات'
+                    : context.planWord('حفظ الضيف', 'حفظ الضيفة'),
                 background: context.accent.primary,
                 expand: true,
                 large: true,

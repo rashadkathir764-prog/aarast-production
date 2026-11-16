@@ -120,7 +120,8 @@ void main() {
     expect(auth.failedOffline, isTrue);
     expect(
       find.text(
-        'ما قدرنا نرسل الرمز، ما وصلنا للخادم. خطتك محفوظة على هذا الجوال.',
+        // Changed on purpose (Q-32): without «الخادم».
+        'ما قدرنا نرسل الرمز، النت ما وصل. خطتك محفوظة على هذا الجوال.',
       ),
       findsOneWidget,
     );

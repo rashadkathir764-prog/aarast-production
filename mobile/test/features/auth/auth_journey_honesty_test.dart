@@ -527,7 +527,8 @@ void main() {
       expect(
         // The app cannot tell a cut line from a server it cannot reach, so
         // it never claims the net is down.
-        find.text('ما قدرنا نوصل للخادم. تأكدي من النت وجرّبي مرة ثانية.'),
+        // Changed on purpose (Q-32): without «الخادم».
+        find.text('ما قدرنا نوصل. تأكدي من النت وجرّبي مرة ثانية.'),
         findsOneWidget,
       );
     });

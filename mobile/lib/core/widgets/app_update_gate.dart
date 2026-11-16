@@ -61,8 +61,8 @@ class AppUpdateRequiredScreen extends StatelessWidget {
           ),
           const SizedBox(height: AarastV3Space.x1),
           Text(
-            'النسخة اللي عندك صارت قديمة على الخادم. حدّثها من المتجر، '
-            'واللي محفوظ في جوالك يبقى وينرسل بعد التحديث.',
+            'النسخة اللي عندك صارت قديمة، والتحديث من المتجر يرجّعها تشتغل. '
+            'اللي محفوظ في جوالك يبقى وينرسل بعد التحديث.',
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.body,

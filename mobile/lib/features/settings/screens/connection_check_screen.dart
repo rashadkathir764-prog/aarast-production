@@ -61,13 +61,13 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
       'تقرير فحص الاتصال · ${_time(appNow())}',
       BuildInfo.label,
       'البيئة: ${BuildInfo.environment}',
-      'الخادم: ${_serverHost()}',
+      'عنوان اعّرست: ${_serverHost()}',
     ];
     if (_probed) {
       final failure = _probeFailure;
       lines.add(
         failure == null
-            ? 'الفحص: الخادم رد ✓'
+            ? 'الفحص: اعّرست رد ✓'
             : 'الفحص: ${reachabilityCauseLabel(failure.cause)} (${failure.cause.name}) ${failure.detail ?? ''}'
                   .trim(),
       );
@@ -80,7 +80,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
       );
     }
     final reached = reachability?.lastReachedAt;
-    if (reached != null) lines.add('آخر رد من الخادم: ${_time(reached)}');
+    if (reached != null) lines.add('آخر رد من اعّرست: ${_time(reached)}');
     for (final event in _recentFailures(context)) {
       final a = event.attributes;
       lines.add(
@@ -123,12 +123,12 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
               children: [
                 _line(LucideIcons.package, BuildInfo.label),
                 const SizedBox(height: AarastV3Space.x1),
-                _line(LucideIcons.server, 'الخادم: ${_serverHost()}'),
+                _line(LucideIcons.server, 'عنوان اعّرست: ${_serverHost()}'),
                 if (reached != null) ...[
                   const SizedBox(height: AarastV3Space.x1),
                   _line(
                     LucideIcons.checkCircle2,
-                    'آخر رد من الخادم: ${_time(reached)}',
+                    'آخر رد من اعّرست: ${_time(reached)}',
                     color: AarastV3Color.mint,
                   ),
                 ],
@@ -162,7 +162,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
             JourneyNote(
               key: const ValueKey('connection-probe-result'),
               text: _probeFailure == null
-                  ? 'الخادم رد الحين (${_time(_probedAt!)}). لو لافتة «بدون نت» باقية، أغلق التطبيق وافتحه.'
+                  ? 'اعّرست رد الحين (${_time(_probedAt!)}). لو لافتة «بدون نت» باقية، أغلق التطبيق وافتحه.'
                   : '${reachabilityCauseLabel(_probeFailure!.cause)}. ${reachabilityCauseAdvice(_probeFailure!.cause)}',
               icon: _probeFailure == null
                   ? LucideIcons.checkCircle2
@@ -212,7 +212,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
           ),
           const SizedBox(height: AarastV3Space.x2),
           Text(
-            'التقرير فيه النسخة والخادم وأسباب الفشل بس، بدون أرقام أو أسماء.',
+            'التقرير فيه النسخة والعنوان وأسباب الفشل بس، بدون أرقام أو أسماء.',
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.small,
@@ -253,7 +253,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
     final status = attributes['statusCode'];
     if (status is int && status > 0) return 'HTTP $status';
     return switch (attributes['errorType']) {
-      'connectionTimeout' || 'receiveTimeout' || 'sendTimeout' => 'الخادم تأخر',
+      'connectionTimeout' || 'receiveTimeout' || 'sendTimeout' => 'الرد تأخر',
       'connectionError' => 'ما وصلنا',
       'badCertificate' => 'الاتصال الآمن',
       final other => other?.toString() ?? '',

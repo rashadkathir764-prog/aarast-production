@@ -152,7 +152,8 @@ void main() {
     await _pumpList(tester, guests: _mixed);
 
     // The figures count the whole plan.
-    expect(find.text('3 مدعو · 1 أكدوا · 2 ما ردّوا'), findsOneWidget);
+    // Changed on purpose (critique ض1): each word agrees with its count.
+    expect(find.text('3 ضيوف · 1 أكد · 2 ما ردّوا'), findsOneWidget);
     expect(find.text('أكدوا من 3'), findsOneWidget);
     // Only the helper's own waiting guest can be reminded from here.
     // Changed on purpose (D116): «ذكّر ضيف واحد على واتساب» → the summary's one send action guests-send-remind.

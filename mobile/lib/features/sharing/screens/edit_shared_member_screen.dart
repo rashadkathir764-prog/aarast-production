@@ -251,7 +251,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       const SizedBox(height: AarastV3Space.x3),
       JourneyButton(
         key: const ValueKey('member-save'),
-        label: context.say('احفظ', 'احفظي'),
+        label: 'حفظ الصلاحيات',
         large: true,
         expand: true,
         loading: provider.isSubmitting,

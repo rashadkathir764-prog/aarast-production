@@ -169,7 +169,7 @@ class _MahrScreenState extends State<MahrScreen> {
                 'اللي بتستلمه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.',
                 'اللي بتستلمينه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.',
               ),
-        primaryLabel: 'احفظ المهر',
+        primaryLabel: 'حفظ المهر',
         loading: _saving,
         onPrimary: _saving ? null : _save,
         onBack: () => context.popOrGo(AppRouter.home),

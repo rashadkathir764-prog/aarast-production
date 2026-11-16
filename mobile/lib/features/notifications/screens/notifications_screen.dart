@@ -112,7 +112,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               subtitle: participantPlan != null
                   ? 'من $participantPlan'
                   : unreadInList > 0
-                  ? '$unreadInList غير مقروء'
+                  ? '$unreadInList غير مقروءة'
                   : widget.weddingPlanId == null
                   ? 'كل تنبيهات الحساب المحفوظة'
                   : 'تنبيهات الخطة المحفوظة',
@@ -664,7 +664,11 @@ class _NotificationRow extends StatelessWidget {
                         copy.title,
                         style: JourneyType.of(
                           JourneyType.bodyLarge,
-                          weight: JourneyType.bold,
+                          // Critique ت1: a read notice is at the regular
+                          // weight, so read and unread differ beyond a dot.
+                          weight: notification.isUnread
+                              ? JourneyType.bold
+                              : FontWeight.w400,
                           color: urgent
                               ? AarastV3Color.danger
                               : AarastV3Color.ink,
@@ -713,16 +717,18 @@ class _NotificationRow extends StatelessWidget {
                 Column(
                   children: [
                     if (notification.isUnread)
-                      const Padding(
-                        padding: EdgeInsets.only(
+                      Padding(
+                        padding: const EdgeInsets.only(
                           top: AarastV3Space.x1,
                           bottom: AarastV3Space.half,
                         ),
                         child: SizedBox.square(
                           dimension: AarastV3Space.x2,
+                          // Critique ت2: unread is not danger; the plan's
+                          // colour, as the other row's dot.
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: AarastV3Color.danger,
+                              color: context.accent.primary,
                               shape: BoxShape.circle,
                             ),
                           ),

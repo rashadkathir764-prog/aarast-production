@@ -82,7 +82,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
       bottomNavigationBar: profile == null
           ? null
           : AarastV3FormActionBar(
-              label: 'حفظ التعديل',
+              label: 'حفظ التعديلات',
               icon: LucideIcons.save,
               loading: dashboard.isSubmitting,
               onPressed: dashboard.isSubmitting ? null : _submit,

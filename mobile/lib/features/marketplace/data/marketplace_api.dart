@@ -33,12 +33,12 @@ class MarketplaceApi {
 
   /// D90: these reach the provider the moment they are sent, so they
   /// cannot wait on the phone; the failure says so with the measured cause.
-  static const _reachesProvider = 'قرارك يوصل المزود فورًا، فيحتاج الخادم.';
+  static const _reachesProvider = 'قرارك يوصل المزود فورًا، فيحتاج النت.';
   static const _bookingReachesProvider =
-      'طلب الحجز يوصل المزود فورًا، فيحتاج الخادم.';
+      'طلب الحجز يوصل المزود فورًا، فيحتاج النت.';
   static const _reviewReachesProvider =
-      'تقييمك ينشر عند المزود فورًا، فيحتاج الخادم.';
-  static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج الخادم.';
+      'تقييمك ينشر عند المزود فورًا، فيحتاج النت.';
+  static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج النت.';
 
   /// RA-ST-05 (D94): reports a published review to the moderation team.
   Future<void> reportReview(String reviewId, String reason) async {

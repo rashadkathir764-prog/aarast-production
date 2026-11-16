@@ -61,7 +61,9 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
           padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
-              title: 'حساباتك',
+              // Critique ب5: what the couples recorded for him, which he does
+              // not correct; «حساباتك» claimed it was his own account.
+              title: 'اللي سجّله العرسان لك',
               subtitle:
                   '${arabicMonthName(_month.month)} ${_month.year} · من حجوزاتك المؤكدة',
             ),

@@ -174,7 +174,7 @@ class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-service-sheet-save'),
-          label: 'احفظ',
+          label: 'حفظ الخدمة',
           expand: true,
           large: true,
           loading: _saving,

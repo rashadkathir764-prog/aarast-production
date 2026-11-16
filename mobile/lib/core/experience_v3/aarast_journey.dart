@@ -676,7 +676,11 @@ class JourneyLevelSwitch extends StatelessWidget {
                   onTap: enabled ? () => onChanged!(i) : null,
                   borderRadius: BorderRadius.circular(AarastV3Radius.control),
                   child: Container(
-                    constraints: const BoxConstraints(minHeight: 32),
+                    // Critique ط6: 48, as every target in the kit (D74); at
+                    // 32 a slip here gave a participant the money.
+                    constraints: const BoxConstraints(
+                      minHeight: AarastV3Space.x12,
+                    ),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AarastV3Space.x2,

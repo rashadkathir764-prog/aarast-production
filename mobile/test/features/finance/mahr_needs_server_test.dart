@@ -66,7 +66,8 @@ void main() {
     }
     final exception = failure! as ApiException;
     expect(exception.isNetworkFailure, isTrue);
-    expect(exception.message, contains('الاقتراحات يرتبها الخادم'));
+    // Changed on purpose (Q-32): why it needs the net, without «الخادم».
+    expect(exception.message, contains('الاقتراحات نرتبها عندنا'));
   });
 
   test('the mahr without the server says why it cannot wait', () async {
@@ -97,6 +98,6 @@ void main() {
 
     final exception = failure! as ApiException;
     expect(exception.isNetworkFailure, isTrue);
-    expect(exception.message, contains('المهر يحسبه الخادم'));
+    expect(exception.message, contains('المهر ينحسب مع مالك كله'));
   });
 }

@@ -156,7 +156,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('حساباتك'), findsOneWidget);
+      // Changed on purpose (critique ب5): what the couples recorded, which
+      // the provider does not correct.
+      expect(find.text('اللي سجّله العرسان لك'), findsOneWidget);
       expect(find.text('وصلك'), findsOneWidget);
       expect(find.text('باقي لك'), findsOneWidget);
       expect(find.textContaining('100,000'), findsOneWidget);

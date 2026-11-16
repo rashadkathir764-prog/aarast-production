@@ -181,7 +181,11 @@ void main() {
     expect(restartedService.pendingCount, 0);
     // The reason survives the restart, in Arabic: the server's English
     // validation detail never reaches the user (V1 checklist 5.4).
-    expect(restartedService.lastError, contains('راجع اللي كتبته'));
+    // Changed on purpose (critique ط2): said for any reader.
+    expect(
+      restartedService.lastError,
+      contains('فيه شي في المكتوب يحتاج تعديل'),
+    );
     expect(
       restartedService.lastError,
       isNot(contains('title should not be empty')),
@@ -212,7 +216,8 @@ void main() {
       expect(issues, hasLength(1));
       expect(issues.single.entityLabel, 'مهمة');
       expect(issues.single.operationLabel, 'إضافة');
-      expect(issues.single.message, contains('الخادم رفض التغيير'));
+      // Changed on purpose (Q-32): without «الخادم».
+      expect(issues.single.message, contains('ما انقبل التغيير'));
       expect(issues.single.message, isNot(contains('title should')));
       expect(issues.single.message, isNot(contains('/api/')));
       expect(issues.single.canRetry, isTrue);

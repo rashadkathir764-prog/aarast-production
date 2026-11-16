@@ -273,7 +273,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
           ],
           JourneyButton(
             key: const ValueKey('plan-event-save'),
-            label: 'حفظ',
+            label: 'حفظ المناسبة',
             expand: true,
             large: true,
             loading: _saving,

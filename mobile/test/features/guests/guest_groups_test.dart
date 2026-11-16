@@ -118,7 +118,8 @@ void main() {
         find.byKey(const ValueKey('guest-group-rename-field')),
         'أهل العريس',
       );
-      await tester.tap(find.text('حفظ'));
+      // Critique ع1: «حفظ + الاسم».
+      await tester.tap(find.text('حفظ الاسم'));
       await tester.pumpAndSettle();
       expect(renamed, ['family:أهل العريس']);
 

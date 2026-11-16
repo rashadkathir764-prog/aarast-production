@@ -246,7 +246,7 @@ class _DueReminderSheetState extends State<DueReminderSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('money-remind-save'),
-          label: 'احفظ',
+          label: 'حفظ التذكير',
           loading: _saving,
           onPressed: _saving ? null : _save,
         ),

@@ -29,10 +29,11 @@ class AccountContextsApi implements AccountContextsGateway {
 
   @override
   Future<List<AccountContext>> listContexts() async {
-    final payload = await _reads.blobList('/api/v1/contexts', metaKey: _listKey);
-    return payload
-        .map(AccountContext.fromJson)
-        .toList(growable: false);
+    final payload = await _reads.blobList(
+      '/api/v1/contexts',
+      metaKey: _listKey,
+    );
+    return payload.map(AccountContext.fromJson).toList(growable: false);
   }
 
   @override
@@ -45,7 +46,7 @@ class AccountContextsApi implements AccountContextsGateway {
       );
     }
     final payload = await _writes.serverOnly(
-      reason: 'التحقق من السياق عند الخادم.',
+      reason: 'التحقق من الحساب يحتاج النت.',
       method: 'POST',
       path: '/api/v1/contexts/validate',
       body: {'contextKey': contextKey},

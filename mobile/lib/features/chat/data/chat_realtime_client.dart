@@ -118,7 +118,7 @@ class ChatRealtimeClient {
     });
     socket.onConnectError((error) {
       if (!ready.isCompleted) {
-        ready.completeError(error ?? 'ما وصلنا للخادم');
+        ready.completeError(error ?? 'ما وصلنا');
       }
       _scheduleReconnect();
     });

@@ -257,10 +257,9 @@ class _ShareHero extends StatelessWidget {
               _CoverWords(
                 key: const ValueKey('money-cover-unknown'),
                 ok: false,
-                main: context.say(
-                  'ما نقدر نقول تكفي فلوسك ولا لا: ما سجلت من وين فلوسك',
-                  'ما نقدر نقول تكفي فلوسك ولا لا: ما سجلتِ من وين فلوسك',
-                ),
+                // Critique م7: the card says what is true; the request to
+                // record where the money comes from is the step below, once.
+                main: 'لسا ما نعرف إذا تكفي فلوسك',
                 sub: '',
                 onTap: onSources,
               )
@@ -397,7 +396,7 @@ class _FirstSteps extends StatelessWidget {
         done: estimated,
         title: context.say('قدّر تكلفة البنود', 'قدّري تكلفة البنود'),
         sub: 'رقم تقريبي يكفي، ونقارنه بميزانيتك',
-        action: 'افتح البنود',
+        action: context.say('افتح البنود', 'افتحي البنود'),
         onTap: onItems,
       ),
       (

@@ -68,7 +68,9 @@ void main() {
       findsOneWidget,
       reason: 'before a source, nothing claims to cover it',
     );
-    expect(find.textContaining('ما سجلتِ من وين فلوسك'), findsOneWidget);
+    // Changed on purpose (critique م7): the card says what is true; the
+    // request is the step below it, once.
+    expect(find.text('لسا ما نعرف إذا تكفي فلوسك'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -188,7 +190,7 @@ void main() {
 
     expect(_tabFill(tester, 0), AarastV3Color.primary);
     expect(find.text('باقي عليك'), findsOneWidget);
-    expect(find.textContaining('ما سجلت من وين فلوسك'), findsOneWidget);
+    expect(find.text('لسا ما نعرف إذا تكفي فلوسك'), findsOneWidget);
   });
 
   // RA-MO-42: the plan's money summary is its owner's to send.

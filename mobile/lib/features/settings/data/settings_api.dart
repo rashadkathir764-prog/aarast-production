@@ -68,7 +68,7 @@ class SettingsApi {
   Future<AccountDeletionImpact> deletionImpact() async {
     return AccountDeletionImpact.fromJson(
       await _writes.serverOnly(
-        reason: 'الحساب يُحذف عند الخادم، فنسأله قبلها.',
+        reason: 'حذف الحساب يحتاج النت.',
         method: 'GET',
         path: '/api/v1/users/me/deletion/impact',
       ),
@@ -103,7 +103,7 @@ class SettingsApi {
   /// on the API host; it works once, for fifteen minutes.
   Future<Uri> createDataExport() async {
     final json = await _writes.serverOnly(
-      reason: 'الرابط يصدره الخادم لمدة قصيرة.',
+      reason: 'تجهيز الرابط يحتاج النت.',
       method: 'POST',
       path: '/api/v1/users/me/exports',
     );

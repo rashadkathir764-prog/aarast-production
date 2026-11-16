@@ -301,7 +301,7 @@ String providerBoardStatus(List<ProviderBoardRow> rows) {
       ),
   ];
   if (parts.isEmpty) {
-    return rows.isEmpty ? 'اختر مزوديك' : 'ما حجزت شيء بعد';
+    return rows.isEmpty ? 'اختر مزوديك' : 'ما حجزت شي بعد';
   }
   return parts.join(' · ');
 }

@@ -433,7 +433,7 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-capacity-save'),
-          label: 'احفظ',
+          label: 'حفظ العدد',
           expand: true,
           loading: _busy,
           onPressed: _busy || _value == widget.initial ? null : _save,

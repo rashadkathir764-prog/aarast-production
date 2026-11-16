@@ -50,8 +50,7 @@ class AccountContextController extends ChangeNotifier {
       'ما قدرنا نفتح المسار اللي اخترته. جرّب مرة ثانية.';
   static const _offlineNotice =
       'أنت بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
-  static const _offlineLoadFailure =
-      'ما وصلنا للخادم. تأكد من النت وجرّب مرة ثانية.';
+  static const _offlineLoadFailure = 'ما وصلنا. لما يرجع النت تمشي.';
 
   final AccountContextsGateway _contextsApi;
   final AuthStorage _authStorage;

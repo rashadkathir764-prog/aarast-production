@@ -176,7 +176,10 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         _offline != null && !_isServerCategoryId(budgetCategoryId);
     try {
       if (waitsForItem) {
-        throw const ApiException('البند ينتظر الخادم', isNetworkFailure: true);
+        throw const ApiException(
+          'البند لسا ما وصل، ينتظر النت',
+          isNetworkFailure: true,
+        );
       }
       final json = await mutation.send();
       await _cache(OfflineTables.cachedCosts, json);

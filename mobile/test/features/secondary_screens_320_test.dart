@@ -321,14 +321,15 @@ void main() {
         expect(find.text('المال'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
+        // Critique ع1: «حفظ + الاسم», the same for any reader.
         await tester.scrollUntilVisible(
-          find.text('احفظ'),
+          find.text('حفظ الصلاحيات'),
           280,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
         await tester.pump();
-        await tester.tap(find.text('احفظ'));
+        await tester.tap(find.text('حفظ الصلاحيات'));
         await tester.pump();
         expect(provider.isSubmitting, isTrue);
         expect(tester.takeException(), isNull);

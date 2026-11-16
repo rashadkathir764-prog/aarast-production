@@ -707,7 +707,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 ? context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ')
                 : context.say('اكتب بكم اتفقت', 'اكتبي بكم اتفقتِ')
           : _editing && _total < paid
-          ? '${context.say('ما يصير أقل من اللي دفعته', 'ما يصير أقل من اللي دفعتيه')} (${compactMoneyParts(paid, currencyCode: context.read<FinanceProvider>().summary.currency).plainText})'
+          ? '${context.say('ما يصير أقل من اللي دفعته', 'ما يصير أقل من اللي دفعتيه')} (${fullMoneyParts(paid, currencyCode: context.read<FinanceProvider>().summary.currency).plainText})'
           : null;
       _depositError = _editing
           ? null
@@ -795,7 +795,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
   List<Widget> _duplicateGuards(FinanceProvider provider, String currency) {
     final open = _openAgreementsFor(provider);
     String money(Object? value) => keepCurrencyOnLine(
-      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+      fullMoneyParts(moneyValue(value), currencyCode: currency).plainText,
     );
     return [
       if (open.isNotEmpty)
@@ -869,7 +869,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     final estimate = item?.estimate;
     if (estimate == null) return const [];
     String money(Object? value) => keepCurrencyOnLine(
-      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+      fullMoneyParts(moneyValue(value), currencyCode: currency).plainText,
     );
     final part = moneyValue(_coverPartController.text);
     final settles = part > 0 ? part : _total;

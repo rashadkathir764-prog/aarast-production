@@ -148,7 +148,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
         ? '\n\nما قدرنا نقرأ مالك الحين، فما نعرف إذا باقي عليك شي. '
               'التذكير بمواعيد الدفعات والسلف يستمر بعدها.'
         : owed > 0
-        ? '\n\nباقي عليك ${finance.shownAmount(formatCompactMoney(owed, currencyCode: money.currency))} من '
+        ? '\n\nباقي عليك ${finance.shownAmount(formatFullMoney(owed, currencyCode: money.currency))} من '
               'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعدها، '
               '${context.say('والأفضل تخليها مفتوحة لين تسدّد.', 'والأفضل تخلّينها مفتوحة لين تسدّدين.')}'
         : '';

@@ -256,7 +256,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
     final shown =
         context.watch<FinanceProvider?>()?.shownAmount ?? (String text) => text;
     final text = intent.hasBudget
-        ? 'قريبين من بند ${intent.budgetCategoryName} ${shown(compactYemeniMoneyParts(intent.allocatedValue).plainText)}'
+        ? 'قريبين من بند ${intent.budgetCategoryName} ${shown(fullMoneyParts(intent.allocatedValue, currencyCode: defaultCurrencyCode).plainText)}'
         : 'حسب بند ${intent.budgetCategoryName}';
     return JourneyBox(
       color: context.accent.primarySoft,

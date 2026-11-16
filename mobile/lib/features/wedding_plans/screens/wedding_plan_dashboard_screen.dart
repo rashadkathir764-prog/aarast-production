@@ -19,7 +19,7 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart'
-    show FinanceApi, FinanceProvider, moneyCoverWords, moneyValue;
+    show FinanceApi, FinanceProvider, moneyCoverTag, moneyValue;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart'
@@ -424,9 +424,9 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         ? '••••'
         : compactMoneyFigure(moneyValue(amount), currencyCode: money.currency);
     final coverage = money.coverage;
-    final words = coverage == null
-        ? null
-        : moneyCoverWords(context, coverage, figure);
+    // D113: the home says the verdict as a short tag; the whole sentence is
+    // the money tab's.
+    final tag = coverage == null ? null : moneyCoverTag(coverage, figure);
     final outstanding = money.outstanding;
     final duesByMonth = money.duesByMonth;
     return DashboardHomeFunding(
@@ -435,7 +435,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       shortfall: shortfall == null ? null : value(shortfall),
       sourcesCount: funding.sourcesCount,
       ownerLeft: outstanding == null ? null : value(outstanding.owner),
-      verdict: words == null ? null : (ok: words.ok, words: words.main),
+      verdict: tag,
       // D102: the owner's share of what is late and of the coming months.
       dues: duesByMonth == null
           ? const []

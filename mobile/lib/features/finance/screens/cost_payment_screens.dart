@@ -385,7 +385,8 @@ Widget paymentEntryFrame(
       ? null
       : shownMoney(
           context,
-          compactMoneyParts(
+          // Critique م1: the left amount a payment is checked against, whole.
+          fullMoneyParts(
             moneyValue(cost.remainingAmount),
             currencyCode: currency,
           ).plainText,

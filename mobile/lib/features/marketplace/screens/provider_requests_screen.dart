@@ -150,7 +150,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         : null;
     final parts = [
       if (allocated != null && allocated > 0 && finance?.amountsHidden != true)
-        'بندك ${formatCompactMoney(allocated, currencyCode: finance?.summary.currency ?? 'YER')}',
+        'بندك ${formatFullMoney(allocated, currencyCode: finance?.summary.currency ?? 'YER')}',
       if (day != null) formatArabicDayMonth(day),
     ];
     return parts.isEmpty ? null : parts.join(' · ');

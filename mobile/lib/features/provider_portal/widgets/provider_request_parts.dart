@@ -6,6 +6,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/money_formatters.dart' show fullMoneyFromText;
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -234,11 +235,11 @@ String? providerBudgetLabel(QuoteRequest quote) {
   return one == null ? null : '$one $currency';
 }
 
-/// «550,000 ر.ي».
-String providerMoneyLabel(String? amount, String? currency) {
-  final grouped = providerGroupedAmount(amount) ?? amount?.trim() ?? '';
-  return '$grouped ${currencyLabelAr(currency)}'.trim();
-}
+/// «550,000 ر.ي»: the money formatter's one reading (critique ب2), or what
+/// was written when it is not a number.
+String providerMoneyLabel(String? amount, String? currency) =>
+    fullMoneyFromText(amount, currency) ??
+    '${amount?.trim() ?? ''} ${currencyLabelAr(currency)}'.trim();
 
 /// The currency an offer on [quote] must use: the plan's (the server
 /// refuses another), else the offer's own, else the default.

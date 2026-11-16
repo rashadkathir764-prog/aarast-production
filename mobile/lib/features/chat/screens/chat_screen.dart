@@ -8,11 +8,11 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/money_formatters.dart' show fullMoneyFromText;
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
-import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/chat_api.dart';
@@ -866,17 +866,8 @@ class _OfferCard extends StatelessWidget {
 }
 
 /// «550,000 ر.ي»; null when the amount is hidden or unreadable.
-String? _money(String? amount, String? currency) {
-  final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
-  if (value == null) return null;
-  final digits = value.round().abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-    buffer.write(digits[i]);
-  }
-  return '${value < 0 ? '-' : ''}$buffer ${currencyLabelAr(currency)}';
-}
+String? _money(String? amount, String? currency) =>
+    fullMoneyFromText(amount, currency);
 
 /// w32: the conversation's options. Muting applies at once; reporting and
 /// blocking close the sheet and carry on in the screen.

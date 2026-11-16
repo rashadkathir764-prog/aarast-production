@@ -191,7 +191,8 @@ void main() {
           shortfall: null,
           sourcesCount: 4,
           ownerLeft: 1600000,
-          verdict: (ok: true, words: 'معك 4.2 مليون يكفي دفعاتك بمواعيدها'),
+          // D113: the money tab's verdict as the home's short tag.
+          verdict: (ok: true, conditional: false, words: 'تكفي'),
         ),
       );
 
@@ -203,7 +204,7 @@ void main() {
         find.byKey(const ValueKey('dashboard-money-verdict')),
         findsOneWidget,
       );
-      expect(find.text('معك 4.2 مليون يكفي دفعاتك بمواعيدها'), findsOneWidget);
+      expect(find.text('تكفي'), findsOneWidget);
       // Not the whole wedding's 3.3 as his, nor words the tab never says.
       expect(find.textContaining('باقي تدفع'), findsNothing);
       expect(find.textContaining('3.3'), findsNothing);

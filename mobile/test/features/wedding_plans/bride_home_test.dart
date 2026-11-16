@@ -372,13 +372,14 @@ void main() {
         shortfall: 300000,
         sourcesCount: 3,
         ownerLeft: 600000,
-        verdict: (ok: false, words: 'ينقصك 300,000، يبدأ يوم 1 ديسمبر'),
+        // D113: the short tag; the day it falls short is the money tab's.
+        verdict: (ok: false, conditional: false, words: 'ينقصك 300 ألف'),
       ),
     );
 
     // D114: «باقي عليكِ», no longer «من العرس».
     expect(find.text('باقي عليكِ'), findsOneWidget);
-    expect(find.text('ينقصك 300,000، يبدأ يوم 1 ديسمبر'), findsOneWidget);
+    expect(find.text('ينقصك 300 ألف'), findsOneWidget);
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // V-01: every far-side figure with its unit.
     expect(find.text('معك 1.9 مليون'), findsOneWidget);
@@ -431,7 +432,7 @@ void main() {
         shortfall: null,
         sourcesCount: 2,
         ownerLeft: 600000,
-        verdict: (ok: true, words: 'معك 5 مليون يكفي دفعاتك بمواعيدها'),
+        verdict: (ok: true, conditional: false, words: 'تكفي'),
       ),
     );
 
@@ -439,7 +440,7 @@ void main() {
       find.byKey(const ValueKey('dashboard-money-verdict')),
       findsOneWidget,
     );
-    expect(find.text('معك 5 مليون يكفي دفعاتك بمواعيدها'), findsOneWidget);
+    expect(find.text('تكفي'), findsOneWidget);
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // Nothing promised: no «موعود» line on the far side.
     expect(find.textContaining(RegExp('^موعود ')), findsNothing);

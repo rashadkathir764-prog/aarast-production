@@ -411,9 +411,10 @@ class _AfterWeddingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final left = compactMoneyParts(debt.left, currencyCode: currency);
-    final paid = compactMoneyParts(debt.paid, currencyCode: currency);
-    final total = compactMoneyParts(debt.total, currencyCode: currency);
+    // Critique م2: left, paid and the total are read together and add up.
+    final left = sumSafeMoneyParts(debt.left, currencyCode: currency);
+    final paid = sumSafeMoneyParts(debt.paid, currencyCode: currency);
+    final total = sumSafeMoneyParts(debt.total, currencyCode: currency);
     final share = debt.total <= 0 ? 0.0 : (debt.paid / debt.total).clamp(0, 1);
     final filled = (share * 5).round();
     return AarastPressable(

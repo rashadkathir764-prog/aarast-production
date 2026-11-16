@@ -315,7 +315,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
     final currency = provider.summary.currency;
     final amount = provider.amountsHidden
         ? '••••'
-        : compactMoneyParts(
+        : fullMoneyParts(
             moneyValue(payment.amount),
             currencyCode: currency,
           ).plainText;

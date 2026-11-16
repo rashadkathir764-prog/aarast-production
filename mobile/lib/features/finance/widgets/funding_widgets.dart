@@ -204,7 +204,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
 
   String _plain(num value) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+    fullMoneyParts(value, currencyCode: widget.currency).plainText,
   );
 
   Future<void> _pickFirstRepayment() async {

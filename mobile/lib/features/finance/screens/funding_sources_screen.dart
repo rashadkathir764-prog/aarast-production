@@ -94,7 +94,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
 
   String _plain(Object? value) => shownMoney(
     context,
-    compactMoneyParts(moneyValue(value), currencyCode: _currency).plainText,
+    fullMoneyParts(moneyValue(value), currencyCode: _currency).plainText,
   );
 
   @override

@@ -8,6 +8,23 @@ import 'money_formatters.dart';
 ///
 /// Millions come from [compactMoneyParts] (one decimal); thousands follow
 /// the same rule.
+/// [compactMoneyFigure] when shortening loses nothing («1.5 مليون», «250
+/// ألف»), else the amount in full («1,450,000 ر.ي»): for figures read
+/// together that add up (critique م2: «اتفقت 3.4، دفعت 1.5، باقي 2», and
+/// 1.5 + 2 is not 3.4).
+String sumSafeMoneyFigure(num value, {required String currencyCode}) {
+  final abs = value.abs();
+  final lossless = abs >= 1000000
+      ? abs % 100000 == 0
+      : abs >= 1000
+      ? abs % 100 == 0
+      : true;
+  if (lossless) return compactMoneyFigure(value, currencyCode: currencyCode);
+  return keepCurrencyOnLine(
+    fullMoneyParts(value, currencyCode: currencyCode).plainText,
+  );
+}
+
 String compactMoneyFigure(num value, {required String currencyCode}) {
   final parts = compactMoneyParts(value, currencyCode: currencyCode);
   final million = parts.millionUnit;

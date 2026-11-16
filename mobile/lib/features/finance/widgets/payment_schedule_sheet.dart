@@ -108,7 +108,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
 
   String _plain(num value) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+    fullMoneyParts(value, currencyCode: widget.currency).plainText,
   );
 
   int? get _typedAmount =>

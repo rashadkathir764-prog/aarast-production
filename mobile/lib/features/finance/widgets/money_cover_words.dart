@@ -45,6 +45,34 @@ String moneyIfEstimatesWords(
       'بتقديراتك (${money(coverage.estimatesLeft)})، $result$basis.';
 }
 
+/// D113: the verdict as the home's money card says it, a short tag beside
+/// what is left to pay: «تكفي», «تكفي بشرط الموعود» or «ينقصك X» (the
+/// deepest the money falls, the money tab's own figure). The whole sentence
+/// stays on the money tab ([moneyCoverWords]); the two come from the same
+/// [coverage], so they never disagree.
+typedef MoneyCoverTag = ({bool ok, bool conditional, String words});
+
+MoneyCoverTag moneyCoverTag(
+  MoneyCoverage coverage,
+  String Function(Object? value) money,
+) {
+  switch (coverage.verdict) {
+    case MoneyCoverageVerdict.nothingDue:
+    case MoneyCoverageVerdict.covered:
+      return (ok: true, conditional: false, words: 'تكفي');
+    case MoneyCoverageVerdict.coveredIfPledges:
+      return (ok: true, conditional: true, words: 'تكفي بشرط الموعود');
+    case MoneyCoverageVerdict.short:
+      final run = coverage.withPledges;
+      final deepest = run.deepest ?? run.firstShort!;
+      return (
+        ok: false,
+        conditional: false,
+        words: 'ينقصك ${money(deepest.amount)}',
+      );
+  }
+}
+
 /// D103's one verdict, in the money tab's words: the sentence, a second
 /// line with what it rests on, and whether it is good news. One sentence for
 /// «الملخص», «من وين» and the home's money card (D103: the same verdict

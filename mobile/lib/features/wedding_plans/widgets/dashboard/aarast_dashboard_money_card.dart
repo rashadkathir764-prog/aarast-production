@@ -31,9 +31,10 @@ class DashboardHomeFunding {
   /// the mahr with it); null from a server before D102.
   final double? ownerLeft;
 
-  /// D103: the money tab's verdict, in its words, and whether it is good
-  /// news; null until the money in is known.
-  final ({bool ok, String words})? verdict;
+  /// D113: the money tab's verdict as a short tag («تكفي», «تكفي بشرط
+  /// الموعود», «ينقصك X»), whether it is good news and whether it rests on
+  /// promised money; null until the money in is known.
+  final ({bool ok, bool conditional, String words})? verdict;
 
   final double inHand;
   final double pledged;
@@ -161,6 +162,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         amountsHidden ? '••••' : _money(value, currency);
     String figure(double value) =>
         amountsHidden ? '••••' : _figure(value, currency);
+    String sumFigure(double value) =>
+        amountsHidden ? '••••' : _sumFigure(value, currency);
 
     // D59: the owner reads what is left to them; anyone else reads it as
     // the owner's, and what others paid for the owner is said as theirs.
@@ -236,20 +239,24 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     // D114: the owner's share, the mahr with it: never «من العرس».
     final ownerLeftLabel = context.say('باقي عليك', 'باقي عليكِ');
     final Widget lead;
-    // D103's verdict is the money tab's whole sentence («معك 4.2 مليون يكفي
-    // دفعاتك وسداد السلفة بمواعيدها لين 1 مايو، ويبقى 2 مليون»), so its chip
-    // takes the card's width under the figures; beside them it stood five
-    // lines tall.
-    ({bool ok, String words})? verdictShown;
     final agreedAny = agreed > 0;
     if (ownerLeft != null && (agreedAny || ownerLeft > 0)) {
-      // D102, D103: the owner reads what «الملخص» says, in its words.
+      // D102, D103: the owner reads what «الملخص» says; D113: its verdict is
+      // a short tag beside the label (the whole sentence stood up to five
+      // lines tall and changed the card's height; it stays on the money
+      // tab). Hidden amounts hide the shortfall's figure with the rest.
       lead = _MoneyLead(
         label: ownerLeftLabel,
         value: amount(ownerLeft),
         color: AarastV3Color.ink,
+        tag: verdict == null
+            ? null
+            : _VerdictChip(
+                ok: verdict.ok,
+                conditional: verdict.conditional,
+                words: verdict.words,
+              ),
       );
-      verdictShown = verdict;
     } else if (!agreedAny) {
       // RA-MO-115: «جاهزة» promised «نقول لك كم باقي من الميزانية», and the
       // card then never named the budget that was just typed.
@@ -424,16 +431,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ],
                 ],
               ),
-              if (verdictShown != null) ...[
-                const SizedBox(height: AarastV3Space.x2),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: _VerdictChip(
-                    ok: verdictShown.ok,
-                    words: verdictShown.words,
-                  ),
-                ),
-              ],
               if (known && funding.dues.isNotEmpty) ...[
                 const SizedBox(height: AarastV3Space.x3),
                 _DuesStrip(
@@ -458,9 +455,9 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                 const SizedBox(height: AarastV3Space.x3),
                 ExcludeSemantics(
                   child: _MoneyFigures(
-                    cells: cells(figure),
-                    figure: figure,
-                    mahrLine: mahrLine(figure),
+                    cells: cells(sumFigure),
+                    figure: sumFigure,
+                    mahrLine: mahrLine(sumFigure),
                   ),
                 ),
               ],

@@ -33,7 +33,10 @@ void main() {
     },
   );
 
-  test('a million reads «مليون», another currency its own name', () {
+  // Changed on purpose (design critique م1, 2026-11-16): a notice names one
+  // payment, so its amount is whole, as on the payment's page; «1.5 مليون»
+  // read beside a payment of 1,450,000.
+  test('a payment is written whole, another currency its own name', () {
     expect(
       stripMoneyDirectionalityMarks(
         notificationLine(
@@ -41,7 +44,7 @@ void main() {
           hideAmounts: false,
         ),
       ),
-      '1.5 مليون ر.ي',
+      '1,500,000 ر.ي',
     );
     expect(
       stripMoneyDirectionalityMarks(

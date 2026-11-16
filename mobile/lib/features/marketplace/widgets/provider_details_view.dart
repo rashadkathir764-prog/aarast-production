@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart' show fullMoneyFromText;
 import '../../../core/widgets/aarast_pressable.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../models/marketplace_models.dart';
@@ -630,11 +631,10 @@ String? _lines(String? text) {
   return lines.isEmpty ? null : lines.join(' · ');
 }
 
-String? providerMoneyLabel(String? amount, String? currency) {
-  final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
-  if (value == null) return null;
-  return '${_grouped(value)} ${currencyLabelAr(currency)}';
-}
+/// A service's price in full; null when it has none (critique ب2: the
+/// money formatter's one reading).
+String? providerMoneyLabel(String? amount, String? currency) =>
+    fullMoneyFromText(amount, currency);
 
 /// The range of the services priced in the first priced service's currency;
 /// prices in another currency never join it.

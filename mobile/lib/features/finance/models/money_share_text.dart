@@ -23,7 +23,9 @@ String moneyShareText(
   final currency = summary.currency;
   final budget = summary.budget;
   String money(Object? value) =>
-      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
+      // A summary sent to others: its figures add up, so each is shortened
+      // only when nothing is lost (critique م2).
+      sumSafeMoneyParts(moneyValue(value), currencyCode: currency).plainText;
   final total = summary.hasBudget ? moneyValue(budget.total) : 0;
   final committed = moneyValue(budget.confirmedCost);
   final paid = moneyValue(budget.paid);

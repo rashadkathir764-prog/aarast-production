@@ -1931,10 +1931,11 @@ const trackedOwnerApiContracts = [
         uri: 'widgets/money_budget_words.dart',
         show: ['mahrOnItsOwnWords', 'moneyBudgetCells'],
       },
-      // RA-MO-53 (D103): the money's one verdict, for the home's card too.
+      // RA-MO-53 (D103): the money's one verdict; D113: its short tag for
+      // the home's card.
       {
         uri: 'widgets/money_cover_words.dart',
-        show: ['MoneyCoverWords', 'moneyCoverWords'],
+        show: ['MoneyCoverTag', 'MoneyCoverWords', 'moneyCoverTag', 'moneyCoverWords'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -3153,7 +3154,8 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['FinanceApi', 'FinanceProvider', 'moneyCoverWords', 'moneyValue'],
+    // D113: the home reads the verdict's short tag.
+    show: ['FinanceApi', 'FinanceProvider', 'moneyCoverTag', 'moneyValue'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
@@ -4037,9 +4039,13 @@ function assertTrackedPlanningBatch({
   // Re-pinned (RA-MO-45, 2026-11-09): a half is rounded up from the value
   // itself (compactTenths), not from a float already divided. The move
   // itself was proved by the hashes this replaced.
+  // Re-pinned again (2026-11-16, the design critique's blockers م1 and ب1,
+  // by Rashad's word «صحلهن»): the one formatter gains its full way
+  // (fullMoneyParts, formatFullMoney, fullMoneyFromText), the sum-safe way
+  // (sumSafeMoneyParts) and formatMoneyNumber; the short way is unchanged.
   assert.equal(
     createHash('sha256').update(coreFormatterText).digest('hex'),
-    'd1340972bd72c6d4710f7d83c38f6eb5423f693ca359a9a92c0ddd3e93131710',
+    '169b24fb686ed2c2433ecb86a85c85aaa95aa3866b7f2d28587a62f3aa5bcd73',
     'Planning batch Core money formatter normalized hash mismatch',
   );
   const restoredFinanceFormatterText = coreFormatterText.replace(
@@ -4049,7 +4055,7 @@ function assertTrackedPlanningBatch({
   assert.notEqual(restoredFinanceFormatterText, coreFormatterText);
   assert.equal(
     createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
-    '109297ba710d1b92c1899616a58907d4aa11f3b9ae67b639d133251e87f2481c',
+    'af1a3086f59887f84a14fda08fb3bdae1bf0604d140267ec6f688d6b63c461f9',
     'Planning batch original Finance money formatter hash mismatch',
   );
 
@@ -4062,7 +4068,8 @@ function assertTrackedPlanningBatch({
     {
       source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
       uri: '../../../../core/utils/money_formatters.dart',
-      show: ['compactMoneyParts'],
+      // Critique م2 (2026-11-16): figures read together are sum-safe.
+      show: ['compactMoneyParts', 'sumSafeMoneyParts'],
     },
     {
       source: 'mobile/test/features/finance/money_summary_contract_test.dart',

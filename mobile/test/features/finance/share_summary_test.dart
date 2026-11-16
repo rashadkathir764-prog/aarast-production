@@ -346,8 +346,11 @@ void main() {
       planTitle: 'عرس أحمد',
       hideAmounts: false,
     );
-    expect(text, contains('• تكلفة العرس المتوقعة: 3.3 مليون'));
-    expect(text, contains('• منها اتفاقات: 1.6 مليون'));
+    // Changed on purpose (design critique م2, 2026-11-16): «3.3 مليون» over a
+    // budget of «3 مليون» and «فوق الميزانية بـ 250,000» did not add up; a
+    // figure the tenth of a million would round is written whole.
+    expect(text, contains('• تكلفة العرس المتوقعة: 3,250,000'));
+    expect(text, contains('• منها اتفاقات: 1,550,000'));
     expect(text, contains('• فوق الميزانية بـ 250,000'));
     // Never «1.45 million left» from the agreements alone.
     expect(text, isNot(contains('باقي من الميزانية')));

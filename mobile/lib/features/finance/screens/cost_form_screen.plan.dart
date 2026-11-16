@@ -283,7 +283,7 @@ class _PlanRow extends StatelessWidget {
           ),
           const SizedBox(width: AarastV3Space.x2),
           Text(
-            compactMoneyParts(line.amount, currencyCode: currency).plainText,
+            fullMoneyParts(line.amount, currencyCode: currency).plainText,
             style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
           ),
         ],

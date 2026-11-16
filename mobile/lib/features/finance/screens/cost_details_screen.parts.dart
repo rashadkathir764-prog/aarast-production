@@ -5,7 +5,9 @@ String _plainAmount(BuildContext context, Object? value, String currency) {
     (provider) => provider?.amountsHidden ?? false,
   );
   if (hidden) return '••••';
-  return compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
+  // Critique م3: the agreement's page writes every amount whole, its
+  // payments as their own pages do.
+  return fullMoneyParts(moneyValue(value), currencyCode: currency).plainText;
 }
 
 /// «الاتفاق 2,000,000 · باقي 1.5 مليون», what is paid, and where it came

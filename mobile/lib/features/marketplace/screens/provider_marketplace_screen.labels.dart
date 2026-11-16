@@ -20,7 +20,7 @@ String _emptyProvidersMessage({
   if (budgetIntent != null) {
     // The same figure as the item chip on this screen.
     final amount = budgetIntent.hasBudget
-        ? ' على قد ${shownAmount(compactYemeniMoneyParts(budgetIntent.allocatedValue).plainText)}'
+        ? ' على قد ${shownAmount(fullMoneyParts(budgetIntent.allocatedValue, currencyCode: defaultCurrencyCode).plainText)}'
         : '';
     return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. '
         '${say('امسح الفلتر أو غيّر المدينة.', 'امسحي الفلتر أو غيّري المدينة.')}';
@@ -81,17 +81,8 @@ double? _moneyValueOrNull(String? value) {
   return double.tryParse(raw);
 }
 
-String _formatMoney(num value) {
-  final rounded = value.round();
-  final negative = rounded < 0;
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-    buffer.write(digits[i]);
-  }
-  return '${negative ? '-' : ''}$buffer';
-}
+// Critique ب2: the one grouping of digits is the money formatter's.
+String _formatMoney(num value) => formatMoneyNumber(value);
 
 enum _ServiceBudgetStatus {
   inRange,

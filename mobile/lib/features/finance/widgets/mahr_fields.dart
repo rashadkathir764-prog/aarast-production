@@ -149,9 +149,11 @@ class MahrFields extends StatelessWidget {
 }
 
 /// An amount the way people say it (as amountInWords does): «مليون»,
-/// «مليونين», «3 مليون», «1.5 مليون», «500,000».
+/// «مليونين», «3 مليون», «1.5 مليون», «500,000». An amount the tenth of a
+/// million would round is said whole («1,250,000»): it echoes what was
+/// typed, and «1.3 مليون» is not what was typed (critique م1).
 String mahrWords(num amount, [String currency = 'YER']) {
-  final parts = compactMoneyParts(amount, currencyCode: currency);
+  final parts = sumSafeMoneyParts(amount, currencyCode: currency);
   final unit = parts.millionUnit;
   if (unit == null) return parts.number;
   if (parts.number == '1') return unit;

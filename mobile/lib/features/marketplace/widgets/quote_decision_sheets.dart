@@ -10,11 +10,13 @@ import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../models/marketplace_models.dart';
 
-/// «550 ألف ر.ي» for an offer, or null when it has no amount.
+/// «1,250,000 ر.ي» for an offer, or null when it has no amount. Whole, as the
+/// provider wrote it (critique ب1: offers of 1,250,000 and 1,340,000 read
+/// «1.3 مليون» alike on «قارن عروض»).
 String? offerAmountLabel(QuoteOffer? offer) {
   final amount = num.tryParse(offer?.amount ?? '');
   if (amount == null) return null;
-  return formatCompactMoney(amount, currencyCode: offer?.currency ?? 'YER');
+  return formatFullMoney(amount, currencyCode: offer?.currency ?? 'YER');
 }
 
 String quoteProviderName(QuoteRequest quote) =>

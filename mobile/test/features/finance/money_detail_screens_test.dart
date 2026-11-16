@@ -548,6 +548,32 @@ void main() {
       expect(find.textContaining('الباقي عليك'), findsNothing);
     });
 
+    // The design critique's blocker م1 (2026-11-14): the form said «باقي 1.3
+    // مليون», refused the 1,300,000 typed from it, and called it more than
+    // «1.3 مليون». The amount it checks against is said whole.
+    testWidgets('the rest a payment is checked against is said whole', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        api: _BigRestApi(),
+      );
+      expect(find.textContaining('1,250,000'), findsWidgets);
+      expect(find.textContaining('1.3'), findsNothing);
+
+      await tester.enterText(find.byType(TextField).first, '1300000');
+      await tester.ensureVisible(find.byKey(const ValueKey('payment-save')));
+      await tester.tap(find.byKey(const ValueKey('payment-save')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('أكثر من الباقي'), findsOneWidget);
+      expect(find.textContaining('(1,250,000'), findsOneWidget);
+      expect(find.textContaining('1.3'), findsNothing);
+    });
+
     testWidgets('a helper in the bride\'s plan reads «باقي عليها»', (
       tester,
     ) async {
@@ -1174,6 +1200,25 @@ Future<void> _pumpMoneyRouter(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// An agreement whose rest the tenth of a million would round (critique م1).
+class _BigRestApi extends _MoneyDetailsApi {
+  @override
+  WeddingCost get cost => _bigCost;
+
+  late final WeddingCost _bigCost = WeddingCost(
+    id: 'cost-1',
+    weddingPlanId: 'plan-1',
+    budgetCategoryId: 'category-1',
+    title: 'قاعة الحفل',
+    totalAmount: '2000000',
+    paidAmount: '750000',
+    remainingAmount: '1250000',
+    status: 'PARTIALLY_PAID',
+    agreementDate: DateTime(2026, 6, 24),
+    paymentsCount: 1,
+  );
 }
 
 /// A plan with no agreement; its money is a funding source (the mahr).

@@ -127,11 +127,18 @@ class _MoneyLead extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.tag,
   });
 
   final String label;
   final String value;
   final Color color;
+
+  /// D113: the verdict's short tag, on its own line right under the figure
+  /// it judges: the same slot for «تكفي», «تكفي بشرط الموعود» and «ينقصك
+  /// X», so the card keeps one height (beside the label it moved to a second
+  /// line when the label and a longer tag did not fit together).
+  final Widget? tag;
 
   @override
   Widget build(BuildContext context) {
@@ -159,25 +166,43 @@ class _MoneyLead extends StatelessWidget {
             ),
           ),
         ),
+        if (tag case final tag?) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          tag,
+        ],
       ],
     );
   }
 }
 
-/// The money tab's verdict as a chip: a tick on the good news, a mark on
-/// the bad, the words beside it.
+/// D113: the money tab's verdict as a short tag: a tick on «تكفي», a mark
+/// on «ينقصك», and the attention colour without a tick on «تكفي بشرط
+/// الموعود» (good news that rests on a promise).
 class _VerdictChip extends StatelessWidget {
-  const _VerdictChip({required this.ok, required this.words});
+  const _VerdictChip({
+    required this.ok,
+    required this.words,
+    this.conditional = false,
+  });
 
   final bool ok;
+  final bool conditional;
   final String words;
 
   @override
   Widget build(BuildContext context) {
-    final color = ok ? AarastV3Color.mint : AarastV3Color.danger;
+    final (color, soft, icon) = conditional
+        ? (
+            AarastV3Color.brandAccentStrong,
+            AarastV3Color.brandAccentSoft,
+            LucideIcons.clock,
+          )
+        : ok
+        ? (AarastV3Color.mint, AarastV3Color.mintSoft, LucideIcons.check)
+        : (AarastV3Color.danger, AarastV3Color.dangerSoft, LucideIcons.x);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: ok ? AarastV3Color.mintSoft : AarastV3Color.dangerSoft,
+        color: soft,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
       ),
       child: Padding(
@@ -185,16 +210,18 @@ class _VerdictChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              ok ? LucideIcons.check : LucideIcons.alertCircle,
-              size: AarastV3Icon.sm,
-              color: color,
-            ),
+            Icon(icon, size: AarastV3Icon.sm, color: color),
             const SizedBox(width: AarastV3Space.x1),
+            // One line, as D113 keeps the card's height; on the narrowest
+            // screen with large text it fades inside its column instead of
+            // running past it.
             Flexible(
               child: Text(
                 words,
                 key: const ValueKey('dashboard-money-verdict'),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
                 style: JourneyType.of(
                   JourneyType.small,
                   weight: JourneyType.bold,
@@ -399,6 +426,12 @@ String _spoken(double value, String currency) {
 /// unit («اتفقت على 3» over «دفعت 250,000 ر.ي»).
 String _figure(double value, String currency) {
   return compactMoneyFigure(value, currencyCode: currency);
+}
+
+/// [_figure] for the budget's figures under the line, which are read
+/// together and add up: shortened only when nothing is lost (critique م2).
+String _sumFigure(double value, String currency) {
+  return sumSafeMoneyFigure(value, currencyCode: currency);
 }
 
 /// [_figure] as the screen reader says it: «900 ر.ي» with the currency's

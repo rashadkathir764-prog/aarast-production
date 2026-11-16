@@ -55,7 +55,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
 
   String _plain(Object? value) => shownMoney(
     context,
-    compactMoneyParts(
+    fullMoneyParts(
       moneyValue(value),
       currencyCode: widget.currency,
     ).plainText,
@@ -479,7 +479,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
 
   String _plain(num value) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+    fullMoneyParts(value, currencyCode: widget.currency).plainText,
   );
 
   @override

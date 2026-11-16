@@ -606,12 +606,8 @@ void main() {
             shortfall: null,
             sourcesCount: 2,
             ownerLeft: 3350000,
-            // The money tab's sentence at its real length (D103).
-            verdict: (
-              ok: true,
-              words:
-                  'معك 2.9 مليون يكفي دفعاتك وسداد السلفة بمواعيدها لين 1 فبراير، ويبقى 250 ألف',
-            ),
+            // D113: the money tab's verdict as the home's short tag.
+            verdict: (ok: true, conditional: false, words: 'تكفي'),
             dues: [
               DashboardHomeDue(label: 'متأخرة', amount: 400000, overdue: true),
               DashboardHomeDue(label: 'يناير 2027', amount: 1250000),

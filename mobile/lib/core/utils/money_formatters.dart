@@ -39,9 +39,69 @@ class CompactYemeniMoneyParts {
   }
 }
 
+// The app's money in three ways, one source (the design critique's blockers
+// م1 and ب1, 2026-11-14: «باقي 1.3 مليون» refused the 1,300,000 typed from it,
+// and offers of 1,250,000 and 1,340,000 read alike on «قارن عروض»):
+// - [fullMoneyParts]: every amount on its own record (an agreement, a
+//   payment, a date to pay, what is left), in a form or its error, every
+//   offer's price, a notice and a shared text. Never rounded.
+// - [compactMoneyParts]: one large headline figure on a summary or the home
+//   («باقي عليك 1.3 مليون»), where the tenth of a million is the point.
+// - [sumSafeMoneyParts]: figures read together that add up (agreed, paid,
+//   left): shortened only when shortening loses nothing, else full (RA-MO-168
+//   for every such line, not one card).
+
 CompactYemeniMoneyParts compactYemeniMoneyParts(num value) {
   return compactMoneyParts(value, currencyCode: defaultCurrencyCode);
 }
+
+/// [value] in full, «1,250,000 ر.ي»: see the three ways above.
+CompactYemeniMoneyParts fullMoneyParts(
+  num value, {
+  required String currencyCode,
+}) {
+  final negative = value < 0 ? '-' : '';
+  return CompactYemeniMoneyParts(
+    number: '$negative${_formatMoney(value.abs())}',
+    currency: currencyLabelAr(currencyCode),
+    spokenCurrency: currencySpokenLabelAr(currencyCode),
+  );
+}
+
+/// [value] shortened when the tenth of a million keeps it whole («1.5
+/// مليون» for 1,500,000), else in full («1,450,000»): for figures that are
+/// read together and add up.
+CompactYemeniMoneyParts sumSafeMoneyParts(
+  num value, {
+  required String currencyCode,
+}) {
+  final hundredThousands = value / 100000;
+  if (value.abs() < 1000000 ||
+      hundredThousands == hundredThousands.roundToDouble()) {
+    return compactMoneyParts(value, currencyCode: currencyCode);
+  }
+  return fullMoneyParts(value, currencyCode: currencyCode);
+}
+
+/// [fullMoneyParts], isolated for Arabic text.
+String formatFullMoney(num value, {required String currencyCode}) {
+  return fullMoneyParts(value, currencyCode: currencyCode).directionalText;
+}
+
+/// An amount the server sends as text («550000», «550,000») in full, «550,000
+/// ر.ي»; null when it is not a number. The one reading of an offer's or a
+/// service's price (critique ب2: five copies of it, each its own way).
+String? fullMoneyFromText(String? amount, String? currency) {
+  final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
+  if (value == null) return null;
+  return fullMoneyParts(
+    value,
+    currencyCode: currencyCodeFromDisplayInput(currency),
+  ).plainText;
+}
+
+/// [value]'s digits grouped by thousands, «1,250,000», without a currency.
+String formatMoneyNumber(num value) => _formatMoney(value);
 
 CompactYemeniMoneyParts compactMoneyParts(
   num value, {

@@ -497,7 +497,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         paid: active.isEmpty
             ? null
             : provider.shownAmount(
-                compactMoneyParts(
+                fullMoneyParts(
                   moneyValue(cost.paidAmount),
                   currencyCode: provider.summary.currency,
                 ).plainText,

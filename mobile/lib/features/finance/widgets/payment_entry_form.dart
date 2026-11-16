@@ -138,7 +138,9 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   /// user types in stays as typed.
   String _plain(num value) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+    // Critique م1: «باقي 1.3 مليون» refused the 1,300,000 typed from it; the
+    // form says the amount it checks against, whole.
+    fullMoneyParts(value, currencyCode: widget.currency).plainText,
   );
 
   int? get _typedAmount =>

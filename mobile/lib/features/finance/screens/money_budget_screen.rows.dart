@@ -131,7 +131,7 @@ class _AllocationRow extends StatelessWidget {
     final value = typed
         ? shownMoney(
             context,
-            compactMoneyParts(share, currencyCode: currency).plainText,
+            fullMoneyParts(share, currencyCode: currency).plainText,
           )
         : 'بدون';
     return AarastPressable(
@@ -182,7 +182,7 @@ class _AllocationRow extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: AarastV3Space.x1),
                 child: Text(
-                  '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${shownMoney(context, compactMoneyParts(agreed, currencyCode: currency).plainText)}',
+                  '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${shownMoney(context, fullMoneyParts(agreed, currencyCode: currency).plainText)}',
                   style: JourneyType.of(
                     JourneyType.small,
                     weight: JourneyType.bold,

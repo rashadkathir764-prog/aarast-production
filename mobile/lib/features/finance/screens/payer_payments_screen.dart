@@ -96,7 +96,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
     final paid = chosen?.paid ?? summary.costs.paid;
     // G17: «أخفِ المبالغ» hides these figures as on every money screen.
     String amount(Object? value) => finance.shownAmount(
-      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+      fullMoneyParts(moneyValue(value), currencyCode: currency).plainText,
     );
     final stillComing =
         _readingRest ||

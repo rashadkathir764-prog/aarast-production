@@ -87,7 +87,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
 
   String _plain(num value) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: _currency).plainText,
+    // Critique م4: one unit down the column, the amounts a person edits here.
+    fullMoneyParts(value, currencyCode: _currency).plainText,
   );
 
   void _changed() {

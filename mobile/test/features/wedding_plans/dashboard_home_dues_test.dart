@@ -199,7 +199,8 @@ void main() {
         line.localToGlobal(line.size.bottomRight(Offset.zero)),
       );
       expect(
-        drawn.left >= stripBox.left - 0.5 && drawn.right <= stripBox.right + 0.5,
+        drawn.left >= stripBox.left - 0.5 &&
+            drawn.right <= stripBox.right + 0.5,
         isTrue,
         reason: '«$words» leaves the strip',
       );
@@ -207,40 +208,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the verdict\'s sentence has the card\'s width, not the '
-      'figure\'s column', (tester) async {
+  // Changed on purpose (D113, 2026-11-13): the verdict is a short tag beside
+  // «باقي عليك», so the card keeps one height whatever the verdict says;
+  // the whole sentence (up to five lines) stays on the money tab.
+  testWidgets('the verdict is a tag beside the figure: the card keeps one '
+      'height', (tester) async {
     tester.view.physicalSize = const Size(390, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      _home(
-        summary: _summary(),
-        funding: const DashboardHomeFunding(
-          inHand: 4200000,
-          pledged: 1200000,
-          shortfall: null,
-          sourcesCount: 2,
-          ownerLeft: 1600000,
-          // The money tab's sentence as the seeded groom reads it (D103).
-          verdict: (
-            ok: true,
-            words:
-                'معك 4.2 مليون يكفي دفعاتك وسداد السلفة بمواعيدها لين 1 مايو، ويبقى 2 مليون',
+    Future<double> heightWith(
+      ({bool ok, bool conditional, String words}) verdict,
+    ) async {
+      await tester.pumpWidget(
+        _home(
+          summary: _summary(),
+          funding: DashboardHomeFunding(
+            inHand: 4200000,
+            pledged: 1200000,
+            shortfall: null,
+            sourcesCount: 2,
+            ownerLeft: 1600000,
+            verdict: verdict,
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      return tester
+          .getSize(find.byKey(const ValueKey('aarast-dashboard-money-card')))
+          .height;
+    }
 
-    final card = tester.getSize(
-      find.byKey(const ValueKey('aarast-dashboard-money-card')),
-    );
-    final sentence = tester.getSize(
-      find.byKey(const ValueKey('dashboard-money-verdict')),
-    );
-    expect(sentence.width, greaterThan(card.width * 0.7));
+    final ok = await heightWith((ok: true, conditional: false, words: 'تكفي'));
+    final ifPledged = await heightWith((
+      ok: true,
+      conditional: true,
+      words: 'تكفي بشرط الموعود',
+    ));
+    final short = await heightWith((
+      ok: false,
+      conditional: false,
+      words: 'ينقصك 950 ألف',
+    ));
+    expect(ifPledged, ok);
+    expect(short, ok);
+    expect(find.text('ينقصك 950 ألف'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

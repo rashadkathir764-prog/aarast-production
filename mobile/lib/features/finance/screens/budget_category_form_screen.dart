@@ -89,7 +89,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
   }
 
   String _plain(num value, String currency) =>
-      compactMoneyParts(value, currencyCode: currency).plainText;
+      fullMoneyParts(value, currencyCode: currency).plainText;
 
   /// By how much the wedding's items would pass the budget with [amount]
   /// as this item's estimate; 0 when they would not, or when it cannot be

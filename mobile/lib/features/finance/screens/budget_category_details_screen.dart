@@ -61,7 +61,7 @@ class _BudgetCategoryDetailsScreenState
 
   String _plain(num value, String currency) => shownMoney(
     context,
-    compactMoneyParts(value, currencyCode: currency).plainText,
+    fullMoneyParts(value, currencyCode: currency).plainText,
   );
 
   @override

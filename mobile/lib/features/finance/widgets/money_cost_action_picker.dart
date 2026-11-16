@@ -80,7 +80,7 @@ Future<MoneyCostActionSelection?> showMoneyCostActionPicker(
                   title: cost.title,
                   subtitle: hideAmounts
                       ? 'باقي عليه مبلغ'
-                      : 'باقي ${compactMoneyParts(moneyValue(cost.remainingAmount), currencyCode: currency).plainText}',
+                      : 'باقي ${fullMoneyParts(moneyValue(cost.remainingAmount), currencyCode: currency).plainText}',
                   trailing: const Icon(
                     LucideIcons.chevronLeft,
                     size: 20,

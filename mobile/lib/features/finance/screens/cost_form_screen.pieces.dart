@@ -287,7 +287,7 @@ class _BudgetLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final over = left < 0;
-    final amount = compactMoneyParts(
+    final amount = fullMoneyParts(
       left.abs(),
       currencyCode: currency,
     ).plainText;

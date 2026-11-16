@@ -600,7 +600,7 @@ class _EstimateSheetState extends State<_EstimateSheet> {
     final typed = _controller.text.trim().isNotEmpty;
     final currency = currencyLabelAr(widget.currency);
     String plain(num amount) => keepCurrencyOnLine(
-      compactMoneyParts(amount, currencyCode: widget.currency).plainText,
+      fullMoneyParts(amount, currencyCode: widget.currency).plainText,
     );
     final budget = widget.budget == null ? null : moneyValue(widget.budget);
     final others = widget.othersExpected;

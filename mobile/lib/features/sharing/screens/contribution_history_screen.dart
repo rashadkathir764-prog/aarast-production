@@ -422,7 +422,7 @@ String activityLine(
   final amount = amountValue is num
       ? shownAmount(
           stripMoneyDirectionalityMarks(
-            formatCompactMoney(
+            formatFullMoney(
               amountValue,
               currencyCode: text('currency') ?? defaultCurrencyCode,
             ),

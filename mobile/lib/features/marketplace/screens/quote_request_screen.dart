@@ -415,7 +415,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   ) {
     final plan = plans.selectedPlan;
     final currency = plan?.id == selectedPlanId ? plan?.currency : null;
-    final parts = compactMoneyParts(
+    final parts = fullMoneyParts(
       value,
       currencyCode: currencyCodeFromDisplayInput(currency),
     );

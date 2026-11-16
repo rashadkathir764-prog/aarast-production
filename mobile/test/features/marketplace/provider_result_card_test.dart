@@ -199,7 +199,11 @@ void main() {
       tester,
     ) async {
       for (final width in [320.0, 360.0, 420.0]) {
-        await pumpAt(tester, width: width);
+        await pumpAt(
+          tester,
+          width: width,
+          imageUrl: 'https://media.example/provider-cover/a.jpg',
+        );
         final photo = tester.getSize(
           find.byKey(const Key('provider-card-photo')),
         );
@@ -230,7 +234,12 @@ void main() {
       tester,
     ) async {
       for (final (width, scale) in [(360.0, 1.0), (320.0, 1.3)]) {
-        await pumpAt(tester, width: width, textScale: scale);
+        await pumpAt(
+          tester,
+          width: width,
+          textScale: scale,
+          imageUrl: 'https://media.example/provider-cover/a.jpg',
+        );
         final card = tester.getSize(find.byKey(const Key('card')));
         final photo = tester.getSize(
           find.byKey(const Key('provider-card-photo')),
@@ -238,6 +247,24 @@ void main() {
         expect(photo.height, card.height, reason: 'at $width × $scale');
         expect(tester.takeException(), isNull);
       }
+    });
+
+    // Rashad 2026-11-17: without a photo a quarter of every card was a
+    // tinted band holding one letter. The letter is a small square now, and
+    // the words take the card.
+    testWidgets('without a photo: a small letter, not a band', (tester) async {
+      await pumpAt(tester, width: 360);
+      expect(find.byKey(const Key('provider-card-photo')), findsNothing);
+      final letter = tester.getSize(
+        find.byKey(const Key('provider-card-letter')),
+      );
+      final card = tester.getSize(find.byKey(const Key('card')));
+      expect(letter.width, lessThanOrEqualTo(48));
+      expect(letter.height, lessThan(card.height));
+      // «الفنان علي عنبه» is «ف», not the «ا» of the article.
+      expect(providerInitial('الفنان علي عنبه'), 'ف');
+      expect(providerInitial('استوديو ضوء'), 'ا');
+      expect(providerInitial('قاعة سبأ'), 'ق');
     });
 
     testWidgets('nothing overflows at 320 with the largest text', (

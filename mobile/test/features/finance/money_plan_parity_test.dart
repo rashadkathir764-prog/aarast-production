@@ -34,7 +34,8 @@ void main() {
             File('test/fixtures/money_plan_fixtures.json').readAsStringSync(),
           )
           as Map<String, dynamic>;
-  final scenarios = (fixtures['scenarios'] as List).cast<Map<String, dynamic>>();
+  final scenarios = (fixtures['scenarios'] as List)
+      .cast<Map<String, dynamic>>();
 
   test('the fixtures hold several plans', () {
     expect(scenarios.length, greaterThanOrEqualTo(6));

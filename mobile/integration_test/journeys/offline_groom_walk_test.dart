@@ -35,7 +35,7 @@ void main() {
       await walk.step('o02_money', 'المال من نسخة الجوال', () async {
         await walk.tab('المال');
         // The summary's first figure, read from the phone's copy.
-        walk.expectSee('عليك من العرس', why: 'الملخص من نسخة الجوال');
+        walk.expectSee('باقي عليك', why: 'الملخص من نسخة الجوال');
         walk.expectSee('1.6 مليون', why: 'رقم الملخص نفسه بلا خادم');
         walk.expectNotSee('أعد المحاولة');
         walk.expectNotSee('جرّب مرة ثانية');

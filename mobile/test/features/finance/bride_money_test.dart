@@ -108,15 +108,18 @@ void main() {
       find.descendant(of: cover, matching: find.textContaining('ينقصك')),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: cover, matching: find.textContaining('فستان الزفة')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: cover, matching: find.textContaining('معك ')),
-      findsOneWidget,
-    );
+    // Changed on purpose (Rashad, 2026-11-17): the card says the verdict as
+    // a tag; the day it falls short, the payment and «معك …» are said in
+    // «كيف حسبناها؟».
     expect(find.byKey(const ValueKey('money-how-counted')), findsOneWidget);
+    tester
+        .widget<JourneyTextAction>(
+          find.byKey(const ValueKey('money-how-counted')),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('فستان الزفة'), findsWidgets);
+    expect(find.textContaining('معك '), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -139,16 +142,22 @@ void main() {
       ),
     );
 
+    // Changed on purpose (Rashad, 2026-11-17): «تكفي» in the card, the
+    // sentence with until when in «كيف حسبناها؟».
     final cover = find.byKey(const ValueKey('money-cover'));
     expect(
-      find.descendant(of: cover, matching: find.textContaining('يكفي دفعاتك')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: cover, matching: find.textContaining('لين ')),
+      find.descendant(of: cover, matching: find.text('تكفي')),
       findsOneWidget,
     );
     expect(find.textContaining('ينقصك'), findsNothing);
+    tester
+        .widget<JourneyTextAction>(
+          find.byKey(const ValueKey('money-how-counted')),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('يكفي دفعاتك'), findsWidgets);
+    expect(find.textContaining('لين '), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

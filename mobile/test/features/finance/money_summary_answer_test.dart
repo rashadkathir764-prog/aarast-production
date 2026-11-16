@@ -248,13 +248,26 @@ Future<_Screen> _open(
   return _Screen(router);
 }
 
-String _coverText(WidgetTester tester) {
+/// The verdict as the reader gets it: the card's sentence, then what it
+/// rests on, which «كيف حسبناها؟» says (the card no longer repeats it, so
+/// it stays one height: Rashad, 2026-11-17).
+Future<String> _coverText(WidgetTester tester) async {
   final cover = find.byKey(const ValueKey('money-cover'));
   expect(cover, findsOneWidget);
-  return tester
-      .widgetList<Text>(find.descendant(of: cover, matching: find.byType(Text)))
+  String textsUnder(Finder parent) => tester
+      .widgetList<Text>(
+        find.descendant(of: parent, matching: find.byType(Text)),
+      )
       .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
       .join(' ');
+  final card = textsUnder(cover);
+  final link = find.byKey(const ValueKey('money-how-counted'));
+  tester.widget<JourneyTextAction>(link).onPressed!();
+  await tester.pumpAndSettle();
+  final sheet = textsUnder(find.byType(JourneySheetBody));
+  Navigator.of(tester.element(find.byType(JourneySheetBody))).pop();
+  await tester.pumpAndSettle();
+  return '$card $sheet';
 }
 
 Future<void> _scrollTo(WidgetTester tester, Finder target) async {
@@ -352,13 +365,25 @@ void main() {
               .data,
           matches(RegExp(r'^2[\s\u00A0]مليون')),
         );
-        final cover = _coverText(tester);
+        final cover = await _coverText(tester);
         // D103: what is missing is the deepest fall (950,000), the home's
         // shortfall, said from its first day; never the first day's 150,000.
         expect(cover, contains('ينقصك 950,000'));
         expect(cover, contains('يبدأ'));
         expect(cover, contains('(سلفة من خالي)'));
-        expect(cover, isNot(contains('150,000')));
+        // The verdict itself (the card), not the sheet's list of payments.
+        expect(
+          tester
+              .widgetList<Text>(
+                find.descendant(
+                  of: find.byKey(const ValueKey('money-cover')),
+                  matching: find.byType(Text),
+                ),
+              )
+              .map((text) => text.data ?? '')
+              .join(' '),
+          isNot(contains('150,000')),
+        );
         expect(cover, contains('معك 900,000'));
         expect(cover, contains('800,000'));
         expect(cover, contains('عليك بدون موعد'));
@@ -579,17 +604,34 @@ void main() {
           ),
         ],
       );
+      // «من وين» keeps the «if» on its card only as a shortfall; the
+      // sentence itself is always in «كيف حسبناها؟» (Rashad 2026-11-17).
       Future<String> ifLine() async {
         await tester.tap(find.text('من وين'));
         await tester.pumpAndSettle();
-        final line = find.byKey(const ValueKey('money-sources-if'));
-        await _scrollTo(tester, line);
-        return tester.widget<Text>(line).data!;
+        final link = find.byKey(const ValueKey('money-sources-how-counted'));
+        await _scrollTo(tester, link);
+        tester.widget<JourneyTextAction>(link).onPressed!();
+        await tester.pumpAndSettle();
+        final line = tester
+            .widgetList<Text>(
+              find.descendant(
+                of: find.byType(JourneySheetBody),
+                matching: find.byType(Text),
+              ),
+            )
+            .map((text) => text.data ?? '')
+            .firstWhere((data) => data.contains('لو وصل'));
+        Navigator.of(tester.element(find.byType(JourneySheetBody))).pop();
+        await tester.pumpAndSettle();
+        return line;
       }
 
       // The photographer at 500,000: 900,000 − 500,000.
       await _open(tester, (await tester.runAsync(() => plan('500000')))!);
-      expect(find.textContaining('ويبقى 300,000'), findsOneWidget);
+      // The card says «تكفي»; «ويبقى 300,000» is the sentence in «كيف
+      // حسبناها؟» (Rashad, 2026-11-17).
+      expect(find.text('تكفي'), findsOneWidget);
       var words = await ifLine();
       expect(words, contains('يبقى معك 400,000'));
       expect(words, contains('لو وصل أبوي ('));
@@ -667,7 +709,7 @@ void main() {
       );
       await _open(tester, apis!);
 
-      final cover = _coverText(tester);
+      final cover = await _coverText(tester);
       expect(cover, contains('يكفي بشرط يوصل موعود أبوي'));
       expect(cover, contains('بدونه ينقصك 300,000'));
       expect(cover, contains('(قاعة الريان)'));
@@ -684,7 +726,7 @@ void main() {
       );
       await _open(tester, apis!);
 
-      final cover = _coverText(tester);
+      final cover = await _coverText(tester);
       // «معك» 1,600,000 (2,000,000 in, 400,000 paid), less 300,000 and
       // 500,000.
       expect(cover, contains('معك 1.6 مليون'));
@@ -707,7 +749,10 @@ void main() {
       );
       await _open(tester, apis!);
 
-      expect(_coverText(tester), contains('ما عليك شي باقي، ومعك 300,000'));
+      expect(
+        await _coverText(tester),
+        contains('ما عليك شي باقي، ومعك 300,000'),
+      );
       expect(find.byKey(const ValueKey('money-late-due')), findsNothing);
       expect(find.byKey(const ValueKey('money-coming-dues')), findsNothing);
     });

@@ -226,11 +226,11 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   final walk = JourneyWalk(tester, p.journey);
   await walk.boot();
 
-  await walk.step('a02b_whose', 'اختر المسار: خطتين', () async {
+  await walk.step('a02b_whose', 'وين تدخل: خطتين', () async {
     // Signs in and stops on the chooser to judge it before picking.
     await walk.signInOnly(p.phone);
-    if (!await walk.waitFor(walk.text('اختر المسار'), seconds: 10)) {
-      walk.fail('ما ظهرت شاشة «اختر المسار» والحساب له خطتين');
+    if (!await walk.waitFor(walk.text('وين تدخل؟'), seconds: 10)) {
+      walk.fail('ما ظهرت شاشة «وين تدخل؟» والحساب له خطتين');
       return;
     }
     walk.expectSee(p.planName);
@@ -256,11 +256,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('معك ${p.inHand}', why: 'معك ${p.inHand} مليون');
     walk.expectSee('موعود ${p.promised}', why: 'موعود ${p.promised} مليون');
     // RA-MO-53 (D102, D103): the home says what «الملخص» says.
-    walk.expectSee(p.say('عليك من العرس', 'عليكِ من العرس'));
-    walk.expectSee(
-      'يكفي دفعاتك وسداد السلفة بمواعيدها',
-      why: 'حكم المال نفسه في الرئيسية',
-    );
+    // D114, D113: «باقي عليك» and the money tab's verdict as a tag.
+    walk.expectSee(p.say('باقي عليك', 'باقي عليكِ'));
+    walk.expectSee('تكفي', why: 'حكم المال نفسه في الرئيسية');
     walk.expectNotSee('فلوسك والموعود', why: 'كلام ما يقوله تبويب المال');
     walk.expectSee('من 20 مهمة');
     walk.expectSee(p.say('أكدوا من 124', 'أكدن من 124'));
@@ -330,7 +328,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.tab('المال');
     // D103-D105: the owner's own share first, then whether the money in
     // hand covers each due on its day, then the promise left out of it.
-    walk.expectSee(p.say('عليك من العرس', 'عليكِ من العرس'));
+    // D114: his share holds the mahr, «باقي عليك», never «من العرس».
+    walk.expectSee(p.say('باقي عليك', 'باقي عليكِ'));
     walk.expectSee(p.left, why: 'نصيب صاحب الخطة رقم واحد أول الملخص');
     // His share splits into the mahr's rest and his agreements; hers is
     // one part, said once.
@@ -340,7 +339,11 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       walk.expectSee('باقي المهر 1 مليون');
       walk.expectSee('اتفاقاتك 600,000');
     }
-    walk.expectSee('معك ${p.inHand} مليون', why: 'الحكم تحت الرقم مباشرة');
+    // 2026-11-17: the card says the verdict as a tag; the sentence and what
+    // it rests on are in «كيف حسبناها؟».
+    walk.expectSee('تكفي', why: 'الحكم تحت الرقم مباشرة');
+    if (!await walk.tapKey('money-how-counted', wait: 2)) return;
+    walk.expectSee('معك ${p.inHand} مليون');
     walk.expectSee(
       'يكفي دفعاتك وسداد السلفة بمواعيدها',
       why: 'التغطية بالمواعيد، والسلفة منها (D103، D104)',
@@ -349,6 +352,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       'وعد ${p.fundingNames.last}',
       why: 'الوعد بلا موعد ما ينحسب في التغطية',
     );
+    await walk.back();
     // His mahr's rest is a due on him; hers is money coming to her.
     if (p.bride) {
       walk.expectNotSee('الباقي يوم العقد', why: 'مهرها يوصلها، مو دفعة عليها');
@@ -360,8 +364,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.step('c01_money_whole', 'المال: الصورة كاملة', () async {
     // The summary's last part is under the fold on a short window (the
     // Windows walk's; the Linux box's taller one drew it without a scroll).
-    if (!walk.sees('باقي على العرس كله')) await walk.scroll(pixels: 1500);
-    walk.expectSee('باقي على العرس كله');
+    if (!walk.sees('باقي على الاتفاقات كلها')) {
+      await walk.scroll(pixels: 1500);
+    }
+    walk.expectSee('باقي على الاتفاقات كلها');
     walk.expectSee(p.wholeLeft, why: 'الباقي على كل الاتفاقات، عليه وعلى أهله');
     // D59: what the family pays is theirs, not the owner's.
     walk.expectSee(
@@ -371,7 +377,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // RA-MO-71: the loans in the owner's words.
     walk.expectSee(p.say('سلف ترجعها', 'سلف ترجعينها'));
     walk.expectSee(p.say('دين عليك،', 'دين عليكِ،'), why: 'السلفة دين عليه');
-    walk.expectSee('تكلفة العرس المسجّلة');
+    walk.expectSee('التكلفة المسجّلة');
     await walk.scroll(pixels: -1500);
   });
 
@@ -401,7 +407,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee(p.hallProvider);
     walk.expectSee('المخصص له');
     walk.expectSee('500,000', why: 'المدفوع للقاعة 500 ألف');
-    walk.expectSee('1.5 مليون', why: 'باقي القاعة 1.5 مليون');
+    // A record page writes its amounts whole (critique م1).
+    walk.expectSee('1,500,000', why: 'باقي القاعة مليون ونص');
     walk.expectSee('الجاي عليه', why: 'دفعات البند الجاية في صفحته');
   });
   await walk.back();
@@ -431,7 +438,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // The chip, not a payment's line that names the same payer.
     if (!await walk.tapKey('payer-FAMILY|${p.familyPayer}', wait: 2)) return;
     walk.expectSee('${p.familyPayer} دفع');
-    walk.expectSee('1.3 مليون', why: 'دفع الأهل للصالة والغداء');
+    walk.expectSee('1,300,000', why: 'دفع الأهل للصالة والغداء');
   });
   await walk.back();
 
@@ -554,6 +561,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.step('e06_guest_lunch', 'ضيف يحضر الغداء أيضًا', () async {
       await walk.goTo('/wedding-plans/$planId/guests');
       await walk.tapAddGuest();
+      // D116: the tab's «+» offers what it adds; a guest is the first.
+      if (!await walk.tapKey('guests-add-guest', wait: 2)) return;
       await walk.enterField('الاسم', 'ضيف الغداء');
       walk.expectSee('يحضر أيضًا', why: 'النموذج يعرض مناسبات الخطة (D83)');
       // The sheet is the last «الغداء» on screen; an earlier match (the
@@ -564,7 +573,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       await walk.tapKey('guest-form-save', wait: 7);
       // One name among a hundred is found the way a person finds it: «دوّر».
       if (!await walk.openGuest('ضيف الغداء', wait: 3.5)) return;
-      walk.expectSee('الغداء: ما ردّ', why: 'رد الضيف على الغداء في تفاصيله');
+      // D116: each occasion is a card on the guest's page with where the
+      // guest stands; a new guest was told of nothing yet.
+      walk.expectSee('الغداء', why: 'مناسبة الضيف في تفاصيله');
+      walk.expectSee('ما وصلته بعد', why: 'وين الضيف من الغداء');
       // The seed goes back as it was (124 guests) for the walks after this
       // one and for a rerun, the way a person takes a guest off the list.
       if (!await walk.tapKey('guest-menu', wait: 1)) return;
@@ -598,10 +610,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       );
     }
     if (p.bride) {
-      walk.expectSee(
-        'صالة الياسمين · أكّد',
-        why: 'البيانات: الصالة محجوزة',
-      );
+      walk.expectSee('صالة الياسمين · أكّد', why: 'البيانات: الصالة محجوزة');
       walk.expectNotSee('اطلب الحجز', why: 'كلام مذكّر للعروسة');
       walk.expectNotSee('اخترت ضيافة', why: 'البيانات: الضيافة محجوزة لها');
       // G40: her items are services too (the server lists their kinds).
@@ -647,13 +656,17 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('550,000');
   });
 
-  await walk.step('f03_prov_page_action', 'زر صفحة المزود يكمل الطلب القائم', () async {
-    // Both plans already asked this studio, so its page leads to that request
-    // («شوف العرض» for him, «تابعي طلبك» for her), not to a new one.
-    final follow = p.say('شوف العرض', 'تابعي طلبك');
-    if (!await walk.tapText(follow, wait: 3.5)) return;
-    if (walk.sees('الباقات')) walk.fail('الزر «$follow» ما فتح شي');
-  });
+  await walk.step(
+    'f03_prov_page_action',
+    'زر صفحة المزود يكمل الطلب القائم',
+    () async {
+      // Both plans already asked this studio, so its page leads to that request
+      // («شوف العرض» for him, «تابعي طلبك» for her), not to a new one.
+      final follow = p.say('شوف العرض', 'تابعي طلبك');
+      if (!await walk.tapText(follow, wait: 3.5)) return;
+      if (walk.sees('الباقات')) walk.fail('الزر «$follow» ما فتح شي');
+    },
+  );
   await walk.back();
   await walk.back();
 
@@ -677,14 +690,18 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee(itemProvider, why: 'البحث من البند يلقى مزودينه');
   });
 
-  await walk.step('f07_quote', 'طلب عرض سعر من مزود جديد (بدون إرسال)', () async {
-    if (!await walk.tapText(itemProvider, wait: 3.5)) return;
-    final asks = p.say('اطلب عرض سعر', 'اطلبي عرض سعر');
-    if (!await walk.tapText(asks, wait: 3)) return;
-    walk.expectSee(p.say('أرسل الطلب', 'أرسلي الطلب'));
-    // Leave f07 unsent; the back below leaves the provider's page.
-    await walk.back();
-  });
+  await walk.step(
+    'f07_quote',
+    'طلب عرض سعر من مزود جديد (بدون إرسال)',
+    () async {
+      if (!await walk.tapText(itemProvider, wait: 3.5)) return;
+      final asks = p.say('اطلب عرض سعر', 'اطلبي عرض سعر');
+      if (!await walk.tapText(asks, wait: 3)) return;
+      walk.expectSee(p.say('أرسل الطلب', 'أرسلي الطلب'));
+      // Leave f07 unsent; the back below leaves the provider's page.
+      await walk.back();
+    },
+  );
   await walk.back();
 
   await walk.step('f08_chats', 'المزودين: المحادثات', () async {

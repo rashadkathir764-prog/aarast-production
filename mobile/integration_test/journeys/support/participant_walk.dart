@@ -59,7 +59,7 @@ const _privateMoney = [
   '7 مليون',
   '1.6 مليون',
   '3.3 مليون',
-  'عليك من العرس',
+  'باقي عليك',
   'معك 4.2',
   'موعود 1.2',
   'مدخراتي',
@@ -138,10 +138,7 @@ Future<void> runParticipantWalk(
     if (p.managesTasks) {
       walk.expectSee('رتّب الغداء');
       walk.expectSee('معك');
-      walk.expectNotSee(
-        'حدد موعد عقد القران',
-        why: 'مهمة العريس مو عليه',
-      );
+      walk.expectNotSee('حدد موعد عقد القران', why: 'مهمة العريس مو عليه');
     } else {
       walk.expectNotSee(
         'ما عندك صلاحية على المهام',

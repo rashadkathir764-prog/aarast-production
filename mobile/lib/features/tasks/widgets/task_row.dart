@@ -157,12 +157,29 @@ class TaskRow extends StatelessWidget {
                     if (onPostpone != null)
                       Padding(
                         padding: const EdgeInsets.only(top: AarastV3Space.x1),
-                        child: JourneyChip(
-                          key: ValueKey('task-postpone-${task.id}'),
-                          label: context.say('أجّلها', 'أجّليها'),
-                          icon: LucideIcons.calendarClock,
-                          selected: false,
-                          onTap: busy ? null : onPostpone,
+                        // Critique مه3: a late task offered only «أجّلها»
+                        // in words, its finishing an unnamed circle; the
+                        // two choices now stand side by side.
+                        child: Wrap(
+                          spacing: AarastV3Space.x2,
+                          runSpacing: AarastV3Space.x1,
+                          children: [
+                            if (onToggle != null)
+                              JourneyChip(
+                                key: ValueKey('task-finish-${task.id}'),
+                                label: context.say('خلصتها', 'خلصتيها'),
+                                icon: LucideIcons.check,
+                                selected: false,
+                                onTap: busy ? null : onToggle,
+                              ),
+                            JourneyChip(
+                              key: ValueKey('task-postpone-${task.id}'),
+                              label: context.say('أجّلها', 'أجّليها'),
+                              icon: LucideIcons.calendarClock,
+                              selected: false,
+                              onTap: busy ? null : onPostpone,
+                            ),
+                          ],
                         ),
                       ),
                   ],

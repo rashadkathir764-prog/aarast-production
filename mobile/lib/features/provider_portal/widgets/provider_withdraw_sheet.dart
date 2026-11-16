@@ -95,7 +95,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
       });
       return;
     }
-    AarastToast.showSuccess(context, 'سحبت العرض.');
+    AarastToast.showSuccess(context, 'انسحب العرض.');
     Navigator.of(context).pop(true);
   }
 }

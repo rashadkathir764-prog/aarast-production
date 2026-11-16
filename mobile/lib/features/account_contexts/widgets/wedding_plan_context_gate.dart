@@ -339,6 +339,10 @@ class _MismatchedPlanContext extends StatelessWidget {
         emptyIcon: LucideIcons.shieldAlert,
         emptyTitle: title,
         emptyMessage: message,
+        // The page says «ارجع للرئيسية» and has no bar of its own; without
+        // this a person who opened a stale link stays shut in.
+        emptyAction: 'الرئيسية',
+        onEmptyAction: () => context.go(AppRouter.home),
       ),
     );
   }

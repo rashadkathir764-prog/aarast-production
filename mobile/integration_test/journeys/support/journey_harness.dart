@@ -251,7 +251,11 @@ class JourneyWalk {
     return true;
   }
 
-  Future<bool> tapKey(String key, {double wait = 2, bool required = true}) async {
+  Future<bool> tapKey(
+    String key, {
+    double wait = 2,
+    bool required = true,
+  }) async {
     final finder = find.byKey(ValueKey(key));
     if (finder.evaluate().isEmpty) await _scrollUntilVisible(finder);
     if (finder.evaluate().isEmpty) {
@@ -313,9 +317,8 @@ class JourneyWalk {
   }
 
   /// The name as a row draws it: a Text, which the search box is not.
-  Finder _guestRowNamed(String name) => find.byWidgetPredicate(
-    (widget) => widget is Text && widget.data == name,
-  );
+  Finder _guestRowNamed(String name) =>
+      find.byWidgetPredicate((widget) => widget is Text && widget.data == name);
 
   /// Taps [label] inside the widget keyed [key] (a card, a header).
   Future<bool> tapWithin(
@@ -373,7 +376,11 @@ class JourneyWalk {
     return true;
   }
 
-  Future<bool> tapIcon(IconData icon, {double wait = 2, bool required = true}) async {
+  Future<bool> tapIcon(
+    IconData icon, {
+    double wait = 2,
+    bool required = true,
+  }) async {
     final finder = find.byIcon(icon);
     if (finder.evaluate().isEmpty) {
       if (required) fail('ما فيه الأيقونة المطلوبة');
@@ -560,13 +567,19 @@ class JourneyWalk {
   /// The sign-in itself (inside the current step): welcome → «عندي حساب» →
   /// phone and password → the dev OTP when asked.
   Future<void> signInOnly(String phone) async {
-    if (!await waitFor(find.byKey(const ValueKey('login-submit')), seconds: 4)) {
+    if (!await waitFor(
+      find.byKey(const ValueKey('login-submit')),
+      seconds: 4,
+    )) {
       // The welcome gateway: its «عندي حساب» way in.
       for (final label in ['عندي حساب', 'تسجيل الدخول', 'دخول']) {
         if (await tapText(label, required: false, wait: 2.5)) break;
       }
     }
-    if (!await waitFor(find.byKey(const ValueKey('login-submit')), seconds: 8)) {
+    if (!await waitFor(
+      find.byKey(const ValueKey('login-submit')),
+      seconds: 8,
+    )) {
       fail('ما وصلنا لشاشة الدخول من الترحيب');
       return;
     }
@@ -580,7 +593,8 @@ class JourneyWalk {
     await tester.pump(const Duration(milliseconds: 150));
     await tapKey('login-submit', wait: 4);
     // A second factor when the API asks for it.
-    if (sees('رمز') && find.byType(EditableText).evaluate().isNotEmpty &&
+    if (sees('رمز') &&
+        find.byType(EditableText).evaluate().isNotEmpty &&
         find.byKey(const ValueKey('login-submit')).evaluate().isEmpty) {
       await tester.enterText(find.byType(EditableText).first, devOtpCode);
       await settle(seconds: 4);
@@ -596,7 +610,7 @@ class JourneyWalk {
       await signInOnly(phone);
       if (pickContext != null) {
         if (await waitFor(text(pickContext), seconds: 8)) {
-          if (sees('اختر المسار') || sees('خطة مين')) {
+          if (sees('وين تدخل؟') || sees('خطة مين')) {
             await tapText(pickContext, wait: 4);
           }
         }

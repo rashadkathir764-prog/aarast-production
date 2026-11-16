@@ -38,19 +38,22 @@ void main() {
   // The budget is replaced whole: what is not sent is removed. Saved on
   // w10 after a failed read, it sent no item and the default currency, and
   // the server deleted every item without an agreement.
-  test('the budget is never replaced from a plan whose money was not read', () async {
-    final api = _UnreadableMoneyApi();
-    final finance = FinanceProvider(api);
-    await finance.loadMoney('plan-1');
-    expect(finance.hasLoadedMoney, isFalse);
+  test(
+    'the budget is never replaced from a plan whose money was not read',
+    () async {
+      final api = _UnreadableMoneyApi();
+      final finance = FinanceProvider(api);
+      await finance.loadMoney('plan-1');
+      expect(finance.hasLoadedMoney, isFalse);
 
-    final saved = await finance.setTotalBudget(
-      planId: 'plan-1',
-      totalBudget: '5000000',
-    );
+      final saved = await finance.setTotalBudget(
+        planId: 'plan-1',
+        totalBudget: '5000000',
+      );
 
-    expect(saved, isFalse);
-    expect(api.replaceCalls, 0);
-    expect(finance.errorMessage, isNotNull);
-  });
+      expect(saved, isFalse);
+      expect(api.replaceCalls, 0);
+      expect(finance.errorMessage, isNotNull);
+    },
+  );
 }

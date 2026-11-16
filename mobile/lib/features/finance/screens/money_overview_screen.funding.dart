@@ -144,13 +144,6 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
     }
 
     final coverage = summary.coverage;
-    final words = coverage == null
-        ? null
-        : moneyCoverWords(
-            context,
-            coverage,
-            (value) => _figure(context, value, summary.currency),
-          );
     final estimates = moneyValue(coverage?.estimatesLeft);
     final afterEstimates = moneyValue(coverage?.endAfterEstimates);
     final out = moneyValue(funding.spent) + moneyValue(funding.loanRepaid);
@@ -216,68 +209,29 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                     ),
                 ],
               ),
-              if (words != null) ...[
-                const SizedBox(height: AarastV3Space.x2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      words.ok
-                          ? LucideIcons.checkCircle2
-                          : LucideIcons.alertCircle,
-                      size: 18,
-                      color: words.ok
-                          ? AarastV3Color.mint
-                          : AarastV3Color.danger,
-                    ),
-                    const SizedBox(width: AarastV3Space.x2),
-                    Expanded(
-                      child: Text(
-                        words.main,
-                        key: const ValueKey('money-sources-cover'),
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
-                          color: words.ok
-                              ? AarastV3Color.ink
-                              : AarastV3Color.danger,
-                        ),
-                      ),
-                    ),
-                  ],
+              // The verdict as the summary says it (D113), its sentences in
+              // «كيف حسبناها؟» (Rashad 2026-11-17: a paragraph filled the
+              // card). Only the estimates' «if» stays when it is a shortfall
+              // (D105): a warning, not an explanation.
+              if (coverage != null) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                _CoverTag(
+                  key: const ValueKey('money-sources-cover'),
+                  tag: moneyCoverTag(coverage, money),
+                  howCounted: widget.onHowCounted,
+                  onPaper: true,
+                  linkKey: const ValueKey('money-sources-how-counted'),
                 ),
-                if (words.sub.isNotEmpty)
-                  Text(
-                    words.sub,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                // The estimates' «if» (D105): not agreed yet, not on him.
-                if (estimates > 0 && coverage != null)
+                if (estimates > 0 && afterEstimates < 0)
                   Text(
                     moneyIfEstimatesWords(context, coverage, money),
                     key: const ValueKey('money-sources-if'),
                     style: JourneyType.of(
                       JourneyType.small,
-                      weight: afterEstimates < 0
-                          ? JourneyType.bold
-                          : FontWeight.w400,
-                      color: afterEstimates < 0
-                          ? AarastV3Color.danger
-                          : AarastV3Color.textMuted,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.danger,
                     ),
                   ),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: JourneyTextAction(
-                    key: const ValueKey('money-sources-how-counted'),
-                    label: 'كيف حسبناها؟',
-                    color: context.accent.primary,
-                    onPressed: widget.onHowCounted,
-                  ),
-                ),
               ],
             ],
           ),

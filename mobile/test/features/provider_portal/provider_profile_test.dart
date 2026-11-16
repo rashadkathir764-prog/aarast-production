@@ -888,7 +888,7 @@ void main() {
         () => ProviderHomeTab(onOpenTab: (_) {}),
       );
       expect(find.byKey(const Key('provider-home-first')), findsNothing);
-      expect(find.text('ينتظرونك'), findsOneWidget);
+      expect(find.byKey(const Key('provider-home-waiting')), findsOneWidget);
     });
   });
 }

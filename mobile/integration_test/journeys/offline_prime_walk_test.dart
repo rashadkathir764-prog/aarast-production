@@ -9,16 +9,20 @@ import 'support/journey_harness.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('the groom opens every tab and stays signed in', (tester) async {
-    final walk = JourneyWalk(tester, 'offline_prime');
-    await walk.boot();
-    await walk.signIn('+967777000101', pickContext: 'عرس محمد');
+  testWidgets(
+    'the groom opens every tab and stays signed in',
+    (tester) async {
+      final walk = JourneyWalk(tester, 'offline_prime');
+      await walk.boot();
+      await walk.signIn('+967777000101', pickContext: 'عرس محمد');
 
-    for (final tab in ['المال', 'المهام', 'الضيوف', 'المزودين', 'الرئيسية']) {
-      await walk.step('p_$tab', 'فتح $tab', () async {
-        await walk.tab(tab, wait: 4);
-      });
-    }
-    await walk.finish();
-  }, timeout: const Timeout(Duration(minutes: 6)));
+      for (final tab in ['المال', 'المهام', 'الضيوف', 'المزودين', 'الرئيسية']) {
+        await walk.step('p_$tab', 'فتح $tab', () async {
+          await walk.tab(tab, wait: 4);
+        });
+      }
+      await walk.finish();
+    },
+    timeout: const Timeout(Duration(minutes: 6)),
+  );
 }

@@ -231,13 +231,7 @@ class _WaitingHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'ينتظرونك',
-            style: JourneyType.of(
-              JourneyType.bodySmall,
-              color: AarastV3Color.onPrimaryMuted,
-            ),
-          ),
+          // The headline says who waits; a «ينتظرونك» above it said it twice.
           Text(
             headline,
             style: JourneyType.of(

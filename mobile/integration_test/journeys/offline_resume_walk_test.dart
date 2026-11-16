@@ -11,34 +11,41 @@ import 'support/journey_harness.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('the server answers again and the phone sends what waited', (
-    tester,
-  ) async {
-    final walk = JourneyWalk(tester, 'offline_resume');
-    await walk.boot(keepLocalData: true);
+  testWidgets(
+    'the server answers again and the phone sends what waited',
+    (tester) async {
+      final walk = JourneyWalk(tester, 'offline_resume');
+      await walk.boot(keepLocalData: true);
 
-    await walk.step('r01_home', 'الرئيسية والخادم رجع', () async {
-      await walk.waitFor(walk.text('الرئيسية'), seconds: 20);
-      await walk.settle(seconds: 6);
-      walk.expectSee('عرس محمد');
-      walk.expectNotSee(
-        'ما نقدر نوصل للخادم الحين',
-        why: 'أول رد من الخادم ينهي الحالة',
-      );
-    });
+      await walk.step('r01_home', 'الرئيسية والخادم رجع', () async {
+        await walk.waitFor(walk.text('الرئيسية'), seconds: 20);
+        await walk.settle(seconds: 6);
+        walk.expectSee('عرس محمد');
+        walk.expectNotSee(
+          'ما نقدر نوصل للخادم الحين',
+          why: 'أول رد من الخادم ينهي الحالة',
+        );
+      });
 
-    await walk.step('r02_guest_synced', 'الضيف وصل للخادم', () async {
-      await walk.tab('الضيوف');
-      await walk.settle(seconds: 3);
-      // Found the way a person finds one name among a hundred: «دوّر».
-      if (!await walk.searchGuest('ضيف بدون نت')) {
-        walk.fail('ما يظهر «ضيف بدون نت» (الضيف المحفوظ بدون خادم صار عند الخادم)');
-      }
-      if (find.byKey(const ValueKey('aarast-sync-status')).evaluate().isNotEmpty &&
-          walk.sees('تنحفظ في جوالك')) {
-        walk.fail('ما زال التطبيق يقول إن التغيير ينتظر بعد رجوع الخادم');
-      }
-    });
-    await walk.finish();
-  }, timeout: const Timeout(Duration(minutes: 6)));
+      await walk.step('r02_guest_synced', 'الضيف وصل للخادم', () async {
+        await walk.tab('الضيوف');
+        await walk.settle(seconds: 3);
+        // Found the way a person finds one name among a hundred: «دوّر».
+        if (!await walk.searchGuest('ضيف بدون نت')) {
+          walk.fail(
+            'ما يظهر «ضيف بدون نت» (الضيف المحفوظ بدون خادم صار عند الخادم)',
+          );
+        }
+        if (find
+                .byKey(const ValueKey('aarast-sync-status'))
+                .evaluate()
+                .isNotEmpty &&
+            walk.sees('تنحفظ في جوالك')) {
+          walk.fail('ما زال التطبيق يقول إن التغيير ينتظر بعد رجوع الخادم');
+        }
+      });
+      await walk.finish();
+    },
+    timeout: const Timeout(Duration(minutes: 6)),
+  );
 }

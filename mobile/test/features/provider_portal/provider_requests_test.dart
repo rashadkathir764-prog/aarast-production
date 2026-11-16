@@ -122,8 +122,8 @@ void main() {
 
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
-      expect(find.text('ينتظرونك'), findsOneWidget);
-      // Changed on purpose (critique ب3): said for any provider.
+      // Changed on purpose (2026-11-17): no «ينتظرونك» above a headline
+      // that says it. And (critique ب3) said for any provider.
       expect(find.text('3 طلبات تنتظر ردك'), findsOneWidget);
       // B-04: the first of them to end, as p13 draws it.
       expect(find.text('أقدمها من أمس · ينتهي بعد 6 أيام'), findsOneWidget);

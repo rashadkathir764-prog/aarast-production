@@ -17,8 +17,9 @@ Future<void> runStudioWalk(WidgetTester tester) async {
       walk.fail('ما ظهرت رئيسية الاستوديو');
       return;
     }
-    walk.expectSee('ينتظرونك');
-    walk.expectSee('ردّ الآن');
+    walk.expectSee('ينتظرون ردك');
+    // Critique ب3: the portal names the action, for any provider.
+    walk.expectSee('الرد الحين');
   });
 
   // p42 (B-19, B-38, B-09): his notices in the app's words, each opening its
@@ -85,8 +86,8 @@ Future<void> runStudioWalk(WidgetTester tester) async {
     walk.expectSee('سلمى السقاف');
     walk.expectSee('صور وفيديو');
     walk.expectSee('21 يناير');
-    walk.expectSee('أرسل عرض');
-    walk.expectSee('اعتذر');
+    walk.expectSee('إرسال عرض');
+    walk.expectSee('اعتذار');
   });
 
   await walk.step('p17_offer', 'شاشة العرض (بدون إرسال)', () async {
@@ -96,8 +97,8 @@ Future<void> runStudioWalk(WidgetTester tester) async {
   await walk.back();
 
   await walk.step('p18_decline', 'نافذة الاعتذار (بدون تأكيد)', () async {
-    if (!await walk.tapText('اعتذر', last: true, wait: 3)) return;
-    walk.expectSee('اعتذر');
+    if (!await walk.tapText('اعتذار', last: true, wait: 3)) return;
+    walk.expectSee('اعتذار من');
   });
   await walk.back();
   await walk.back();
@@ -191,7 +192,7 @@ Future<void> runReviewStatesWalk(WidgetTester tester) async {
     }
     walk.expectSee('فرقة الأمجاد للبرع');
     walk.expectSee('عدّل طلبك');
-    walk.expectNotSee('ردّ الآن', why: 'المزود غير المعتمد ما يستقبل طلبات');
+    walk.expectNotSee('الرد الحين', why: 'المزود غير المعتمد ما يستقبل طلبات');
   });
   await signOutFromReview('p08_logout');
 

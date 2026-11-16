@@ -288,12 +288,23 @@ void main() {
     // The photographer is the father's: only the hall is on him.
     expect(_said(tester, hero), contains('من العرس 800,000'));
     expect(_said(tester, hero), contains('سلف ترجعها 200,000'));
+    // The card gives the verdict as the summary does (D113); its sentences
+    // are in «كيف حسبناها؟» (Rashad 2026-11-17).
+    expect(_said(tester, hero), contains('تكفي'));
+    expect(_said(tester, hero), isNot(contains('وعد خالي')));
+    tester
+        .widget<JourneyTextAction>(
+          find.byKey(const ValueKey('money-sources-how-counted')),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    final sheet = _said(tester, find.byType(JourneySheetBody));
     // 900 after the late 300; 400 after the hall's 500; 200 after the
     // repayment: covered without the promises, with the loan.
-    expect(_said(tester, hero), contains('يكفي دفعاتك وسداد السلفة بمواعيدها'));
-    expect(_said(tester, hero), contains('ويبقى 200,000'));
+    expect(sheet, contains('يكفي دفعاتك وسداد السلفة بمواعيدها'));
+    expect(sheet, contains('ويبقى 200,000'));
     // The uncle's gift has no day: left out, and said.
-    expect(_said(tester, hero), contains('وعد خالي'));
+    expect(sheet, contains('وعد خالي'));
     expect(tester.takeException(), isNull);
   });
 

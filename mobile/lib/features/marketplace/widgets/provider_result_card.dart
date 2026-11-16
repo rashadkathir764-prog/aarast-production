@@ -13,6 +13,11 @@ import '../../../core/utils/arabic_count.dart';
 /// photo stands beside the card's words.
 const _photoWidth = 112.0;
 
+/// The provider's letter without a photo: a small square by the name, not a
+/// band as tall as the card (Rashad 2026-11-17: a coloured quarter of every
+/// card held one letter).
+const _letterSize = 44.0;
+
 /// What the name leaves for the heart's 48 target in the card's corner,
 /// past the card's own padding.
 const _heartRoom = 36.0;
@@ -107,6 +112,13 @@ class ProviderResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final where = [?_clean(categoryLabel), ?_clean(locationLabel)].join(' · ');
     final price = _clean(priceLabel);
+    final url = _clean(imageUrl);
+    // g02 «توفير البيانات»: no photo loads in the list.
+    final dataSaver = context.watch<DevicePreferences?>()?.dataSaver ?? false;
+    final photoUrl = dataSaver ? null : url;
+    final textStart = photoUrl != null
+        ? _photoWidth + AarastV3Space.x3
+        : AarastV3Space.x3 + _letterSize + AarastV3Space.x3;
     final badges = <Widget>[
       if (_clean(budgetStatusLabel) case final budget?)
         JourneyTag(
@@ -169,22 +181,29 @@ class ProviderResultCard extends StatelessWidget {
           child: Stack(
             children: [
               // The words set the card's height; the photo fills it.
-              PositionedDirectional(
-                top: 0,
-                bottom: 0,
-                start: 0,
-                width: _photoWidth,
-                child: _Photo(imageUrl: imageUrl, name: businessName),
-              ),
+              if (photoUrl != null)
+                PositionedDirectional(
+                  top: 0,
+                  bottom: 0,
+                  start: 0,
+                  width: _photoWidth,
+                  child: _Photo(imageUrl: photoUrl, name: businessName),
+                )
+              else
+                PositionedDirectional(
+                  top: AarastV3Space.x3,
+                  start: AarastV3Space.x3,
+                  child: _Letter(name: businessName),
+                ),
               ConstrainedBox(
                 // As wide as the list gives it, whatever the words' length.
-                constraints: const BoxConstraints(
-                  minHeight: _photoWidth,
+                constraints: BoxConstraints(
+                  minHeight: photoUrl != null ? _photoWidth : 0,
                   minWidth: double.infinity,
                 ),
                 child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                    _photoWidth + AarastV3Space.x3,
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    textStart,
                     AarastV3Space.x3,
                     AarastV3Space.x3,
                     AarastV3Space.x3,
@@ -253,8 +272,11 @@ class ProviderResultCard extends StatelessWidget {
                           ],
                         ),
                       const SizedBox(height: AarastV3Space.x2),
-                      Wrap(spacing: 6, runSpacing: 6, children: badges),
-                      const SizedBox(height: AarastV3Space.x2),
+                      // No badge, no empty row between the place and price.
+                      if (badges.isNotEmpty) ...[
+                        Wrap(spacing: 6, runSpacing: 6, children: badges),
+                        const SizedBox(height: AarastV3Space.x2),
+                      ],
                       ..._priceLines(context, price),
                     ],
                   ),
@@ -315,50 +337,86 @@ class ProviderResultCard extends StatelessWidget {
   }
 }
 
-/// The provider's photo, or the first letter of the name without one: a
-/// square, so a portrait keeps its face and a wide cover its middle.
+/// The letter that stands for a name: its first word's first letter past
+/// «ال», so «الفنان أيمن» is «ف» and not the «ا» of every article.
+String providerInitial(String name) {
+  final words = name.trim().split(RegExp(r'\s+'));
+  var word = words.isEmpty ? '' : words.first;
+  if (word.startsWith('ال') && word.characters.length > 3) {
+    word = word.substring(2);
+  }
+  return word.isEmpty ? 'م' : word.characters.first;
+}
+
+/// The provider's photo as tall as the card: a portrait keeps its face and
+/// a wide cover its middle. A photo that fails to load leaves a plain tint
+/// with the letter.
 class _Photo extends StatelessWidget {
   const _Photo({required this.imageUrl, required this.name});
 
-  final String? imageUrl;
+  final String imageUrl;
   final String name;
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl?.trim();
-    final initial = name.trim().isNotEmpty ? name.trim().characters.first : 'م';
-    final placeholder = ColoredBox(
-      color: context.accent.primarySoft,
-      child: Center(
-        child: Text(
-          initial,
-          // A drawing, not text to read: it does not grow with the reader's
-          // text size, or it would leave its square.
-          textScaler: TextScaler.noScaling,
-          style: JourneyType.of(
-            JourneyType.count,
-            weight: JourneyType.bold,
-            color: context.accent.primary,
-          ),
-        ),
-      ),
-    );
     // Flush with the card's edge, which rounds its outer corners.
     return SizedBox.expand(
       key: const Key('provider-card-photo'),
-      // g02 «توفير البيانات»: no photo loads in the list.
-      child:
-          url == null ||
-              url.isEmpty ||
-              (context.watch<DevicePreferences?>()?.dataSaver ?? false)
-          ? placeholder
-          : Image.network(
-              url,
-              fit: BoxFit.cover,
-              // What is cut off a tall photo is its bottom, not the face.
-              alignment: const Alignment(0, -0.6),
-              errorBuilder: (context, error, stack) => placeholder,
-            ),
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        // What is cut off a tall photo is its bottom, not the face.
+        alignment: const Alignment(0, -0.6),
+        errorBuilder: (context, error, stack) => ColoredBox(
+          color: context.accent.primarySoft,
+          child: Center(child: _LetterText(name: name)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Without a photo: the provider's letter in a small rounded square.
+class _Letter extends StatelessWidget {
+  const _Letter({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('provider-card-letter'),
+      width: _letterSize,
+      height: _letterSize,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: context.accent.primarySoft,
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
+      ),
+      child: _LetterText(name: name),
+    );
+  }
+}
+
+class _LetterText extends StatelessWidget {
+  const _LetterText({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Text(
+        providerInitial(name),
+        // A drawing, not text to read: it does not grow with the reader's
+        // text size, or it would leave its square.
+        textScaler: TextScaler.noScaling,
+        style: JourneyType.of(
+          JourneyType.title,
+          weight: JourneyType.bold,
+          color: context.accent.primary,
+        ),
+      ),
     );
   }
 }

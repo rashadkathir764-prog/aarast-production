@@ -264,21 +264,17 @@ class _ShareHero extends StatelessWidget {
                 onTap: onSources,
               )
             else
-              Builder(
-                builder: (context) {
-                  final words = moneyCoverWords(
-                    context,
-                    coverage,
-                    (value) => _figure(context, value, summary.currency),
-                  );
-                  return _CoverWords(
-                    key: const ValueKey('money-cover'),
-                    ok: words.ok,
-                    main: words.main,
-                    sub: words.sub,
-                    howCounted: onHowCounted,
-                  );
-                },
+              // The verdict as a tag on one line with the way to its account
+              // (D113's tag, the home's own); the whole sentence and what it
+              // rests on open in «كيف حسبناها؟». With the sentence the card
+              // took two thirds of the screen (Rashad, 2026-11-17).
+              _CoverTag(
+                key: const ValueKey('money-cover'),
+                tag: moneyCoverTag(
+                  coverage,
+                  (value) => _figure(context, value, summary.currency),
+                ),
+                howCounted: onHowCounted,
               ),
           ],
           // D114: then the rest of the picture, complete.
@@ -294,12 +290,80 @@ class _ShareHero extends StatelessWidget {
   }
 }
 
+/// «تكفي», «تكفي بشرط الموعود» or «ينقصك X», and «كيف حسبناها؟» beside it.
+class _CoverTag extends StatelessWidget {
+  const _CoverTag({
+    required this.tag,
+    required this.howCounted,
+    this.onPaper = false,
+    this.linkKey = const ValueKey('money-how-counted'),
+    super.key,
+  });
+
+  final MoneyCoverTag tag;
+  final VoidCallback howCounted;
+
+  /// On a paper card («من وين») rather than the summary's coloured one.
+  final bool onPaper;
+  final Key linkKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final onColour = !onPaper
+        ? AarastV3Color.onPrimary
+        : tag.ok && !tag.conditional
+        ? AarastV3Color.mint
+        : tag.ok
+        ? AarastV3Color.ink
+        : AarastV3Color.danger;
+    // One line on a phone; at the largest text the link wraps under the tag
+    // instead of running off the card.
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AarastV3Space.x2,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              tag.conditional
+                  ? LucideIcons.clock
+                  : tag.ok
+                  ? LucideIcons.checkCircle2
+                  : LucideIcons.alertCircle,
+              size: 18,
+              color: onColour,
+            ),
+            const SizedBox(width: AarastV3Space.x2),
+            Flexible(
+              child: Text(
+                tag.words,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                  color: onColour,
+                ),
+              ),
+            ),
+          ],
+        ),
+        JourneyTextAction(
+          key: linkKey,
+          label: 'كيف حسبناها؟',
+          onPressed: howCounted,
+          color: onPaper ? context.accent.primary : onColour,
+        ),
+      ],
+    );
+  }
+}
+
 class _CoverWords extends StatelessWidget {
   const _CoverWords({
     required this.ok,
     required this.main,
     required this.sub,
-    this.howCounted,
     this.onTap,
     super.key,
   });
@@ -307,7 +371,6 @@ class _CoverWords extends StatelessWidget {
   final bool ok;
   final String main;
   final String sub;
-  final VoidCallback? howCounted;
   final VoidCallback? onTap;
 
   @override
@@ -346,16 +409,6 @@ class _CoverWords extends StatelessWidget {
             style: JourneyType.of(JourneyType.small, color: soft, height: 1.6),
           ),
         ],
-        if (howCounted case final howCounted?)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyTextAction(
-              key: const ValueKey('money-how-counted'),
-              label: 'كيف حسبناها؟',
-              onPressed: howCounted,
-              color: onColour,
-            ),
-          ),
       ],
     );
     if (onTap == null) return body;

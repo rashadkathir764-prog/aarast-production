@@ -56,7 +56,9 @@ void main() {
           RegExp(RegExp.escape(formatArabicWeekdayDayMonth(weddingDay))),
         );
         if (day.evaluate().isEmpty) {
-          walk.fail('ما فيه يوم ${formatArabicDayMonth(weddingDay)} في التقويم');
+          walk.fail(
+            'ما فيه يوم ${formatArabicDayMonth(weddingDay)} في التقويم',
+          );
           return;
         }
         await tester.tap(day.first, warnIfMissed: false);
@@ -73,7 +75,10 @@ void main() {
         await walk.tapText('صنعاء');
         await fillNth(0, '5000000');
         await walk.tapText('التالي');
-        walk.expectSee('اتفقتوا على المهر', why: 'المدينة والميزانية وصّلتا للمهر');
+        walk.expectSee(
+          'اتفقتوا على المهر',
+          why: 'المدينة والميزانية وصّلتا للمهر',
+        );
       });
 
       await walk.step('a06_mahr', 'المهر', () async {
@@ -98,22 +103,32 @@ void main() {
         await walk.tapKey('register-submit', wait: 5);
       });
 
-      await walk.step('a09_code_burned', 'رمز غلط خمس مرات ثم الصحيح', () async {
-        if (!walk.sees('ما وصلني الرمز')) {
-          walk.fail('ما طلب رمز واتساب');
-          return;
-        }
-        // Five wrong codes use the code up on the server; the right one
-        // then fails too, and the screen must say so, not «غلط» (J1-03).
-        for (var attempt = 0; attempt < 5; attempt++) {
-          await tester.enterText(find.byType(EditableText).first, '00000$attempt');
-          await walk.settle(seconds: 2.5);
-        }
-        await tester.enterText(find.byType(EditableText).first, devOtpCode);
-        await walk.settle(seconds: 3);
-        walk.note(walk.visibleTexts().take(12).join(' · '));
-        walk.expectSee('انتهى', why: 'الرمز المستنفد يُقال إنه انتهى، لا إنه غلط فقط');
-      });
+      await walk.step(
+        'a09_code_burned',
+        'رمز غلط خمس مرات ثم الصحيح',
+        () async {
+          if (!walk.sees('ما وصلني الرمز')) {
+            walk.fail('ما طلب رمز واتساب');
+            return;
+          }
+          // Five wrong codes use the code up on the server; the right one
+          // then fails too, and the screen must say so, not «غلط» (J1-03).
+          for (var attempt = 0; attempt < 5; attempt++) {
+            await tester.enterText(
+              find.byType(EditableText).first,
+              '00000$attempt',
+            );
+            await walk.settle(seconds: 2.5);
+          }
+          await tester.enterText(find.byType(EditableText).first, devOtpCode);
+          await walk.settle(seconds: 3);
+          walk.note(walk.visibleTexts().take(12).join(' · '));
+          walk.expectSee(
+            'انتهى',
+            why: 'الرمز المستنفد يُقال إنه انتهى، لا إنه غلط فقط',
+          );
+        },
+      );
 
       await walk.step('a09_resend', 'أرسله مرة ثانية بعد العدّاد', () async {
         final resend = find.text('أرسله مرة ثانية');
@@ -184,7 +199,10 @@ void main() {
         await walk.tapText('البنود', required: false);
         // The row carries the item's name, and opens the item's page.
         walk.expectSee('قاعة أو مخدرة الرجال');
-        walk.expectSee('1 مليون', why: 'الاتفاق الجديد ظهر بمبلغه، لا اسم البند فقط');
+        walk.expectSee(
+          '1 مليون',
+          why: 'الاتفاق الجديد ظهر بمبلغه، لا اسم البند فقط',
+        );
       });
 
       await walk.step('c07_item', 'افتح البند', () async {
@@ -213,7 +231,7 @@ void main() {
         await walk.tapText('الملخص', required: false);
         walk.note(walk.visibleTexts().take(24).join(' · '));
         // D59: what is left on him is the agreement less what he paid.
-        walk.expectSee('عليك من العرس');
+        walk.expectSee('باقي عليك');
         walk.expectSee('750,000', why: 'الباقي عليه نزل بالدفعة كاملة');
       });
 

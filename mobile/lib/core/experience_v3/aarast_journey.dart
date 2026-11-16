@@ -2159,9 +2159,11 @@ class JourneyNote extends StatelessWidget {
           Expanded(
             child: Text(
               text,
+              // Critique ش4: a note in bold was louder than what it sits
+              // beside; its fill and icon already set it apart.
               style: JourneyType.of(
                 JourneyType.small,
-                weight: JourneyType.bold,
+                weight: FontWeight.w500,
                 color: color,
               ),
             ),

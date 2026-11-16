@@ -194,15 +194,19 @@ class _HomeTile extends StatelessWidget {
               ),
               const SizedBox(height: AarastV3Space.x2),
               // The share done as an arch, the count inside it. Without a
-              // share (no total yet) the arch is its empty track.
+              // share (no total yet, or a count of nothing, as the bookings)
+              // no arch: an empty track looked like a measure (critique ر3).
+              // The box stays, so the three counts sit on one line.
               SizedBox(
                 width: _archWidth,
                 height: _archHeight,
                 child: CustomPaint(
-                  painter: _ArchPainter(
-                    value: progress?.clamp(0.0, 1.0),
-                    color: color,
-                  ),
+                  painter: progress == null
+                      ? null
+                      : _ArchPainter(
+                          value: progress!.clamp(0.0, 1.0),
+                          color: color,
+                        ),
                   child: Align(
                     alignment: Alignment.bottomCenter,
                     child: MediaQuery.withNoTextScaling(

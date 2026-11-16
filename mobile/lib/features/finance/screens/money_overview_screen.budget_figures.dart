@@ -64,55 +64,67 @@ class _BudgetFigures extends StatelessWidget {
           danger: cell.danger,
         ),
     ];
+    // One line per figure, its label at the start and its figure at the
+    // end (Rashad, 2026-11-17): two columns at large text set each label
+    // over its figure, and the card took two thirds of the screen.
     Widget cell(({String label, String? figure, String? note, bool danger}) c) {
       final strong = JourneyType.of(
         JourneyType.bodySmall,
         weight: JourneyType.bold,
         color: c.danger ? AarastV3Color.dangerSoft : onColour,
       );
+      final label = c.label.endsWith('بـ')
+          ? c.label.substring(0, c.label.length - 2).trimRight()
+          : c.label;
       return MergeSemantics(
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text.rich(
-              TextSpan(
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextSpan(
-                    text: c.label.endsWith('بـ') ? c.label : '${c.label} ',
+                  Text(
+                    label,
                     style: c.danger
                         ? strong
                         : JourneyType.of(JourneyType.bodySmall, color: soft),
                   ),
-                  if (c.figure case final figure?)
-                    TextSpan(text: figure, style: strong),
+                  if (c.note case final note?)
+                    Text(
+                      note,
+                      style: JourneyType.of(JourneyType.small, color: soft),
+                    ),
                 ],
               ),
             ),
-            if (c.note case final note?)
-              Text(note, style: JourneyType.of(JourneyType.small, color: soft)),
+            if (c.figure case final figure?) ...[
+              const SizedBox(width: AarastV3Space.x3),
+              // Whole on its line; at the largest text it shrinks to fit
+              // rather than run off the card.
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(figure, style: strong),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       );
     }
 
-    final rows = <Widget>[];
-    for (var index = 0; index < cells.length; index += 2) {
-      if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x2));
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: cell(cells[index])),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: index + 1 < cells.length
-                  ? cell(cells[index + 1])
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      );
-    }
+    final rows = <Widget>[
+      for (final (index, c) in cells.indexed) ...[
+        if (index > 0) const SizedBox(height: AarastV3Space.x2),
+        cell(c),
+      ],
+    ];
     return Column(
       key: const ValueKey('money-share-budget'),
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -236,29 +236,40 @@ Future<void> _pump(
 
 void main() {
   final hero = find.byKey(const ValueKey('money-share-hero'));
-  Finder inHero(String text) =>
-      find.descendant(of: hero, matching: find.textContaining(text));
+  // The card read in order: since 2026-11-17 a figure's label and its figure
+  // are two texts on one line, so «الميزانية 7» is read across them.
+  Finder inHero(WidgetTester tester, String text) {
+    final texts = tester
+        .widgetList<Text>(
+          find.descendant(of: hero, matching: find.byType(Text)),
+        )
+        .map((t) => (t.data ?? '').replaceAll(' ', ' '))
+        .join(' ');
+    return texts.contains(text)
+        ? find.byKey(const ValueKey('money-share-hero'))
+        : find.byKey(const ValueKey('__absent__'));
+  }
 
   group('the top card reads complete', () {
     testWidgets('inside: what is on him, then the budget with the mahr in '
         'it', (tester) async {
       await _pump(tester, inside: true);
 
-      expect(inHero('باقي عليك'), findsOneWidget);
+      expect(inHero(tester, 'باقي عليك'), findsOneWidget);
       expect(
         tester
             .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
             .data,
         startsWith('1.5'),
       );
-      expect(inHero('الميزانية 7'), findsOneWidget);
-      expect(inHero('باقي منها 5'), findsOneWidget);
-      expect(inHero('اتفقت على 2'), findsOneWidget);
-      expect(inHero('منها المهر 2'), findsOneWidget);
-      expect(inHero('دفعت 500'), findsOneWidget);
-      expect(inHero('برّا الميزانية'), findsNothing);
+      expect(inHero(tester, 'الميزانية 7'), findsOneWidget);
+      expect(inHero(tester, 'باقي منها 5'), findsOneWidget);
+      // «منها المهر» is the note under «اتفقت على», its figure at the end.
+      expect(inHero(tester, 'اتفقت على منها المهر 2'), findsOneWidget);
+      expect(inHero(tester, 'دفعت 500'), findsOneWidget);
+      expect(inHero(tester, 'برّا الميزانية'), findsNothing);
       // No figure that is all mahr is called the wedding's.
-      expect(inHero('العرس'), findsNothing);
+      expect(inHero(tester, 'العرس'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -267,18 +278,18 @@ void main() {
     ) async {
       await _pump(tester, inside: false);
 
-      expect(inHero('باقي عليك'), findsOneWidget);
-      expect(inHero('الميزانية 7'), findsOneWidget);
-      expect(inHero('باقي منها 7'), findsOneWidget);
-      expect(inHero('اتفقت على 2'), findsOneWidget);
-      expect(inHero('منها المهر'), findsNothing);
+      expect(inHero(tester, 'باقي عليك'), findsOneWidget);
+      expect(inHero(tester, 'الميزانية 7'), findsOneWidget);
+      expect(inHero(tester, 'باقي منها 7'), findsOneWidget);
+      expect(inHero(tester, 'اتفقت على 2'), findsOneWidget);
+      expect(inHero(tester, 'منها المهر'), findsNothing);
       final line = find.byKey(const ValueKey('money-share-mahr-line'));
       expect(line, findsOneWidget);
       final words = tester.widget<Text>(line).data!;
       expect(words, contains('برّا الميزانية'));
       expect(words, contains('سلّمت 500'));
       expect(words, contains('وباقي 1.5'));
-      expect(inHero('العرس'), findsNothing);
+      expect(inHero(tester, 'العرس'), findsNothing);
     });
 
     testWidgets('320 wide at text scale 1.3, both modes', (tester) async {

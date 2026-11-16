@@ -417,7 +417,8 @@ void main() {
 
     await _pumpTab(tester, dashboard);
     expect(
-      find.text('ما أرسلنا عرضك المحفوظ لعادل: ألغى الطلب'),
+      // Critique ب4: the customer may be the bride.
+      find.text('ما أرسلنا عرضك المحفوظ لعادل: لغوا الطلب'),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('provider-dropped-offers-dismiss')));

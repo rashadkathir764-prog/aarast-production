@@ -64,7 +64,7 @@ class _ProviderDaySheet extends StatelessWidget {
         if (info.closed)
           JourneyButton(
             key: const Key('provider-day-open'),
-            label: 'افتح اليوم',
+            label: 'فتح اليوم',
             icon: LucideIcons.calendarPlus,
             background: AarastV3Color.paper,
             foreground: AarastV3Color.primary,

@@ -47,7 +47,7 @@ class ProviderShareScreen extends StatelessWidget {
                 AarastV3Space.x4,
               ),
               children: [
-                const JourneySubHeader(title: 'شارك ملفك'),
+                const JourneySubHeader(title: 'مشاركة ملفك'),
                 if (profile == null)
                   const JourneyListState(
                     phase: JourneyListPhase.loading,
@@ -61,7 +61,7 @@ class ProviderShareScreen extends StatelessWidget {
                       horizontal: AarastV3Space.x1,
                     ),
                     child: Text(
-                      'صوّر البطاقة وحطها في حالتك، أو أرسل كلامها في واتساب.',
+                      'البطاقة تنحط في حالتك صورة، أو كلامها ينرسل في واتساب.',
                       style: JourneyType.of(
                         JourneyType.small,
                         color: AarastV3Color.textMuted,
@@ -82,7 +82,7 @@ class ProviderShareScreen extends StatelessWidget {
               ),
               child: JourneyButton(
                 key: const Key('provider-share-whatsapp'),
-                label: 'أرسل في واتساب',
+                label: 'إرسال في واتساب',
                 icon: LucideIcons.messageCircle,
                 background: AarastV3Color.mint,
                 large: true,

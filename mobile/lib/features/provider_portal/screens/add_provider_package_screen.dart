@@ -113,9 +113,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   const AarastV3FocusPrompt(
-                    question: 'وش اللي تبي تجمعه في باقة وحدة؟',
+                    // Critique ب3: said for a provider of any gender.
+                    question: 'وش تجمع هذي الباقة؟',
                     supportingText:
-                        'ابدأ باسم واضح وسعر حقيقي، وأضف المميزات والخدمة لو تحتاج.',
+                        'اسم واضح وسعر حقيقي أول، وبعدها المميزات والخدمة لو لزم.',
                     icon: LucideIcons.package,
                   ),
                   if (_draft != null) ...[

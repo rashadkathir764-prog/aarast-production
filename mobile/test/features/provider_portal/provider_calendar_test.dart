@@ -280,7 +280,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('أضف خدماتك وأسعارك'), findsOneWidget);
+    expect(find.text('خدماتك وأسعارك'), findsOneWidget);
     await tester.tap(find.byKey(const Key('provider-profile-services')));
     await tester.pumpAndSettle();
     expect(find.text('خدماتك'), findsOneWidget);

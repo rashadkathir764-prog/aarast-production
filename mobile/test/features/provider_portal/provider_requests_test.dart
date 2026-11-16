@@ -123,7 +123,8 @@ void main() {
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
       expect(find.text('ينتظرونك'), findsOneWidget);
-      expect(find.text('3 طلبات ما رديت عليها'), findsOneWidget);
+      // Changed on purpose (critique ب3): said for any provider.
+      expect(find.text('3 طلبات تنتظر ردك'), findsOneWidget);
       // B-04: the first of them to end, as p13 draws it.
       expect(find.text('أقدمها من أمس · ينتهي بعد 6 أيام'), findsOneWidget);
 
@@ -244,8 +245,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('اللي ما كمّل، وليش'), findsOneWidget);
       expect(find.text('عرضك لعادل انتهى'), findsOneWidget);
-      expect(find.text('فهد اختار غيرك'), findsOneWidget);
-      expect(find.text('خالد المطري لغى الطلب'), findsOneWidget);
+      // Critique ب4: the customer may be the bride.
+      expect(find.text('فهد اختاروا غيرك'), findsOneWidget);
+      expect(find.text('خالد المطري لغوا الطلب'), findsOneWidget);
       expect(find.text('قبل ما ترد. ما عليك شيء.'), findsOneWidget);
       expect(find.textContaining('السبب'), findsNothing);
       expect(find.textContaining('بدون رد'), findsNothing);
@@ -336,7 +338,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('provider-quote-decline-quote-1')));
       await tester.pumpAndSettle();
-      expect(find.text('تعتذر من محمد؟'), findsOneWidget);
+      expect(find.text('اعتذار من محمد؟'), findsOneWidget);
       expect(find.text('ونقفل ليلة الخميس في تقويمك'), findsOneWidget);
 
       // Nothing is sent before a reason is picked.
@@ -487,8 +489,8 @@ void main() {
       expect(find.text('550,000 ر.ي · نسخة 1'), findsOneWidget);
       expect(find.textContaining('صالح لين'), findsOneWidget);
       expect(find.textContaining('باقي 8 أيام'), findsOneWidget);
-      expect(find.text('عدّل العرض'), findsOneWidget);
-      expect(find.text('اسحب العرض'), findsOneWidget);
+      expect(find.text('تعديل العرض'), findsOneWidget);
+      expect(find.text('سحب العرض'), findsOneWidget);
       expect(
         find.text(
           'التعديل يوصله نسخة 2 فيها «ايش تغيّر». والسحب يقفل العرض ويوصله سطر هادي.',
@@ -536,7 +538,7 @@ void main() {
         find.byKey(const Key('provider-request-withdrawn')),
         findsOneWidget,
       );
-      expect(find.textContaining('سحبت عرضك اليوم.'), findsOneWidget);
+      expect(find.textContaining('انسحب عرضك اليوم.'), findsOneWidget);
     });
   });
 
@@ -556,7 +558,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('طلب يحيى السنيدار انتهى بدون رد'), findsOneWidget);
       expect(
-        find.text('7 أيام ما رديت. هذا ينحسب في سرعة ردك.'),
+        find.text('7 أيام بلا رد منك، وهذا ينحسب في سرعة ردك.'),
         findsOneWidget,
       );
     });

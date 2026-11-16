@@ -106,7 +106,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-quick-offer-send'),
-          label: 'أرسل',
+          label: 'إرسال',
           icon: LucideIcons.send,
           expand: true,
           large: true,
@@ -149,7 +149,8 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
       setState(() {
         _busy = false;
         _error =
-            dashboard.errorMessage ?? 'ما قدرنا نرسل العرض. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نرسل العرض. مرة ثانية غالبًا تمشي.';
       });
       return;
     }

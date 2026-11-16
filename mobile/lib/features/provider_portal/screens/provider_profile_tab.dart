@@ -133,7 +133,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
             ? JourneyRoundButton(
                 key: const Key('provider-me-edit'),
                 icon: LucideIcons.pencil,
-                tooltip: 'عدّل ملفك',
+                tooltip: 'تعديل ملفك',
                 onPressed: _busy ? null : () => _openEdit(context),
               )
             : null,
@@ -273,7 +273,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                       await dashboard.updateDailyCapacity(value)
                       ? null
                       : dashboard.errorMessage ??
-                            'ما قدرنا نحفظ العدد. جرّب مرة ثانية.',
+                            'ما قدرنا نحفظ العدد. مرة ثانية غالبًا تمشي.',
                 ),
               ),
             ),
@@ -300,7 +300,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               icon: LucideIcons.share2,
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
-              title: 'شارك ملفك',
+              title: 'مشاركة ملفك',
               subtitle: 'بطاقة لحالة واتساب',
               onTap: () => context.push(AppRouter.providerShare),
             ),
@@ -334,7 +334,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
     final choice = await showJourneySheet<String>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'عدّل ملفك',
+        title: 'تعديل ملفك',
         children: [
           JourneyList(
             children: [
@@ -413,7 +413,10 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
       if (mounted) AarastToast.showError(context, error.message);
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرّب مرة ثانية.');
+        AarastToast.showError(
+          context,
+          'ما قدرنا نرفع الصورة، ومرة ثانية غالبًا تمشي.',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);

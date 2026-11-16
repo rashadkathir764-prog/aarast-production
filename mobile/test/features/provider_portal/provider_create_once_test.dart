@@ -87,7 +87,7 @@ void main() {
     expect(api.serviceEdits, isEmpty);
     expect(
       dashboard.errorMessage,
-      'ما قدرنا نقرأ خدمتك الحين. جرّب مرة ثانية.',
+      'ما قدرنا نقرأ خدمتك الحين. مرة ثانية غالبًا تمشي.',
     );
   });
 }

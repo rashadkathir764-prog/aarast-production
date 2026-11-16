@@ -124,7 +124,7 @@ String providerServicesLine(
   List<MarketplaceService> services,
   List<ProviderPackage> packages,
 ) {
-  if (services.isEmpty && packages.isEmpty) return 'أضف خدماتك وأسعارك';
+  if (services.isEmpty && packages.isEmpty) return 'خدماتك وأسعارك';
   num? lowest;
   for (final price in [
     for (final service in services)
@@ -427,7 +427,7 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
           const SizedBox(height: AarastV3Space.x2),
           const JourneyNote(
             text:
-                'الحجوزات اللي أكّدتها تبقى. بس ما تقدر تأكد زيادة في يوم مليان.',
+                'الحجوزات المؤكدة تبقى، بس اليوم المليان ما ينأكد فيه حجز زيادة.',
           ),
         ],
         const SizedBox(height: AarastV3Space.x3),

@@ -40,7 +40,7 @@ String portfolioErrorMessage(ApiException error) => switch (error.serverCode) {
     'صور «حفلات النساء» لازم تكون بدون وجوه.',
   'PORTFOLIO_WOMEN_ALBUM_NOT_SERVED' =>
     'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
-  'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرّب مرة ثانية.',
+  'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، وبعد التحديث تمشي.',
   'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
   _ => marketplaceErrorMessage(error.message),
 };
@@ -215,7 +215,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'طلب الاستلام يحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نرسل طلب الاستلام. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -230,21 +230,21 @@ class ProviderDashboardProvider extends ChangeNotifier
   Future<bool> resubmitApplication() => _lifecycleStep(
     () =>
         _api.resubmitApplication(latestDecisionId: _profile?.latestDecisionId),
-    fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
+    fallback: 'ما قدرنا نرسل التعديل. مرة ثانية غالبًا تمشي.',
   );
 
   /// «تعديل الملف وإعادة التقديم» (B-02): the refused profile opens for fixing,
   /// with the refusal's reason as its note.
   Future<bool> reopenApplication() => _lifecycleStep(
     _api.reopenApplication,
-    fallback: 'ما قدرنا نفتح ملفك للتعديل. جرّب مرة ثانية.',
+    fallback: 'ما قدرنا نفتح ملفك للتعديل. مرة ثانية غالبًا تمشي.',
   );
 
   /// Moves the profile to another category before approval (B-01); the
   /// service he joined with follows it.
   Future<bool> updateProfileCategory(String categoryId) => _lifecycleStep(
     () => _api.updateProfileCategory(categoryId),
-    fallback: 'ما قدرنا نغيّر القسم. جرّب مرة ثانية.',
+    fallback: 'ما قدرنا نغيّر القسم. مرة ثانية غالبًا تمشي.',
   );
 
   Future<bool> _lifecycleStep(
@@ -308,7 +308,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       if (joiningService == null && !_joiningServicesRead) {
         await _loadJoiningServices();
         if (!_joiningServicesRead) {
-          _errorMessage = 'ما قدرنا نقرأ خدمتك الحين. جرّب مرة ثانية.';
+          _errorMessage = 'ما قدرنا نقرأ خدمتك الحين. مرة ثانية غالبًا تمشي.';
           return false;
         }
       }
@@ -346,7 +346,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'خدمتك تحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نحفظ خدمتك. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -546,7 +546,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         } catch (_) {
           // Keep the last safe profile shell while operational data stays clear.
         }
-        _errorMessage = 'تغيّرت صلاحيتك كمزود. اسحب للتحديث.';
+        _errorMessage = 'تغيّرت صلاحيتك كمزود. السحب لتحت يحدّث الصفحة.';
         return;
       }
       final summary = results[0];
@@ -574,7 +574,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         final names = sectionErrors.join('، ');
         _errorMessage = _offline
             ? 'ما قدرنا نوصل، و$names ما لها نسخة في جوالك بعد.'
-            : 'ما قدرنا نجيب $names. اسحب للتحديث.';
+            : 'ما قدرنا نجيب $names. السحب لتحت يحدّث الصفحة.';
       }
     } on ApiException catch (error) {
       // What was read before stays on screen, with its time (p43).
@@ -837,7 +837,7 @@ class ProviderDashboardProvider extends ChangeNotifier
           : _said(error, 'طلبك يحتاج النت');
       return ProviderJoinResult.failed;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نرسل طلبك. مرة ثانية غالبًا تمشي.';
       return ProviderJoinResult.failed;
     } finally {
       _isSubmitting = false;
@@ -908,7 +908,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'ملفك يحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظ ملفك الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انحفظ ملفك الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -932,7 +932,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'صورة ملفك تحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظت الصورة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انحفظت الصورة الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -956,7 +956,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       _portfolioError = portfolioErrorMessage(error);
     } catch (_) {
-      _portfolioError = 'ما قدرنا نقرأ معرضك، جرّب مرة ثانية.';
+      _portfolioError = 'ما قدرنا نقرأ معرضك، ومرة ثانية غالبًا تمشي.';
     } finally {
       notifyListeners();
     }
@@ -990,7 +990,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _portfolioError = portfolioErrorMessage(error);
       return false;
     } catch (_) {
-      _portfolioError = 'ما انحفظ معرضك، جرّب مرة ثانية.';
+      _portfolioError = 'ما انحفظ معرضك، ومرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       notifyListeners();
@@ -1041,7 +1041,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'الخدمة الجديدة تحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما انضافت الخدمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انضافت الخدمة الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1122,7 +1122,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return false;
     } catch (_) {
-      _errorMessage = 'ما اتعدّلت الخدمة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما اتعدّلت الخدمة الحين. مرة ثانية غالبًا تمشي.';
       notifyListeners();
       return false;
     }
@@ -1169,7 +1169,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'الباقة الجديدة تحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما انضافت الباقة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انضافت الباقة الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1251,7 +1251,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       notifyListeners();
       return false;
     } catch (_) {
-      _errorMessage = 'ما اتعدّلت الباقة الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما اتعدّلت الباقة الحين. مرة ثانية غالبًا تمشي.';
       notifyListeners();
       return false;
     }
@@ -1308,7 +1308,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'حالة الطلب تحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما اتغيّرت حالة الطلب الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما اتغيّرت حالة الطلب الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1396,7 +1396,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'عرضك يحتاج النت');
       return ProviderOfferSend.failed;
     } catch (_) {
-      _errorMessage = 'ما انرسل عرضك الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انرسل عرضك الحين. مرة ثانية غالبًا تمشي.';
       return ProviderOfferSend.failed;
     } finally {
       _isSubmitting = false;
@@ -1441,7 +1441,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = refusal;
       return false;
     } catch (_) {
-      _errorMessage = 'ما اتعدّل العرض الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما اتعدّل العرض الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1464,7 +1464,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'سحب العرض يحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما قدرنا نسحب العرض. جرّب مرة ثانية.';
+      _errorMessage = 'ما قدرنا نسحب العرض. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1503,7 +1503,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = _said(error, 'ردك يحتاج النت');
       return false;
     } catch (_) {
-      _errorMessage = 'ما انرسل ردك الحين. جرّب مرة ثانية.';
+      _errorMessage = 'ما انرسل ردك الحين. مرة ثانية غالبًا تمشي.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -1522,7 +1522,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     return _bookingMutation(
       () =>
           _api.decideBooking(bookingId: bookingId, action: action, note: note),
-      fallback: 'ما اتحدّث الحجز الحين. جرّب مرة ثانية.',
+      fallback: 'ما اتحدّث الحجز الحين. مرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -1557,7 +1557,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         happened: happened,
         reason: reason,
       ),
-      fallback: 'ما قدرنا نسجّل. جرّب مرة ثانية.',
+      fallback: 'ما قدرنا نسجّل. مرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -1569,7 +1569,7 @@ class ProviderDashboardProvider extends ChangeNotifier
   }) async {
     return _bookingMutation(
       () => _api.deliverBooking(bookingId: bookingId, link: link, note: note),
-      fallback: 'ما قدرنا نسجّل التسليم. جرّب مرة ثانية.',
+      fallback: 'ما قدرنا نسجّل التسليم. مرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -1585,7 +1585,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         accept: accept,
         reason: reason,
       ),
-      fallback: 'ما قدرنا نحفظ ردك. جرّب مرة ثانية.',
+      fallback: 'ما قدرنا نحفظ ردك. مرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -1593,7 +1593,7 @@ class ProviderDashboardProvider extends ChangeNotifier
   /// keeps the bookings he has; the calendar reads it at once.
   Future<bool> updateDailyCapacity(int capacity) => _lifecycleStep(
     () => _api.updateDailyBookingCapacity(capacity),
-    fallback: 'ما قدرنا نحفظ العدد. جرّب مرة ثانية.',
+    fallback: 'ما قدرنا نحفظ العدد. مرة ثانية غالبًا تمشي.',
   );
 
   /// p47 (B-18): the month he reads, by `YYYY-MM`, once loaded.
@@ -1611,7 +1611,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       _ledgerError = _said(error, 'حساباتك تحتاج النت');
     } catch (_) {
-      _ledgerError = 'ما قدرنا نقرأ حساباتك. جرّب مرة ثانية.';
+      _ledgerError = 'ما قدرنا نقرأ حساباتك. مرة ثانية غالبًا تمشي.';
     }
     notifyListeners();
   }
@@ -1620,14 +1620,14 @@ class ProviderDashboardProvider extends ChangeNotifier
     return _calendarMutation(() async {
       await _api.blockDate(day);
       _blockedDates = await _api.getBlockedDates();
-    }, fallback: 'ما انقفل اليوم الحين. جرّب مرة ثانية.');
+    }, fallback: 'ما انقفل اليوم الحين. مرة ثانية غالبًا تمشي.');
   }
 
   Future<bool> unblockDate(DateTime day) {
     return _calendarMutation(() async {
       await _api.unblockDate(day);
       _blockedDates = await _api.getBlockedDates();
-    }, fallback: 'ما انفتح اليوم الحين. جرّب مرة ثانية.');
+    }, fallback: 'ما انفتح اليوم الحين. مرة ثانية غالبًا تمشي.');
   }
 
   Future<bool> _calendarMutation(
@@ -1679,7 +1679,7 @@ String _said(ApiException error, String needs) => error.isNetworkFailure
 /// sentences («المزوّد محجوز… اختر يوم ثاني») were said to the provider
 /// taking a new day. Null leaves the refusal to [_said].
 String? providerBookingErrorMessage(String? code) => switch (code) {
-  'BOOKING_DATE_UNAVAILABLE' => 'هذا اليوم مقفول عندك. افتحه من التقويم أول.',
+  'BOOKING_DATE_UNAVAILABLE' => 'هذا اليوم مقفول عندك. يتفتح من التقويم أول.',
   'BOOKING_DAY_FULL' => 'يومك هذا مليان بحجوزات مؤكدة على قد طاقتك.',
   'BOOKING_DATE_HAS_BOOKING' => 'عندك حجز مؤكد في هذا اليوم.',
   'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى.',

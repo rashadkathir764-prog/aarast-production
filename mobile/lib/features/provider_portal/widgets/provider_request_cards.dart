@@ -198,8 +198,8 @@ class ProviderEndedCard extends StatelessWidget {
         'عرضك ل$name انتهى',
         switch (quote.expiredOffer?.validUntil) {
           final until? =>
-            'ما رد قبل ${formatArabicDayMonth(until.toLocal())}. تجدده بنفس السعر أو بسعر جديد.',
-          null => 'ما رد قبل ما ينتهي. تجدده بنفس السعر أو بسعر جديد.',
+            'ما جا رد قبل ${formatArabicDayMonth(until.toLocal())}. التجديد بنفس السعر أو بسعر جديد.',
+          null => 'ما جا رد قبل ما ينتهي. التجديد بنفس السعر أو بسعر جديد.',
         },
       ),
       ProviderCaseState.notChosen => (
@@ -208,8 +208,10 @@ class ProviderEndedCard extends StatelessWidget {
         AarastV3Color.dangerSoft,
         quote.customerRejectReason == 'CHOSE_OTHER' ||
                 quote.customerRejectReason == null
-            ? '$name اختار غيرك'
-            : '$name ما قبل عرضك',
+            // Critique ب4: the customer may be the bride; said of «them»,
+            // as the couple's side says of a provider.
+            ? '$name اختاروا غيرك'
+            : '$name ما قبلوا عرضك',
         // B-11: his reason, when he gave one; never his budget.
         '${[changed == null ? 'رفض عرضك' : 'رفض عرضك ${providerDayLabel(changed)}', ?_rejectReasonWords(quote.customerRejectReason)].join('. ')}.',
       ),
@@ -226,7 +228,7 @@ class ProviderEndedCard extends StatelessWidget {
         LucideIcons.ban,
         AarastV3Color.textMuted,
         AarastV3Color.line,
-        '$name لغى الطلب',
+        '$name لغوا الطلب',
         'قبل ما ترد. ما عليك شيء.',
       ),
       // p20, B-04: an unanswered request counts against the reply rate.
@@ -235,7 +237,7 @@ class ProviderEndedCard extends StatelessWidget {
         AarastV3Color.danger,
         AarastV3Color.dangerSoft,
         'طلب $name انتهى بدون رد',
-        '7 أيام ما رديت. هذا ينحسب في سرعة ردك.',
+        '7 أيام بلا رد منك، وهذا ينحسب في سرعة ردك.',
       ),
       ProviderCaseState.bookingDeclined => (
         LucideIcons.calendarX,
@@ -289,7 +291,7 @@ class ProviderEndedCard extends StatelessWidget {
                     const SizedBox(height: AarastV3Space.x2),
                     JourneyButton(
                       key: Key('provider-offer-renew-${quote.id}'),
-                      label: 'جدّد العرض',
+                      label: 'تجديد العرض',
                       background: AarastV3Color.primarySoft,
                       foreground: AarastV3Color.primary,
                       onPressed: renew,

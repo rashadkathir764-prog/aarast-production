@@ -106,7 +106,8 @@ void main() {
     // his own words now.
     expect(
       dashboard.errorMessage,
-      'هذا اليوم مقفول عندك. افتحه من التقويم أول.',
+      // Changed on purpose (critique ب3): said for any provider.
+      'هذا اليوم مقفول عندك. يتفتح من التقويم أول.',
     );
   });
 
@@ -184,7 +185,7 @@ void main() {
         ),
       );
 
-      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+      expect(find.text('خدمة بسعرها'), findsOneWidget);
       expect(find.text('ملفك ما يظهر في الدليل قبل أول خدمة'), findsOneWidget);
     },
   );

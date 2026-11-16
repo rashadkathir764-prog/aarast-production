@@ -107,7 +107,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
                 ),
                 IconButton(
                   key: Key('provider-offer-line-remove-$index'),
-                  tooltip: 'شيل السطر',
+                  tooltip: 'إزالة السطر',
                   icon: const Icon(LucideIcons.x, size: 18),
                   onPressed: () => widget.onChanged([
                     for (var i = 0; i < widget.lines.length; i++)
@@ -161,7 +161,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
           alignment: AlignmentDirectional.centerStart,
           child: JourneyTextAction(
             key: const Key('provider-offer-line-add'),
-            label: 'أضف السطر',
+            label: 'إضافة السطر',
             icon: LucideIcons.plus,
             onPressed: _add,
           ),

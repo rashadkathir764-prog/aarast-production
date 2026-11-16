@@ -35,38 +35,38 @@ class ProviderFirstSteps extends StatelessWidget {
         _Step(
           key: const Key('provider-first-service'),
           icon: LucideIcons.package,
-          title: 'أضف خدمة بسعرها',
+          title: 'خدمة بسعرها',
           subtitle: 'ملفك ما يظهر في الدليل قبل أول خدمة',
-          action: 'أضف',
+          action: 'إضافة',
           onTap: () => context.push(AppRouter.providerServiceNew),
         ),
       if (dashboard.services.isNotEmpty)
         _Step(
           key: const Key('provider-first-photos'),
           icon: LucideIcons.image,
-          title: 'أضف صور من شغلك',
+          title: 'صور من شغلك',
           subtitle: photos == 0
               ? 'ملفك ما فيه صور لسا'
               : 'عندك ${arabicCount(photos, one: 'صورة وحدة', two: 'صورتين', few: 'صور', many: 'صورة')} في ملفك',
-          action: 'أضف',
+          action: 'إضافة',
           onTap: () => context.push(AppRouter.providerGallery),
         ),
       if (profile?.logoUrl?.trim().isNotEmpty != true)
         _Step(
           key: const Key('provider-first-logo'),
           icon: LucideIcons.store,
-          title: 'أضف شعارك',
+          title: 'شعارك',
           subtitle: 'يطلع جنب اسمك للعرسان',
-          action: 'أضف',
+          action: 'إضافة',
           onTap: onOpenProfile,
         ),
       if (profile?.description?.trim().isNotEmpty != true)
         _Step(
           key: const Key('provider-first-about'),
           icon: LucideIcons.fileEdit,
-          title: 'اكتب نبذة عن شغلك',
+          title: 'نبذة عن شغلك',
           subtitle: 'تظهر في ملفك للعرسان',
-          action: 'اكتب',
+          action: 'كتابة',
           onTap: () => context.push(AppRouter.providerProfileEdit),
         ),
     ];
@@ -94,7 +94,7 @@ class ProviderFirstSteps extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x1),
         Text(
           steps.isEmpty
-              ? 'أول ما يطلب منك عريس عرض، يوصلك هنا.'
+              ? 'أول ما يوصلك طلب عرض من عريس أو عروسة، يطلع هنا.'
               : 'هذا اللي يكمّل ملفك قدام العرسان:',
           textAlign: TextAlign.center,
           style: JourneyType.of(

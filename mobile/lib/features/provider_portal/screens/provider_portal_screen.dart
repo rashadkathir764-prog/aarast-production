@@ -267,7 +267,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   Future<void> _resubmit() async {
     final sent = await _step(
       (dashboard) => dashboard.resubmitApplication(),
-      fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
+      fallback: 'ما قدرنا نرسل التعديل. مرة ثانية غالبًا تمشي.',
     );
     if (!mounted || !sent) return;
     AarastToast.showSuccess(context, 'وصلنا تعديلك. نراجعه ونبلغك هنا.');
@@ -278,7 +278,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     unawaited(
       _step(
         (dashboard) => dashboard.reopenApplication(),
-        fallback: 'ما قدرنا نفتح ملفك للتعديل. جرّب مرة ثانية.',
+        fallback: 'ما قدرنا نفتح ملفك للتعديل. مرة ثانية غالبًا تمشي.',
       ),
     );
   }
@@ -314,7 +314,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     final service = context.read<ProviderDashboardProvider>().joiningService;
     final picked = await providerPickOption(
       context,
-      title: 'ايش تبي تعدّل؟',
+      title: 'ايش يتعدّل؟',
       keyPrefix: 'provider-pending-edit-option',
       options: [
         ('profile', 'بيانات ملفك'),
@@ -354,7 +354,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     if (picked == null || picked == current || !mounted) return;
     await _step(
       (dashboard) => dashboard.updateProfileCategory(picked),
-      fallback: 'ما قدرنا نغيّر القسم. جرّب مرة ثانية.',
+      fallback: 'ما قدرنا نغيّر القسم. مرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -376,7 +376,8 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
         );
         return saved
             ? null
-            : dashboard.errorMessage ?? 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
+            : dashboard.errorMessage ??
+                  'ما قدرنا نحفظ خدمتك. مرة ثانية غالبًا تمشي.';
       },
     );
   }
@@ -406,10 +407,7 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const copy = (
-      'عمليات المزود مو متاحة',
-      'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
-    );
+    const copy = ('حسابك كمزود مو متاح الحين', 'السحب لتحت يحدّث حالة حسابك.');
     return RefreshIndicator(
       color: AarastV3Color.primary,
       onRefresh: context.read<ProviderDashboardProvider>().loadDashboard,
@@ -430,7 +428,7 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('provider-operations-support'),
-            label: 'تواصل مع الدعم',
+            label: 'التواصل مع الدعم',
             icon: LucideIcons.lifeBuoy,
             background: AarastV3Color.primarySoft,
             foreground: AarastV3Color.primary,

@@ -60,7 +60,8 @@ class ProviderChatsTab extends StatelessWidget {
               section: JourneySection.home,
               emptyIcon: LucideIcons.messageCircle,
               emptyTitle: 'ما فيه محادثات لسا',
-              emptyMessage: 'أول ما يطلب منك عريس عرض، تبدأ محادثتكم هنا.',
+              emptyMessage:
+                  'أول ما يوصلك طلب عرض من عريس أو عروسة، تبدأ محادثتكم هنا.',
             )
           else
             JourneyList(

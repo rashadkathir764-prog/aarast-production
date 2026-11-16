@@ -144,7 +144,7 @@ void main() {
         find.byKey(const Key('provider-booking-decline-booking-1')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('تعتذر من محمد؟'), findsOne);
+      expect(find.text('اعتذار من محمد؟'), findsOne);
       await tester.enterText(
         find.byKey(const Key('provider-booking-reason')),
         'عندنا ارتباط',

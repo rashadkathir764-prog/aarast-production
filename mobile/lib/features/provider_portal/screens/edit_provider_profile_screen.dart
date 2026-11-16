@@ -118,8 +118,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             AarastEmptyState(
               icon: LucideIcons.store,
               title: 'ما في ملف مزود',
-              message:
-                  'أرسل طلب الانضمام أول، وبعدها تقدر تعدّل بيانات المزود.',
+              message: 'تعديل بيانات المزود يصير بعد إرسال طلب الانضمام.',
               action: FilledButton.icon(
                 onPressed: () => context.go(AppRouter.providerApply),
                 icon: const Icon(LucideIcons.contact),
@@ -337,7 +336,7 @@ class _LockedCategoryNote extends StatelessWidget {
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
-              'فئة الخدمة الحالية: $categoryName. تغيير الفئة ما يصير من هنا، كلّم الدعم لو تحتاج تغييرها.',
+              'فئة الخدمة الحالية: $categoryName. تغيير الفئة ما يصير من هنا، يصير عن طريق الدعم.',
               textAlign: TextAlign.right,
               style: const TextStyle(
                 color: AppTheme.textPrimary,
@@ -360,7 +359,7 @@ class _ReferenceDataWarning extends StatelessWidget {
     return const AarastCard(
       color: AppTheme.brandMuted,
       child: Text(
-        'ما قدرنا نجيب المدن. جرّب مرة ثانية.',
+        'ما قدرنا نجيب المدن. مرة ثانية غالبًا تمشي.',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
       ),

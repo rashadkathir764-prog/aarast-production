@@ -68,7 +68,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('طلبك قيد المراجعة'), findsOneWidget);
-        expect(find.text('عدّل طلبك'), findsOneWidget);
+        expect(find.text('تعديل طلبك'), findsOneWidget);
         expect(find.text('فتح المزودين'), findsNothing);
         expect(find.byType(OutlinedButton), findsNothing);
       },

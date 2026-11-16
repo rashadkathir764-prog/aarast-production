@@ -205,7 +205,7 @@ ProviderNoticeLook providerNoticeLook(
         color: AarastV3Color.primary,
         soft: AarastV3Color.primarySoft,
         title: 'رسالة جديدة',
-        subtitle: 'افتح المحادثة',
+        subtitle: 'فتح المحادثة',
       );
     // p42 «تقييم جديد · 4 نجوم من محمد»: the server's words, as drawn.
     case 'REVIEW_RECEIVED':

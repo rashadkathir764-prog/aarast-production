@@ -219,7 +219,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                     )
                   : JourneyButton(
                       key: const ValueKey('provider-apply-send'),
-                      label: 'أرسل للمراجعة',
+                      label: 'إرسال للمراجعة',
                       icon: LucideIcons.send,
                       expand: true,
                       large: true,
@@ -438,7 +438,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     return [
       const SizedBox(height: AarastV3Space.x2),
       const JourneyNote(
-        text: 'ما قدرنا نجيب المدن والأقسام. تأكد من النت.',
+        text: 'ما قدرنا نجيب المدن والأقسام. يمكن النت مقطوع.',
         icon: LucideIcons.wifiOff,
         color: AarastV3Color.danger,
         soft: AarastV3Color.dangerSoft,
@@ -552,7 +552,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     if (!mounted) return;
     final phone = context.read<AuthController>().user?.phone?.trim() ?? '';
     if (phone.isEmpty) {
-      setState(() => _sendError = 'ما لقينا رقم حسابك. سجّل دخولك من جديد.');
+      setState(() => _sendError = 'ما لقينا رقم حسابك. الدخول من جديد يحلّها.');
       return;
     }
     _joining = true;
@@ -572,7 +572,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         setState(() {
           _joining = false;
           _sendError =
-              dashboard.errorMessage ?? 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';
+              dashboard.errorMessage ??
+              'ما قدرنا نرسل طلبك. مرة ثانية غالبًا تمشي.';
         });
       case ProviderJoinResult.listingClaimable:
         setState(() => _joining = false);
@@ -603,7 +604,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       setState(() {
         _claimError =
             dashboard.errorMessage ??
-            'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
+            'ما قدرنا نرسل طلب الاستلام. مرة ثانية غالبًا تمشي.';
       });
       return;
     }

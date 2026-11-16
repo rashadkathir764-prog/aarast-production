@@ -70,7 +70,8 @@ void main() {
 
       await tester.tap(find.byKey(const Key('provider-quote-decline-quote-1')));
       await tester.pumpAndSettle();
-      expect(find.text('تعتذر من أحمد؟'), findsOneWidget);
+      // Changed on purpose (critique ب3): no verb to the provider.
+      expect(find.text('اعتذار من أحمد؟'), findsOneWidget);
       expect(api.statusUpdates, ['quote-1:VIEWED']);
 
       await tester.tap(find.byKey(const Key('provider-decline-other')));
@@ -109,7 +110,7 @@ void main() {
         find.byKey(const Key('provider-quote-decline-quote-1')),
         findsNothing,
       );
-      expect(find.text('عدّل العرض'), findsOneWidget);
+      expect(find.text('تعديل العرض'), findsOneWidget);
     });
 
     testWidgets('opening a new request tells the customer it was seen, once', (
@@ -184,7 +185,7 @@ void main() {
       await tester.pumpAndSettle();
       await _openRequest(tester);
 
-      expect(find.text('جدّد العرض'), findsOneWidget);
+      expect(find.text('تجديد العرض'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-offer-open-quote-1')));
       await tester.pumpAndSettle();
       expect(
@@ -436,12 +437,12 @@ void main() {
         final api = _PortalApi(status: status);
         await _pumpPortalTab(tester, api, const ProviderProfileTab());
         // p35 (D40): details, logo and cover sit behind «عدّل ملفك».
-        expect(find.byTooltip('عدّل ملفك'), findsNothing, reason: status);
+        expect(find.byTooltip('تعديل ملفك'), findsNothing, reason: status);
       }
 
       await _pumpPortalTab(tester, _PortalApi(), const ProviderProfileTab());
-      expect(find.byTooltip('عدّل ملفك'), findsOneWidget);
-      await tester.tap(find.byTooltip('عدّل ملفك'));
+      expect(find.byTooltip('تعديل ملفك'), findsOneWidget);
+      await tester.tap(find.byTooltip('تعديل ملفك'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('provider-me-edit-details')), findsOne);
       expect(find.byKey(const Key('provider-me-edit-logo')), findsOne);
@@ -456,11 +457,9 @@ void main() {
       final api = _PortalApi(denyOperations: true);
       await _pumpPortal(tester, api, initialTab: 'requests');
 
-      expect(find.text('عمليات المزود مو متاحة'), findsOneWidget);
-      expect(
-        find.text('اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.'),
-        findsOneWidget,
-      );
+      // Changed on purpose (critique ب6): people's words.
+      expect(find.text('حسابك كمزود مو متاح الحين'), findsOneWidget);
+      expect(find.text('السحب لتحت يحدّث حالة حسابك.'), findsOneWidget);
       expect(
         find.byKey(const Key('provider-operations-support')),
         findsOneWidget,

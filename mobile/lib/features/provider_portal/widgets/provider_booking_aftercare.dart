@@ -40,7 +40,8 @@ class ProviderBookingAftercare extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$customerFirstName غيّر موعد العرس',
+                // Critique ب4: the customer may be the bride.
+                'موعد عرس $customerFirstName تغيّر',
                 style: JourneyType.of(
                   JourneyType.body,
                   weight: JourneyType.bold,
@@ -59,7 +60,7 @@ class ProviderBookingAftercare extends StatelessWidget {
                   Expanded(
                     child: JourneyButton(
                       key: const Key('provider-booking-change-accept'),
-                      label: 'ثبّت الموعد الجديد',
+                      label: 'تثبيت الموعد الجديد',
                       expand: true,
                       onPressed: () => _decideChange(context, accept: true),
                     ),
@@ -282,7 +283,10 @@ class ProviderBookingAftercare extends StatelessWidget {
       AarastToast.showSuccess(context, success);
       Navigator.of(context).maybePop();
     } else {
-      AarastToast.showError(context, error ?? 'ما قدرنا نحفظ. جرّب مرة ثانية.');
+      AarastToast.showError(
+        context,
+        error ?? 'ما قدرنا نحفظ. مرة ثانية غالبًا تمشي.',
+      );
     }
   }
 }
@@ -347,7 +351,7 @@ class _TextSheetState extends State<_TextSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-aftercare-send'),
-          label: 'أرسل',
+          label: 'إرسال',
           expand: true,
           large: true,
           onPressed: () {

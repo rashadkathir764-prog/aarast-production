@@ -396,7 +396,7 @@ void main() {
       expect(find.text('آخر 30 يوم'), findsOneWidget);
       expect(find.textContaining('تيك توك'), findsNothing);
       expect(find.textContaining('فرق'), findsNothing);
-      expect(find.textContaining('ما رديت عليه'), findsNothing);
+      expect(find.textContaining('ينتظر ردك'), findsNothing);
 
       for (final (key, path) in [
         ('provider-profile-services', '/provider/services'),
@@ -778,7 +778,7 @@ void main() {
         find.text('تنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'),
         findsOneWidget,
       );
-      expect(find.text('افتح خطة عرسي'), findsOneWidget);
+      expect(find.text('خطة عرسي'), findsOneWidget);
       expect(find.text('عندك حجزين جاية، الغها قبل ما تحذف'), findsOneWidget);
       for (final dropped in [
         'رقمك يظهر للعرسان',
@@ -866,9 +866,11 @@ void main() {
 
       expect(find.text('ما وصلك طلب لسا'), findsOneWidget);
       expect(find.text('هذا اللي يكمّل ملفك قدام العرسان:'), findsOneWidget);
-      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
-      expect(find.text('أضف شعارك'), findsOneWidget);
-      expect(find.text('اكتب نبذة عن شغلك'), findsOneWidget);
+      expect(find.text('خدمة بسعرها'), findsOneWidget);
+      expect(find.text('شعارك'), findsOneWidget);
+      // Changed on purpose (critique ب3): the steps named, said for any
+      // provider.
+      expect(find.text('نبذة عن شغلك'), findsOneWidget);
       expect(find.text('انفتح ملفك 14 مرة في آخر 30 يوم'), findsOneWidget);
       expect(find.textContaining('وثّق'), findsNothing);
       expect(find.textContaining('شارك'), findsNothing);

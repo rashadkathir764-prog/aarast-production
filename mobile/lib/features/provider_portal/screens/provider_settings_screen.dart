@@ -106,8 +106,8 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   icon: LucideIcons.repeat,
                   color: AarastV3Color.primary,
                   soft: AarastV3Color.primarySoft,
-                  title: 'افتح خطة عرسي',
-                  subtitle: 'نفس الرقم، مسار ثاني',
+                  title: 'خطة عرسي',
+                  subtitle: 'بنفس الرقم',
                   onTap: _working ? null : _confirmExitWorkspace,
                 ),
                 JourneyListRow(
@@ -162,7 +162,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     if (before != null) settings.updateDraft(before);
     AarastToast.showError(
       context,
-      settings.errorMessage ?? 'ما قدرنا نحفظ، جرّب مرة ثانية.',
+      settings.errorMessage ?? 'ما قدرنا نحفظ، ومرة ثانية غالبًا تمشي.',
     );
   }
 
@@ -208,7 +208,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     try {
       error = await action();
     } on Object {
-      error = 'ما قدرنا نكمّل، جرّب مرة ثانية.';
+      error = 'ما قدرنا نكمّل، ومرة ثانية غالبًا تمشي.';
     }
     if (!mounted) return;
     setState(() {
@@ -219,9 +219,10 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
   Future<void> _confirmExitWorkspace() async {
     final ok = await _confirm(
-      title: 'تفتح خطة عرسك؟',
-      subtitle: 'تطلع من حساب المزود لاختيار المسار، وتبقى مسجّل.',
-      action: 'افتح المسارات',
+      // Critique ب6: no «المسار»; said for any provider.
+      title: 'فتح خطة عرسك؟',
+      subtitle: 'حساب المزود يتسكّر، والدخول باقي بنفس الرقم.',
+      action: 'فتح خطة عرسي',
       actionKey: const Key('provider-exit-workspace-confirm'),
     );
     if (!ok) return;

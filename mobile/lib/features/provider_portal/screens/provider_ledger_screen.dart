@@ -150,7 +150,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
                         if (booking.money case final money?)
                           'الباقي ${providerMoneyLabel(money.left, money.currency)}'
                         else
-                          'ما سجّل اتفاق',
+                          'ما في اتفاق مسجّل',
                       ].join(' · '),
                       onTap: () => context.push(
                         AppRouter.providerRequest(booking.quoteRequestId),

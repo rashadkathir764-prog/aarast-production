@@ -203,10 +203,11 @@ class _WaitingHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = waiting.length;
     final headline = switch (count) {
-      1 => 'طلب ما رديت عليه',
-      2 => 'طلبين ما رديت عليهم',
-      <= 10 => '$count طلبات ما رديت عليها',
-      _ => '$count طلب ما رديت عليها',
+      // Critique ب3: said for a provider of any gender.
+      1 => 'طلب ينتظر ردك',
+      2 => 'طلبين ينتظرون ردك',
+      <= 10 => '$count طلبات تنتظر ردك',
+      _ => '$count طلب ينتظر ردك',
     };
     final dates = [for (final quote in waiting) ?quote.createdAt]..sort();
     // B-04: the first of them to end, «ينتهي بعد 6 أيام».
@@ -258,7 +259,7 @@ class _WaitingHero extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x3),
           JourneyButton(
             key: const Key('provider-home-answer'),
-            label: 'ردّ الآن',
+            label: 'الرد الحين',
             background: AarastV3Color.paper,
             foreground: AarastV3Color.primary,
             large: true,
@@ -368,7 +369,7 @@ class _BookingAsked extends StatelessWidget {
           const SizedBox(width: AarastV3Space.x2),
           JourneyButton(
             key: Key('provider-home-confirm-${booking.id}'),
-            label: 'أكّد',
+            label: 'تأكيد',
             background: AarastV3Color.brandAccentSoft,
             foreground: AarastV3Color.brandAccentStrong,
             onPressed: open,
@@ -387,8 +388,9 @@ class _ProviderLifecycleNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const title = 'شغل المزود موقوف الآن';
-    const message = 'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.';
+    // Critique ب6, ب9: people's words, said for any provider.
+    const title = 'حسابك كمزود موقوف الحين';
+    const message = 'السحب لتحت يحدّث حالة حسابك.';
     return JourneyBox(
       key: const Key('provider-lifecycle-notice'),
       child: Column(
@@ -426,7 +428,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton(
             key: const Key('provider-lifecycle-support'),
-            label: 'تواصل مع الدعم',
+            label: 'التواصل مع الدعم',
             icon: LucideIcons.lifeBuoy,
             background: AarastV3Color.primarySoft,
             foreground: AarastV3Color.primary,

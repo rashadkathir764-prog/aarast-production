@@ -45,9 +45,11 @@ class AccountContextController extends ChangeNotifier {
 
   static const _contextChangedNotice =
       'تغيّر اللي مفتوح لك، وحدّثناه عشان نحمي بياناتك.';
-  static const _genericLoadFailure = 'ما قدرنا نفتح حسابك. جرّب مرة ثانية.';
+  // Critique ط2, ب6: for any reader, without «المسار».
+  static const _genericLoadFailure =
+      'ما قدرنا نفتح حسابك. مرة ثانية غالبًا تمشي.';
   static const _genericSelectionFailure =
-      'ما قدرنا نفتح المسار اللي اخترته. جرّب مرة ثانية.';
+      'ما قدرنا نفتح اللي اخترته. مرة ثانية غالبًا تمشي.';
   static const _offlineNotice =
       'أنت بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
   static const _offlineLoadFailure = 'ما وصلنا. لما يرجع النت تمشي.';

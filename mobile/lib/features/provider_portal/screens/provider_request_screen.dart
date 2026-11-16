@@ -231,7 +231,7 @@ class _NewRequest extends StatelessWidget {
                 Expanded(
                   child: JourneyButton(
                     key: const Key('provider-request-offer'),
-                    label: 'أرسل عرض',
+                    label: 'إرسال عرض',
                     expand: true,
                     large: true,
                     onPressed: () =>
@@ -241,7 +241,7 @@ class _NewRequest extends StatelessWidget {
                 const SizedBox(width: AarastV3Space.x2),
                 JourneyButton(
                   key: Key('provider-quote-decline-${quote.id}'),
-                  label: 'اعتذر',
+                  label: 'اعتذار',
                   background: AarastV3Color.paper,
                   foreground: AarastV3Color.textMuted,
                   large: true,
@@ -261,7 +261,7 @@ class _NewRequest extends StatelessWidget {
     final until = expiresAt == null
         ? ''
         : ' قبل ${formatArabicDayMonth(expiresAt.toLocal())}';
-    return 'سحبت عرضك$when. أرسل عرض جديد أو اعتذر$until.';
+    return 'انسحب عرضك$when. الباب مفتوح لعرض جديد أو اعتذار$until.';
   }
 
   /// The line under p16's facts, naming only what he does not have.
@@ -394,7 +394,7 @@ class _Answered extends StatelessWidget {
                 Expanded(
                   child: JourneyButton(
                     key: Key('provider-offer-open-${quote.id}'),
-                    label: renew ? 'جدّد العرض' : 'عدّل العرض',
+                    label: renew ? 'تجديد العرض' : 'تعديل العرض',
                     icon: renew ? LucideIcons.refreshCw : LucideIcons.pencil,
                     background: AarastV3Color.primarySoft,
                     foreground: AarastV3Color.primary,
@@ -408,7 +408,7 @@ class _Answered extends StatelessWidget {
                 Expanded(
                   child: JourneyButton(
                     key: Key('provider-offer-withdraw-${quote.id}'),
-                    label: 'اسحب العرض',
+                    label: 'سحب العرض',
                     background: AarastV3Color.paper,
                     foreground: AarastV3Color.danger,
                     expand: true,
@@ -432,7 +432,7 @@ class _Answered extends StatelessWidget {
             const SizedBox(height: AarastV3Space.x3),
             JourneyButton(
               key: Key('provider-booking-open-${booking.id}'),
-              label: 'أكّد الحجز',
+              label: 'تأكيد الحجز',
               icon: LucideIcons.calendarCheck,
               expand: true,
               large: true,

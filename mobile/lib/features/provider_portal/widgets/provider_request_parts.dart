@@ -447,7 +447,7 @@ String providerDroppedOfferLine(ProviderDroppedOffer dropped, String name) {
     ProviderOfferDropReason.requestGone => 'الطلب ما عاد في قائمتك',
     ProviderOfferDropReason.alreadyAnswered => 'الطلب عليه عرض منك من قبل',
     ProviderOfferDropReason.expired => 'انتهت مدة الرد قبل ما يرجع النت',
-    ProviderOfferDropReason.cancelled => 'ألغى الطلب',
+    ProviderOfferDropReason.cancelled => 'لغوا الطلب',
     ProviderOfferDropReason.declined => 'اعتذرت عن الطلب',
     ProviderOfferDropReason.closed => 'الطلب ما عاد ينتظر ردك',
     ProviderOfferDropReason.refused =>

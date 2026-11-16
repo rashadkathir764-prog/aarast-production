@@ -91,7 +91,7 @@ class ProviderClaimScreen extends StatelessWidget {
                   JourneyNote(
                     key: const Key('provider-claim-refusal'),
                     text: refusal.trim().isEmpty
-                        ? 'ما قبلنا طلب الاستلام اللي قبل. تقدر ترسله من جديد.'
+                        ? 'ما قبلنا طلب الاستلام اللي قبل، وإرساله من جديد ممكن.'
                         : 'ما قبلنا الاستلام: ${refusal.trim()}',
                     icon: LucideIcons.messageSquare,
                     color: AarastV3Color.danger,

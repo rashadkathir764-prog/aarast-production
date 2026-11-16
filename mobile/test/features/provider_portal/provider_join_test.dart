@@ -175,14 +175,14 @@ void main() {
     final harness = await _Harness.pump(tester, referenceFails: true);
 
     expect(
-      find.text('ما قدرنا نجيب المدن والأقسام. تأكد من النت.'),
+      find.text('ما قدرنا نجيب المدن والأقسام. يمكن النت مقطوع.'),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('provider-apply-retry')));
     await tester.pumpAndSettle();
     expect(harness.market.loads, 2);
     expect(
-      find.text('ما قدرنا نجيب المدن والأقسام. تأكد من النت.'),
+      find.text('ما قدرنا نجيب المدن والأقسام. يمكن النت مقطوع.'),
       findsNothing,
     );
   });

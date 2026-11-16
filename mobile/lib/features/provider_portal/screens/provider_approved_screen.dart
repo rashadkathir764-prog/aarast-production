@@ -61,7 +61,7 @@ class ProviderApprovedScreen extends StatelessWidget {
                       icon: LucideIcons.calendarDays,
                       color: AarastV3Color.primary,
                       soft: AarastV3Color.primarySoft,
-                      title: 'حدّث تقويمك',
+                      title: 'تحديث تقويمك',
                       subtitle:
                           'الليالي المحجوزة من برا، عشان ما ينحجز يوم مرتين',
                       onTap: () => onStep(ProviderFirstStep.calendar),
@@ -71,7 +71,7 @@ class ProviderApprovedScreen extends StatelessWidget {
                       icon: LucideIcons.package,
                       color: AarastV3Color.primary,
                       soft: AarastV3Color.primarySoft,
-                      title: 'أضف خدماتك وأسعارك',
+                      title: 'خدماتك وأسعارك',
                       subtitle: 'تظهر في ملفك للعرسان',
                       onTap: () => onStep(ProviderFirstStep.services),
                     ),
@@ -93,7 +93,7 @@ class ProviderApprovedScreen extends StatelessWidget {
             padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-approved-start'),
-              label: 'ابدأ',
+              label: 'يلا نبدأ',
               expand: true,
               large: true,
               onPressed: onStart,

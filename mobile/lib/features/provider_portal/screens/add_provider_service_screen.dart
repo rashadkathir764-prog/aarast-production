@@ -71,7 +71,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
 
     return AarastPageScaffold(
       title: 'إضافة خدمة',
-      subtitle: 'أضف خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
+      subtitle: 'خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: canManageListing
           ? AarastV3FormActionBar(

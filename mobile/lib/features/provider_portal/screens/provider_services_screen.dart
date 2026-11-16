@@ -92,7 +92,7 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
             ),
             JourneySectionTitle(
               'الخدمات',
-              action: 'أضف خدمة',
+              action: 'إضافة خدمة',
               onAction: () => context.push(AppRouter.providerServiceNew),
             ),
             if (services.isEmpty && dashboard.isLoading)
@@ -124,7 +124,7 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                 ),
             JourneySectionTitle(
               'الباقات',
-              action: 'أضف باقة',
+              action: 'إضافة باقة',
               onAction: () => context.push(AppRouter.providerPackageNew),
             ),
             if (packages.isEmpty)

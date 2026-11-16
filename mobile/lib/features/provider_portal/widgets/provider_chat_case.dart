@@ -79,7 +79,7 @@ List<ChatQuickReply> _replies(
     if (quote != null && state == ProviderCaseState.fresh)
       ChatQuickReply(
         key: const Key('provider-chat-reply-offer'),
-        label: 'أرسل عرض',
+        label: 'إرسال عرض',
         onTap: () => context.push(AppRouter.providerRequestOffer(quote.id)),
       ),
     if (quote != null &&
@@ -93,7 +93,7 @@ List<ChatQuickReply> _replies(
     if (address.isNotEmpty)
       ChatQuickReply(
         key: const Key('provider-chat-reply-place'),
-        label: 'أرسل موقع المحل',
+        label: 'إرسال موقع المحل',
         message: 'موقع المحل: $address',
       ),
   ];
@@ -135,7 +135,7 @@ class ProviderChatStrip extends StatelessWidget {
     }
     return AarastPressable(
       key: const Key('provider-chat-strip'),
-      semanticLabel: '$text، افتح الطلب',
+      semanticLabel: '$text، فتح الطلب',
       borderRadius: BorderRadius.circular(AarastV3Radius.surface),
       onTap: () => context.push(AppRouter.providerRequest(quote.id)),
       child: JourneyBox(

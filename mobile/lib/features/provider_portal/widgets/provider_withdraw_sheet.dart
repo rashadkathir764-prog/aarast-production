@@ -45,7 +45,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
       children: [
         Text(
           'يقفل العرض ويوصل $first سطر هادي إنه ما عاد متاح. '
-          'ويرجع الطلب عندك في «جديد»: عندك 7 أيام ترسل عرض جديد أو تعتذر.',
+          'ويرجع الطلب عندك في «جديد»، و7 أيام لعرض جديد أو اعتذار.',
           style: JourneyType.of(JourneyType.body, height: 1.55),
         ),
         if (_error case final error?) ...[
@@ -60,7 +60,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-offer-withdraw-confirm'),
-          label: 'اسحب العرض',
+          label: 'سحب العرض',
           background: AarastV3Color.danger,
           expand: true,
           large: true,
@@ -90,7 +90,8 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
       setState(() {
         _busy = false;
         _error =
-            dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نسحب العرض. مرة ثانية غالبًا تمشي.';
       });
       return;
     }

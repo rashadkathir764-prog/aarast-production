@@ -170,7 +170,7 @@ class ProviderChangesScreen extends StatelessWidget {
                             service.basePrice,
                             service.currency,
                           ),
-                    placeholder: 'أضف خدمة بسعرها',
+                    placeholder: 'خدمة بسعرها',
                     helper: service?.description?.trim().isNotEmpty == true
                         ? service!.description!.trim()
                         : null,

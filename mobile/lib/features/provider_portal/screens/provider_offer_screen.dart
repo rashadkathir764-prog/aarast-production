@@ -511,7 +511,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
         JourneyButton(
           key: const Key('provider-offer-submit'),
           label: renewing
-              ? 'جدّد العرض'
+              ? 'تجديد العرض'
               : editing
               ? 'احفظ التعديل'
               : 'أرسل العرض',
@@ -565,7 +565,8 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
       setState(() {
         _busy = false;
         _error =
-            dashboard.errorMessage ?? 'ما قدرنا نحفظ العرض. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نحفظ العرض. مرة ثانية غالبًا تمشي.';
       });
       return;
     }

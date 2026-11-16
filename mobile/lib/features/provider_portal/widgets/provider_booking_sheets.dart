@@ -113,8 +113,9 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     final error = _error;
     if (_declining) {
       return JourneySheetBody(
-        title: 'تعتذر من $first؟',
-        subtitle: 'يوصله إنك ما تقدر $day.',
+        // Critique ب3, ب4: no verb to the provider, the customer as «لهم».
+        title: 'اعتذار من $first؟',
+        subtitle: 'يوصلهم إن $day ما يناسبك.',
         children: [
           JourneyTextField(
             key: const Key('provider-booking-reason'),
@@ -133,7 +134,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('provider-booking-decline-send'),
-            label: 'أرسل الاعتذار',
+            label: 'إرسال الاعتذار',
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -173,7 +174,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: Key('provider-booking-confirm-${booking.id}'),
-          label: 'أكّد الحجز',
+          label: 'تأكيد الحجز',
           icon: LucideIcons.check,
           expand: true,
           large: true,
@@ -221,8 +222,10 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
             'يوم $day ما عاد فاضي عندك، فما تأكد الحجز.',
           // B-20: the day already has as many weddings as he takes.
           'BOOKING_DAY_FULL' =>
-            'يوم $day مليان عندك، فما تأكد الحجز. تقدر ترفع عدد الأعراس في اليوم من «ملفي».',
-          _ => dashboard.errorMessage ?? 'ما قدرنا نحفظ قرارك. جرّب مرة ثانية.',
+            'يوم $day مليان عندك، فما تأكد الحجز. عدد الأعراس في اليوم يرتفع من «ملفي».',
+          _ =>
+            dashboard.errorMessage ??
+                'ما قدرنا نحفظ قرارك. مرة ثانية غالبًا تمشي.',
         };
       });
       return;

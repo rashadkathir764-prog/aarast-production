@@ -46,7 +46,7 @@ void main() {
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('التصوير · صنعاء'), findsOneWidget);
       expect(find.text('ملفك مخفي عن العرسان لين نوافق'), findsOneWidget);
-      expect(find.text('تقدر تعدّل بيانات ملفك وأنت تنتظر'), findsOneWidget);
+      expect(find.text('بيانات ملفك تتعدّل حتى وقت الانتظار'), findsOneWidget);
       // No WhatsApp, no review time, no photos before approval (F2).
       expect(find.textContaining('واتساب'), findsNothing);
       expect(find.textContaining('يومين'), findsNothing);
@@ -72,7 +72,7 @@ void main() {
       // «عدّل طلبك» asks which part: his profile's details or his service.
       await tester.tap(find.byKey(const Key('provider-pending-edit')));
       await tester.pumpAndSettle();
-      expect(find.text('ايش تبي تعدّل؟'), findsOneWidget);
+      expect(find.text('ايش يتعدّل؟'), findsOneWidget);
       await tester.tap(
         find.byKey(const ValueKey('provider-pending-edit-option-profile')),
       );
@@ -155,8 +155,8 @@ void main() {
       expect(find.byType(ProviderApprovedScreen), findsOneWidget);
       expect(find.text('مبروك، صرت في اعّرست'), findsOneWidget);
       expect(find.text('العرسان في صنعاء يشوفونك من الآن.'), findsOneWidget);
-      expect(find.text('حدّث تقويمك'), findsOneWidget);
-      expect(find.text('أضف خدماتك وأسعارك'), findsOneWidget);
+      expect(find.text('تحديث تقويمك'), findsOneWidget);
+      expect(find.text('خدماتك وأسعارك'), findsOneWidget);
       expect(find.text('شغّل التنبيهات'), findsOneWidget);
       // No verification request and no visibility promise (F17).
       expect(find.text('وثّق ملفك'), findsNothing);
@@ -305,7 +305,7 @@ void main() {
         findsOneWidget,
       );
       // A profile from before B-10 adds its service here.
-      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+      expect(find.text('خدمة بسعرها'), findsOneWidget);
     });
 
     testWidgets('the category is picked again before approval (B-01)', (
@@ -372,7 +372,7 @@ void main() {
       await _pumpPortal(tester, api);
 
       // The switched-off service is not his joining service.
-      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+      expect(find.text('خدمة بسعرها'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-changes-service')));
       await tester.pumpAndSettle();
       await tester.enterText(

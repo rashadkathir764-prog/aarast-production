@@ -70,7 +70,7 @@ class _AccountContextSelectionScreenState
             child: Semantics(
               header: true,
               child: Text(
-                'اختر المسار',
+                'وين تدخل؟',
                 style: JourneyType.of(
                   JourneyType.hero,
                   weight: JourneyType.bold,

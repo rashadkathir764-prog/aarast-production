@@ -47,7 +47,8 @@ void main() {
         find.byKey(const ValueKey('account-context-selection-screen')),
         findsOneWidget,
       );
-      expect(find.text('اختر المسار'), findsOneWidget);
+      // Changed on purpose (critique ب6): no «المسار» to the reader.
+      expect(find.text('وين تدخل؟'), findsOneWidget);
       expect(find.textContaining('عريس'), findsOneWidget);
       expect(find.textContaining('خطة زفاف طويلة'), findsOneWidget);
       expect(find.text('مزود'), findsOneWidget);
@@ -97,7 +98,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('اختر المسار'), findsOneWidget);
+    expect(find.text('وين تدخل؟'), findsOneWidget);
     expect(
       find.text('ايش تفتح الآن؟ ما نطلب منك دخول مرة ثانية.'),
       findsOneWidget,

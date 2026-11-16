@@ -67,7 +67,7 @@ class ProviderPendingScreen extends StatelessWidget {
                         ),
                         ProviderFactRow(
                           icon: LucideIcons.pencil,
-                          text: 'تقدر تعدّل بيانات ملفك وأنت تنتظر',
+                          text: 'بيانات ملفك تتعدّل حتى وقت الانتظار',
                         ),
                         ProviderFactRow(
                           icon: LucideIcons.phone,
@@ -94,7 +94,7 @@ class ProviderPendingScreen extends StatelessWidget {
             padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-pending-edit'),
-              label: 'عدّل طلبك',
+              label: 'تعديل طلبك',
               icon: LucideIcons.pencil,
               background: AarastV3Color.paper,
               foreground: AarastV3Color.primary,

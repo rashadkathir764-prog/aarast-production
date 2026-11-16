@@ -97,7 +97,7 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
     final reason = _reason;
     final canClose = _canClose(dashboard);
     return JourneySheetBody(
-      title: 'تعتذر من $first؟',
+      title: 'اعتذار من $first؟',
       children: [
         for (final option in ProviderDeclineReason.values) ...[
           JourneyOption(
@@ -146,7 +146,7 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-quote-decline-confirm'),
-          label: 'أرسل الاعتذار',
+          label: 'إرسال الاعتذار',
           expand: true,
           large: true,
           loading: _busy,
@@ -176,7 +176,8 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
         setState(() {
           _busy = false;
           _error =
-              chat.errorMessage ?? 'ما قدرنا نرسل الاعتذار. جرّب مرة ثانية.';
+              chat.errorMessage ??
+              'ما قدرنا نرسل الاعتذار. مرة ثانية غالبًا تمشي.';
         });
         return;
       }
@@ -195,7 +196,8 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
       setState(() {
         _busy = false;
         _error =
-            dashboard.errorMessage ?? 'ما قدرنا نقفل الطلب. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نقفل الطلب. مرة ثانية غالبًا تمشي.';
       });
       return;
     }

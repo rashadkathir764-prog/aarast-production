@@ -278,7 +278,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     } else {
       AarastToast.showError(
         context,
-        dashboard.portfolioError ?? 'ما انحفظ معرضك، جرّب مرة ثانية.',
+        dashboard.portfolioError ?? 'ما انحفظ معرضك، ومرة ثانية غالبًا تمشي.',
       );
     }
   }
@@ -324,7 +324,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
           const SizedBox(height: AarastV3Space.x3),
           JourneyButton(
             key: const Key('provider-gallery-photo-delete'),
-            label: 'احذف الصورة',
+            label: 'حذف الصورة',
             icon: LucideIcons.trash2,
             background: AarastV3Color.dangerSoft,
             foreground: AarastV3Color.danger,
@@ -376,7 +376,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
       if (mounted) {
         AarastToast.showError(
           context,
-          'ما قدرنا نفتح الصور. تأكد من الإذن وجرّب مرة ثانية.',
+          'ما قدرنا نفتح الصور. يمكن إذن الصور مقفول في الجوال.',
         );
       }
       return;
@@ -412,7 +412,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
       if (keys.isEmpty) {
         AarastToast.showError(
           context,
-          lastError ?? 'ما قدرنا نرفع الصور، جرّب مرة ثانية.',
+          lastError ?? 'ما قدرنا نرفع الصور، ومرة ثانية غالبًا تمشي.',
         );
         return;
       }
@@ -538,7 +538,7 @@ class _AlbumSheetState extends State<_AlbumSheet> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton(
           key: const Key('provider-gallery-choose'),
-          label: 'اختر الصور',
+          label: 'اختيار الصور',
           icon: LucideIcons.imagePlus,
           expand: true,
           onPressed: ready

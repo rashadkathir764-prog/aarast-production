@@ -248,7 +248,11 @@ void main() {
     expect(_heroColor(tester), AarastV3Color.rose);
     // No fixed steps: the one missing basic, spoken to her.
     expect(find.text('أضيفي أول ضيفة'), findsOneWidget);
-    expect(find.text('اختاري من جهات الاتصال'), findsOneWidget);
+    // Changed on purpose (Rashad's phone 2026-11-17): the action is heard.
+    expect(
+      find.bySemanticsLabel(RegExp('اختاري من جهات الاتصال')),
+      findsOneWidget,
+    );
     expect(find.text('أضف أول ضيف'), findsNothing);
     expect(find.text('ثلاث خطوات وعرسك منظم'), findsNothing);
   });

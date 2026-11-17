@@ -217,7 +217,10 @@ void main() {
     );
 
     expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
-    await _tapVisible(tester, find.text('سجّل المهر'));
+    // Changed on purpose (Rashad's phone 2026-11-17): the whole row opens
+    // the step; its action «سجّل المهر» is heard, not drawn.
+    expect(find.bySemanticsLabel(RegExp('سجّل المهر')), findsOneWidget);
+    await _tapVisible(tester, find.text('اتفقتوا على المهر؟'));
     expect(opened, ['/wedding-plans/plan-1/money/mahr']);
   });
 
@@ -234,7 +237,13 @@ void main() {
     );
 
     expect(find.text('أضف أول ضيف'), findsOneWidget);
-    await _tapVisible(tester, find.text('اختر من جهات الاتصال'));
+    // Changed on purpose (Rashad's phone 2026-11-17): the whole row opens
+    // the step; its action is heard, not drawn.
+    expect(
+      find.bySemanticsLabel(RegExp('اختر من جهات الاتصال')),
+      findsOneWidget,
+    );
+    await _tapVisible(tester, find.text('أضف أول ضيف'));
     expect(imported, 1);
     expect(listed, 0);
   });

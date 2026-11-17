@@ -211,7 +211,9 @@ void main() {
     );
 
     expect(find.textContaining('قاعة سبأ'), findsWidgets);
-    expect(find.text('سجّل الدفعة'), findsOneWidget);
+    // Changed on purpose (Rashad's phone 2026-11-17): the next step's
+    // action is heard in its label; the row shows an arrow.
+    expect(find.bySemanticsLabel(RegExp('سجّل الدفعة')), findsOneWidget);
     // The server's step is still not a card of this home.
     expect(find.text('مزود في خطتك'), findsNothing);
   });

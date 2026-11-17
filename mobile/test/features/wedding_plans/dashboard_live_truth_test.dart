@@ -259,7 +259,9 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('سجّل الدفعة'), findsOneWidget);
+    // Changed on purpose (Rashad's phone 2026-11-17): the next step is the
+    // app's list row with an arrow; its action is heard, not drawn.
+    expect(find.bySemanticsLabel(RegExp('سجّل الدفعة')), findsOneWidget);
 
     await tester.pumpWidget(home(hidden: true));
     await tester.pumpAndSettle();

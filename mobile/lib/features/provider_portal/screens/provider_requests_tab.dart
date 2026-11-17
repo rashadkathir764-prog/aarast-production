@@ -12,6 +12,7 @@ import '../../marketplace/marketplace_api.dart'
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_booking_sheets.dart'
     show ProviderConfirmNeedsNetwork;
+import '../widgets/provider_join_parts.dart' show providerDayLabel;
 import '../widgets/provider_quick_offer_sheet.dart';
 import '../widgets/provider_request_cards.dart';
 import '../widgets/provider_request_parts.dart';
@@ -108,10 +109,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
             ProviderWaitingHero(
               key: const Key('provider-requests-hero'),
               waiting: waiting,
-              subtitle: _heroLine(
-                replied: count(ProviderRequestTab.replied),
-                booked: count(ProviderRequestTab.booked),
-              ),
+              subtitle: _heroLine(dashboard, waiting),
               tag: switch (_firstEnds(dashboard)) {
                 final ends? => JourneyHeroTag(
                   key: const Key('provider-requests-hero-ends'),
@@ -260,15 +258,19 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
     );
   }
 
-  /// «ردّيت: 2 · محجوز: 3»: the other lists' counts, null with
-  /// neither.
-  static String? _heroLine({required int replied, required int booked}) {
-    final parts = [
-      // The chips' own words, so the line and the lists agree.
-      if (replied > 0) 'ردّيت: $replied',
-      if (booked > 0) 'محجوز: $booked',
-    ];
-    return parts.isEmpty ? null : parts.join(' · ');
+  /// «أقدمها من أمس», as the home says it; with none waiting, where the new
+  /// ones arrive.
+  static String? _heroLine(ProviderDashboardProvider dashboard, int waiting) {
+    // Not the other lists' counts: the chips right under the hero say them.
+    if (waiting == 0) return 'الطلبات الجديدة توصلك هنا.';
+    final dates = [
+      for (final quote in dashboard.quoteRequests)
+        if (const {'SENT', 'VIEWED'}.contains(quote.status)) ?quote.createdAt,
+    ]..sort();
+    if (dates.isEmpty) return null;
+    return waiting == 1
+        ? 'وصل ${providerDayLabel(dates.first)}'
+        : 'أقدمها من ${providerDayLabel(dates.first)}';
   }
 
   /// «ينتهي بعد 6 أيام»: the first new request to end (B-04).

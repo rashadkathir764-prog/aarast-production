@@ -236,7 +236,8 @@ void main() {
       // and the header line names the whole.
       expect(find.text('طلبين ينتظرون ردك'), findsOneWidget);
       expect(find.text('8 طلبات'), findsOneWidget);
-      expect(find.text('ردّيت: 1 · محجوز: 1'), findsOneWidget);
+      // Not the chips' counts again: since when the oldest waits.
+      expect(find.textContaining('أقدمها من'), findsOneWidget);
       expect(
         find.byKey(const Key('provider-requests-hero-ends')),
         findsOneWidget,

@@ -14,6 +14,7 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_first_steps.dart';
 import '../widgets/provider_join_parts.dart';
 import '../widgets/provider_request_parts.dart';
+import '../widgets/provider_waiting_hero.dart';
 
 /// p13 «الرئيسية»: who waits for him, who accepted his offer and asks to
 /// book, and his confirmed weddings this week. The waiting count is the new
@@ -124,10 +125,7 @@ class ProviderHomeTab extends StatelessWidget {
             .toList()
           ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
     return [
-      if (waiting.isNotEmpty)
-        _WaitingHero(waiting: waiting, onAnswer: () => onOpenTab(1))
-      else
-        const _NothingWaiting(),
+      _WaitingHero(waiting: waiting, onAnswer: () => onOpenTab(1)),
       for (final booking in asked) ...[
         const SizedBox(height: AarastV3Space.x3),
         _BookingAsked(booking: booking, quote: _quoteFor(dashboard, booking)),
@@ -192,7 +190,9 @@ class ProviderHomeTab extends StatelessWidget {
   }
 }
 
-/// «ينتظرونك»: how many new requests wait, and since when the oldest.
+/// «ينتظرونك», in the plan's hero: how many new requests wait, since when
+/// the oldest and when the first ends; «الرد الحين» is its saffron tag.
+/// With none waiting it says so in the same hero, the new ones' place.
 class _WaitingHero extends StatelessWidget {
   const _WaitingHero({required this.waiting, required this.onAnswer});
 
@@ -202,13 +202,13 @@ class _WaitingHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = waiting.length;
-    final headline = switch (count) {
-      // Critique ب3: said for a provider of any gender.
-      1 => 'طلب ينتظر ردك',
-      2 => 'طلبين ينتظرون ردك',
-      <= 10 => '$count طلبات تنتظر ردك',
-      _ => '$count طلب ينتظر ردك',
-    };
+    if (count == 0) {
+      return const ProviderWaitingHero(
+        key: Key('provider-home-none-waiting'),
+        waiting: 0,
+        subtitle: 'الطلبات الجديدة توصلك هنا.',
+      );
+    }
     final dates = [for (final quote in waiting) ?quote.createdAt]..sort();
     // B-04: the first of them to end, «ينتهي بعد 6 أيام».
     final deadlines = [for (final quote in waiting) ?quote.expiresAt]..sort();
@@ -221,90 +221,15 @@ class _WaitingHero extends StatelessWidget {
         ? 'وصل ${providerDayLabel(dates.first)}'
         : 'أقدمها من ${providerDayLabel(dates.first)}';
     final since = [?arrived, ?ends].join(' · ');
-    return Container(
+    return ProviderWaitingHero(
       key: const Key('provider-home-waiting'),
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      decoration: BoxDecoration(
-        color: AarastV3Color.primary,
-        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // The headline says who waits; a «ينتظرونك» above it said it twice.
-          Text(
-            headline,
-            style: JourneyType.of(
-              JourneyType.sheetTitle,
-              weight: JourneyType.bold,
-              color: AarastV3Color.onPrimary,
-            ),
-          ),
-          if (since.isNotEmpty) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            Text(
-              since,
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.onPrimaryMuted,
-              ),
-            ),
-          ],
-          const SizedBox(height: AarastV3Space.x3),
-          JourneyButton(
-            key: const Key('provider-home-answer'),
-            label: 'الرد الحين',
-            background: AarastV3Color.paper,
-            foreground: AarastV3Color.primary,
-            large: true,
-            onPressed: onAnswer,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// No new request waits, though requests came before.
-class _NothingWaiting extends StatelessWidget {
-  const _NothingWaiting();
-
-  @override
-  Widget build(BuildContext context) {
-    return JourneyBox(
-      key: const Key('provider-home-none-waiting'),
-      padding: const EdgeInsets.all(AarastV3Space.x3),
-      child: Row(
-        children: [
-          const JourneyIconTile(
-            icon: LucideIcons.inbox,
-            color: AarastV3Color.primary,
-            soft: AarastV3Color.primarySoft,
-            size: 42,
-          ),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ما فيه طلب ينتظر ردك',
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-                Text(
-                  'الطلبات الجديدة توصلك هنا.',
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      waiting: count,
+      subtitle: since.isEmpty ? null : since,
+      tag: JourneyHeroTag(
+        key: const Key('provider-home-answer'),
+        label: 'الرد الحين',
+        icon: LucideIcons.arrowLeft,
+        onTap: onAnswer,
       ),
     );
   }

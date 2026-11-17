@@ -11,12 +11,12 @@ import 'aarast_v3_foundations.dart';
 /// under it, an optional saffron [tag] on the row, and a [footer] under them
 /// (the home's five moments, a tab's bar). Rashad 2026-11-17: the tasks, the
 /// guests and the money's summary wear it exactly as the home does, the same
-/// look and the same size.
+/// look and the same size; so do the provider's home, requests and calendar.
 class JourneyPlanHero extends StatelessWidget {
   const JourneyPlanHero({
     required this.figure,
     required this.title,
-    required this.footer,
+    this.footer,
     this.subtitle,
     this.tag,
     this.onTap,
@@ -42,8 +42,9 @@ class JourneyPlanHero extends StatelessWidget {
   /// The saffron tag on the figure's row, as the home's moment.
   final Widget? tag;
 
-  /// Under the row: the home's moments, a tab's bar.
-  final Widget footer;
+  /// Under the row: the home's moments, a tab's bar; none where nothing
+  /// true fills it (the provider's waiting requests).
+  final Widget? footer;
   final VoidCallback? onTap;
 
   /// What a screen reader hears for the whole hero.
@@ -167,8 +168,10 @@ class JourneyPlanHero extends StatelessWidget {
                           child: tag,
                         ),
                       ],
-                      const SizedBox(height: AarastV3Space.x3),
-                      footer,
+                      if (footer case final under?) ...[
+                        const SizedBox(height: AarastV3Space.x3),
+                        under,
+                      ],
                     ],
                   );
                 },

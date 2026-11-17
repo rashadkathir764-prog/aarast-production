@@ -133,6 +133,8 @@ void main() {
 
       await _toNextMonth(tester);
       expect(find.textContaining(providerMonthLabel(_next)), findsOneWidget);
+      // Rashad 2026-11-17: the home's hero counts the month the grid shows.
+      expect(find.byKey(const Key('provider-calendar-hero')), findsOne);
       expect(
         find.descendant(of: _cell(10), matching: find.text('محجوز')),
         findsOne,

@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/offer_ends.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
@@ -12,6 +15,7 @@ import '../widgets/provider_booking_sheets.dart'
 import '../widgets/provider_quick_offer_sheet.dart';
 import '../widgets/provider_request_cards.dart';
 import '../widgets/provider_request_parts.dart';
+import '../widgets/provider_waiting_hero.dart';
 
 export 'provider_offer_screen.dart' show validateProviderOfferAmount;
 
@@ -81,14 +85,43 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           AarastV3Density.pageBottom,
         ),
         children: [
+          // Rashad 2026-11-17: the hero under this line says who waits, so
+          // the line names the whole, as the guests' says their count.
           JourneyTabHeader(
             title: 'الطلبات',
             status: _tab == ProviderRequestTab.ended
                 ? 'اللي ما كمّل، وليش'
-                : waiting == 0
-                ? 'ما فيه أحد ينتظر ردك'
-                : '$waiting ينتظرون ردك',
+                : cases.isEmpty
+                ? 'ما وصلك طلب لسا'
+                : arabicCount(
+                    cases.length,
+                    one: 'طلب واحد',
+                    two: 'طلبين',
+                    few: 'طلبات',
+                    many: 'طلب',
+                  ),
           ),
+          // Not before the list is read: «ما فيه طلب ينتظر ردك» while it
+          // loads or after it failed would be untrue.
+          if (dashboard.quoteRequests.isNotEmpty ||
+              (!dashboard.isLoading && dashboard.errorMessage == null)) ...[
+            ProviderWaitingHero(
+              key: const Key('provider-requests-hero'),
+              waiting: waiting,
+              subtitle: _heroLine(
+                replied: count(ProviderRequestTab.replied),
+                booked: count(ProviderRequestTab.booked),
+              ),
+              tag: switch (_firstEnds(dashboard)) {
+                final ends? => JourneyHeroTag(
+                  key: const Key('provider-requests-hero-ends'),
+                  label: ends,
+                ),
+                null => null,
+              },
+            ),
+            const SizedBox(height: AarastV3Space.x3),
+          ],
           // p43: without the network the lists are the last ones read,
           // a new offer waits on the phone, and a confirmation waits for
           // the network.
@@ -225,6 +258,27 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           ? null
           : () => showProviderQuickOffer(context, quote, packages),
     );
+  }
+
+  /// «ردّيت: 2 · محجوز: 3»: the other lists' counts, null with
+  /// neither.
+  static String? _heroLine({required int replied, required int booked}) {
+    final parts = [
+      // The chips' own words, so the line and the lists agree.
+      if (replied > 0) 'ردّيت: $replied',
+      if (booked > 0) 'محجوز: $booked',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  /// «ينتهي بعد 6 أيام»: the first new request to end (B-04).
+  static String? _firstEnds(ProviderDashboardProvider dashboard) {
+    final deadlines = [
+      for (final quote in dashboard.quoteRequests)
+        if (const {'SENT', 'VIEWED'}.contains(quote.status)) ?quote.expiresAt,
+    ]..sort();
+    if (deadlines.isEmpty) return null;
+    return offerEndsLabel(deadlines.first.toLocal(), appNow());
   }
 
   static String _queuedName(List<ProviderCase> cases, String quoteId) {

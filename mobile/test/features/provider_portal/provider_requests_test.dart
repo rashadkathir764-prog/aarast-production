@@ -124,7 +124,17 @@ void main() {
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
       // Changed on purpose (2026-11-17): no «ينتظرونك» above a headline
       // that says it. And (critique ب3) said for any provider.
-      expect(find.text('3 طلبات تنتظر ردك'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-17): the home's hero, the
+      // count in its big figure beside its words.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('provider-home-waiting')),
+          matching: find.byKey(const ValueKey('provider-waiting-figure')),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('طلبات تنتظر ردك'), findsOneWidget);
       // B-04: the first of them to end, as p13 draws it.
       expect(find.text('أقدمها من أمس · ينتهي بعد 6 أيام'), findsOneWidget);
 
@@ -222,7 +232,15 @@ void main() {
     ) async {
       await pumpHarness(tester, RequestsApi(quotes: allStates()));
 
-      expect(find.text('2 ينتظرون ردك'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-17): the hero says who waits,
+      // and the header line names the whole.
+      expect(find.text('طلبين ينتظرون ردك'), findsOneWidget);
+      expect(find.text('8 طلبات'), findsOneWidget);
+      expect(find.text('ردّيت: 1 · محجوز: 1'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-requests-hero-ends')),
+        findsOneWidget,
+      );
       // The booking to confirm is listed without adding to the count.
       expect(find.text('جديد 2'), findsOneWidget);
       expect(find.text('ردّيت 1'), findsOneWidget);

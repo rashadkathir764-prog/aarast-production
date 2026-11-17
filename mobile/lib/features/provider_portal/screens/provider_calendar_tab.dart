@@ -77,6 +77,16 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                     ),
                   ],
                 ),
+                // While picking, the grid comes up to the header: the
+                // hero's counts wait until the days are closed.
+                if (picking == null) ...[
+                  _MonthHero(
+                    month: _month,
+                    today: today,
+                    dayOf: (day) => providerDayOf(day, dashboard),
+                  ),
+                  const SizedBox(height: AarastV3Space.x3),
+                ],
                 if (picking != null) ...[
                   Text(
                     providerMonthLabel(_month),
@@ -213,5 +223,79 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
         dashboard.errorMessage ?? 'ما قدرنا نقفل كل الأيام.',
       );
     }
+  }
+}
+
+/// Rashad 2026-11-17: the calendar wears the plan's hero, the home's own
+/// look and size. The month shown in the header: its confirmed weddings as
+/// the big figure, the free days still ahead under them, and the bookings
+/// waiting for his confirmation as the saffron tag. Each count comes from
+/// the same days the grid draws ([providerDayOf]).
+class _MonthHero extends StatelessWidget {
+  const _MonthHero({
+    required this.month,
+    required this.today,
+    required this.dayOf,
+  });
+
+  final DateTime month;
+  final DateTime today;
+  final ProviderDay Function(DateTime day) dayOf;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = DateTime(month.year, month.month + 1, 0).day;
+    var weddings = 0;
+    var asked = 0;
+    var free = 0;
+    for (var date = 1; date <= count; date++) {
+      final day = DateTime(month.year, month.month, date);
+      final info = dayOf(day);
+      weddings += info.confirmed.length;
+      asked += info.asked.length;
+      if (!day.isBefore(today) && info.state == ProviderDayState.free) free++;
+    }
+    final title = switch (weddings) {
+      0 => 'ما فيه عرس مؤكد',
+      1 => 'عرس واحد مؤكد',
+      2 => 'عرسين مؤكدة',
+      _ => arabicCountWord(
+        weddings,
+        one: 'عرس مؤكد',
+        two: 'عرسين مؤكدة',
+        few: 'أعراس مؤكدة',
+        many: 'عرس مؤكد',
+      ),
+    };
+    // Not «باقي»: the drawn «باقي N» is a day's capacity left, which the
+    // server does not hold (D-2), and the calendar never says it.
+    final subtitle = switch (free) {
+      0 => 'ما فيه يوم فاضي قدامك',
+      1 => 'يوم واحد فاضي قدامك',
+      2 => 'يومين فاضية قدامك',
+      _ =>
+        '${arabicCount(free, one: 'يوم فاضي', two: 'يومين فاضية', few: 'أيام فاضية', many: 'يوم فاضي')} قدامك',
+    };
+    return JourneyPlanHero(
+      key: const Key('provider-calendar-hero'),
+      figure: weddings > 2 ? '$weddings' : null,
+      figureKey: const ValueKey('provider-calendar-figure'),
+      title: title,
+      subtitle: subtitle,
+      tag: asked == 0
+          ? null
+          : JourneyHeroTag(
+              key: const Key('provider-calendar-hero-asked'),
+              label: switch (asked) {
+                1 => 'حجز ينتظر تأكيدك',
+                2 => 'حجزين ينتظرون تأكيدك',
+                _ => '$asked ينتظرون تأكيدك',
+              },
+            ),
+      semanticLabel: [
+        if (weddings > 2) '$weddings $title' else title,
+        subtitle,
+      ].join('، '),
+    );
   }
 }

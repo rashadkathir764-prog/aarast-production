@@ -41,9 +41,12 @@ class _MoneyHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              if (showStatus)
+              if (showStatus
+                      ? _moneyStatusLine(summary, context.journeyProfile)
+                      : null
+                  case final line?)
                 Text(
-                  _moneyStatusLine(summary, context.journeyProfile),
+                  line,
                   style: JourneyType.of(
                     JourneyType.small,
                     color: AarastV3Color.textMuted,
@@ -137,8 +140,10 @@ class _MoneySettingsMenu extends StatelessWidget {
                 color: AarastV3Color.paper,
                 shape: BoxShape.circle,
               ),
+              // «⋯», the sign for «more»: the sliders read as a filter, and
+              // behind them were the budget and the receipts (2026-11-17).
               child: const Icon(
-                LucideIcons.slidersHorizontal,
+                LucideIcons.moreHorizontal,
                 size: 18,
                 color: AarastV3Color.ink,
               ),

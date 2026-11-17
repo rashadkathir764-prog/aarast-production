@@ -166,18 +166,26 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                 padding: const EdgeInsets.all(AarastV3Space.x4),
                 child: Row(
                   children: [
-                    JourneyAvatar(
-                      letter: chosen == null
-                          ? 'ك'
-                          : payerAvatarLetter(label(chosen)),
-                      color: context.accent.primary,
-                      size: 40,
-                    ),
+                    // Everyone together is an icon, not the letter «ك» of
+                    // «الكل» that meant nothing (2026-11-17).
+                    if (chosen == null)
+                      JourneyIconTile(
+                        icon: LucideIcons.users,
+                        color: context.accent.primary,
+                        soft: context.accent.primarySoft,
+                        size: 40,
+                      )
+                    else
+                      JourneyAvatar(
+                        letter: payerAvatarLetter(label(chosen)),
+                        color: context.accent.primary,
+                        size: 40,
+                      ),
                     const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(
                         chosen == null
-                            ? 'اللي انحسب دفعه'
+                            ? 'اندفع كله'
                             : payerPaidLine(
                                 chosen.payer,
                                 label(chosen),

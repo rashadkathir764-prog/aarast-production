@@ -254,12 +254,17 @@ class _ShareHero extends StatelessWidget {
             Divider(height: 1, color: soft.withValues(alpha: 0.3)),
             const SizedBox(height: AarastV3Space.x3),
             if (coverage == null)
+              // Rashad 2026-11-17: «لسا ما نعرف» said nothing to do; the
+              // way to know is the line itself.
               _CoverWords(
                 key: const ValueKey('money-cover-unknown'),
                 ok: false,
-                // Critique م7: the card says what is true; the request to
-                // record where the money comes from is the step below, once.
-                main: 'لسا ما نعرف إذا تكفي فلوسك',
+                main: onSources == null
+                    ? 'لسا ما نعرف إذا تكفي فلوسك'
+                    : context.say(
+                        'سجّل من وين فلوسك ونقول لك إذا تكفي',
+                        'سجّلي من وين فلوسك ونقول لك إذا تكفي',
+                      ),
                 sub: '',
                 onTap: onSources,
               )
@@ -277,13 +282,7 @@ class _ShareHero extends StatelessWidget {
                 howCounted: onHowCounted,
               ),
           ],
-          // D114: then the rest of the picture, complete.
-          if (summary.hasBudget || moneyValue(summary.costs.total) > 0) ...[
-            const SizedBox(height: AarastV3Space.x3),
-            Divider(height: 1, color: soft.withValues(alpha: 0.3)),
-            const SizedBox(height: AarastV3Space.x3),
-            _BudgetFigures(summary: summary),
-          ],
+          // D114's budget figures are in «الصورة كاملة» (Rashad 2026-11-17).
         ],
       ),
     );
@@ -384,7 +383,11 @@ class _CoverWords extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              ok ? LucideIcons.checkCircle2 : LucideIcons.alertCircle,
+              ok
+                  ? LucideIcons.checkCircle2
+                  : onTap != null
+                  ? LucideIcons.piggyBank
+                  : LucideIcons.alertCircle,
               size: 18,
               color: onColour,
             ),
@@ -400,6 +403,8 @@ class _CoverWords extends StatelessWidget {
                 ),
               ),
             ),
+            if (onTap != null)
+              Icon(LucideIcons.chevronLeft, size: 18, color: onColour),
           ],
         ),
         if (sub.isNotEmpty) ...[
@@ -452,13 +457,8 @@ class _FirstSteps extends StatelessWidget {
         action: context.say('افتح البنود', 'افتحي البنود'),
         onTap: onItems,
       ),
-      (
-        done: sourced,
-        title: context.say('سجّل من وين فلوسك', 'سجّلي من وين فلوسك'),
-        sub: 'مدخرات، دعم الأهل، سلفة، أو وعد',
-        action: context.say('سجّل فلوس', 'سجّلي فلوس'),
-        onTap: onSources,
-      ),
+      // «من وين فلوسك» is the green card's own line above, so it is not a
+      // step here too (Rashad 2026-11-17).
       (
         done: agreed,
         title: context.say('سجّل أول اتفاق', 'سجّلي أول اتفاق'),
@@ -471,12 +471,13 @@ class _FirstSteps extends StatelessWidget {
       key: const ValueKey('money-first-steps'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const JourneySectionTitle('ثلاث خطوات وترتب فلوس عرسك'),
+        const JourneySectionTitle('خطوتين وترتب فلوس عرسك'),
         JourneyList(
           children: [
             for (final (index, step) in steps.indexed)
               JourneyListRow(
-                key: ValueKey('money-first-step-$index'),
+                // The agreement keeps its key «-2» from the three steps.
+                key: ValueKey('money-first-step-${index == 0 ? 0 : 2}'),
                 icon: step.done ? LucideIcons.check : LucideIcons.circle,
                 color: step.done ? AarastV3Color.mint : context.accent.primary,
                 soft: step.done
@@ -510,6 +511,9 @@ class _ComingDues extends StatelessWidget {
     required this.currency,
     required this.onAll,
     required this.onOpen,
+    this.all = const [],
+    this.weddingDate,
+    this.coverage,
   });
 
   final List<MoneyObligation> lines;
@@ -517,14 +521,29 @@ class _ComingDues extends StatelessWidget {
   final VoidCallback onAll;
   final void Function(MoneyObligation line) onOpen;
 
+  /// Every coming due, for the line over the list.
+  final List<MoneyObligation> all;
+  final DateTime? weddingDate;
+  final MoneyCoverage? coverage;
+
   @override
   Widget build(BuildContext context) {
+    // A due the money in hand does not reach (D103): its step leaves less
+    // than nothing.
+    final short = <String>{
+      for (final step in coverage?.steps ?? const <MoneyCoverageStep>[])
+        if (moneyValue(step.balance) < 0) step.id,
+    };
     return Column(
       key: const ValueKey('money-coming-dues'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // D114: the mahr's dates are among them.
         JourneySectionTitle('الدفعات الجاية', action: 'كلها', onAction: onAll),
+        if (all.length > 1) ...[
+          _MoneyLine(dues: all, weddingDate: weddingDate, short: short),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
         JourneyList(
           children: [
             for (final line in lines)
@@ -561,6 +580,166 @@ class _ComingDues extends StatelessWidget {
       ],
     );
   }
+}
+
+/// «خط الفلوس» (Rashad 2026-11-17): from today to the wedding, each coming
+/// due a dot on its day. A dot the money in hand does not reach is red, one
+/// within the week saffron; the rest the plan's colour. When the money runs
+/// short and how crowded the weeks are, at a glance; the list under it says
+/// what each one is.
+class _MoneyLine extends StatelessWidget {
+  const _MoneyLine({
+    required this.dues,
+    required this.weddingDate,
+    required this.short,
+  });
+
+  final List<MoneyObligation> dues;
+  final DateTime? weddingDate;
+  final Set<String> short;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateUtils.dateOnly(appNow());
+    final days = [
+      for (final line in dues) daysUntilPlanDay(line.dueDate!).clamp(0, 9999),
+    ];
+    final toWedding = weddingDate == null
+        ? null
+        : daysUntilPlanDay(weddingDate!).clamp(0, 9999);
+    final span = [
+      ...days,
+      ?toWedding,
+      1,
+    ].reduce((a, b) => a > b ? a : b).toDouble();
+    final dots = [
+      for (final (index, line) in dues.indexed)
+        (
+          at: days[index] / span,
+          colour: short.contains(line.id)
+              ? AarastV3Color.danger
+              : days[index] <= 7
+              ? AarastV3Color.amber
+              : context.accent.primary,
+        ),
+    ];
+    final anyShort = dues.any((line) => short.contains(line.id));
+    final endDay = toWedding != null
+        ? weddingDate!
+        : today.add(Duration(days: span.round()));
+    return Semantics(
+      label:
+          '${arabicCount(dues.length, one: 'دفعة وحدة', two: 'دفعتين', few: 'دفعات', many: 'دفعة')} من اليوم لين ${toWedding != null ? 'العرس' : _dayWords(endDay)}'
+          '${anyShort ? '، وفيها دفعات ما تكفيها فلوسك' : ''}',
+      excludeSemantics: true,
+      child: JourneyBox(
+        key: const ValueKey('money-line'),
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: AarastV3Space.x4,
+              child: CustomPaint(
+                painter: _MoneyLinePainter(
+                  dots: dots,
+                  track: AarastV3Color.line,
+                  rtl: Directionality.of(context) == TextDirection.rtl,
+                ),
+              ),
+            ),
+            const SizedBox(height: AarastV3Space.x1),
+            Row(
+              children: [
+                Text(
+                  'اليوم',
+                  style: JourneyType.of(
+                    JourneyType.caption,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+                const SizedBox(width: AarastV3Space.x2),
+                // The middle gives way first; nothing leaves the card.
+                Expanded(
+                  child: anyShort
+                      ? Text(
+                          'الأحمر ما تكفيه فلوسك',
+                          key: const ValueKey('money-line-short'),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            weight: JourneyType.bold,
+                            color: AarastV3Color.danger,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                const SizedBox(width: AarastV3Space.x2),
+                Text(
+                  toWedding != null ? 'العرس' : _dayWords(endDay),
+                  maxLines: 1,
+                  style: JourneyType.of(
+                    JourneyType.caption,
+                    weight: JourneyType.bold,
+                    color: context.accent.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoneyLinePainter extends CustomPainter {
+  const _MoneyLinePainter({
+    required this.dots,
+    required this.track,
+    required this.rtl,
+  });
+
+  final List<({double at, Color colour})> dots;
+  final Color track;
+  final bool rtl;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final mid = size.height / 2;
+    const radius = 5.0;
+    double x(double at) {
+      final along = radius + at * (size.width - radius * 2);
+      return rtl ? size.width - along : along;
+    }
+
+    canvas.drawLine(
+      Offset(0, mid),
+      Offset(size.width, mid),
+      Paint()
+        ..color = track
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    // Today, where the line starts.
+    canvas.drawCircle(Offset(x(0), mid), 3, Paint()..color = track);
+    for (final dot in dots) {
+      final centre = Offset(x(dot.at), mid);
+      canvas.drawCircle(centre, radius + 2, Paint()..color = Colors.white);
+      canvas.drawCircle(centre, radius, Paint()..color = dot.colour);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MoneyLinePainter old) =>
+      old.dots != dots || old.track != track || old.rtl != rtl;
 }
 
 /// 5. What needs the owner, apart from paying.
@@ -650,6 +829,13 @@ class _WholePicture extends StatelessWidget {
           'على ${payerLabel(group.payer, group.payerName, bridePlan: profile.isBride, owner: profile.readerIsOwner)} ${money(group.outstanding)}',
     ];
     final total = outstanding?.total ?? summary.costs.outstanding;
+    // Rashad 2026-11-17: when all of it is the owner's, this row is the
+    // green card's figure a second time.
+    final allMine =
+        profile.readerIsOwner && others.isEmpty && moneyValue(total) > 0;
+    // The expected cost is what was agreed while no item has an estimate:
+    // the budget's «اتفقت على» says it then.
+    final estimates = moneyValue(expected?.wedding.estimateLeft);
     final loanLeft = moneyValue(summary.funding?.loanOutstanding);
     final repayments = [
       for (final line in summary.obligations)
@@ -658,9 +844,6 @@ class _WholePicture extends StatelessWidget {
           line.dueDate!,
     ];
     final unknown = expected?.wedding.unknownCount ?? 0;
-    final completeness = unknown > 0
-        ? '${arabicCount(unknown, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} بدون تقدير'
-        : 'حسب بنودك';
     Widget end(String figure, [String? under]) => Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
@@ -684,78 +867,91 @@ class _WholePicture extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const JourneySectionTitle('الصورة كاملة'),
-        JourneyList(
-          children: [
-            JourneyListRow(
-              key: const ValueKey('money-whole-left'),
-              icon: LucideIcons.fileSignature,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              // D114: every agreement, the mahr's with them.
-              title: 'باقي على الاتفاقات كلها',
-              // Who it is on; all of it on him is said, not its figure
-              // again (the row's own figure, and the card's above).
-              subtitleMaxLines: 2,
-              subtitle: moneyValue(total) <= 0
-                  ? 'ما في اتفاقات عليها باقي'
-                  : others.isEmpty && profile.readerIsOwner
-                  ? context.say('كله عليك', 'كله عليكِ')
-                  : [
-                      if (outstanding != null &&
-                          profile.readerIsOwner &&
-                          moneyValue(outstanding.owner) > 0)
-                        '${context.say('عليك', 'عليكِ')} ${money(outstanding.owner)}',
-                      ...others,
-                    ].join(' · '),
-              trailing: end(money(total)),
-              onTap: onPayments,
+        // D114: the budget, what is left of it, what was agreed and paid.
+        if (summary.hasBudget || moneyValue(summary.costs.total) > 0) ...[
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onItems,
+            child: JourneyBox(
+              key: const ValueKey('money-whole-budget'),
+              padding: const EdgeInsets.all(AarastV3Space.x4),
+              child: _BudgetFigures(summary: summary),
             ),
-            if (loanLeft > 0)
-              JourneyListRow(
-                key: const ValueKey('money-whole-loans'),
-                icon: LucideIcons.coins,
-                color: AarastV3Color.lilac,
-                soft: AarastV3Color.lilacSoft,
-                // RA-MO-71: the owner's debt, in the reader's words.
-                title: context.ownerDid(
-                  'سلف ترجعها',
-                  'سلف ترجعينها',
-                  groom: 'سلف يرجعها العريس',
-                  bride: 'سلف ترجعها العروسة',
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
+        // No rows left (all of it his, no loan, no estimate): no empty box.
+        if (!allMine || loanLeft > 0 || estimates > 0)
+          JourneyList(
+            children: [
+              if (!allMine)
+                JourneyListRow(
+                  key: const ValueKey('money-whole-left'),
+                  icon: LucideIcons.fileSignature,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
+                  // D114: every agreement, the mahr's with them.
+                  title: 'باقي على الاتفاقات كلها',
+                  // Who it is on; all of it on him is said, not its figure
+                  // again (the row's own figure, and the card's above).
+                  subtitleMaxLines: 2,
+                  subtitle: moneyValue(total) <= 0
+                      ? 'ما في اتفاقات عليها باقي'
+                      : others.isEmpty && profile.readerIsOwner
+                      ? context.say('كله عليك', 'كله عليكِ')
+                      : [
+                          if (outstanding != null &&
+                              profile.readerIsOwner &&
+                              moneyValue(outstanding.owner) > 0)
+                            '${context.say('عليك', 'عليكِ')} ${money(outstanding.owner)}',
+                          ...others,
+                        ].join(' · '),
+                  trailing: end(money(total)),
+                  onTap: onPayments,
                 ),
-                subtitleMaxLines: 2,
-                // The owner's debt, said to the reader as «الدفعات» says it.
-                subtitle:
-                    '${context.ownerDid('دين عليك', 'دين عليكِ', groom: 'دين على العريس', bride: 'دين على العروسة')}، ${repayments.isEmpty ? 'بدون مواعيد سداد' : 'من ${_dayWords(repayments.first)} لين ${_dayWords(repayments.last)}'}',
-                trailing: end(money(loanLeft)),
-                onTap: onSources,
-              ),
-            JourneyListRow(
-              key: const ValueKey('money-whole-cost'),
-              icon: LucideIcons.tag,
-              color: AarastV3Color.amber,
-              soft: AarastV3Color.amberSoft,
-              // D114: the wedding's items and the mahr.
-              title: 'التكلفة المسجّلة',
-              subtitleMaxLines: 2,
-              subtitle: [
-                summary.budget.total == null
-                    ? context.say('ما حطيت ميزانية', 'ما حطيتِ ميزانية')
-                    : summary.budget.includesMahr
-                    ? 'الميزانية ${money(summary.budget.total)}، فيها المهر'
-                    : 'الميزانية ${money(summary.budget.total)} لبنود العرس',
-                completeness,
-              ].join(' · '),
-              trailing: expected == null
-                  ? end(money(summary.costs.total))
-                  : end(
-                      money(expected.total),
-                      unknown > 0 ? 'مو نهائية' : 'لين الحين',
-                    ),
-              onTap: onItems,
-            ),
-          ],
-        ),
+              if (loanLeft > 0)
+                JourneyListRow(
+                  key: const ValueKey('money-whole-loans'),
+                  icon: LucideIcons.coins,
+                  color: AarastV3Color.lilac,
+                  soft: AarastV3Color.lilacSoft,
+                  // RA-MO-71: the owner's debt, in the reader's words.
+                  title: context.ownerDid(
+                    'سلف ترجعها',
+                    'سلف ترجعينها',
+                    groom: 'سلف يرجعها العريس',
+                    bride: 'سلف ترجعها العروسة',
+                  ),
+                  subtitleMaxLines: 2,
+                  // The owner's debt, said to the reader as «الدفعات» says it.
+                  subtitle:
+                      '${context.ownerDid('دين عليك', 'دين عليكِ', groom: 'دين على العريس', bride: 'دين على العروسة')}، ${repayments.isEmpty ? 'بدون مواعيد سداد' : 'من ${_dayWords(repayments.first)} لين ${_dayWords(repayments.last)}'}',
+                  trailing: end(money(loanLeft)),
+                  onTap: onSources,
+                ),
+              // With estimates, what the wedding is expected to cost; without
+              // any, it is «اتفقت على» above. The items without one are said
+              // in «يحتاج انتباهك».
+              if (estimates > 0)
+                JourneyListRow(
+                  key: const ValueKey('money-whole-cost'),
+                  icon: LucideIcons.tag,
+                  color: AarastV3Color.amber,
+                  soft: AarastV3Color.amberSoft,
+                  // D114: the wedding's items and the mahr.
+                  title: 'التكلفة المتوقعة',
+                  subtitleMaxLines: 2,
+                  subtitle: 'الاتفاقات وتقديرات البنود الباقية',
+                  trailing: expected == null
+                      ? end(money(summary.costs.total))
+                      : end(
+                          money(expected.total),
+                          unknown > 0 ? 'مو نهائية' : 'لين الحين',
+                        ),
+                  onTap: onItems,
+                ),
+            ],
+          ),
       ],
     );
   }

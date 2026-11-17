@@ -97,12 +97,14 @@ void main() {
       expect(find.byKey(const ValueKey('money-share-figure')), findsOneWidget);
       // At 2.0 the whole picture is below the fold; it is reached by
       // scrolling, and the menu is back at the top.
+      // Changed on purpose (Rashad 2026-11-17): the budget box carries the
+      // cost while no item has an estimate.
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('money-whole-cost')),
+        find.byKey(const ValueKey('money-whole-budget')),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.byKey(const ValueKey('money-whole-cost')), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-whole-budget')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 4000));
       await tester.pumpAndSettle();
@@ -160,9 +162,11 @@ void main() {
       // with the way to add more under it, and no second empty list.
       expect(find.text('الصالة'), findsOneWidget);
       expect(find.text('ما اتفقت عليها بعد'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-17): one line that asks for the
+      // estimate, not «—» over «بدون تقدير».
       final item = find.byKey(const ValueKey('money-item-category-category-1'));
       expect(
-        find.descendant(of: item, matching: find.text('بدون تقدير')),
+        find.descendant(of: item, matching: find.text('قدّره')),
         findsOneWidget,
       );
       await tester.scrollUntilVisible(
@@ -301,9 +305,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('journey-tab-2')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('money-due-total')), findsOneWidget);
-      expect(find.text('باقي من دفعات العرس'), findsOneWidget);
-      expect(find.text('دفعة وحدة'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-17): one coming payment, nothing
+      // late: no total card saying the summary's figure again.
+      expect(find.byKey(const ValueKey('money-due-total')), findsNothing);
       expect(find.text('تكلفة 1'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('money-due-swipe-schedule-upcoming')),
@@ -369,8 +373,11 @@ void main() {
         findsOneWidget,
       );
 
+      // Changed on purpose (Rashad 2026-11-17): with nothing late, one month
+      // and no payer picked, the total is the summary's figure again; the
+      // month's title says it.
       await openPayments([schedule('soon', 10)]);
-      expect(find.text('دفعة وحدة'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-due-total')), findsNothing);
       expect(find.byKey(const ValueKey('money-due-late')), findsNothing);
       expect(tester.takeException(), isNull);
     });

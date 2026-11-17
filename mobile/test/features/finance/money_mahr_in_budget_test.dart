@@ -250,6 +250,19 @@ void main() {
         : find.byKey(const ValueKey('__absent__'));
   }
 
+  // Changed on purpose (Rashad 2026-11-17): the budget's four figures moved
+  // from the green card to «الصورة كاملة», on paper.
+  Finder inBudget(WidgetTester tester, String text) {
+    final box = find.byKey(const ValueKey('money-whole-budget'));
+    final texts = tester
+        .widgetList<Text>(find.descendant(of: box, matching: find.byType(Text)))
+        .map((t) => (t.data ?? '').replaceAll(' ', ' '))
+        .join(' ');
+    return texts.contains(text)
+        ? box
+        : find.byKey(const ValueKey('__absent__'));
+  }
+
   group('the top card reads complete', () {
     testWidgets('inside: what is on him, then the budget with the mahr in '
         'it', (tester) async {
@@ -262,14 +275,16 @@ void main() {
             .data,
         startsWith('1.5'),
       );
-      expect(inHero(tester, 'الميزانية 7'), findsOneWidget);
-      expect(inHero(tester, 'باقي منها 5'), findsOneWidget);
-      // «منها المهر» is the note under «اتفقت على», its figure at the end.
-      expect(inHero(tester, 'اتفقت على منها المهر 2'), findsOneWidget);
-      expect(inHero(tester, 'دفعت 500'), findsOneWidget);
-      expect(inHero(tester, 'برّا الميزانية'), findsNothing);
+      expect(inBudget(tester, 'الميزانية 7'), findsOneWidget);
+      expect(inBudget(tester, 'باقي منها 5'), findsOneWidget);
+      // «منها المهر» is the note under «اتفقت على»'s figure.
+      expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
+      expect(inBudget(tester, 'منها المهر 2'), findsOneWidget);
+      expect(inBudget(tester, 'دفعت 500'), findsOneWidget);
+      expect(inBudget(tester, 'برّا الميزانية'), findsNothing);
       // No figure that is all mahr is called the wedding's.
       expect(inHero(tester, 'العرس'), findsNothing);
+      expect(inBudget(tester, 'العرس'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -279,16 +294,18 @@ void main() {
       await _pump(tester, inside: false);
 
       expect(inHero(tester, 'باقي عليك'), findsOneWidget);
-      expect(inHero(tester, 'الميزانية 7'), findsOneWidget);
-      expect(inHero(tester, 'باقي منها 7'), findsOneWidget);
-      expect(inHero(tester, 'اتفقت على 2'), findsOneWidget);
-      expect(inHero(tester, 'منها المهر'), findsNothing);
+      expect(inBudget(tester, 'الميزانية 7'), findsOneWidget);
+      expect(inBudget(tester, 'باقي منها 7'), findsOneWidget);
+      expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
+      expect(inBudget(tester, 'منها المهر'), findsNothing);
+      // The mahr's line says where it is counted; what is left of it is
+      // the green card's «باقي المهر», said once.
       final line = find.byKey(const ValueKey('money-share-mahr-line'));
       expect(line, findsOneWidget);
       final words = tester.widget<Text>(line).data!;
       expect(words, contains('برّا الميزانية'));
-      expect(words, contains('سلّمت 500'));
-      expect(words, contains('وباقي 1.5'));
+      // All that is left on him is the mahr here: «كله باقي المهر».
+      expect(inHero(tester, 'كله باقي المهر'), findsOneWidget);
       expect(inHero(tester, 'العرس'), findsNothing);
     });
 
@@ -319,9 +336,12 @@ void main() {
 
     expect(find.text('الدفعات الجاية'), findsOneWidget);
     expect(find.text('دفعات العرس الجاية'), findsNothing);
-    expect(find.text('باقي على الاتفاقات كلها'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): all of it is on him, so
+    // «باقي على الاتفاقات كلها» would be the green card's figure again; and
+    // with no estimate the cost is «اتفقت على» in the budget box.
+    expect(find.text('باقي على الاتفاقات كلها'), findsNothing);
     expect(find.text('باقي على العرس كله'), findsNothing);
-    expect(find.text('التكلفة المسجّلة'), findsOneWidget);
+    expect(find.text('التكلفة المتوقعة'), findsNothing);
     expect(find.text('تكلفة العرس المسجّلة'), findsNothing);
   });
 
@@ -353,16 +373,19 @@ void main() {
       expect(status, contains('باقي منها 5'));
       expect(find.text('من الميزانية'), findsOneWidget);
       expect(find.text('برا الميزانية'), findsNothing);
+      // Changed on purpose (Rashad 2026-11-17): the recorded-cost card that
+      // said «والمهر 2 …» again is gone; the box and the section say it.
       expect(find.textContaining('وهو برا الميزانية'), findsNothing);
-      expect(find.textContaining('والمهر 2'), findsOneWidget);
+      expect(find.textContaining('والمهر 2'), findsNothing);
     });
 
     testWidgets('on its own: as before', (tester) async {
       await openItems(tester, inside: false);
 
       expect(find.text('ميزانية العرس'), findsOneWidget);
+      // The mahr's section says where it is counted, once.
       expect(find.text('برا الميزانية'), findsOneWidget);
-      expect(find.textContaining('وهو برا الميزانية'), findsOneWidget);
+      expect(find.textContaining('وهو برا الميزانية'), findsNothing);
     });
   });
 

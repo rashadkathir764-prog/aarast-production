@@ -68,9 +68,10 @@ void main() {
       findsOneWidget,
       reason: 'before a source, nothing claims to cover it',
     );
-    // Changed on purpose (critique م7): the card says what is true; the
-    // request is the step below it, once.
-    expect(find.text('لسا ما نعرف إذا تكفي فلوسك'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): «لسا ما نعرف» said nothing to
+    // do; the line is the way to know, in her words. The three steps under
+    // it are the start only, so the request lives here.
+    expect(find.text('سجّلي من وين فلوسك ونقول لك إذا تكفي'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -170,7 +171,9 @@ void main() {
 
     expect(find.text('اتفقتِ عليها'), findsOneWidget);
     expect(find.text('اتفقت عليها'), findsNothing);
-    expect(find.text('اتفقتِ 1'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): the filter chips split the
+    // list as its titles do; the titles stay, in her words.
+    expect(find.text('اتفقتِ 1'), findsNothing);
     // What is left on her dress, from its agreement.
     final row = find.byKey(const ValueKey('money-item-category-1'));
     expect(
@@ -199,7 +202,7 @@ void main() {
 
     expect(_tabFill(tester, 0), AarastV3Color.primary);
     expect(find.text('باقي عليك'), findsOneWidget);
-    expect(find.text('لسا ما نعرف إذا تكفي فلوسك'), findsOneWidget);
+    expect(find.text('سجّل من وين فلوسك ونقول لك إذا تكفي'), findsOneWidget);
   });
 
   // RA-MO-42: the plan's money summary is its owner's to send.

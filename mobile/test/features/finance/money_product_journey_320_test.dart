@@ -68,17 +68,18 @@ void main() {
         find.byKey(const ValueKey('money-coming-due-cost-1')),
         findsNothing,
       );
-      // The whole picture opens «البنود», where the costs live (c01).
+      // The whole picture opens «البنود», where the costs live (c01); its
+      // budget box carries the cost while no item has an estimate.
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('money-whole-cost')),
+        find.byKey(const ValueKey('money-whole-budget')),
         220,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.ensureVisible(
-        find.byKey(const ValueKey('money-whole-cost')),
+        find.byKey(const ValueKey('money-whole-budget')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('money-whole-cost')));
+      await tester.tap(find.byKey(const ValueKey('money-whole-budget')));
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('money-item-category-1')),

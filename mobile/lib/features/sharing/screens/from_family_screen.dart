@@ -73,7 +73,8 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     if (!mounted) return;
     if (text.trim().isEmpty) {
       setState(
-        () => _error = 'ما في شي منسوخ. الرابط موجود في رسالة الدعوة على واتساب.',
+        () =>
+            _error = 'ما في شي منسوخ. الرابط موجود في رسالة الدعوة على واتساب.',
       );
       return;
     }

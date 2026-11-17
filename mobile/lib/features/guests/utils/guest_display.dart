@@ -69,8 +69,7 @@ class GuestWords {
 
   /// Critique ض1: the word after a count agrees with it. One guest
   /// «أكد», more «أكدوا» (the plan's side for her guests).
-  String confirmedOf(int count) =>
-      count == 1 ? _say('أكد', 'أكدت') : confirmed;
+  String confirmedOf(int count) => count == 1 ? _say('أكد', 'أكدت') : confirmed;
 
   /// «ما ردّ» for one, «ما ردّوا» for more.
   String pendingOf(int count) =>

@@ -68,14 +68,15 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
               selected: _segment == _PaySegment.done,
               onTap: () => setState(() => _segment = _PaySegment.done),
             ),
-            // w20 «مين دفع ايش» (G14).
+            // w20 «مين دفع ايش» (G14): a chip beside the other two, not a
+            // link of another kind on the same line (2026-11-17).
             if (summary.payers.isNotEmpty)
-              JourneyTextAction(
+              JourneyChip(
                 key: const ValueKey('money-payers'),
-                label: 'مين دفع ايش',
-                color: context.accent.primary,
-                onPressed: () =>
-                    context.push(AppRouter.moneyPayers(widget.planId)),
+                label: 'مين دفع',
+                icon: LucideIcons.users,
+                selected: false,
+                onTap: () => context.push(AppRouter.moneyPayers(widget.planId)),
               ),
           ],
         ),
@@ -263,7 +264,11 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
         ),
         const SizedBox(height: AarastV3Space.x3),
       ],
-      if (shown.isNotEmpty) ...[
+      // Rashad 2026-11-17: the total said the summary's figure a third time.
+      // It stays where it says more: the months drawn, a late part, or
+      // one payer's share picked above.
+      if (shown.isNotEmpty &&
+          (chart.length > 1 || late.isNotEmpty || who != null)) ...[
         JourneyBox(
           key: const ValueKey('money-due-total'),
           color: context.accent.primarySoft,
@@ -318,7 +323,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
             ],
           ),
         ),
-      ] else if (wedding.isNotEmpty)
+      ] else if (shown.isEmpty && wedding.isNotEmpty)
         JourneyNote(
           text:
               'ما في دفعات عرس ${who == '' ? context.ownerDid('عليك', 'عليكِ', groom: 'على العريس', bride: 'على العروسة') : 'على ${others[who]?.label ?? ''}'}.',
@@ -467,7 +472,10 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
       JourneySectionTitle(
         key: const ValueKey('money-paid-total'),
         'اللي اندفع',
-        action: money(total),
+        // One payment: its row says the figure (2026-11-17).
+        action: payments.length > 1 || provider.hasMorePayments
+            ? money(total)
+            : null,
         actionColor: AarastV3Color.textMuted,
       ),
       JourneyBox(

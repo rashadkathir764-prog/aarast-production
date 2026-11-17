@@ -1,11 +1,12 @@
 part of 'money_overview_screen.dart';
 
-// D114 on «الملخص»: under what is on the owner and whether his money covers
-// it, the rest of the picture in four figures (the budget, what is left of
+// D114 on «الملخص»: the budget in four figures (the budget, what is left of
 // it or how far over it the expected cost is, what was agreed, what was
 // paid), and the groom's mahr in its place: part of what was agreed when the
-// budget holds it, its own line when it is on its own. The same words as the
-// home's money card.
+// budget holds it, a short line when it is on its own. The same cells as the
+// home's money card. Rashad 2026-11-17: they sit in «الصورة كاملة» on paper,
+// not in the green card, which says only what is on him and whether his
+// money covers it.
 
 /// The groom's mahr as these lines read it; null on a bride's plan (hers is
 /// money coming in) or before it is recorded.
@@ -26,9 +27,7 @@ class _BudgetFigures extends StatelessWidget {
     // Each figure whole on its line: «1.5» was left at a line's end with
     // «مليون ر.ي» under it.
     String money(Object? value) =>
-        _figure(context, value, currency).replaceAll(' ', ' ');
-    final onColour = AarastV3Color.onPrimary;
-    final soft = context.accent.onPrimaryMuted;
+        _figure(context, value, currency).replaceAll(' ', ' ');
     final budget = summary.budget;
     final hasBudget = moneyValue(budget.total) > 0;
     final mahr = _mahrPaid(summary);
@@ -39,9 +38,6 @@ class _BudgetFigures extends StatelessWidget {
         ? -moneyValue(budgetLeft)
         : null;
     final costs = summary.costs;
-    final paidByOthers = moneyValue(costs.paidByOthers);
-    final paidByOwner = moneyValue(costs.paidByOwner);
-    // The home's money card says these same cells: one writer for both.
     final cells = [
       for (final cell in moneyBudgetCells(
         context,
@@ -52,97 +48,97 @@ class _BudgetFigures extends StatelessWidget {
         over: overBy != null,
         overBy: overBy,
         agreed: moneyValue(costs.total),
-        paidByOwner: paidByOwner,
-        paidByOthers: paidByOthers,
+        paidByOwner: moneyValue(costs.paidByOwner),
+        paidByOthers: moneyValue(costs.paidByOthers),
         mahrInside: inside ? moneyValue(mahr.total) : null,
         figure: money,
       ))
         (
-          label: cell.label,
+          label: cell.label.endsWith('بـ')
+              ? cell.label.substring(0, cell.label.length - 2).trimRight()
+              : cell.label,
           figure: cell.value == null ? null : money(cell.value),
           note: cell.note,
           danger: cell.danger,
         ),
     ];
-    // One line per figure, its label at the start and its figure at the
-    // end (Rashad, 2026-11-17): two columns at large text set each label
-    // over its figure, and the card took two thirds of the screen.
+    // Two by two, each label over its figure: half the height of a line
+    // each, and a figure never wraps away from its label.
     Widget cell(({String label, String? figure, String? note, bool danger}) c) {
-      final strong = JourneyType.of(
-        JourneyType.bodySmall,
-        weight: JourneyType.bold,
-        color: c.danger ? AarastV3Color.dangerSoft : onColour,
-      );
-      final label = c.label.endsWith('بـ')
-          ? c.label.substring(0, c.label.length - 2).trimRight()
-          : c.label;
+      final colour = c.danger ? AarastV3Color.danger : AarastV3Color.ink;
       return MergeSemantics(
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: c.danger
-                        ? strong
-                        : JourneyType.of(JourneyType.bodySmall, color: soft),
-                  ),
-                  if (c.note case final note?)
-                    Text(
-                      note,
-                      style: JourneyType.of(JourneyType.small, color: soft),
-                    ),
-                ],
+            Text(
+              c.label,
+              style: JourneyType.of(
+                JourneyType.small,
+                color: c.danger
+                    ? AarastV3Color.danger
+                    : AarastV3Color.textMuted,
               ),
             ),
-            if (c.figure case final figure?) ...[
-              const SizedBox(width: AarastV3Space.x3),
-              // Whole on its line; at the largest text it shrinks to fit
-              // rather than run off the card.
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(figure, style: strong),
+            if (c.figure case final figure?)
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  figure,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                    color: colour,
                   ),
                 ),
               ),
-            ],
+            if (c.note case final note?)
+              Text(
+                note,
+                style: JourneyType.of(
+                  JourneyType.caption,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
           ],
         ),
       );
     }
 
-    final rows = <Widget>[
-      for (final (index, c) in cells.indexed) ...[
-        if (index > 0) const SizedBox(height: AarastV3Space.x2),
-        cell(c),
-      ],
-    ];
+    final rows = <Widget>[];
+    for (var index = 0; index < cells.length; index += 2) {
+      if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x3));
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: cell(cells[index])),
+            const SizedBox(width: AarastV3Space.x3),
+            Expanded(
+              child: index + 1 < cells.length
+                  ? cell(cells[index + 1])
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+    }
     return Column(
       key: const ValueKey('money-share-budget'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ...rows,
-        if (mahr != null && !inside) ...[
-          const SizedBox(height: AarastV3Space.x2),
+        // What is left of the mahr is in the green card; here only where it
+        // is counted.
+        if (mahr != null && !inside && hasBudget) ...[
+          const SizedBox(height: AarastV3Space.x3),
           Text(
-            mahrOnItsOwnWords(
-              context,
-              total: moneyValue(mahr.total),
-              settled: moneyValue(mahr.settled),
-              left: moneyValue(mahr.remaining),
-              hasBudget: hasBudget,
-              figure: money,
-            ),
+            'المهر ${money(mahr.total)}، برّا الميزانية',
             key: const ValueKey('money-share-mahr-line'),
-            style: JourneyType.of(JourneyType.small, color: soft, height: 1.6),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
           ),
         ],
       ],

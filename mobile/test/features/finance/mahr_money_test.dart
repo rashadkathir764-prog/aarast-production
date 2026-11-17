@@ -106,7 +106,7 @@ void main() {
       // All that is left on him is the mahr: said once, not its figure
       // under the same figure.
       expect(find.text('كله باقي المهر'), findsOneWidget);
-      expect(find.byKey(const ValueKey('money-whole-cost')), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-whole-budget')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -216,6 +216,9 @@ void main() {
     });
 
     // D79, D105: the whole wedding's cost has the groom's mahr in it.
+    // Changed on purpose (Rashad 2026-11-17): with no estimate the cost is
+    // what was agreed, said once by the budget box in «الصورة كاملة»; the
+    // «التكلفة المتوقعة» row comes only with estimates.
     testWidgets('D79: the groom\'s whole cost has the mahr in it', (
       tester,
     ) async {
@@ -228,7 +231,7 @@ void main() {
 
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('money-whole-cost')),
+          of: find.byKey(const ValueKey('money-whole-budget')),
           matching: find.textContaining('5.4 مليون'),
         ),
         findsOneWidget,
@@ -252,7 +255,7 @@ void main() {
 
         expect(
           find.descendant(
-            of: find.byKey(const ValueKey('money-whole-cost')),
+            of: find.byKey(const ValueKey('money-whole-budget')),
             matching: find.textContaining('5.4 مليون'),
           ),
           findsOneWidget,
@@ -267,7 +270,7 @@ void main() {
       await _pumpMoney(tester, profile: JourneyProfile.groom, persona: 'GROOM');
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('money-whole-cost')),
+          of: find.byKey(const ValueKey('money-whole-budget')),
           matching: find.textContaining('2.4 مليون'),
         ),
         findsOneWidget,
@@ -286,7 +289,7 @@ void main() {
       );
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('money-whole-cost')),
+          of: find.byKey(const ValueKey('money-whole-budget')),
           matching: find.textContaining('2.4 مليون'),
         ),
         findsOneWidget,
@@ -644,7 +647,9 @@ void main() {
       expect(find.text('الكل'), findsOneWidget);
       expect(find.text('الوالد'), findsWidgets);
       expect(find.text('العريس'), findsWidgets);
-      expect(find.text('اللي انحسب دفعه'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-17): «اللي انحسب دفعه» was hard
+      // to read, beside a «ك» that meant nothing.
+      expect(find.text('اندفع كله'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('payer-payment-hall-paid')),
         findsOneWidget,

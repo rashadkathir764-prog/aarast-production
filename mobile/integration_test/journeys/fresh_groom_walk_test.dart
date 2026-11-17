@@ -170,8 +170,9 @@ void main() {
       });
 
       await walk.step('c10_add_cost', 'سجّل اتفاقًا: القاعة', () async {
-        // The floating button, then the same words on the sheet it opens.
-        await walk.tapText('إضافة اتفاق');
+        // The floating button (it names its four choices since 2026-11-17),
+        // then the agreement on the sheet it opens.
+        await walk.tapText('اتفاق أو دفعة');
         await walk.tapText('إضافة اتفاق', last: true, wait: 3);
         walk.note(walk.visibleTexts().take(20).join(' · '));
       });

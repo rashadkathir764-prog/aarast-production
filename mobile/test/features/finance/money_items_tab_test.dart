@@ -313,13 +313,15 @@ void main() {
       expect(said, contains('اتفاقات 1,550,000'));
       expect(said, contains('تقديرات 800,000'));
       expect(said, contains('متاح 650,000'));
-      expect(said, contains('تحت الميزانية بـ650,000'));
-
-      final cost = find.byKey(const ValueKey('money-items-cost'));
-      // 2,350,000 + the mahr's 800,000.
-      expect(_said(tester, cost), contains('3.2 مليون'));
-      expect(_said(tester, cost), contains('مو نهائية'));
-      expect(_said(tester, cost), contains('بند واحد ما له تقدير'));
+      // Changed on purpose (Rashad 2026-11-17): «تحت الميزانية بـ650,000»
+      // said «متاح 650,000» again, and the recorded-cost card said the
+      // summary's cost again; both are gone.
+      expect(said, isNot(contains('تحت الميزانية')));
+      expect(find.byKey(const ValueKey('money-items-cost')), findsNothing);
+      // What is unpriced is said once, over the rows that need it.
+      final note = find.byKey(const ValueKey('money-items-cost-note'));
+      await _show(tester, note);
+      expect(_said(tester, note), contains('بند واحد بدون تقدير'));
       expect(tester.takeException(), isNull);
     });
 
@@ -371,23 +373,20 @@ void main() {
         find.descendant(of: gold, matching: find.text('المخصص')),
         findsOneWidget,
       );
+      // Changed on purpose (Rashad 2026-11-17): an item without an estimate
+      // is one line that asks for it.
       final cake = find.byKey(const ValueKey('money-item-category-c-cake'));
       expect(
-        find.descendant(of: cake, matching: find.text('بدون تقدير')),
+        find.descendant(of: cake, matching: find.text('قدّره')),
         findsOneWidget,
       );
 
-      // «ما اتفقت» shows only the items still at their estimate.
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 3000));
-      await tester.pumpAndSettle();
-      await _show(
-        tester,
+      // Changed on purpose (Rashad 2026-11-17): no filter chips; the open
+      // items are their own titled group, and a row opens its item.
+      expect(
         find.byKey(const ValueKey('money-items-filter-open')),
+        findsNothing,
       );
-      await tester.tap(find.byKey(const ValueKey('money-items-filter-open')));
-      await tester.pumpAndSettle();
-      expect(hall, findsNothing);
-      expect(find.byKey(const ValueKey('money-mahr-section')), findsNothing);
       await _show(tester, gold);
       expect(gold, findsOneWidget);
 

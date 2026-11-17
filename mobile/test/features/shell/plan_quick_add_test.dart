@@ -68,13 +68,15 @@ void main() {
     test('each tab names its «+»', () {
       const groom = JourneyProfile.groom;
       expect(planQuickAddLabelForTab(0, groom), 'إضافة');
-      expect(planQuickAddLabelForTab(1, groom), 'إضافة اتفاق');
+      // Changed on purpose (Rashad 2026-11-17): the money «+» opens an
+      // agreement, a payment, a date and an item; it says so, with a «+».
+      expect(planQuickAddLabelForTab(1, groom), 'اتفاق أو دفعة');
       expect(planQuickAddLabelForTab(2, groom), 'إضافة مهمة');
       expect(planQuickAddLabelForTab(3, groom), 'إضافة ضيف');
       // The bride's guests are her women guests (JOURNEY_PROFILE.md).
       expect(planQuickAddLabelForTab(3, JourneyProfile.bride), 'إضافة ضيفة');
       expect(planQuickAddIconForTab(0), LucideIcons.plus);
-      expect(planQuickAddIconForTab(1), LucideIcons.wallet);
+      expect(planQuickAddIconForTab(1), LucideIcons.plus);
       expect(planQuickAddIconForTab(2), LucideIcons.listPlus);
       expect(planQuickAddIconForTab(3), LucideIcons.userPlus);
     });

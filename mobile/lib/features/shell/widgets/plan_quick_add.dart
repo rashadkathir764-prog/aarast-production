@@ -189,7 +189,9 @@ bool shouldShowParticipantQuickAdd({
 
 IconData planQuickAddIconForTab(int tabIndex) {
   return switch (tabIndex) {
-    _moneyTab => LucideIcons.wallet,
+    // Folded while the page scrolls it is the icon alone: «+» says «add»,
+    // a wallet said nothing (Rashad 2026-11-17).
+    _moneyTab => LucideIcons.plus,
     _tasksTab => LucideIcons.listPlus,
     _guestsTab => LucideIcons.userPlus,
     _ => LucideIcons.plus,
@@ -198,7 +200,9 @@ IconData planQuickAddIconForTab(int tabIndex) {
 
 String planQuickAddLabelForTab(int tabIndex, JourneyProfile profile) {
   return switch (tabIndex) {
-    _moneyTab => PlanQuickAddKind.cost.labelFor(profile),
+    // It opens a sheet of an agreement, a payment, a payment date and an
+    // item; «إضافة اتفاق» named one of the four (2026-11-17).
+    _moneyTab => 'اتفاق أو دفعة',
     _tasksTab => PlanQuickAddKind.task.labelFor(profile),
     _guestsTab => PlanQuickAddKind.guest.labelFor(profile),
     _ => 'إضافة',

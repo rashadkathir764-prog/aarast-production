@@ -55,10 +55,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
 
   String _plain(Object? value) => shownMoney(
     context,
-    fullMoneyParts(
-      moneyValue(value),
-      currencyCode: widget.currency,
-    ).plainText,
+    fullMoneyParts(moneyValue(value), currencyCode: widget.currency).plainText,
   );
 
   Future<void> _pickDate() async {

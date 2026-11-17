@@ -20,8 +20,12 @@ class _ItemLine extends StatelessWidget {
     this.figureNote,
     this.private = false,
     this.quiet = false,
+    this.figureAccent = false,
     super.key,
   });
+
+  /// The figure is a word to act on («قدّره»), in the plan's colour.
+  final bool figureAccent;
 
   final IconData icon;
   final String title;
@@ -129,7 +133,9 @@ class _ItemLine extends StatelessWidget {
                               style: JourneyType.of(
                                 JourneyType.body,
                                 weight: JourneyType.bold,
-                                color: quiet
+                                color: figureAccent
+                                    ? context.accent.primary
+                                    : quiet
                                     ? AarastV3Color.textMuted
                                     : AarastV3Color.ink,
                               ),
@@ -383,132 +389,39 @@ class _ItemsBudgetBox extends StatelessWidget {
             spacing: AarastV3Space.x3,
             runSpacing: AarastV3Space.x1,
             children: [
+              // A zero is no part of the bar: «تقديرات 0» said nothing.
               if (mahr > 0)
                 _Legend(color: mahrColour, text: 'المهر ${money(mahr)}'),
-              _Legend(color: agreedColour, text: 'اتفاقات ${money(agreed)}'),
-              _Legend(
-                color: estimateColour,
-                text: 'تقديرات ${money(estimates)}',
-              ),
+              if (agreed > 0)
+                _Legend(color: agreedColour, text: 'اتفاقات ${money(agreed)}'),
+              if (estimates > 0)
+                _Legend(
+                  color: estimateColour,
+                  text: 'تقديرات ${money(estimates)}',
+                ),
               if (free > 0)
                 _Legend(color: AarastV3Color.line, text: 'متاح ${money(free)}'),
             ],
           ),
-          const SizedBox(height: AarastV3Space.x2),
-          Text(
-            status,
-            key: const ValueKey('money-items-budget-status'),
-            style: JourneyType.of(
-              JourneyType.small,
-              weight: over > 0 && expected > 0
-                  ? JourneyType.bold
-                  : FontWeight.w400,
-              color: over > 0 && expected > 0
-                  ? AarastV3Color.danger
-                  : AarastV3Color.textMuted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The recorded cost (D105): the wedding's items with the mahr, and whether
-/// it can be taken as final.
-class _RecordedCostBox extends StatelessWidget {
-  const _RecordedCostBox({
-    required this.summary,
-    required this.missing,
-    required this.onExplain,
-  });
-
-  final MoneySummary summary;
-
-  /// Items most weddings have that this plan does not list.
-  final List<String> missing;
-  final VoidCallback onExplain;
-
-  @override
-  Widget build(BuildContext context) {
-    final currency = summary.currency;
-    String money(Object? value) => _figure(context, value, currency);
-    final expected = summary.expected ?? const MoneyExpected();
-    final unknown = expected.wedding.unknownCount;
-    final complete = unknown == 0 && missing.isEmpty;
-    final note = [
-      if (unknown > 0)
-        unknown == 1
-            ? 'بند واحد ما له تقدير، فما دخل في التكلفة.'
-            : '${arabicCount(unknown, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} ما لها تقدير، فما دخلت في التكلفة.',
-      if (missing.isNotEmpty)
-        '${unknown > 0 ? 'وما' : 'ما'} في القائمة ${missing.join(' و')}. '
-            '${context.say('لو تحتاجها، أضفها.', 'لو تحتاجينها، أضيفيها.')}',
-    ].join(' ');
-    return JourneyBox(
-      key: const ValueKey('money-items-cost'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text.rich(
-            TextSpan(
-              // D114: the wedding's items and the mahr.
-              text: 'التكلفة المسجّلة',
-              children: [
-                if (!complete)
-                  const TextSpan(
-                    text: ' · مو نهائية',
-                    style: TextStyle(
-                      color: AarastV3Color.amber,
-                      fontWeight: JourneyType.bold,
-                    ),
-                  ),
-              ],
-            ),
-            style: JourneyType.of(
-              JourneyType.detail,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          Text(
-            money(expected.total),
-            key: const ValueKey('money-items-cost-figure'),
-            style: JourneyType.of(JourneyType.figure, weight: JourneyType.bold),
-          ),
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            [
-              'بنود العرس ${money(expected.wedding.expected)}',
-              if (moneyValue(expected.mahr.expected) > 0)
-                summary.budget.includesMahr
-                    ? 'والمهر ${money(expected.mahr.expected)}، من الميزانية'
-                    : 'والمهر ${money(expected.mahr.expected)}، وهو برا الميزانية',
-            ].join(' · '),
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          if (note.isNotEmpty) ...[
-            const SizedBox(height: AarastV3Space.x3),
-            JourneyNote(
-              key: const ValueKey('money-items-cost-note'),
-              icon: LucideIcons.alertCircle,
-              color: AarastV3Color.amber,
-              soft: AarastV3Color.amberSoft,
-              text: note,
+          // Under the budget the legend's «متاح» already says by how much;
+          // the line stays where it says more: over it, the mahr in it, or
+          // nothing priced yet.
+          if (over > 0 || mahr > 0 || expected <= 0) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            Text(
+              status,
+              key: const ValueKey('money-items-budget-status'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: over > 0 && expected > 0
+                    ? JourneyType.bold
+                    : FontWeight.w400,
+                color: over > 0 && expected > 0
+                    ? AarastV3Color.danger
+                    : AarastV3Color.textMuted,
+              ),
             ),
           ],
-          const SizedBox(height: AarastV3Space.x1),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyTextAction(
-              key: const ValueKey('money-items-explain'),
-              label: 'ايش الفرق بين البند والتقدير والاتفاق والمصروف؟',
-              color: context.accent.primary,
-              onPressed: onExplain,
-            ),
-          ),
         ],
       ),
     );

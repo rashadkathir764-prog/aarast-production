@@ -44,7 +44,7 @@ String _amount(BuildContext context, Object? value, String currency) {
 /// Being over the budget is said even when the money is also short: the two
 /// are different facts, and the over-budget one used to be dropped in
 /// silence because the shortfall was checked first.
-String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
+String? _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   if (!summary.hasBudget) {
     return profile.say(
       'حدد ميزانيتك ونرتب لك الباقي',
@@ -70,6 +70,11 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   if (over && short) return 'فوق الميزانية، والفلوس ما تكفي اللي باقي يندفع';
   if (short) return 'الفلوس ما تكفي اللي باقي يندفع';
   if (over) return 'فوق الميزانية';
+  // Rashad 2026-11-17: «في حدود الميزانية» with 11 of 13 items unpriced
+  // reassured on nothing. It is said once most of the items are counted.
+  final unknown = summary.expected?.wedding.unknownCount ?? 0;
+  final items = summary.categories.length;
+  if (items > 0 && unknown * 2 > items) return null;
   // Neutral like «فوق الميزانية»: a participant who reads the money is not
   // the owner of this budget (RA-MO-11).
   return 'في حدود الميزانية';

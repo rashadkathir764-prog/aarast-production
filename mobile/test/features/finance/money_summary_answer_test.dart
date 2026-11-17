@@ -486,20 +486,19 @@ void main() {
     ) async {
       final apis = await tester.runAsync(twoDips);
       await _open(tester, apis!);
-      await _scrollTo(tester, find.byKey(const ValueKey('money-whole-cost')));
-
-      final left = find.byKey(const ValueKey('money-whole-left'));
-      // All of it is on him: said, not its figure twice.
-      expect(
-        find.descendant(of: left, matching: find.text('كله عليك')),
-        findsOneWidget,
-      );
       final loans = find.byKey(const ValueKey('money-whole-loans'));
+      await _scrollTo(tester, loans);
+
+      // Changed on purpose (Rashad 2026-11-17): all of it is on him, so the
+      // row «باقي على الاتفاقات كلها» would be the green card's figure a
+      // second time; it is left out.
+      expect(find.byKey(const ValueKey('money-whole-left')), findsNothing);
       expect(
         find.descendant(of: loans, matching: find.textContaining('400,000')),
         findsOneWidget,
       );
-      // Hall 1,200,000 + photo 550,000 + mahr 800,000: 2,550,000.
+      // Hall 1,200,000 + photo 550,000 + mahr 800,000: 2,550,000, the
+      // expected cost (estimates are in it).
       final cost = find.byKey(const ValueKey('money-whole-cost'));
       expect(
         find.descendant(of: cost, matching: find.textContaining('2.6 مليون')),

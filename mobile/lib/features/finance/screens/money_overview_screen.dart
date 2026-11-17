@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -337,11 +338,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     // RA-MO-147, D114: «سجّل أول اتفاق» is the first agreement with a
     // provider, as the home asks it; the mahr is never one.
     final agreed = summary.budget.count > 0;
-    final firstSteps =
-        owner &&
-        manage &&
-        (!agreed || !sourced) &&
-        !(estimated && sourced && agreed);
+    // Rashad 2026-11-17: the three steps are the start only. After the first
+    // agreement what is left of them is said where it belongs: the sources
+    // in the green card's line, the estimates in «يحتاج انتباهك».
+    final firstSteps = owner && manage && !agreed;
     return [
       // 1. Late: the one loud card, above everything (D102).
       if (late.isNotEmpty && manage) ...[
@@ -386,15 +386,29 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         const SizedBox(height: AarastV3Space.x5),
         _ComingDues(
           lines: coming.take(3).toList(),
+          all: coming,
+          weddingDate: _weddingDay(context),
+          coverage: summary.coverage,
           currency: currency,
           onAll: () => _openTab(2),
           onOpen: (line) => manage ? _payDue(line) : _openDue(line),
         ),
       ],
       // 5. What needs the owner, apart from paying.
-      if (manage && _attention(summary).isNotEmpty) ...[
+      // While the first steps show, «قدّر تكلفة البنود» is one of them; the
+      // same ask is not said again here.
+      if (manage &&
+          [
+            for (final item in _attention(summary))
+              if (!(firstSteps && item.key == 'no-estimate')) item,
+          ].isNotEmpty) ...[
         const SizedBox(height: AarastV3Space.x5),
-        _NeedsAttention(items: _attention(summary)),
+        _NeedsAttention(
+          items: [
+            for (final item in _attention(summary))
+              if (!(firstSteps && item.key == 'no-estimate')) item,
+          ],
+        ),
       ],
       // 6. The whole picture.
       const SizedBox(height: AarastV3Space.x5),

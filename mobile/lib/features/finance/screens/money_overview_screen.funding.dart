@@ -134,6 +134,9 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 'من وين بتجيب فلوس العرس؟',
                 'من وين بتجيبين فلوس العرس؟',
               ),
+              // Why record it, said before asking (Rashad 2026-11-17).
+              emptyMessage:
+                  'مدخرات، دعم الأهل، سلفة أو وعد. منها نقول لك إذا تكفي دفعاتك في مواعيدها.',
               emptyAction: context.say('سجّل أول مصدر', 'سجّلي أول مصدر'),
               onEmptyAction: _openSources,
               onRetry: () => provider?.load(widget.planId),

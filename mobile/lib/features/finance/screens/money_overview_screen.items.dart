@@ -20,12 +20,9 @@ class _MoneyItemsTab extends StatefulWidget {
   State<_MoneyItemsTab> createState() => _MoneyItemsTabState();
 }
 
-enum _ItemsFilter { all, agreed, open }
-
 class _MoneyItemsTabState extends State<_MoneyItemsTab> {
   /// Cancelled agreements, folded away like «اللي خلصت» in the tasks.
   bool _showCancelled = false;
-  _ItemsFilter _filter = _ItemsFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +196,11 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
     Widget openRow(MoneyCategorySummary item) {
       final service = services[item.categoryId];
       final market = item.providerCategoryIds.isNotEmpty;
+      // Rashad 2026-11-17: eleven rows of «—», «بدون تقدير» and «ما طلبت
+      // عروض بعد» filled a screen and a half with nothing. An item without
+      // an estimate is one line that asks for it; only a service already in
+      // motion on the providers tab adds its line.
+      final unpriced = item.estimate == null;
       return _ItemLine(
         key: ValueKey('money-item-category-${item.categoryId}'),
         icon: iconFor(item.name),
@@ -207,7 +209,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
         facts: [
           if (service != null)
             (service.detail, AarastV3Color.brandAccentStrong)
-          else if (market && manage)
+          else if (market && manage && !unpriced)
             (
               context.ownerDid(
                 'ما طلبت عروض بعد',
@@ -218,9 +220,12 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
               null,
             ),
         ],
-        figure: item.estimate == null ? '—' : money(item.estimate),
-        figureNote: item.estimate == null
-            ? 'بدون تقدير'
+        figure: unpriced
+            ? (manage ? context.say('قدّره', 'قدّريه') : 'بدون تقدير')
+            : money(item.estimate),
+        figureAccent: unpriced && manage,
+        figureNote: unpriced
+            ? null
             : item.estimateFromAllocation
             ? 'المخصص'
             : 'تقدير',
@@ -294,10 +299,12 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
       ),
     );
 
-    final filter = _filter;
-    final showAgreed = filter != _ItemsFilter.open;
-    final showOpen = filter != _ItemsFilter.agreed;
+    // Rashad 2026-11-17: the chips «الكل · اتفقت · ما اتفقت» split the list
+    // the same way its two titles do, so they are gone; both groups show.
+    const showAgreed = true;
+    const showOpen = true;
     final nothing = wedding.isEmpty && mahrRows.isEmpty;
+    final unknown = summary.expected?.wedding.unknownCount ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -320,52 +327,20 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
                 ? () => context.push(AppRouter.moneyBudget(planId))
                 : null,
           ),
-          const SizedBox(height: AarastV3Space.x3),
-          _RecordedCostBox(
-            summary: summary,
-            missing: manageBudget
-                ? [for (final item in missingCommon.take(3)) item.name]
-                : const [],
-            onExplain: () => showJourneySheet<void>(
-              context: context,
-              builder: (_) => const _ItemsExplainSheet(),
+          // The four words, once, under the budget they explain (the
+          // recorded-cost card that held it said the summary's figure again).
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('money-items-explain'),
+              label: 'ايش الفرق بين التقدير والاتفاق والمصروف؟',
+              icon: LucideIcons.helpCircle,
+              color: context.accent.primary,
+              onPressed: () => showJourneySheet<void>(
+                context: context,
+                builder: (_) => const _ItemsExplainSheet(),
+              ),
             ),
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-          Wrap(
-            spacing: AarastV3Space.x2,
-            runSpacing: AarastV3Space.x2,
-            children: [
-              for (final (choice, label, count) in [
-                (_ItemsFilter.all, 'الكل', wedding.length + mahrRows.length),
-                (
-                  _ItemsFilter.agreed,
-                  context.ownerDid(
-                    'اتفقت',
-                    'اتفقتِ',
-                    groom: 'عليها اتفاق',
-                    bride: 'عليها اتفاق',
-                  ),
-                  agreed.length + mahrRows.length,
-                ),
-                (
-                  _ItemsFilter.open,
-                  context.ownerDid(
-                    'ما اتفقت',
-                    'ما اتفقتِ',
-                    groom: 'بدون اتفاق',
-                    bride: 'بدون اتفاق',
-                  ),
-                  open.length,
-                ),
-              ])
-                JourneyChip(
-                  key: ValueKey('money-items-filter-${choice.name}'),
-                  label: '$label $count',
-                  selected: filter == choice,
-                  onTap: () => setState(() => _filter = choice),
-                ),
-            ],
           ),
           if (showAgreed && agreed.isNotEmpty) ...[
             JourneySectionTitle(
@@ -386,19 +361,8 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
             ),
             listOf([for (final item in agreed) agreedRow(item)]),
           ],
-          if (showOpen && open.isNotEmpty) ...[
-            JourneySectionTitle(
-              context.ownerDid(
-                'ما اتفقت عليها بعد',
-                'ما اتفقتِ عليها بعد',
-                groom: 'بدون اتفاق بعد',
-                bride: 'بدون اتفاق بعد',
-              ),
-              action: 'بالتقدير',
-              actionColor: AarastV3Color.textMuted,
-            ),
-            listOf([for (final item in open) openRow(item)]),
-          ],
+          // The mahr right under the agreements, an agreement too: it sat
+          // at the page's end, past every open item (2026-11-17).
           if (showAgreed && mahrRows.isNotEmpty) ...[
             JourneySectionTitle(
               // Its row is «المهر»: the title says whose agreement it is.
@@ -416,6 +380,38 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
               padding: EdgeInsets.zero,
               child: Column(children: mahrRows),
             ),
+          ],
+          if (showOpen && open.isNotEmpty) ...[
+            JourneySectionTitle(
+              context.ownerDid(
+                'ما اتفقت عليها بعد',
+                'ما اتفقتِ عليها بعد',
+                groom: 'بدون اتفاق بعد',
+                bride: 'بدون اتفاق بعد',
+              ),
+              action: arabicCount(
+                open.length,
+                one: 'بند واحد',
+                two: 'بندين',
+                few: 'بنود',
+                many: 'بند',
+              ),
+              actionColor: AarastV3Color.textMuted,
+            ),
+            // Why the estimates matter, once, over the rows that need them.
+            if (unknown > 0) ...[
+              Text(
+                key: const ValueKey('money-items-cost-note'),
+                '${arabicCount(unknown, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} بدون تقدير، '
+                '${context.say('قدّرها ونقول لك وين أنت من الميزانية', 'قدّريها ونقول لك وين أنتِ من الميزانية')}',
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x2),
+            ],
+            listOf([for (final item in open) openRow(item)]),
           ],
         ],
         if (cancelled.isNotEmpty) ...[

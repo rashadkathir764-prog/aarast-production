@@ -233,7 +233,7 @@ void main() {
 
         expect(find.text('money'), findsOneWidget);
         expect(
-          find.bySemanticsLabel('إضافة اتفاق'),
+          find.bySemanticsLabel('اتفاق أو دفعة'),
           canManage ? findsOneWidget : findsNothing,
           reason: 'canManage: $canManage',
         );

@@ -778,12 +778,18 @@ class JourneyTabHeader extends StatelessWidget {
     this.actions = const [],
     this.onStatusTap,
     this.statusTapLabel,
+    this.statusBeside = false,
     super.key,
   });
 
   final String title;
   final String status;
   final List<Widget> actions;
+
+  /// The status at the title's line end instead of under it: one line, for
+  /// a short status («محجوز 1») over a screen that needs its height
+  /// (Rashad 2026-11-18, «المزودين»).
+  final bool statusBeside;
 
   /// Pressing the status line opens what it counts, as «محجوز 3» opens the
   /// bookings (w34); [statusTapLabel] tells screen readers so.
@@ -792,6 +798,75 @@ class JourneyTabHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final heading = Semantics(
+      header: true,
+      child: Text(
+        title,
+        style: JourneyType.of(JourneyType.hero, weight: JourneyType.bold),
+      ),
+    );
+    final statusLine = onStatusTap == null
+        ? Text(
+            status,
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
+          )
+        // A pressable status line used to be drawn exactly like a plain
+        // one: same size, same muted colour, no mark. The bookings (w34)
+        // hung off it and so had no visible door at all. It now reads as
+        // the app's other links do — the plan's colour and a chevron.
+        : AarastPressable(
+            onTap: onStatusTap,
+            semanticLabel: statusTapLabel,
+            borderRadius: BorderRadius.circular(AarastV3Radius.control),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    status,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                      color: context.accent.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AarastV3Space.half),
+                Icon(
+                  LucideIcons.chevronLeft,
+                  size: 16,
+                  color: context.accent.primary,
+                ),
+              ],
+            ),
+          );
+    if (statusBeside) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: AarastV3Space.x2),
+              // Half the line at most: a longer status wraps in its half.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.5,
+                ),
+                child: statusLine,
+              ),
+              for (final action in actions) ...[
+                const SizedBox(width: AarastV3Space.x2),
+                action,
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AarastV3Space.x1,
@@ -806,57 +881,9 @@ class JourneyTabHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    style: JourneyType.of(
-                      JourneyType.hero,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                ),
+                heading,
                 const SizedBox(height: AarastV3Space.half),
-                if (onStatusTap == null)
-                  Text(
-                    status,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  )
-                else
-                  // A pressable status line used to be drawn exactly like a
-                  // plain one: same size, same muted colour, no mark. The
-                  // bookings (w34) hung off it and so had no visible door
-                  // at all. It now reads as the app's other links do — the
-                  // plan's colour and a chevron.
-                  AarastPressable(
-                    onTap: onStatusTap,
-                    semanticLabel: statusTapLabel,
-                    borderRadius: BorderRadius.circular(AarastV3Radius.control),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            status,
-                            style: JourneyType.of(
-                              JourneyType.body,
-                              weight: JourneyType.bold,
-                              color: context.accent.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AarastV3Space.half),
-                        Icon(
-                          LucideIcons.chevronLeft,
-                          size: 16,
-                          color: context.accent.primary,
-                        ),
-                      ],
-                    ),
-                  ),
+                statusLine,
               ],
             ),
           ),

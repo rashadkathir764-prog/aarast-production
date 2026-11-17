@@ -315,7 +315,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     AarastV3Space.x4,
-                    widget.embedded ? AarastV3Space.x3 : AarastV3Space.x4,
+                    widget.embedded ? AarastV3Space.x2 : AarastV3Space.x3,
                     AarastV3Space.x4,
                     0,
                   ),
@@ -346,6 +346,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         ? () => _openBookings(provider, tabs, board)
                         : null,
                     statusTapLabel: 'الحجوزات',
+                    // Rashad 2026-11-18: one line, the status at its end;
+                    // its own line under the title was height lost.
+                    statusBeside: true,
                     // Rashad 2026-11-18: the search is a box at the top of
                     // «استكشف», always there; the magnifier that opened it
                     // here is gone.

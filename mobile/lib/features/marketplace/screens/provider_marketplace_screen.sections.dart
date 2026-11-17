@@ -20,7 +20,67 @@ class _MarketplaceSearch extends StatelessWidget {
     final city = provider.cities
         .where((city) => city.id == provider.cityId)
         .firstOrNull;
-    final field = ValueListenableBuilder<TextEditingValue>(
+    // w30 «فلتر» inside the box, at its end (Rashad 2026-11-18): a box of
+    // its own beside the search was width lost. A place picked says its
+    // name, softly: it is a reminder, not the screen's action.
+    final picked = city != null;
+    final filter = Semantics(
+      button: true,
+      label: picked ? 'فلتر: ${city.nameAr}' : 'فلتر',
+      excludeSemantics: true,
+      child: InkWell(
+        key: const Key('city-filter-trigger'),
+        borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+        onTap: () => showJourneySheet<void>(
+          context: context,
+          builder: (_) => _DirectoryFilterSheet(provider: provider),
+        ),
+        // The 48 target; the drawn pill inside it.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: AarastV3Space.x12,
+            minHeight: AarastV3Space.x12,
+          ),
+          child: Center(
+            widthFactor: 1,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: picked ? AarastV3Space.x2 : AarastV3Space.x1,
+                vertical: AarastV3Space.x1,
+              ),
+              decoration: BoxDecoration(
+                color: picked ? context.accent.primarySoft : null,
+                borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    LucideIcons.slidersHorizontal,
+                    size: 18,
+                    color: picked
+                        ? context.accent.primary
+                        : AarastV3Color.textMuted,
+                  ),
+                  if (picked) ...[
+                    const SizedBox(width: AarastV3Space.x1),
+                    Text(
+                      city.nameAr,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: context.accent.primary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
         return TextField(
@@ -56,88 +116,27 @@ class _MarketplaceSearch extends StatelessWidget {
             border: border(AarastV3Color.line, 1),
             enabledBorder: border(AarastV3Color.line, 1),
             focusedBorder: border(context.accent.primary, 2),
-            suffixIcon: value.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: context.say('امسح البحث', 'امسحي البحث'),
-                    onPressed: () {
-                      controller.clear();
-                      provider.setSearch('');
-                    },
-                    icon: const Icon(LucideIcons.x, size: 18),
-                  ),
-          ),
-        );
-      },
-    );
-    // w30 «فلتر» at the box's end: the place picked says its name on it.
-    final picked = city != null;
-    final filter = Semantics(
-      button: true,
-      label: picked ? 'فلتر: ${city.nameAr}' : 'فلتر',
-      excludeSemantics: true,
-      child: Material(
-        // A place picked is said softly (Rashad's phone 2026-11-18): solid
-        // it stood as loud as the «الكل» chip beside it, and it is a
-        // reminder, not the screen's action.
-        color: picked ? context.accent.primarySoft : AarastV3Color.paper,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AarastV3Radius.card),
-          side: picked
-              ? BorderSide.none
-              : const BorderSide(color: AarastV3Color.line),
-        ),
-        child: InkWell(
-          key: const Key('city-filter-trigger'),
-          customBorder: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AarastV3Radius.card),
-          ),
-          onTap: () => showJourneySheet<void>(
-            context: context,
-            builder: (_) => _DirectoryFilterSheet(provider: provider),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: AarastV3Space.x12,
-              minHeight: AarastV3Space.x12,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x3),
+            suffixIcon: Padding(
+              padding: const EdgeInsetsDirectional.only(end: AarastV3Space.x1),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    LucideIcons.slidersHorizontal,
-                    size: 20,
-                    color: picked ? context.accent.primary : AarastV3Color.ink,
-                  ),
-                  if (picked) ...[
-                    const SizedBox(width: AarastV3Space.x2),
-                    Text(
-                      city.nameAr,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
+                  if (value.text.isNotEmpty)
+                    IconButton(
+                      tooltip: context.say('امسح البحث', 'امسحي البحث'),
+                      onPressed: () {
+                        controller.clear();
+                        provider.setSearch('');
+                      },
+                      icon: const Icon(LucideIcons.x, size: 18),
                     ),
-                  ],
+                  filter,
                 ],
               ),
             ),
           ),
-        ),
-      ),
-    );
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: field),
-          const SizedBox(width: AarastV3Space.x2),
-          filter,
-        ],
-      ),
+        );
+      },
     );
   }
 }

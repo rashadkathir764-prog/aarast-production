@@ -8,13 +8,7 @@ String arabicCount(
   required String few,
   required String many,
 }) {
-  final word = arabicCountWord(
-    count,
-    one: one,
-    two: two,
-    few: few,
-    many: many,
-  );
+  final word = arabicCountWord(count, one: one, two: two, few: few, many: many);
   if (count == 1 || count == 2) return word;
   return '$count $word';
 }

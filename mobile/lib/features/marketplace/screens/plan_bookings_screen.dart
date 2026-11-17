@@ -108,6 +108,10 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
                 'ما حجزت عند أحد بعد',
                 'ما حجزتِ عند أحد بعد',
               ),
+              // Critique ط5: where a booking starts.
+              emptyAction: context.say('شوف المزودين', 'شوفي المزودين'),
+              onEmptyAction: () =>
+                  context.go(AppRouter.planProviders(widget.weddingPlanId)),
               onRetry: marketplace.loadScopedQuoteRequests,
             )
           else

@@ -66,42 +66,34 @@ class AarastScreenLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Critique ط3: one loading look for a whole screen, the plan gate's own:
+    // the kit's spinner in the plan's colour on the canvas. The pulsing card
+    // around a Material ring was a second look.
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: DecoratedBox(
-        decoration: AppTheme.screenDecoration(),
+      child: ColoredBox(
+        color: AarastV3Color.canvas,
         child: Center(
-          child: AarastSkeletonPulse(
-            child: Container(
-              width: 164,
-              padding: const EdgeInsets.all(AarastV3Space.x4),
-              decoration: AppTheme.surfaceDecoration(
-                color: AppTheme.surfaceRaised.withValues(alpha: 0.6),
-                radius: AppTheme.radiusXl,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AarastInlineSpinner(
+                dimension: 28,
+                color: AarastV3Color.primary,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox.square(
-                    dimension: AarastV3Space.x6,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
+              if (label != null) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                Text(
+                  label!,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AarastV3Color.textMuted,
                   ),
-                  if (label != null) ...[
-                    const SizedBox(height: AarastV3Space.x3),
-                    Text(
-                      label!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

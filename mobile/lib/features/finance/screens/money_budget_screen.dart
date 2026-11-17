@@ -190,11 +190,23 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                 ],
                 const SizedBox(height: AarastV3Space.x3),
                 if (_rows.isEmpty)
-                  const JourneyListState(
+                  // Critique ط5: the budget is split over items; with none,
+                  // the way to the first.
+                  JourneyListState(
                     phase: JourneyListPhase.empty,
                     section: JourneySection.money,
                     emptyIcon: LucideIcons.tags,
                     emptyTitle: 'ما فيه بنود بعد',
+                    emptyAction: context.say('أضف بند', 'أضيفي بند'),
+                    onEmptyAction: () async {
+                      await context.push<Object?>(
+                        AppRouter.moneyCategoryCreate(widget.weddingPlanId),
+                      );
+                      if (!context.mounted) return;
+                      await context.read<FinanceProvider>().loadMoney(
+                        widget.weddingPlanId,
+                      );
+                    },
                   )
                 else
                   JourneyList(

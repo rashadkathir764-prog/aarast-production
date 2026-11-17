@@ -146,6 +146,9 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           'ما سجلت من وين بتجيب الفلوس',
           'ما سجلتِ من وين بتجيبين الفلوس',
         ),
+        // Why, before the add button under it (as «من وين»'s empty tab).
+        emptyMessage:
+            'مدخرات، دعم الأهل، سلفة أو وعد. منها نقول لك إذا تكفي دفعاتك في مواعيدها.',
         onRetry: _load,
       );
     } else {

@@ -9,6 +9,7 @@ import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_clock.dart';
 import '../utils/arabic_count.dart';
+import '../widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import 'offline_sync_service.dart';
 import 'sync_status.dart';
 
@@ -355,9 +356,15 @@ class _PendingChangesSheet extends StatelessWidget {
           ),
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
+              // Critique ط3: the kit's spinner, not Material's ring.
               const Padding(
                 padding: EdgeInsets.all(AarastV3Space.x6),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(
+                  child: AarastInlineSpinner(
+                    dimension: 28,
+                    color: AarastV3Color.primary,
+                  ),
+                ),
               )
             else if (snapshot.hasError)
               Text(

@@ -128,6 +128,9 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 'اضغط القلب على مزودين في «استكشف»، ويجون هنا.',
                 'اضغطي القلب على مزودين في «استكشف»، ويجون هنا.',
               ),
+              // Critique ط5: the way to «استكشف» it names.
+              emptyAction: context.say('افتح استكشف', 'افتحي استكشف'),
+              onEmptyAction: () => context.go(AppRouter.providerMarketplace),
             ),
         ],
       ),

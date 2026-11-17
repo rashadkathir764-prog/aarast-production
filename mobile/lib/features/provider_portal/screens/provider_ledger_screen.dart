@@ -85,7 +85,11 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
               ],
             ),
             if (ledger == null && error == null)
-              const AarastLoadingState(rows: 2)
+              // Critique ط3: the kit's loading rows, not the old skeleton.
+              const JourneyListState(
+                phase: JourneyListPhase.loading,
+                section: JourneySection.providers,
+              )
             else if (ledger == null)
               JourneyNote(
                 key: const Key('provider-ledger-error'),

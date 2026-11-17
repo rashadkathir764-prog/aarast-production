@@ -524,28 +524,27 @@ void main() {
   // from the plan's medium label (`locationLabel`), and the preview must
   // write the same (`planPlaceLabel`). Failed before the fix: the preview
   // stood in the plan's city alone.
-  testWidgets(
-    'the plan\'s place in the text is the one the server writes',
-    (tester) async {
-      final events = _Events(
-        const PlanEvent(id: 'e-wedding', type: PlanEventType.wedding),
-      )..arrive();
-      await _pump(
-        tester,
-        [_guest('a', 'ياسر')],
-        events: events,
-        location: const {
-          'shortLabel': 'أمانة العاصمة، صنعاء',
-          'mediumLabel': 'أمانة العاصمة، صنعاء، حدة',
-          'fullLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
-          'displayLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
-        },
-      );
+  testWidgets('the plan\'s place in the text is the one the server writes', (
+    tester,
+  ) async {
+    final events = _Events(
+      const PlanEvent(id: 'e-wedding', type: PlanEventType.wedding),
+    )..arrive();
+    await _pump(
+      tester,
+      [_guest('a', 'ياسر')],
+      events: events,
+      location: const {
+        'shortLabel': 'أمانة العاصمة، صنعاء',
+        'mediumLabel': 'أمانة العاصمة، صنعاء، حدة',
+        'fullLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
+        'displayLabel': 'أمانة العاصمة، صنعاء، حدة، شارع الخمسين، جنب الجامع',
+      },
+    );
 
-      expect(_message(tester), contains('المكان: أمانة العاصمة، صنعاء، حدة'));
-      expect(_message(tester), isNot(contains('شارع الخمسين')));
-    },
-  );
+    expect(_message(tester), contains('المكان: أمانة العاصمة، صنعاء، حدة'));
+    expect(_message(tester), isNot(contains('شارع الخمسين')));
+  });
 
   testWidgets('the hall read after the plan is the text\'s place', (
     tester,

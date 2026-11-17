@@ -210,9 +210,10 @@ void main() {
       _m,
       h: 1000,
       act: () async {
+        // The share is in «⋯» (critique م8, 2026-11-18).
+        await t.tap(find.byKey(const ValueKey('money-settings-menu')));
+        await t.pump(const Duration(milliseconds: 500));
         final share = find.byKey(const Key('money-share-summary'));
-        await t.ensureVisible(share);
-        await t.pump(const Duration(milliseconds: 300));
         await t.tap(share);
         await t.pump(const Duration(milliseconds: 800));
       },

@@ -16,15 +16,55 @@ class MoneyPrivacyButton extends StatelessWidget {
     final hidden = context.select<FinanceProvider, bool>(
       (provider) => provider.amountsHidden,
     );
+    // Critique م8 (Rashad 2026-11-18): the home says «أخفِ» beside its eye
+    // and the money tab had the eye alone. The eye with its word here too;
+    // the share went into «⋯» to make the room.
+    final word = hidden
+        ? context.say('أظهر', 'أظهري')
+        : context.say('أخفِ', 'أخفي');
     return Semantics(
       toggled: hidden,
-      child: JourneyRoundButton(
-        key: const ValueKey('money-privacy-toggle'),
-        icon: hidden ? LucideIcons.eye : LucideIcons.eyeOff,
-        tooltip: hidden
-            ? context.say('أظهر المبالغ', 'أظهري المبالغ')
-            : context.say('أخفِ المبالغ', 'أخفي المبالغ'),
-        onPressed: context.read<FinanceProvider>().toggleAmountsVisibility,
+      button: true,
+      label: hidden
+          ? context.say('أظهر المبالغ', 'أظهري المبالغ')
+          : context.say('أخفِ المبالغ', 'أخفي المبالغ'),
+      excludeSemantics: true,
+      child: Material(
+        color: AarastV3Color.paper,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          key: const ValueKey('money-privacy-toggle'),
+          customBorder: const StadiumBorder(),
+          onTap: context.read<FinanceProvider>().toggleAmountsVisibility,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: AarastV3Space.x12,
+              minWidth: AarastV3Space.x12,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    hidden ? LucideIcons.eye : LucideIcons.eyeOff,
+                    size: 17,
+                    color: context.accent.primary,
+                  ),
+                  const SizedBox(width: AarastV3Space.x1),
+                  Text(
+                    word,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      weight: JourneyType.bold,
+                      color: context.accent.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

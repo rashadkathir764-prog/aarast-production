@@ -60,10 +60,7 @@ void main() {
     await _pump(tester, harness, planId: 'plan-account-1');
 
     expect(find.byKey(const ValueKey('guests-offline')), findsOneWidget);
-    expect(
-      find.textContaining('واللي تضيفه ينحفظ في جوالك'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('واللي تضيفه ينحفظ في جوالك'), findsOneWidget);
     // D85: adding is kept on the phone and sent later, so the button stays.
     expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
     expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);

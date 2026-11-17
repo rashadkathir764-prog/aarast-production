@@ -1,4 +1,3 @@
-import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -28,19 +27,20 @@ void main() {
       ),
     );
 
-    // The design's round button (c01), not the old Material icon button.
-    expect(find.byType(JourneyRoundButton), findsOneWidget);
+    // Changed on purpose (critique م8, 2026-11-18): the eye with its word,
+    // as on the home, not a round icon alone.
     expect(find.byType(IconButton), findsNothing);
     expect(provider.amountsHidden, isFalse);
     expect(find.byIcon(LucideIcons.eyeOff), findsOneWidget);
-    expect(find.byTooltip('أخفِ المبالغ'), findsOneWidget);
+    expect(find.text('أخفِ'), findsOneWidget);
+    expect(find.bySemanticsLabel('أخفِ المبالغ'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('money-privacy-toggle')));
     await tester.pump();
 
     expect(provider.amountsHidden, isTrue);
     expect(find.byIcon(LucideIcons.eye), findsOneWidget);
-    expect(find.byTooltip('أظهر المبالغ'), findsOneWidget);
+    expect(find.text('أظهر'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('money-privacy-toggle')));
     await tester.pump();

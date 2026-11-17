@@ -35,10 +35,15 @@ class GuestFormSheet extends StatefulWidget {
     this.onCreateGroup,
     this.events = const [],
     this.onAddEvent,
+    this.saveError,
     super.key,
   });
 
   final Guest? guest;
+
+  /// Why the last save failed; the sheet opens again with what was typed
+  /// (its draft) and says it by the button (critique ط4).
+  final String? saveError;
   final List<Guest> existingGuests;
   final List<GuestGroup> groups;
   final bool blockDuplicatePhone;
@@ -529,6 +534,19 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           ),
         ],
         const SizedBox(height: AarastV3Space.x4),
+        // Critique ط4: a save that failed says why here, by the button, and
+        // stays until the next try; it used to be a passing message after
+        // the sheet had closed.
+        if (widget.saveError case final error?) ...[
+          JourneyNote(
+            key: const ValueKey('guest-form-save-error'),
+            text: error,
+            icon: LucideIcons.alertCircle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
         Row(
           children: [
             Expanded(

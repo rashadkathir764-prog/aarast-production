@@ -799,7 +799,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
     }
   }
 
-  Future<void> _showGuestSheet({required GuestsProvider provider}) async {
+  Future<void> _showGuestSheet({
+    required GuestsProvider provider,
+    String? saveError,
+  }) async {
     final scope = 'guest:${widget.weddingPlanId}:new';
     final events = _isLocalPlan
         ? const <GuestFormEvent>[]
@@ -819,6 +822,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             : () => addOccasionFromForm(context, widget.weddingPlanId),
         blockDuplicatePhone: !_isLocalPlan,
         onCreateGroup: _isLocalPlan ? null : _createGroup,
+        saveError: saveError,
       ),
     );
     if (result == null || !mounted) return;
@@ -845,9 +849,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
     if (!mounted) return;
     if (!ok) {
-      AarastToast.showError(
-        context,
-        provider.errorMessage ??
+      // Critique ط4: the sheet opens again with what was typed (its draft
+      // is kept until a save succeeds) and says why by its button.
+      await _showGuestSheet(
+        provider: provider,
+        saveError:
+            provider.errorMessage ??
             context.planWord('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
       );
       return;

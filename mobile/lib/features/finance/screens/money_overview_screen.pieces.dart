@@ -1,6 +1,6 @@
 part of 'money_overview_screen.dart';
 
-enum _MoneySettingsAction { budget, receipts }
+enum _MoneySettingsAction { share, budget, receipts }
 
 class _MoneyHeader extends StatelessWidget {
   const _MoneyHeader({
@@ -56,24 +56,15 @@ class _MoneyHeader extends StatelessWidget {
           ),
         ),
         const MoneyPrivacyButton(),
-        if (onShare != null) ...[
-          const SizedBox(width: AarastV3Space.x1),
-          JourneyRoundButton(
-            key: const Key('money-share-summary'),
-            icon: LucideIcons.share2,
-            tooltip: context.say(
-              'شارك الملخص على واتساب',
-              'شاركي الملخص على واتساب',
-            ),
-            onPressed: onShare!,
-          ),
-        ],
-        if (canManage || onReceipts != null) ...[
+        // The share is in «⋯» with its name (critique م8): its round button
+        // left the eye no room for its word.
+        if (canManage || onReceipts != null || onShare != null) ...[
           const SizedBox(width: AarastV3Space.x1),
           _MoneySettingsMenu(
             canManage: canManage,
             onBudget: onBudget,
             onReceipts: onReceipts,
+            onShare: onShare,
           ),
         ],
       ],
@@ -86,11 +77,13 @@ class _MoneySettingsMenu extends StatelessWidget {
     required this.canManage,
     required this.onBudget,
     required this.onReceipts,
+    required this.onShare,
   });
 
   final bool canManage;
   final VoidCallback onBudget;
   final VoidCallback? onReceipts;
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -105,9 +98,23 @@ class _MoneySettingsMenu extends StatelessWidget {
               onBudget();
             case _MoneySettingsAction.receipts:
               onReceipts?.call();
+            case _MoneySettingsAction.share:
+              onShare?.call();
           }
         },
         itemBuilder: (context) => [
+          if (onShare != null)
+            PopupMenuItem(
+              key: const ValueKey('money-share-summary'),
+              value: _MoneySettingsAction.share,
+              child: _MoneySettingsItem(
+                icon: LucideIcons.share2,
+                label: context.say(
+                  'شارك الملخص على واتساب',
+                  'شاركي الملخص على واتساب',
+                ),
+              ),
+            ),
           if (canManage)
             const PopupMenuItem(
               key: ValueKey('money-settings-budget'),
@@ -127,9 +134,9 @@ class _MoneySettingsMenu extends StatelessWidget {
               ),
             ),
         ],
-        // A round icon like the other header actions: a word beside three
-        // buttons does not fit a 320-point phone with large text.
-        // The 44 circle in a 48 target, like the round buttons beside it.
+        // A round icon: the eye beside it carries its word (م8), and two
+        // words in a header do not fit a 320-point phone with large text.
+        // The 44 circle in a 48 target.
         child: SizedBox.square(
           dimension: AarastV3Space.x12,
           child: Center(

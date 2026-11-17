@@ -403,9 +403,7 @@ void main() {
 
   // Opened by its address on a plan kept on the phone, the send screen
   // offers no round: no link can be made for it. Failed before the fix.
-  testWidgets('a plan kept on the phone offers no round', (
-    tester,
-  ) async {
+  testWidgets('a plan kept on the phone offers no round', (tester) async {
     await _pump(
       tester,
       planId: 'local-guest-plan',

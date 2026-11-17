@@ -36,6 +36,50 @@ void main() {
     expect(result!.addAnother, isFalse);
   });
 
+  // Critique ط4 (2026-11-18): a save that failed was a passing message after
+  // the sheet had closed. The sheet says why by its button, and stays.
+  testWidgets('a failed save says why by the save button', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 1400);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      Provider<AarastFormDraftStore?>.value(
+        value: null,
+        child: MaterialApp(
+          builder: (context, child) =>
+              Directionality(textDirection: TextDirection.rtl, child: child!),
+          home: JourneyProfileScope(
+            profile: JourneyProfile.groom,
+            child: const Scaffold(
+              body: SingleChildScrollView(
+                child: GuestFormSheet(
+                  existingGuests: [],
+                  groups: [],
+                  blockDuplicatePhone: true,
+                  saveError: 'الرقم هذا عند ضيف ثاني',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final error = find.byKey(const ValueKey('guest-form-save-error'));
+    expect(error, findsOneWidget);
+    expect(find.text('الرقم هذا عند ضيف ثاني'), findsOneWidget);
+    // Right above the button, not at the sheet's top.
+    final save = find.byKey(const ValueKey('guest-form-save'));
+    expect(
+      tester.getTopLeft(save).dy,
+      greaterThan(tester.getTopLeft(error).dy),
+    );
+    expect(
+      tester.getTopLeft(save).dy - tester.getBottomLeft(error).dy,
+      lessThan(40),
+    );
+  });
+
   testWidgets('guest form keeps validation inside the sheet', (tester) async {
     GuestFormResult? result;
     await _openForm(tester, onResult: (value) => result = value);

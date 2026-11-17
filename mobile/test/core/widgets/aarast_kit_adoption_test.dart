@@ -64,7 +64,7 @@ const _baseline = <String, int>{
   'lib/features/support/screens/support_screen.dart': 2,
   'lib/features/tasks/screens/create_task_screen_privacy.dart': 2,
   'lib/features/wedding_plans/screens/plan_assistant_screen.dart': 1,
-  'lib/shared/widgets/contact_phone_field.dart': 4,
+  'lib/shared/widgets/contact_phone_field.dart': 3,
 };
 
 Map<String, int> _liveCounts() {

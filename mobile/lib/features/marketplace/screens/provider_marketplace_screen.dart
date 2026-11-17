@@ -91,6 +91,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   String? _settledOpening;
   bool _chatsLoaded = false;
 
+  /// The conversations read once for «المحادثات 2» (no live connection).
+  bool _chatCountRead = false;
+
   /// Whether this reader has an account, once asked. Null until the answer
   /// is back. «no account» is an answer, not a wait: without it the tabs
   /// that need one sat on a loading skeleton that could never end.
@@ -347,9 +350,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         ? () => _openBookings(provider, tabs, board)
                         : null,
                     statusTapLabel: 'الحجوزات',
-                    // Rashad 2026-11-18: one line, the status at its end;
-                    // its own line under the title was height lost.
-                    statusBeside: true,
                     // Rashad 2026-11-18: the search is a box at the top of
                     // «استكشف», always there; the magnifier that opened it
                     // here is gone.
@@ -365,7 +365,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     ),
                     child: JourneyTabSwitch(
                       key: const ValueKey('providers-tabs'),
-                      labels: tabs,
+                      labels: [
+                        for (final label in tabs)
+                          label == 'المحادثات'
+                              ? _chatsLabel(context, label)
+                              : label,
+                      ],
                       selected: tab,
                       color: context.accent.primary,
                       onSelected: (index) => _selectTab(tabs[index], tabs),
@@ -866,6 +871,32 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   /// The plan whose conversations the tab lists (RA-MO-255), watched in
   /// the build as [_selectedPlanIdForAccount] reads it.
+  /// «المحادثات 2»: this plan's unread messages on the tab (Rashad
+  /// 2026-11-18). The tab is the one inbox of a provider's new message;
+  /// «طلباتي» and the bottom bar count none, so without the number a reply
+  /// went unseen until a notice. The conversations are read once when the
+  /// providers open, not only when the tab is picked.
+  String _chatsLabel(BuildContext context, String label) {
+    // The list once, for the count; the live connection waits for the tab
+    // itself (initialize, in _selectTab), as before.
+    if (!_chatCountRead) {
+      _chatCountRead = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<ChatProvider?>()?.loadConversations();
+      });
+    }
+    final planId = _conversationsPlanId(context);
+    final conversations =
+        context.watch<ChatProvider?>()?.conversations ?? const [];
+    final unread = conversations
+        .where(
+          (conversation) =>
+              planId == null || conversation.weddingPlan?.id == planId,
+        )
+        .fold<int>(0, (sum, item) => sum + item.unreadMessageCount);
+    return unread > 0 ? '$label $unread' : label;
+  }
+
   String? _conversationsPlanId(BuildContext context) {
     final selected = context
         .watch<AccountContextController?>()

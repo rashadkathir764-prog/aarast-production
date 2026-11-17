@@ -11,39 +11,42 @@ import 'package:provider/provider.dart';
 // its own reply, and the summary counts them per event.
 
 void main() {
-  test('a guest carries their events beyond the wedding, each with a reply', () {
-    final guest = Guest.fromJson({
-      'id': 'g1',
-      'weddingPlanId': 'plan-1',
-      'name': 'عمي صالح',
-      'side': 'GROOM',
-      'status': 'INVITED',
-      'seatsCount': 1,
-      'events': [
-        {
-          'planEventId': 'event-lunch',
-          'attendanceStatus': 'CONFIRMED',
-          'companionsCount': 2,
-          'respondedAt': '2026-11-03T09:00:00.000Z',
-        },
-        {'planEventId': 'event-aqd', 'attendanceStatus': 'PENDING'},
-      ],
-    });
-    expect(guest.eventIds, ['event-lunch', 'event-aqd']);
-    expect(guest.events.first.isConfirmed, isTrue);
-    expect(guest.events.first.companionsCount, 2);
-    expect(guest.events.last.isPending, isTrue);
-    // An older server sends no events.
-    expect(
-      Guest.fromJson({
-        'id': 'g2',
+  test(
+    'a guest carries their events beyond the wedding, each with a reply',
+    () {
+      final guest = Guest.fromJson({
+        'id': 'g1',
         'weddingPlanId': 'plan-1',
-        'name': 'خالد',
-      }).events,
-      isEmpty,
-    );
-    expect(guest.withoutGroup().eventIds, ['event-lunch', 'event-aqd']);
-  });
+        'name': 'عمي صالح',
+        'side': 'GROOM',
+        'status': 'INVITED',
+        'seatsCount': 1,
+        'events': [
+          {
+            'planEventId': 'event-lunch',
+            'attendanceStatus': 'CONFIRMED',
+            'companionsCount': 2,
+            'respondedAt': '2026-11-03T09:00:00.000Z',
+          },
+          {'planEventId': 'event-aqd', 'attendanceStatus': 'PENDING'},
+        ],
+      });
+      expect(guest.eventIds, ['event-lunch', 'event-aqd']);
+      expect(guest.events.first.isConfirmed, isTrue);
+      expect(guest.events.first.companionsCount, 2);
+      expect(guest.events.last.isPending, isTrue);
+      // An older server sends no events.
+      expect(
+        Guest.fromJson({
+          'id': 'g2',
+          'weddingPlanId': 'plan-1',
+          'name': 'خالد',
+        }).events,
+        isEmpty,
+      );
+      expect(guest.withoutGroup().eventIds, ['event-lunch', 'event-aqd']);
+    },
+  );
 
   test('the summary counts the invited and their replies per event', () {
     final summary = GuestSummary.fromJson({
@@ -70,45 +73,54 @@ void main() {
     expect(GuestSummary.empty('plan-1').byEvent, isEmpty);
   });
 
-  test('the invitation card reads what the plan keeps, and knows when empty', () {
-    final card = InvitationCard.fromJson({
-      'weddingPlanId': 'plan-1',
-      'hostLine': 'عبدالرحمن الحمدي',
-      'freeText': null,
-      'photoUrl': 'https://media/guest-invitation-card/u/a.jpg',
-      'mapUrl': 'https://maps.app.goo.gl/x',
-      'address': null,
-      'updatedAt': '2026-11-03T09:00:00.000Z',
-    });
-    expect(card.hostLine, 'عبدالرحمن الحمدي');
-    expect(card.photoUrl, isNotNull);
-    expect(card.isEmpty, isFalse);
-    expect(const InvitationCard().isEmpty, isTrue);
-  });
+  test(
+    'the invitation card reads what the plan keeps, and knows when empty',
+    () {
+      final card = InvitationCard.fromJson({
+        'weddingPlanId': 'plan-1',
+        'hostLine': 'عبدالرحمن الحمدي',
+        'freeText': null,
+        'photoUrl': 'https://media/guest-invitation-card/u/a.jpg',
+        'mapUrl': 'https://maps.app.goo.gl/x',
+        'address': null,
+        'updatedAt': '2026-11-03T09:00:00.000Z',
+      });
+      expect(card.hostLine, 'عبدالرحمن الحمدي');
+      expect(card.photoUrl, isNotNull);
+      expect(card.isEmpty, isFalse);
+      expect(const InvitationCard().isEmpty, isTrue);
+    },
+  );
 
-  testWidgets('the form offers the plan\'s events and returns the chosen ones', (
-    tester,
-  ) async {
-    GuestFormResult? result;
-    await _openForm(
-      tester,
-      events: const [
-        GuestFormEvent(id: 'event-lunch', label: 'الغداء'),
-        GuestFormEvent(id: 'event-aqd', label: 'عقد القران'),
-      ],
-      onResult: (value) => result = value,
-    );
+  testWidgets(
+    'the form offers the plan\'s events and returns the chosen ones',
+    (tester) async {
+      GuestFormResult? result;
+      await _openForm(
+        tester,
+        events: const [
+          GuestFormEvent(id: 'event-lunch', label: 'الغداء'),
+          GuestFormEvent(id: 'event-aqd', label: 'عقد القران'),
+        ],
+        onResult: (value) => result = value,
+      );
 
-    expect(find.text('يحضر أيضًا'), findsOneWidget);
-    await tester.enterText(find.byKey(const ValueKey('guest-form-name')), 'سالم');
-    await tester.tap(find.byKey(const ValueKey('guest-form-event-event-lunch')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('guest-form-save')));
-    await tester.pumpAndSettle();
+      expect(find.text('يحضر أيضًا'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('guest-form-name')),
+        'سالم',
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('guest-form-event-event-lunch')),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('guest-form-save')));
+      await tester.pumpAndSettle();
 
-    expect(result, isNotNull);
-    expect(result!.eventIds, ['event-lunch']);
-  });
+      expect(result, isNotNull);
+      expect(result!.eventIds, ['event-lunch']);
+    },
+  );
 
   testWidgets('a plan without events shows no event choice', (tester) async {
     await _openForm(tester, onResult: (_) {});
@@ -140,7 +152,9 @@ void main() {
     );
 
     // Taking the lunch away leaves the aqd not chosen either.
-    await tester.tap(find.byKey(const ValueKey('guest-form-event-event-lunch')));
+    await tester.tap(
+      find.byKey(const ValueKey('guest-form-event-event-lunch')),
+    );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('guest-form-save')));
     await tester.pumpAndSettle();

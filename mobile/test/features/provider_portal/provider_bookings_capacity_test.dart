@@ -210,7 +210,7 @@ void main() {
         booked: (items: {'item-food', 'item-hall'}, quotes: <String>{}),
       );
       expect(rows.where((row) => row.booked).length, 2);
-      expect(providerBoardStatus(rows), contains('محجوز 2'));
+      expect(providerBoardStatus(rows), contains('محجوز 2 من'));
     });
 
     test('the home reads the same count from the summary', () {

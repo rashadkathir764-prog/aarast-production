@@ -290,7 +290,9 @@ String providerBoardStatus(List<ProviderBoardRow> rows) {
   final booked = rows.where((row) => row.booked).length;
   final waiting = rows.fold<int>(0, (sum, row) => sum + row.waitingOffers);
   final parts = <String>[
-    if (booked > 0) 'محجوز $booked',
+    // Rashad 2026-11-18: «محجوز 1» said one of how many? The rows are the
+    // plan's services; «محجوز 1 من 5» says what is left.
+    if (booked > 0) 'محجوز $booked من ${rows.length}',
     if (waiting > 0)
       arabicCount(
         waiting,

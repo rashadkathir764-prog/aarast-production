@@ -198,7 +198,9 @@ void main() {
       expect(rows[2].stage, 0);
       expect(rows[2].detail, 'ما بدأت');
       // المهر is not a service: no row.
-      expect(providerBoardStatus(rows), 'محجوز 1 · عرضين ينتظرونك');
+      // Changed on purpose (Rashad 2026-11-18): booked of the plan's three
+      // services, so the line says what is left.
+      expect(providerBoardStatus(rows), 'محجوز 1 من 3 · عرضين ينتظرونك');
     });
 
     test('an accepted offer files under the item its cost went to', () {

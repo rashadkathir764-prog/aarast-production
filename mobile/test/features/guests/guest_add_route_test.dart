@@ -27,7 +27,10 @@ void main() {
     final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
     final database = JsonLocalDatabase(preferences);
     await database.initialize();
-    final offline = OfflineSyncService(database: database, apiClient: apiClient);
+    final offline = OfflineSyncService(
+      database: database,
+      apiClient: apiClient,
+    );
     await offline.refreshStatus();
     final api = GuestsApi(apiClient, offline: offline);
     final router = GoRouter(

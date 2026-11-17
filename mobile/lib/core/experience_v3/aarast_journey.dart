@@ -778,18 +778,12 @@ class JourneyTabHeader extends StatelessWidget {
     this.actions = const [],
     this.onStatusTap,
     this.statusTapLabel,
-    this.statusBeside = false,
     super.key,
   });
 
   final String title;
   final String status;
   final List<Widget> actions;
-
-  /// The status at the title's line end instead of under it: one line, for
-  /// a short status («محجوز 1») over a screen that needs its height
-  /// (Rashad 2026-11-18, «المزودين»).
-  final bool statusBeside;
 
   /// Pressing the status line opens what it counts, as «محجوز 3» opens the
   /// bookings (w34); [statusTapLabel] tells screen readers so.
@@ -843,30 +837,67 @@ class JourneyTabHeader extends StatelessWidget {
               ],
             ),
           );
-    if (statusBeside) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-        child: LayoutBuilder(
-          builder: (context, constraints) => Row(
-            children: [
-              Expanded(child: heading),
-              const SizedBox(width: AarastV3Space.x2),
-              // Half the line at most: a longer status wraps in its half.
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * 0.5,
-                ),
-                child: statusLine,
-              ),
-              for (final action in actions) ...[
-                const SizedBox(width: AarastV3Space.x2),
-                action,
+    // Rashad 2026-11-18: the status on its own line under the title was
+    // height lost on every tab. It sits at the title's line end whenever
+    // the title, the status and the buttons fit on one line at this width
+    // and text size; when they do not, it goes under the title as before,
+    // so nothing is squeezed or cut.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scaler = MediaQuery.textScalerOf(context);
+        double widthOf(String text, TextStyle style) {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: style),
+            textDirection: TextDirection.rtl,
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          return painter.width;
+        }
+
+        final titleWidth = widthOf(
+          title,
+          JourneyType.of(JourneyType.hero, weight: JourneyType.bold),
+        );
+        final statusWidth =
+            widthOf(
+              status,
+              onStatusTap == null
+                  ? JourneyType.of(JourneyType.body)
+                  : JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            ) +
+            (onStatusTap == null ? 0 : AarastV3Space.half + 16);
+        final actionsWidth =
+            actions.length * (AarastV3Space.x12 + AarastV3Space.x2);
+        final room = constraints.maxWidth - AarastV3Space.x2;
+        if (titleWidth + AarastV3Space.x4 + statusWidth + actionsWidth <=
+            room) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x1,
+              AarastV3Space.x1,
+              AarastV3Space.x1,
+              AarastV3Space.x2,
+            ),
+            child: Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: AarastV3Space.x4),
+                statusLine,
+                for (final action in actions) ...[
+                  const SizedBox(width: AarastV3Space.x2),
+                  action,
+                ],
               ],
-            ],
-          ),
-        ),
-      );
-    }
+            ),
+          );
+        }
+        return _stacked(heading, statusLine);
+      },
+    );
+  }
+
+  Widget _stacked(Widget heading, Widget statusLine) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AarastV3Space.x1,
@@ -1791,11 +1822,15 @@ class JourneyTextField extends StatefulWidget {
     this.minLines,
     this.maxLines = 1,
     this.trailing,
+    this.enabled = true,
     super.key,
   });
 
   final String label;
   final TextEditingController controller;
+
+  /// False while a form saves or a contact is being picked.
+  final bool enabled;
 
   /// An action at the field's far end (the invite link's «لصق»).
   final Widget? trailing;
@@ -1895,6 +1930,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                       TextField(
                         controller: widget.controller,
                         focusNode: _focus,
+                        enabled: widget.enabled,
                         autofocus: widget.autofocus,
                         keyboardType: widget.keyboardType,
                         textInputAction: widget.textInputAction,

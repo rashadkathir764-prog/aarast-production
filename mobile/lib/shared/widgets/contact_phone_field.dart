@@ -16,7 +16,9 @@ class ContactPhoneField extends StatefulWidget {
     required this.phoneController,
     this.nameController,
     this.label = 'رقم الجوال',
-    this.hintText = 'مثال: 77xxxxxxx',
+    // The number alone: the field reads left to right, and «مثال:» before
+    // it flipped into «77 :مثال» (2026-11-18). The label names the field.
+    this.hintText = '77xxxxxxx',
     this.optional = true,
     this.requireYemeni = false,
     this.enabled = true,
@@ -71,32 +73,15 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextFormField(
-          controller: widget.phoneController,
-          enabled: widget.enabled,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.next,
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.right,
-          onChanged: (value) {
-            setState(() {});
-            widget.onDraftChanged?.call(
-              ContactPhoneDraft.fromInput(
-                name: widget.nameController?.text ?? '',
-                rawPhone: value,
-                source: ContactPhoneSource.manual,
-                requireYemeni: widget.requireYemeni,
-              ),
-            );
-          },
-          decoration: InputDecoration(
-            labelText: widget.label,
-            hintText: widget.hintText,
-            prefixIcon: const Icon(LucideIcons.phone),
-          ),
-          validator: (value) {
+        // Critique ض4 (2026-11-18): the name above it is a JourneyTextField
+        // and this was Material's outlined field, two looks in one sheet.
+        // The same field now, inside a FormField, so the forms that call
+        // validate() still check the number exactly as before.
+        FormField<String>(
+          initialValue: widget.phoneController.text,
+          validator: (_) {
             final validation = PhoneNumberUtils.analyze(
-              value,
+              widget.phoneController.text,
               required: !widget.optional,
               requireYemeni: widget.requireYemeni,
             );
@@ -108,6 +93,31 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
             }
             return null;
           },
+          builder: (field) => JourneyTextField(
+            key: const Key('contact-phone-input'),
+            label: widget.label,
+            controller: widget.phoneController,
+            hint: widget.hintText,
+            icon: LucideIcons.phone,
+            enabled: widget.enabled,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            errorText: field.errorText,
+            onChanged: (value) {
+              field.didChange(value);
+              setState(() {});
+              widget.onDraftChanged?.call(
+                ContactPhoneDraft.fromInput(
+                  name: widget.nameController?.text ?? '',
+                  rawPhone: value,
+                  source: ContactPhoneSource.manual,
+                  requireYemeni: widget.requireYemeni,
+                ),
+              );
+            },
+          ),
         ),
         const SizedBox(height: AarastV3Space.x1),
         Column(

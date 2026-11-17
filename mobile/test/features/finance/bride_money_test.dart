@@ -205,7 +205,12 @@ void main() {
     tester,
   ) async {
     await _pump(tester, JourneyProfile.bride);
+    // Changed on purpose (critique م8, 2026-11-18): the share is in «⋯».
+    await tester.tap(find.byKey(const ValueKey('money-settings-menu')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('money-share-summary')), findsOneWidget);
+    await tester.tapAt(const Offset(4, 4));
+    await tester.pumpAndSettle();
 
     await _pump(
       tester,

@@ -45,27 +45,29 @@ String _statusLine(
         ? 'خلصت كل المهام'
         : 'ما فيه مهام مفتوحة';
   }
-  final overdue = open
-      .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
-      .length;
   final week = open
       .where((task) => taskGroupOf(task, today) == TaskGroup.week)
       .length;
-  final late = overdue == 0
-      ? null
-      : arabicCount(
-          overdue,
-          one: 'واحدة متأخرة',
-          two: 'ثنتين متأخرة',
-          few: 'متأخرة',
-          many: 'متأخرة',
-        );
-  if (week == 0) {
-    final left = 'باقي ${_taskCountLabel(open.length)}';
-    return late == null ? left : '$left، منها $late';
-  }
-  final thisWeek = 'باقي ${_taskCountLabel(week)} خلال أسبوع';
-  return late == null ? thisWeek : '$thisWeek، و$late';
+  // Rashad 2026-11-17: the hero under this line says how many are left and
+  // carries the late ones as its tag; the line says the week only.
+  return week == 0
+      ? 'ما فيه مهام خلال أسبوع'
+      : '${_taskCountLabel(week)} خلال أسبوع';
+}
+
+/// The hero's tag: «ثنتين متأخرة», or null with none late.
+String? _lateTag(List<WeddingTask> tasks, DateTime today) {
+  final overdue = tasks
+      .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
+      .length;
+  if (overdue == 0) return null;
+  return arabicCount(
+    overdue,
+    one: 'واحدة متأخرة',
+    two: 'ثنتين متأخرة',
+    few: 'متأخرة',
+    many: 'متأخرة',
+  );
 }
 
 String _taskCountLabel(int count) => arabicCount(

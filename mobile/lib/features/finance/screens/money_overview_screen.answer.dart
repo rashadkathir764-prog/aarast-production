@@ -189,8 +189,7 @@ class _ShareHero extends StatelessWidget {
     final profile = context.journeyProfile;
     final currency = summary.currency;
     final outstanding = summary.outstanding;
-    final onColour = AarastV3Color.onPrimary;
-    final soft = context.accent.onPrimaryMuted;
+    final soft = AarastV3Color.onPrimary.withValues(alpha: 0.78);
     final owner = profile.readerIsOwner;
     final lead = owner
         ? (outstanding?.owner ?? summary.costs.outstanding)
@@ -213,76 +212,86 @@ class _ShareHero extends StatelessWidget {
             '${group.ownerMoney ? 'على ${profile.plan('العريس', 'العروسة')}' : 'على ${payerLabel(group.payer, group.payerName, bridePlan: profile.isBride, owner: false)}'} ${_figure(context, group.outstanding, currency)}',
     ];
     final coverage = summary.coverage;
-    return JourneyBox(
+    // Rashad 2026-11-17: the home's hero, its look and size exactly
+    // (JourneyPlanHero): the figure in the home's 52 point, its unit and
+    // whose it is beside it, the mahr and the agreements under them, the
+    // verdict as the saffron tag that opens «كيف حسبناها؟» (D113), and
+    // what was paid of what was agreed as the bar.
+    final hidden = context.select<FinanceProvider?, bool>(
+      (provider) => provider?.amountsHidden ?? false,
+    );
+    final parts = compactMoneyParts(moneyValue(lead), currencyCode: currency);
+    // D114: his share holds the mahr, so it is never «من العرس».
+    final whose = owner ? context.say('باقي عليك', 'باقي عليكِ') : 'باقي يندفع';
+    final unit = [?parts.millionUnit, parts.currency].join(' ');
+    final agreed = moneyValue(summary.costs.total);
+    final paid = moneyValue(summary.costs.paid);
+    final Widget? tag;
+    if (!owner) {
+      tag = null;
+    } else if (coverage == null) {
+      // «لسا ما نعرف» said nothing to do; the tag is the way to know.
+      tag = JourneyHeroTag(
+        key: const ValueKey('money-cover-unknown'),
+        label: onSources == null ? 'ما نعرف إذا تكفي' : 'تكفي فلوسك؟',
+        icon: onSources == null ? null : LucideIcons.piggyBank,
+        semanticLabel: context.say(
+          'سجّل من وين فلوسك ونقول لك إذا تكفي',
+          'سجّلي من وين فلوسك ونقول لك إذا تكفي',
+        ),
+        onTap: onSources,
+      );
+    } else {
+      final verdict = moneyCoverTag(
+        coverage,
+        (value) => _figure(context, value, summary.currency),
+      );
+      tag = JourneyHeroTag(
+        key: const ValueKey('money-cover'),
+        label: verdict.words,
+        icon: LucideIcons.info,
+        semanticLabel: '${verdict.words}. كيف حسبناها؟',
+        onTap: onHowCounted,
+      );
+    }
+    return JourneyPlanHero(
       key: const ValueKey('money-share-hero'),
-      color: context.accent.primary,
-      radius: AarastV3Radius.feature,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      figureKey: const ValueKey('money-share-figure'),
+      figure: hidden ? '••••' : parts.number,
+      // As the home's «يوم على عرسك» over its date: the unit beside the
+      // figure, whose it is under it.
+      title: hidden ? 'مخفي' : unit,
+      subtitle: whose,
+      semanticLabel:
+          '$whose ${hidden ? 'مخفي' : _spokenMoney(_figure(context, lead, currency), currency)}'
+          '${chips.isEmpty ? '' : '، ${chips.join('، ')}'}',
+      tag: tag,
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // D114: his share holds the mahr, so it is never «من العرس».
-          Text(
-            owner ? context.say('باقي عليك', 'باقي عليكِ') : 'باقي يندفع',
-            style: JourneyType.of(JourneyType.detail, color: soft),
-          ),
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            _figure(context, lead, currency),
-            key: const ValueKey('money-share-figure'),
-            style: JourneyType.of(
-              JourneyType.headline,
-              weight: JourneyType.bold,
-              color: onColour,
-            ),
-          ),
           if (chips.isNotEmpty) ...[
+            Text(
+              chips.join(' · '),
+              key: const ValueKey('money-share-parts'),
+              style: JourneyType.of(
+                JourneyType.bodySmall,
+                weight: JourneyType.bold,
+                color: AarastV3Color.onPrimary,
+              ),
+            ),
             const SizedBox(height: AarastV3Space.x2),
-            Wrap(
-              spacing: AarastV3Space.x3,
-              runSpacing: AarastV3Space.x1,
-              children: [
-                for (final chip in chips)
-                  Text(
-                    chip,
-                    style: JourneyType.of(JourneyType.small, color: soft),
-                  ),
-              ],
+          ],
+          JourneyHeroBar(value: agreed <= 0 ? 0 : paid / agreed),
+          if (agreed > 0) ...[
+            const SizedBox(height: AarastV3Space.x1),
+            Text(
+              hidden
+                  ? 'دفعت ••••'
+                  : '${context.ownerDid('دفعت', 'دفعتِ', groom: 'دفع العريس', bride: 'دفعت العروسة')} ${_figure(context, paid, currency)} من ${_figure(context, agreed, currency)}',
+              key: const ValueKey('money-share-paid'),
+              style: JourneyType.of(JourneyType.caption, color: soft),
             ),
           ],
-          if (owner) ...[
-            const SizedBox(height: AarastV3Space.x3),
-            Divider(height: 1, color: soft.withValues(alpha: 0.3)),
-            const SizedBox(height: AarastV3Space.x3),
-            if (coverage == null)
-              // Rashad 2026-11-17: «لسا ما نعرف» said nothing to do; the
-              // way to know is the line itself.
-              _CoverWords(
-                key: const ValueKey('money-cover-unknown'),
-                ok: false,
-                main: onSources == null
-                    ? 'لسا ما نعرف إذا تكفي فلوسك'
-                    : context.say(
-                        'سجّل من وين فلوسك ونقول لك إذا تكفي',
-                        'سجّلي من وين فلوسك ونقول لك إذا تكفي',
-                      ),
-                sub: '',
-                onTap: onSources,
-              )
-            else
-              // The verdict as a tag on one line with the way to its account
-              // (D113's tag, the home's own); the whole sentence and what it
-              // rests on open in «كيف حسبناها؟». With the sentence the card
-              // took two thirds of the screen (Rashad, 2026-11-17).
-              _CoverTag(
-                key: const ValueKey('money-cover'),
-                tag: moneyCoverTag(
-                  coverage,
-                  (value) => _figure(context, value, summary.currency),
-                ),
-                howCounted: onHowCounted,
-              ),
-          ],
-          // D114's budget figures are in «الصورة كاملة» (Rashad 2026-11-17).
         ],
       ),
     );
@@ -354,77 +363,6 @@ class _CoverTag extends StatelessWidget {
           color: onPaper ? context.accent.primary : onColour,
         ),
       ],
-    );
-  }
-}
-
-class _CoverWords extends StatelessWidget {
-  const _CoverWords({
-    required this.ok,
-    required this.main,
-    required this.sub,
-    this.onTap,
-    super.key,
-  });
-
-  final bool ok;
-  final String main;
-  final String sub;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final onColour = AarastV3Color.onPrimary;
-    final soft = context.accent.onPrimaryMuted;
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              ok
-                  ? LucideIcons.checkCircle2
-                  : onTap != null
-                  ? LucideIcons.piggyBank
-                  : LucideIcons.alertCircle,
-              size: 18,
-              color: onColour,
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            Expanded(
-              child: Text(
-                main,
-                style: JourneyType.of(
-                  JourneyType.body,
-                  weight: JourneyType.bold,
-                  color: onColour,
-                  height: 1.5,
-                ),
-              ),
-            ),
-            if (onTap != null)
-              Icon(LucideIcons.chevronLeft, size: 18, color: onColour),
-          ],
-        ),
-        if (sub.isNotEmpty) ...[
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            sub,
-            style: JourneyType.of(JourneyType.small, color: soft, height: 1.6),
-          ),
-        ],
-      ],
-    );
-    if (onTap == null) return body;
-    // No ink: money sits inside the home's tab, with no Material above it.
-    return Semantics(
-      button: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: body,
-      ),
     );
   }
 }

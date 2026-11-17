@@ -257,12 +257,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   children: [
                     JourneyTabHeader(
                       title: words.guests,
-                      status: _statusLine(
-                        summary,
-                        words,
-                        helps: helps,
-                        guests: guests,
-                      ),
+                      status: _statusLine(summary, words, helps: helps),
                       actions: [
                         if (guests.isNotEmpty)
                           JourneyRoundButton(
@@ -449,28 +444,27 @@ class _GuestListScreenState extends State<GuestListScreen> {
           showLabel: occasions.length > 1,
           counts: counts,
           onTap: () => context.push(AppRouter.guestAttendance(planId)),
-          action: due == null
+          // The one send due, as the hero's tag.
+          sendKey: due == null
               ? null
-              : JourneyButton(
-                  key: ValueKey('guests-send-${due.audience.wire}'),
-                  label: switch (due.audience) {
-                    SendAudience.notTold =>
-                      '${context.say('أرسل', 'أرسلي')} الدعوة لـ${words.count(due.count)}',
-                    SendAudience.changed =>
-                      '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير',
-                    SendAudience.silent =>
-                      '${context.say('ذكّر', 'ذكّري')} ${words.count(due.count)}',
-                  },
-                  icon: LucideIcons.send,
-                  background: context.accent.primary,
-                  expand: true,
-                  onPressed: () => openSend(due.audience),
-                ),
+              : ValueKey('guests-send-${due.audience.wire}'),
+          sendLabel: due == null
+              ? null
+              : switch (due.audience) {
+                  SendAudience.notTold =>
+                    '${context.say('أرسل', 'أرسلي')} الدعوة لـ${words.count(due.count)}',
+                  SendAudience.changed =>
+                    '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير',
+                  SendAudience.silent =>
+                    '${context.say('ذكّر', 'ذكّري')} ${words.count(due.count)}',
+                },
+          onSend: due == null ? null : () => openSend(due.audience),
           allOptions: _isLocalPlan || invited.every((guest) => !guest.editable)
               ? null
               : JourneyTextAction(
                   key: const ValueKey('guests-send-all-options'),
-                  label: 'كل خيارات الإرسال',
+                  label: 'خيارات الإرسال',
+                  icon: LucideIcons.send,
                   color: context.accent.primary,
                   onPressed: openSend,
                 ),

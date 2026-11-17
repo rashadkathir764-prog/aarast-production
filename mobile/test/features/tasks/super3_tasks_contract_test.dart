@@ -180,7 +180,10 @@ void main() {
 
     // d01: the header, this week's section, and when · who on the row.
     expect(find.text('المهام'), findsOneWidget);
-    expect(find.text('باقي مهمة وحدة خلال أسبوع'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): the hero says how many are
+    // left; the header line says the week only.
+    expect(find.text('مهمة وحدة خلال أسبوع'), findsOneWidget);
+    expect(find.text('مهمة وحدة باقية'), findsOneWidget);
     expect(find.byKey(const ValueKey('task-group-week')), findsOneWidget);
     expect(find.text('تأكيد القاعة'), findsOneWidget);
     expect(find.text('اليوم · محمد'), findsOneWidget);
@@ -246,7 +249,16 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('باقي مهمتين، منها واحدة متأخرة'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): the hero says «مهمتين باقية»
+    // with the late one as its saffron tag.
+    expect(find.text('مهمتين باقية'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('tasks-hero-late')),
+        matching: find.text('واحدة متأخرة'),
+      ),
+      findsOneWidget,
+    );
     final overdue = find.byKey(const ValueKey('task-group-overdue'));
     final month = find.byKey(const ValueKey('task-group-month'));
     expect(overdue, findsOneWidget);

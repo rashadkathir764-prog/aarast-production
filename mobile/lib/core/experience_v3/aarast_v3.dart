@@ -1,6 +1,7 @@
 export 'aarast_journey.dart';
 export 'aarast_journey_art.dart';
 export 'aarast_journey_entry.dart';
+export 'aarast_journey_hero.dart';
 export 'aarast_journey_moment.dart';
 export 'aarast_journey_profile.dart';
 export 'aarast_journey_sheet.dart';

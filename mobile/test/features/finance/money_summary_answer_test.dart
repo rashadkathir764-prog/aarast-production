@@ -261,8 +261,8 @@ Future<String> _coverText(WidgetTester tester) async {
       .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
       .join(' ');
   final card = textsUnder(cover);
-  final link = find.byKey(const ValueKey('money-how-counted'));
-  tester.widget<JourneyTextAction>(link).onPressed!();
+  // The verdict's tag opens «كيف حسبناها؟» (the home's hero, 2026-11-17).
+  tester.widget<JourneyHeroTag>(cover).onTap!();
   await tester.pumpAndSettle();
   final sheet = textsUnder(find.byType(JourneySheetBody));
   Navigator.of(tester.element(find.byType(JourneySheetBody))).pop();
@@ -358,11 +358,28 @@ void main() {
         await _open(tester, apis!);
 
         // 800,000 hall + 350,000 photographer + 800,000 mahr: 1,950,000, a
-        // half rounded up.
+        // half rounded up. The home's hero (2026-11-17): the figure alone,
+        // «مليون ر.ي» beside it.
         expect(
           tester
               .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
               .data,
+          '2',
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('money-share-hero')),
+            matching: find.text('مليون ر.ي'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          [
+            tester
+                .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
+                .data,
+            'مليون',
+          ].join(' '),
           matches(RegExp(r'^2[\s\u00A0]مليون')),
         );
         final cover = await _coverText(tester);
@@ -436,8 +453,10 @@ void main() {
       final apis = await tester.runAsync(twoDips);
       await _open(tester, apis!);
 
-      await _scrollTo(tester, find.byKey(const ValueKey('money-how-counted')));
-      await tester.tap(find.byKey(const ValueKey('money-how-counted')));
+      // The verdict's tag opens it (the home's hero, 2026-11-17).
+      tester
+          .widget<JourneyHeroTag>(find.byKey(const ValueKey('money-cover')))
+          .onTap!();
       await tester.pumpAndSettle();
       // His lines on their days, the father's promise among them, and the
       // undated mahr last: 7 steps.

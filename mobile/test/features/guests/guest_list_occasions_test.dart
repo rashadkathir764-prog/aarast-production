@@ -242,7 +242,7 @@ void main() {
 
     // The wedding: Yasser comes, Murad is silent, Fahd was never told.
     expect(find.byKey(const ValueKey('guests-occasions')), findsOneWidget);
-    expect(find.text('أكدوا من 3'), findsOneWidget);
+    expect(find.text('أكد من 3'), findsOneWidget);
     expect(_parts(tester), '1 ما ردّوا · 1 بلا دعوة');
     // Who was never told comes first.
     expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
@@ -293,7 +293,7 @@ void main() {
     await _pump(tester, withEvents: false);
 
     expect(find.byKey(const ValueKey('guests-occasions')), findsNothing);
-    expect(find.text('أكدوا من 3'), findsOneWidget);
+    expect(find.text('أكد من 3'), findsOneWidget);
     // The doors never hide.
     expect(find.byKey(const ValueKey('guests-invite-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('guests-occasions-door')), findsOneWidget);

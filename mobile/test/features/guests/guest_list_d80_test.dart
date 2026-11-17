@@ -153,8 +153,10 @@ void main() {
 
     // The figures count the whole plan.
     // Changed on purpose (critique ض1): each word agrees with its count.
-    expect(find.text('3 ضيوف · 1 أكد · 2 ما ردّوا'), findsOneWidget);
-    expect(find.text('أكدوا من 3'), findsOneWidget);
+    // Changed on purpose (critique ض2, 2026-11-17): the line says how many,
+    // the card who confirmed, its verb agreeing with one.
+    expect(find.text('3 ضيوف'), findsOneWidget);
+    expect(find.text('أكد من 3'), findsOneWidget);
     // Only the helper's own waiting guest can be reminded from here.
     // Changed on purpose (D116): «ذكّر ضيف واحد على واتساب» → the summary's one send action guests-send-remind.
     expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);

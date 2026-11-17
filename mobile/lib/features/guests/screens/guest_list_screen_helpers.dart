@@ -64,34 +64,20 @@ List<Guest> _search(List<Guest> guests, String query) {
   }).toList()..sort((a, b) => compareArabicNames(a.name, b.name));
 }
 
-/// «124 مدعو · 86 أكدوا · 20 ما ردّوا». A helper (D80) starts the plan's
-/// list, not their own.
+/// «124 ضيف». A helper (D80) starts the plan's list, not their own.
+/// Critique ض2 (Rashad 2026-11-17): who confirmed, who has not answered and
+/// who no invitation reached are the card's, right under this line; here
+/// only how many there are, the word agreeing with its count (ض1).
 String _statusLine(
   GuestSummary summary,
   GuestWords words, {
   required bool helps,
-  required List<Guest> guests,
 }) {
   if (summary.totalGuests == 0) {
     return '${words.profile.say('ابدأ', 'ابدئي')} بقائمة '
         '${helps ? words.guests : words.yourGuests}';
   }
-  // RA-MO-219: «ما ردّوا» counted guests no invitation ever reached («100
-  // مدعو · 100 ما ردّوا», each row «ما وصلته دعوة»). Those are said apart.
-  final notSent = guests
-      // D116: «بلا دعوة» from the send log, as the occasion's card says it.
-      .where((guest) => guest.isPending && !guest.everTold)
-      .length;
-  final waiting = summary.pending - notSent;
-  // Critique ض1: «3 ضيوف · 1 أكد», each word agreeing with its count
-  // («3 مدعو · 1 أكدوا» was right only from eleven up).
-  return [
-    words.count(summary.totalGuests),
-    if (summary.confirmed > 0)
-      '${summary.confirmed} ${words.confirmedOf(summary.confirmed)}',
-    if (waiting > 0) '$waiting ${words.pendingOf(waiting)}',
-    if (notSent > 0) '$notSent ${words.noInvitation}',
-  ].join(' · ');
+  return words.count(summary.totalGuests);
 }
 
 /// The empty plan said to a helper (D80): the list is the plan's, so it does

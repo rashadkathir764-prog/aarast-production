@@ -120,8 +120,11 @@ void main() {
     // RA-MO-219 (2026-11-13): no invitation went to Laila yet, so she is not
     // counted as «ما ردّوا».
     // Changed on purpose (critique ض1): each word agrees with its count.
-    expect(find.text('ضيفين · 1 أكد · 1 بلا دعوة'), findsOneWidget);
-    expect(find.text('أكدوا من 2'), findsOneWidget);
+    // Changed on purpose (critique ض2, 2026-11-17): the line says how many;
+    // the card says who confirmed and who no invitation reached.
+    expect(find.text('ضيفين'), findsOneWidget);
+    // One confirmed: «أكد», the verb agreeing with one (2026-11-17).
+    expect(find.text('أكد من 2'), findsOneWidget);
     // RA-MO-59: the occasion's card keeps the seats with companions.
     expect(find.text('مع المرافقين: 3 مقاعد'), findsOneWidget);
     expect(
@@ -149,7 +152,7 @@ void main() {
     await _pumpGuestsScreen(tester, harness, setView: false);
 
     // RA-MO-219: no invitation went yet.
-    expect(find.text('ضيف واحد · 1 بلا دعوة'), findsOneWidget);
+    expect(find.text('ضيف واحد'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

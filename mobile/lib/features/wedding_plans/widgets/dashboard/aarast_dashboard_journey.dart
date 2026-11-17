@@ -200,7 +200,6 @@ class _JourneyHomeHero extends StatelessWidget {
     required String dateLine,
   }) {
     final moment = _homeMoment(stage.stage, startingOut: startingOut);
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     // Critique ر4: the five bars had no names. The moment's tag opens them,
     // with what moves the plan from one to the next.
     final tag = Semantics(
@@ -222,11 +221,15 @@ class _JourneyHomeHero extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _homeMoments[moment],
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    weight: JourneyType.bold,
+                // Within the hero's share for its tag, a long moment
+                // («أسبوع العرس») wraps rather than leave the pill.
+                Flexible(
+                  child: Text(
+                    _homeMoments[moment],
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      weight: JourneyType.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AarastV3Space.x1),
@@ -237,113 +240,15 @@ class _JourneyHomeHero extends StatelessWidget {
         ),
       ),
     );
-    return JourneyBox(
+    // b01, b02 on the kit's JourneyPlanHero (Rashad 2026-11-17): the tasks,
+    // the guests and the money's summary wear the same hero, from one place.
+    return JourneyPlanHero(
       key: const ValueKey('aarast-dashboard-countdown'),
-      color: context.accent.primary,
-      radius: AarastV3Radius.feature,
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-        // b01: deep at the far top corner, easing into the plan's colour
-        // (D45, the one gradient D3 allows).
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topEnd,
-              end: AlignmentDirectional.bottomStart,
-              colors: [context.accent.primaryDark, context.accent.primary],
-            ),
-          ),
-          child: CustomPaint(
-            painter: JourneyQamariyaPainter(
-              alpha: 0.10,
-              centreX: rtl ? 0.12 : 0.88,
-              frieze: true,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AarastV3Space.x4),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // The tag sits on the count's row as drawn; on a narrow
-                  // phone or a large text size it moves above the moments so
-                  // it never crowds the count.
-                  final scale = MediaQuery.textScalerOf(context).scale(1);
-                  final wide = constraints.maxWidth / scale >= 300;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (days != null && days > 2) ...[
-                            Text(
-                              '$days',
-                              style: JourneyType.of(
-                                JourneyType.homeCount,
-                                weight: JourneyType.bold,
-                                color: AarastV3Color.onPrimary,
-                                height: 0.95,
-                              ),
-                            ),
-                            const SizedBox(width: AarastV3Space.x2),
-                          ],
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AarastV3Space.x1,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    countLine,
-                                    style: JourneyType.of(
-                                      JourneyType.title,
-                                      weight: JourneyType.bold,
-                                      color: AarastV3Color.onPrimary,
-                                    ),
-                                  ),
-                                  Text(
-                                    dateLine,
-                                    style: JourneyType.of(
-                                      JourneyType.bodySmall,
-                                      color: AarastV3Color.onPrimary.withValues(
-                                        alpha: 0.78,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (wide) ...[
-                            const SizedBox(width: AarastV3Space.x2),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AarastV3Space.x1,
-                              ),
-                              child: tag,
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (!wide) ...[
-                        const SizedBox(height: AarastV3Space.x3),
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: tag,
-                        ),
-                      ],
-                      const SizedBox(height: AarastV3Space.x3),
-                      _StagePath(current: moment),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
+      figure: days != null && days > 2 ? '$days' : null,
+      title: countLine,
+      subtitle: dateLine,
+      tag: tag,
+      footer: _StagePath(current: moment),
     );
   }
 

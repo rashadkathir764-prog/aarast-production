@@ -82,7 +82,9 @@ class _OccasionSummaryCard extends StatelessWidget {
     required this.counts,
     required this.onTap,
     this.showLabel = false,
-    this.action,
+    this.sendLabel,
+    this.sendKey,
+    this.onSend,
     this.allOptions,
   });
 
@@ -92,7 +94,13 @@ class _OccasionSummaryCard extends StatelessWidget {
 
   /// The occasion is named over the figures when the plan has several.
   final bool showLabel;
-  final Widget? action;
+
+  /// The one send due («ذكّر 3 ضيوف»), the hero's saffron tag.
+  final String? sendLabel;
+  final Key? sendKey;
+  final VoidCallback? onSend;
+
+  /// «خيارات الإرسال», under the hero.
   final Widget? allOptions;
 
   @override
@@ -105,111 +113,78 @@ class _OccasionSummaryCard extends StatelessWidget {
       if (counts.notTold > 0) '${counts.notTold} ${words.noInvitation}',
     ];
     final invited = counts.invited;
-    return JourneyBox(
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AarastPressable(
-            key: const ValueKey('guests-summary'),
-            onTap: onTap,
-            semanticLabel:
-                'كم بيحضر؟ ${showLabel ? '$label، ' : ''}'
-                '${counts.confirmed} ${words.confirmed} من $invited'
-                '${parts.isEmpty ? '' : '، ${parts.join('، ')}'}',
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-            child: ExcludeSemantics(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (showLabel)
-                    Text(
-                      label,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '${counts.confirmed}',
-                        style: JourneyType.of(
-                          JourneyType.display,
-                          weight: JourneyType.bold,
-                        ),
-                      ),
-                      const SizedBox(width: AarastV3Space.x2),
-                      Flexible(
-                        child: Text(
-                          '${words.confirmed} من $invited',
-                          style: JourneyType.of(
-                            JourneyType.body,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                      ),
-                    ],
+    final soft = AarastV3Color.onPrimary.withValues(alpha: 0.78);
+    // Rashad 2026-11-17: the home's hero, its look and size exactly
+    // (JourneyPlanHero): who confirmed the big figure, of whom beside it,
+    // the rest under it, the send due as the saffron tag, the share
+    // confirmed as the bar. Pressing it opens «كم بيحضر؟».
+    final send = sendLabel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        JourneyPlanHero(
+          key: const ValueKey('guests-summary'),
+          figure: '${counts.confirmed}',
+          // «1 أكد من 4», the verb agreeing with its count.
+          title: '${words.confirmedOf(counts.confirmed)} من $invited',
+          subtitle: showLabel ? label : 'كم بيحضر؟',
+          onTap: onTap,
+          semanticLabel:
+              'كم بيحضر؟ ${showLabel ? '$label، ' : ''}'
+              '${counts.confirmed} ${words.confirmed} من $invited'
+              '${parts.isEmpty ? '' : '، ${parts.join('، ')}'}',
+          tag: send == null
+              ? null
+              : JourneyHeroTag(
+                  key: sendKey,
+                  label: send,
+                  icon: LucideIcons.send,
+                  onTap: onSend,
+                ),
+          footer: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (parts.isNotEmpty) ...[
+                Text(
+                  parts.join(' · '),
+                  key: const ValueKey('guests-summary-parts'),
+                  style: JourneyType.of(
+                    JourneyType.bodySmall,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.onPrimary,
                   ),
-                  if (parts.isNotEmpty) ...[
-                    const SizedBox(height: AarastV3Space.x1),
-                    Text(
-                      parts.join(' · '),
-                      key: const ValueKey('guests-summary-parts'),
-                      style: JourneyType.of(
-                        JourneyType.bodySmall,
-                        weight: JourneyType.bold,
-                        color: AarastV3Color.brandAccentStrong,
-                      ),
-                    ),
-                  ],
-                  // RA-MO-59: the hall counts seats, the confirmed with
-                  // who comes with them; the occasion's own number.
-                  if (counts.companions > 0) ...[
-                    const SizedBox(height: AarastV3Space.x1),
-                    Text(
-                      '${words.withCompanions}: ${arabicSeats(counts.people)}',
-                      key: const ValueKey('guests-summary-seats'),
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                  if (counts.confirmedOld > 0) ...[
-                    const SizedBox(height: AarastV3Space.x1),
-                    Text(
-                      '${counts.confirmedOld} ${words.profile.plan('أكدوا', 'أكّدن')} '
-                      'قبل ما يتغيّر الموعد أو المكان',
-                      key: const ValueKey('guests-summary-old'),
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AarastV3Space.x2),
-                  JourneyBar(
-                    value: invited == 0 ? 0 : counts.confirmed / invited,
-                    color: context.accent.primary,
-                  ),
-                ],
+                ),
+                const SizedBox(height: AarastV3Space.x1),
+              ],
+              // RA-MO-59: the hall counts seats, the confirmed with who
+              // comes with them; the occasion's own number.
+              if (counts.companions > 0) ...[
+                Text(
+                  '${words.withCompanions}: ${arabicSeats(counts.people)}',
+                  key: const ValueKey('guests-summary-seats'),
+                  style: JourneyType.of(JourneyType.small, color: soft),
+                ),
+                const SizedBox(height: AarastV3Space.x1),
+              ],
+              if (counts.confirmedOld > 0) ...[
+                Text(
+                  '${counts.confirmedOld} ${words.profile.plan('أكدوا', 'أكّدن')} '
+                  'قبل ما يتغيّر الموعد أو المكان',
+                  key: const ValueKey('guests-summary-old'),
+                  style: JourneyType.of(JourneyType.small, color: soft),
+                ),
+                const SizedBox(height: AarastV3Space.x1),
+              ],
+              const SizedBox(height: AarastV3Space.x1),
+              JourneyHeroBar(
+                value: invited == 0 ? 0 : counts.confirmed / invited,
               ),
-            ),
+            ],
           ),
-          if (action != null) ...[
-            const SizedBox(height: AarastV3Space.x3),
-            action!,
-          ],
-          if (allOptions != null) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            Center(child: allOptions!),
-          ],
-        ],
-      ),
+        ),
+        if (allOptions case final options?)
+          Align(alignment: AlignmentDirectional.centerStart, child: options),
+      ],
     );
   }
 }

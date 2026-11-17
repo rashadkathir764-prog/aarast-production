@@ -139,9 +139,11 @@ void main() {
         r'LinearGradient|RadialGradient|SweepGradient|BoxShadow\s*\(',
       );
       // D45: the home countdown card is drawn with one linear gradient
-      // (b01); it stays the only one.
-      const countdownCard =
-          'wedding_plans/widgets/dashboard/aarast_dashboard_journey.dart';
+      // (b01); it stays the only one. Changed on purpose (Rashad 2026-11-17:
+      // the tasks, the guests and the money's summary wear the home's hero
+      // exactly): the one gradient lives in the kit's JourneyPlanHero, which
+      // the home and those three draw.
+      const countdownCard = 'core/experience_v3/aarast_journey_hero.dart';
       final offenders = <String>[];
       var countdownGradients = 0;
 

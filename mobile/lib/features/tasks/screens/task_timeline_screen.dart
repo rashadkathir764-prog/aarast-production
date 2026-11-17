@@ -36,6 +36,7 @@ import '../widgets/task_postpone.dart';
 import '../widgets/task_row.dart';
 import '../widgets/task_starter_sheet.dart';
 
+part 'task_timeline_screen.hero.dart';
 part 'task_timeline_screen.logic.dart';
 part 'task_timeline_screen.months.dart';
 part 'task_timeline_screen.starter.dart';
@@ -311,6 +312,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               const SizedBox(height: AarastV3Space.x3),
             ],
             if (tasks.isNotEmpty) ...[
+              _TasksHero(tasks: visible, today: today),
+              const SizedBox(height: AarastV3Space.x3),
               JourneyTabSwitch(
                 key: const ValueKey('tasks-view'),
                 labels: const ['القائمة', 'الوقت'],

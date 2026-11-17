@@ -146,13 +146,18 @@ void main() {
         mahr: _groomMahr,
       );
 
-      // On him: the mahr's 1 million, not the father's 1.2 on the hall.
-      final share = find.byKey(const ValueKey('money-share-figure'));
+      // On him: the mahr's 1 million, not the father's 1.2 on the hall. The
+      // home's hero (2026-11-17): the figure alone, its unit beside it.
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('money-share-figure')))
+            .data,
+        '1',
+      );
       expect(
         find.descendant(
-          of: share,
-          matchRoot: true,
-          matching: find.textContaining('مليون'),
+          of: find.byKey(const ValueKey('money-share-hero')),
+          matching: find.text('مليون ر.ي'),
         ),
         findsOneWidget,
       );

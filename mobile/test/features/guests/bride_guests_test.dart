@@ -132,8 +132,11 @@ void main() {
 
     expect(find.text('الضيفات'), findsOneWidget);
     // Changed on purpose (critique ض1): each word agrees with its count.
-    expect(find.text('ضيفتين · 1 أكدت · 1 ما ردّت'), findsOneWidget);
-    expect(find.text('أكدن من 2'), findsOneWidget);
+    // Changed on purpose (critique ض2, 2026-11-17): the line says how many;
+    // who confirmed is the card's under it.
+    expect(find.text('ضيفتين'), findsOneWidget);
+    // One confirmed: «أكدت», the verb agreeing with one (2026-11-17).
+    expect(find.text('أكدت من 2'), findsOneWidget);
     expect(find.text('الضيوف'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -195,10 +198,9 @@ void main() {
   ) async {
     await _pumpList(tester, JourneyProfile.bride);
 
-    final card = find.ancestor(
-      of: find.byKey(const ValueKey('guests-summary')),
-      matching: find.byType(JourneyBox),
-    );
+    // Changed on purpose (Rashad 2026-11-17): the summary is the home's hero
+    // (JourneyPlanHero), its send the hero's tag.
+    final card = find.byKey(const ValueKey('guests-summary'));
     // Changed on purpose (D116): guests-remind «ذكّري ضيفة وحدة على واتساب» → the card's one send action guests-send-remind.
     expect(
       find.descendant(
@@ -226,7 +228,7 @@ void main() {
     await _pumpList(tester, JourneyProfile.groom);
 
     expect(find.text('الضيوف'), findsOneWidget);
-    expect(find.text('ضيفين · 1 أكد · 1 ما ردّ'), findsOneWidget);
+    expect(find.text('ضيفين'), findsOneWidget);
   });
 }
 

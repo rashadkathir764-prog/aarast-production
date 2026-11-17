@@ -71,7 +71,8 @@ void main() {
     // Changed on purpose (Rashad 2026-11-17): «لسا ما نعرف» said nothing to
     // do; the line is the way to know, in her words. The three steps under
     // it are the start only, so the request lives here.
-    expect(find.text('سجّلي من وين فلوسك ونقول لك إذا تكفي'), findsOneWidget);
+    // Since the home's hero (2026-11-17) it is the hero's tag.
+    expect(find.text('تكفي فلوسك؟'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -112,12 +113,10 @@ void main() {
     // Changed on purpose (Rashad, 2026-11-17): the card says the verdict as
     // a tag; the day it falls short, the payment and «معك …» are said in
     // «كيف حسبناها؟».
-    expect(find.byKey(const ValueKey('money-how-counted')), findsOneWidget);
+    // Since the home's hero (2026-11-17) the verdict's tag opens it.
     tester
-        .widget<JourneyTextAction>(
-          find.byKey(const ValueKey('money-how-counted')),
-        )
-        .onPressed!();
+        .widget<JourneyHeroTag>(find.byKey(const ValueKey('money-cover')))
+        .onTap!();
     await tester.pumpAndSettle();
     expect(find.textContaining('فستان الزفة'), findsWidgets);
     expect(find.textContaining('معك '), findsWidgets);
@@ -151,11 +150,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('ينقصك'), findsNothing);
-    tester
-        .widget<JourneyTextAction>(
-          find.byKey(const ValueKey('money-how-counted')),
-        )
-        .onPressed!();
+    tester.widget<JourneyHeroTag>(cover).onTap!();
     await tester.pumpAndSettle();
     expect(find.textContaining('يكفي دفعاتك'), findsWidgets);
     expect(find.textContaining('لين '), findsWidgets);
@@ -202,7 +197,7 @@ void main() {
 
     expect(_tabFill(tester, 0), AarastV3Color.primary);
     expect(find.text('باقي عليك'), findsOneWidget);
-    expect(find.text('سجّل من وين فلوسك ونقول لك إذا تكفي'), findsOneWidget);
+    expect(find.text('تكفي فلوسك؟'), findsOneWidget);
   });
 
   // RA-MO-42: the plan's money summary is its owner's to send.

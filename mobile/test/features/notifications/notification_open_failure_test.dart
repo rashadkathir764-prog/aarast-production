@@ -140,7 +140,20 @@ void main() {
   testWidgets('an archive that fails says so', (tester) async {
     await _pump(tester, _Api(failWrites: true));
 
-    await tester.tap(find.byTooltip('أرشفة التنبيه').first);
+    // Changed on purpose (critique ت3): archiving is the row's swipe.
+    await tester.drag(
+      find
+          .byWidgetPredicate(
+            (widget) =>
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'notification-swipe-',
+                ),
+          )
+          .first,
+      // Toward the row's start, which is the right in Arabic.
+      const Offset(500, 0),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('ما وصلنا'), findsOneWidget);

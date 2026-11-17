@@ -44,6 +44,58 @@ int _homeMoment(WeddingPlanStage stage, {required bool startingOut}) {
   };
 }
 
+/// What moves the plan into each of [_homeMoments]: the basics, then the
+/// calendar (D112's wedding window is the six days before the day).
+const _homeMomentWhy = [
+  'لين تحط الميزانية وأول بند وأول مهمة وأول ضيف',
+  'بعد الأساسيات، لين يبقى أسبوع على العرس',
+  'الأيام الستة قبل العرس',
+  'يوم العرس نفسه',
+  'بعده: الباقي من الدفعات، وتقييم المزودين',
+];
+
+/// The five moments named, the plan's own marked (critique ر4).
+void _showMoments(BuildContext context, int current) {
+  showJourneySheet<void>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      key: const ValueKey('aarast-dashboard-moments-sheet'),
+      title: 'مراحل العرس',
+      subtitle: 'تنتقل بينها لحالها، بالأيام وبما تسجّله.',
+      children: [
+        JourneyList(
+          children: [
+            for (var index = 0; index < _homeMoments.length; index++)
+              JourneyListRow(
+                key: ValueKey('aarast-dashboard-moment-row-$index'),
+                icon: index < current
+                    ? LucideIcons.check
+                    : index == current
+                    ? LucideIcons.mapPin
+                    : LucideIcons.circle,
+                color: index == current
+                    ? AarastV3Color.brandAccentStrong
+                    : index < current
+                    ? AarastV3Color.mint
+                    : AarastV3Color.textMuted,
+                soft: index == current
+                    ? AarastV3Color.brandAccentSoft
+                    : index < current
+                    ? AarastV3Color.mintSoft
+                    : AarastV3Color.paperQuiet,
+                title: index == current
+                    ? '${_homeMoments[index]} · أنت هنا'
+                    : _homeMoments[index],
+                subtitleMaxLines: 2,
+                subtitle: _homeMomentWhy[index],
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 /// The five moments as five equal bars: the passed ones white, the
 /// [current] one saffron, the ones ahead a faint white (b01, b02).
 class _StagePath extends StatelessWidget {

@@ -624,131 +624,163 @@ class _NotificationRow extends StatelessWidget {
       customSemanticsActions: {
         const CustomSemanticsAction(label: 'أرشفة التنبيه'): onArchive,
       },
-      child: AarastPressable(
-        key: ValueKey('notification-${notification.id}'),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x4,
-            AarastV3Space.x3,
-            AarastV3Space.x2,
-            AarastV3Space.x3,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              JourneyIconTile(
-                icon: tone.icon,
-                color: tone.color,
-                soft: tone.soft,
-              ),
-              const SizedBox(width: AarastV3Space.x3),
-              Expanded(
-                child: ExcludeSemantics(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (planName case final name?)
-                        Text(
-                          name,
-                          key: const ValueKey('notification-plan'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            weight: JourneyType.bold,
-                            color: context.accent.primary,
-                          ),
-                        ),
-                      Text(
-                        copy.title,
-                        style: JourneyType.of(
-                          JourneyType.bodyLarge,
-                          // Critique ت1: a read notice is at the regular
-                          // weight, so read and unread differ beyond a dot.
-                          weight: notification.isUnread
-                              ? JourneyType.bold
-                              : FontWeight.w400,
-                          color: urgent
-                              ? AarastV3Color.danger
-                              : AarastV3Color.ink,
-                        ),
-                      ),
-                      if (copy.body.trim().isNotEmpty)
-                        Text(
-                          copy.body,
-                          style: JourneyType.of(
-                            JourneyType.small,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                      if (!plain)
-                        Text(
-                          when,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            color: AarastV3Color.textFaint,
-                          ),
-                        ),
-                    ],
-                  ),
+      // Critique ت3: a swipe archives it, as a task or a payment is finished,
+      // instead of a small archive icon on every row. The row leaves when
+      // the archive is done (the list drops it); a failed one stays, and
+      // says why.
+      child: plain
+          ? _body(context, tone, copy, urgent, when)
+          : Dismissible(
+              key: ValueKey('notification-swipe-${notification.id}'),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (_) async {
+                onArchive();
+                return false;
+              },
+              background: Container(
+                alignment: AlignmentDirectional.centerEnd,
+                padding: const EdgeInsetsDirectional.only(
+                  end: AarastV3Space.x5,
                 ),
-              ),
-              if (plain)
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(
-                    top: AarastV3Space.x1,
-                    end: AarastV3Space.x2,
-                  ),
-                  child: SizedBox.square(
-                    dimension: AarastV3Space.x2,
-                    child: notification.isUnread
-                        ? DecoratedBox(
-                            key: const ValueKey('notification-unread-dot'),
-                            decoration: BoxDecoration(
-                              color: context.accent.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          )
-                        : null,
-                  ),
-                )
-              else
-                Column(
+                decoration: BoxDecoration(
+                  color: AarastV3Color.paperQuiet,
+                  borderRadius: BorderRadius.circular(AarastV3Radius.card),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (notification.isUnread)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: AarastV3Space.x1,
-                          bottom: AarastV3Space.half,
-                        ),
-                        child: SizedBox.square(
-                          dimension: AarastV3Space.x2,
-                          // Critique ت2: unread is not danger; the plan's
-                          // colour, as the other row's dot.
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: context.accent.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ),
-                    IconButton(
-                      onPressed: onArchive,
-                      icon: const Icon(LucideIcons.archive, size: 16),
-                      tooltip: 'أرشفة التنبيه',
-                      color: AarastV3Color.textFaint,
-                      // Quiet: the unread dot is the row's only signal.
-                      style: IconButton.styleFrom(
-                        backgroundColor: AarastV3Color.paper,
-                        side: BorderSide.none,
-                      ),
+                    Icon(
+                      LucideIcons.archive,
+                      size: 18,
+                      color: AarastV3Color.textMuted,
                     ),
+                    SizedBox(width: AarastV3Space.x1),
+                    Text('أرشفة'),
                   ],
                 ),
-            ],
-          ),
+              ),
+              child: _body(context, tone, copy, urgent, when),
+            ),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    _NotificationTone tone,
+    ({String title, String body}) copy,
+    bool urgent,
+    String when,
+  ) {
+    return AarastPressable(
+      key: ValueKey('notification-${notification.id}'),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AarastV3Space.x4,
+          AarastV3Space.x3,
+          AarastV3Space.x2,
+          AarastV3Space.x3,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            JourneyIconTile(
+              icon: tone.icon,
+              color: tone.color,
+              soft: tone.soft,
+            ),
+            const SizedBox(width: AarastV3Space.x3),
+            Expanded(
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (planName case final name?)
+                      Text(
+                        name,
+                        key: const ValueKey('notification-plan'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.caption,
+                          weight: JourneyType.bold,
+                          color: context.accent.primary,
+                        ),
+                      ),
+                    Text(
+                      copy.title,
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        // Critique ت1: a read notice is at the regular
+                        // weight, so read and unread differ beyond a dot.
+                        weight: notification.isUnread
+                            ? JourneyType.bold
+                            : FontWeight.w400,
+                        color: urgent
+                            ? AarastV3Color.danger
+                            : AarastV3Color.ink,
+                      ),
+                    ),
+                    if (copy.body.trim().isNotEmpty)
+                      Text(
+                        copy.body,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                    if (!plain)
+                      Text(
+                        when,
+                        style: JourneyType.of(
+                          JourneyType.caption,
+                          color: AarastV3Color.textFaint,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (plain)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  top: AarastV3Space.x1,
+                  end: AarastV3Space.x2,
+                ),
+                child: SizedBox.square(
+                  dimension: AarastV3Space.x2,
+                  child: notification.isUnread
+                      ? DecoratedBox(
+                          key: const ValueKey('notification-unread-dot'),
+                          decoration: BoxDecoration(
+                            color: context.accent.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
+                ),
+              )
+            else
+              // Archiving is the row's swipe (critique ت3).
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  top: AarastV3Space.x1,
+                  end: AarastV3Space.x2,
+                ),
+                child: SizedBox.square(
+                  dimension: AarastV3Space.x2,
+                  // Critique ت2: unread is not danger; the plan's colour.
+                  child: notification.isUnread
+                      ? DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: context.accent.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -142,9 +142,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     final visible = person == _everyone
         ? tasks
         : tasks.where((task) => _personKey(task, userId) == person).toList();
-    // «12 من 20» counts what the filter shows: «لي» or one person.
-    final counted = visible.where((task) => task.status != 'CANCELLED');
-    final done = counted.where((task) => task.isDone).length;
 
     final Widget body;
     if (provider.isLoading && tasks.isEmpty) {
@@ -325,8 +322,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               _PeopleFilter(
                 people: people,
                 selected: person,
-                done: done,
-                total: counted.length,
                 onSelected: (value) => setState(() => _person = value),
               ),
               const SizedBox(height: AarastV3Space.x1),
@@ -559,20 +554,16 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   }
 }
 
-/// «الكل», «لي» and each other responsible person, with «12 من 20».
+/// «الكل», «لي» and each other responsible person.
 class _PeopleFilter extends StatelessWidget {
   const _PeopleFilter({
     required this.people,
     required this.selected,
-    required this.done,
-    required this.total,
     required this.onSelected,
   });
 
   final List<String> people;
   final String selected;
-  final int done;
-  final int total;
   final ValueChanged<String> onSelected;
 
   @override
@@ -602,16 +593,8 @@ class _PeopleFilter extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: AarastV3Space.x2),
-        Text(
-          '$done من $total',
-          key: const ValueKey('tasks-done-count'),
-          style: JourneyType.of(
-            JourneyType.body,
-            weight: JourneyType.bold,
-            color: context.accent.primary,
-          ),
-        ),
+        // Critique مه1: «1 من 5» beside the chips said, without a name, what
+        // the title and «اللي خلصت» already say.
       ],
     );
   }

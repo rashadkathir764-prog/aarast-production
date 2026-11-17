@@ -503,7 +503,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // ------------------------------------------------------------ tasks
   await walk.step('d01_tasks', 'المهام: القائمة', () async {
     await walk.tab('المهام');
-    walk.expectSee('12 من 20');
+    // Critique مه1: no «12 من 20» beside the chips; the title says it.
+    walk.expectNotSee('12 من 20', why: 'العدد يتكرر بدون اسم');
     walk.expectSee('متأخرة');
     walk.expectSee(p.lateTask);
   });

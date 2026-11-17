@@ -201,16 +201,40 @@ class _JourneyHomeHero extends StatelessWidget {
   }) {
     final moment = _homeMoment(stage.stage, startingOut: startingOut);
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    final tag = Container(
-      key: const ValueKey('aarast-dashboard-moment-tag'),
-      padding: AarastV3Density.tagInsets,
-      decoration: BoxDecoration(
-        color: AarastV3Color.saffron,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
-      ),
-      child: Text(
-        _homeMoments[moment],
-        style: JourneyType.of(JourneyType.small, weight: JourneyType.bold),
+    // Critique ر4: the five bars had no names. The moment's tag opens them,
+    // with what moves the plan from one to the next.
+    final tag = Semantics(
+      button: true,
+      label: 'مرحلتك ${_homeMoments[moment]}. شوف المراحل',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _showMoments(context, moment),
+        child: Padding(
+          padding: const EdgeInsets.all(AarastV3Space.x1),
+          child: Container(
+            key: const ValueKey('aarast-dashboard-moment-tag'),
+            padding: AarastV3Density.tagInsets,
+            decoration: BoxDecoration(
+              color: AarastV3Color.saffron,
+              borderRadius: BorderRadius.circular(AarastV3Radius.card),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _homeMoments[moment],
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                const SizedBox(width: AarastV3Space.x1),
+                const Icon(LucideIcons.info, size: 14),
+              ],
+            ),
+          ),
+        ),
       ),
     );
     return JourneyBox(

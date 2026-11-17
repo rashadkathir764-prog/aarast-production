@@ -335,7 +335,8 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           // RA-BE-15: the server's GUEST_NAME_MAX, counted the same way.
           maxLength: 120,
         ),
-        const SizedBox(height: AarastV3Space.x2),
+        // Critique ض4: the design system's 12 between fields, not 8.
+        const SizedBox(height: AarastV3Space.x3),
         ContactPhoneField(
           key: const ValueKey('guest-form-phone'),
           nameController: _nameController,

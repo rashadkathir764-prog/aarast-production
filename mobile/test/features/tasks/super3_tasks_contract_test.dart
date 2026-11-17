@@ -279,7 +279,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('خلصت كل المهام'), findsOneWidget);
-    expect(find.text('1 من 1'), findsOneWidget);
+    // Changed on purpose (critique مه1): no «1 من 1» beside the chips; the
+    // folded «اللي خلصت · 1» says it.
+    expect(find.text('اللي خلصت · 1'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tasks-toggle-done')));
     await tester.pumpAndSettle();
     expect(find.text('حجز القاعة'), findsOneWidget);
@@ -306,17 +308,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('1 من 2'), findsOneWidget);
+    // Changed on purpose (critique مه1): the done count is «اللي خلصت · N»
+    // under the list, and it follows the filter as «1 من 2» did.
+    expect(find.text('اللي خلصت · 1'), findsOneWidget);
 
     // «لي»: only the owner's own task, already done.
     await tester.tap(find.byKey(const ValueKey('task-person-me')));
     await tester.pumpAndSettle();
-    expect(find.text('1 من 1'), findsOneWidget);
+    expect(find.text('اللي خلصت · 1'), findsOneWidget);
 
-    // صالح's one task, still open.
+    // صالح's one task, still open: nothing done to fold.
     await tester.tap(find.byKey(const ValueKey('task-person-صالح')));
     await tester.pumpAndSettle();
-    expect(find.text('0 من 1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tasks-toggle-done')), findsNothing);
 
     // RA-MO-210: what is shared is what the screen counts, and says whose.
     await tester.tap(find.byKey(const Key('tasks-share-summary')));
@@ -352,7 +356,7 @@ void main() {
     }
 
     expect(find.text('خلصت كل المهام'), findsOneWidget);
-    expect(find.text('1 من 1'), findsOneWidget);
+    expect(find.text('اللي خلصت · 1'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

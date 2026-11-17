@@ -837,57 +837,58 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                       color: AarastV3Color.textMuted,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            // Large text wraps the action instead of pushing the row off.
-            // x07 draws a small pill; while the server asks to wait it
-            // rests faded instead of turning into a grey button.
-            Flexible(
-              child: Opacity(
-                opacity: canRetry ? 1 : 0.5,
-                child: AarastPressable(
-                  key: ValueKey('pending-invite-reissue-${invite.id}'),
-                  onTap: canRetry ? widget.onReissue : null,
-                  borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-                  semanticLabel: remind
-                      ? context.say('ذكّره', 'ذكّريه')
-                      : context.say('انسخ الرابط', 'انسخي الرابط'),
-                  // The small pill keeps its look in a 48 target, so a near
-                  // miss does not land on the row's cancel sheet.
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minHeight: AarastV3Space.x12,
-                    ),
-                    child: Align(
-                      widthFactor: 1,
-                      child: Container(
-                        padding: AarastV3Density.tagInsets,
-                        decoration: BoxDecoration(
-                          color: remind
-                              ? context.accent.primarySoft
-                              : AarastV3Color.brandAccentSoft,
-                          borderRadius: BorderRadius.circular(
-                            AarastV3Radius.surface,
-                          ),
+                  // Critique ش3: the action under the words, not in the
+                  // row's middle where it folded them onto three lines.
+                  // x07 draws a small pill; while the server asks to wait
+                  // it rests faded instead of turning into a grey button.
+                  Opacity(
+                    opacity: canRetry ? 1 : 0.5,
+                    child: AarastPressable(
+                      key: ValueKey('pending-invite-reissue-${invite.id}'),
+                      onTap: canRetry ? widget.onReissue : null,
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.surface,
+                      ),
+                      semanticLabel: remind
+                          ? context.say('ذكّره', 'ذكّريه')
+                          : context.say('انسخ الرابط', 'انسخي الرابط'),
+                      // The small pill keeps its look in a 48 target, so a near
+                      // miss does not land on the row's cancel sheet.
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minHeight: AarastV3Space.x12,
                         ),
-                        child: Text(
-                          remind
-                              ? context.say('ذكّره', 'ذكّريه')
-                              : context.say('انسخ الرابط', 'انسخي الرابط'),
-                          style: JourneyType.of(
-                            JourneyType.small,
-                            weight: JourneyType.bold,
-                            color: remind
-                                ? context.accent.primary
-                                : AarastV3Color.brandAccentStrong,
+                        child: Align(
+                          widthFactor: 1,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Container(
+                            padding: AarastV3Density.tagInsets,
+                            decoration: BoxDecoration(
+                              color: remind
+                                  ? context.accent.primarySoft
+                                  : AarastV3Color.brandAccentSoft,
+                              borderRadius: BorderRadius.circular(
+                                AarastV3Radius.surface,
+                              ),
+                            ),
+                            child: Text(
+                              remind
+                                  ? context.say('ذكّره', 'ذكّريه')
+                                  : context.say('انسخ الرابط', 'انسخي الرابط'),
+                              style: JourneyType.of(
+                                JourneyType.small,
+                                weight: JourneyType.bold,
+                                color: remind
+                                    ? context.accent.primary
+                                    : AarastV3Color.brandAccentStrong,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],

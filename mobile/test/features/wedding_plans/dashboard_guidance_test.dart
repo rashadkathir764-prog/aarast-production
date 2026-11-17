@@ -355,4 +355,27 @@ void main() {
     );
     expect(row.color, AarastV3Color.rose);
   });
+
+  // Critique ر4: the five bars had no names; the moment's tag opens them,
+  // the plan's own marked, with what moves it on.
+  testWidgets('the moment tag names the five moments', (tester) async {
+    await _pump(
+      tester,
+      _summary(budget: '5000000', items: 4, tasks: 3, guests: 10),
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('aarast-dashboard-moment-tag')),
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-moments-sheet')),
+      findsOneWidget,
+    );
+    expect(find.text('التجهيز · أنت هنا'), findsOneWidget);
+    for (final name in ['البداية', 'أسبوع العرس', 'يوم العرس', 'بعد العرس']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
+    expect(tester.takeException(), isNull);
+  });
 }

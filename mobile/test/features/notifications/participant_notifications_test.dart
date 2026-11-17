@@ -56,7 +56,15 @@ void main() {
     await _pump(tester, role: AccountContextRole.owner);
 
     expect(find.text('من عرس محمد'), findsNothing);
-    expect(find.byTooltip('أرشفة التنبيه'), findsWidgets);
+    // Changed on purpose (critique ت3): the owner archives by a swipe.
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Dismissible &&
+            '${widget.key}'.contains('notification-swipe-'),
+      ),
+      findsWidgets,
+    );
     expect(
       find.byKey(const ValueKey('participant-notifications-note')),
       findsNothing,

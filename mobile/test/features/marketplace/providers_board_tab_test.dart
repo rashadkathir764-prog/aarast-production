@@ -615,7 +615,9 @@ void main() {
 
     expect(find.text('نبدأ بالقاعة'), findsNothing);
     expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
-    expect(find.byKey(const ValueKey('providers-search')), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-18): «استكشف» opens on its search
+    // box, not a magnifier in the header.
+    expect(find.byKey(const Key('marketplace-search-field')), findsOneWidget);
   });
 
   testWidgets('x22 is gone once something is booked outside', (tester) async {

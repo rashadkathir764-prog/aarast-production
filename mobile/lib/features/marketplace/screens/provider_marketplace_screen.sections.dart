@@ -17,7 +17,10 @@ class _MarketplaceSearch extends StatelessWidget {
       borderRadius: BorderRadius.circular(AarastV3Radius.card),
       borderSide: BorderSide(color: color, width: width),
     );
-    return ValueListenableBuilder<TextEditingValue>(
+    final city = provider.cities
+        .where((city) => city.id == provider.cityId)
+        .firstOrNull;
+    final field = ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
         return TextField(
@@ -26,24 +29,28 @@ class _MarketplaceSearch extends StatelessWidget {
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
-          style: JourneyType.of(
-            JourneyType.bodyLarge,
-            weight: JourneyType.bold,
-          ),
+          style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
           cursorColor: context.accent.primary,
           decoration: InputDecoration(
+            // The kinds people look for, in their words.
             hintText: context.say(
-              'دوّر على مزود أو خدمة',
-              'دوّري على مزود أو خدمة',
+              'دوّر قاعة، مصور، فنان…',
+              'دوّري صالة، مصورة، كوافيرة…',
             ),
+            hintMaxLines: 1,
             hintStyle: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.body,
               color: AarastV3Color.textFaint,
+            ),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: AarastV3Space.x3,
             ),
             filled: true,
             fillColor: AarastV3Color.paper,
             prefixIcon: const Icon(
               LucideIcons.search,
+              size: 20,
               color: AarastV3Color.textMuted,
             ),
             border: border(AarastV3Color.line, 1),
@@ -57,16 +64,83 @@ class _MarketplaceSearch extends StatelessWidget {
                       controller.clear();
                       provider.setSearch('');
                     },
-                    icon: const Icon(LucideIcons.x),
+                    icon: const Icon(LucideIcons.x, size: 18),
                   ),
           ),
         );
       },
     );
+    // w30 «فلتر» at the box's end: the place picked says its name on it.
+    final picked = city != null;
+    final filter = Semantics(
+      button: true,
+      label: picked ? 'فلتر: ${city.nameAr}' : 'فلتر',
+      excludeSemantics: true,
+      child: Material(
+        color: picked ? context.accent.primary : AarastV3Color.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
+          side: picked
+              ? BorderSide.none
+              : const BorderSide(color: AarastV3Color.line),
+        ),
+        child: InkWell(
+          key: const Key('city-filter-trigger'),
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
+          ),
+          onTap: () => showJourneySheet<void>(
+            context: context,
+            builder: (_) => _DirectoryFilterSheet(provider: provider),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: AarastV3Space.x12,
+              minHeight: AarastV3Space.x12,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    LucideIcons.slidersHorizontal,
+                    size: 20,
+                    color: picked ? AarastV3Color.onPrimary : AarastV3Color.ink,
+                  ),
+                  if (picked) ...[
+                    const SizedBox(width: AarastV3Space.x2),
+                    Text(
+                      city.nameAr,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.onPrimary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: field),
+          const SizedBox(width: AarastV3Space.x2),
+          filter,
+        ],
+      ),
+    );
   }
 }
 
-/// f02 the kinds of providers as chips, and «فلتر» (w30) for the place.
+/// f02 the kinds of providers as chips; «فلتر» (w30) for the place sits at
+/// the search box's end (Rashad 2026-11-18).
 class _FilterChips extends StatelessWidget {
   const _FilterChips({required this.provider});
 
@@ -82,62 +156,41 @@ class _FilterChips extends StatelessWidget {
     final itemChip = item != null && item.providerCategoryIds.isNotEmpty
         ? item
         : null;
-    final city = provider.cities
-        .where((city) => city.id == provider.cityId)
-        .firstOrNull;
     return SizedBox(
       height: AarastV3Space.x10,
-      child: Row(
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
         children: [
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
-              children: [
-                if (itemChip != null) ...[
-                  JourneyChip(
-                    key: const ValueKey('category-chip-item'),
-                    label: itemChip.budgetCategoryName,
-                    icon: providerServiceIcon(itemChip.budgetCategoryName),
-                    selected: true,
-                    selectedColor: context.accent.primary,
-                    onTap: () {},
-                  ),
-                  const SizedBox(width: AarastV3Space.x2),
-                ],
-                JourneyChip(
-                  key: const ValueKey('category-chip-all'),
-                  label: 'الكل',
-                  selected: selectedCategory == null && itemChip == null,
-                  selectedColor: context.accent.primary,
-                  onTap: () => provider.setCategory(null),
-                ),
-                for (final category in provider.categories) ...[
-                  const SizedBox(width: AarastV3Space.x2),
-                  JourneyChip(
-                    key: ValueKey('category-chip-${category.id}'),
-                    label: category.nameAr,
-                    icon: providerServiceIcon(category.nameAr),
-                    selected: selectedCategory == category.id,
-                    selectedColor: context.accent.primary,
-                    onTap: () => provider.setCategory(category.id),
-                  ),
-                ],
-              ],
+          if (itemChip != null) ...[
+            JourneyChip(
+              key: const ValueKey('category-chip-item'),
+              label: itemChip.budgetCategoryName,
+              icon: providerServiceIcon(itemChip.budgetCategoryName),
+              selected: true,
+              selectedColor: context.accent.primary,
+              onTap: () {},
             ),
-          ),
-          const SizedBox(width: AarastV3Space.x2),
+            const SizedBox(width: AarastV3Space.x2),
+          ],
           JourneyChip(
-            key: const Key('city-filter-trigger'),
-            label: city?.nameAr ?? 'فلتر',
-            icon: LucideIcons.slidersHorizontal,
-            selected: city != null,
+            key: const ValueKey('category-chip-all'),
+            label: 'الكل',
+            selected: selectedCategory == null && itemChip == null,
             selectedColor: context.accent.primary,
-            onTap: () => showJourneySheet<void>(
-              context: context,
-              builder: (_) => _DirectoryFilterSheet(provider: provider),
-            ),
+            onTap: () => provider.setCategory(null),
           ),
+          for (final category in provider.categories) ...[
+            const SizedBox(width: AarastV3Space.x2),
+            JourneyChip(
+              key: ValueKey('category-chip-${category.id}'),
+              label: category.nameAr,
+              icon: providerServiceIcon(category.nameAr),
+              selected: selectedCategory == category.id,
+              selectedColor: context.accent.primary,
+              onTap: () => provider.setCategory(category.id),
+            ),
+          ],
         ],
       ),
     );

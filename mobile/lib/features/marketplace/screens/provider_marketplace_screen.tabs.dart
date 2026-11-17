@@ -571,14 +571,14 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ),
             const SizedBox(height: AarastV3Space.x1),
           ],
-          if (_searchShown) ...[
-            _MarketplaceSearch(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              provider: provider,
-            ),
-            const SizedBox(height: AarastV3Space.x2),
-          ],
+          // Rashad 2026-11-18: the search is always the first thing here,
+          // with the place filter at its end; the kinds under it.
+          _MarketplaceSearch(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            provider: provider,
+          ),
+          const SizedBox(height: AarastV3Space.x3),
           _FilterChips(provider: provider),
           if (_weddingLocation != null &&
               !_weddingLocation!.hasRequiredLocation) ...[

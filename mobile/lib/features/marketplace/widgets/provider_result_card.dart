@@ -8,10 +8,14 @@ import '../../../core/preferences/device_preferences.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
+import 'provider_board_view.dart' show providerServiceIcon;
 
-/// A fixed dimension of this layout, not a spacing step (D74): how wide the
-/// photo stands beside the card's words.
-const _photoWidth = 112.0;
+/// The photo's shape on the list card (Rashad 2026-11-18, «استكشف» made
+/// anew): across the card's top, four high for every three wide, so a
+/// portrait keeps the face and the shoulders, and a hall shows its room.
+/// RA-MO-316's strip (120 high across the card) showed a nose and a mouth;
+/// this is three times its height on a phone.
+const _photoAspect = 4 / 3;
 
 /// The provider's letter without a photo: a small square by the name, not a
 /// band as tall as the card (Rashad 2026-11-17: a coloured quarter of every
@@ -21,6 +25,10 @@ const _letterSize = 44.0;
 /// What the name leaves for the heart's 48 target in the card's corner,
 /// past the card's own padding.
 const _heartRoom = 36.0;
+
+/// A fixed dimension of this layout, not a spacing step (D74): the photo's
+/// height on a shelf card, the sideways rows of «استكشف».
+const _shelfPhotoHeight = 132.0;
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
@@ -57,8 +65,13 @@ Future<void> showProviderFeaturedSheet(BuildContext context) {
 }
 
 /// f02 a provider in «استكشف»: the photo, the name and rating, where, the
-/// facts that matter (ضمن بندك، موثّق، جديد، غير مفعّل) and the price with
+/// facts that matter (ضمن بندك، موثّق، غير مفعّل، مميز) and the price with
 /// how old it is (w33). Only real facts; nothing is invented.
+///
+/// Rashad 2026-11-18: with a photo, the photo is the card's top, wide and
+/// tall, the heart on it; the words under it take the card's width, so a
+/// price and its age sit on one line. Without one there is no band: the
+/// letter's small square by the name, as before.
 class ProviderResultCard extends StatelessWidget {
   const ProviderResultCard({
     required this.businessName,
@@ -112,13 +125,9 @@ class ProviderResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final where = [?_clean(categoryLabel), ?_clean(locationLabel)].join(' · ');
     final price = _clean(priceLabel);
-    final url = _clean(imageUrl);
     // g02 «توفير البيانات»: no photo loads in the list.
     final dataSaver = context.watch<DevicePreferences?>()?.dataSaver ?? false;
-    final photoUrl = dataSaver ? null : url;
-    final textStart = photoUrl != null
-        ? _photoWidth + AarastV3Space.x3
-        : AarastV3Space.x3 + _letterSize + AarastV3Space.x3;
+    final photoUrl = dataSaver ? null : _clean(imageUrl);
     final badges = <Widget>[
       if (_clean(budgetStatusLabel) case final budget?)
         JourneyTag(
@@ -146,23 +155,65 @@ class ProviderResultCard extends StatelessWidget {
         ),
       // The drawn «مميز» (f02). It is a paid placement (B-43), so a tap
       // says so plainly: not a recommendation from اعّرست.
-      if (isFeatured)
-        Semantics(
-          button: true,
-          label: 'مميز: ليش يطلع أول؟',
-          excludeSemantics: true,
-          child: GestureDetector(
-            key: const Key('provider-card-featured'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => showProviderFeaturedSheet(context),
-            child: JourneyTag(
-              label: 'مميز',
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-            ),
-          ),
-        ),
+      if (isFeatured) const _FeaturedTag(),
     ];
+    final name = Text(
+      businessName,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
+    );
+    final words = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // With a photo the heart is on the photo, so the name and the
+        // rating share the line; without one the name stops short of it.
+        if (photoUrl != null)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: name),
+              if (ratingCount > 0) ...[
+                const SizedBox(width: AarastV3Space.x2),
+                _Rating(average: ratingAverage, count: ratingCount),
+              ],
+            ],
+          )
+        else
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: _heartRoom),
+            child: name,
+          ),
+        if (where.isNotEmpty || (photoUrl == null && ratingCount > 0))
+          // The place gives way first; with large text the rating goes
+          // under it.
+          Wrap(
+            spacing: AarastV3Space.x2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (where.isNotEmpty)
+                Text(
+                  where,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              if (photoUrl == null && ratingCount > 0)
+                _Rating(average: ratingAverage, count: ratingCount),
+            ],
+          ),
+        // No badge, no empty row between the place and the price.
+        if (badges.isNotEmpty) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Wrap(spacing: 6, runSpacing: 6, children: badges),
+        ],
+        const SizedBox(height: AarastV3Space.x2),
+        ..._priceLines(context, price),
+      ],
+    );
     return Semantics(
       button: true,
       label: 'عرض تفاصيل $businessName',
@@ -173,137 +224,89 @@ class ProviderResultCard extends StatelessWidget {
         child: InkWell(
           key: detailsButtonKey,
           onTap: onDetails,
-          // RA-MO-316: the photo stands beside what the card says, as tall
-          // as the card, so a face is kept whole and nothing is left blank
-          // under it. It was a strip across the card, 120 high: a portrait
-          // showed a nose and a mouth, and without a photo half the card
-          // was an empty band.
-          child: Stack(
-            children: [
-              // The words set the card's height; the photo fills it.
-              if (photoUrl != null)
-                PositionedDirectional(
-                  top: 0,
-                  bottom: 0,
-                  start: 0,
-                  width: _photoWidth,
-                  child: _Photo(imageUrl: photoUrl, name: businessName),
-                )
-              else
-                PositionedDirectional(
-                  top: AarastV3Space.x3,
-                  start: AarastV3Space.x3,
-                  child: _Letter(name: businessName),
-                ),
-              ConstrainedBox(
-                // As wide as the list gives it, whatever the words' length.
-                constraints: BoxConstraints(
-                  minHeight: photoUrl != null ? _photoWidth : 0,
-                  minWidth: double.infinity,
-                ),
-                child: Padding(
-                  padding: EdgeInsetsDirectional.fromSTEB(
-                    textStart,
-                    AarastV3Space.x3,
-                    AarastV3Space.x3,
-                    AarastV3Space.x3,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // The name stops short of the heart in the corner.
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          end: _heartRoom,
-                        ),
-                        child: Text(
-                          businessName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: JourneyType.of(
-                            JourneyType.title,
-                            weight: JourneyType.bold,
+          child: photoUrl != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: _photoAspect,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _Photo(imageUrl: photoUrl, name: businessName),
+                          PositionedDirectional(
+                            top: AarastV3Space.x1,
+                            end: AarastV3Space.x1,
+                            child: _FavoriteHeart(
+                              isFavorite: isFavorite,
+                              onTap: onFavorite,
+                              buttonKey: favoriteButtonKey,
+                              onPhoto: true,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      if (where.isNotEmpty || ratingCount > 0)
-                        // The place gives way first; with large text
-                        // the rating goes under it.
-                        Wrap(
-                          spacing: AarastV3Space.x2,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            if (where.isNotEmpty)
-                              Text(
-                                where,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: JourneyType.of(
-                                  JourneyType.small,
-                                  color: AarastV3Color.textMuted,
-                                ),
-                              ),
-                            if (ratingCount > 0)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Critique ز2: one dark colour for the
-                                  // star, as on the provider's page; the
-                                  // saffron read 2.0 on white.
-                                  const Icon(
-                                    LucideIcons.star,
-                                    size: 15,
-                                    color: AarastV3Color.brandAccentStrong,
-                                  ),
-                                  Flexible(
-                                    child: Text(
-                                      ' ${ratingAverage.toStringAsFixed(1)} ($ratingCount)',
-                                      textDirection: TextDirection.ltr,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: JourneyType.of(
-                                        JourneyType.small,
-                                        weight: JourneyType.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      const SizedBox(height: AarastV3Space.x2),
-                      // No badge, no empty row between the place and price.
-                      if (badges.isNotEmpty) ...[
-                        Wrap(spacing: 6, runSpacing: 6, children: badges),
-                        const SizedBox(height: AarastV3Space.x2),
-                      ],
-                      ..._priceLines(context, price),
-                    ],
-                  ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AarastV3Space.x4,
+                        AarastV3Space.x3,
+                        AarastV3Space.x4,
+                        AarastV3Space.x4,
+                      ),
+                      child: words,
+                    ),
+                  ],
+                )
+              : Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(AarastV3Space.x3),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Letter(name: businessName),
+                          const SizedBox(width: AarastV3Space.x3),
+                          Expanded(child: words),
+                        ],
+                      ),
+                    ),
+                    PositionedDirectional(
+                      top: 0,
+                      end: 0,
+                      child: _FavoriteHeart(
+                        isFavorite: isFavorite,
+                        onTap: onFavorite,
+                        buttonKey: favoriteButtonKey,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: _FavoriteHeart(
-                  isFavorite: isFavorite,
-                  onTap: onFavorite,
-                  buttonKey: favoriteButtonKey,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 
-  /// The price with how old it is (w33), or what to do without one.
+  /// The price with how old it is (w33) on one line, the age quieter; or
+  /// what to do without a price.
   List<Widget> _priceLines(BuildContext context, String? price) {
+    final age = _clean(priceAgeLabel);
     return [
       if (price != null)
-        Text(
-          [price, ?_clean(priceAgeLabel)].join(' · '),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: price),
+              if (age != null)
+                TextSpan(
+                  text: ' · $age',
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+            ],
+          ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
@@ -323,7 +326,7 @@ class ProviderResultCard extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
-            price == null ? JourneyType.bodyLarge : JourneyType.small,
+            price == null ? JourneyType.body : JourneyType.small,
             weight: JourneyType.bold,
             color: AarastV3Color.textMuted,
           ),
@@ -334,6 +337,262 @@ class ProviderResultCard extends StatelessWidget {
   static String? _clean(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+}
+
+/// A provider on a sideways row of «استكشف» (Rashad 2026-11-18): the photo
+/// across its top, its name, rating and kind, and where its prices start.
+/// Without a photo its top is the plan's colour with the qamariya and the
+/// service's icon, so a row keeps one height and no face is invented.
+class ProviderShelfCard extends StatelessWidget {
+  const ProviderShelfCard({
+    required this.businessName,
+    required this.ratingAverage,
+    required this.ratingCount,
+    required this.isFavorite,
+    required this.onFavorite,
+    required this.onDetails,
+    this.categoryLabel,
+    this.locationLabel,
+    this.fromPriceLabel,
+    this.imageUrl,
+    this.isFeatured = false,
+    this.isClaimed = true,
+    this.detailsButtonKey,
+    super.key,
+  });
+
+  final String businessName;
+  final double ratingAverage;
+  final int ratingCount;
+  final bool isFavorite;
+  final VoidCallback? onFavorite;
+  final VoidCallback onDetails;
+  final String? categoryLabel;
+  final String? locationLabel;
+
+  /// «من 450,000 ر.ي»: the lowest published price, or what to do without.
+  final String? fromPriceLabel;
+  final String? imageUrl;
+  final bool isFeatured;
+  final bool isClaimed;
+  final Key? detailsButtonKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final dataSaver = context.watch<DevicePreferences?>()?.dataSaver ?? false;
+    final url = imageUrl?.trim();
+    final photoUrl = dataSaver || url == null || url.isEmpty ? null : url;
+    final kind = categoryLabel?.trim() ?? '';
+    final place = locationLabel?.trim() ?? '';
+    final where = [
+      if (kind.isNotEmpty) kind,
+      if (place.isNotEmpty) place,
+    ].join(' · ');
+    final price = fromPriceLabel?.trim();
+    return Semantics(
+      button: true,
+      label: 'عرض تفاصيل $businessName',
+      child: Material(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(AarastV3Radius.card),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: detailsButtonKey,
+          onTap: onDetails,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: _shelfPhotoHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (photoUrl != null)
+                      _Photo(imageUrl: photoUrl, name: businessName)
+                    else
+                      _KindArt(kind: kind),
+                    if (isFeatured)
+                      const PositionedDirectional(
+                        bottom: AarastV3Space.x2,
+                        start: AarastV3Space.x2,
+                        child: _FeaturedTag(onPhoto: true),
+                      ),
+                    PositionedDirectional(
+                      top: AarastV3Space.x1,
+                      end: AarastV3Space.x1,
+                      child: _FavoriteHeart(
+                        isFavorite: isFavorite,
+                        onTap: onFavorite,
+                        buttonKey: null,
+                        onPhoto: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AarastV3Space.x3,
+                    AarastV3Space.x2,
+                    AarastV3Space.x3,
+                    AarastV3Space.x3,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        businessName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          if (ratingCount > 0) ...[
+                            _Rating(
+                              average: ratingAverage,
+                              count: ratingCount,
+                              compact: true,
+                            ),
+                            if (where.isNotEmpty)
+                              const SizedBox(width: AarastV3Space.x1),
+                          ],
+                          if (where.isNotEmpty)
+                            Expanded(
+                              child: Text(
+                                where,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: JourneyType.of(
+                                  JourneyType.caption,
+                                  color: AarastV3Color.textMuted,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        !isClaimed
+                            ? 'ما يستقبل طلبات بعد'
+                            : price == null || price.isEmpty
+                            ? context.say('اطلب عرض', 'اطلبي عرض')
+                            : price,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: !isClaimed || price == null || price.isEmpty
+                              ? AarastV3Color.textMuted
+                              : context.accent.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A shelf card's top without a photo: the plan's colour, the qamariya of
+/// the hero (no gradient: D45 keeps that for the hero), and the service's
+/// icon. It says the kind, never a face.
+class _KindArt extends StatelessWidget {
+  const _KindArt({required this.kind});
+
+  final String kind;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      key: const Key('provider-shelf-kind-art'),
+      color: context.accent.primary,
+      child: CustomPaint(
+        painter: const JourneyQamariyaPainter(alpha: 0.16),
+        child: Center(
+          child: Icon(
+            providerServiceIcon(kind),
+            size: 34,
+            color: AarastV3Color.onPrimary.withValues(alpha: 0.92),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// «★ 4.8 (62)» in one dark colour (critique ز2: the saffron read 2.0 on
+/// white).
+class _Rating extends StatelessWidget {
+  const _Rating({
+    required this.average,
+    required this.count,
+    this.compact = false,
+  });
+
+  final double average;
+  final int count;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          LucideIcons.star,
+          size: compact ? 13 : 15,
+          color: AarastV3Color.brandAccentStrong,
+        ),
+        Text(
+          ' ${average.toStringAsFixed(1)} ($count)',
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+          style: JourneyType.of(
+            compact ? JourneyType.caption : JourneyType.small,
+            weight: JourneyType.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The drawn «مميز» (f02): a paid placement (B-43); a tap says so.
+class _FeaturedTag extends StatelessWidget {
+  const _FeaturedTag({this.onPhoto = false});
+
+  /// On a photo the tag is paper, so it reads over any picture.
+  final bool onPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'مميز: ليش يطلع أول؟',
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const Key('provider-card-featured'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => showProviderFeaturedSheet(context),
+        child: JourneyTag(
+          label: 'مميز',
+          color: context.accent.primary,
+          soft: onPhoto ? AarastV3Color.paper : context.accent.primarySoft,
+        ),
+      ),
+    );
   }
 }
 
@@ -348,9 +607,9 @@ String providerInitial(String name) {
   return word.isEmpty ? 'م' : word.characters.first;
 }
 
-/// The provider's photo as tall as the card: a portrait keeps its face and
-/// a wide cover its middle. A photo that fails to load leaves a plain tint
-/// with the letter.
+/// The provider's photo filling its frame from the top: a portrait keeps
+/// its face and a wide cover its middle. A photo that fails to load leaves
+/// a plain tint with the letter.
 class _Photo extends StatelessWidget {
   const _Photo({required this.imageUrl, required this.name});
 
@@ -359,7 +618,6 @@ class _Photo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Flush with the card's edge, which rounds its outer corners.
     return SizedBox.expand(
       key: const Key('provider-card-photo'),
       child: Image.network(
@@ -426,11 +684,16 @@ class _FavoriteHeart extends StatelessWidget {
     required this.isFavorite,
     required this.onTap,
     required this.buttonKey,
+    this.onPhoto = false,
   });
 
   final bool isFavorite;
   final VoidCallback? onTap;
   final Key? buttonKey;
+
+  /// Over a photo the heart sits on a paper disc, so it reads on any
+  /// picture.
+  final bool onPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +704,7 @@ class _FavoriteHeart extends StatelessWidget {
       LucideIcons.heart,
       color: (isFavorite ? AarastV3Color.rose : AarastV3Color.textMuted)
           .withValues(alpha: enabled ? 1 : 0.42),
-      size: 22,
+      size: onPhoto ? 20 : 22,
     );
 
     // A small pulse the moment it is saved.
@@ -454,6 +717,9 @@ class _FavoriteHeart extends StatelessWidget {
       );
     }
 
+    // Critique ز3: saved is a filled disc behind the heart, not its colour
+    // alone (the icon set has no filled heart).
+    final disc = isFavorite || onPhoto;
     return Semantics(
       button: true,
       enabled: enabled,
@@ -468,18 +734,22 @@ class _FavoriteHeart extends StatelessWidget {
         // A 48 target around the heart (DESIGN_SYSTEM: touch ≥ 48).
         child: SizedBox.square(
           dimension: AarastV3Space.x12,
-          // Critique ز3: saved is a filled disc behind the heart, not its
-          // colour alone (the icon set has no filled heart).
           child: Center(
-            child: isFavorite
+            child: disc
                 ? DecoratedBox(
-                    key: const ValueKey('favorite-heart-saved'),
-                    decoration: const BoxDecoration(
-                      color: AarastV3Color.roseSoft,
+                    key: isFavorite
+                        ? const ValueKey('favorite-heart-saved')
+                        : null,
+                    decoration: BoxDecoration(
+                      color: isFavorite
+                          ? AarastV3Color.roseSoft
+                          : AarastV3Color.paper,
                       shape: BoxShape.circle,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(AarastV3Space.x1),
+                      padding: EdgeInsets.all(
+                        onPhoto ? AarastV3Space.x2 : AarastV3Space.x1,
+                      ),
                       child: heart,
                     ),
                   )

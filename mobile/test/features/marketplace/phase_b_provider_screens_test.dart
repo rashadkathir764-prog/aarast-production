@@ -330,10 +330,7 @@ void main() {
       await tester.tap(find.byKey(const Key('provider-details-quote')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('opened /providers/$_providerId/quote'),
-        findsOneWidget,
-      );
+      expect(find.text('opened /providers/$_providerId/quote'), findsOneWidget);
     });
 
     testWidgets('provider details conversation action routes with quote id', (

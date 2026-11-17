@@ -106,6 +106,139 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
+/// A fixed dimension of this layout, not a spacing step (D74): a shelf
+/// card's width, a little over half a phone, so the next card shows and
+/// says the row goes on.
+const _shelfCardWidth = 216.0;
+
+/// One sideways row of «استكشف» (Rashad 2026-11-18): the kind's name with
+/// «الكل», and its providers as shelf cards, running to the screen's edges.
+class _ProviderShelfRow extends StatelessWidget {
+  const _ProviderShelfRow({
+    required this.title,
+    required this.providers,
+    required this.favorites,
+    required this.onAll,
+    required this.onFavorite,
+    required this.onOpen,
+    super.key,
+  });
+
+  final String title;
+  final List<MarketplaceProvider> providers;
+  final Set<String> favorites;
+  final VoidCallback onAll;
+  final ValueChanged<String> onFavorite;
+  final ValueChanged<String> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    // The photo, the padding, and three lines that grow with the text.
+    final height = 132.0 + AarastV3Space.x5 + scaler.scale(66);
+    final width = scaler.scale(_shelfCardWidth).clamp(_shelfCardWidth, 280.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: JourneyType.of(
+                  JourneyType.title,
+                  weight: JourneyType.bold,
+                ),
+              ),
+            ),
+            JourneyTextAction(
+              key: ValueKey('providers-shelf-all-${providers.first.id}'),
+              label: 'الكل',
+              icon: Directionality.of(context) == TextDirection.rtl
+                  ? LucideIcons.chevronLeft
+                  : LucideIcons.chevronRight,
+              color: context.accent.primary,
+              onPressed: onAll,
+            ),
+          ],
+        ),
+        const SizedBox(height: AarastV3Space.x1),
+        // Past the list's own padding, so the row runs to the screen's
+        // edges as it scrolls and its first card lines up with the page.
+        SizedBox(
+          height: height,
+          child: OverflowBox(
+            maxWidth: MediaQuery.sizeOf(context).width,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
+              itemCount: providers.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: AarastV3Space.x3),
+              itemBuilder: (context, index) {
+                final item = providers[index];
+                return SizedBox(
+                  width: width,
+                  child: ProviderShelfCard(
+                    key: Key('provider-shelf-card-${item.id}'),
+                    businessName: item.businessName,
+                    ratingAverage: item.ratingAverage,
+                    ratingCount: item.ratingCount,
+                    categoryLabel: _providerKindLabel(item),
+                    locationLabel: _providerLocationLabel(item),
+                    fromPriceLabel: _providerFromPriceLabel(item),
+                    imageUrl: _providerImageUrl(item),
+                    isFeatured: item.isFeaturedAt(appNow()),
+                    isClaimed: item.isClaimed,
+                    isFavorite: favorites.contains(item.id),
+                    onFavorite: () => onFavorite(item.id),
+                    onDetails: () => onOpen(item.id),
+                    detailsButtonKey: Key('super5-provider-details-${item.id}'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The provider's kind in words: its primary kind, else its services'.
+String? _providerKindLabel(MarketplaceProvider provider) {
+  final primary = provider.primaryCategory?.nameAr.trim();
+  if (primary != null && primary.isNotEmpty) return primary;
+  final summary = provider.serviceSummary?.categories;
+  if (summary != null && summary.isNotEmpty) {
+    final name = summary.first.nameAr.trim();
+    if (name.isNotEmpty) return name;
+  }
+  final service = provider.services.isEmpty ? null : provider.services.first;
+  return service?.category?.nameAr.trim();
+}
+
+/// «من 450,000 ر.ي»: where a provider's published prices start, or the one
+/// price; null without a published price (the card then says to ask).
+String? _providerFromPriceLabel(MarketplaceProvider provider) {
+  final summary = provider.serviceSummary;
+  var min = _moneyValueOrNull(summary?.minPrice);
+  var max = _moneyValueOrNull(summary?.maxPrice);
+  var currency = summary?.currency;
+  if (min == null) {
+    for (final service in provider.services) {
+      final price = _moneyValueOrNull(service.basePrice);
+      if (price == null) continue;
+      currency ??= service.currency;
+      min = min == null || price < min ? price : min;
+      max = max == null || price > max ? price : max;
+    }
+  }
+  if (min == null) return null;
+  final amount = '${_formatMoney(min)} ${currencyLabelAr(currency)}';
+  return max != null && max > min ? 'من $amount' : amount;
+}
+
 /// أفضل صورة تمثّل المزود في القائمة: الغلاف ثم الشعار. صور الخدمات ما
 /// تنعرض للعرسان لأنها ما تتراجع (D62).
 String? _providerImageUrl(MarketplaceProvider provider) {

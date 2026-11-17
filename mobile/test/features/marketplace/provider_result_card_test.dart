@@ -195,24 +195,27 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('the photo is never a strip: at least as tall as wide', (
-      tester,
-    ) async {
+    // Changed on purpose (Rashad 2026-11-18, «استكشف» made anew): the photo
+    // is the card's top, as wide as the card. It is still never a strip:
+    // three high for every four wide, over twice RA-MO-316's 120.
+    testWidgets('the photo is the card top, never a strip', (tester) async {
       for (final width in [320.0, 360.0, 420.0]) {
         await pumpAt(
           tester,
           width: width,
           imageUrl: 'https://media.example/provider-cover/a.jpg',
         );
+        final card = tester.getSize(find.byKey(const Key('card')));
         final photo = tester.getSize(
           find.byKey(const Key('provider-card-photo')),
         );
+        expect(photo.width, card.width, reason: 'at $width');
         expect(
           photo.height,
-          greaterThanOrEqualTo(photo.width),
+          closeTo(photo.width * 3 / 4, 1),
           reason: 'at $width',
         );
-        expect(photo.width, greaterThanOrEqualTo(88), reason: 'at $width');
+        expect(photo.height, greaterThan(200), reason: 'at $width');
       }
     });
 
@@ -230,7 +233,9 @@ void main() {
       expect((image.alignment as Alignment).x, 0);
     });
 
-    testWidgets('the photo is as tall as the card: nothing blank under it', (
+    // With the photo on top, the words under it take the card's width: the
+    // price and its age keep one line, and nothing overflows at 1.3.
+    testWidgets('the words under the photo take the card width', (
       tester,
     ) async {
       for (final (width, scale) in [(360.0, 1.0), (320.0, 1.3)]) {
@@ -240,11 +245,11 @@ void main() {
           textScale: scale,
           imageUrl: 'https://media.example/provider-cover/a.jpg',
         );
-        final card = tester.getSize(find.byKey(const Key('card')));
-        final photo = tester.getSize(
-          find.byKey(const Key('provider-card-photo')),
+        expect(
+          find.text('1,000,000 ر.ي · محدّث هذا الشهر'),
+          findsOneWidget,
+          reason: 'at $width × $scale',
         );
-        expect(photo.height, card.height, reason: 'at $width × $scale');
         expect(tester.takeException(), isNull);
       }
     });

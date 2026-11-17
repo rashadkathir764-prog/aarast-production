@@ -299,7 +299,9 @@ void main() {
 
     expect(state.search, isEmpty);
     expect(find.text('قاعة'), findsNothing);
-    expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
+    // Changed on purpose (Rashad 2026-11-18): the box is always at the top
+    // of «استكشف» now; back empties it rather than hiding it.
+    expect(find.byKey(const Key('marketplace-search-field')), findsOneWidget);
   });
 
   testWidgets('clearing filters also clears the visible search text', (
@@ -319,9 +321,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(state.search, isEmpty);
-    // The old words leave with the box: nothing is left to look searched.
+    // The old words leave the box: nothing is left to look searched.
+    // Changed on purpose (Rashad 2026-11-18): the box itself stays.
     expect(find.text('قاعة'), findsNothing);
-    expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
+    expect(find.byKey(const Key('marketplace-search-field')), findsOneWidget);
   });
 
   testWidgets(
@@ -587,15 +590,14 @@ void main() {
         Directionality.of(tester.element(marketplaceList)),
         TextDirection.rtl,
       );
-      // f02: the kinds and «فلتر» show at once; the search box opens from
-      // the header's search, one tap away.
-      expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
+      // f02: the search box, «فلتر» and the kinds show at once. Changed on
+      // purpose (Rashad 2026-11-18): the box no longer waits behind the
+      // header's magnifier.
+      expect(find.byKey(const ValueKey('providers-search')), findsNothing);
       expect(
         find.byKey(const Key('city-filter-trigger')).hitTestable(),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const ValueKey('providers-search')));
-      await tester.pumpAndSettle();
       expect(
         find.byKey(const Key('marketplace-search-field')).hitTestable(),
         findsOneWidget,

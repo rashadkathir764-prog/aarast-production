@@ -34,6 +34,7 @@ import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
 import '../data/booking_moment_ledger.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
+import '../models/provider_shelves.dart';
 import '../widgets/provider_board_view.dart';
 import '../widgets/provider_details_view.dart' show providerPriceRange;
 import '../widgets/provider_hard_case_card.dart';
@@ -115,13 +116,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// Saved providers whose page was read for its prices (f09).
   final Set<String> _favoritePricesAsked = {};
 
-  /// f02 has no search box of its own: the header's search opens one.
-  bool _searchOpen = false;
-
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_loadMoreNearEnd);
+    _searchController.addListener(_onSearchTyped);
     _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
     _focusedQuoteId = _normalizedPlanId(widget.initialQuoteId);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -232,7 +231,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     _scrollController
       ..removeListener(_loadMoreNearEnd)
       ..dispose();
-    _searchController.dispose();
+    _searchController
+      ..removeListener(_onSearchTyped)
+      ..dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -253,13 +254,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         if (_searchShown) {
           // The same as the box's X: a search the reader can no longer see
           // must not keep filtering the list (RA-MO-05).
-          final hadText = _searchController.text.trim().isNotEmpty;
           _searchController.clear();
           _searchFocusNode.unfocus();
-          setState(() => _searchOpen = false);
-          if (hadText) {
-            context.read<ProviderMarketplaceProvider>().setSearch('');
-          }
+          setState(() {});
+          context.read<ProviderMarketplaceProvider>().setSearch('');
           return;
         }
         // Back to the tab the screen opened on.
@@ -348,23 +346,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         ? () => _openBookings(provider, tabs, board)
                         : null,
                     statusTapLabel: 'الحجوزات',
-                    actions: [
-                      // Only on «استكشف», the one tab that has a search. It
-                      // used to show everywhere and throw the reader from
-                      // «المحادثات» or «المفضلة» over to «استكشف»: a magnifier
-                      // that worked as a tab switch.
-                      if (firstVisit == false && tabs[tab] == 'استكشف')
-                        JourneyRoundButton(
-                          key: const ValueKey('providers-search'),
-                          icon: _searchShown
-                              ? LucideIcons.x
-                              : LucideIcons.search,
-                          tooltip: _searchShown
-                              ? context.say('سكّر البحث', 'سكّري البحث')
-                              : context.say('دوّر على مزود', 'دوّري على مزود'),
-                          onPressed: () => _toggleSearch(provider, tabs, tab),
-                        ),
-                    ],
+                    // Rashad 2026-11-18: the search is a box at the top of
+                    // «استكشف», always there; the magnifier that opened it
+                    // here is gone.
                   ),
                 ),
                 if (tabs.length > 1 && firstVisit == false)
@@ -470,29 +454,16 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     setState(() => _comparePicked = next);
   }
 
-  bool get _searchShown =>
-      _searchOpen || _searchController.text.trim().isNotEmpty;
+  /// A search typed in «استكشف»'s box: Android back clears it first.
+  bool get _searchShown => _searchController.text.trim().isNotEmpty;
 
-  /// The header's search: on «استكشف» it opens and closes the box; on the
-  /// other tabs it moves to «استكشف» with the box open.
-  void _toggleSearch(
-    ProviderMarketplaceProvider provider,
-    List<String> tabs,
-    int tab,
-  ) {
-    if (tabs[tab] == 'استكشف' && _searchShown) {
-      final hadText = _searchController.text.trim().isNotEmpty;
-      _searchController.clear();
-      _searchFocusNode.unfocus();
-      setState(() => _searchOpen = false);
-      if (hadText) provider.setSearch('');
-      return;
-    }
-    _selectTab('استكشف', tabs);
-    setState(() => _searchOpen = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocusNode.requestFocus();
-    });
+  /// Redraws the screen when the box goes from empty to typed or back, so
+  /// back knows there is a search to clear; not on every letter.
+  bool _searchWasShown = false;
+  void _onSearchTyped() {
+    final shown = _searchShown;
+    if (shown == _searchWasShown || !mounted) return;
+    setState(() => _searchWasShown = shown);
   }
 
   /// f02: the directory results, or why there are none.
@@ -551,28 +522,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           ),
           const SizedBox(height: AarastV3Space.x3),
         ],
-        // f02: the cards alone; each says where it stands against the item.
-        for (final item in provider.providers) ...[
-          _ProviderCard(
-            provider: item,
-            budgetIntent: provider.budgetMatchIntent,
-            isFavorite: provider.favoriteProviderIds.contains(item.id),
-            onFavorite: () async {
-              if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
-                context,
-                message: 'المفضلة تنحفظ في حسابك. سجّل دخول عشان تحفظ المزود.',
-              )) {
-                return;
-              }
-              final failure = await provider.toggleFavorite(item.id);
-              if (failure != null && mounted) {
-                AarastToast.showError(context, failure);
-              }
-            },
-            onTap: () => _openProviderDetails(item.id),
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-        ],
+        ..._directory(provider),
         if (provider.isLoadingMore)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: AarastV3Space.x3),
@@ -596,6 +546,84 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           ),
       ],
     ];
+  }
+
+  /// Rashad 2026-11-18, «استكشف» made anew. Browsing the whole directory
+  /// (no kind, no item, no search), each kind with two providers or more is
+  /// a sideways row with «الكل» to open it, in the catalog's order; the
+  /// providers no row holds follow as big cards. A kind picked, an item's
+  /// search or a typed name shows big cards only. No provider is shown
+  /// twice.
+  List<Widget> _directory(ProviderMarketplaceProvider provider) {
+    final browsing =
+        provider.categoryId == null &&
+        provider.budgetMatchIntent == null &&
+        _searchController.text.trim().isEmpty;
+    final shelves = browsing
+        ? providerShelves(provider.providers, [
+            for (final category in provider.categories) category.id,
+          ])
+        : const <ProviderShelf>[];
+    final onShelf = {
+      for (final shelf in shelves)
+        for (final item in shelf.providers) item.id,
+    };
+    final rest = [
+      for (final item in provider.providers)
+        if (!onShelf.contains(item.id)) item,
+    ];
+    final names = {
+      for (final category in provider.categories) category.id: category.nameAr,
+    };
+    return [
+      for (final shelf in shelves) ...[
+        _ProviderShelfRow(
+          key: ValueKey('providers-shelf-${shelf.categoryId}'),
+          title: names[shelf.categoryId] ?? '',
+          providers: shelf.providers,
+          favorites: provider.favoriteProviderIds,
+          onAll: () => provider.setCategory(shelf.categoryId),
+          onFavorite: (id) => _toggleFavorite(provider, id),
+          onOpen: _openProviderDetails,
+        ),
+        const SizedBox(height: AarastV3Space.x5),
+      ],
+      if (shelves.isNotEmpty && rest.isNotEmpty) ...[
+        Text(
+          'مزودين ثانيين',
+          key: const ValueKey('providers-rest-title'),
+          style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+      ],
+      // f02: the cards alone; each says where it stands against the item.
+      for (final item in rest) ...[
+        _ProviderCard(
+          provider: item,
+          budgetIntent: provider.budgetMatchIntent,
+          isFavorite: provider.favoriteProviderIds.contains(item.id),
+          onFavorite: () => _toggleFavorite(provider, item.id),
+          onTap: () => _openProviderDetails(item.id),
+        ),
+        const SizedBox(height: AarastV3Space.x3),
+      ],
+    ];
+  }
+
+  Future<void> _toggleFavorite(
+    ProviderMarketplaceProvider provider,
+    String id,
+  ) async {
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+      context,
+      message: 'المفضلة تنحفظ في حسابك. سجّل دخول عشان تحفظ المزود.',
+    )) {
+      return;
+    }
+    final failure = await provider.toggleFavorite(id);
+    if (failure != null && mounted) {
+      AarastToast.showError(context, failure);
+    }
   }
 
   /// Where the tab opens: «طلباتي» while a request is under way, or one was
@@ -640,7 +668,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   ) async {
     _searchController.clear();
     _searchFocusNode.unfocus();
-    setState(() => _searchOpen = false);
+    setState(() {});
     await marketplace.clearFilters();
   }
 

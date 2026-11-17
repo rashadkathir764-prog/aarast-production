@@ -406,7 +406,7 @@ class _ItemsBudgetBox extends StatelessWidget {
           // Under the budget the legend's «متاح» already says by how much;
           // the line stays where it says more: over it, the mahr in it, or
           // nothing priced yet.
-          if (over > 0 || mahr > 0 || expected <= 0) ...[
+          if (!(over < 0 && mahr <= 0 && expected > 0)) ...[
             const SizedBox(height: AarastV3Space.x2),
             Text(
               status,

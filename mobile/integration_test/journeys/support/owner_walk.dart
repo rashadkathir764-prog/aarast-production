@@ -377,7 +377,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // RA-MO-71: the loans in the owner's words.
     walk.expectSee(p.say('سلف ترجعها', 'سلف ترجعينها'));
     walk.expectSee(p.say('دين عليك،', 'دين عليكِ،'), why: 'السلفة دين عليه');
-    walk.expectSee('التكلفة المسجّلة');
+    // 2026-11-17: with estimates, the expected cost has its row by name.
+    walk.expectSee('التكلفة المتوقعة');
     await walk.scroll(pixels: -1500);
   });
 
@@ -431,7 +432,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
 
   await walk.step('w20_payers', 'مين دفع ايش', () async {
     // G14: each payer's agreements and payments, from the server.
-    if (!await walk.tapText('مين دفع ايش', wait: 3)) return;
+    // The chip «مين دفع» (2026-11-17), its page titled «مين دفع ايش».
+    if (!await walk.tapKey('money-payers', wait: 3)) return;
     walk.expectSee('الكل');
     walk.expectSee('أنا', why: 'صاحب الخطة يقرأ نفسه «أنا»');
     walk.expectSee(p.familyPayer);

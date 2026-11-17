@@ -27,9 +27,11 @@ abstract final class AarastV3Copy {
   // can know («ما فيه شي مستعجل»), and no screen may claim a state the
   // server never worked out.
 
-  static const quietNotificationsTitle = 'خطتك هادئة الآن';
+  static const quietNotificationsTitle = 'ما فيه تنبيهات';
+  // The app's own words, not formal Arabic (2026-11-17); no verb addressed
+  // to the reader, so it serves a man and a woman.
   static const quietNotificationsMessage =
-      'لا يوجد ما يحتاج انتباهك. عند وصول عرض سعر أو اقتراب مهمة سنضعها هنا.';
+      'ما فيه شي يحتاجك الحين. أول ما يوصل عرض سعر أو تقرب مهمة، يطلع هنا.';
 
   static const firstTaskTitle = 'حوّل قرارك إلى خطوة';
   static const firstTaskMessage =

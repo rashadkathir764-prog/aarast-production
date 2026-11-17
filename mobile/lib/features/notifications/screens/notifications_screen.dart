@@ -193,9 +193,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return ListView(
         children: [
           const SizedBox(height: _notificationsEmptyTop),
-          AarastErrorState(
-            title: 'ما قدرنا نجيب التنبيهات',
-            message: provider.errorMessage!,
+          // Critique أ4: the kit's state, as every list says it.
+          JourneyListState(
+            key: const ValueKey('notifications-error'),
+            phase: JourneyListPhase.error,
+            section: JourneySection.home,
+            errorMessage: provider.errorMessage,
             onRetry: _load,
           ),
         ],
@@ -206,11 +209,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return ListView(
         children: const [
           SizedBox(height: _notificationsSkeletonRow),
-          AarastEmptyState(
-            icon: LucideIcons.bellOff,
-            title: AarastV3Copy.quietNotificationsTitle,
-            message: AarastV3Copy.quietNotificationsMessage,
-            tone: AarastEmptyStateTone.positive,
+          // Critique أ4: the kit's empty state. Nothing to do here: a quiet
+          // list is good news, so no action is offered.
+          JourneyListState(
+            key: ValueKey('notifications-empty'),
+            phase: JourneyListPhase.empty,
+            section: JourneySection.home,
+            emptyIcon: LucideIcons.bellOff,
+            emptyTitle: AarastV3Copy.quietNotificationsTitle,
+            emptyMessage: AarastV3Copy.quietNotificationsMessage,
           ),
         ],
       );

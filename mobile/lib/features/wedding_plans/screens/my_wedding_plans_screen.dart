@@ -178,7 +178,10 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
           ),
         ),
         const SizedBox(height: AarastV3Space.x2),
+        // Critique خ1: a note on the button's own fill read as a second
+        // button; it is plain words under it.
         JourneyNote(
+          tone: JourneyNoteTone.bare,
           text: context.say(
             'تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها '
                 'وفلوسها.',

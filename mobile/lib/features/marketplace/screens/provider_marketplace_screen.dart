@@ -231,6 +231,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     _scrollController
       ..removeListener(_loadMoreNearEnd)
       ..dispose();
+    _searchDebounce?.cancel();
     _searchController
       ..removeListener(_onSearchTyped)
       ..dispose();
@@ -463,9 +464,24 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// Redraws the screen when the box goes from empty to typed or back, so
   /// back knows there is a search to clear; not on every letter.
   bool _searchWasShown = false;
+
+  /// Rashad's phone 2026-11-18: the list waited for the keyboard's search
+  /// key, so typing a name changed nothing and read as broken. The search
+  /// runs a moment after the typing stops.
+  Timer? _searchDebounce;
+  static const _searchPause = Duration(milliseconds: 450);
+
   void _onSearchTyped() {
+    if (!mounted) return;
+    final text = _searchController.text.trim();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(_searchPause, () {
+      if (!mounted) return;
+      final marketplace = context.read<ProviderMarketplaceProvider>();
+      if (marketplace.search.trim() != text) marketplace.setSearch(text);
+    });
     final shown = _searchShown;
-    if (shown == _searchWasShown || !mounted) return;
+    if (shown == _searchWasShown) return;
     setState(() => _searchWasShown = shown);
   }
 
@@ -561,7 +577,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     final browsing =
         provider.categoryId == null &&
         provider.budgetMatchIntent == null &&
-        _searchController.text.trim().isEmpty;
+        // The search that ran, not the letters still being typed: the rows
+        // stay until the results change, not a beat before.
+        provider.search.trim().isEmpty;
     final shelves = browsing
         ? providerShelves(provider.providers, [
             for (final category in provider.categories) category.id,

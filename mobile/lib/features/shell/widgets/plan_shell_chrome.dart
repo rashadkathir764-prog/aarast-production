@@ -133,13 +133,22 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
             children: [
               ?widget.topStatus,
               Expanded(
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeTop: true,
+                // One MediaQuery for both: the status bar's inset is taken
+                // here (SafeArea above), and this scaffold already lifts the
+                // body over the keyboard. A tab with a frame of its own (the
+                // providers, the guests) lifted it again, taking the
+                // keyboard's height twice: its list became a strip, or
+                // nothing at a large text size, the search box included
+                // (Rashad's phone 2026-11-18). Two nested helpers each read
+                // the outer data, so the second put the top inset back.
+                child: MediaQuery(
+                  data: MediaQuery.of(context)
+                      .removePadding(removeTop: true)
+                      .removeViewInsets(removeBottom: true),
                   child: NotificationListener<ScrollMetricsNotification>(
                     onNotification: _handleMetrics,
-                    // D112 (Q-8): the money tab is a money screen; with
-                    // the lock on it takes no screenshot.
+                    // D112 (Q-8): the money tab is a money screen; with the
+                    // lock on it takes no screenshot.
                     child: MoneyScreenShield(
                       active: section == JourneySection.money,
                       child: KeyedSubtree(key: _bodyKey, child: widget.body),

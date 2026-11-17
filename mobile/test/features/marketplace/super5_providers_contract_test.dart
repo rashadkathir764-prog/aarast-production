@@ -284,6 +284,40 @@ void main() {
     expect(find.text('ما في مزودين في الدليل بعد'), findsNothing);
   });
 
+  // Rashad's phone 2026-11-18: tapping the box and opening the keyboard
+  // emptied «استكشف», the box itself included.
+  testWidgets('the keyboard keeps the search box and the list', (tester) async {
+    tester.view.physicalSize = const Size(1440, 3120);
+    tester.view.devicePixelRatio = 3.5;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.reset();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+    final state = _FakeMarketplaceProvider();
+    await _pumpMarketplace(tester, state, authenticated: true, embedded: true);
+    await tester.tap(find.byKey(const Key('marketplace-search-field')));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 1700);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('marketplace-search-field')).hitTestable(),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('marketplace-search-field')),
+      'قاعة',
+    );
+    // Typed, not submitted: the search runs once the typing stops.
+    expect(state.search, isEmpty);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('قاعة'), findsOneWidget);
+    expect(state.search, 'قاعة');
+  });
+
   testWidgets('Android back on a shown search clears its filter too', (
     tester,
   ) async {

@@ -20,6 +20,7 @@ import type {
   DashboardNextStepType,
 } from "./dashboard-setup.contracts";
 import { selectTopDashboardActions } from "./dashboard-priority";
+import type { PlanEssential, PlanEssentialKey } from "./plan-essentials";
 import {
   type AddressForm,
   gendered,
@@ -52,10 +53,11 @@ export function compareDates(first: Date, second: Date): number {
 export function buildImportantItems({
   weddingPlanId,
   tasks,
+  nextTask = null,
+  missingEssential = null,
   paymentSchedules,
   today,
   receivedQuotes,
-  pendingInvites,
   hasLocation,
   hasBudget,
   guestCount,
@@ -73,10 +75,13 @@ export function buildImportantItems({
 }: {
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
+  /** The plan's nearest open task, whatever its day (or none). */
+  nextTask?: DashboardTaskRecord | null;
+  /** G23's first essential still open and not answered away. */
+  missingEssential?: Pick<PlanEssential, "key" | "budgetCategoryId"> | null;
   paymentSchedules: DashboardDueMoneyItem[];
   today: Date;
   receivedQuotes: number;
-  pendingInvites: number;
   hasLocation: boolean;
   hasBudget: boolean;
   guestCount: number;
@@ -192,7 +197,10 @@ export function buildImportantItems({
           : `وصلك ${receivedQuotes} ${receivedQuotes <= 10 ? "عروض" : "عرض"}`,
       subtitle: single
         ? say("شوفه قبل ما تنتهي مدته", "شوفيه قبل ما تنتهي مدته")
-        : say("قارن بينها قبل ما تنتهي مدتها", "قارني بينها قبل ما تنتهي مدتها"),
+        : say(
+            "قارن بينها قبل ما تنتهي مدتها",
+            "قارني بينها قبل ما تنتهي مدتها",
+          ),
       body: null,
       icon: "provider",
       tone: "warning",
@@ -209,28 +217,67 @@ export function buildImportantItems({
     });
   }
 
-  if (pendingInvites > 0) {
-    items.push({
-      id: `pending-invites:${weddingPlanId}`,
-      type: "INVITE_PENDING",
-      title:
-        pendingInvites === 1
-          ? "دعوة مشاركة تنتظر الرد"
-          : pendingInvites === 2
-            ? "دعوتين تنتظر الرد"
-            : `${pendingInvites} ${pendingInvites <= 10 ? "دعوات" : "دعوة"} تنتظر الرد`,
-      subtitle: "ما يشوفون الخطة لين يقبلون",
-      body: null,
+  // Rashad 2026-11-17: the next step is the reader's own to take. An
+  // invitation that waits on the person invited is not one; the home's
+  // «فريق الخطة» says it, so it is no step here.
+  //
+  // With nothing late, due or received, and D78's basics done: the nearest
+  // task with a day (one due today or before is already above), then the
+  // first essential the plan still has open, in G23's order (the venue
+  // first). They follow the chain, not the sort, so a dated task never
+  // steps over a missing budget.
+  const later: DashboardNextStepResponse[] = [];
+  if (nextTask?.dueDate && !tasks.some((task) => task.id === nextTask.id)) {
+    const days = daysBetween(today, nextTask.dueDate);
+    const taskRoute = `/wedding-plans/${weddingPlanId}/tasks/${nextTask.id}`;
+    later.push({
+      id: nextTask.id,
+      type: "TASK_UPCOMING",
+      title: nextTask.title,
+      subtitle: `موعدها ${whenWords(days)}`,
+      body: weekdayDayMonthWords(nextTask.dueDate),
       icon: "calendar",
+      tone: toneForTaskPriority(nextTask.priority),
+      priority: "NORMAL",
+      actionLabel: say("افتح المهمة", "افتحي المهمة"),
+      dueDate: nextTask.dueDate,
+      amount: null,
+      route: taskRoute,
+      routeTarget: taskRoute,
+      entityId: nextTask.id,
+      data: { weddingPlanId, taskId: nextTask.id },
+    });
+  }
+  if (
+    missingEssential?.budgetCategoryId &&
+    canManageMoney &&
+    canManageProviders
+  ) {
+    const itemId = missingEssential.budgetCategoryId;
+    const itemRoute = `/wedding-plans/${weddingPlanId}/providers/requests?item=${encodeURIComponent(itemId)}`;
+    later.push({
+      id: `essential:${missingEssential.key}:${weddingPlanId}`,
+      type: "ESSENTIAL_MISSING",
+      title: say(
+        `ما اتفقت على ${essentialName(missingEssential.key, planPersona)} بعد`,
+        `ما اتفقتِ على ${essentialName(missingEssential.key, planPersona)} بعد`,
+      ),
+      subtitle: say(
+        "اطلب عروض من المزودين، أو سجّل اتفاقك لو اتفقت",
+        "اطلبي عروض من المزودين، أو سجّلي اتفاقك لو اتفقتِ",
+      ),
+      body: null,
+      icon: "provider",
       tone: "info",
       priority: "NORMAL",
-      actionLabel: say("شوف الدعوات", "شوفي الدعوات"),
+      actionLabel: say("شوف المزودين", "شوفي المزودين"),
       dueDate: null,
       amount: null,
-      route: `/wedding-plans/${weddingPlanId}/sharing`,
-      routeTarget: `/wedding-plans/${weddingPlanId}/sharing`,
-      entityId: null,
-      data: { weddingPlanId },
+      route: itemRoute,
+      routeTarget: itemRoute,
+      // The money item it reads: the home leaves it out of its suggestions.
+      entityId: itemId,
+      data: { weddingPlanId, budgetCategoryId: itemId },
     });
   }
 
@@ -334,7 +381,8 @@ export function buildImportantItems({
   // was done, and the home drew it as «الخطوة الجاية». It is no step; the
   // plan's providers have their own list (`planProviders`).
 
-  return selectTopDashboardActions(items);
+  const limit = 3;
+  return [...selectTopDashboardActions(items, limit), ...later].slice(0, limit);
 }
 
 export function toProviderPreviewResponse(
@@ -483,6 +531,28 @@ export function progressPercentage(
   return Math.round((completedTasks / totalTasks) * 100);
 }
 
+/** An essential's name as the home's suggestions say it. */
+function essentialName(
+  key: PlanEssentialKey,
+  planPersona: string | null,
+): string {
+  const bride = planPersona === "BRIDE";
+  switch (key) {
+    case "VENUE":
+      return bride ? "الصالة" : "القاعة";
+    case "DRESS":
+      return bride ? "الفستان" : "البدلة والكسوة";
+    case "PHOTO":
+      return "التصوير";
+    case "GOLD":
+      return "الذهب والشبكة";
+    case "HOME":
+      return "الشقة وتجهيز المنزل";
+    case "HONEYMOON":
+      return "شهر العسل";
+  }
+}
+
 function setupAction(
   weddingPlanId: string,
   type: Extract<
@@ -500,7 +570,9 @@ function setupAction(
   routeTarget: string,
 ): DashboardNextStepResponse {
   const moneyStep =
-    type === "SET_BUDGET" || type === "RECORD_MAHR" || type === "ADD_FIRST_COST";
+    type === "SET_BUDGET" ||
+    type === "RECORD_MAHR" ||
+    type === "ADD_FIRST_COST";
   return {
     id: `${type.toLowerCase()}:${weddingPlanId}`,
     type,

@@ -118,7 +118,6 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     ],
     today,
     receivedQuotes: 2,
-    pendingInvites: 1,
     hasLocation: true,
     hasBudget: true,
     guestCount: 10,
@@ -162,6 +161,85 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
   assert.equal(items[2].routeTarget, '/wedding-plans/plan-1/providers');
 });
 
+// Rashad 2026-11-17, on his phone: 13 days out, nothing late or due, the
+// hall not agreed, and the home's next step was «دعوة مشاركة تنتظر الرد»,
+// a thing that waits on someone else. The step is now his own: the nearest
+// task with a day, then the first open essential; the invitation is no step.
+test('dashboard next step: the nearest task, then the open essential, never an invitation', () => {
+  const items = dashboardPresenter.buildImportantItems({
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    nextTask: {
+      id: 'task-9',
+      title: 'اختر المصور',
+      dueDate: new Date(2026, 10, 20),
+      priority: WeddingTaskPriority.MEDIUM,
+    },
+    missingEssential: { key: 'VENUE', budgetCategoryId: 'cat-venue' },
+    paymentSchedules: [],
+    today: new Date(2026, 10, 17),
+    receivedQuotes: 0,
+    hasLocation: true,
+    hasBudget: true,
+    guestCount: 4,
+    quoteRequestsCount: 0,
+    acceptedProviders: 1,
+    canManageMoney: true,
+    canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
+    mahrRecorded: true,
+    weddingCostsCount: 2,
+  });
+
+  assert.deepEqual(
+    items.map((item) => item.type),
+    ['TASK_UPCOMING', 'ESSENTIAL_MISSING'],
+  );
+  assert.equal(items[0].title, 'اختر المصور');
+  assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks/task-9');
+  assert.equal(items[1].title, 'ما اتفقت على القاعة بعد');
+  assert.equal(items[1].entityId, 'cat-venue');
+  assert.equal(
+    items[1].routeTarget,
+    '/wedding-plans/plan-1/providers/requests?item=cat-venue',
+  );
+});
+
+test('dashboard next step: a missing basic still comes before a dated task', () => {
+  const items = dashboardPresenter.buildImportantItems({
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    nextTask: {
+      id: 'task-9',
+      title: 'اختر المصور',
+      dueDate: new Date(2026, 10, 20),
+      priority: WeddingTaskPriority.MEDIUM,
+    },
+    paymentSchedules: [],
+    today: new Date(2026, 10, 17),
+    receivedQuotes: 0,
+    hasLocation: true,
+    hasBudget: false,
+    guestCount: 4,
+    quoteRequestsCount: 1,
+    acceptedProviders: 0,
+    canManageMoney: true,
+    canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
+  });
+
+  assert.deepEqual(
+    items.map((item) => item.type),
+    ['SET_BUDGET', 'TASK_UPCOMING'],
+  );
+});
+
 test('dashboard next step: a reader who cannot record money only reads the payment', () => {
   const [item] = dashboardPresenter.buildImportantItems({
     weddingPlanId: 'plan-1',
@@ -178,7 +256,6 @@ test('dashboard next step: a reader who cannot record money only reads the payme
     ],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
-    pendingInvites: 0,
     hasLocation: true,
     hasBudget: true,
     guestCount: 10,
@@ -207,7 +284,6 @@ test('dashboard setup actions and provider preview keep current product wording'
     paymentSchedules: [],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
-    pendingInvites: 0,
     hasLocation: false,
     hasBudget: false,
     guestCount: 0,
@@ -470,7 +546,6 @@ function setupItems(
     paymentSchedules: [],
     today: new Date(2026, 6, 11),
     receivedQuotes: 0,
-    pendingInvites: 0,
     hasLocation: true,
     hasBudget: true,
     guestCount: 0,

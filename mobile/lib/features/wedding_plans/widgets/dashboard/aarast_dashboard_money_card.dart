@@ -109,7 +109,11 @@ class _DashboardMoneyCard extends StatefulWidget {
     this.mahr,
     this.amountsHidden = false,
     this.onToggleAmounts,
+    this.mahrCardShown = false,
   });
+
+  /// The home draws the mahr's own card over this one: its line is left out.
+  final bool mahrCardShown;
 
   final DashboardSummary summary;
   final DashboardHomeFunding? funding;
@@ -222,7 +226,10 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           joined: cell.joined,
         ),
     ];
-    String? mahrLine(String Function(double) write) => withMahr && !mahrInside
+    // Where the mahr's own card stands over this one, its line here said the
+    // same thing twice on one screen (Rashad 2026-11-17).
+    String? mahrLine(String Function(double) write) =>
+        withMahr && !mahrInside && !widget.mahrCardShown
         ? mahrOnItsOwnWords(
             context,
             total: mahr.total,
@@ -240,13 +247,18 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final ownerLeftLabel = context.say('باقي عليك', 'باقي عليكِ');
     final Widget lead;
     final agreedAny = agreed > 0;
+    // The title row names the lead figure where there is one, so «المال»
+    // and «باقي عليك» are not two rows over one number.
+    var title = 'المال';
     if (ownerLeft != null && (agreedAny || ownerLeft > 0)) {
+      title = ownerLeftLabel;
       // D102, D103: the owner reads what «الملخص» says; D113: its verdict is
       // a short tag beside the label (the whole sentence stood up to five
       // lines tall and changed the card's height; it stays on the money
       // tab). Hidden amounts hide the shortfall's figure with the rest.
       lead = _MoneyLead(
         label: ownerLeftLabel,
+        showLabel: false,
         value: amount(ownerLeft),
         color: AarastV3Color.ink,
         tag: verdict == null
@@ -283,8 +295,10 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         ],
       );
     } else {
+      title = leftLabel;
       lead = _MoneyLead(
         label: leftLabel,
+        showLabel: false,
         value: amount(left),
         color: AarastV3Color.ink,
       );
@@ -360,7 +374,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   const SizedBox(width: AarastV3Space.x1),
                   Expanded(
                     child: Text(
-                      'المال',
+                      title,
                       style: JourneyType.of(
                         JourneyType.bodySmall,
                         weight: JourneyType.bold,
@@ -441,17 +455,24 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   soft: context.accent.primarySoft,
                 ),
               ] else if (pieces.any((piece) => piece.$1 > 0)) ...[
-                const SizedBox(height: AarastV3Space.x3),
+                const SizedBox(height: AarastV3Space.x2),
                 _MoneySplitBar(pieces: pieces),
+                // What the bar measures: it was drawn without a word.
+                if (!known && agreedAny) ...[
+                  const SizedBox(height: AarastV3Space.x1),
+                  Text(
+                    '${context.ownerDid('دفعت', 'دفعتِ', groom: 'دفع العريس', bride: 'دفعت العروسة')} ${figure(paid)} من ${figure(agreed)}',
+                    key: const ValueKey('dashboard-money-bar-caption'),
+                    style: JourneyType.of(
+                      JourneyType.caption,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
               ],
-              // Before any agreement the lead is the budget itself.
+              // Before any agreement the lead is the budget itself. No rule
+              // between them: the gap says it, in less height.
               if (agreedAny) ...[
-                const SizedBox(height: AarastV3Space.x3),
-                const Divider(
-                  height: AarastV3Space.hair,
-                  thickness: AarastV3Space.hair,
-                  color: AarastV3Color.line,
-                ),
                 const SizedBox(height: AarastV3Space.x3),
                 ExcludeSemantics(
                   child: _MoneyFigures(

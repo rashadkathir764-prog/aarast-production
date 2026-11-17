@@ -30,6 +30,9 @@ List<DashboardEssential> _homeSuggestions(DashboardSummary summary) {
       .toList();
 }
 
+/// The open items in one card, a row each (Rashad 2026-11-17: three cards
+/// filled a screen, and their bold «ما أحتاجها» and «بعدين» stood louder
+/// than opening the item). The two answers are behind each row's «⋯».
 class _JourneySuggestions extends StatelessWidget {
   const _JourneySuggestions({
     required this.suggestions,
@@ -49,15 +52,17 @@ class _JourneySuggestions extends StatelessWidget {
       key: const ValueKey('aarast-dashboard-suggestions'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const JourneySectionTitle('اقتراحات لعرسك'),
-        for (final item in suggestions) ...[
-          JourneyBox(
-            key: ValueKey('aarast-dashboard-suggestion-${item.key}'),
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        // Not «اقتراحات»: these are the wedding's own items still open.
+        JourneySectionTitle(
+          context.say('ما اتفقت عليه بعد', 'ما اتفقتِ عليه بعد'),
+        ),
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: JourneyList(
+            children: [
+              for (final item in suggestions)
                 JourneyListRow(
+                  key: ValueKey('aarast-dashboard-suggestion-${item.key}'),
                   icon: _icon(item.key),
                   color: context.accent.primary,
                   soft: context.accent.primarySoft,
@@ -66,59 +71,74 @@ class _JourneySuggestions extends StatelessWidget {
                     'ما اتفقت مع أحد بعد',
                     'ما اتفقتِ مع أحد بعد',
                   ),
-                  trailing: const Icon(
-                    LucideIcons.chevronLeft,
-                    size: 18,
-                    color: AarastV3Color.textFaint,
+                  trailing: Semantics(
+                    button: true,
+                    label: 'خيارات ${_title(context, item.key)}',
+                    excludeSemantics: true,
+                    child: IconButton(
+                      key: ValueKey(
+                        'aarast-dashboard-suggestion-${item.key}-more',
+                      ),
+                      onPressed: () => _answer(context, item),
+                      icon: const Icon(
+                        LucideIcons.moreHorizontal,
+                        size: 20,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
                   ),
                   onTap: () => onOpen(item),
                 ),
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(
-                    start: AarastV3Space.x2,
-                    end: AarastV3Space.x2,
-                    bottom: AarastV3Space.x1,
-                  ),
-                  child: Wrap(
-                    children: [
-                      // RA-MO-164: a screen reader heard «ما أحتاجها» and
-                      // «بعدين» without the item they answer.
-                      Semantics(
-                        button: true,
-                        label: 'ما أحتاج ${_title(context, item.key)}',
-                        onTap: () => onAnswer(item, 'NOT_NEEDED'),
-                        excludeSemantics: true,
-                        child: JourneyTextAction(
-                          key: ValueKey(
-                            'aarast-dashboard-suggestion-${item.key}-not-needed',
-                          ),
-                          label: 'ما أحتاجها',
-                          onPressed: () => onAnswer(item, 'NOT_NEEDED'),
-                        ),
-                      ),
-                      Semantics(
-                        button: true,
-                        label: '${_title(context, item.key)} بعدين',
-                        onTap: () => onAnswer(item, 'LATER'),
-                        excludeSemantics: true,
-                        child: JourneyTextAction(
-                          key: ValueKey(
-                            'aarast-dashboard-suggestion-${item.key}-later',
-                          ),
-                          label: 'بعدين',
-                          onPressed: () => onAnswer(item, 'LATER'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _answer(BuildContext context, DashboardEssential item) async {
+    final title = _title(context, item.key);
+    final choice = await showJourneySheet<String>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: title,
+        subtitle: context.say(
+          'تشيلها من الرئيسية، وترجع من بنود المال.',
+          'تشيلينها من الرئيسية، وترجع من بنود المال.',
+        ),
+        children: [
+          // RA-MO-164: each answer names the item it answers.
+          Semantics(
+            button: true,
+            label: 'ما أحتاج $title',
+            excludeSemantics: true,
+            child: JourneyButton(
+              key: ValueKey(
+                'aarast-dashboard-suggestion-${item.key}-not-needed',
+              ),
+              label: 'ما أحتاجها',
+              expand: true,
+              onPressed: () => Navigator.of(sheetContext).pop('NOT_NEEDED'),
             ),
           ),
           const SizedBox(height: AarastV3Space.x2),
+          Semantics(
+            button: true,
+            label: '$title بعدين',
+            excludeSemantics: true,
+            child: JourneyButton(
+              key: ValueKey('aarast-dashboard-suggestion-${item.key}-later'),
+              label: 'بعدين (أسبوع)',
+              expand: true,
+              background: AarastV3Color.paperQuiet,
+              foreground: AarastV3Color.ink,
+              onPressed: () => Navigator.of(sheetContext).pop('LATER'),
+            ),
+          ),
         ],
-      ],
+      ),
     );
+    if (choice != null) onAnswer(item, choice);
   }
 
   static String _title(BuildContext context, String key) => switch (key) {

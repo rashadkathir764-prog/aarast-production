@@ -387,21 +387,16 @@ class AarastDashboardView extends StatelessWidget {
                         }
                       },
                     ),
-                    if (mahr case final mahr?
-                        when mahr.recorded && !mahr.complete) ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      _MahrAgreementCard(
-                        mahr: mahr,
-                        onTap: onOpenMoney,
-                        hidden: amountsHidden,
-                      ),
-                    ],
+                    // Rashad 2026-11-17: the next step, the money under it,
+                    // then the three tiles; the rest follows.
                     if (summary.canViewMoney) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _DashboardMoneyCard(
                         summary: summary,
                         funding: funding,
                         mahr: mahr,
+                        mahrCardShown:
+                            mahr != null && mahr!.recorded && !mahr!.complete,
                         amountsHidden: amountsHidden,
                         onToggleAmounts: onToggleAmounts,
                         onTap: onOpenMoney,
@@ -432,19 +427,6 @@ class AarastDashboardView extends StatelessWidget {
                           ),
                       ],
                     ],
-                    if (_homeSuggestions(summary) case final suggestions
-                        when suggestions.isNotEmpty &&
-                            onAnswerSuggestion != null) ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      _JourneySuggestions(
-                        suggestions: suggestions,
-                        onOpen: (item) =>
-                            (onOpenSuggestion ?? (_) => onOpenProviders())(
-                              item,
-                            ),
-                        onAnswer: onAnswerSuggestion!,
-                      ),
-                    ],
                     const SizedBox(height: AarastV3Space.x3),
                     _JourneyHomeTiles(
                       summary: summary,
@@ -457,6 +439,36 @@ class AarastDashboardView extends StatelessWidget {
                       _JourneyAfterwards(
                         items: afterwards,
                         onOpen: onOpenImportantItem,
+                      ),
+                    ],
+                    if (mahr case final mahr?
+                        when mahr.recorded && !mahr.complete) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      _MahrAgreementCard(
+                        mahr: mahr,
+                        onTap: onOpenMoney,
+                        hidden: amountsHidden,
+                      ),
+                    ],
+                    // The item the next step already names is not suggested
+                    // again under it.
+                    if ([
+                          for (final item in _homeSuggestions(summary))
+                            if (focus.item?.entityId == null ||
+                                focus.item?.entityId != item.budgetCategoryId)
+                              item,
+                        ]
+                        case final suggestions
+                        when suggestions.isNotEmpty &&
+                            onAnswerSuggestion != null) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      _JourneySuggestions(
+                        suggestions: suggestions,
+                        onOpen: (item) =>
+                            (onOpenSuggestion ?? (_) => onOpenProviders())(
+                              item,
+                            ),
+                        onAnswer: onAnswerSuggestion!,
                       ),
                     ],
                     if (_showsSharing) ...[

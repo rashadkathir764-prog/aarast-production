@@ -289,11 +289,13 @@ void main() {
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
     });
 
-    testWidgets('on its own: its card, and its own line', (tester) async {
+    // Changed on purpose (Rashad 2026-11-17): with its own card on the home,
+    // the money card's mahr line said it a second time; it is left out.
+    testWidgets('on its own: its card, said once', (tester) async {
       await pumpHome(tester, inside: false);
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      expect(find.textContaining('برّا الميزانية'), findsOneWidget);
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
       expect(find.textContaining('منها المهر'), findsNothing);
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
     });

@@ -238,13 +238,11 @@ void main() {
       );
 
       expect(find.text('اتفقت على 3$_nbspمليون'), findsOneWidget);
-      expect(
-        find.text(
-          'المهر 3$_nbspمليون، برّا الميزانية. '
-          'سلّمت 2$_nbspمليون وباقي 1$_nbspمليون.',
-        ),
-        findsOneWidget,
-      );
+      // Changed on purpose (Rashad 2026-11-17): the mahr's own card stands
+      // over the money card while it is not settled, so the money card's
+      // line, which said it again, is left out.
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -263,13 +261,8 @@ void main() {
       );
 
       expect(find.text('اتفق العريس على 3$_nbspمليون'), findsOneWidget);
-      expect(
-        find.text(
-          'المهر 3$_nbspمليون، برّا الميزانية. '
-          'العريس سلّم 2$_nbspمليون وباقي 1$_nbspمليون.',
-        ),
-        findsOneWidget,
-      );
+      // As above: the mahr's card says it, once.
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
     });
 
     testWidgets('no mahr yet: no «مع المهر»', (tester) async {
@@ -419,13 +412,8 @@ void main() {
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
       expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
       expect(find.textContaining('منها المهر'), findsNothing);
-      expect(
-        inCard(
-          'المهر 2$_nbspمليون، برّا الميزانية. '
-          'سلّمت 500$_nbspألف وباقي 1.5$_nbspمليون.',
-        ),
-        findsOneWidget,
-      );
+      // As above: the mahr's card says it, once.
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
       expect(
         find.descendant(of: card, matching: find.textContaining('العرس')),
         findsNothing,
@@ -451,9 +439,10 @@ void main() {
         find.descendant(of: card, matching: find.textContaining('الميزانية')),
         findsNothing,
       );
+      // As above: the mahr's card says it, once.
       expect(
-        inCard('المهر 2$_nbspمليون. سلّمت 500$_nbspألف وباقي 1.5$_nbspمليون.'),
-        findsOneWidget,
+        find.descendant(of: card, matching: find.textContaining('المهر')),
+        findsNothing,
       );
       expect(tester.takeException(), isNull);
     });

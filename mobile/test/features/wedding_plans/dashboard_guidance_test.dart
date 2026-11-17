@@ -257,7 +257,13 @@ void main() {
       onOpenSuggestion: (item) => opened = item,
     );
 
-    expect(find.text('اقتراحات لعرسك'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): the open items are one card,
+    // a row each; the two answers sit behind the row's «⋯».
+    expect(find.text('ما اتفقت عليه بعد'), findsOneWidget);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('aarast-dashboard-suggestion-VENUE-more')),
+    );
     await _tapVisible(
       tester,
       find.byKey(
@@ -266,12 +272,16 @@ void main() {
     );
     await _tapVisible(
       tester,
-      find.byKey(const ValueKey('aarast-dashboard-suggestion-PHOTO-later')),
+      find.byKey(const ValueKey('aarast-dashboard-suggestion-PHOTO-more')),
     );
-    expect(answers, ['VENUE:NOT_NEEDED', 'PHOTO:LATER']);
     // RA-MO-164: each answer is heard with the item it answers.
     expect(find.bySemanticsLabel('ما أحتاج التصوير'), findsOneWidget);
     expect(find.bySemanticsLabel('التصوير بعدين'), findsOneWidget);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('aarast-dashboard-suggestion-PHOTO-later')),
+    );
+    expect(answers, ['VENUE:NOT_NEEDED', 'PHOTO:LATER']);
 
     await _tapVisible(tester, find.text('التصوير'));
     expect(opened?.budgetCategoryId, 'item-PHOTO');
@@ -339,11 +349,9 @@ void main() {
     expect(find.text('الفستان'), findsOneWidget);
     expect(find.text('القاعة'), findsNothing);
     expect(find.text('ما اتفقتِ مع أحد بعد'), findsWidgets);
+    // The row carries the key now that the items share one card.
     final row = tester.widget<JourneyListRow>(
-      find.descendant(
-        of: find.byKey(const ValueKey('aarast-dashboard-suggestion-VENUE')),
-        matching: find.byType(JourneyListRow),
-      ),
+      find.byKey(const ValueKey('aarast-dashboard-suggestion-VENUE')),
     );
     expect(row.color, AarastV3Color.rose);
   });

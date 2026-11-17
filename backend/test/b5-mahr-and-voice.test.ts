@@ -129,7 +129,6 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     paymentSchedules: [],
     today: new Date(2026, 9, 25),
     receivedQuotes: 0,
-    pendingInvites: 0,
     hasLocation: false,
     hasBudget: false,
     guestCount: 0,

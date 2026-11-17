@@ -14,7 +14,11 @@ import type { PlanEssential } from './plan-essentials';
 export type DashboardNextStepType =
   | DashboardImportantItemType
   | 'RECORD_MAHR'
-  | 'ADD_FIRST_COST';
+  | 'ADD_FIRST_COST'
+  // Rashad 2026-11-17: the nearest task with a day, then the first open
+  // essential, when nothing is late or due.
+  | 'TASK_UPCOMING'
+  | 'ESSENTIAL_MISSING';
 
 /** A next step on the home: the closed item, with the wider type. */
 export type DashboardNextStepResponse = Omit<

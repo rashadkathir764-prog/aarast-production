@@ -11,7 +11,10 @@ import {
   type CollaborationScopePort as ContributorScopeService,
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
+import {
+  endOfRiyadhDay,
+  startOfRiyadhDay,
+} from "../shared-kernel/time/business-day";
 import {
   NOTIFICATIONS_PORT,
   type NotificationsPort,
@@ -75,7 +78,6 @@ export class DashboardService {
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
-
 
   /**
    * D52: what every member of the plan reads, whatever their role: the
@@ -396,13 +398,30 @@ export class DashboardService {
       dueSoonCount: canViewMoney ? dueSoonSchedules.length : null,
     });
     const writeRights = planWriteRights(context, this.permissions);
+    const essentials = planItems
+      ? planEssentials({
+          persona: context.plan.persona,
+          categories: planItems,
+          bookedCategoryIds: bookedServices.budgetCategoryIds,
+          venueSecured: venueCost || venueBooked,
+        })
+      : null;
     const importantItems = buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
+      // Rashad 2026-11-17: with nothing late or due, the next step is the
+      // nearest task with a day, then the first essential still open.
+      nextTask,
+      missingEssential:
+        essentials?.find(
+          (item) =>
+            item.status === "MISSING" &&
+            !item.hidden &&
+            item.budgetCategoryId !== null,
+        ) ?? null,
       paymentSchedules: dueMoneyItems,
       today,
       receivedQuotes,
-      pendingInvites,
       hasLocation: location !== null,
       // A contributor must not learn whether the owner configured a plan-wide
       // budget, nor receive a misleading SET_BUDGET action for a value they
@@ -512,16 +531,9 @@ export class DashboardService {
         : null,
       venueSecured: venueCost || venueBooked,
       bookedServices,
-      essentials: planItems
-        ? planEssentials({
-            persona: context.plan.persona,
-            categories: planItems,
-            bookedCategoryIds: bookedServices.budgetCategoryIds,
-            venueSecured: venueCost || venueBooked,
-          })
-        : null,
+      essentials,
       budgetItemsCount: planItems
-        ? planItems.filter((category) => category.kind !== 'MAHR').length
+        ? planItems.filter((category) => category.kind !== "MAHR").length
         : null,
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
@@ -539,7 +551,9 @@ export class DashboardService {
         outstanding: moneyOrNull(outstandingNumber),
         remainingBudget: moneyOrNull(remainingBudgetNumber),
         overBudget:
-          expectedBudgetLeftNumber === null ? null : expectedBudgetLeftNumber.isNegative(),
+          expectedBudgetLeftNumber === null
+            ? null
+            : expectedBudgetLeftNumber.isNegative(),
       },
       financialWarnings,
       taskSummary: {

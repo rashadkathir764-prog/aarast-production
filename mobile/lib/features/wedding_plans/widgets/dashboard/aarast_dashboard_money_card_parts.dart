@@ -86,7 +86,7 @@ class _MoneyFigures extends StatelessWidget {
 
     final rows = <Widget>[];
     for (var index = 0; index < cells.length; index += 2) {
-      if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x2));
+      if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x1));
       rows.add(
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,7 +108,7 @@ class _MoneyFigures extends StatelessWidget {
       children: [
         ...rows,
         if (mahrLine case final line?) ...[
-          const SizedBox(height: AarastV3Space.x2),
+          const SizedBox(height: AarastV3Space.x1),
           Text(
             line,
             key: const ValueKey('dashboard-money-mahr-line'),
@@ -128,11 +128,16 @@ class _MoneyLead extends StatelessWidget {
     required this.value,
     required this.color,
     this.tag,
+    this.showLabel = true,
   });
 
   final String label;
   final String value;
   final Color color;
+
+  /// False where the card's title row already says [label] (Rashad
+  /// 2026-11-17: «المال» over «باقي عليك» was two rows for one name).
+  final bool showLabel;
 
   /// D113: the verdict's short tag, on its own line right under the figure
   /// it judges: the same slot for «تكفي», «تكفي بشرط الموعود» and «ينقصك
@@ -145,13 +150,14 @@ class _MoneyLead extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: JourneyType.of(
-            JourneyType.bodySmall,
-            color: AarastV3Color.textMuted,
+        if (showLabel)
+          Text(
+            label,
+            style: JourneyType.of(
+              JourneyType.bodySmall,
+              color: AarastV3Color.textMuted,
+            ),
           ),
-        ),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,

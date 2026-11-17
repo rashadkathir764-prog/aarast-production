@@ -252,22 +252,8 @@ AarastDashboardFocus resolveDashboardFocus(
     );
   }
 
-  if ((summary.permissions.isOwner || summary.permissions.canManageMembers) &&
-      summary.pendingInvites > 0) {
-    return AarastDashboardFocus(
-      eyebrow: 'بانتظار رد',
-      title:
-          '${arabicCount(summary.pendingInvites, one: 'دعوة', two: 'دعوتين', few: 'دعوات', many: 'دعوة')} مشاركة ما انردّت',
-      reason: say(
-        'شوف الدعوات والصلاحيات قبل لا توزع شغل زيادة.',
-        'شوفي الدعوات والصلاحيات قبل لا توزعين شغل زيادة.',
-      ),
-      actionLabel: say('شوف المشاركة', 'شوفي المشاركة'),
-      icon: LucideIcons.userPlus,
-      tone: AarastDashboardFocusTone.attention,
-      target: AarastDashboardFocusTarget.sharing,
-    );
-  }
+  // Rashad 2026-11-17: an invitation waiting on the person invited is no
+  // next step; the home's «فريق الخطة» says it.
 
   // The end of every check above, so the one thing this may claim is that
   // none of them matched. «خطتك تحت السيطرة» claimed more than that: the
@@ -347,7 +333,9 @@ IconData _iconForType(String type) {
     return LucideIcons.wallet;
   }
   if (normalized.contains('TASK')) return LucideIcons.listChecks;
-  if (normalized.contains('QUOTE') || normalized.contains('PROVIDER')) {
+  if (normalized.contains('QUOTE') ||
+      normalized.contains('PROVIDER') ||
+      normalized.contains('ESSENTIAL')) {
     return LucideIcons.store;
   }
   if (normalized.contains('GUEST')) return LucideIcons.users;

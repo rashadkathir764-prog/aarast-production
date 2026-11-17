@@ -143,7 +143,9 @@ void main() {
 
     // b02 before any funding source: what is left to pay leads, what was
     // agreed and paid sit on the far side, the bar splits paid and left.
-    expect(find.text('المال'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-17): the title row names the lead
+    // figure, so «المال» over «باقي تدفع» is one row.
+    expect(find.text('المال'), findsNothing);
     expect(find.text('باقي تدفع'), findsOneWidget);
     expect(find.text('500,000 ر.س'), findsOneWidget);
     // V-01: the far side writes every figure short, with its unit.
@@ -157,6 +159,11 @@ void main() {
       findsOneWidget,
     );
 
+    // The card sits under the tiles now (Rashad 2026-11-17): bring it up.
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('dashboard-money-privacy-toggle')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('dashboard-money-privacy-toggle')),
     );

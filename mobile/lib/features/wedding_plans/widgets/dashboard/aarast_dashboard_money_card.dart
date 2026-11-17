@@ -359,7 +359,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
             AarastV3Space.x4,
             AarastV3Space.x2,
             AarastV3Space.x4,
-            AarastV3Space.x4,
+            AarastV3Space.x3,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -473,7 +473,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
               // Before any agreement the lead is the budget itself. No rule
               // between them: the gap says it, in less height.
               if (agreedAny) ...[
-                const SizedBox(height: AarastV3Space.x3),
+                const SizedBox(height: AarastV3Space.x2),
                 ExcludeSemantics(
                   child: _MoneyFigures(
                     cells: cells(sumFigure),

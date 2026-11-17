@@ -120,7 +120,7 @@ class _MoneyFigures extends StatelessWidget {
   }
 }
 
-/// «باقي عليك» over its 28 figure.
+/// «باقي عليك» over its 24 figure.
 class _MoneyLead extends StatelessWidget {
   const _MoneyLead({
     super.key,
@@ -164,8 +164,10 @@ class _MoneyLead extends StatelessWidget {
           child: Text(
             value,
             key: const ValueKey('dashboard-money-lead'),
+            // Rashad's phone 2026-11-18 («زيد صغير»): the app's amount size,
+            // not the 28 headline; the hero above holds the big figure.
             style: JourneyType.of(
-              JourneyType.headline,
+              JourneyType.amount,
               weight: JourneyType.bold,
               color: color,
               height: 1.2,

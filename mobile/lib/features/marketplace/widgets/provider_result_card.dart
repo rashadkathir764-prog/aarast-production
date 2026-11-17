@@ -30,6 +30,11 @@ const _heartRoom = 36.0;
 /// height on a shelf card, the sideways rows of «استكشف».
 const _shelfPhotoHeight = 132.0;
 
+/// Fixed dimensions of this layout (D74): the logo's disc on a shelf card
+/// without a cover, and the paper ring around it.
+const _shelfLogoSize = 76.0;
+const _shelfLogoRing = 3.0;
+
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
 String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
@@ -90,12 +95,17 @@ class ProviderResultCard extends StatelessWidget {
     this.budgetStatusLabel,
     this.budgetStatusColor,
     this.imageUrl,
+    this.logoUrl,
     this.detailsButtonKey,
     this.favoriteButtonKey,
     super.key,
   });
 
   final String businessName;
+
+  /// The provider's logo: in the small square by the name when there is no
+  /// cover photo, never stretched over the card's top.
+  final String? logoUrl;
   final bool isFeatured;
   final double ratingAverage;
   final int ratingCount;
@@ -265,7 +275,10 @@ class ProviderResultCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Letter(name: businessName),
+                          _Letter(
+                            name: businessName,
+                            logoUrl: dataSaver ? null : _clean(logoUrl),
+                          ),
                           const SizedBox(width: AarastV3Space.x3),
                           Expanded(child: words),
                         ],
@@ -342,7 +355,7 @@ class ProviderResultCard extends StatelessWidget {
 
 /// A provider on a sideways row of «استكشف» (Rashad 2026-11-18): the photo
 /// across its top, its name, rating and kind, and where its prices start.
-/// Without a photo its top is the plan's colour with the qamariya and the
+/// Without a cover its top is the plan's soft colour with the logo or the
 /// service's icon, so a row keeps one height and no face is invented.
 class ProviderShelfCard extends StatelessWidget {
   const ProviderShelfCard({
@@ -356,6 +369,7 @@ class ProviderShelfCard extends StatelessWidget {
     this.locationLabel,
     this.fromPriceLabel,
     this.imageUrl,
+    this.logoUrl,
     this.isFeatured = false,
     this.isClaimed = true,
     this.detailsButtonKey,
@@ -373,7 +387,12 @@ class ProviderShelfCard extends StatelessWidget {
 
   /// «من 450,000 ر.ي»: the lowest published price, or what to do without.
   final String? fromPriceLabel;
+
+  /// The cover photo; only it fills the card's top.
   final String? imageUrl;
+
+  /// The logo, in a disc on the plan's colour when there is no cover.
+  final String? logoUrl;
   final bool isFeatured;
   final bool isClaimed;
   final Key? detailsButtonKey;
@@ -411,7 +430,11 @@ class ProviderShelfCard extends StatelessWidget {
                     if (photoUrl != null)
                       _Photo(imageUrl: photoUrl, name: businessName)
                     else
-                      _KindArt(kind: kind),
+                      _KindArt(
+                        kind: kind,
+                        name: businessName,
+                        logoUrl: dataSaver ? null : logoUrl?.trim(),
+                      ),
                     if (isFeatured)
                       const PositionedDirectional(
                         bottom: AarastV3Space.x2,
@@ -505,27 +528,51 @@ class ProviderShelfCard extends StatelessWidget {
   }
 }
 
-/// A shelf card's top without a photo: the plan's colour, the qamariya of
-/// the hero (no gradient: D45 keeps that for the hero), and the service's
-/// icon. It says the kind, never a face.
+/// A shelf card's top without a cover photo: the plan's soft colour, and in
+/// its middle the logo in a ringed disc, or the service's icon without one.
 class _KindArt extends StatelessWidget {
-  const _KindArt({required this.kind});
+  const _KindArt({required this.kind, required this.name, this.logoUrl});
 
   final String kind;
+  final String name;
+  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
+    final icon = Icon(
+      providerServiceIcon(kind),
+      size: 34,
+      color: context.accent.primary,
+    );
+    final logo = logoUrl;
+    // Soft, as the app's tiles (Rashad's phone 2026-11-18): solid, two or
+    // three in a row were a wall of green.
     return ColoredBox(
       key: const Key('provider-shelf-kind-art'),
-      color: context.accent.primary,
-      child: CustomPaint(
-        painter: const JourneyQamariyaPainter(alpha: 0.16),
+      color: context.accent.primarySoft,
+      child: SizedBox.expand(
         child: Center(
-          child: Icon(
-            providerServiceIcon(kind),
-            size: 34,
-            color: AarastV3Color.onPrimary.withValues(alpha: 0.92),
-          ),
+          child: logo == null || logo.isEmpty
+              ? icon
+              : Container(
+                  width: _shelfLogoSize,
+                  height: _shelfLogoSize,
+                  padding: const EdgeInsets.all(_shelfLogoRing),
+                  decoration: const BoxDecoration(
+                    color: AarastV3Color.paper,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: Image.network(
+                      logo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => ColoredBox(
+                        color: context.accent.primarySoft,
+                        child: Center(child: _LetterText(name: name)),
+                      ),
+                    ),
+                  ),
+                ),
         ),
       ),
     );
@@ -634,24 +681,34 @@ class _Photo extends StatelessWidget {
   }
 }
 
-/// Without a photo: the provider's letter in a small rounded square.
+/// Without a cover photo: the provider's logo in a small rounded square, or
+/// its letter when there is no logo (or it fails to load).
 class _Letter extends StatelessWidget {
-  const _Letter({required this.name});
+  const _Letter({required this.name, this.logoUrl});
 
   final String name;
+  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
+    final letter = Center(child: _LetterText(name: name));
+    final logo = logoUrl;
     return Container(
-      key: const Key('provider-card-letter'),
+      key: Key(logo == null ? 'provider-card-letter' : 'provider-card-logo'),
       width: _letterSize,
       height: _letterSize,
-      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: context.accent.primarySoft,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
       ),
-      child: _LetterText(name: name),
+      child: logo == null
+          ? letter
+          : Image.network(
+              logo,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => letter,
+            ),
     );
   }
 }

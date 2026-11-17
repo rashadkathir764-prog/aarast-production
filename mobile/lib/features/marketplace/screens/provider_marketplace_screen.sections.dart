@@ -77,7 +77,10 @@ class _MarketplaceSearch extends StatelessWidget {
       label: picked ? 'فلتر: ${city.nameAr}' : 'فلتر',
       excludeSemantics: true,
       child: Material(
-        color: picked ? context.accent.primary : AarastV3Color.paper,
+        // A place picked is said softly (Rashad's phone 2026-11-18): solid
+        // it stood as loud as the «الكل» chip beside it, and it is a
+        // reminder, not the screen's action.
+        color: picked ? context.accent.primarySoft : AarastV3Color.paper,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AarastV3Radius.card),
           side: picked
@@ -106,7 +109,7 @@ class _MarketplaceSearch extends StatelessWidget {
                   Icon(
                     LucideIcons.slidersHorizontal,
                     size: 20,
-                    color: picked ? AarastV3Color.onPrimary : AarastV3Color.ink,
+                    color: picked ? context.accent.primary : AarastV3Color.ink,
                   ),
                   if (picked) ...[
                     const SizedBox(width: AarastV3Space.x2),
@@ -115,7 +118,7 @@ class _MarketplaceSearch extends StatelessWidget {
                       style: JourneyType.of(
                         JourneyType.small,
                         weight: JourneyType.bold,
-                        color: AarastV3Color.onPrimary,
+                        color: context.accent.primary,
                       ),
                     ),
                   ],

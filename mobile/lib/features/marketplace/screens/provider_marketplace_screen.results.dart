@@ -94,6 +94,7 @@ class _ProviderCard extends StatelessWidget {
         provider.serviceSummary?.pricesUpdatedAt,
       ),
       imageUrl: _providerImageUrl(provider),
+      logoUrl: _providerLogoUrl(provider),
       budgetStatusLabel: budgetStatus == null
           ? null
           : _serviceBudgetStatusLabel(budgetStatus),
@@ -188,6 +189,7 @@ class _ProviderShelfRow extends StatelessWidget {
                     locationLabel: _providerLocationLabel(item),
                     fromPriceLabel: _providerFromPriceLabel(item),
                     imageUrl: _providerImageUrl(item),
+                    logoUrl: _providerLogoUrl(item),
                     isFeatured: item.isFeaturedAt(appNow()),
                     isClaimed: item.isClaimed,
                     isFavorite: favorites.contains(item.id),
@@ -239,14 +241,17 @@ String? _providerFromPriceLabel(MarketplaceProvider provider) {
   return max != null && max > min ? 'من $amount' : amount;
 }
 
-/// أفضل صورة تمثّل المزود في القائمة: الغلاف ثم الشعار. صور الخدمات ما
-/// تنعرض للعرسان لأنها ما تتراجع (D62).
+/// صورة الغلاف وحدها تملأ رأس الكرت. الشعار يظهر صغيرًا جنب الاسم: شعار
+/// مكبّر بعرض الكرت كان وجهًا مقصوصًا عند الفم (جوال رشاد 2026-11-18). صور
+/// الخدمات ما تنعرض للعرسان لأنها ما تتراجع (D62).
 String? _providerImageUrl(MarketplaceProvider provider) {
   final cover = provider.coverUrl?.trim();
-  if (cover != null && cover.isNotEmpty) return cover;
+  return cover == null || cover.isEmpty ? null : cover;
+}
+
+String? _providerLogoUrl(MarketplaceProvider provider) {
   final logo = provider.logoUrl?.trim();
-  if (logo != null && logo.isNotEmpty) return logo;
-  return null;
+  return logo == null || logo.isEmpty ? null : logo;
 }
 
 /// نطاق أسعار المزود المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.

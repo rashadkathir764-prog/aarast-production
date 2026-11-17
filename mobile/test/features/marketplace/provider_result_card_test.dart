@@ -272,6 +272,40 @@ void main() {
       expect(providerInitial('قاعة سبأ'), 'ق');
     });
 
+    // Rashad's phone 2026-11-18: a logo stretched over the card's top was a
+    // face cut at the mouth. Only a cover photo fills the top; a logo sits
+    // in the small square by the name.
+    testWidgets('a logo alone stays in the small square', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: ProviderResultCard(
+                key: const Key('card'),
+                businessName: 'الفنان علي عنبه',
+                isFeatured: false,
+                ratingAverage: 1,
+                ratingCount: 1,
+                isFavorite: false,
+                onFavorite: () {},
+                onDetails: () {},
+                logoUrl: 'https://media.example/provider-logo/a.jpg',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('provider-card-photo')), findsNothing);
+      final logo = tester.getSize(find.byKey(const Key('provider-card-logo')));
+      expect(logo.width, lessThanOrEqualTo(48));
+    });
+
     testWidgets('nothing overflows at 320 with the largest text', (
       tester,
     ) async {

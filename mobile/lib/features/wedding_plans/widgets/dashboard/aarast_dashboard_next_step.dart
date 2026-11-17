@@ -86,18 +86,56 @@ class _JourneyNextStep extends StatelessWidget {
     final words = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          eyebrow,
-          // The days are drawn in the tile, which a screen reader skips;
-          // it hears them here, as the card said them before.
-          semanticsLabel: days == null
-              ? null
-              : '$eyebrow · بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}',
-          style: JourneyType.of(
-            JourneyType.caption,
-            weight: JourneyType.bold,
-            color: accent,
-          ),
+        // Rashad's phone 2026-11-17: the action pill at the row's end took a
+        // third of the row, so the title and the reason wrapped to two lines
+        // each and the card stayed tall. The action is said on the eyebrow's
+        // line, at its end, and the words have the card's whole width.
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                eyebrow,
+                // The days are drawn in the tile, which a screen reader
+                // skips; it hears them in the card's label.
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: JourneyType.of(
+                  JourneyType.caption,
+                  weight: JourneyType.bold,
+                  color: accent,
+                ),
+              ),
+            ),
+            const SizedBox(width: AarastV3Space.x2),
+            Flexible(
+              child: Row(
+                key: const ValueKey('aarast-next-step-action'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      action,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        weight: JourneyType.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AarastV3Space.x1),
+                  Icon(
+                    Directionality.of(context) == TextDirection.rtl
+                        ? LucideIcons.arrowLeft
+                        : LucideIcons.arrowRight,
+                    size: 14,
+                    color: accent,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         Text(
           title,
@@ -130,8 +168,8 @@ class _JourneyNextStep extends StatelessWidget {
     );
     // Rashad 2026-11-17: at his phone's text size the button fell to its own
     // line and the card took a fifth of the screen. One row now: the whole
-    // card opens the step, and its action is said at the row's end in the
-    // card's colour, a pill that wraps rather than grows the card.
+    // card opens the step, and its action is said on the eyebrow's line in
+    // the card's colour.
     return Semantics(
       button: true,
       // The days drawn in the tile are heard here (the tile is skipped).
@@ -159,29 +197,6 @@ class _JourneyNextStep extends StatelessWidget {
               tile,
               const SizedBox(width: AarastV3Space.x3),
               Expanded(child: words),
-              const SizedBox(width: AarastV3Space.x2),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: _actionMaxWidth),
-                child: Container(
-                  key: const ValueKey('aarast-next-step-action'),
-                  padding: AarastV3Density.tagInsets,
-                  decoration: BoxDecoration(
-                    color: accent,
-                    borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-                  ),
-                  child: Text(
-                    action,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.onPrimary,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -189,10 +204,6 @@ class _JourneyNextStep extends StatelessWidget {
     );
   }
 }
-
-/// The action pill's widest: a long label wraps inside it, the step's words
-/// keep the rest of the row.
-const _actionMaxWidth = 112.0;
 
 /// «5 أيام»: the days left to the due payment, where the icon would be.
 class _DaysTile extends StatelessWidget {

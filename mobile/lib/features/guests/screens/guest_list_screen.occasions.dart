@@ -148,9 +148,10 @@ class _OccasionSummaryCard extends StatelessWidget {
                 Text(
                   parts.join(' · '),
                   key: const ValueKey('guests-summary-parts'),
+                  // Rashad's phone 2026-11-17: in bold it spoke louder
+                  // than «كم بيحضر؟» beside the figure.
                   style: JourneyType.of(
                     JourneyType.bodySmall,
-                    weight: JourneyType.bold,
                     color: AarastV3Color.onPrimary,
                   ),
                 ),

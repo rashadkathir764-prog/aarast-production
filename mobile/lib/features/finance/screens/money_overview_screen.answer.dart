@@ -273,9 +273,10 @@ class _ShareHero extends StatelessWidget {
             Text(
               chips.join(' · '),
               key: const ValueKey('money-share-parts'),
+              // Rashad's phone 2026-11-17: in bold it spoke louder than
+              // «باقي عليك» beside the figure; a detail stays under it.
               style: JourneyType.of(
                 JourneyType.bodySmall,
-                weight: JourneyType.bold,
                 color: AarastV3Color.onPrimary,
               ),
             ),

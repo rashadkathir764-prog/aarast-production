@@ -330,7 +330,12 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // hand covers each due on its day, then the promise left out of it.
     // D114: his share holds the mahr, «باقي عليك», never «من العرس».
     walk.expectSee(p.say('باقي عليك', 'باقي عليكِ'));
-    walk.expectSee(p.left, why: 'نصيب صاحب الخطة رقم واحد أول الملخص');
+    // Rashad 2026-11-17: the home's hero; the figure is drawn big on its
+    // own («1.6») with its unit beside it («مليون ر.ي»).
+    walk.expectSee(
+      p.left.split(' ').first,
+      why: 'نصيب صاحب الخطة رقم واحد أول الملخص',
+    );
     // His share splits into the mahr's rest and his agreements; hers is
     // one part, said once.
     if (p.bride) {
@@ -342,7 +347,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // 2026-11-17: the card says the verdict as a tag; the sentence and what
     // it rests on are in «كيف حسبناها؟».
     walk.expectSee('تكفي', why: 'الحكم تحت الرقم مباشرة');
-    if (!await walk.tapKey('money-how-counted', wait: 2)) return;
+    // The verdict is the hero's saffron tag, and it opens how it counted.
+    if (!await walk.tapKey('money-cover', wait: 2)) return;
     walk.expectSee('معك ${p.inHand} مليون');
     walk.expectSee(
       'يكفي دفعاتك وسداد السلفة بمواعيدها',
@@ -505,8 +511,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // ------------------------------------------------------------ tasks
   await walk.step('d01_tasks', 'المهام: القائمة', () async {
     await walk.tab('المهام');
-    // Critique مه1: no «12 من 20» beside the chips; the title says it.
-    walk.expectNotSee('12 من 20', why: 'العدد يتكرر بدون اسم');
+    // Critique مه1: no bare «12 من 20» beside the chips. Rashad
+    // 2026-11-17: the hero says it once, with its name.
+    walk.expectSee('خلصت 12 من 20 مهمة', why: 'الهيرو يسمّي العدد');
     walk.expectSee('متأخرة');
     walk.expectSee(p.lateTask);
   });

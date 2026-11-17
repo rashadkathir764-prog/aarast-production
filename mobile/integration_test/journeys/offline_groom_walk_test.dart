@@ -21,7 +21,8 @@ void main() {
         await walk.waitFor(walk.text('الرئيسية'), seconds: 20);
         walk.expectSee('عرس محمد', why: 'الخطة من نسخة الجوال بلا خادم');
         walk.expectSee(
-          'ما نقدر نوصل للخادم الحين',
+          // The banner speaks people's words (no «الخادم», critique ب6).
+          'ما نقدر نوصل الحين',
           why: 'اللافتة تقول السبب المقيس لا «بدون نت»',
         );
         walk.expectNotSee(
@@ -36,7 +37,9 @@ void main() {
         await walk.tab('المال');
         // The summary's first figure, read from the phone's copy.
         walk.expectSee('باقي عليك', why: 'الملخص من نسخة الجوال');
-        walk.expectSee('1.6 مليون', why: 'رقم الملخص نفسه بلا خادم');
+        // The hero draws the figure big on its own, its unit beside it.
+        walk.expectSee('1.6', why: 'رقم الملخص نفسه بلا خادم');
+        walk.expectSee('مليون ر.ي');
         walk.expectNotSee('أعد المحاولة');
         walk.expectNotSee('جرّب مرة ثانية');
       });
@@ -59,6 +62,8 @@ void main() {
 
       await walk.step('o05_add_guest', 'إضافة ضيف بدون خادم', () async {
         await walk.tapAddGuest();
+        // D116: the tab's «+» offers what it adds; a guest is the first.
+        if (!await walk.tapKey('guests-add-guest', wait: 2)) return;
         await walk.enterField('الاسم', 'ضيف بدون نت');
         // The receipt (4.2s, shown once the save and the way back are done)
         // sits over the header's search until it goes.

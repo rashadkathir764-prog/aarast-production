@@ -22,7 +22,7 @@ void main() {
         await walk.settle(seconds: 6);
         walk.expectSee('عرس محمد');
         walk.expectNotSee(
-          'ما نقدر نوصل للخادم الحين',
+          'ما نقدر نوصل الحين',
           why: 'أول رد من الخادم ينهي الحالة',
         );
       });

@@ -54,39 +54,53 @@ class AarastPlanNavigationBar extends StatelessWidget {
     final extraHeight = ((textScale - 1).clamp(0.0, 1.0) * _navigationGrowth)
         .toDouble();
 
-    // The bar sits on the screen's bottom edge, as the phone's own bars do:
-    // white to the edge, one hairline above it, and the system's gesture
-    // area inside its white. Every tab is the same width and the same shape,
-    // its icon over its name; the chosen one is told by the plan's colour and
-    // a soft pill behind its icon, so the row never jumps when a tab changes.
+    // The bar speaks the app's own language: the shape of its sheets (white,
+    // 24 corners on top, resting on the bottom edge) and the selected fill of
+    // its switchers (the plan's colour, white words). Every tab is the same
+    // width with its icon over its name; the chosen one is filled, so the row
+    // never jumps when a tab changes.
     return Directionality(
       textDirection: TextDirection.rtl,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AarastV3Color.paper,
-          border: Border(top: BorderSide(color: AarastV3Color.line)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AarastV3Radius.sheet),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AarastV3Color.ink.withValues(alpha: 0.06),
+              blurRadius: AarastV3Space.x6,
+              offset: const Offset(0, -AarastV3Space.x1),
+            ),
+          ],
         ),
         child: SafeArea(
           top: false,
-          child: SizedBox(
-            height: _navigationHeight + extraHeight,
-            child: Row(
-              children: [
-                for (var index = 0; index < items.length; index++)
-                  Expanded(
-                    child: _PlanNavigationItem(
-                      item: items[index],
-                      active: activeIndex == index,
-                      color: planTabs
-                          ? JourneySection.values[index].colorOf(context)
-                          : context.accent.primary,
-                      soft: planTabs
-                          ? JourneySection.values[index].softOf(context)
-                          : context.accent.primarySoft,
-                      onTap: () => onSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              AarastV3Space.x2,
+              AarastV3Space.x1,
+            ),
+            child: SizedBox(
+              height: _navigationHeight + extraHeight,
+              child: Row(
+                children: [
+                  for (var index = 0; index < items.length; index++)
+                    Expanded(
+                      child: _PlanNavigationItem(
+                        item: items[index],
+                        active: activeIndex == index,
+                        color: planTabs
+                            ? JourneySection.values[index].colorOf(context)
+                            : context.accent.primary,
+                        onTap: () => onSelected(index),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -95,17 +109,11 @@ class AarastPlanNavigationBar extends StatelessWidget {
   }
 }
 
-/// The bar's own height above the system's gesture area: a 32 pill, a 4
-/// step and a 12 name between 8 above and 8 below, every tab a full touch
-/// target (D74).
-const _navigationHeight = 64.0;
+/// A tab's height: an icon over its name, a full touch target (D74).
+const _navigationHeight = 56.0;
 
 /// What the bar grows by at the largest text size the app allows.
 const _navigationGrowth = 18.0;
-
-/// The soft pill behind the chosen tab's icon.
-const _indicatorWidth = 56.0;
-const _indicatorHeight = 32.0;
 
 class _PlanNavigationItem extends StatelessWidget {
   const _PlanNavigationItem({
@@ -113,22 +121,20 @@ class _PlanNavigationItem extends StatelessWidget {
     required this.active,
     required this.onTap,
     required this.color,
-    required this.soft,
   });
 
   final AarastNavigationItem item;
   final bool active;
   final VoidCallback onTap;
 
-  /// The plan's colour: the chosen tab's icon and name.
+  /// The plan's colour: the chosen tab's fill.
   final Color color;
-
-  /// The plan's soft colour: the pill behind the chosen tab's icon.
-  final Color soft;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = active ? color : AarastV3Color.textMuted;
+    final foreground = active
+        ? AarastV3Color.onPrimary
+        : AarastV3Color.textMuted;
     final icon = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -163,49 +169,47 @@ class _PlanNavigationItem extends StatelessWidget {
       ],
     );
 
-    return AarastPressable(
-      onTap: onTap,
-      semanticLabel: item.badge > 0
-          ? '${item.label}، تنبيهات غير مقروءة: ${item.badge}'
-          : item.label,
-      selected: active,
-      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              key: ValueKey('${item.label}-$active'),
-              duration: AppTheme.motionFast,
-              curve: AppTheme.motionCurve,
-              width: _indicatorWidth,
-              height: _indicatorHeight,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: active ? soft : soft.withValues(alpha: 0),
-                borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-              ),
-              child: icon,
-            ),
-            const SizedBox(height: AarastV3Space.x1),
-            // A tab name shrinks a little before it is ever cut.
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  style: JourneyType.of(
-                    JourneyType.label,
-                    weight: active ? JourneyType.bold : FontWeight.w500,
-                    color: active ? color : AarastV3Color.textMuted,
-                    height: 1.2,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.half),
+      child: AarastPressable(
+        onTap: onTap,
+        semanticLabel: item.badge > 0
+            ? '${item.label}، تنبيهات غير مقروءة: ${item.badge}'
+            : item.label,
+        selected: active,
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+        child: AnimatedContainer(
+          key: ValueKey('${item.label}-$active'),
+          duration: AppTheme.motionFast,
+          curve: AppTheme.motionCurve,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: active ? color : color.withValues(alpha: 0),
+            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              const SizedBox(height: AarastV3Space.x1),
+              // A tab name shrinks a little before it is ever cut.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    style: JourneyType.of(
+                      JourneyType.label,
+                      weight: active ? JourneyType.bold : FontWeight.w500,
+                      color: foreground,
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

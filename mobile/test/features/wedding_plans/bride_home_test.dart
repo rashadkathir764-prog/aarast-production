@@ -502,11 +502,11 @@ void main() {
     final pill = tester.widget<AnimatedContainer>(
       find.byKey(const ValueKey('الرئيسية-true')),
     );
-    // The chosen tab: her soft rose behind the icon, her rose on the name.
-    expect((pill.decoration! as BoxDecoration).color, AarastV3Color.roseSoft);
+    // The chosen tab is filled in her rose, its name in white on it.
+    expect((pill.decoration! as BoxDecoration).color, AarastV3Color.rose);
     expect(
       tester.widget<Text>(find.text('الرئيسية')).style!.color,
-      AarastV3Color.rose,
+      AarastV3Color.onPrimary,
     );
   });
 }

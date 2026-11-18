@@ -136,7 +136,6 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
     final color = week ? context.accent.night : AarastV3Color.saffron;
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: color,
       child: JourneyMoment(
         color: color,

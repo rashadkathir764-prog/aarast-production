@@ -173,7 +173,6 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
         provider.loadErrorMessage != null;
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,7 +344,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     }
     final contacts = _contacts;
     if (contacts == null) {
-      return const Center(child: AarastInlineSpinner(dimension: 28));
+      return const Center(
+        child: AarastInlineSpinner(dimension: AarastV3Icon.xl),
+      );
     }
     if (contacts.isEmpty) {
       return Center(
@@ -593,7 +594,7 @@ class _CandidateRow extends StatelessWidget {
               color: duplicate
                   ? AarastV3Color.textFaint
                   : context.accent.primary,
-              size: 36,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -603,7 +604,7 @@ class _CandidateRow extends StatelessWidget {
                   Text(
                     name,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                       color: duplicate
                           ? AarastV3Color.textMuted

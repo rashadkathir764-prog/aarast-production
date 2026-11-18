@@ -105,7 +105,6 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
   Widget build(BuildContext context) {
     final dark = context.accent.primaryDark;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       child: JourneyPage(
@@ -150,7 +149,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
             child: Text(
               'الدخول بنفس الرقم اللي وصلته الدعوة.',
               style: JourneyType.of(
-                JourneyType.bodySmall,
+                JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),
@@ -163,7 +162,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                 Text(
                   'ما في رابط؟',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -173,7 +172,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
                   style: JourneyType.of(
                     JourneyType.body,
                     color: AarastV3Color.textMuted,
-                    height: 1.5,
+                    height: AarastV3Line.reading,
                   ),
                 ),
                 JourneyTextAction(

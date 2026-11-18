@@ -44,7 +44,7 @@ class ProviderRequestCard extends StatelessWidget {
       children: [
         const Icon(
           LucideIcons.arrowLeftCircle,
-          size: 16,
+          size: AarastV3Icon.sm,
           color: AarastV3Color.primary,
         ),
         const SizedBox(width: AarastV3Space.x1),
@@ -52,7 +52,7 @@ class ProviderRequestCard extends StatelessWidget {
           child: Text(
             next,
             style: JourneyType.of(
-              JourneyType.detail,
+              JourneyType.small,
               weight: JourneyType.bold,
               color: AarastV3Color.primary,
             ),
@@ -87,7 +87,7 @@ class ProviderRequestCard extends StatelessWidget {
                 JourneyAvatar(
                   letter: name.characters.first,
                   color: color,
-                  size: 38,
+                  size: AarastV3Size.mark,
                 ),
                 const SizedBox(width: AarastV3Space.x2),
                 Expanded(
@@ -107,7 +107,7 @@ class ProviderRequestCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: JourneyType.of(
-                            JourneyType.label,
+                            JourneyType.small,
                             color: AarastV3Color.textMuted,
                           ),
                         ),
@@ -274,7 +274,7 @@ class ProviderEndedCard extends StatelessWidget {
                   Text(
                     title,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -282,9 +282,9 @@ class ProviderEndedCard extends StatelessWidget {
                     Text(
                       message,
                       style: JourneyType.of(
-                        JourneyType.detail,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
-                        height: 1.45,
+                        height: AarastV3Line.reading,
                       ),
                     ),
                   if (onRenew case final renew?) ...[

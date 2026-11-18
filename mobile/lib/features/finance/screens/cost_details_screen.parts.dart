@@ -61,7 +61,7 @@ class _CostAgreementCard extends StatelessWidget {
                             ? '••••'
                             : '${formatMoneyInputValue(total.round())} ${currencyLabelAr(currency)}',
                         style: JourneyType.of(
-                          JourneyType.display,
+                          JourneyType.pageTitle,
                           weight: JourneyType.bold,
                         ),
                       ),
@@ -88,7 +88,7 @@ class _CostAgreementCard extends StatelessWidget {
                         Text(
                           _plainAmount(context, left, currency),
                           style: JourneyType.of(
-                            JourneyType.title,
+                            JourneyType.lead,
                             weight: JourneyType.bold,
                             color: AarastV3Color.danger,
                           ),
@@ -165,7 +165,7 @@ class _PaymentTimeline extends StatelessWidget {
           for (var index = 0; index < entries.length; index++) ...[
             if (index > 0)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 16,
                 endIndent: 16,
                 color: AarastV3Color.line,
@@ -225,7 +225,7 @@ class _TimelineRow extends StatelessWidget {
                     Text(
                       entry.title,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: muted
                             ? AarastV3Color.textFaint
@@ -252,7 +252,7 @@ class _TimelineRow extends StatelessWidget {
                   child: Text(
                     amount,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                       color: muted
                           ? AarastV3Color.textFaint
@@ -285,14 +285,18 @@ class _Mark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 30,
-      height: 30,
+      width: AarastV3Size.mark,
+      height: AarastV3Size.mark,
       decoration: BoxDecoration(
         color: fill,
         shape: BoxShape.circle,
-        border: border == null ? null : Border.all(color: border!, width: 2.5),
+        border: border == null
+            ? null
+            : Border.all(color: border!, width: AarastV3Size.lineStrong),
       ),
-      child: icon == null ? null : Icon(icon, size: 16, color: iconColor),
+      child: icon == null
+          ? null
+          : Icon(icon, size: AarastV3Icon.sm, color: iconColor),
     );
   }
 }
@@ -332,7 +336,7 @@ class _CostFacts extends StatelessWidget {
                   ? null
                   : const Icon(
                       LucideIcons.chevronLeft,
-                      size: 18,
+                      size: AarastV3Icon.md,
                       color: AarastV3Color.textFaint,
                     ),
               onTap: cost.providerId == null
@@ -351,7 +355,7 @@ class _CostFacts extends StatelessWidget {
               subtitle: 'العرض المقبول',
               trailing: const Icon(
                 LucideIcons.chevronLeft,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textFaint,
               ),
               onTap: () => context.push(
@@ -411,7 +415,7 @@ class _CostMoreMenu extends StatelessWidget {
             value: true,
             child: Row(
               children: [
-                Icon(LucideIcons.pencil, size: 18),
+                Icon(LucideIcons.pencil, size: AarastV3Icon.md),
                 SizedBox(width: AarastV3Space.x2),
                 Flexible(child: Text('تعديل الاتفاق')),
               ],
@@ -424,7 +428,7 @@ class _CostMoreMenu extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.trash2,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.danger,
               ),
               const SizedBox(width: AarastV3Space.x2),

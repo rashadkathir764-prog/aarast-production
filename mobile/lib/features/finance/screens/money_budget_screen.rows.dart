@@ -48,7 +48,7 @@ class _ReserveBox extends StatelessWidget {
           Text(
             label,
             style: JourneyType.of(
-              JourneyType.label,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -176,7 +176,7 @@ class _AllocationRow extends StatelessWidget {
                   ? 0
                   : (share / total).clamp(0.0, 1.0).toDouble(),
               color: color,
-              height: 8,
+              height: AarastV3Size.bar,
             ),
             if (short)
               Padding(

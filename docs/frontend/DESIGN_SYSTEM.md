@@ -114,15 +114,53 @@ One system, one source (`aarast_v3_foundations.dart`, D74). The legacy
   `EdgeInsets.all(AarastV3Space.x4)`.
 - Radius roles `AarastV3Radius`: xs 6, control 12, surface 14, card 18,
   sheet 24 (the sheet shell keeps its 28 top), feature 24, pill 999.
-- Icons `AarastV3Icon`: 16 inline, 20 in a row or field, 24 lead.
-- Forms: one field (`AarastV3Field`). The kit's `JourneyTextField` /
-  `JourneyPickerField` and every Material field of the theme draw the same
-  white box, hairline that turns the plan's colour at 2 on focus, 14 corner,
-  same padding. Fields in a form are 12 apart.
-- Type scale `JourneyType` (for 360-400 wide phones): home count 52, count
-  34, question 25, tab title 24, card title 16.5, main action 16, running
-  text 14.5, secondary 12.5.
-- Touch targets are at least 48, the bottom bar's tabs included (bar 58).
+- Icons `AarastV3Icon`: 16 inline, 20 in a row or field, 24 lead, and 32,
+  40, 56 for art (an empty state, a picture's stand-in, the mark). No other
+  icon size.
+- Forms: one field (`JourneyFieldBox`, D118). Every field, typed
+  (`JourneyTextField`, with `validator:` inside a `Form`), picked
+  (`JourneyPickerField`), chosen from a list (`JourneyChoiceField`, a sheet
+  of choices) or a phone (`JourneyPhoneField`), is the same white box: a
+  hairline that turns the plan's colour at 2 on focus and coral on an
+  error, a 14 corner, the small label over the value, and one height, 56
+  (a typed amount 64). A tool at the end (the password eye) is a full 48
+  inside it. Fields in a form are 12 apart. There is no other field.
+- Type scale `JourneyType` (D118), nine roles for 360-400 wide phones:
+  home count 52, count 32, hero 24 (a tab's title, a question, a typed
+  amount), page title 19 (a pushed screen, a sheet, a figure in a card),
+  lead 16 (a card's title, a field's value, a main action), body 14.5,
+  small 12.5 (secondary lines, chips, a field's label), caption 11, badge 9.
+  It was twenty-two sizes half a point apart. Line heights `AarastV3Line`:
+  numeral 0.95, tight 1.2, normal 1.35, reading 1.5.
+
+### Sizes (D118)
+
+What a thing measures comes from the foundations, never from the screen. A
+test (`test/core/widgets/aarast_size_ratchet_test.dart`) fails on any height,
+width or size written as a number in `lib`, and on any named fixed height.
+
+- Controls `AarastV3Size`: touch 48; a field 56, an amount 64; a button and
+  the search bar 48; a chip drawn 36 in a 48 band; a list row at least 56; a
+  bottom-bar tab 56; a calendar day 56; the floating «+» 52.
+- Marks `AarastV3Size`: a face, an icon tile, a logo or a round button is 32
+  (dense row), 40 (row), 56 (card, empty state) or 72 (profile). A dot 8, a
+  swatch 12, a tick box 24, a bar 6, a rule 4, a line 1 and a strong line 2,
+  a sheet's handle 40 x 4.
+- Pictures `AarastV3Media`: a share of the width, never a fixed height. A
+  photo 16:9 (a cover, a gallery picture), a card photo 16:10, a band 2:1
+  (the sky, a moment), a slim band 5:2, a feature card 4:3. Art that carries
+  words is a `JourneyArtFrame`: at least its ratio tall, taller only when the
+  words need it. A preview (a whole invitation card) takes at most 40% of
+  the screen's height.
+- Page widths `AarastV3Density`: a page's column reads at most 560 wide
+  (`readableWidth`, the screen frame's default; no screen passes its own), a
+  centred panel 400 (`narrowWidth`).
+- A row's or a card's title takes at most two lines (`titleLines`) and a
+  secondary line one; the rest is read on the page it opens.
+- The bottom bar (D117) rests on the screen's edge in the shape of the app's
+  sheets; every tab is one width, its icon over its name, the chosen one
+  filled in the plan's colour.
+
 - Every sheet is `showJourneySheet` with a `JourneySheetBody`. A sheet
   wears the profile of the context that opens it; a screen whose own scope
   sits below its State passes `profile:`.
@@ -133,7 +171,7 @@ The start, saving the plan, signing in, invites and the provider's sign-up
 share one kit (`aarast_journey_entry.dart`) on top of the journey kit:
 
 - `JourneyStepBar` (back, and the three questions' progress: done full,
-  current half), `JourneyEntryQuestion` (question 25, help 15.5) and
+  current half), `JourneyEntryQuestion` (question at hero 24, help at lead 16) and
   `JourneyEntryActions` (main button, and a second way out that keeps its
   room so the button never moves).
 - `JourneyDoor` (72 high, 40 tile), `JourneyPersonaCard` (112 high, 96
@@ -154,10 +192,11 @@ share one kit (`aarast_journey_entry.dart`) on top of the journey kit:
   (router); an invite wears its plan's colour and speaks to the one invited
   in words that fit a man or a woman.
 
-No file in `lib` writes a spacing, radius or type-size number by hand: it
-takes a token, or names a fixed layout dimension (a cover's height, a label
-column's width) as a constant. The count is zero and a test keeps it zero
-(`test/core/widgets/aarast_design_ratchet_test.dart`).
+No file in `lib` writes a spacing, radius or type-size number by hand
+(`test/core/widgets/aarast_design_ratchet_test.dart`), nor a height, width or
+size (`aarast_size_ratchet_test.dart`, D118): it takes a token. A width that
+belongs to one layout (a label column) may be named, a fixed height may not.
+Both counts are zero and the tests keep them zero.
 
 ### Motion
 

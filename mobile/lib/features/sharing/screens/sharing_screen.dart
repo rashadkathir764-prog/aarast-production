@@ -388,7 +388,6 @@ class _SharingScreenState extends State<SharingScreen>
     if (gate != null) {
       // The sign-in panel scrolls on its own, under the header.
       return AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: Column(
           children: [
@@ -408,7 +407,6 @@ class _SharingScreenState extends State<SharingScreen>
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,
@@ -693,7 +691,11 @@ class _MemberRow extends StatelessWidget {
         padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
-            JourneyAvatar(letter: _letter(name), color: color, size: 42),
+            JourneyAvatar(
+              letter: _letter(name),
+              color: color,
+              size: AarastV3Size.mark,
+            ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(
@@ -738,7 +740,7 @@ class _MemberRow extends StatelessWidget {
             else
               const Icon(
                 LucideIcons.chevronLeft,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textFaint,
               ),
           ],
@@ -822,7 +824,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
             JourneyAvatar(
               letter: _letter(invite.name),
               color: widget.color,
-              size: 42,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -1016,7 +1018,7 @@ class _PresetCard extends StatelessWidget {
         padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: context.accent.primary),
+            Icon(icon, size: AarastV3Icon.md, color: context.accent.primary),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
               child: Column(

@@ -36,7 +36,7 @@ class _MoneyHeader extends StatelessWidget {
                 child: Text(
                   'المال',
                   style: JourneyType.of(
-                    JourneyType.display,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -141,8 +141,8 @@ class _MoneySettingsMenu extends StatelessWidget {
           dimension: AarastV3Space.x12,
           child: Center(
             child: Container(
-              width: 44,
-              height: 44,
+              width: AarastV3Size.mark,
+              height: AarastV3Size.mark,
               decoration: const BoxDecoration(
                 color: AarastV3Color.paper,
                 shape: BoxShape.circle,
@@ -151,7 +151,7 @@ class _MoneySettingsMenu extends StatelessWidget {
               // behind them were the budget and the receipts (2026-11-17).
               child: const Icon(
                 LucideIcons.moreHorizontal,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.ink,
               ),
             ),
@@ -172,7 +172,7 @@ class _MoneySettingsItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppTheme.brand),
+        Icon(icon, size: AarastV3Icon.md, color: AppTheme.brand),
         const SizedBox(width: AarastV3Space.x2),
         Flexible(
           child: Text(

@@ -173,7 +173,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final open = task != null && task.isOpen;
     final canLink = context.watch<FinanceProvider?>()?.canViewMoney ?? false;
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -404,7 +403,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         ? 'كل الخطوات خلصت'
                         : '${task.checklistDoneCount} من ${steps.length} جاهزة',
                     style: JourneyType.of(
-                      JourneyType.title,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                       color: context.accent.primary,
                     ),

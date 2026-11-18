@@ -89,7 +89,6 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: FutureBuilder<GuestSummary>(
         future: _summary,
@@ -233,7 +232,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
             Text(
               '${summary.confirmed} ${words.confirmed} من $total',
               style: JourneyType.of(
-                JourneyType.display,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -241,7 +240,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
             JourneyBar(
               value: summary.confirmed / total,
               color: context.accent.primary,
-              height: 10,
+              height: AarastV3Size.bar,
             ),
             // RA-MO-220: the hall and the caterer count people, the
             // confirmed with who comes with them.
@@ -261,7 +260,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
             Text(
               waiting,
               style: JourneyType.of(
-                JourneyType.detail,
+                JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),
@@ -289,7 +288,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
               Text(
                 '${event.counts.confirmed} ${words.confirmed} من ${event.counts.invited}',
                 style: JourneyType.of(
-                  JourneyType.title,
+                  JourneyType.lead,
                   weight: JourneyType.bold,
                 ),
               ),
@@ -306,7 +305,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                     '${event.counts.declined} ${words.declinedOf(event.counts.declined)}',
                 ].join(' · '),
                 style: JourneyType.of(
-                  JourneyType.detail,
+                  JourneyType.small,
                   color: AarastV3Color.textMuted,
                 ),
               ),

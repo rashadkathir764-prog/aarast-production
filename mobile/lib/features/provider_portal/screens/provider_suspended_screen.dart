@@ -37,7 +37,6 @@ class ProviderSuspendedScreen extends StatelessWidget {
     final showBookings = !bookingsKnown || upcomingBookings > 0;
     const keep = 'العرسان معتمدين عليك، كمّلها.';
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -82,7 +81,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
                             style: JourneyType.of(
                               JourneyType.body,
                               weight: JourneyType.bold,
-                              height: 1.5,
+                              height: AarastV3Line.reading,
                             ),
                           ),
                         ],
@@ -110,7 +109,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
                                 ? '${_weddings(upcomingBookings)}. $keep'
                                 : keep,
                             style: JourneyType.of(
-                              JourneyType.detail,
+                              JourneyType.small,
                               color: AarastV3Color.mint,
                             ),
                           ),

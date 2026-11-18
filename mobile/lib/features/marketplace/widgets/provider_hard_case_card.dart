@@ -172,14 +172,14 @@ class ProviderHardCaseCard extends StatelessWidget {
                   icon: providerServiceIcon(service),
                   color: context.accent.primary,
                   soft: context.accent.primarySoft,
-                  size: 40,
+                  size: AarastV3Size.mark,
                 ),
                 const SizedBox(width: AarastV3Space.x3),
                 Expanded(
                   child: Text(
                     quote.provider?.businessName ?? service,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),

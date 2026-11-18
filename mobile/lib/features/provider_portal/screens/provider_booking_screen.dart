@@ -55,7 +55,6 @@ class ProviderBookingScreen extends StatelessWidget {
             .firstOrNull ??
         quote.acceptedOffer;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ProviderCaseList(
         children: [
@@ -95,7 +94,7 @@ class ProviderBookingScreen extends StatelessWidget {
                       providerMoneyLabel(offer.amount, offer.currency),
                     ].join(' · '),
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -103,7 +102,10 @@ class ProviderBookingScreen extends StatelessWidget {
                     const SizedBox(height: AarastV3Space.x1),
                     Text(
                       offer.message!.trim(),
-                      style: JourneyType.of(JourneyType.body, height: 1.5),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        height: AarastV3Line.reading,
+                      ),
                     ),
                   ],
                   // B-18: what the customer recorded on this agreement in
@@ -143,13 +145,13 @@ class ProviderBookingScreen extends StatelessWidget {
                   const Icon(
                     LucideIcons.bell,
                     color: AarastV3Color.textMuted,
-                    size: 20,
+                    size: AarastV3Icon.md,
                   ),
                   const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
                       'نذكّرك أنت و$first قبل بأسبوع وبيوم',
-                      style: JourneyType.of(JourneyType.bodySmall),
+                      style: JourneyType.of(JourneyType.small),
                     ),
                   ),
                 ],
@@ -289,7 +291,6 @@ class ProviderBookingEndedScreen extends StatelessWidget {
         !info.closed &&
         info.asked.isEmpty;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ProviderCaseList(
         children: [
@@ -309,14 +310,14 @@ class ProviderBookingEndedScreen extends StatelessWidget {
                 Text(
                   headline,
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
                 Text(
                   line,
                   style: JourneyType.of(
-                    JourneyType.detail,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
@@ -341,7 +342,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
                   const Icon(
                     LucideIcons.calendarPlus,
                     color: AarastV3Color.mint,
-                    size: 20,
+                    size: AarastV3Icon.md,
                   ),
                   const SizedBox(width: AarastV3Space.x2),
                   Expanded(

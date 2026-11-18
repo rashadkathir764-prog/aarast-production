@@ -5,9 +5,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _joinArtHeight = 120.0;
-
 /// A sheet of options (the joining's category and city, p09's category):
 /// the picked id, or null when closed. Each option is keyed
 /// `$keyPrefix-<id>`.
@@ -72,8 +69,8 @@ class ProviderIdentityRow extends StatelessWidget {
       children: [
         ExcludeSemantics(
           child: Container(
-            width: 46,
-            height: 46,
+            width: AarastV3Size.mark,
+            height: AarastV3Size.mark,
             alignment: Alignment.center,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
@@ -83,8 +80,8 @@ class ProviderIdentityRow extends StatelessWidget {
             child: logoUrl?.trim().isNotEmpty == true
                 ? Image.network(
                     logoUrl!,
-                    width: 46,
-                    height: 46,
+                    width: AarastV3Size.mark,
+                    height: AarastV3Size.mark,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => _letter(letter),
                   )
@@ -154,12 +151,15 @@ class ProviderFactRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color),
+          Icon(icon, size: AarastV3Icon.md, color: color),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
-              style: JourneyType.of(JourneyType.body, height: 1.45),
+              style: JourneyType.of(
+                JourneyType.body,
+                height: AarastV3Line.reading,
+              ),
             ),
           ),
         ],
@@ -195,13 +195,14 @@ class ProviderPreviewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(
-              height: _joinArtHeight,
+            // D118: a slim band of the card's width.
+            const AspectRatio(
+              aspectRatio: AarastV3Media.slimBand,
               child: ColoredBox(
                 color: AarastV3Color.textFaint,
                 child: Icon(
                   LucideIcons.image,
-                  size: 36,
+                  size: AarastV3Icon.feature,
                   color: AarastV3Color.line,
                 ),
               ),
@@ -268,7 +269,7 @@ class ProviderStateHeading extends StatelessWidget {
             icon: icon,
             color: color,
             soft: soft,
-            size: 64,
+            size: AarastV3Size.markLarge,
             radius: 24,
           ),
         ),
@@ -279,7 +280,7 @@ class ProviderStateHeading extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.display,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
             ),
           ),
@@ -291,7 +292,7 @@ class ProviderStateHeading extends StatelessWidget {
           style: JourneyType.of(
             JourneyType.body,
             color: AarastV3Color.textMuted,
-            height: 1.5,
+            height: AarastV3Line.reading,
           ),
         ),
         const SizedBox(height: AarastV3Space.x4),

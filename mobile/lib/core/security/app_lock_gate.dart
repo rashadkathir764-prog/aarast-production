@@ -142,7 +142,9 @@ class _AppLockScreenState extends State<AppLockScreen> {
               AarastV3Space.x6,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
+              constraints: const BoxConstraints(
+                maxWidth: AarastV3Density.narrowWidth,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -151,14 +153,14 @@ class _AppLockScreenState extends State<AppLockScreen> {
                   JourneyAvatar(
                     letter: name.isEmpty ? '' : name.characters.first,
                     color: AarastV3Color.saffron,
-                    size: 60,
+                    size: AarastV3Size.markLarge,
                   ),
                   const SizedBox(height: AarastV3Space.x3),
                   Text(
                     title,
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
-                      JourneyType.display,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                       color: error ? AarastV3Color.danger : AarastV3Color.text,
                     ),
@@ -239,7 +241,7 @@ class _ForgotConfirm extends StatelessWidget {
         children: [
           Text(
             context.say('نسيت الرمز؟', 'نسيتِ الرمز؟'),
-            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
           const SizedBox(height: AarastV3Space.x1),
           Text(
@@ -330,8 +332,8 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
             children: [
               for (var index = 0; index < AppLockController.codeLength; index++)
                 Container(
-                  width: 18,
-                  height: 18,
+                  width: AarastV3Icon.sm,
+                  height: AarastV3Icon.sm,
                   margin: const EdgeInsets.symmetric(
                     horizontal: AarastV3Space.x2,
                   ),
@@ -340,7 +342,10 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
                     color: index < _code.length || widget.failed
                         ? dot
                         : Colors.transparent,
-                    border: Border.all(color: dot, width: 2),
+                    border: Border.all(
+                      color: dot,
+                      width: AarastV3Size.lineStrong,
+                    ),
                   ),
                 ),
             ],
@@ -384,7 +389,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
                             child: Center(
                               child: Icon(
                                 LucideIcons.delete,
-                                size: 26,
+                                size: AarastV3Icon.lg,
                                 color: _ink,
                               ),
                             ),
@@ -427,7 +432,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
           : const EdgeInsets.all(AarastV3Space.x1),
       child: Container(
         width: widget.dark ? 78 : 74,
-        height: widget.dark ? 78 : 62,
+        height: widget.dark ? AarastV3Size.markHero : AarastV3Size.markLarge,
         decoration: BoxDecoration(
           color: fill,
           borderRadius: BorderRadius.circular(widget.dark ? 39 : 22),
@@ -448,7 +453,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
           child: Text(
             digit,
             style: JourneyType.of(
-              JourneyType.figure,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
               color: _ink,
             ),

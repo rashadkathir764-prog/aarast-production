@@ -324,7 +324,7 @@ class _ErrorLine extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.alertCircle,
-            size: 16,
+            size: AarastV3Icon.sm,
             color: AarastV3Color.danger,
           ),
           const SizedBox(width: AarastV3Space.x1),

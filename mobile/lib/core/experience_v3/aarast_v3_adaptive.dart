@@ -573,7 +573,10 @@ class AarastV3AttentionSurface extends StatelessWidget {
                         ),
                       ),
                     ),
-                    icon: const Icon(LucideIcons.arrowLeft, size: 16),
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      size: AarastV3Icon.sm,
+                    ),
                     label: Text(
                       actionLabel!,
                       maxLines: 1,
@@ -586,8 +589,8 @@ class AarastV3AttentionSurface extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 3,
-                  height: 48,
+                  width: AarastV3Size.rule,
+                  height: AarastV3Size.touch,
                   decoration: BoxDecoration(
                     color: colors.foreground,
                     borderRadius: BorderRadius.circular(AarastV3Radius.pill),
@@ -595,14 +598,18 @@ class AarastV3AttentionSurface extends StatelessWidget {
                 ),
                 const SizedBox(width: AarastV3Space.x3),
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: AarastV3Size.mark,
+                  height: AarastV3Size.mark,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: colors.background,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 18, color: colors.foreground),
+                  child: Icon(
+                    icon,
+                    size: AarastV3Icon.md,
+                    color: colors.foreground,
+                  ),
                 ),
                 const SizedBox(width: AarastV3Space.x3),
                 Expanded(
@@ -636,7 +643,7 @@ class AarastV3AttentionSurface extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AarastV3Color.textMuted,
                           fontWeight: FontWeight.w600,
-                          height: 1.35,
+                          height: AarastV3Line.normal,
                         ),
                       ),
                     ],
@@ -733,7 +740,7 @@ class AarastV3TrustLine extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: colors.foreground),
+          Icon(icon, size: AarastV3Icon.sm, color: colors.foreground),
           const SizedBox(width: AarastV3Space.x1),
           Flexible(
             child: Text(
@@ -843,8 +850,8 @@ class AarastV3StateSurface extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: AarastV3Size.mark,
+                  height: AarastV3Size.mark,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: visual.background,
@@ -852,7 +859,7 @@ class AarastV3StateSurface extends StatelessWidget {
                   ),
                   child: Icon(
                     icon ?? visual.icon,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: visual.foreground,
                   ),
                 ),
@@ -869,7 +876,7 @@ class AarastV3StateSurface extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: AarastV3Color.ink,
                           fontWeight: FontWeight.w900,
-                          height: 1.2,
+                          height: AarastV3Line.tight,
                         ),
                       ),
                       const SizedBox(height: AarastV3Space.x1),
@@ -880,7 +887,7 @@ class AarastV3StateSurface extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AarastV3Color.textMuted,
                           fontWeight: FontWeight.w600,
-                          height: 1.4,
+                          height: AarastV3Line.normal,
                         ),
                       ),
                     ],

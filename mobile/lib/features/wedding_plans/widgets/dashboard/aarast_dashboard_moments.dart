@@ -113,7 +113,7 @@ class _StagePath extends StatelessWidget {
             Expanded(
               child: Container(
                 key: ValueKey('aarast-dashboard-moment-$index'),
-                height: 6,
+                height: AarastV3Size.bar,
                 decoration: BoxDecoration(
                   color: index == current
                       ? AarastV3Color.saffron

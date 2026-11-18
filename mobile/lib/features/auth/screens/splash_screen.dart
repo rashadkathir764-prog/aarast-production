@@ -80,7 +80,6 @@ class _SplashScreenState extends State<SplashScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: AarastScreenFrame(
-        maxWidth: 560,
         backgroundColor: night,
         backgroundDecoration: BoxDecoration(color: night),
         child: JourneyProfileScope(
@@ -99,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const JourneyWordmark(
-                          size: 56,
+                          size: AarastV3Icon.hero,
                           color: AarastV3Color.onPrimary,
                         ),
                         const SizedBox(height: AarastV3Space.x3),
@@ -107,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen>
                           'عرسك من أول ريال إلى آخر دفعة',
                           textAlign: TextAlign.center,
                           style: JourneyType.of(
-                            JourneyType.bodyLarge,
+                            JourneyType.lead,
                             color: AarastV3Color.onPrimaryMuted,
                           ),
                         ),

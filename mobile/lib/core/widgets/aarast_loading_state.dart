@@ -39,7 +39,7 @@ class AarastLoadingState extends StatelessWidget {
 /// AarastButton.isLoading وهذا للأيقونية.
 class AarastInlineSpinner extends StatelessWidget {
   const AarastInlineSpinner({
-    this.dimension = 18,
+    this.dimension = AarastV3Icon.md,
     this.color = AppTheme.brand,
     super.key,
   });
@@ -52,7 +52,7 @@ class AarastInlineSpinner extends StatelessWidget {
     return SizedBox.square(
       dimension: dimension,
       child: CircularProgressIndicator(
-        strokeWidth: 2,
+        strokeWidth: AarastV3Size.lineStrong,
         valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
@@ -78,7 +78,7 @@ class AarastScreenLoading extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const AarastInlineSpinner(
-                dimension: 28,
+                dimension: AarastV3Icon.xl,
                 color: AarastV3Color.primary,
               ),
               if (label != null) ...[

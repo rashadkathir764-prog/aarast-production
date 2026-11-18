@@ -52,7 +52,7 @@ class _JourneyHomeHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
-                    JourneyType.display,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -111,7 +111,7 @@ class _JourneyHomeHeader extends StatelessWidget {
                 child: JourneyAvatar(
                   letter: name.isEmpty ? '' : name.characters.first,
                   color: context.accent.primarySoft,
-                  size: 40,
+                  size: AarastV3Size.mark,
                 ),
               ),
             ),
@@ -233,7 +233,7 @@ class _JourneyHomeHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AarastV3Space.x1),
-                const Icon(LucideIcons.info, size: 14),
+                const Icon(LucideIcons.info, size: AarastV3Icon.sm),
               ],
             ),
           ),
@@ -268,7 +268,7 @@ class _JourneyHomeHero extends StatelessWidget {
               Text(
                 'الموعد لسا ما ثبت',
                 style: JourneyType.of(
-                  JourneyType.title,
+                  JourneyType.lead,
                   weight: JourneyType.bold,
                   color: AarastV3Color.onPrimary,
                 ),
@@ -289,7 +289,7 @@ class _JourneyHomeHero extends StatelessWidget {
         const Icon(
           LucideIcons.chevronLeft,
           color: AarastV3Color.onPrimary,
-          size: 20,
+          size: AarastV3Icon.md,
         ),
       ],
     );
@@ -392,7 +392,7 @@ class _AfterWeddingHero extends StatelessWidget {
                                 JourneyType.count,
                                 weight: JourneyType.bold,
                                 color: AarastV3Color.onPrimary,
-                                height: 1,
+                                height: AarastV3Line.numeral,
                               ),
                             ),
                           ),
@@ -404,7 +404,7 @@ class _AfterWeddingHero extends StatelessWidget {
                                 ? 'باقي عليك'
                                 : '${left.millionUnit ?? left.currency} باقي عليك${debt.loansLeft > 0 ? ' مع السلف' : ''}',
                             style: JourneyType.of(
-                              JourneyType.title,
+                              JourneyType.lead,
                               weight: JourneyType.bold,
                               color: AarastV3Color.onPrimary,
                             ),
@@ -425,7 +425,7 @@ class _AfterWeddingHero extends StatelessWidget {
                         if (piece > 0) const SizedBox(width: AarastV3Space.x1),
                         Expanded(
                           child: Container(
-                            height: 6,
+                            height: AarastV3Size.bar,
                             decoration: BoxDecoration(
                               color: piece < filled
                                   ? AarastV3Color.saffron
@@ -476,7 +476,7 @@ class _RateProvidersCard extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 40,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -486,7 +486,7 @@ class _RateProvidersCard extends StatelessWidget {
                 Text(
                   context.say('قيّم مزودينك', 'قيّمي مزودينك'),
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),

@@ -56,7 +56,6 @@ class ParticipantLockedScreen extends StatelessWidget {
     };
     return AarastScreenFrame(
       key: ValueKey('participant-locked-${section.name}'),
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -74,7 +73,7 @@ class ParticipantLockedScreen extends StatelessWidget {
               icon: LucideIcons.lock,
               color: section.colorOf(context),
               soft: section.softOf(context),
-              size: 64,
+              size: AarastV3Size.markLarge,
               radius: 26,
             ),
           ),
@@ -85,7 +84,7 @@ class ParticipantLockedScreen extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: JourneyType.of(
-                JourneyType.display,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -97,7 +96,7 @@ class ParticipantLockedScreen extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,
-              height: 1.5,
+              height: AarastV3Line.reading,
             ),
           ),
         ],

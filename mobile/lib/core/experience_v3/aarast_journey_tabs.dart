@@ -33,7 +33,7 @@ class JourneyTabSwitch extends StatelessWidget {
     // touched in 48; the selected fill keeps its size, centred.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-      constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+      constraints: const BoxConstraints(minHeight: AarastV3Size.touch),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(AarastV3Radius.surface),
@@ -79,7 +79,7 @@ class JourneyTabSwitch extends StatelessWidget {
                                 labels[index],
                                 maxLines: 1,
                                 style: JourneyType.of(
-                                  JourneyType.detail,
+                                  JourneyType.small,
                                   weight: JourneyType.bold,
                                   color: index == selected
                                       ? AarastV3Color.onPrimary

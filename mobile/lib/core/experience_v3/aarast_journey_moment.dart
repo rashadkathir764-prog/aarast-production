@@ -7,9 +7,6 @@ import 'aarast_journey.dart';
 import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _momentArtHeight = 200.0;
-
 /// A full-screen moment between stages of the journey (prototype
 /// `v3/touches.dart` `_moment`): the qamariya arcs and confetti on top, a
 /// short eyebrow, a big title, a line under it, the facts in a glass box
@@ -60,8 +57,9 @@ class JourneyMoment extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(
-                        height: _momentArtHeight,
+                      // D118: the art is a band of the width, not 200.
+                      AspectRatio(
+                        aspectRatio: AarastV3Media.band,
                         child: Stack(
                           children: [
                             if (picture case final picture?)
@@ -106,7 +104,7 @@ class JourneyMoment extends StatelessWidget {
                           title,
                           textAlign: TextAlign.center,
                           style: JourneyType.of(
-                            JourneyType.display,
+                            JourneyType.pageTitle,
                             weight: JourneyType.bold,
                             color: AarastV3Color.onPrimary,
                           ),
@@ -179,7 +177,11 @@ class JourneyGlassRows extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
                 child: Row(
                   children: [
-                    Icon(icon, size: 19, color: AarastV3Color.onPrimary),
+                    Icon(
+                      icon,
+                      size: AarastV3Icon.md,
+                      color: AarastV3Color.onPrimary,
+                    ),
                     const SizedBox(width: AarastV3Space.x3),
                     Expanded(
                       child: Text(

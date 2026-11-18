@@ -203,11 +203,8 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
     );
   }
 
-  Widget _framed(Widget moment) => AarastScreenFrame(
-    maxWidth: 520,
-    backgroundColor: context.accent.primary,
-    child: moment,
-  );
+  Widget _framed(Widget moment) =>
+      AarastScreenFrame(backgroundColor: context.accent.primary, child: moment);
 
   void _close() {
     if (context.canPop()) {

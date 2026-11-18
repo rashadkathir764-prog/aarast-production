@@ -105,7 +105,6 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
     final reached = reachability?.lastReachedAt;
     final failures = _recentFailures(context);
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -226,7 +225,11 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
 
   Widget _line(IconData icon, String text, {Color? color}) => Row(
     children: [
-      Icon(icon, size: 18, color: color ?? AarastV3Color.textMuted),
+      Icon(
+        icon,
+        size: AarastV3Icon.md,
+        color: color ?? AarastV3Color.textMuted,
+      ),
       const SizedBox(width: AarastV3Space.x2),
       Expanded(
         child: Text(

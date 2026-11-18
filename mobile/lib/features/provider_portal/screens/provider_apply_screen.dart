@@ -144,7 +144,6 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
 
   Widget _loading() {
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -173,7 +172,6 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         if (!didPop) _previous();
       },
       child: AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         resizeToAvoidBottomInset: true,
         child: Column(

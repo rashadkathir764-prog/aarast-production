@@ -76,7 +76,6 @@ class _ParticipantPlanStateScreenState
     final unasked = _refreshed && !controller.lastRefreshAnswered;
     final removed = path == null && _refreshed && !unasked;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -173,7 +172,7 @@ class _StateCard extends StatelessWidget {
             icon: icon,
             color: AarastV3Color.textMuted,
             soft: AarastV3Color.line,
-            size: 40,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -183,16 +182,16 @@ class _StateCard extends StatelessWidget {
                 Text(
                   title,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
                 Text(
                   message,
                   style: JourneyType.of(
-                    JourneyType.detail,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
-                    height: 1.45,
+                    height: AarastV3Line.reading,
                   ),
                 ),
               ],

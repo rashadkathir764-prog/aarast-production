@@ -65,7 +65,6 @@ class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
     final quote = _quoteOf(dashboard);
     if (quote == null) {
       return AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: ListView(
           padding: AarastV3Density.pageInsets,
@@ -122,7 +121,6 @@ class _NewRequest extends StatelessWidget {
     final showHijri = context.watch<DevicePreferences?>()?.showHijri ?? true;
     final message = quote.message?.trim() ?? '';
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -140,7 +138,7 @@ class _NewRequest extends StatelessWidget {
                     JourneyAvatar(
                       letter: name.characters.first,
                       color: AarastV3Color.primary,
-                      size: 40,
+                      size: AarastV3Size.mark,
                     ),
                     const SizedBox(width: AarastV3Space.x3),
                     Expanded(
@@ -163,7 +161,10 @@ class _NewRequest extends StatelessWidget {
                     padding: const EdgeInsets.all(AarastV3Space.x3),
                     child: Text(
                       '«$message»',
-                      style: JourneyType.of(JourneyType.body, height: 1.6),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        height: AarastV3Line.reading,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AarastV3Space.x2),
@@ -315,7 +316,6 @@ class _Answered extends StatelessWidget {
     final renew = quote.pendingOffer == null && quote.expiredOffer != null;
     final line = providerRequestLine(quote);
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ProviderCaseList(
         children: [
@@ -354,7 +354,7 @@ class _Answered extends StatelessWidget {
                     '${providerMoneyLabel(offer.amount, offer.currency)}'
                     ' · نسخة ${offer.versionNo}',
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),
@@ -362,7 +362,10 @@ class _Answered extends StatelessWidget {
                     const SizedBox(height: AarastV3Space.x2),
                     Text(
                       offer.message!.trim(),
-                      style: JourneyType.of(JourneyType.body, height: 1.5),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        height: AarastV3Line.reading,
+                      ),
                     ),
                   ],
                   if (offer.validUntil case final until? when canChange) ...[
@@ -371,14 +374,14 @@ class _Answered extends StatelessWidget {
                       children: [
                         const Icon(
                           LucideIcons.clock,
-                          size: 18,
+                          size: AarastV3Icon.md,
                           color: AarastV3Color.textMuted,
                         ),
                         const SizedBox(width: AarastV3Space.x2),
                         Expanded(
                           child: Text(
                             _validityLine(until.toLocal(), renew),
-                            style: JourneyType.of(JourneyType.bodySmall),
+                            style: JourneyType.of(JourneyType.small),
                           ),
                         ),
                       ],

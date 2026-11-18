@@ -104,22 +104,19 @@ class JourneyListState extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: AarastV3Size.markLarge,
+            height: AarastV3Size.markLarge,
             decoration: BoxDecoration(
               color: soft,
               borderRadius: BorderRadius.circular(AarastV3Radius.card),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: AarastV3Icon.xl),
           ),
           const SizedBox(height: AarastV3Space.x3),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: JourneyType.of(
-              JourneyType.bodyLarge,
-              weight: JourneyType.bold,
-            ),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
           if (phase == JourneyListPhase.error && errorMessage != null ||
               phase == JourneyListPhase.empty && emptyMessage != null) ...[
@@ -193,7 +190,7 @@ class JourneyListNotice extends StatelessWidget {
               children: [
                 Icon(
                   offline ? LucideIcons.wifiOff : LucideIcons.alertTriangle,
-                  size: 18,
+                  size: AarastV3Icon.md,
                   color: color,
                 ),
                 const SizedBox(width: AarastV3Space.x2),
@@ -237,7 +234,7 @@ class _LoadingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: AarastV3Size.row,
       decoration: BoxDecoration(
         color: AarastV3Color.line,
         borderRadius: BorderRadius.circular(AarastV3Radius.surface),

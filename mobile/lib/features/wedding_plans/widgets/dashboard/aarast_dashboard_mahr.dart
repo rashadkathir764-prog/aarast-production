@@ -196,7 +196,7 @@ class _MahrAgreementCard extends StatelessWidget {
                   child: JourneyBar(
                     value: ratio,
                     color: context.accent.primary,
-                    height: 6,
+                    height: AarastV3Size.bar,
                   ),
                 ),
               ],

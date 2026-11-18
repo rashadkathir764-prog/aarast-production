@@ -1,9 +1,6 @@
 part of 'aarast_dashboard_view.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
-const _weekStripHeight = 330.0;
-
-/// A fixed dimension of this layout, not a spacing step (D74).
 const _weekDayLabelWidth = 84.0;
 
 // The wedding week (b04, with y12's past nights) and the wedding day (b05),
@@ -66,129 +63,112 @@ class _WeddingSkyHero extends StatelessWidget {
         borderRadius: BorderRadius.circular(AarastV3Radius.feature),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-          child: SizedBox(
-            height: _weekStripHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                JourneyWeddingSky(
-                  strands: 7,
-                  lit: lit,
-                  fireAlpha: day ? 0.9 : 0.45,
-                  bursts: day
-                      ? [
-                          (
-                            const Offset(0.15, 0.14),
-                            AarastV3Color.saffron,
-                            46.0,
-                          ),
-                          (const Offset(0.85, 0.12), JourneyArt.warm, 52.0),
-                          (const Offset(0.50, 0.34), accent.primaryMid, 34.0),
-                          (
-                            const Offset(0.88, 0.45),
-                            AarastV3Color.saffron,
-                            30.0,
-                          ),
-                        ]
-                      : const [
-                          (Offset(0.16, 0.16), AarastV3Color.saffron, 34.0),
-                          (Offset(0.84, 0.13), JourneyArt.warm, 38.0),
-                        ],
-                  base: accent.primaryDark,
-                ),
-                PositionedDirectional(
-                  start: 20,
-                  end: 20,
-                  bottom: 20,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // As on b01/b02: the tag sits on the count's row when the
-                      // phone is wide enough, else above the moments.
-                      final scale = MediaQuery.textScalerOf(context).scale(1);
-                      final wide = constraints.maxWidth / scale >= 300;
-                      final tag = JourneyTag(
-                        label: day ? 'يوم العرس' : 'أسبوع العرس',
-                        color: AarastV3Color.ink,
-                        soft: AarastV3Color.saffron,
-                      );
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              // The count keeps its size; only a very narrow
-                              // card scales it down.
-                              if (showCount) ...[
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxWidth: constraints.maxWidth * 0.45,
-                                  ),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: AlignmentDirectional.bottomStart,
-                                    child: Text(
-                                      count,
-                                      style: JourneyType.of(
-                                        day ? 50 : JourneyType.homeCount,
-                                        weight: JourneyType.bold,
-                                        color: AarastV3Color.onPrimary,
-                                        height: 0.95,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AarastV3Space.x2),
-                              ],
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: AarastV3Space.x1,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title,
-                                        style: JourneyType.of(
-                                          JourneyType.title,
-                                          weight: JourneyType.bold,
-                                          color: AarastV3Color.onPrimary,
-                                        ),
-                                      ),
-                                      Text(
-                                        line,
-                                        style: JourneyType.of(
-                                          JourneyType.detail,
-                                          color: JourneyArt.warm,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+          // D118: four by three of the width, taller only when its words
+          // need it; it was 330 on every phone.
+          child: JourneyArtFrame(
+            ratio: AarastV3Media.feature,
+            art: JourneyWeddingSky(
+              strands: 7,
+              lit: lit,
+              fireAlpha: day ? 0.9 : 0.45,
+              bursts: day
+                  ? [
+                      (const Offset(0.15, 0.14), AarastV3Color.saffron, 46.0),
+                      (const Offset(0.85, 0.12), JourneyArt.warm, 52.0),
+                      (const Offset(0.50, 0.34), accent.primaryMid, 34.0),
+                      (const Offset(0.88, 0.45), AarastV3Color.saffron, 30.0),
+                    ]
+                  : const [
+                      (Offset(0.16, 0.16), AarastV3Color.saffron, 34.0),
+                      (Offset(0.84, 0.13), JourneyArt.warm, 38.0),
+                    ],
+              base: accent.primaryDark,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // As on b01/b02: the tag sits on the count's row when the
+                // phone is wide enough, else above the moments.
+                final scale = MediaQuery.textScalerOf(context).scale(1);
+                final wide = constraints.maxWidth / scale >= 300;
+                final tag = JourneyTag(
+                  label: day ? 'يوم العرس' : 'أسبوع العرس',
+                  color: AarastV3Color.ink,
+                  soft: AarastV3Color.saffron,
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // The count keeps its size; only a very narrow
+                        // card scales it down.
+                        if (showCount) ...[
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth * 0.45,
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.bottomStart,
+                              child: Text(
+                                count,
+                                style: JourneyType.of(
+                                  day ? 50 : JourneyType.homeCount,
+                                  weight: JourneyType.bold,
+                                  color: AarastV3Color.onPrimary,
+                                  height: AarastV3Line.numeral,
                                 ),
                               ),
-                              if (wide) ...[
-                                const SizedBox(width: AarastV3Space.x2),
-                                tag,
-                              ],
-                            ],
-                          ),
-                          if (!wide) ...[
-                            const SizedBox(height: AarastV3Space.x2),
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: tag,
                             ),
-                          ],
-                          const SizedBox(height: AarastV3Space.x3),
-                          _StagePath(current: day ? 3 : 2),
+                          ),
+                          const SizedBox(width: AarastV3Space.x2),
                         ],
-                      );
-                    },
-                  ),
-                ),
-              ],
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AarastV3Space.x1,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: JourneyType.of(
+                                    JourneyType.lead,
+                                    weight: JourneyType.bold,
+                                    color: AarastV3Color.onPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  line,
+                                  style: JourneyType.of(
+                                    JourneyType.small,
+                                    color: JourneyArt.warm,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (wide) ...[
+                          const SizedBox(width: AarastV3Space.x2),
+                          tag,
+                        ],
+                      ],
+                    ),
+                    if (!wide) ...[
+                      const SizedBox(height: AarastV3Space.x2),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: tag,
+                      ),
+                    ],
+                    const SizedBox(height: AarastV3Space.x3),
+                    _StagePath(current: day ? 3 : 2),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -274,7 +254,7 @@ class _WeekRow extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 64,
+            width: AarastV3Size.markLarge,
             padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
             decoration: BoxDecoration(
               color: tileColor,
@@ -295,7 +275,7 @@ class _WeekRow extends StatelessWidget {
                 Text(
                   '${date.day}',
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: tileText,
                   ),
@@ -314,7 +294,7 @@ class _WeekRow extends StatelessWidget {
                       child: Text(
                         event.name(profile),
                         style: JourneyType.of(
-                          JourneyType.bodyLarge,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                           color: passed
                               ? AarastV3Color.textFaint
@@ -345,7 +325,7 @@ class _WeekRow extends StatelessWidget {
           if (passed)
             const Icon(
               LucideIcons.checkCircle,
-              size: 22,
+              size: AarastV3Icon.lg,
               color: AarastV3Color.mint,
             ),
         ],
@@ -430,7 +410,7 @@ class _WeekProviders extends StatelessWidget {
                     Text(
                       '${context.planWord('أكّدوا', 'أكّدن')} $confirmed من ${bookings.length}',
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -586,7 +566,7 @@ class _DayRow extends StatelessWidget {
                 Text(
                   event.name(profile),
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: done ? AarastV3Color.textFaint : AarastV3Color.ink,
                   ),

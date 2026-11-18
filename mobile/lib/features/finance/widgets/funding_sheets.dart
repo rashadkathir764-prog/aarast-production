@@ -167,7 +167,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                       '${formatMoneyInputValue(owed.round())} ${currencyLabelAr(widget.currency)}',
                     ),
                     style: JourneyType.of(
-                      JourneyType.display,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                       color: AarastV3Color.onPrimary,
                     ),
@@ -381,8 +381,8 @@ class _RepaymentRow extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: AarastV3Size.mark,
+                height: AarastV3Size.mark,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -392,13 +392,16 @@ class _RepaymentRow extends StatelessWidget {
                       ? AarastV3Color.brandAccentSoft
                       : AarastV3Color.paperQuiet,
                   border: current && !paid
-                      ? Border.all(color: AarastV3Color.saffron, width: 2)
+                      ? Border.all(
+                          color: AarastV3Color.saffron,
+                          width: AarastV3Size.lineStrong,
+                        )
                       : null,
                 ),
                 child: paid
                     ? const Icon(
                         LucideIcons.check,
-                        size: 16,
+                        size: AarastV3Icon.sm,
                         color: AarastV3Color.onPrimary,
                       )
                     : Text(
@@ -435,7 +438,7 @@ class _RepaymentRow extends StatelessWidget {
                   onPressed: onDelete,
                   icon: const Icon(
                     LucideIcons.trash2,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textFaint,
                   ),
                 ),
@@ -571,7 +574,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                   ),
                   child: Icon(
                     LucideIcons.arrowLeft,
-                    size: 16,
+                    size: AarastV3Icon.sm,
                     color: context.accent.primary,
                   ),
                 ),
@@ -581,7 +584,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                     child: Text(
                       _plain(cash + amount),
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: context.accent.primary,
                       ),

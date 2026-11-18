@@ -131,7 +131,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: statusColor,
                     fontWeight: FontWeight.w700,
-                    height: 1.35,
+                    height: AarastV3Line.normal,
                   ),
                 ),
               ),
@@ -145,8 +145,11 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                         ? null
                         : _pickContact,
                     icon: _isPicking
-                        ? const AarastInlineSpinner(dimension: 16)
-                        : const Icon(LucideIcons.contact, size: 18),
+                        ? const AarastInlineSpinner(dimension: AarastV3Icon.sm)
+                        : const Icon(
+                            LucideIcons.contact,
+                            size: AarastV3Icon.md,
+                          ),
                     label: const Text('من جهات الاتصال'),
                   ),
                   if (widget.planContacts.isNotEmpty)
@@ -154,7 +157,10 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                       onPressed: !widget.enabled || _isPicking
                           ? null
                           : _pickPlanContact,
-                      icon: const Icon(LucideIcons.users, size: 18),
+                      icon: const Icon(
+                        LucideIcons.users,
+                        size: AarastV3Icon.md,
+                      ),
                       label: const Text('اختيار من جهات الخطة'),
                     ),
                 ],

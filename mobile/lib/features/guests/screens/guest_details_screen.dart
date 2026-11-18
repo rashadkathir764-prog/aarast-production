@@ -178,7 +178,6 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,14 +262,17 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           child: JourneyAvatar(
             letter: nameLetter(name),
             color: context.accent.primary,
-            size: 64,
+            size: AarastV3Size.markLarge,
           ),
         ),
         const SizedBox(height: AarastV3Space.x2),
         Text(
           name.isEmpty ? 'بدون اسم' : name,
           textAlign: TextAlign.center,
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.pageTitle,
+            weight: JourneyType.bold,
+          ),
         ),
         Text(
           [

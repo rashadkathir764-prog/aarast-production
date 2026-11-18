@@ -127,36 +127,28 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                   const SizedBox(height: AarastV3Space.x2),
                   AarastV3FormSurface(
                     children: [
-                      TextFormField(
+                      JourneyTextField(
                         controller: _titleController,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(providerTitleMax),
                         ],
-                        decoration: const InputDecoration(
-                          labelText: 'اسم الخدمة',
-                          prefixIcon: Icon(LucideIcons.wand),
-                        ),
+                        label: 'اسم الخدمة',
+                        icon: LucideIcons.wand,
                         validator: (value) =>
                             value == null || value.trim().length < 2
                             ? 'اكتب اسم الخدمة'
                             : null,
                       ),
-                      const SizedBox(height: AarastV3Space.x2),
-                      DropdownButtonFormField<String>(
-                        initialValue: _safeCategoryId(marketplace),
-                        decoration: const InputDecoration(
-                          labelText: 'الفئة',
-                          prefixIcon: Icon(LucideIcons.shapes),
-                        ),
-                        items: marketplace.categories
-                            .map(
-                              (category) => DropdownMenuItem(
-                                value: category.id,
-                                child: Text(category.nameAr),
-                              ),
-                            )
-                            .toList(),
+                      const SizedBox(height: AarastV3Field.gap),
+                      JourneyChoiceField<String>(
+                        value: _safeCategoryId(marketplace),
+                        label: 'الفئة',
+                        icon: LucideIcons.shapes,
+                        choices: [
+                          for (final category in marketplace.categories)
+                            JourneyChoice(category.id, category.nameAr),
+                        ],
                         onChanged: (value) {
                           setState(() => _categoryId = value);
                           _draft?.changed();
@@ -164,8 +156,8 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         validator: (value) =>
                             value == null ? 'اختر الفئة' : null,
                       ),
-                      const SizedBox(height: AarastV3Space.x2),
-                      TextFormField(
+                      const SizedBox(height: AarastV3Field.gap),
+                      JourneyTextField(
                         controller: _basePriceController,
                         // RA-MO-301: the price went to the server as
                         // typed, and a refusal named no field.
@@ -174,11 +166,9 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         keyboardType: TextInputType.number,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.right,
-                        decoration: InputDecoration(
-                          labelText: 'السعر من',
-                          suffixText: currencyLabelAr(defaultCurrencyCode),
-                          prefixIcon: Icon(LucideIcons.wallet),
-                        ),
+                        label: 'السعر من',
+                        suffix: currencyLabelAr(defaultCurrencyCode),
+                        icon: LucideIcons.wallet,
                       ),
                     ],
                   ),
@@ -192,51 +182,39 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         _descriptionController.text.isNotEmpty,
                     child: Column(
                       children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: _safeCityId(marketplace),
-                          decoration: const InputDecoration(
-                            labelText: 'مدينة الخدمة',
-                            prefixIcon: Icon(LucideIcons.mapPin),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: null,
-                              child: Text('نفس مدينة المزود'),
-                            ),
+                        JourneyChoiceField<String?>(
+                          value: _safeCityId(marketplace),
+                          label: 'مدينة الخدمة',
+                          icon: LucideIcons.mapPin,
+                          choices: [
+                            const JourneyChoice(null, 'نفس مدينة المزود'),
                             for (final city in marketplace.cities)
-                              DropdownMenuItem(
-                                value: city.id,
-                                child: Text(city.nameAr),
-                              ),
+                              JourneyChoice(city.id, city.nameAr),
                           ],
                           onChanged: (value) {
                             setState(() => _cityId = value);
                             _draft?.changed();
                           },
                         ),
-                        const SizedBox(height: AarastV3Space.x2),
-                        TextFormField(
+                        const SizedBox(height: AarastV3Field.gap),
+                        JourneyTextField(
                           controller: _descriptionController,
                           minLines: 2,
                           maxLines: 3,
                           maxLength: 280,
-                          decoration: const InputDecoration(
-                            labelText: 'ماذا تشمل الخدمة؟',
-                            prefixIcon: Icon(LucideIcons.fileText),
-                          ),
+                          label: 'ماذا تشمل الخدمة؟',
+                          icon: LucideIcons.fileText,
                         ),
-                        const SizedBox(height: AarastV3Space.x2),
-                        TextFormField(
+                        const SizedBox(height: AarastV3Field.gap),
+                        JourneyTextField(
                           controller: _priceUnitController,
                           inputFormatters: [
                             LengthLimitingTextInputFormatter(
                               providerPriceUnitMax,
                             ),
                           ],
-                          decoration: const InputDecoration(
-                            labelText: 'ملاحظة السعر أو المدة',
-                            prefixIcon: Icon(LucideIcons.timer),
-                          ),
+                          label: 'ملاحظة السعر أو المدة',
+                          icon: LucideIcons.timer,
                         ),
                       ],
                     ),

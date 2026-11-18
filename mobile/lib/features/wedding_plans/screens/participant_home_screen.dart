@@ -438,7 +438,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
                     : 'باقي ما اندفع ${compactMoneyParts(unpaid, currencyCode: summary.currency).plainText}',
                 trailing: const Icon(
                   LucideIcons.chevronLeft,
-                  size: 18,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.textFaint,
                 ),
                 onTap: () => context.go(AppRouter.money(widget.weddingPlanId)),
@@ -477,7 +477,6 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: voice.accent,

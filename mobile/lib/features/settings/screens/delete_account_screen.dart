@@ -95,7 +95,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         .split(RegExp(r'\s+'))
         .first;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: JourneyPage(
         bottom: JourneyButton(
@@ -119,7 +118,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               icon: LucideIcons.userX,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
-              size: 64,
+              size: AarastV3Size.markLarge,
               radius: 24,
             ),
           ),
@@ -143,7 +142,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(AarastV3Space.x4),
-                child: AarastInlineSpinner(dimension: 24),
+                child: AarastInlineSpinner(dimension: AarastV3Icon.lg),
               ),
             )
           else if (impact == null)
@@ -170,7 +169,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 children: [
                   Icon(
                     LucideIcons.download,
-                    size: 20,
+                    size: AarastV3Icon.md,
                     color: context.accent.primary,
                   ),
                   const SizedBox(width: AarastV3Space.x2),
@@ -186,7 +185,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                               'نزّلي نسخة من خطتك قبل الحذف',
                             ),
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -290,7 +289,11 @@ class _Effect extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: color ?? AarastV3Color.danger),
+          Icon(
+            icon,
+            size: AarastV3Icon.lg,
+            color: color ?? AarastV3Color.danger,
+          ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
@@ -323,7 +326,7 @@ class _SoftAction extends StatelessWidget {
           padding: AarastV3Density.chipInsets,
           child: busy
               ? AarastInlineSpinner(
-                  dimension: 16,
+                  dimension: AarastV3Icon.sm,
                   color: context.accent.primary,
                 )
               : Text(

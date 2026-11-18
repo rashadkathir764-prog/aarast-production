@@ -23,7 +23,6 @@ class MyWeddingPlansScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -168,7 +167,7 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
                 Text(
                   'خطة جديدة',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: context.accent.primary,
                   ),
@@ -339,7 +338,7 @@ class _PlanCard extends StatelessWidget {
           JourneyAvatar(
             letter: name.isEmpty ? '' : _firstLetter(name),
             color: color,
-            size: 42,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -351,7 +350,7 @@ class _PlanCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),

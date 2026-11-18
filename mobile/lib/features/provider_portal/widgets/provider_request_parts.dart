@@ -324,7 +324,7 @@ class ProviderOfflineBar extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.wifiOff,
-            size: 17,
+            size: AarastV3Icon.sm,
             color: AarastV3Color.onPrimary,
           ),
           const SizedBox(width: AarastV3Space.x2),
@@ -412,7 +412,7 @@ class ProviderQueuedOfferBox extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.clock,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.brandAccentStrong,
               ),
               const SizedBox(width: AarastV3Space.x2),
@@ -483,7 +483,7 @@ class ProviderDroppedOffersBox extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.alertCircle,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.danger,
               ),
               const SizedBox(width: AarastV3Space.x2),
@@ -590,13 +590,13 @@ class ProviderDayStatus extends StatelessWidget {
       padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
+          Icon(icon, color: color, size: AarastV3Icon.md),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
               style: JourneyType.of(
-                JourneyType.bodySmall,
+                JourneyType.small,
                 weight: JourneyType.bold,
                 color: color,
               ),
@@ -680,7 +680,7 @@ class ProviderFactLine extends StatelessWidget {
             child: Text(
               label,
               style: JourneyType.of(
-                JourneyType.detail,
+                JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),

@@ -382,7 +382,7 @@ class _LocalSyncNotice extends StatelessWidget {
                   Icon(
                     LucideIcons.cloudOff,
                     color: context.accent.primary,
-                    size: 16,
+                    size: AarastV3Icon.sm,
                   ),
                   const SizedBox(width: AarastV3Space.x2),
                   Flexible(
@@ -399,8 +399,8 @@ class _LocalSyncNotice extends StatelessWidget {
                   ),
                   const SizedBox(width: AarastV3Space.x2),
                   Container(
-                    width: 4,
-                    height: 4,
+                    width: AarastV3Size.dot,
+                    height: AarastV3Size.dot,
                     decoration: BoxDecoration(
                       color: context.accent.primary,
                       shape: BoxShape.circle,

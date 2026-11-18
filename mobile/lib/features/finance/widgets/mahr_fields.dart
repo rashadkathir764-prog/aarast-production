@@ -89,7 +89,7 @@ class MahrFields extends StatelessWidget {
                   child: Text(
                     amountInWords(total),
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       weight: JourneyType.bold,
                       color: context.accent.primaryDark,
                     ),
@@ -100,7 +100,7 @@ class MahrFields extends StatelessWidget {
                     'باقي ${mahrWords(remaining, currency)}',
                     key: const ValueKey('mahr-remaining'),
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       weight: JourneyType.bold,
                       color: context.accent.primaryDark,
                     ),

@@ -144,6 +144,7 @@ class AuthGatePanel extends StatelessWidget {
     required this.title,
     required this.body,
     this.icon = LucideIcons.lock,
+    this.scrolls = true,
     super.key,
   });
 
@@ -151,43 +152,55 @@ class AuthGatePanel extends StatelessWidget {
   final String body;
   final IconData icon;
 
+  /// False inside a page that already scrolls (the settings list): the panel
+  /// is as tall as what it says, not a scroll of its own on a fixed height.
+  final bool scrolls;
+
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
 
+    final children = [
+      const SizedBox(height: AarastV3Space.x5),
+      AarastV3StateSurface(
+        kind: AarastV3ScreenStateKind.locked,
+        icon: icon,
+        title: title,
+        message: body,
+        action: Wrap(
+          spacing: AarastV3Space.x2,
+          runSpacing: AarastV3Space.x2,
+          children: [
+            FilledButton.icon(
+              key: const Key('sharing-auth-gate-login'),
+              onPressed: () => context.go(
+                AuthActionGuard._withResume(AppRouter.login, context),
+              ),
+              icon: const Icon(LucideIcons.logIn),
+              label: const Text('تسجيل الدخول'),
+            ),
+            if (canPop)
+              OutlinedButton.icon(
+                key: const Key('sharing-auth-gate-back'),
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(LucideIcons.chevronRight),
+                label: const Text('رجوع'),
+              ),
+          ],
+        ),
+      ),
+    ];
+    if (!scrolls) {
+      return Column(
+        key: const Key('sharing-auth-gate'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
     return ListView(
       key: const Key('sharing-auth-gate'),
       physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        const SizedBox(height: AarastV3Space.x5),
-        AarastV3StateSurface(
-          kind: AarastV3ScreenStateKind.locked,
-          icon: icon,
-          title: title,
-          message: body,
-          action: Wrap(
-            spacing: AarastV3Space.x2,
-            runSpacing: AarastV3Space.x2,
-            children: [
-              FilledButton.icon(
-                key: const Key('sharing-auth-gate-login'),
-                onPressed: () => context.go(
-                  AuthActionGuard._withResume(AppRouter.login, context),
-                ),
-                icon: const Icon(LucideIcons.logIn),
-                label: const Text('تسجيل الدخول'),
-              ),
-              if (canPop)
-                OutlinedButton.icon(
-                  key: const Key('sharing-auth-gate-back'),
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(LucideIcons.chevronRight),
-                  label: const Text('رجوع'),
-                ),
-            ],
-          ),
-        ),
-      ],
+      children: children,
     );
   }
 }

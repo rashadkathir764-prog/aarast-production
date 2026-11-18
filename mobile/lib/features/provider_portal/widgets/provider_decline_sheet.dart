@@ -121,14 +121,17 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
                 Text(
                   'اللي يوصل $first',
                   style: JourneyType.of(
-                    JourneyType.label,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
                 Text(
                   '«${providerDeclineMessage(reason, _day)}»',
                   key: const Key('provider-decline-message'),
-                  style: JourneyType.of(JourneyType.body, height: 1.5),
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    height: AarastV3Line.reading,
+                  ),
                 ),
               ],
             ),

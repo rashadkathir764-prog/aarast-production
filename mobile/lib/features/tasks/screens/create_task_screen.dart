@@ -207,7 +207,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         if (!didPop) unawaited(_backAsked());
       },
       child: AarastScreenFrame(
-        maxWidth: 600,
         backgroundColor: AarastV3Color.canvas,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -367,7 +366,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     child: Text(
       text,
       style: JourneyType.of(
-        JourneyType.bodySmall,
+        JourneyType.small,
         weight: JourneyType.bold,
         color: AarastV3Color.textMuted,
       ),

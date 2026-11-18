@@ -85,7 +85,7 @@ class LogoutSheet extends StatelessWidget {
                           'اخرجي من هذا الجوال',
                         ),
                         style: JourneyType.of(
-                          JourneyType.bodyLarge,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                         ),
                       ),
@@ -136,7 +136,7 @@ class LogoutSheet extends StatelessWidget {
                           'احذفي حسابي نهائيًا',
                         ),
                         style: JourneyType.of(
-                          JourneyType.bodyLarge,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                           color: AarastV3Color.danger,
                         ),

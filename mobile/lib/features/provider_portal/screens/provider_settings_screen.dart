@@ -55,7 +55,6 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         ? null
         : dashboard.upcomingConfirmedBookings;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
@@ -302,7 +301,7 @@ class _ToggleRow extends StatelessWidget {
                   Text(
                     subtitle,
                     style: JourneyType.of(
-                      JourneyType.label,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),

@@ -102,7 +102,6 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: context.accent.primary,
       child: JourneyMoment(
         eyebrow: receives ? 'الاتفاق مع العريس' : 'الاتفاق مع أهل العروسة',

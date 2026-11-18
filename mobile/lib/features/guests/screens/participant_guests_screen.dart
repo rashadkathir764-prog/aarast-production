@@ -129,7 +129,6 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,
@@ -199,7 +198,7 @@ class _ReadGuestsHero extends StatelessWidget {
             Text(
               parts.join(' · '),
               style: JourneyType.of(
-                JourneyType.bodySmall,
+                JourneyType.small,
                 color: AarastV3Color.onPrimary,
               ),
             ),
@@ -246,7 +245,7 @@ class _GuestSlice extends StatelessWidget {
           children: [
             if (!first)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 58,
                 endIndent: 14,
                 color: AarastV3Color.line,
@@ -306,7 +305,7 @@ class _GuestLine extends StatelessWidget {
             JourneyAvatar(
               letter: nameLetter(name),
               color: JourneyAvatar.paletteAt(context, index),
-              size: 32,
+              size: AarastV3Size.markSmall,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(

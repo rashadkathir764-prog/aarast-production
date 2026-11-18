@@ -148,7 +148,10 @@ Future<void> _savePassword(
   String? again,
   bool settle = true,
 }) async {
-  final fields = find.byType(TextFormField);
+  final fields = find.descendant(
+    of: find.byType(JourneyTextField),
+    matching: find.byType(EditableText),
+  );
   await tester.enterText(fields.at(0), password);
   await tester.enterText(fields.at(1), again ?? password);
   await tester.ensureVisible(_primary);

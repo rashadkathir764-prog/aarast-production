@@ -38,7 +38,6 @@ class ProviderRejectedScreen extends StatelessWidget {
     final reason = profile.reviewNote?.trim() ?? '';
     final error = errorMessage;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -81,9 +80,9 @@ class ProviderRejectedScreen extends StatelessWidget {
                           Text(
                             reason,
                             style: JourneyType.of(
-                              JourneyType.bodyLarge,
+                              JourneyType.lead,
                               weight: JourneyType.bold,
-                              height: 1.5,
+                              height: AarastV3Line.reading,
                             ),
                           ),
                         ],

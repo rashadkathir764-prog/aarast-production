@@ -77,7 +77,6 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
       if (updated != null) 'آخر تحديث ${providerAgoLabel(updated, now: now)}',
     ].join(' · ');
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
@@ -225,7 +224,7 @@ class _ListingCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: active
                             ? AarastV3Color.ink
@@ -254,7 +253,7 @@ class _ListingCard extends StatelessWidget {
                   style: JourneyType.of(
                     JourneyType.small,
                     color: AarastV3Color.textMuted,
-                    height: 1.5,
+                    height: AarastV3Line.reading,
                   ),
                 ),
               if (unit.isNotEmpty)
@@ -296,7 +295,7 @@ class _Empty extends StatelessWidget {
             icon: LucideIcons.package,
             color: AarastV3Color.primary,
             soft: AarastV3Color.primarySoft,
-            size: 42,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -165,8 +166,13 @@ void main() {
         );
         await tester.drag(find.byType(ListView).last, const Offset(0, -260));
         await tester.pumpAndSettle();
-        final firstField = tester.widget<TextFormField>(
-          find.byType(TextFormField).first,
+        final firstField = tester.widget<TextField>(
+          find
+              .descendant(
+                of: find.byType(JourneyTextField),
+                matching: find.byType(TextField),
+              )
+              .first,
         );
         expect(firstField.controller?.text, _providerProfile.businessName);
         expect(tester.takeException(), isNull);

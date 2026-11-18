@@ -31,7 +31,6 @@ class ProviderApprovedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final city = profile.city?.nameAr.trim() ?? '';
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [

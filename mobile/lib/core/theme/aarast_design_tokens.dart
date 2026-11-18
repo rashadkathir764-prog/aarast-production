@@ -31,7 +31,7 @@ class AarastDesignTokens {
   static const double iconLg = AarastV3Icon.lg;
 
   static const double minTapTarget = AarastV3Space.x12;
-  static const double screenMaxWidth = 560;
+  static const double screenMaxWidth = AarastV3Density.readableWidth;
 
   // Motion
   static const Duration motionQuick = AarastV3Motion.quick;

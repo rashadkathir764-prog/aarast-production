@@ -79,7 +79,6 @@ class _QuoteConversationEntryScreenState
       );
     }
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,

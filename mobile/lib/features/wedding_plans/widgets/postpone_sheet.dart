@@ -305,7 +305,7 @@ class _DayCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: AarastV3Color.ink),
+          Icon(icon, size: AarastV3Icon.lg, color: AarastV3Color.ink),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Column(
@@ -321,7 +321,7 @@ class _DayCard extends StatelessWidget {
                 Text(
                   value,
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -366,7 +366,7 @@ class _ImpactRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: color),
+          Icon(icon, size: AarastV3Icon.lg, color: color),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Column(
@@ -375,7 +375,7 @@ class _ImpactRow extends StatelessWidget {
                 Text(
                   title,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -392,7 +392,7 @@ class _ImpactRow extends StatelessWidget {
           if (onTap != null)
             const Icon(
               LucideIcons.chevronLeft,
-              size: 18,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textFaint,
             ),
         ],

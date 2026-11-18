@@ -11,34 +11,29 @@ import '../../../core/utils/arabic_count.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 
 /// The photo's shape on the list card (Rashad 2026-11-18, «استكشف» made
-/// anew): across the card's top, four high for every three wide, so a
+/// anew): across the card's top, four wide for every three high, so a
 /// portrait keeps the face and the shoulders, and a hall shows its room.
-/// RA-MO-316's strip (120 high across the card) showed a nose and a mouth;
-/// this is three times its height on a phone.
-const _photoAspect = 4 / 3;
+/// RA-MO-316's strip (120 high across the card) showed a nose and a mouth.
+const _photoAspect = AarastV3Media.feature;
 
 /// The provider's letter without a photo: a small square by the name, not a
 /// band as tall as the card (Rashad 2026-11-17: a coloured quarter of every
 /// card held one letter).
-const _letterSize = 44.0;
+const _letterSize = AarastV3Media.logoSmall;
 
 /// What the name leaves for the heart's 48 target in the card's corner,
 /// past the card's own padding.
 const _heartRoom = 36.0;
 
-/// A fixed dimension of this layout, not a spacing step (D74): the photo's
-/// height on a shelf card, the sideways rows of «استكشف».
-const _shelfPhotoHeight = 132.0;
-
 /// Fixed dimensions of this layout (D74): the logo's disc on a shelf card
 /// without a cover, and the paper ring around it.
-const _shelfLogoSize = 76.0;
+const _shelfLogoSize = AarastV3Media.logoLarge;
 const _shelfLogoRing = 3.0;
 
-/// Fixed dimensions of this layout (D74): the profile card's soft band and
-/// the logo's disc that sits half on its edge.
-const _bandHeight = 84.0;
-const _profileLogoSize = 84.0;
+/// The profile card's soft band and the logo's disc that sits half on its
+/// edge (D118: the large logo, and a band as tall as it).
+const _bandHeight = AarastV3Media.logoLarge;
+const _profileLogoSize = AarastV3Media.logoLarge;
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
@@ -67,7 +62,7 @@ Future<void> showProviderFeaturedSheet(BuildContext context) {
       children: [
         Text(
           'هذا المزود دفع عشان يطلع أول. مو ترشيح من اعّرست.',
-          style: JourneyType.of(JourneyType.bodyLarge),
+          style: JourneyType.of(JourneyType.lead),
         ),
       ],
     ),
@@ -395,7 +390,7 @@ class ProviderResultCard extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
-            JourneyType.bodyLarge,
+            JourneyType.lead,
             weight: JourneyType.bold,
             color: context.accent.primary,
           ),
@@ -494,8 +489,9 @@ class ProviderShelfCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                height: _shelfPhotoHeight,
+              // D118: a card photo's proportion of the shelf card's width.
+              AspectRatio(
+                aspectRatio: AarastV3Media.cardPhoto,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -613,7 +609,7 @@ class _KindArt extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = Icon(
       providerServiceIcon(kind),
-      size: 34,
+      size: AarastV3Icon.xl,
       color: context.accent.primary,
     );
     final logo = logoUrl;
@@ -653,7 +649,7 @@ class _Rating extends StatelessWidget {
       children: [
         Icon(
           LucideIcons.star,
-          size: compact ? 13 : 15,
+          size: AarastV3Icon.sm,
           color: AarastV3Color.brandAccentStrong,
         ),
         Text(
@@ -813,7 +809,7 @@ class _LetterText extends StatelessWidget {
         // text size, or it would leave its square.
         textScaler: TextScaler.noScaling,
         style: JourneyType.of(
-          JourneyType.title,
+          JourneyType.lead,
           weight: JourneyType.bold,
           color: context.accent.primary,
         ),
@@ -847,7 +843,7 @@ class _FavoriteHeart extends StatelessWidget {
       LucideIcons.heart,
       color: (isFavorite ? AarastV3Color.rose : AarastV3Color.textMuted)
           .withValues(alpha: enabled ? 1 : 0.42),
-      size: onPhoto ? 20 : 22,
+      size: onPhoto ? AarastV3Icon.md : AarastV3Icon.lg,
     );
 
     // A small pulse the moment it is saved.

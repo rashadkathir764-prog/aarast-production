@@ -150,7 +150,7 @@ class PlanQuickAddButton extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool expanded;
 
-  static const _radius = 18.0;
+  static const _radius = AarastV3Radius.card;
 
   @override
   Widget build(BuildContext context) {
@@ -164,8 +164,10 @@ class PlanQuickAddButton extends StatelessWidget {
         key: const ValueKey('aarast-quick-action'),
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
-        constraints: BoxConstraints(minWidth: expanded ? 0 : 52),
-        height: 52,
+        constraints: BoxConstraints(
+          minWidth: expanded ? 0 : AarastV3Size.quickAction,
+        ),
+        height: AarastV3Size.quickAction,
         padding: EdgeInsets.symmetric(
           horizontal: expanded ? AarastV3Space.x4 : 0,
         ),
@@ -177,7 +179,7 @@ class PlanQuickAddButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AarastV3Color.onPrimary, size: 20),
+            Icon(icon, color: AarastV3Color.onPrimary, size: AarastV3Icon.md),
             AnimatedSize(
               duration: const Duration(milliseconds: 160),
               curve: Curves.easeOutCubic,

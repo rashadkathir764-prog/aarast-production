@@ -154,7 +154,6 @@ class _MahrScreenState extends State<MahrScreen> {
         ? 'نحسبه من ميزانيتك، مثل ما اخترت.'
         : 'نحسبه لحاله، برا ميزانية العرس.';
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: JourneyQuestionPage(
         step: 0,

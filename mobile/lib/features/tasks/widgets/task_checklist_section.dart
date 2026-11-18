@@ -138,7 +138,7 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                           : () => widget.onRemove(item),
                       icon: const Icon(
                         LucideIcons.x,
-                        size: 18,
+                        size: AarastV3Icon.md,
                         color: AarastV3Color.textFaint,
                       ),
                     ),

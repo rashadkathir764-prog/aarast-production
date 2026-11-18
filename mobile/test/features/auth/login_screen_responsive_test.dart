@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3_foundations.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -17,7 +18,8 @@ void main() {
   // letter as a full square and wraps labels a phone never wraps.
   setUpAll(loadPreviewAppFonts);
 
-  // D7: the journey field holds its label inside the box (60 to 76 px);
+  // D7, D118: the journey field holds its label inside the box, at the one
+  // field height (56);
   // actions stay one comfortable touch target (48 to 56 px). D75: the
   // number and a WhatsApp code come first; a password is the second way.
   testWidgets('the sign-in screen keeps its fields and actions to size', (
@@ -153,8 +155,8 @@ void _expectFieldsToSize(WidgetTester tester) {
     expect(box, findsOneWidget);
     expect(
       tester.getSize(field).height,
-      inInclusiveRange(60, 76),
-      reason: '$key holds its label inside the box',
+      AarastV3Size.field,
+      reason: '$key holds its label inside the box, at the field height',
     );
   }
 }

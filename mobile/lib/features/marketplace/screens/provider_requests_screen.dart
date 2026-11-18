@@ -214,7 +214,6 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         : row.title;
 
     return AarastScreenFrame(
-      maxWidth: 640,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

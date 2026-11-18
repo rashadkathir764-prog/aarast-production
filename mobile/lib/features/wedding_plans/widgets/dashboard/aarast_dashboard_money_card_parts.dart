@@ -54,7 +54,7 @@ class _MoneyFigures extends StatelessWidget {
     Widget cell(_MoneyCellData data) {
       final value = data.value;
       final strong = JourneyType.of(
-        JourneyType.bodySmall,
+        JourneyType.small,
         weight: JourneyType.bold,
         color: data.danger ? AarastV3Color.danger : AarastV3Color.ink,
       );
@@ -71,7 +71,7 @@ class _MoneyFigures extends StatelessWidget {
                   style: data.danger
                       ? strong
                       : JourneyType.of(
-                          JourneyType.bodySmall,
+                          JourneyType.small,
                           color: AarastV3Color.textMuted,
                         ),
                 ),
@@ -154,7 +154,7 @@ class _MoneyLead extends StatelessWidget {
           Text(
             label,
             style: JourneyType.of(
-              JourneyType.bodySmall,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -167,10 +167,10 @@ class _MoneyLead extends StatelessWidget {
             // Rashad's phone 2026-11-18 («زيد صغير»): the app's amount size,
             // not the 28 headline; the hero above holds the big figure.
             style: JourneyType.of(
-              JourneyType.amount,
+              JourneyType.hero,
               weight: JourneyType.bold,
               color: color,
-              height: 1.2,
+              height: AarastV3Line.tight,
             ),
           ),
         ),
@@ -258,7 +258,7 @@ class _SideFigure extends StatelessWidget {
       text,
       textAlign: TextAlign.end,
       style: JourneyType.of(
-        JourneyType.bodySmall,
+        JourneyType.small,
         weight: JourneyType.bold,
         color: color,
       ),

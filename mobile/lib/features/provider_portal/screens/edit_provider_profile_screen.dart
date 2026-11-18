@@ -144,41 +144,35 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               child: AarastV3FormSurface(
                 title: 'بيانات الظهور للعملاء',
                 children: [
-                  TextFormField(
+                  JourneyTextField(
                     controller: _businessNameController,
                     textInputAction: TextInputAction.next,
                     inputFormatters: [
                       LengthLimitingTextInputFormatter(providerTitleMax),
                     ],
-                    decoration: const InputDecoration(
-                      labelText: 'اسم النشاط / اسم المزود',
-                      prefixIcon: Icon(LucideIcons.badge),
-                    ),
+                    label: 'اسم النشاط / اسم المزود',
+                    icon: LucideIcons.badge,
                     validator: (value) =>
                         value == null || value.trim().length < 2
                         ? 'اكتب اسم النشاط'
                         : null,
                   ),
-                  const SizedBox(height: AarastV3Space.x2),
+                  const SizedBox(height: AarastV3Field.gap),
                   ContactPhoneField(
                     phoneController: _phoneController,
                     label: 'رقم التواصل',
                     optional: false,
                     requireYemeni: true,
                   ),
-                  const SizedBox(height: AarastV3Space.x2),
-                  _ProfileDropdown(
+                  const SizedBox(height: AarastV3Field.gap),
+                  JourneyChoiceField<String>(
                     value: _safeCityId(marketplace),
                     label: 'المدينة',
                     icon: LucideIcons.mapPin,
-                    items: marketplace.cities
-                        .map(
-                          (city) => DropdownMenuItem(
-                            value: city.id,
-                            child: Text(city.nameAr),
-                          ),
-                        )
-                        .toList(),
+                    choices: [
+                      for (final city in marketplace.cities)
+                        JourneyChoice(city.id, city.nameAr),
+                    ],
                     onChanged: (value) {
                       setState(() => _cityId = value);
                       _draft?.changed();
@@ -192,15 +186,13 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                         ? 'يمكن إضافتها لاحقاً'
                         : 'نبذة محفوظة — افتحها للتعديل',
                     icon: LucideIcons.fileText,
-                    child: TextFormField(
+                    child: JourneyTextField(
                       controller: _descriptionController,
                       minLines: 2,
                       maxLines: 3,
                       maxLength: 280,
-                      decoration: const InputDecoration(
-                        labelText: 'ما الذي يميز خدمتك؟',
-                        prefixIcon: Icon(LucideIcons.fileText),
-                      ),
+                      label: 'ما الذي يميز خدمتك؟',
+                      icon: LucideIcons.fileText,
                     ),
                   ),
                   if (profile.primaryCategory?.nameAr.trim().isNotEmpty ==
@@ -311,7 +303,7 @@ class _ProfileEditNotice extends StatelessWidget {
               style: const TextStyle(
                 color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
-                height: 1.5,
+                height: AarastV3Line.reading,
               ),
             ),
           ),
@@ -341,7 +333,7 @@ class _LockedCategoryNote extends StatelessWidget {
               style: const TextStyle(
                 color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
-                height: 1.5,
+                height: AarastV3Line.reading,
               ),
             ),
           ),
@@ -385,45 +377,6 @@ class _InlineError extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
-    );
-  }
-}
-
-class _ProfileDropdown extends StatelessWidget {
-  const _ProfileDropdown({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.items,
-    required this.onChanged,
-    required this.validator,
-  });
-
-  final String? value;
-  final String label;
-  final IconData icon;
-  final List<DropdownMenuItem<String>> items;
-  final ValueChanged<String?> onChanged;
-  final FormFieldValidator<String> validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      isExpanded: true,
-      menuMaxHeight: 320,
-      decoration: InputDecoration(
-        labelText: label,
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        prefixIcon: Icon(icon),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AarastV3Space.x4,
-          vertical: AarastV3Space.x3,
-        ),
-      ),
-      items: items,
-      onChanged: onChanged,
-      validator: validator,
     );
   }
 }

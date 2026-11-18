@@ -200,7 +200,6 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
           );
         case 'ACTIVE' when _welcome == null:
           return const AarastScreenFrame(
-            maxWidth: 520,
             backgroundColor: AarastV3Color.canvas,
             child: SizedBox.expand(),
           );
@@ -221,7 +220,6 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       activeIndex: _activeIndex,
       onReturnToRoot: () => _openTab(0),
       child: AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         extendBody: true,
         safeAreaBottom: false,

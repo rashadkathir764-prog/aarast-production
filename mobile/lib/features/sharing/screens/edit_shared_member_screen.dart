@@ -128,7 +128,6 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         provider.authGateKind == SharingAuthGateKind.sessionExpired) {
       // The sign-in panel scrolls on its own, under the header.
       return AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: Column(
           children: [
@@ -158,7 +157,6 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         if (!didPop) unawaited(_backAsked());
       },
       child: AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: ListView(
           padding: AarastV3Density.pageInsets,

@@ -54,7 +54,11 @@ void main() {
 
     final handleFinder = find.byKey(const ValueKey('journey-sheet-handle'));
     final handle = tester.getRect(handleFinder);
-    expect(handle.size, const Size(40, 5));
+    // D118: one handle for every sheet.
+    expect(
+      handle.size,
+      const Size(AarastV3Size.handleWidth, AarastV3Size.handleHeight),
+    );
     final decoration =
         tester.widget<Container>(handleFinder).decoration! as BoxDecoration;
     expect(decoration.color, AarastV3Color.line);
@@ -72,7 +76,7 @@ void main() {
     final subtitle = tester.widget<Text>(
       find.text('نرتب كل شيء على الموعد الجديد'),
     );
-    expect(subtitle.style?.fontSize, 13.5);
+    expect(subtitle.style?.fontSize, JourneyType.small);
     expect(subtitle.style?.color, AarastV3Color.textMuted);
     final subtitleRect = tester.getRect(
       find.text('نرتب كل شيء على الموعد الجديد'),

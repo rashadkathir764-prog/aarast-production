@@ -126,34 +126,30 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                   const SizedBox(height: AarastV3Space.x2),
                   AarastV3FormSurface(
                     children: [
-                      TextFormField(
+                      JourneyTextField(
                         controller: _titleController,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(providerTitleMax),
                         ],
-                        decoration: const InputDecoration(
-                          labelText: 'اسم الباقة',
-                          prefixIcon: Icon(LucideIcons.package),
-                        ),
+                        label: 'اسم الباقة',
+                        icon: LucideIcons.package,
                         validator: (value) =>
                             value == null || value.trim().length < 2
                             ? 'اكتب اسم الباقة'
                             : null,
                       ),
-                      const SizedBox(height: AarastV3Space.x2),
-                      TextFormField(
+                      const SizedBox(height: AarastV3Field.gap),
+                      JourneyTextField(
                         controller: _priceController,
                         validator: (value) =>
                             providerListingPriceError(value ?? ''),
                         keyboardType: TextInputType.number,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.right,
-                        decoration: InputDecoration(
-                          labelText: 'السعر',
-                          suffixText: currencyLabelAr(defaultCurrencyCode),
-                          prefixIcon: Icon(LucideIcons.wallet),
-                        ),
+                        label: 'السعر',
+                        suffix: currencyLabelAr(defaultCurrencyCode),
+                        icon: LucideIcons.wallet,
                       ),
                     ],
                   ),
@@ -168,49 +164,37 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                         _itemsController.text.isNotEmpty,
                     child: Column(
                       children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: _safeServiceId(services),
-                          decoration: const InputDecoration(
-                            labelText: 'الخدمة المرتبطة',
-                            prefixIcon: Icon(LucideIcons.wand),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: null,
-                              child: Text('باقة عامة'),
-                            ),
+                        JourneyChoiceField<String?>(
+                          value: _safeServiceId(services),
+                          label: 'الخدمة المرتبطة',
+                          icon: LucideIcons.wand,
+                          choices: [
+                            const JourneyChoice(null, 'باقة عامة'),
                             for (final service in services)
-                              DropdownMenuItem(
-                                value: service.id,
-                                child: Text(service.title),
-                              ),
+                              JourneyChoice(service.id, service.title),
                           ],
                           onChanged: (value) {
                             setState(() => _serviceId = value);
                             _draft?.changed();
                           },
                         ),
-                        const SizedBox(height: AarastV3Space.x2),
-                        TextFormField(
+                        const SizedBox(height: AarastV3Field.gap),
+                        JourneyTextField(
                           controller: _descriptionController,
                           minLines: 2,
                           maxLines: 3,
                           maxLength: 220,
-                          decoration: const InputDecoration(
-                            labelText: 'وصف مختصر',
-                            prefixIcon: Icon(LucideIcons.fileText),
-                          ),
+                          label: 'وصف مختصر',
+                          icon: LucideIcons.fileText,
                         ),
-                        const SizedBox(height: AarastV3Space.x2),
-                        TextFormField(
+                        const SizedBox(height: AarastV3Field.gap),
+                        JourneyTextField(
                           controller: _itemsController,
                           minLines: 3,
                           maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'المميزات',
-                            hintText: 'كل ميزة في سطر',
-                            prefixIcon: Icon(LucideIcons.listChecks),
-                          ),
+                          label: 'المميزات',
+                          hint: 'كل ميزة في سطر',
+                          icon: LucideIcons.listChecks,
                           validator: (value) =>
                               providerPackageItemsError(value ?? ''),
                         ),

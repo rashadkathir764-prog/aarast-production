@@ -313,7 +313,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         ),
       );
     }
-    return AarastScreenFrame(maxWidth: 560, child: content);
+    return AarastScreenFrame(child: content);
   }
 
   List<Widget> _summaryTab(FinanceProvider provider) {

@@ -101,7 +101,6 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
 
     final payAction = cost == null ? null : _payAction(provider, cost);
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

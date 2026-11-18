@@ -39,7 +39,7 @@ class _DashboardTeamStrip extends StatelessWidget {
         subtitle: summary.pendingInvites > 0 ? '$people · $invites' : people,
         trailing: const Icon(
           LucideIcons.chevronLeft,
-          size: 18,
+          size: AarastV3Icon.md,
           color: AarastV3Color.textFaint,
         ),
         onTap: onTap,

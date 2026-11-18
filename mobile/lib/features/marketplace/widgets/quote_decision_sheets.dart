@@ -96,15 +96,12 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: context.accent.primary),
+          Icon(icon, size: AarastV3Icon.md, color: context.accent.primary),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
               text,
-              style: JourneyType.of(
-                JourneyType.bodyLarge,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
             ),
           ),
         ],
@@ -115,8 +112,8 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       child: Row(
         children: [
           Container(
-            width: 26,
-            height: 26,
+            width: AarastV3Size.check,
+            height: AarastV3Size.check,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: context.accent.primarySoft,

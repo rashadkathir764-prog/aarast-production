@@ -16,6 +16,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart'
+    show JourneyTextField;
 import 'package:aarast_mobile/features/notifications/notifications_api.dart'
     show NotificationsProvider, resolveNotificationRouteTarget;
 import 'package:aarast_mobile/main.dart' as app;
@@ -455,9 +457,14 @@ class JourneyWalk {
   }
 
   Future<void> enterField(String label, String value) async {
-    final field = find.ancestor(
-      of: text(label),
-      matching: find.byType(TextFormField),
+    // Every field is the kit's one field box (D118): its label sits beside
+    // the typed line, inside the same JourneyTextField.
+    final field = find.descendant(
+      of: find.ancestor(
+        of: text(label),
+        matching: find.byType(JourneyTextField),
+      ),
+      matching: find.byType(EditableText),
     );
     final target = field.evaluate().isNotEmpty
         ? field.first

@@ -1816,7 +1816,7 @@ const trackedOwnerApiContracts = [
       { uri: 'utils/auth_action_guard.dart', show: ['AuthActionGuard', 'AuthGatePanel'] },
       {
         uri: 'widgets/auth_wedding_widgets.dart',
-        show: ['AuthObscureToggle', 'AuthTextField'],
+        show: ['AuthObscureToggle'],
       },
     ],
   },

@@ -589,7 +589,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     child: Text(
       text,
       style: JourneyType.of(
-        JourneyType.bodySmall,
+        JourneyType.small,
         weight: JourneyType.bold,
         color: AarastV3Color.textMuted,
       ),

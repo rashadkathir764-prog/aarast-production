@@ -50,7 +50,7 @@ class AarastV3DraftStatusLine extends StatelessWidget {
           key: ValueKey(status),
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
+            Icon(icon, size: AarastV3Icon.sm, color: color),
             const SizedBox(width: AarastV3Space.x2),
             Flexible(
               child: Text(
@@ -94,13 +94,16 @@ class AarastV3FocusPrompt extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           border: BorderDirectional(
-            start: BorderSide(color: context.accent.primary, width: 2),
+            start: BorderSide(
+              color: context.accent.primary,
+              width: AarastV3Size.lineStrong,
+            ),
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: context.accent.primary, size: 17),
+            Icon(icon, color: context.accent.primary, size: AarastV3Icon.sm),
             const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Column(
@@ -119,7 +122,9 @@ class AarastV3FocusPrompt extends StatelessWidget {
                     supportingText,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AarastV3Type.body(context).copyWith(height: 1.3),
+                    style: AarastV3Type.body(
+                      context,
+                    ).copyWith(height: AarastV3Line.normal),
                   ),
                 ],
               ),
@@ -220,7 +225,7 @@ class AarastV3FormActionBar extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.loading = false,
-    this.maxWidth = 560,
+    this.maxWidth = AarastV3Density.readableWidth,
     super.key,
   });
 
@@ -364,7 +369,7 @@ class AarastV3FormSurface extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 4,
+                  width: AarastV3Size.rule,
                   height: subtitle == null ? 26 : 46,
                   color: context.accent.primary,
                 ),
@@ -432,7 +437,11 @@ class AarastV3Disclosure extends StatelessWidget {
             AarastV3Space.x2,
             AarastV3Space.x2,
           ),
-          leading: Icon(icon, color: context.accent.primary, size: 19),
+          leading: Icon(
+            icon,
+            color: context.accent.primary,
+            size: AarastV3Icon.md,
+          ),
           title: Text(
             title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -488,7 +497,7 @@ class AarastV3PrimaryAction extends StatelessWidget {
           ? const SizedBox.square(
               dimension: AarastV3Space.x5,
               child: CircularProgressIndicator(
-                strokeWidth: 2,
+                strokeWidth: AarastV3Size.lineStrong,
                 color: AarastV3Color.onPrimary,
               ),
             )
@@ -496,7 +505,7 @@ class AarastV3PrimaryAction extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 19),
+                  Icon(icon, size: AarastV3Icon.md),
                   const SizedBox(width: AarastV3Space.x2),
                 ],
                 Flexible(

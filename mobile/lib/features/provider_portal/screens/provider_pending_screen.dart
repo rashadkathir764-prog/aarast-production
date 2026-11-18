@@ -34,7 +34,6 @@ class ProviderPendingScreen extends StatelessWidget {
       city: profile.city?.nameAr,
     );
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [

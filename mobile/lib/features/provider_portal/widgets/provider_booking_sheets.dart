@@ -69,7 +69,10 @@ class ProviderConfirmNeedsNetwork extends StatelessWidget {
           ),
           Text(
             'لازم نتأكد إن اليوم ما انحجز من غيرك في نفس اللحظة.',
-            style: JourneyType.of(JourneyType.detail, height: 1.5),
+            style: JourneyType.of(
+              JourneyType.small,
+              height: AarastV3Line.reading,
+            ),
           ),
         ],
       ),

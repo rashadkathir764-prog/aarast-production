@@ -47,7 +47,7 @@ class GuestRow extends StatelessWidget {
           JourneyAvatar(
             letter: nameLetter(name),
             color: context.accent.primary,
-            size: 38,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -56,6 +56,8 @@ class GuestRow extends StatelessWidget {
               children: [
                 Text(
                   name.isEmpty ? 'بدون اسم' : name,
+                  maxLines: AarastV3Size.titleLines,
+                  overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,
@@ -63,6 +65,8 @@ class GuestRow extends StatelessWidget {
                 ),
                 Text(
                   line,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
                     JourneyType.small,
                     color: flagged

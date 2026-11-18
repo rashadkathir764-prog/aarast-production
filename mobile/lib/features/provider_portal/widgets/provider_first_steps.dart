@@ -81,7 +81,7 @@ class ProviderFirstSteps extends StatelessWidget {
             icon: LucideIcons.sprout,
             color: AarastV3Color.primary,
             soft: AarastV3Color.primarySoft,
-            size: 64,
+            size: AarastV3Size.markLarge,
             radius: 24,
           ),
         ),
@@ -89,7 +89,10 @@ class ProviderFirstSteps extends StatelessWidget {
         Text(
           'ما وصلك طلب لسا',
           textAlign: TextAlign.center,
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.pageTitle,
+            weight: JourneyType.bold,
+          ),
         ),
         const SizedBox(height: AarastV3Space.x1),
         Text(
@@ -115,7 +118,7 @@ class ProviderFirstSteps extends StatelessWidget {
               children: [
                 const Icon(
                   LucideIcons.eye,
-                  size: 20,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.textMuted,
                 ),
                 const SizedBox(width: AarastV3Space.x2),

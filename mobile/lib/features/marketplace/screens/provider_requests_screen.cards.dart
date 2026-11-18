@@ -1,9 +1,6 @@
 part of 'provider_requests_screen.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
-const _offersRowHeight = 420.0;
-
-/// A fixed dimension of this layout, not a spacing step (D74).
 const _offerCardWidth = 240.0;
 
 /// Offers side by side: two share the width, more scroll sideways.
@@ -55,14 +52,20 @@ class _OffersRow extends StatelessWidget {
         ),
       );
     }
-    return SizedBox(
-      height: _offersRowHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: offers.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AarastV3Space.x2),
-        itemBuilder: (context, index) =>
-            SizedBox(width: _offerCardWidth, child: card(offers[index])),
+    // Three or more scroll sideways, as tall as the fullest offer: the row
+    // takes its height from what the offers say, not a number (D118).
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < offers.length; index++) ...[
+              if (index > 0) const SizedBox(width: AarastV3Space.x2),
+              SizedBox(width: _offerCardWidth, child: card(offers[index])),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -111,10 +114,7 @@ class _OfferCard extends StatelessWidget {
         children: [
           Text(
             quoteProviderName(quote),
-            style: JourneyType.of(
-              JourneyType.bodyLarge,
-              weight: JourneyType.bold,
-            ),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
           const SizedBox(height: AarastV3Space.x2),
           // RA-MO-248: «بدون مبلغ» was a false word about an offer whose
@@ -133,7 +133,7 @@ class _OfferCard extends StatelessWidget {
             Text(
               amount ?? 'بدون مبلغ',
               style: JourneyType.of(
-                JourneyType.figure,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -189,7 +189,7 @@ class _OfferCard extends StatelessWidget {
                           : line.isExtra
                           ? LucideIcons.plus
                           : LucideIcons.check,
-                      size: 16,
+                      size: AarastV3Icon.sm,
                       color: line.isExcluded
                           ? AarastV3Color.danger
                           : AarastV3Color.mint,
@@ -229,7 +229,7 @@ class _OfferCard extends StatelessWidget {
                 // Critique ز2: the one dark star colour everywhere.
                 const Icon(
                   LucideIcons.star,
-                  size: 14,
+                  size: AarastV3Icon.sm,
                   color: AarastV3Color.brandAccentStrong,
                 ),
                 Flexible(
@@ -410,7 +410,7 @@ class _ChosenCard extends StatelessWidget {
                 child: Text(
                   quoteProviderName(quote),
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -421,10 +421,7 @@ class _ChosenCard extends StatelessWidget {
           if (amount != null)
             Text(
               amount,
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
             ),
           Text(
             detail,
@@ -558,7 +555,7 @@ class _ExpiredCard extends StatelessWidget {
                 children: [
                   const Icon(
                     LucideIcons.clock,
-                    size: 20,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textMuted,
                   ),
                   const SizedBox(width: AarastV3Space.x2),
@@ -568,7 +565,7 @@ class _ExpiredCard extends StatelessWidget {
                           ? 'عرض ${quoteProviderName(quote)} انتهى'
                           : 'عرض ${quoteProviderName(quote)} انتهى ${formatArabicDayMonth(until)}',
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: AarastV3Color.textMuted,
                       ),
@@ -581,7 +578,7 @@ class _ExpiredCard extends StatelessWidget {
                 Text(
                   [?amount, ?offer?.title].join(' · '),
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: AarastV3Color.textMuted,
                   ),
@@ -625,7 +622,7 @@ class _CancelBookingSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AarastV3Color.textMuted),
+          Icon(icon, size: AarastV3Icon.md, color: AarastV3Color.textMuted),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],

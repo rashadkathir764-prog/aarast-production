@@ -757,7 +757,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         if (!didPop) _back();
       },
       child: AarastScreenFrame(
-        maxWidth: 600,
         safeAreaBottom: false,
         backgroundColor: AarastV3Color.canvas,
         child: JourneyProfileScope(

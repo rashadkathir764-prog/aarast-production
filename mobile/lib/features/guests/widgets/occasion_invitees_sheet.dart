@@ -170,7 +170,7 @@ class _OccasionInviteesSheetState extends State<OccasionInviteesSheet> {
             error,
             key: const ValueKey('invitees-error'),
             style: JourneyType.of(
-              JourneyType.bodySmall,
+              JourneyType.small,
               weight: JourneyType.bold,
               color: AarastV3Color.danger,
             ),

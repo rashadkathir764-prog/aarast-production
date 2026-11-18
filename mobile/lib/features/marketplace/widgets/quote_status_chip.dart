@@ -41,7 +41,7 @@ class QuoteStatusChip extends StatelessWidget {
         children: [
           Icon(
             presentation.icon,
-            size: compact ? 14 : 16,
+            size: AarastV3Icon.sm,
             color: presentation.color,
           ),
           const SizedBox(width: AarastV3Space.x1),

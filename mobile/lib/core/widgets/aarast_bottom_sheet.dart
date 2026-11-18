@@ -57,8 +57,8 @@ class AarastBottomSheetHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        width: 46,
-        height: 4,
+        width: AarastV3Size.handleWidth,
+        height: AarastV3Size.handleHeight,
         margin: const EdgeInsets.only(
           top: AarastV3Space.x2,
           bottom: AarastV3Space.x3,

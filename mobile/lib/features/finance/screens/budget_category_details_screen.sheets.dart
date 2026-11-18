@@ -20,7 +20,10 @@ class _OverCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        border: Border.all(color: AarastV3Color.danger, width: 1.5),
+        border: Border.all(
+          color: AarastV3Color.danger,
+          width: AarastV3Size.line,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,7 +32,7 @@ class _OverCard extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.alertTriangle,
-                size: 20,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.danger,
               ),
               const SizedBox(width: AarastV3Space.x2),
@@ -37,7 +40,7 @@ class _OverCard extends StatelessWidget {
                 child: Text(
                   'زادت $over عن المحطوط',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: AarastV3Color.danger,
                   ),
@@ -52,7 +55,7 @@ class _OverCard extends StatelessWidget {
             child: Text(
               '$agreed من $allocated',
               style: JourneyType.of(
-                JourneyType.display,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -169,7 +172,7 @@ class _CategoryMenu extends StatelessWidget {
           value: true,
           child: Row(
             children: [
-              Icon(LucideIcons.pencil, size: 18),
+              Icon(LucideIcons.pencil, size: AarastV3Icon.md),
               SizedBox(width: AarastV3Space.x2),
               Flexible(child: Text('تعديل البند')),
             ],
@@ -182,7 +185,7 @@ class _CategoryMenu extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.trash2,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.danger,
               ),
               const SizedBox(width: AarastV3Space.x2),
@@ -245,7 +248,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
                 children: [
                   Icon(
                     LucideIcons.wallet,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: context.accent.primary,
                   ),
                   const SizedBox(width: AarastV3Space.x2),

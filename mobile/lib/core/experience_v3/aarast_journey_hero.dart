@@ -107,7 +107,7 @@ class JourneyPlanHero extends StatelessWidget {
                                     JourneyType.homeCount,
                                     weight: JourneyType.bold,
                                     color: AarastV3Color.onPrimary,
-                                    height: 0.95,
+                                    height: AarastV3Line.numeral,
                                   ),
                                 ),
                               ),
@@ -125,7 +125,7 @@ class JourneyPlanHero extends StatelessWidget {
                                   Text(
                                     title,
                                     style: JourneyType.of(
-                                      JourneyType.title,
+                                      JourneyType.lead,
                                       weight: JourneyType.bold,
                                       color: AarastV3Color.onPrimary,
                                     ),
@@ -134,7 +134,7 @@ class JourneyPlanHero extends StatelessWidget {
                                     Text(
                                       line,
                                       style: JourneyType.of(
-                                        JourneyType.bodySmall,
+                                        JourneyType.small,
                                         color: AarastV3Color.onPrimary
                                             .withValues(alpha: 0.78),
                                       ),
@@ -236,7 +236,7 @@ class JourneyHeroTag extends StatelessWidget {
           ),
           if (icon case final glyph?) ...[
             const SizedBox(width: AarastV3Space.x1),
-            Icon(glyph, size: 14),
+            Icon(glyph, size: AarastV3Icon.sm),
           ],
         ],
       ),

@@ -10,5 +10,4 @@ export 'screens/splash_screen.dart' show SplashScreen;
 export 'utils/application_password_policy.dart'
     show isApplicationPasswordWithinByteLimit;
 export 'utils/auth_action_guard.dart' show AuthActionGuard, AuthGatePanel;
-export 'widgets/auth_wedding_widgets.dart'
-    show AuthObscureToggle, AuthTextField;
+export 'widgets/auth_wedding_widgets.dart' show AuthObscureToggle;

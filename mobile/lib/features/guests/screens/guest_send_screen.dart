@@ -167,7 +167,6 @@ class _GuestSendScreenState extends State<GuestSendScreen> {
     ];
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -344,7 +343,7 @@ class _GuestSendScreenState extends State<GuestSendScreen> {
                     ),
                     Text(
                       reachable.map((guest) => guest.name).join('، '),
-                      style: JourneyType.of(JourneyType.bodySmall),
+                      style: JourneyType.of(JourneyType.small),
                     ),
                   ],
                   if (noPhone.isNotEmpty || noCountry.isNotEmpty) ...[

@@ -561,6 +561,7 @@ void main() {
       // Paid in full the day it is recorded: no plan.
       expect(find.text('كيف بتدفع؟'), findsNothing);
 
+      await _show(tester, find.byKey(const Key('cost-total-amount')));
       await tester.enterText(
         find.byKey(const Key('cost-total-amount')),
         '50000',
@@ -605,6 +606,7 @@ void main() {
           expense: true,
         ),
       );
+      await _show(tester, find.byKey(const Key('cost-total-amount')));
       await tester.enterText(
         find.byKey(const Key('cost-total-amount')),
         '300000',

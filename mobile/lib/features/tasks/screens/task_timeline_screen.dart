@@ -229,7 +229,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,
@@ -367,7 +366,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           for (var index = 0; index < tasks.length; index++) ...[
             if (index > 0)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 16,
                 endIndent: 16,
                 color: AarastV3Color.line,
@@ -428,7 +427,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
             Text(
               'خلصت',
               style: JourneyType.of(
-                JourneyType.bodyLarge,
+                JourneyType.lead,
                 weight: JourneyType.bold,
                 color: AarastV3Color.onPrimary,
               ),

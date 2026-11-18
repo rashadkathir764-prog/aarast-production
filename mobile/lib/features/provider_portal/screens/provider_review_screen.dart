@@ -78,7 +78,6 @@ class _ProviderReviewScreenState extends State<ProviderReviewScreen> {
     final review = _find(dashboard);
     final reply = review?.reply;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,

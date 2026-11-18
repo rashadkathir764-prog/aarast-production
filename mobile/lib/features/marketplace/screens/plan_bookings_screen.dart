@@ -78,7 +78,6 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
         booked.map((quote) => quote.eventDate).nonNulls.firstOrNull;
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -287,7 +286,7 @@ class _BookingCard extends StatelessWidget {
                   child: Text(
                     name,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),

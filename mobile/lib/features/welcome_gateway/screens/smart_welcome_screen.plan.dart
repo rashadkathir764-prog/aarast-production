@@ -130,17 +130,22 @@ class _NameDateStep extends StatelessWidget {
                 child: Text(
                   'شهر العرس',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
               ),
-              Text(
-                '${arabicMonthName(months.first.month)} ${months.first.year}'
-                ' – ${arabicMonthName(last.month)} ${last.year}',
-                style: JourneyType.of(
-                  JourneyType.bodySmall,
-                  color: AarastV3Color.textMuted,
+              // A narrow phone at a large text size wraps the range rather
+              // than push the row past the screen.
+              Flexible(
+                child: Text(
+                  '${arabicMonthName(months.first.month)} ${months.first.year}'
+                  ' – ${arabicMonthName(last.month)} ${last.year}',
+                  textAlign: TextAlign.end,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
                 ),
               ),
             ],
@@ -274,7 +279,7 @@ class _MonthTile extends StatelessWidget {
         selected: selected,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 56),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.row),
           padding: const EdgeInsets.symmetric(
             vertical: AarastV3Space.x2,
             horizontal: AarastV3Space.x1,
@@ -299,7 +304,7 @@ class _MonthTile extends StatelessWidget {
                       name,
                       textAlign: TextAlign.center,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: fg,
                       ),
@@ -312,7 +317,7 @@ class _MonthTile extends StatelessWidget {
                 hijri,
                 textAlign: TextAlign.center,
                 style: JourneyType.of(
-                  JourneyType.label,
+                  JourneyType.small,
                   color: selected
                       ? AarastV3Color.onPrimary
                       : AarastV3Color.textMuted,
@@ -496,10 +501,7 @@ class _PlaceBudgetStep extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
           child: Text(
             'المدينة',
-            style: JourneyType.of(
-              JourneyType.bodyLarge,
-              weight: JourneyType.bold,
-            ),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
         ),
         Wrap(
@@ -576,9 +578,6 @@ class _PlaceBudgetStep extends StatelessWidget {
   }
 }
 
-/// How far the sky reaches down «خطتك جاهزة».
-const _readySkyHeight = 160.0;
-
 /// «خطتك جاهزة يا X»: only what the plan starts with (the items and tasks
 /// from the catalogues, the city's real number of providers), then save it
 /// with the phone number or look around first, and what looking first risks.
@@ -639,7 +638,7 @@ class _ReadyStep extends StatelessWidget {
               children: [
                 Stack(
                   children: [
-                    const JourneySkyBand(height: _readySkyHeight),
+                    const JourneySkyBand(ratio: AarastV3Media.slimBand),
                     PositionedDirectional(
                       top: AarastV3Space.x2,
                       start: AarastV3Space.x3,
@@ -670,7 +669,7 @@ class _ReadyStep extends StatelessWidget {
                         child: Text(
                           'خطتك جاهزة يا $name',
                           style: JourneyType.of(
-                            JourneyType.question,
+                            JourneyType.hero,
                             weight: JourneyType.bold,
                           ),
                         ),

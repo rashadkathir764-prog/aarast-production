@@ -21,7 +21,10 @@ class InvitationMessagePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = JourneyType.of(JourneyType.bodySmall, height: 1.6);
+    final base = JourneyType.of(
+      JourneyType.small,
+      height: AarastV3Line.reading,
+    );
     final spans = <InlineSpan>[];
     var at = 0;
     for (final match in _parts.allMatches(text)) {

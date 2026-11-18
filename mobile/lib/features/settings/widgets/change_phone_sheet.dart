@@ -151,7 +151,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
               padding: EdgeInsets.symmetric(vertical: AarastV3Space.x2),
               child: Icon(
                 LucideIcons.arrowDown,
-                size: 22,
+                size: AarastV3Icon.lg,
                 color: AarastV3Color.textFaint,
               ),
             ),
@@ -223,7 +223,7 @@ class _CurrentPhone extends StatelessWidget {
           children: [
             const Icon(
               LucideIcons.smartphone,
-              size: 20,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textMuted,
             ),
             const SizedBox(width: AarastV3Space.x2),
@@ -234,7 +234,7 @@ class _CurrentPhone extends StatelessWidget {
                   Text(
                     'رقمك الحالي',
                     style: JourneyType.of(
-                      JourneyType.label,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),

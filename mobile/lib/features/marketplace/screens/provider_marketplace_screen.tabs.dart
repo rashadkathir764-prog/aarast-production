@@ -1,8 +1,5 @@
 part of 'provider_marketplace_screen.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _categoryStripHeight = 92.0;
-
 /// The four tabs of «المزودين», in the order they are drawn: استكشف (f02),
 /// طلباتي (f01), المحادثات (f08) and المفضلة (f09).
 extension _ProviderTabs on _ProviderMarketplaceScreenState {
@@ -382,7 +379,9 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         .whereType<MarketplaceProvider>()
         .toList();
     final picked = _comparePicks(favorites);
-    final bottomGap = widget.embedded ? 124.0 : 28.0;
+    final bottomGap = widget.embedded
+        ? AarastV3Density.pageBottom
+        : AarastV3Space.x8;
     final listPadding = EdgeInsets.fromLTRB(
       AarastV3Space.x4,
       AarastV3Space.x3,
@@ -600,7 +599,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             const SizedBox(height: AarastV3Space.x2),
             AarastV3ProgressLine(
               key: const Key('marketplace-results-refreshing'),
-              height: 3,
+              height: AarastV3Size.bar,
               color: context.accent.primary,
               backgroundColor: context.accent.primarySoft,
               semanticsLabel: 'تحديث نتائج المزودين',
@@ -644,7 +643,7 @@ class _FavoriteCard extends StatelessWidget {
       child: Center(
         child: Icon(
           providerServiceIcon(kind),
-          size: 32,
+          size: AarastV3Icon.xl,
           color: context.accent.primary,
         ),
       ),
@@ -659,14 +658,18 @@ class _FavoriteCard extends StatelessWidget {
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(AarastV3Radius.card),
           border: picked
-              ? Border.all(color: context.accent.primary, width: 2)
+              ? Border.all(
+                  color: context.accent.primary,
+                  width: AarastV3Size.lineStrong,
+                )
               : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              height: _categoryStripHeight,
+            // D118: a card photo's proportion of the card's width.
+            AspectRatio(
+              aspectRatio: AarastV3Media.cardPhoto,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -696,8 +699,8 @@ class _FavoriteCard extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.all(AarastV3Space.x3),
                           child: Container(
-                            width: 24,
-                            height: 24,
+                            width: AarastV3Size.check,
+                            height: AarastV3Size.check,
                             decoration: BoxDecoration(
                               color: picked
                                   ? context.accent.primary
@@ -709,7 +712,7 @@ class _FavoriteCard extends StatelessWidget {
                             child: picked
                                 ? const Icon(
                                     LucideIcons.check,
-                                    size: 15,
+                                    size: AarastV3Icon.sm,
                                     color: AarastV3Color.onPrimary,
                                   )
                                 : null,

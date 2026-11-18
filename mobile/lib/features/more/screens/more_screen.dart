@@ -30,7 +30,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 part 'more_screen.rows.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
-const _moreAvatarBox = 54.0;
+const _moreAvatarBox = AarastV3Media.logo;
 
 /// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
 /// privacy, and the account (C51 adds «الحساب»: notifications, plans,
@@ -71,7 +71,6 @@ class _MoreScreenState extends State<MoreScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -463,7 +462,7 @@ class _GroupTitle extends StatelessWidget {
       child: Text(
         title,
         style: JourneyType.of(
-          JourneyType.bodySmall,
+          JourneyType.small,
           weight: JourneyType.bold,
           color: AarastV3Color.textMuted,
         ),
@@ -505,14 +504,14 @@ class _ProfileCard extends StatelessWidget {
                 errorBuilder: (_, _, _) => JourneyAvatar(
                   letter: letter,
                   color: AarastV3Color.saffron,
-                  size: 48,
+                  size: AarastV3Size.markLarge,
                 ),
               ),
             )
           : JourneyAvatar(
               letter: letter,
               color: AarastV3Color.saffron,
-              size: 48,
+              size: AarastV3Size.markLarge,
             ),
     );
     return JourneyBox(
@@ -538,7 +537,7 @@ class _ProfileCard extends StatelessWidget {
                 Text(
                   name.trim().isEmpty ? 'ضيف' : name.trim(),
                   style: JourneyType.of(
-                    JourneyType.prominent,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -547,7 +546,7 @@ class _ProfileCard extends StatelessWidget {
                     PhoneNumberUtils.display(phone) ?? phone!.trim(),
                     textDirection: TextDirection.ltr,
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),

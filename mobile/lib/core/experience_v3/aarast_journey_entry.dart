@@ -18,10 +18,10 @@ import 'aarast_v3_foundations.dart';
 
 /// The height of a person's picture card («أنت العريس ولا العروسة؟»), so
 /// both choices weigh the same.
-const _personaCardHeight = 112.0;
+const _personaCard = AarastV3Size.personaCard;
 
 /// The width of the picture on a person's card.
-const _personaPictureWidth = 96.0;
+const _personaPictureWidth = AarastV3Size.personaPicture;
 
 /// How much taller the sky is drawn than its band: the band shows the lights
 /// and fireworks, and its cut falls in the sky's solid floor (from 80% of
@@ -135,11 +135,7 @@ class JourneyEntryQuestion extends StatelessWidget {
           header: true,
           child: Text(
             question,
-            style: JourneyType.of(
-              JourneyType.question,
-              weight: JourneyType.bold,
-              height: 1.3,
-            ),
+            style: JourneyType.of(JourneyType.hero, weight: JourneyType.bold),
           ),
         ),
         if (help != null) ...[
@@ -147,9 +143,9 @@ class JourneyEntryQuestion extends StatelessWidget {
           Text(
             help!,
             style: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.lead,
               color: AarastV3Color.textMuted,
-              height: 1.55,
+              height: AarastV3Line.reading,
             ),
           ),
         ],
@@ -192,7 +188,7 @@ class JourneyEntryActions extends StatelessWidget {
         if (secondary != null)
           Center(child: secondary)
         else if (reserve)
-          const SizedBox(height: AarastV3Space.x12),
+          const SizedBox(height: AarastV3Size.action),
       ],
     );
   }
@@ -224,7 +220,7 @@ class JourneyDoor extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AarastV3Radius.card),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.door),
           padding: const EdgeInsets.all(AarastV3Space.x4),
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
@@ -246,7 +242,7 @@ class JourneyDoor extends StatelessWidget {
                     Text(
                       title,
                       style: JourneyType.of(
-                        JourneyType.title,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -254,7 +250,7 @@ class JourneyDoor extends StatelessWidget {
                     Text(
                       subtitle,
                       style: JourneyType.of(
-                        JourneyType.bodySmall,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
@@ -305,7 +301,7 @@ class JourneyPersonaCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: radius,
         child: Container(
-          constraints: const BoxConstraints(minHeight: _personaCardHeight),
+          constraints: const BoxConstraints(minHeight: _personaCard),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
@@ -339,7 +335,7 @@ class JourneyPersonaCard extends StatelessWidget {
                                 style: JourneyType.of(
                                   JourneyType.body,
                                   color: AarastV3Color.textMuted,
-                                  height: 1.5,
+                                  height: AarastV3Line.reading,
                                 ),
                               ),
                             ],
@@ -374,24 +370,30 @@ class JourneyPersonaCard extends StatelessWidget {
 /// The wedding sky over the top of a screen, its lights and fireworks
 /// only, melting into the page (no gradient, D3).
 class JourneySkyBand extends StatelessWidget {
-  const JourneySkyBand({required this.height, super.key});
+  const JourneySkyBand({this.ratio = AarastV3Media.band, super.key});
 
-  /// The band's height; the sky is drawn taller and cut at it, so the band
-  /// shows the lights and the fireworks, not the empty night under them.
-  final double height;
+  /// The band's width over its height ([AarastV3Media.band] or
+  /// [AarastV3Media.slimBand]); the sky is drawn taller and cut at it, so the
+  /// band shows the lights and the fireworks, not the empty night under them.
+  final double ratio;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: ClipRect(
-        child: OverflowBox(
-          alignment: Alignment.topCenter,
-          minHeight: height * _skyOverdraw,
-          maxHeight: height * _skyOverdraw,
-          child: const JourneyWeddingSky(base: AarastV3Color.canvas),
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxWidth / ratio;
+        return SizedBox(
+          height: height,
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topCenter,
+              minHeight: height * _skyOverdraw,
+              maxHeight: height * _skyOverdraw,
+              child: const JourneyWeddingSky(base: AarastV3Color.canvas),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -446,130 +448,93 @@ class _JourneyPhoneFieldState extends State<JourneyPhoneField> {
   Widget build(BuildContext context) {
     final error = widget.errorText;
     final focused = _focus.hasFocus;
-    final border = error != null
-        ? AarastV3Color.danger
-        : focused
-        ? context.accent.primary
-        : AarastV3Color.line;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // One field to a screen reader: «رقم جوالك، +967» and what is typed.
         MergeSemantics(
-          child: GestureDetector(
-            onTap: () => _focus.requestFocus(),
-            child: Container(
-              padding: AarastV3Field.padding,
-              decoration: BoxDecoration(
-                color: AarastV3Color.paper,
-                borderRadius: BorderRadius.circular(AarastV3Field.radius),
-                border: Border.all(
-                  color: border,
-                  width: focused || error != null ? 2 : 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.label,
-                    style: JourneyType.of(
-                      JourneyType.label,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: AarastV3Space.x1),
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.only(
-                            right: AarastV3Space.x3,
-                          ),
-                          margin: const EdgeInsets.only(
-                            right: AarastV3Space.x3,
-                          ),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              right: BorderSide(color: AarastV3Color.line),
-                            ),
-                          ),
-                          child: Text(
-                            '+967',
-                            style: JourneyType.of(
-                              JourneyType.bodyLarge,
-                              weight: JourneyType.bold,
-                              color: AarastV3Color.textMuted,
-                            ),
+          child: JourneyFieldBox(
+            focused: focused,
+            error: error != null,
+            onTap: _focus.requestFocus,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                JourneyFieldLabel(widget.label),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.only(right: AarastV3Space.x3),
+                        margin: const EdgeInsets.only(right: AarastV3Space.x3),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            right: BorderSide(color: AarastV3Color.line),
                           ),
                         ),
-                        Expanded(
-                          child: TextField(
-                            key: const ValueKey('journey-phone-input'),
-                            controller: widget.controller,
-                            focusNode: _focus,
-                            autofocus: widget.autofocus,
-                            enabled: widget.enabled,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const [
-                              AutofillHints.telephoneNumber,
-                            ],
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9٠-٩+ ]'),
-                              ),
-                              LengthLimitingTextInputFormatter(16),
-                              const _PhoneGroupsFormatter(),
-                            ],
-                            onChanged: widget.onChanged,
-                            onSubmitted: widget.onSubmitted,
-                            cursorColor: context.accent.primary,
-                            style: JourneyType.of(
+                        child: Text(
+                          '+967',
+                          style: JourneyType.of(
+                            JourneyType.lead,
+                            weight: JourneyType.bold,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          key: const ValueKey('journey-phone-input'),
+                          controller: widget.controller,
+                          focusNode: _focus,
+                          autofocus: widget.autofocus,
+                          enabled: widget.enabled,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9٠-٩+ ]'),
+                            ),
+                            LengthLimitingTextInputFormatter(16),
+                            const _PhoneGroupsFormatter(),
+                          ],
+                          onChanged: widget.onChanged,
+                          onSubmitted: widget.onSubmitted,
+                          cursorColor: context.accent.primary,
+                          style: JourneyType.of(
+                            JourneyType.lead,
+                            weight: JourneyType.bold,
+                            height: AarastV3Field.valueHeight,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            hintText: '7XX XXX XXX',
+                            hintStyle: JourneyType.of(
                               JourneyType.lead,
-                              weight: JourneyType.bold,
-                            ),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              filled: false,
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              focusedErrorBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                              hintText: '7XX XXX XXX',
-                              hintStyle: JourneyType.of(
-                                JourneyType.bodyLarge,
-                                color: AarastV3Color.textMuted,
-                              ),
+                              color: AarastV3Color.textFaint,
+                              height: AarastV3Field.valueHeight,
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-        if (error != null) ...[
-          const SizedBox(height: AarastV3Space.x1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-            child: Text(
-              error,
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.danger,
-              ),
-            ),
-          ),
-        ],
+        if (error != null) JourneyFieldError(error),
       ],
     );
   }
@@ -609,12 +574,12 @@ class JourneyKeptPlanStrip extends StatelessWidget {
               children: [
                 Text(
                   'على هذا الجوال الحين',
-                  style: JourneyType.of(JourneyType.label, color: dark),
+                  style: JourneyType.of(JourneyType.small, color: dark),
                 ),
                 Text(
                   line,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: dark,
                   ),
@@ -764,7 +729,7 @@ class _HelpRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.row),
           child: Row(
             children: [
               JourneyIconTile(
@@ -784,7 +749,7 @@ class _HelpRow extends StatelessWidget {
                     Text(
                       label,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: enabled
                             ? AarastV3Color.ink

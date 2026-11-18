@@ -686,7 +686,7 @@ class RouterErrorScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.navigation, size: 52),
+                const Icon(LucideIcons.navigation, size: AarastV3Icon.hero),
                 const SizedBox(height: AarastV3Space.x4),
                 // RA-MO-123: a newcomer reaches this from a broken invite
                 // link; it says what happened in plain words, to anyone,

@@ -216,7 +216,11 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           else
             for (var index = 0; index < shown.length; index++) ...[
               if (index > 0)
-                SizedBox(height: _tab == ProviderRequestTab.ended ? 12 : 10),
+                SizedBox(
+                  height: _tab == ProviderRequestTab.ended
+                      ? AarastV3Space.x3
+                      : AarastV3Space.x2,
+                ),
               _card(context, dashboard, shown[index], index),
             ],
         ],

@@ -65,7 +65,6 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     final address = profile?.address?.trim() ?? '';
     final shown = portfolio?.items.where((item) => !item.isRejected).length;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
@@ -214,7 +213,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               icon: LucideIcons.music2,
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
-              size: 40,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -233,7 +232,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
                         ? 'يظهر كمعرض شغلك، بدون ما ترفع كل شيء'
                         : 'مربوط: ${linked.join('، ')}',
                     style: JourneyType.of(
-                      JourneyType.detail,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),
@@ -682,7 +681,7 @@ class _Fact extends StatelessWidget {
             child: Text(
               label,
               style: JourneyType.of(
-                JourneyType.detail,
+                JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),

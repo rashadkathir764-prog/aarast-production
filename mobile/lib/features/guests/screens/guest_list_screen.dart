@@ -233,7 +233,6 @@ class _GuestListScreenState extends State<GuestListScreen> {
         });
       },
       child: AarastScreenFrame(
-        maxWidth: 600,
         backgroundColor: AarastV3Color.canvas,
         child: RefreshIndicator(
           color: context.accent.primary,
@@ -610,7 +609,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
           child: Text(
             '$title · ${words.count(inGroup.length)}',
-            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
         ),
         SingleChildScrollView(
@@ -702,7 +701,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         children: [
           if (index > 0)
             const Divider(
-              height: 1,
+              height: AarastV3Space.hair,
               indent: 16,
               endIndent: 16,
               color: AarastV3Color.line,

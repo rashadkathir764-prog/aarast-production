@@ -658,7 +658,7 @@ class _NotificationRow extends StatelessWidget {
                   children: [
                     Icon(
                       LucideIcons.archive,
-                      size: 18,
+                      size: AarastV3Icon.md,
                       color: AarastV3Color.textMuted,
                     ),
                     SizedBox(width: AarastV3Space.x1),
@@ -717,7 +717,7 @@ class _NotificationRow extends StatelessWidget {
                     Text(
                       copy.title,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         // Critique ت1: a read notice is at the regular
                         // weight, so read and unread differ beyond a dot.
                         weight: notification.isUnread

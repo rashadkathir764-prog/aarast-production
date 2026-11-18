@@ -70,7 +70,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     final offline = auth.failedOffline;
     final error = auth.errorMessage;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       child: JourneyPage(
@@ -225,10 +224,7 @@ class _JoiningSteps extends StatelessWidget {
       children: [
         Text(
           'بعد رمز واتساب، أربع خطوات',
-          style: JourneyType.of(
-            JourneyType.bodyLarge,
-            weight: JourneyType.bold,
-          ),
+          style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
         ),
         const SizedBox(height: AarastV3Space.x2),
         for (final (index, step) in _steps.indexed)

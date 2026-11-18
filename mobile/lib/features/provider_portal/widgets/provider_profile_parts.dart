@@ -277,7 +277,7 @@ class ProviderReviewCard extends StatelessWidget {
                       for (var star = 1; star <= 5; star++)
                         Icon(
                           LucideIcons.star,
-                          size: 17,
+                          size: AarastV3Icon.sm,
                           color: star <= rating
                               ? AarastV3Color.saffron
                               : AarastV3Color.line,
@@ -300,7 +300,10 @@ class ProviderReviewCard extends StatelessWidget {
             const SizedBox(height: AarastV3Space.x2),
             Text(
               '«$comment»',
-              style: JourneyType.of(JourneyType.body, height: 1.6),
+              style: JourneyType.of(
+                JourneyType.body,
+                height: AarastV3Line.reading,
+              ),
             ),
           ],
         ],
@@ -339,9 +342,9 @@ class ProviderReviewReplyBox extends StatelessWidget {
           Text(
             reply.body,
             style: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.lead,
               weight: JourneyType.bold,
-              height: 1.5,
+              height: AarastV3Line.reading,
             ),
           ),
         ],
@@ -408,7 +411,7 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
                 key: const Key('provider-capacity-value'),
                 textAlign: TextAlign.center,
                 style: JourneyType.of(
-                  JourneyType.title,
+                  JourneyType.lead,
                   weight: JourneyType.bold,
                 ),
               ),

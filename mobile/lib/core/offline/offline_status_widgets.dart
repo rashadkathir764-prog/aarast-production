@@ -86,7 +86,9 @@ class OfflineStatusBanner extends StatelessWidget {
       child: Align(
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+          constraints: const BoxConstraints(
+            maxWidth: AarastV3Density.readableWidth,
+          ),
           child: Semantics(
             container: true,
             liveRegion: true,
@@ -115,8 +117,8 @@ class OfflineStatusBanner extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 30,
-                      height: 30,
+                      width: AarastV3Size.mark,
+                      height: AarastV3Size.mark,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
@@ -129,7 +131,7 @@ class OfflineStatusBanner extends StatelessWidget {
                             ? LucideIcons.cloudCog
                             : LucideIcons.cloudOff,
                         color: color,
-                        size: 16,
+                        size: AarastV3Icon.sm,
                       ),
                     ),
                     const SizedBox(width: AarastV3Space.x2),
@@ -184,7 +186,7 @@ class OfflineStatusBanner extends StatelessWidget {
                               : hasWaiting
                               ? LucideIcons.listChecks
                               : LucideIcons.refreshCw,
-                          size: 17,
+                          size: AarastV3Icon.sm,
                         ),
                       ),
                     ],
@@ -231,7 +233,7 @@ class OfflinePendingBadge extends StatelessWidget {
           Icon(
             LucideIcons.refreshCwOff,
             color: context.accent.primary,
-            size: 14,
+            size: AarastV3Icon.sm,
           ),
           const SizedBox(width: AarastV3Space.x1),
           Text(
@@ -262,8 +264,8 @@ class OfflineSyncNowTile extends StatelessWidget {
           ? () => showPendingChangesSheet(context, service)
           : service.syncPendingChanges,
       leading: Container(
-        width: 50,
-        height: 50,
+        width: AarastV3Size.mark,
+        height: AarastV3Size.mark,
         decoration: BoxDecoration(
           color: AppTheme.canvas,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -361,7 +363,7 @@ class _PendingChangesSheet extends StatelessWidget {
                 padding: EdgeInsets.all(AarastV3Space.x6),
                 child: Center(
                   child: AarastInlineSpinner(
-                    dimension: 28,
+                    dimension: AarastV3Icon.xl,
                     color: AarastV3Color.primary,
                   ),
                 ),
@@ -446,7 +448,7 @@ class _PendingChangeRow extends StatelessWidget {
                   ))
           : const Icon(
               LucideIcons.clock,
-              size: 18,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textFaint,
             ),
     );

@@ -102,7 +102,7 @@ class _ItemLine extends StatelessWidget {
                           child: Icon(
                             LucideIcons.lock,
                             key: ValueKey('cost-private-lock'),
-                            size: 14,
+                            size: AarastV3Icon.sm,
                             color: AarastV3Color.textMuted,
                           ),
                         ),
@@ -167,7 +167,7 @@ class _ItemLine extends StatelessWidget {
 }
 
 /// The budget bar's thickness: a fixed dimension, like the progress bars'.
-const _splitBarHeight = 8.0;
+const _splitBar = AarastV3Size.bar;
 
 class _SplitBar extends StatelessWidget {
   const _SplitBar({required this.parts});
@@ -184,7 +184,7 @@ class _SplitBar extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AarastV3Radius.pill),
       child: SizedBox(
-        height: _splitBarHeight,
+        height: _splitBar,
         child: total <= 0
             ? const ColoredBox(color: AarastV3Color.line)
             // Stretched: a coloured box with no child is otherwise drawn
@@ -216,8 +216,8 @@ class _Legend extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: AarastV3Size.dot,
+          height: AarastV3Size.dot,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: AarastV3Space.x1),
@@ -266,10 +266,7 @@ class _ItemsBudgetBox extends StatelessWidget {
                 groom: 'ما في ميزانية بعد',
                 bride: 'ما في ميزانية بعد',
               ),
-              style: JourneyType.of(
-                JourneyType.bodyLarge,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
             ),
             const SizedBox(height: AarastV3Space.x1),
             Text(
@@ -352,14 +349,14 @@ class _ItemsBudgetBox extends StatelessWidget {
                     Text(
                       mahr > 0 ? 'الميزانية، فيها المهر' : 'ميزانية العرس',
                       style: JourneyType.of(
-                        JourneyType.detail,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
                     Text(
                       money(budget),
                       style: JourneyType.of(
-                        JourneyType.figure,
+                        JourneyType.pageTitle,
                         weight: JourneyType.bold,
                       ),
                     ),

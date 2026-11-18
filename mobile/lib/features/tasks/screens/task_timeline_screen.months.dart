@@ -77,18 +77,21 @@ class _MonthBlock extends StatelessWidget {
           Column(
             children: [
               Container(
-                width: 14,
-                height: 14,
+                width: AarastV3Size.swatch,
+                height: AarastV3Size.swatch,
                 margin: const EdgeInsets.only(top: AarastV3Space.x1),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: now ? context.accent.primary : null,
-                  border: Border.all(color: context.accent.primary, width: 2),
+                  border: Border.all(
+                    color: context.accent.primary,
+                    width: AarastV3Size.lineStrong,
+                  ),
                 ),
               ),
               const Expanded(
                 child: VerticalDivider(
-                  width: 14,
+                  width: AarastV3Size.swatch,
                   thickness: 2,
                   color: AarastV3Color.line,
                 ),
@@ -133,7 +136,7 @@ class _MonthBlock extends StatelessWidget {
                                 task.isDone
                                     ? LucideIcons.checkCircle2
                                     : LucideIcons.circle,
-                                size: 17,
+                                size: AarastV3Icon.sm,
                                 color: task.isDone
                                     ? AarastV3Color.mint
                                     : isTaskLate(task)

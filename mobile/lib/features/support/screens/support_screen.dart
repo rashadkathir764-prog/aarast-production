@@ -26,7 +26,6 @@ class SupportScreen extends StatelessWidget {
       whatsAppOverride ?? SupportConfig.whatsApp,
     );
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -150,7 +149,7 @@ class _WhatsAppCard extends StatelessWidget {
               icon: LucideIcons.messageCircle,
               color: AarastV3Color.onPrimary,
               soft: AarastV3Color.mint,
-              size: 44,
+              size: AarastV3Size.mark,
               radius: 16,
             ),
             const SizedBox(width: AarastV3Space.x3),
@@ -161,7 +160,7 @@ class _WhatsAppCard extends StatelessWidget {
                   Text(
                     'كلّمنا على واتساب',
                     style: JourneyType.of(
-                      JourneyType.title,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -231,7 +230,7 @@ class _QuestionState extends State<_Question> {
               icon: LucideIcons.helpCircle,
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              size: 36,
+              size: AarastV3Size.mark,
               radius: 12,
             ),
             const SizedBox(width: AarastV3Space.x3),
@@ -264,7 +263,7 @@ class _QuestionState extends State<_Question> {
               padding: const EdgeInsets.only(top: AarastV3Space.x2),
               child: Icon(
                 _open ? LucideIcons.chevronDown : LucideIcons.chevronLeft,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textFaint,
               ),
             ),
@@ -295,7 +294,7 @@ class _PageChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AarastV3Radius.card),
       semanticLabel: label,
       child: Container(
-        height: 40,
+        height: AarastV3Size.mark,
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(AarastV3Radius.card),
@@ -304,7 +303,7 @@ class _PageChip extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: AarastV3Color.ink),
+            Icon(icon, size: AarastV3Icon.md, color: AarastV3Color.ink),
             const SizedBox(width: AarastV3Space.x2),
             Text(
               label,

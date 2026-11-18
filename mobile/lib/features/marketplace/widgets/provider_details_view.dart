@@ -14,9 +14,6 @@ import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
 import 'provider_trust_signals.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _providerCoverHeight = 220.0;
-
 /// f03 «صفحة المزود»: the photos, who the provider is and how they answer,
 /// their prices and how old they are, and their packages. Asking for a quote
 /// and WhatsApp sit in the screen's footer.
@@ -127,7 +124,7 @@ class ProviderDetailsView extends StatelessWidget {
                       child: Text(
                         provider.businessName,
                         style: JourneyType.of(
-                          JourneyType.display,
+                          JourneyType.pageTitle,
                           weight: JourneyType.bold,
                         ),
                       ),
@@ -139,7 +136,7 @@ class ProviderDetailsView extends StatelessWidget {
                       message: 'موثّق',
                       child: Icon(
                         LucideIcons.badgeCheck,
-                        size: 22,
+                        size: AarastV3Icon.lg,
                         color: context.accent.primary,
                         semanticLabel: 'موثّق',
                       ),
@@ -304,7 +301,7 @@ class _ReviewWithReply extends StatelessWidget {
                             for (var star = 1; star <= 5; star++)
                               Icon(
                                 LucideIcons.star,
-                                size: 15,
+                                size: AarastV3Icon.sm,
                                 color: star <= rating
                                     ? AarastV3Color.saffron
                                     : AarastV3Color.line,
@@ -324,7 +321,7 @@ class _ReviewWithReply extends StatelessWidget {
                   onPressed: onReport,
                   icon: const Icon(
                     LucideIcons.flag,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
@@ -334,7 +331,10 @@ class _ReviewWithReply extends StatelessWidget {
             const SizedBox(height: AarastV3Space.x1),
             Text(
               '«$comment»',
-              style: JourneyType.of(JourneyType.body, height: 1.6),
+              style: JourneyType.of(
+                JourneyType.body,
+                height: AarastV3Line.reading,
+              ),
             ),
           ],
           if (reply != null && reply.body.trim().isNotEmpty) ...[
@@ -361,7 +361,10 @@ class _ReviewWithReply extends StatelessWidget {
                   const SizedBox(height: AarastV3Space.x1),
                   Text(
                     reply.body.trim(),
-                    style: JourneyType.of(JourneyType.body, height: 1.5),
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      height: AarastV3Line.reading,
+                    ),
                   ),
                 ],
               ),
@@ -393,11 +396,16 @@ class _ProviderHero extends StatelessWidget {
       key: const Key('provider-media-fallback'),
       color: context.accent.primary,
       child: Center(
-        child: Icon(icon, size: 60, color: context.accent.primarySoft),
+        child: Icon(
+          icon,
+          size: AarastV3Icon.hero,
+          color: context.accent.primarySoft,
+        ),
       ),
     );
-    return SizedBox(
-      height: _providerCoverHeight,
+    // D118: a photo's proportion of the width, not 220 on every phone.
+    return AspectRatio(
+      aspectRatio: AarastV3Media.photo,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -429,7 +437,7 @@ class _ProviderHero extends StatelessWidget {
                 key: const ValueKey('provider-details-back'),
                 icon: LucideIcons.arrowRight,
                 tooltip: 'رجوع',
-                size: 42,
+                size: AarastV3Size.mark,
                 onPressed: onBack,
               ),
             ),
@@ -478,7 +486,7 @@ class _RatingLine extends StatelessWidget {
               alignment: PlaceholderAlignment.middle,
               child: Icon(
                 LucideIcons.star,
-                size: 16,
+                size: AarastV3Icon.sm,
                 color: AarastV3Color.brandAccentStrong,
               ),
             ),
@@ -532,7 +540,7 @@ class _PriceBox extends StatelessWidget {
                     Text(
                       price,
                       style: JourneyType.of(
-                        JourneyType.figure,
+                        JourneyType.pageTitle,
                         weight: JourneyType.bold,
                         color: context.accent.primary,
                       ),
@@ -544,7 +552,7 @@ class _PriceBox extends StatelessWidget {
                 const SizedBox(width: AarastV3Space.x2),
                 const Icon(
                   LucideIcons.checkCircle2,
-                  size: 16,
+                  size: AarastV3Icon.sm,
                   color: AarastV3Color.mint,
                 ),
                 const SizedBox(width: AarastV3Space.x1),

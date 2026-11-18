@@ -189,7 +189,7 @@ class ProviderChatRow extends StatelessWidget {
             JourneyAvatar(
               letter: name.characters.first,
               color: color,
-              size: 40,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -230,7 +230,7 @@ class ProviderChatRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(
-                      JourneyType.detail,
+                      JourneyType.small,
                       color: unread > 0
                           ? AarastV3Color.ink
                           : AarastV3Color.textMuted,
@@ -245,7 +245,7 @@ class ProviderChatRow extends StatelessWidget {
                 Text(
                   when,
                   style: JourneyType.of(
-                    JourneyType.tabLabel,
+                    JourneyType.caption,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
@@ -265,7 +265,7 @@ class ProviderChatRow extends StatelessWidget {
                     child: Text(
                       '$unread',
                       style: JourneyType.of(
-                        JourneyType.tabLabel,
+                        JourneyType.caption,
                         weight: JourneyType.bold,
                         color: AarastV3Color.onPrimary,
                       ),
@@ -275,7 +275,7 @@ class ProviderChatRow extends StatelessWidget {
                   const SizedBox(height: AarastV3Space.x1),
                   const Icon(
                     LucideIcons.bellOff,
-                    size: 16,
+                    size: AarastV3Icon.sm,
                     color: AarastV3Color.textMuted,
                     semanticLabel: 'مكتومة',
                   ),

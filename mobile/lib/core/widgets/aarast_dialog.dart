@@ -64,7 +64,7 @@ class AarastDialog extends StatelessWidget {
         ),
         contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: AppTheme.textPrimary,
-          height: 1.5,
+          height: AarastV3Line.reading,
         ),
         icon: icon,
         title: title,

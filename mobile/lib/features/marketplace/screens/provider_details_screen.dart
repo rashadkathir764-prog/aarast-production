@@ -105,7 +105,6 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               marketplace.detailsErrorFor(widget.providerId) != null,
         );
     return AarastScreenFrame(
-      maxWidth: 520,
       safeAreaBottom: false,
       backgroundColor: AarastV3Color.canvas,
       // A provider that failed to load has nothing to ask a quote from.

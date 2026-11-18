@@ -315,7 +315,6 @@ class _BudgetCategoryDetailsScreenState
     }
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

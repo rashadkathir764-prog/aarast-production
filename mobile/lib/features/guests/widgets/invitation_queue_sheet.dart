@@ -13,9 +13,6 @@ import '../models/guest_invite_text.dart';
 import '../utils/invitation_share.dart';
 import 'guest_invitation_card_image.dart';
 
-/// The card drawn small in the turn, a fixed picture area (D74).
-const double _cardPreviewHeight = 200;
-
 /// One guest's turn in a round of sends: what the text is and, for an
 /// invitation of its own, the occasion it is about.
 typedef InvitationTurn = ({
@@ -275,7 +272,7 @@ class _InvitationQueueSheetState extends State<InvitationQueueSheet> {
       Text(
         guest.name,
         key: const ValueKey('queue-guest'),
-        style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+        style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
       ),
       Text(
         kindWords,
@@ -342,8 +339,9 @@ class _InvitationQueueSheetState extends State<InvitationQueueSheet> {
               children: [
                 if (widget.cardFor case final cardFor?)
                   Center(
-                    child: SizedBox(
-                      height: _cardPreviewHeight,
+                    // D118: the card fits a band of the sheet's width.
+                    child: AspectRatio(
+                      aspectRatio: AarastV3Media.band,
                       child: FittedBox(
                         child: RepaintBoundary(
                           key: _cardKey,
@@ -406,7 +404,7 @@ class _InvitationQueueSheetState extends State<InvitationQueueSheet> {
           error,
           key: const ValueKey('queue-error'),
           style: JourneyType.of(
-            JourneyType.bodySmall,
+            JourneyType.small,
             weight: JourneyType.bold,
             color: AarastV3Color.danger,
           ),
@@ -465,8 +463,8 @@ class _Step extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: AarastV3Size.check,
+              height: AarastV3Size.check,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -475,7 +473,11 @@ class _Step extends StatelessWidget {
                     : context.accent.primarySoft,
               ),
               child: done
-                  ? const Icon(LucideIcons.check, size: 14, color: Colors.white)
+                  ? const Icon(
+                      LucideIcons.check,
+                      size: AarastV3Icon.sm,
+                      color: Colors.white,
+                    )
                   : Text(
                       '$number',
                       style: JourneyType.of(

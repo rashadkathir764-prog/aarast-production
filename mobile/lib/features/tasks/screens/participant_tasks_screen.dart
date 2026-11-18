@@ -153,7 +153,6 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
         : () => provider!.load(widget.weddingPlanId);
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,
@@ -321,7 +320,7 @@ class _RowDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Divider(
-    height: 1,
+    height: AarastV3Space.hair,
     indent: 62,
     endIndent: 14,
     color: AarastV3Color.line,
@@ -340,20 +339,20 @@ class _TaskCircle extends StatelessWidget {
     dimension: AarastV3Space.x10,
     child: Center(
       child: Container(
-        width: 26,
-        height: 26,
+        width: AarastV3Size.check,
+        height: AarastV3Size.check,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: done ? AarastV3Color.mint : null,
           border: Border.all(
             color: done ? AarastV3Color.mint : AarastV3Color.line,
-            width: 2,
+            width: AarastV3Size.lineStrong,
           ),
         ),
         child: done
             ? const Icon(
                 LucideIcons.check,
-                size: 14,
+                size: AarastV3Icon.sm,
                 color: AarastV3Color.onPrimary,
               )
             : null,
@@ -443,7 +442,7 @@ class _TaskText extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
-            JourneyType.label,
+            JourneyType.small,
             color: late && !done
                 ? AarastV3Color.danger
                 : AarastV3Color.textMuted,

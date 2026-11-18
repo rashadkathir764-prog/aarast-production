@@ -7,7 +7,7 @@ import 'aarast_v3_foundations.dart';
 class AarastV3PageFrame extends StatelessWidget {
   const AarastV3PageFrame({
     required this.child,
-    this.maxWidth = 620,
+    this.maxWidth = AarastV3Density.readableWidth,
     this.padding = const EdgeInsets.fromLTRB(
       AarastV3Space.x5,
       AarastV3Space.x3,
@@ -68,7 +68,11 @@ class AarastV3ContextBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 4, height: 34, color: AarastV3Color.primary),
+        Container(
+          width: AarastV3Size.rule,
+          height: AarastV3Size.markSmall,
+          color: AarastV3Color.primary,
+        ),
         const SizedBox(width: AarastV3Space.x2),
         Expanded(
           child: Column(
@@ -199,8 +203,8 @@ class AarastV3MetricRail extends StatelessWidget {
             ),
             if (index != items.length - 1)
               Container(
-                width: 1,
-                height: 44,
+                width: AarastV3Space.hair,
+                height: AarastV3Size.mark,
                 color: inverted
                     ? Colors.white.withValues(alpha: .2)
                     : AarastV3Color.line,
@@ -227,7 +231,7 @@ class _MetricCell extends StatelessWidget {
         children: [
           SizedBox(
             width: double.infinity,
-            height: 28,
+            height: AarastV3Size.markSmall,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
@@ -323,7 +327,10 @@ class AarastV3ContinuousSurface extends StatelessWidget {
           for (var index = 0; index < children.length; index++) ...[
             children[index],
             if (index != children.length - 1)
-              const Divider(height: 1, color: AarastV3Color.line),
+              const Divider(
+                height: AarastV3Space.hair,
+                color: AarastV3Color.line,
+              ),
           ],
         ],
       ),
@@ -428,7 +435,7 @@ class _AarastV3SwipeCue extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 19, color: Colors.white),
+              Icon(icon, size: AarastV3Icon.md, color: Colors.white),
               const SizedBox(width: AarastV3Space.x2),
               Text(
                 label,
@@ -494,8 +501,8 @@ class AarastV3ListRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 3,
-              height: 36,
+              width: AarastV3Size.rule,
+              height: AarastV3Size.mark,
               decoration: BoxDecoration(
                 color: accent,
                 borderRadius: BorderRadius.circular(AarastV3Radius.pill),
@@ -566,7 +573,7 @@ class AarastV3ListRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AarastV3Color.textMuted,
-                        height: 1.35,
+                        height: AarastV3Line.normal,
                       ),
                     ),
                   ],
@@ -597,7 +604,7 @@ class AarastV3ListRow extends StatelessWidget {
               const Icon(
                 LucideIcons.chevronLeft,
                 color: AarastV3Color.textFaint,
-                size: 18,
+                size: AarastV3Icon.md,
               ),
             ],
           ],
@@ -644,7 +651,7 @@ class AarastV3HeroIcon extends StatelessWidget {
     required this.icon,
     this.heroTag,
     this.color = AarastV3Color.primary,
-    this.size = 18,
+    this.size = AarastV3Icon.md,
     super.key,
   });
 
@@ -694,7 +701,7 @@ class AarastV3MetricGrid extends StatelessWidget {
               Expanded(child: _AarastV3MetricCell(item: first)),
               if (second != null) ...[
                 const VerticalDivider(
-                  width: 1,
+                  width: AarastV3Space.hair,
                   thickness: 1,
                   color: AarastV3Color.line,
                 ),
@@ -719,7 +726,10 @@ class AarastV3MetricGrid extends StatelessWidget {
             for (var index = 0; index < rows.length; index++) ...[
               rows[index],
               if (index != rows.length - 1)
-                const Divider(height: 1, color: AarastV3Color.line),
+                const Divider(
+                  height: AarastV3Space.hair,
+                  color: AarastV3Color.line,
+                ),
             ],
           ],
         ),
@@ -757,7 +767,7 @@ class _AarastV3MetricCell extends StatelessWidget {
                         heroTag: item.heroTag,
                         icon: item.icon,
                         color: item.accent,
-                        size: 17,
+                        size: AarastV3Icon.sm,
                       ),
                       const SizedBox(width: AarastV3Space.x2),
                       Expanded(
@@ -832,14 +842,14 @@ class AarastV3SignalLine extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: AarastV3Size.mark,
+                height: AarastV3Size.mark,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(AarastV3Radius.control),
                 ),
-                child: Icon(icon, color: color, size: 18),
+                child: Icon(icon, color: color, size: AarastV3Icon.md),
               ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
@@ -860,7 +870,7 @@ class AarastV3SignalLine extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AarastV3Color.textMuted,
-                        height: 1.35,
+                        height: AarastV3Line.normal,
                       ),
                     ),
                   ],
@@ -871,7 +881,7 @@ class AarastV3SignalLine extends StatelessWidget {
                 const Icon(
                   LucideIcons.chevronLeft,
                   color: AarastV3Color.textFaint,
-                  size: 18,
+                  size: AarastV3Icon.md,
                 ),
               ],
             ],
@@ -914,7 +924,7 @@ class AarastV3IconAction extends StatelessWidget {
           borderRadius: BorderRadius.circular(AarastV3Radius.control),
         ),
       ),
-      icon: Icon(icon, size: 19),
+      icon: Icon(icon, size: AarastV3Icon.md),
     );
   }
 }

@@ -146,7 +146,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
                   child: Text(
                     group.title,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -220,14 +220,14 @@ class _TemplateRow extends StatelessWidget {
         key: ValueKey('task-starter-${template.key}'),
         onTap: enabled && !added ? onTap : () {},
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.touch),
           child: Padding(
             padding: AarastV3Density.chipInsets,
             child: Row(
               children: [
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: AarastV3Size.check,
+                  height: AarastV3Size.check,
                   decoration: BoxDecoration(
                     color: on
                         ? (added
@@ -237,12 +237,15 @@ class _TemplateRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AarastV3Radius.xs),
                     border: on
                         ? null
-                        : Border.all(color: AarastV3Color.lineStrong, width: 2),
+                        : Border.all(
+                            color: AarastV3Color.lineStrong,
+                            width: AarastV3Size.lineStrong,
+                          ),
                   ),
                   child: on
                       ? const Icon(
                           LucideIcons.check,
-                          size: 14,
+                          size: AarastV3Icon.sm,
                           color: AarastV3Color.onPrimary,
                         )
                       : null,

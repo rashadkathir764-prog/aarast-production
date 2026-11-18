@@ -1,7 +1,7 @@
 part of 'smart_welcome_screen.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
-const _welcomeDayCellHeight = 56.0;
+const _welcomeDayCellHeight = AarastV3Size.calendarDay;
 
 /// The wedding day inside a chosen month: a Saturday-first week, each day
 /// with its Hijri date under it, Ramadan days marked, past days closed.
@@ -119,7 +119,9 @@ class _DaySheet extends StatelessWidget {
           selected: chosen,
           borderRadius: BorderRadius.circular(AarastV3Radius.control),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 52),
+            constraints: const BoxConstraints(
+              minHeight: AarastV3Size.calendarDay,
+            ),
             decoration: BoxDecoration(
               color: chosen ? context.accent.primary : null,
               borderRadius: BorderRadius.circular(AarastV3Radius.control),
@@ -130,7 +132,7 @@ class _DaySheet extends StatelessWidget {
                 Text(
                   '$day',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                     color: fg,
                   ),

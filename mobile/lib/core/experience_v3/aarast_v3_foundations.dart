@@ -83,11 +83,127 @@ abstract final class AarastV3Radius {
   static const pill = 999.0;
 }
 
-/// Icon sizes: inline with text, in a row or a button, and a lead icon.
+/// Icon sizes (D118): inline with text, in a row or a button, a lead icon,
+/// and three for art (an empty state, a picture's stand-in, the app's mark).
+/// No icon takes a size of its own.
 abstract final class AarastV3Icon {
   static const sm = 16.0;
   static const md = 20.0;
   static const lg = 24.0;
+  static const xl = 32.0;
+  static const feature = 40.0;
+  static const hero = 56.0;
+}
+
+/// What a control measures (D118): one height for each kind of control, so
+/// the same kind of thing is the same size on every screen. A screen never
+/// sets a control's height; the kit takes it from here.
+abstract final class AarastV3Size {
+  /// The least a finger touches (D74).
+  static const touch = AarastV3Space.x12;
+
+  /// Every field, typed, picked or a phone: a small label over one line.
+  static const field = 56.0;
+
+  /// A typed amount, read large.
+  static const fieldAmount = 64.0;
+
+  /// Every button, and the search bar.
+  static const action = AarastV3Space.x12;
+
+  /// A chip as drawn; it is touched in a [touch] band.
+  static const chip = 36.0;
+
+  /// One box of a sign-in code.
+  static const codeBox = field;
+
+  /// A list row at its least.
+  static const row = field;
+
+  /// A tab of the bottom bar, above the system's gesture area.
+  static const navigationTab = field;
+
+  /// A day in a month's calendar.
+  static const calendarDay = field;
+
+  /// A mark (D118): a face, an icon on its tile, a logo, a round button. Four
+  /// sizes: in a dense row, in a row, on a card or an empty state, and the
+  /// one on a profile.
+  static const markSmall = 32.0;
+  static const mark = AarastV3Space.x10;
+  static const markLarge = 56.0;
+  static const markHero = 72.0;
+
+  /// A status dot, and a legend's swatch.
+  static const dot = AarastV3Space.x2;
+  static const swatch = AarastV3Space.x3;
+
+  /// A tick box or a choice circle.
+  static const check = AarastV3Space.x6;
+
+  /// A progress bar's thickness, and an accent rule's width.
+  static const bar = 6.0;
+  static const rule = AarastV3Space.x1;
+
+  /// A sheet's handle.
+  static const handleWidth = AarastV3Space.x10;
+  static const handleHeight = AarastV3Space.x1;
+
+  /// A door on the first screen (D75).
+  static const door = markHero;
+
+  /// The floating «+» (D33).
+  static const quickAction = 52.0;
+
+  /// The most lines a row's or a card's title takes; the rest is cut with
+  /// an ellipsis and read in full on the page it opens (D118).
+  static const titleLines = 2;
+
+  /// A hairline edge, and the edge of something chosen, focused or wrong.
+  static const line = AarastV3Space.hair;
+  static const lineStrong = AarastV3Space.half;
+
+  /// The person's card on the first screens (D75), and its picture.
+  static const personaCard = 112.0;
+  static const personaPicture = 96.0;
+
+  /// A small chart in a row (the dues ahead).
+  static const chart = markLarge;
+
+  /// An on/off switch.
+  static const toggleWidth = 44.0;
+  static const toggleHeight = 26.0;
+}
+
+/// What a picture or a band of art measures (D118): a share of the width it
+/// sits in, never a fixed height, so it keeps its proportion on a small and a
+/// large phone and never takes half the screen. A frame that carries words
+/// grows when the words need more ([JourneyArtFrame]).
+abstract final class AarastV3Media {
+  /// A photo: a provider's cover, a gallery picture, an invitation card.
+  static const photo = 16 / 9;
+
+  /// A photo in a card that sits beside others (a shelf of providers).
+  static const cardPhoto = 16 / 10;
+
+  /// A band of art over or under words (the wedding sky, a moment).
+  static const band = 2.0;
+
+  /// A slimmer band (the sky over a short question, an empty picture slot).
+  static const slimBand = 5 / 2;
+
+  /// An art card that carries its words on it (the wedding week, the day).
+  static const feature = 4 / 3;
+
+  /// The most of the screen's height a preview (a whole invitation card, a
+  /// message to share) takes before it scrolls.
+  static const previewShare = 0.4;
+
+  /// A logo or a face: in a row, on a card, on a profile ([AarastV3Size]'s
+  /// marks).
+  static const logoSmall = AarastV3Size.mark;
+  static const logo = AarastV3Size.markLarge;
+  static const logoLarge = AarastV3Size.markHero;
 }
 
 /// One field for every form (D74): the kit's [JourneyTextField] and the
@@ -95,13 +211,18 @@ abstract final class AarastV3Icon {
 abstract final class AarastV3Field {
   static const radius = AarastV3Radius.surface;
 
-  /// Inside the kit's labelled box: the small label over the value.
-  static const padding = EdgeInsets.fromLTRB(
-    AarastV3Space.x4,
-    AarastV3Space.x2,
-    AarastV3Space.x4,
-    AarastV3Space.x3,
+  /// Inside the kit's labelled box: the small label over the value, the box
+  /// at least [AarastV3Size.field] tall.
+  static const padding = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x4,
+    vertical: AarastV3Space.x2,
   );
+
+  /// The label's line, kept tight so label and value fit the field.
+  static const labelHeight = AarastV3Line.tight;
+
+  /// The value's line.
+  static const valueHeight = AarastV3Line.normal;
 
   /// Inside a Material field, which carries its label in the line.
   static const contentPadding = EdgeInsets.symmetric(
@@ -114,6 +235,22 @@ abstract final class AarastV3Field {
 
   /// Between two fields of a form.
   static const gap = AarastV3Space.x3;
+}
+
+/// Line heights (D118): three, and a fourth for a big numeral. No text sets
+/// its own.
+abstract final class AarastV3Line {
+  /// A big number set on its own line.
+  static const numeral = 0.95;
+
+  /// Titles, figures and one-line labels.
+  static const tight = 1.2;
+
+  /// Running text: the default of JourneyType.of.
+  static const normal = 1.35;
+
+  /// A paragraph of several lines (a note, a description).
+  static const reading = 1.5;
 }
 
 abstract final class AarastV3Motion {
@@ -129,6 +266,13 @@ abstract final class AarastV3Motion {
 /// feature from inventing its own vertical rhythm.
 abstract final class AarastV3Density {
   static const pageHorizontal = AarastV3Space.x4;
+
+  /// The widest a page's column reads on a tablet or a wide window (D118):
+  /// one width for every screen, never a number of its own.
+  static const readableWidth = 560.0;
+
+  /// The widest a centred panel reads (a lock pad, a toast, an empty state).
+  static const narrowWidth = 400.0;
   static const pageTop = AarastV3Space.x3;
   static const pageBottom = 112.0;
   // Root plan tabs carry the floating «+» above the tabs (D33). Their lists
@@ -136,7 +280,7 @@ abstract final class AarastV3Density {
   static const pageBottomWithQuickAction = 184.0;
   static const sectionGap = AarastV3Space.x4;
   static const compactGap = AarastV3Space.x3;
-  static const rowMinHeight = 60.0;
+  static const rowMinHeight = AarastV3Size.row;
   static const metricMinHeight = 72.0;
 
   /// A scrolling screen's body: the gutter on each side, a step under the
@@ -178,7 +322,7 @@ abstract final class AarastV3Type {
         color: AarastV3Color.ink,
         fontFamily: displayFamily,
         fontWeight: FontWeight.w700,
-        height: 1.12,
+        height: AarastV3Line.tight,
         letterSpacing: -0.3,
       );
 
@@ -187,21 +331,21 @@ abstract final class AarastV3Type {
         color: AarastV3Color.ink,
         fontFamily: displayFamily,
         fontWeight: FontWeight.w700,
-        height: 1.2,
+        height: AarastV3Line.tight,
       );
 
   static TextStyle section(BuildContext context) =>
       Theme.of(context).textTheme.titleLarge!.copyWith(
         color: AarastV3Color.ink,
         fontWeight: FontWeight.w800,
-        height: 1.25,
+        height: AarastV3Line.tight,
       );
 
   static TextStyle body(BuildContext context) =>
       Theme.of(context).textTheme.bodyMedium!.copyWith(
         color: AarastV3Color.textMuted,
         fontWeight: FontWeight.w500,
-        height: 1.5,
+        height: AarastV3Line.reading,
       );
 
   static TextStyle label(BuildContext context) => Theme.of(context)

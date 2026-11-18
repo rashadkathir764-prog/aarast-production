@@ -57,13 +57,12 @@ class _AccountContextSelectionScreenState
 
     return AarastScreenFrame(
       key: const ValueKey('account-context-selection-screen'),
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
         children: [
           const SizedBox(height: AarastV3Space.x3),
-          const Center(child: JourneyWordmark(size: 26)),
+          const Center(child: JourneyWordmark(size: AarastV3Icon.lg)),
           const SizedBox(height: AarastV3Space.x4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
@@ -195,7 +194,11 @@ class _PathCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              JourneyAvatar(letter: letter, color: color, size: 40),
+              JourneyAvatar(
+                letter: letter,
+                color: color,
+                size: AarastV3Size.mark,
+              ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
@@ -206,7 +209,7 @@ class _PathCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -222,7 +225,7 @@ class _PathCard extends StatelessWidget {
               ),
               const SizedBox(width: AarastV3Space.x2),
               if (chosen)
-                AarastInlineSpinner(dimension: 20, color: color)
+                AarastInlineSpinner(dimension: AarastV3Icon.md, color: color)
               else
                 JourneyTag(
                   label: tag,

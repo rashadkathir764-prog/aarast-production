@@ -159,7 +159,6 @@ class _ConversationListViewState extends State<ConversationListView> {
     );
     if (widget.embedded) return content;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: content,
     );
@@ -267,8 +266,10 @@ class _ConversationRow extends StatelessWidget {
                 const SizedBox(height: AarastV3Space.x1),
                 if (unread > 0)
                   Container(
-                    constraints: const BoxConstraints(minWidth: 22),
-                    height: 22,
+                    constraints: const BoxConstraints(
+                      minWidth: AarastV3Size.check,
+                    ),
+                    height: AarastV3Size.check,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AarastV3Space.x1,
                     ),
@@ -291,7 +292,7 @@ class _ConversationRow extends StatelessWidget {
                 else if (conversation.muted)
                   const Icon(
                     LucideIcons.bellOff,
-                    size: 16,
+                    size: AarastV3Icon.sm,
                     color: AarastV3Color.textMuted,
                     semanticLabel: 'مكتومة',
                   ),

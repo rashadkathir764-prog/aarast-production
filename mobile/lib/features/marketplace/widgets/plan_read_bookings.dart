@@ -23,7 +23,7 @@ class PlanReadBookingsCard extends StatelessWidget {
           for (final (index, booking) in bookings.indexed) ...[
             if (index > 0)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 76,
                 endIndent: 14,
                 color: AarastV3Color.line,
@@ -69,7 +69,7 @@ class _BookingLine extends StatelessWidget {
               ),
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              size: 44,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -81,7 +81,7 @@ class _BookingLine extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),

@@ -185,7 +185,7 @@ class _HomeTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: JourneyType.of(
-                        JourneyType.detail,
+                        JourneyType.small,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -210,9 +210,9 @@ class _HomeTile extends StatelessWidget {
                       child: Text(
                         '$value',
                         style: JourneyType.of(
-                          JourneyType.figure,
+                          JourneyType.pageTitle,
                           weight: JourneyType.bold,
-                          height: 1,
+                          height: AarastV3Line.numeral,
                         ),
                       ),
                     ),
@@ -224,7 +224,7 @@ class _HomeTile extends StatelessWidget {
                 of,
                 textAlign: TextAlign.center,
                 style: JourneyType.of(
-                  JourneyType.label,
+                  JourneyType.small,
                   color: AarastV3Color.textMuted,
                 ),
               ),
@@ -311,7 +311,7 @@ class _JourneyAfterwards extends StatelessWidget {
                   subtitle: item.subtitle,
                   trailing: const Icon(
                     LucideIcons.chevronLeft,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textFaint,
                   ),
                   onTap: () => onOpen(item),

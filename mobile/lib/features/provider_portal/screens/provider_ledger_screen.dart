@@ -53,7 +53,6 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
     final ledger = dashboard.ledgerOf(_month);
     final error = dashboard.ledgerError;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         onRefresh: _load,
@@ -206,7 +205,7 @@ class _Figure extends StatelessWidget {
         child: Text(
           value,
           style: JourneyType.of(
-            JourneyType.title,
+            JourneyType.lead,
             weight: JourneyType.bold,
             color: color,
           ),

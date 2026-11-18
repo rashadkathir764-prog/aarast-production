@@ -392,7 +392,6 @@ Widget paymentEntryFrame(
           ).plainText,
         );
   return AarastScreenFrame(
-    maxWidth: 600,
     backgroundColor: AarastV3Color.canvas,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -247,7 +247,9 @@ class _AarastToastOverlayState extends State<_AarastToastOverlay>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(
+                maxWidth: AarastV3Density.narrowWidth,
+              ),
               child: SlideTransition(
                 position: _position,
                 child: FadeTransition(
@@ -334,7 +336,7 @@ class _ToastCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: JourneyType.label,
+                        fontSize: JourneyType.small,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -352,14 +354,14 @@ class _ToastCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: AarastV3Size.mark,
+                    height: AarastV3Size.mark,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: softColor,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, size: 17, color: foreground),
+                    child: Icon(icon, size: AarastV3Icon.sm, color: foreground),
                   ),
                   const SizedBox(width: AarastV3Space.x2),
                   Expanded(
@@ -376,7 +378,7 @@ class _ToastCard extends StatelessWidget {
                                 ?.copyWith(
                                   color: AppTheme.textPrimary,
                                   fontWeight: FontWeight.w900,
-                                  height: 1.2,
+                                  height: AarastV3Line.tight,
                                 ),
                           ),
                           const SizedBox(height: AarastV3Space.half),
@@ -391,7 +393,7 @@ class _ToastCard extends StatelessWidget {
                                 fontWeight: title == null
                                     ? FontWeight.w800
                                     : FontWeight.w600,
-                                height: 1.35,
+                                height: AarastV3Line.normal,
                               ),
                         ),
                         if (stackAction && actionButton != null) ...[

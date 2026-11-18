@@ -223,7 +223,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
           ],
           if (_busy)
             const AarastV3ProgressLine(
-              height: 3,
+              height: AarastV3Size.bar,
               semanticsLabel: 'يحفظ الإيصال',
             ),
           _ReceiptGrid(
@@ -265,7 +265,6 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

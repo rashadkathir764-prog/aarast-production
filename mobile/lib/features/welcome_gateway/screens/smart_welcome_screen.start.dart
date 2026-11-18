@@ -1,8 +1,5 @@
 part of 'smart_welcome_screen.dart';
 
-/// How far the door's sky reaches down the screen.
-const _doorSkyHeight = 200.0;
-
 /// The door «أهلًا فيك» (D75): whoever opens the app first on this phone, in
 /// words that fit anyone (a groom, a bride, an invited relative, a
 /// provider). Each way opens with one tap.
@@ -42,7 +39,7 @@ class _StartStep extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const JourneySkyBand(height: _doorSkyHeight),
+                const JourneySkyBand(),
                 const SizedBox(height: AarastV3Space.x4),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -52,14 +49,14 @@ class _StartStep extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       JourneyWordmark(
-                        size: JourneyType.headline,
+                        size: JourneyType.count,
                         color: context.accent.primaryDark,
                       ),
                       const SizedBox(height: AarastV3Space.x1),
                       Text(
                         'عرسك من أول ريال إلى آخر دفعة',
                         style: JourneyType.of(
-                          JourneyType.title,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                           color: AarastV3Color.textMuted,
                         ),
@@ -70,7 +67,7 @@ class _StartStep extends StatelessWidget {
                         child: Text(
                           'أهلًا فيك، من وين نبدأ؟',
                           style: JourneyType.of(
-                            JourneyType.display,
+                            JourneyType.pageTitle,
                             weight: JourneyType.bold,
                           ),
                         ),

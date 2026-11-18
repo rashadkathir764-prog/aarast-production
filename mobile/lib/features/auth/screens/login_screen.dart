@@ -92,7 +92,6 @@ class _LoginScreenState extends State<LoginScreen> {
         : auth.errorMessage;
     final pending = widget.sessionExpired ? _pendingChanges() : 0;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       child: JourneyPage(

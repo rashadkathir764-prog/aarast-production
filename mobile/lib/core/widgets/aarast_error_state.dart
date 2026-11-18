@@ -44,7 +44,7 @@ class AarastErrorState extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: JourneyType.label,
+                  fontSize: JourneyType.small,
                   fontWeight: FontWeight.w800,
                 ),
               ),

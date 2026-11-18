@@ -62,7 +62,6 @@ class _ParticipantProvidersScreenState
         provider?.isLoading != true;
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,

@@ -52,10 +52,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           'ادخلي حسابك أول عشان تقفلين التطبيق برمز.',
         ),
         textAlign: TextAlign.center,
-        style: JourneyType.of(
-          JourneyType.bodyLarge,
-          color: AarastV3Color.onPrimary,
-        ),
+        style: JourneyType.of(JourneyType.lead, color: AarastV3Color.onPrimary),
       );
     } else if (_confirming case final action?) {
       final wait = controller.waitRemaining;
@@ -66,7 +63,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             context.say('اكتب رمزك الحالي', 'اكتبي رمزك الحالي'),
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.title,
+              JourneyType.lead,
               weight: JourneyType.bold,
               color: AarastV3Color.onPrimary,
             ),
@@ -120,7 +117,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
                 : context.say('اكتبه مرة ثانية', 'اكتبيه مرة ثانية'),
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.title,
+              JourneyType.lead,
               weight: JourneyType.bold,
               color: AarastV3Color.onPrimary,
             ),
@@ -153,7 +150,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
         children: [
           const Icon(
             LucideIcons.lock,
-            size: 40,
+            size: AarastV3Icon.feature,
             color: AarastV3Color.onPrimary,
           ),
           const SizedBox(height: AarastV3Space.x3),
@@ -161,7 +158,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             'التطبيق مقفول برمزك',
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.title,
+              JourneyType.lead,
               weight: JourneyType.bold,
               color: AarastV3Color.onPrimary,
             ),
@@ -209,7 +206,6 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: context.accent.primary,
         child: ListView(
           padding: AarastV3Density.pageInsets,
@@ -219,7 +215,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
               child: JourneyRoundButton(
                 icon: LucideIcons.arrowRight,
                 tooltip: 'رجوع',
-                size: 42,
+                size: AarastV3Size.mark,
                 onPressed: _close,
               ),
             ),

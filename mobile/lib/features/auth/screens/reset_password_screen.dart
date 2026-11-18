@@ -251,13 +251,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AuthTextField(
+            JourneyTextField(
               controller: _passwordController,
               label: 'كلمة المرور الجديدة',
-              icon: LucideIcons.lock,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.next,
-              suffixIcon: AuthObscureToggle(
+              autofillHints: const [AutofillHints.newPassword],
+              trailing: AuthObscureToggle(
                 obscured: _obscurePassword,
                 onPressed: () {
                   setState(() => _obscurePassword = !_obscurePassword);
@@ -276,14 +276,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: AarastV3Space.x2),
-            AuthTextField(
+            const SizedBox(height: AarastV3Field.gap),
+            JourneyTextField(
               controller: _confirmPasswordController,
               label: 'أعد كتابتها',
-              icon: LucideIcons.lock,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _confirmReset(),
+              onSubmitted: (_) => _confirmReset(),
               validator: (value) {
                 if (value != _passwordController.text) {
                   return 'ما تطابقت مع الكلمة الجديدة';
@@ -330,7 +329,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           icon: LucideIcons.checkCircle2,
           color: AarastV3Color.mint,
           soft: AarastV3Color.mintSoft,
-          size: 56,
+          size: AarastV3Size.markLarge,
           radius: 20,
         ),
       ),
@@ -340,7 +339,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Text(
           'غيّرنا كلمة المرور',
           textAlign: TextAlign.center,
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.pageTitle,
+            weight: JourneyType.bold,
+          ),
         ),
       ),
       const SizedBox(height: AarastV3Space.x1),
@@ -662,7 +664,7 @@ class _PasswordRule extends StatelessWidget {
       children: [
         Icon(
           met ? LucideIcons.checkCircle2 : LucideIcons.circle,
-          size: 16,
+          size: AarastV3Icon.sm,
           color: color,
         ),
         const SizedBox(width: AarastV3Space.x1),

@@ -11,9 +11,6 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart' show providerKindLine;
 import '../widgets/provider_profile_parts.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _shareCodeHeight = 230.0;
-
 /// Opens WhatsApp with a text; tests replace it.
 typedef ProviderShareLauncher = Future<bool> Function(String text);
 
@@ -33,7 +30,6 @@ class ProviderShareScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = context.watch<ProviderDashboardProvider>().profile;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,8 +144,9 @@ class ProviderShareCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: _shareCodeHeight,
+          // D118: a photo's proportion of the card's width, not 230.
+          AspectRatio(
+            aspectRatio: AarastV3Media.photo,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -163,7 +160,7 @@ class ProviderShareCard extends StatelessWidget {
                   top: 16,
                   start: 18,
                   child: JourneyWordmark(
-                    size: 20,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.onPrimary,
                   ),
                 ),
@@ -192,7 +189,7 @@ class ProviderShareCard extends StatelessWidget {
                   Text(
                     kind,
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       color: AarastV3Color.onPrimaryMuted,
                     ),
                   ),
@@ -232,7 +229,7 @@ class ProviderShareCard extends StatelessWidget {
                         icon: LucideIcons.search,
                         color: AarastV3Color.primary,
                         soft: AarastV3Color.primarySoft,
-                        size: 40,
+                        size: AarastV3Size.mark,
                       ),
                       const SizedBox(width: AarastV3Space.x3),
                       Expanded(
@@ -249,7 +246,7 @@ class ProviderShareCard extends StatelessWidget {
                             Text(
                               'ابحث باسم «$name»',
                               style: JourneyType.of(
-                                JourneyType.label,
+                                JourneyType.small,
                                 color: AarastV3Color.textMuted,
                               ),
                             ),

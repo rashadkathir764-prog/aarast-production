@@ -111,7 +111,7 @@ class _RecordMahrEntry extends StatelessWidget {
             : 'المهر يوصلك من العريس، ونحسبه من فلوسك',
         trailing: const Icon(
           LucideIcons.chevronLeft,
-          size: 18,
+          size: AarastV3Icon.md,
           color: AarastV3Color.textMuted,
         ),
         onTap: onTap,

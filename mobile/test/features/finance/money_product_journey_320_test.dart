@@ -372,7 +372,7 @@ void main() {
               )
               .style
               ?.fontSize,
-          JourneyType.label,
+          JourneyType.small,
         );
         await tester.tap(find.byKey(row));
         await tester.pumpAndSettle();

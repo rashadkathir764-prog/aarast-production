@@ -167,7 +167,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
               Text(
                 'معك الحين',
                 style: JourneyType.of(
-                  JourneyType.detail,
+                  JourneyType.small,
                   color: AarastV3Color.textMuted,
                 ),
               ),
@@ -175,7 +175,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 money(cash),
                 key: const ValueKey('money-cash-figure'),
                 style: JourneyType.of(
-                  JourneyType.headline,
+                  JourneyType.count,
                   weight: JourneyType.bold,
                   color: context.accent.primaryDark,
                 ),
@@ -189,7 +189,10 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 ),
               ),
               const SizedBox(height: AarastV3Space.x3),
-              const Divider(height: 1, color: AarastV3Color.line),
+              const Divider(
+                height: AarastV3Space.hair,
+                color: AarastV3Color.line,
+              ),
               const SizedBox(height: AarastV3Space.x3),
               Wrap(
                 spacing: AarastV3Space.x3,

@@ -47,11 +47,10 @@ class ProviderAuthGate extends StatelessWidget {
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
       return AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: Center(
           child: AarastInlineSpinner(
-            dimension: 28,
+            dimension: AarastV3Icon.xl,
             color: context.accent.primary,
           ),
         ),
@@ -186,7 +185,6 @@ class _GateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       safeAreaBottom: !embedded,
       child: ListView(
@@ -207,7 +205,7 @@ class _GateCard extends StatelessWidget {
                     icon: icon,
                     color: context.accent.primary,
                     soft: context.accent.primarySoft,
-                    size: 56,
+                    size: AarastV3Size.markLarge,
                     radius: 20,
                   ),
                 ),
@@ -218,7 +216,7 @@ class _GateCard extends StatelessWidget {
                     title,
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
-                      JourneyType.sheetTitle,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                     ),
                   ),

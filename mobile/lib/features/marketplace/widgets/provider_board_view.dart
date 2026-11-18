@@ -28,10 +28,7 @@ class ProviderBoardView extends StatelessWidget {
           children: [
             Text(
               'ما في خدمات في خطتك بعد',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
             ),
             const SizedBox(height: AarastV3Space.x1),
             Text(
@@ -64,7 +61,7 @@ class ProviderBoardView extends StatelessWidget {
                 child: Text(
                   'خدمات عرسك',
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -187,7 +184,7 @@ class _BoardRow extends StatelessWidget {
     } else {
       trailing = const Icon(
         LucideIcons.chevronLeft,
-        size: 18,
+        size: AarastV3Icon.md,
         color: AarastV3Color.textFaint,
       );
     }
@@ -205,7 +202,7 @@ class _BoardRow extends StatelessWidget {
               icon: providerServiceIcon(row.title),
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              size: 42,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -215,7 +212,7 @@ class _BoardRow extends StatelessWidget {
                   Text(
                     row.title,
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -264,8 +261,8 @@ class _StageBar extends StatelessWidget {
           for (var i = 0; i < 4; i++) ...[
             Flexible(
               child: Container(
-                width: 18,
-                height: 5,
+                width: AarastV3Space.x4,
+                height: AarastV3Size.bar,
                 decoration: BoxDecoration(
                   color: i < stage
                       ? (stage == 4

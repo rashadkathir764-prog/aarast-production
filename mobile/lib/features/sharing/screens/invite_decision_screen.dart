@@ -483,7 +483,6 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         if (!didPop) _handleBack();
       },
       child: AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         resizeToAvoidBottomInset: true,
         // A bride's plan speaks in her colour, and to the women she invites
@@ -732,7 +731,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
               Text(
                 participantRoleDuty(invite.role),
                 style: JourneyType.of(
-                  JourneyType.bodyLarge,
+                  JourneyType.lead,
                   weight: JourneyType.bold,
                 ),
               ),

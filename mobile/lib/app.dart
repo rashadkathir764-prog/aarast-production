@@ -365,7 +365,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                     icon: LucideIcons.alertTriangle,
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
-                    size: 64,
+                    size: AarastV3Size.markLarge,
                     radius: 20,
                   ),
                   const SizedBox(height: AarastV3Space.x4),
@@ -452,7 +452,7 @@ class _SessionWait extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const AarastInlineSpinner(
-                  dimension: 28,
+                  dimension: AarastV3Icon.xl,
                   color: AarastV3Color.primary,
                 ),
                 const SizedBox(height: AarastV3Space.x5),
@@ -521,7 +521,7 @@ class AarastBuildErrorScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.alertTriangle, size: 52),
+                const Icon(LucideIcons.alertTriangle, size: AarastV3Icon.hero),
                 const SizedBox(height: AarastV3Space.x4),
                 const Text(
                   'ما قدرنا نعرض الصفحة',

@@ -357,7 +357,6 @@ class _GatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(padding: AarastV3Density.pageInsets, children: [child]),
     );
@@ -371,12 +370,11 @@ class _GateLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Center(
         child: AarastInlineSpinner(
           key: ValueKey('wedding-plan-context-loading'),
-          dimension: 28,
+          dimension: AarastV3Icon.xl,
           color: AarastV3Color.primary,
         ),
       ),

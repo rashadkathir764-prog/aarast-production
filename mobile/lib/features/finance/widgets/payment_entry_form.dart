@@ -407,7 +407,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
               Text(
                 context.say('كيف دفعت؟', 'كيف دفعتِ؟'),
                 style: JourneyType.of(
-                  JourneyType.bodySmall,
+                  JourneyType.small,
                   weight: JourneyType.bold,
                   color: AarastV3Color.textMuted,
                 ),

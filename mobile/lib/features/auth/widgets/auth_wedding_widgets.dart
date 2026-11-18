@@ -100,7 +100,7 @@ class AuthHeading extends StatelessWidget {
           child: Text(
             title,
             style: JourneyType.of(
-              JourneyType.display,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
             ),
           ),
@@ -133,163 +133,20 @@ class AuthObscureToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A full 48 target at the field's end (JourneyFieldBox.trailing).
     return IconButton(
       tooltip: obscured ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
       onPressed: onPressed,
-      iconSize: 19,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        minimumSize: const Size.square(AarastV3Size.touch),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      iconSize: AarastV3Icon.md,
       icon: Icon(
         obscured ? LucideIcons.eye : LucideIcons.eyeOff,
         color: AarastV3Color.textMuted,
-      ),
-    );
-  }
-}
-
-class AuthTextField extends StatelessWidget {
-  const AuthTextField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.hint,
-    this.validator,
-    this.keyboardType,
-    this.textDirection,
-    this.textInputAction,
-    this.obscureText = false,
-    this.maxLines = 1,
-    this.suffixIcon,
-    this.onFieldSubmitted,
-    super.key,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String? hint;
-  final IconData icon;
-  final FormFieldValidator<String>? validator;
-  final TextInputType? keyboardType;
-  final TextDirection? textDirection;
-  final TextInputAction? textInputAction;
-  final bool obscureText;
-  final int maxLines;
-  final Widget? suffixIcon;
-  final ValueChanged<String>? onFieldSubmitted;
-
-  static const _labelTop = 9.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveTextDirection =
-        textDirection ??
-        (keyboardType == TextInputType.phone
-            ? TextDirection.ltr
-            : Directionality.of(context));
-    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AarastV3Radius.card),
-      borderSide: BorderSide(color: color, width: width),
-    );
-    final valueSize = JourneyType.bodyLarge;
-    // The field's own icon sits on the far edge (prototype a08b); a tool
-    // such as the password eye sits beside it.
-    final endTools = Padding(
-      padding: const EdgeInsetsDirectional.only(end: AarastV3Space.x2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (suffixIcon != null)
-            IconButtonTheme(
-              data: IconButtonThemeData(
-                style: IconButton.styleFrom(
-                  foregroundColor: AarastV3Color.textMuted,
-                  backgroundColor: Colors.transparent,
-                  side: BorderSide.none,
-                  minimumSize: const Size.square(40),
-                  padding: EdgeInsets.zero,
-                  iconSize: 19,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: const CircleBorder(),
-                ),
-              ),
-              child: suffixIcon!,
-            ),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: AarastV3Space.x1),
-            child: Icon(icon, size: 22, color: AarastV3Color.textMuted),
-          ),
-        ],
-      ),
-    );
-
-    // The small label stays above the value inside the box, typed or not;
-    // the error, when any, shows under the box.
-    return Semantics(
-      label: label,
-      child: Stack(
-        children: [
-          TextFormField(
-            controller: controller,
-            textAlign: TextAlign.right,
-            textDirection: effectiveTextDirection,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            obscureText: obscureText,
-            maxLines: maxLines,
-            validator: validator,
-            onFieldSubmitted: onFieldSubmitted,
-            style: JourneyType.of(valueSize, weight: JourneyType.bold),
-            cursorColor: context.accent.primary,
-            decoration: InputDecoration(
-              hintText: hint,
-              // A number's hint reads in the number's own direction.
-              hintTextDirection: effectiveTextDirection,
-              // RA-MO-27: an example in the regular weight, never read as
-              // a value already typed.
-              hintStyle: JourneyType.of(
-                valueSize,
-                color: AarastV3Color.textFaint,
-              ),
-              errorStyle: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.danger,
-              ),
-              errorMaxLines: 3,
-              suffixIcon: endTools,
-              suffixIconConstraints: const BoxConstraints(minHeight: 48),
-              filled: true,
-              fillColor: AarastV3Color.paper,
-              contentPadding: const EdgeInsetsDirectional.fromSTEB(
-                AarastV3Space.x4,
-                _labelTop + AarastV3Space.x5,
-                AarastV3Space.x3,
-                AarastV3Space.x3,
-              ),
-              border: border(AarastV3Color.line, 1),
-              enabledBorder: border(AarastV3Color.line, 1),
-              focusedBorder: border(context.accent.primary, 2),
-              errorBorder: border(AarastV3Color.danger, 2),
-              focusedErrorBorder: border(AarastV3Color.danger, 2),
-            ),
-          ),
-          PositionedDirectional(
-            top: _labelTop,
-            start: 17,
-            end: 64,
-            child: IgnorePointer(
-              child: ExcludeSemantics(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(
-                    JourneyType.caption,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -312,7 +169,7 @@ class AuthInlineError extends StatelessWidget {
             child: Icon(
               LucideIcons.alertCircle,
               color: AarastV3Color.danger,
-              size: 18,
+              size: AarastV3Icon.md,
             ),
           ),
           const SizedBox(width: AarastV3Space.x2),
@@ -358,7 +215,7 @@ class AuthFooterLink extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.touch),
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(AarastV3Space.x2),

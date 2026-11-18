@@ -73,7 +73,6 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
     final profile = context.journeyProfile;
 
     return AarastScreenFrame(
-      maxWidth: 560,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         key: const ValueKey('plan-events'),
@@ -118,7 +117,7 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
               Text(
                 'اقتراحات',
                 style: JourneyType.of(
-                  JourneyType.bodySmall,
+                  JourneyType.small,
                   weight: JourneyType.bold,
                   color: AarastV3Color.textMuted,
                 ),
@@ -182,7 +181,7 @@ class _EventCard extends StatelessWidget {
             icon: event.type.icon,
             color: color,
             soft: soft,
-            size: 44,
+            size: AarastV3Size.mark,
             radius: 18,
           ),
           const SizedBox(width: AarastV3Space.x3),
@@ -193,14 +192,14 @@ class _EventCard extends StatelessWidget {
                 Text(
                   event.name(profile),
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
                 Text(
                   when,
                   style: JourneyType.of(
-                    JourneyType.bodySmall,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
@@ -208,7 +207,7 @@ class _EventCard extends StatelessWidget {
                   Text(
                     place,
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),
@@ -229,7 +228,7 @@ class _EventCard extends StatelessWidget {
               onPressed: onEdit,
               icon: const Icon(
                 LucideIcons.pencil,
-                size: 20,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textFaint,
               ),
             ),

@@ -77,7 +77,7 @@ class _PushOffCardState extends State<PushOffCard> {
             icon: LucideIcons.bellOff,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 40,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -87,7 +87,7 @@ class _PushOffCardState extends State<PushOffCard> {
                 Text(
                   'التنبيهات مقفلة',
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),

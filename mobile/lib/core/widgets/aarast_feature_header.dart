@@ -72,7 +72,7 @@ class AarastFeatureHeader extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w500,
-                      height: 1.4,
+                      height: AarastV3Line.normal,
                     ),
                   ),
                 ],

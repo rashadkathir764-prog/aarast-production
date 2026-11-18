@@ -139,7 +139,11 @@ class _LevelRow extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 19, color: context.accent.primary),
+                Icon(
+                  icon,
+                  size: AarastV3Icon.md,
+                  color: context.accent.primary,
+                ),
                 const SizedBox(width: AarastV3Space.x2),
                 Text(
                   label,

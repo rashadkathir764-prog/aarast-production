@@ -132,7 +132,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                               : () => _delete(group),
                           icon: const Icon(
                             LucideIcons.trash2,
-                            size: 18,
+                            size: AarastV3Icon.md,
                             color: AarastV3Color.textFaint,
                           ),
                         )

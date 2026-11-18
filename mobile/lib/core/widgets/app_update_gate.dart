@@ -31,7 +31,6 @@ class AppUpdateRequiredScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastScreenFrame(
       key: const Key('app-update-required'),
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -46,7 +45,7 @@ class AppUpdateRequiredScreen extends StatelessWidget {
               icon: LucideIcons.download,
               color: context.accent.primary,
               soft: context.accent.primarySoft,
-              size: 64,
+              size: AarastV3Size.markLarge,
               radius: 26,
             ),
           ),

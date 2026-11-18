@@ -90,7 +90,6 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
 
     final title = cost?.title ?? payment?.costTitle;
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -354,7 +353,7 @@ class _PaymentAmountCard extends StatelessWidget {
                       amount,
                       style:
                           JourneyType.of(
-                            JourneyType.display,
+                            JourneyType.pageTitle,
                             weight: JourneyType.bold,
                             color: AarastV3Color.textFaint,
                           ).copyWith(
@@ -396,7 +395,7 @@ class _PaymentAmountCard extends StatelessWidget {
             icon: LucideIcons.checkCircle2,
             color: AarastV3Color.onPrimary,
             soft: AarastV3Color.mint,
-            size: 44,
+            size: AarastV3Size.mark,
             radius: 16,
           ),
           const SizedBox(width: AarastV3Space.x3),
@@ -410,7 +409,7 @@ class _PaymentAmountCard extends StatelessWidget {
                   child: Text(
                     amount,
                     style: JourneyType.of(
-                      JourneyType.display,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -468,7 +467,7 @@ class _PaymentFact extends StatelessWidget {
           if (onTap != null)
             const Icon(
               LucideIcons.chevronLeft,
-              size: 18,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textFaint,
             ),
         ],

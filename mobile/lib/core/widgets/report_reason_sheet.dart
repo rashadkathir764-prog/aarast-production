@@ -86,7 +86,7 @@ class _ReportReasonSheetState extends State<_ReportReasonSheet> {
         children: [
           Text(
             widget.title,
-            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
           const SizedBox(height: AarastV3Space.x1),
           Text(

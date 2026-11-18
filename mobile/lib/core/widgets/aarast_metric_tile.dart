@@ -32,13 +32,13 @@ class AarastMetricTile extends StatelessWidget {
             children: [
               if (icon != null) ...[
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: AarastV3Size.mark,
+                  height: AarastV3Size.mark,
                   decoration: BoxDecoration(
                     color: tone.withAlpha(24),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   ),
-                  child: Icon(icon, color: tone, size: 19),
+                  child: Icon(icon, color: tone, size: AarastV3Icon.md),
                 ),
                 const SizedBox(width: AarastV3Space.x2),
               ],

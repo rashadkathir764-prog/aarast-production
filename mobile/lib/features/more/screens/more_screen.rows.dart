@@ -34,7 +34,7 @@ class _Row extends StatelessWidget {
       padding: const EdgeInsets.all(AarastV3Space.x3),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: color),
+          Icon(icon, size: AarastV3Icon.md, color: color),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
             child: Text(
@@ -53,7 +53,7 @@ class _Row extends StatelessWidget {
               Text(
                 value!,
                 style: JourneyType.of(
-                  JourneyType.bodySmall,
+                  JourneyType.small,
                   color: AarastV3Color.textMuted,
                 ),
               ),
@@ -61,7 +61,7 @@ class _Row extends StatelessWidget {
               const SizedBox(width: AarastV3Space.x1),
               const Icon(
                 LucideIcons.chevronLeft,
-                size: 17,
+                size: AarastV3Icon.sm,
                 color: AarastV3Color.textFaint,
               ),
             ],

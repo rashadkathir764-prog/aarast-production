@@ -95,7 +95,6 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
           ).difference(today).inDays;
     return AarastScreenFrame(
       key: const Key('deletion-pending-screen'),
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -110,7 +109,7 @@ class _DeletionPendingScreenState extends State<DeletionPendingScreen> {
               icon: LucideIcons.hourglass,
               color: AarastV3Color.amber,
               soft: AarastV3Color.amberSoft,
-              size: 64,
+              size: AarastV3Size.markLarge,
               radius: 26,
             ),
           ),

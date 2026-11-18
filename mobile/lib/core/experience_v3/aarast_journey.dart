@@ -20,75 +20,37 @@ const _wordmarkDotLift = 0.12;
 abstract final class JourneyType {
   static const family = AarastV3Type.bodyFamily;
 
-  // The one type scale (D8). D74 sets it for the phones people hold
-  // (360-400 wide): the headings a step down from D30's, running text half
-  // a point, so a screen reads calm and keeps its first decision in view.
-  // The text scale on top stops at 1.3 (DevicePreferences.textScalerFor).
-  // Screens take a size from here, never a number.
-
-  /// The one big number of a screen, such as the days to the wedding.
-  static const count = 34.0;
+  // The one type scale (D8, D118): nine roles, each a clear step from the
+  // next, for the phones people hold (360-400 wide). It was twenty-two
+  // sizes half a point apart, so nothing on a screen read as more important
+  // than its neighbour. The text scale on top stops at 1.3
+  // (DevicePreferences.textScalerFor). Screens take a role, never a number.
 
   /// The home countdown's days.
   static const homeCount = 52.0;
 
-  /// The money summary's big gap («2.5 مليون»).
-  static const headline = 28.0;
+  /// The one big number of a screen or a card: the days to the wedding, the
+  /// money's gap.
+  static const count = 32.0;
 
-  /// An onboarding question (JourneyQuestionPage).
-  static const question = 25.0;
-
-  /// A main tab's title (JourneyTabHeader).
+  /// A tab's title, an onboarding question, a typed amount.
   static const hero = 24.0;
 
-  /// A typed amount or name in a large field.
-  static const amount = 24.0;
+  /// A pushed screen's or a sheet's title, a heading inside a screen, a
+  /// figure inside a card.
+  static const pageTitle = 19.0;
 
-  /// A heading inside a screen: a start card, a sheet-like card's title.
-  static const display = 21.0;
-
-  /// A sheet's title (JourneySheetBody).
-  static const sheetTitle = 19.0;
-
-  /// A figure inside a card: a quote's price, a lock key.
-  static const figure = 19.0;
-
-  /// A pushed screen's title (JourneySubHeader) and a figure in a stat box
-  /// (w19 «موزّع / احتياط»).
-  static const pageTitle = 18.0;
-
-  /// A person's name on their profile, a card's lead figure.
-  static const prominent = 17.0;
-
-  /// A card title.
-  static const title = 16.5;
-
-  /// A section title, a field's value and a main action's label.
+  /// A card's or a section's title, a field's value, a main action's label.
   static const lead = 16.0;
-
-  /// List titles that stand out and the help under a question.
-  static const bodyLarge = 15.5;
 
   /// Running text and list titles.
   static const body = 14.5;
 
-  /// Chips, a section's link, a sheet's subtitle and a form's labels.
-  static const bodySmall = 13.5;
-
-  /// Section tabs and a pushed screen's subtitle.
-  static const detail = 13.0;
-
-  /// Secondary lines and hints.
+  /// Secondary lines, hints, chips, a field's label, section tabs.
   static const small = 12.5;
 
-  /// A field's label.
-  static const label = 12.0;
-
-  /// The smallest text: tags and the Hijri date under a day.
-  static const caption = 11.5;
-
-  /// An inactive tab's name in the bottom bar (regular, muted).
-  static const tabLabel = 11.0;
+  /// The smallest text: tags, the Hijri date under a day.
+  static const caption = 11.0;
 
   /// The count inside a 16-point badge dot; it does not grow with text size.
   static const badge = 9.0;
@@ -97,7 +59,7 @@ abstract final class JourneyType {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = AarastV3Color.ink,
-    double height = 1.35,
+    double height = AarastV3Line.normal,
   }) => TextStyle(
     fontFamily: family,
     fontSize: size,
@@ -180,8 +142,8 @@ class JourneyIconTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.soft,
-    this.size = 40,
-    this.radius = 12,
+    this.size = AarastV3Size.mark,
+    this.radius = AarastV3Radius.control,
     super.key,
   });
 
@@ -281,7 +243,7 @@ class JourneyButton extends StatelessWidget {
           AarastInlineSpinner(color: fg),
           const SizedBox(width: AarastV3Space.x2),
         ] else if (icon != null) ...[
-          Icon(icon, size: 18, color: fg),
+          Icon(icon, size: AarastV3Icon.md, color: fg),
           const SizedBox(width: AarastV3Space.x2),
         ],
         Flexible(
@@ -308,9 +270,9 @@ class JourneyButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AarastV3Radius.surface),
         child: Container(
           width: expand ? double.infinity : null,
-          // Every action is a 48 target (DESIGN_SYSTEM: touch ≥ 48); the
-          // main one only carries the larger label (D74).
-          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+          // Every button is one height (D118); the main one only carries the
+          // larger label (D74).
+          constraints: const BoxConstraints(minHeight: AarastV3Size.action),
           padding: EdgeInsets.symmetric(
             horizontal: AarastV3Space.x4,
             vertical: large ? AarastV3Space.x3 : AarastV3Space.x2,
@@ -364,14 +326,14 @@ class JourneyTextAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: ConstrainedBox(
           // A 48 target (DESIGN_SYSTEM); the words themselves do not grow.
-          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+          constraints: const BoxConstraints(minHeight: AarastV3Size.touch),
           child: Padding(
             padding: const EdgeInsets.all(AarastV3Space.x2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 17, color: color),
+                  Icon(icon, size: AarastV3Icon.sm, color: color),
                   const SizedBox(width: AarastV3Space.x2),
                 ],
                 Flexible(
@@ -416,7 +378,7 @@ class JourneyChip extends StatelessWidget {
     this.onTap,
     this.icon,
     this.selectedColor,
-    this.fontSize = JourneyType.bodySmall,
+    this.fontSize = JourneyType.small,
     this.large = false,
     super.key,
   });
@@ -454,7 +416,9 @@ class JourneyChip extends StatelessWidget {
         child: onTap == null || large
             ? drawn
             : ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+                constraints: const BoxConstraints(
+                  minHeight: AarastV3Size.touch,
+                ),
                 child: Align(widthFactor: 1, child: drawn),
               ),
       ),
@@ -462,23 +426,28 @@ class JourneyChip extends StatelessWidget {
   }
 
   Widget _drawn(BuildContext context, Color fg, double radius) {
+    final fill = selected
+        ? selectedColor ?? context.accent.primary
+        : AarastV3Color.paper;
     return Container(
-      constraints: BoxConstraints(minHeight: large ? AarastV3Space.x12 : 36),
+      constraints: BoxConstraints(
+        minHeight: large ? AarastV3Size.touch : AarastV3Size.chip,
+      ),
       padding: large
           ? const EdgeInsets.symmetric(horizontal: AarastV3Space.x4)
           : AarastV3Density.chipInsets,
+      // A chosen chip keeps a line in its own fill, so chosen and not are
+      // one height at every text size (D118).
       decoration: BoxDecoration(
-        color: selected
-            ? selectedColor ?? context.accent.primary
-            : AarastV3Color.paper,
+        color: fill,
         borderRadius: BorderRadius.circular(radius),
-        border: selected ? null : Border.all(color: AarastV3Color.line),
+        border: Border.all(color: selected ? fill : AarastV3Color.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: fg),
+            Icon(icon, size: AarastV3Icon.sm, color: fg),
             const SizedBox(width: AarastV3Space.x1),
           ],
           Flexible(
@@ -488,6 +457,7 @@ class JourneyChip extends StatelessWidget {
                 fontSize,
                 weight: JourneyType.bold,
                 color: fg,
+                height: AarastV3Line.tight,
               ),
             ),
           ),
@@ -679,7 +649,7 @@ class JourneyLevelSwitch extends StatelessWidget {
                     // Critique ط6: 48, as every target in the kit (D74); at
                     // 32 a slip here gave a participant the money.
                     constraints: const BoxConstraints(
-                      minHeight: AarastV3Space.x12,
+                      minHeight: AarastV3Size.touch,
                     ),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
@@ -719,7 +689,7 @@ class JourneyRoundButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    this.size = 40,
+    this.size = AarastV3Size.mark,
     this.onArt = false,
     super.key,
   });
@@ -745,7 +715,7 @@ class JourneyRoundButton extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(size),
           child: SizedBox.square(
-            dimension: size < AarastV3Space.x12 ? AarastV3Space.x12 : size,
+            dimension: size < AarastV3Size.touch ? AarastV3Size.touch : size,
             child: Center(
               child: Container(
                 width: size,
@@ -758,7 +728,7 @@ class JourneyRoundButton extends StatelessWidget {
                 ),
                 child: Icon(
                   icon,
-                  size: 20,
+                  size: AarastV3Icon.md,
                   color: onArt ? AarastV3Color.paper : AarastV3Color.ink,
                 ),
               ),
@@ -831,7 +801,7 @@ class JourneyTabHeader extends StatelessWidget {
                 const SizedBox(width: AarastV3Space.half),
                 Icon(
                   LucideIcons.chevronLeft,
-                  size: 16,
+                  size: AarastV3Icon.sm,
                   color: context.accent.primary,
                 ),
               ],
@@ -871,7 +841,7 @@ class JourneyTabHeader extends StatelessWidget {
             ) +
             (onStatusTap == null ? 0 : AarastV3Space.half + 16);
         final actionsWidth =
-            actions.length * (AarastV3Space.x12 + AarastV3Space.x2);
+            actions.length * (AarastV3Size.touch + AarastV3Space.x2);
         final room = constraints.maxWidth - AarastV3Space.x2;
         if (titleWidth + AarastV3Space.x4 + statusWidth + actionsWidth <=
             room) {
@@ -973,7 +943,7 @@ class JourneySubHeader extends StatelessWidget {
           Text(
             subtitle!,
             style: JourneyType.of(
-              JourneyType.detail,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -991,7 +961,7 @@ class JourneySubHeader extends StatelessWidget {
           JourneyRoundButton(
             icon: LucideIcons.arrowRight,
             tooltip: 'رجوع',
-            size: 42,
+            size: AarastV3Size.mark,
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
           ),
           const SizedBox(width: AarastV3Space.x3),
@@ -1090,8 +1060,10 @@ class _SectionLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Text(
       label,
+      // Secondary beside its title: the small size, so the row keeps the
+      // title's height (D118).
       style: JourneyType.of(
-        JourneyType.bodySmall,
+        JourneyType.small,
         weight: JourneyType.bold,
         color: color,
       ),
@@ -1124,7 +1096,7 @@ class JourneyListRow extends StatelessWidget {
     required this.subtitle,
     this.trailing,
     this.onTap,
-    this.iconSize = 42,
+    this.iconSize = AarastV3Size.mark,
     this.subtitleMaxLines = 1,
     super.key,
   });
@@ -1155,6 +1127,8 @@ class JourneyListRow extends StatelessWidget {
               children: [
                 Text(
                   title,
+                  maxLines: AarastV3Size.titleLines,
+                  overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,
@@ -1216,7 +1190,7 @@ class JourneyList extends StatelessWidget {
             for (var i = 0; i < children.length; i++) ...[
               if (i > 0 && dividers)
                 const Divider(
-                  height: 1,
+                  height: AarastV3Space.hair,
                   indent: 70,
                   endIndent: 14,
                   color: AarastV3Color.line,
@@ -1292,7 +1266,7 @@ class JourneyChoiceCard extends StatelessWidget {
                     Text(
                       title,
                       style: JourneyType.of(
-                        JourneyType.title,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -1313,7 +1287,7 @@ class JourneyChoiceCard extends StatelessWidget {
               else
                 const Icon(
                   LucideIcons.chevronLeft,
-                  size: 18,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.textFaint,
                 ),
             ],
@@ -1371,8 +1345,8 @@ class JourneyOption extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 22,
-                height: 22,
+                width: AarastV3Size.check,
+                height: AarastV3Size.check,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
@@ -1461,7 +1435,7 @@ class JourneyStartWays extends StatelessWidget {
             icon: icon,
             color: color,
             soft: soft,
-            size: 84,
+            size: AarastV3Size.markHero,
             radius: 28,
           ),
         ),
@@ -1472,7 +1446,7 @@ class JourneyStartWays extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.display,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
             ),
           ),
@@ -1484,7 +1458,7 @@ class JourneyStartWays extends StatelessWidget {
           style: JourneyType.of(
             JourneyType.body,
             color: AarastV3Color.textMuted,
-            height: 1.5,
+            height: AarastV3Line.reading,
           ),
         ),
         const SizedBox(height: AarastV3Space.x5),
@@ -1500,7 +1474,9 @@ class JourneyStartWays extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AarastV3Color.paper,
                 borderRadius: BorderRadius.circular(AarastV3Radius.card),
-                border: i == 0 ? Border.all(color: color, width: 2) : null,
+                border: i == 0
+                    ? Border.all(color: color, width: AarastV3Size.lineStrong)
+                    : null,
               ),
               child: Row(
                 children: [
@@ -1508,7 +1484,7 @@ class JourneyStartWays extends StatelessWidget {
                     icon: ways[i].icon,
                     color: color,
                     soft: soft,
-                    size: 42,
+                    size: AarastV3Size.mark,
                   ),
                   const SizedBox(width: AarastV3Space.x3),
                   Expanded(
@@ -1518,7 +1494,7 @@ class JourneyStartWays extends StatelessWidget {
                         Text(
                           ways[i].title,
                           style: JourneyType.of(
-                            JourneyType.bodyLarge,
+                            JourneyType.lead,
                             weight: JourneyType.bold,
                           ),
                         ),
@@ -1535,7 +1511,7 @@ class JourneyStartWays extends StatelessWidget {
                   const SizedBox(width: AarastV3Space.x2),
                   const Icon(
                     LucideIcons.chevronLeft,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textFaint,
                   ),
                 ],
@@ -1556,19 +1532,22 @@ class _SelectionMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 26,
-      height: 26,
+      width: AarastV3Size.check,
+      height: AarastV3Size.check,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: selected ? context.accent.primary : AarastV3Color.paper,
         border: selected
             ? null
-            : Border.all(color: AarastV3Color.lineStrong, width: 2),
+            : Border.all(
+                color: AarastV3Color.lineStrong,
+                width: AarastV3Size.lineStrong,
+              ),
       ),
       child: selected
           ? const Icon(
               LucideIcons.check,
-              size: 16,
+              size: AarastV3Icon.sm,
               color: AarastV3Color.onPrimary,
             )
           : null,
@@ -1578,7 +1557,11 @@ class _SelectionMark extends StatelessWidget {
 
 /// The wordmark: اعّرست with its saffron dot.
 class JourneyWordmark extends StatelessWidget {
-  const JourneyWordmark({this.size = 40, this.color, super.key});
+  const JourneyWordmark({
+    this.size = AarastV3Icon.feature,
+    this.color,
+    super.key,
+  });
 
   final double size;
 
@@ -1602,7 +1585,7 @@ class JourneyWordmark extends StatelessWidget {
               size,
               weight: JourneyType.bold,
               color: color,
-              height: 1.1,
+              height: AarastV3Line.tight,
             ),
           ),
           Padding(
@@ -1633,7 +1616,7 @@ class JourneyAvatar extends StatelessWidget {
   const JourneyAvatar({
     required this.letter,
     required this.color,
-    this.size = 28,
+    this.size = AarastV3Size.markSmall,
     super.key,
   });
 
@@ -1798,6 +1781,188 @@ class JourneyQuestionPage extends StatelessWidget {
   }
 }
 
+/// A frame of art that carries words (D118): the art fills it, the words sit
+/// at its foot, and it is at least [ratio] of its width tall. When the words
+/// need more (a large text size, a narrow phone) the frame grows; it never
+/// cuts them and never stands on a fixed height.
+class JourneyArtFrame extends StatelessWidget {
+  const JourneyArtFrame({
+    required this.ratio,
+    required this.art,
+    required this.child,
+    this.padding = const EdgeInsets.all(AarastV3Space.x5),
+    super.key,
+  });
+
+  /// Width over height at the least ([AarastV3Media]).
+  final double ratio;
+  final Widget art;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return ConstrainedBox(
+          constraints: BoxConstraints(minHeight: width / ratio),
+          child: Stack(
+            alignment: AlignmentDirectional.bottomStart,
+            children: [
+              Positioned.fill(child: art),
+              SizedBox(
+                width: width,
+                child: Padding(padding: padding, child: child),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The one field box (D74, D118). Every field, typed, picked or a phone, is
+/// this box: white, the field corner, a hairline that turns the plan's colour
+/// at 2 on focus and coral on an error or a reviewer's note, and one height
+/// ([AarastV3Size.field], a typed amount [AarastV3Size.fieldAmount]). The
+/// whole box takes the tap (RA-MO-27).
+class JourneyFieldBox extends StatelessWidget {
+  const JourneyFieldBox({
+    required this.child,
+    this.trailing,
+    this.focused = false,
+    this.error = false,
+    this.large = false,
+    this.onTap,
+    super.key,
+  });
+
+  final Widget child;
+
+  /// A tool at the far end (the password eye, «لصق»). It stands outside the
+  /// box's inner padding, so a full 48 target fits the field's height.
+  final Widget? trailing;
+  final bool focused;
+
+  /// An error or a note: the coral edge.
+  final bool error;
+
+  /// A typed amount.
+  final bool large;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = error
+        ? AarastV3Color.danger
+        : focused
+        ? context.accent.primary
+        : AarastV3Color.line;
+    final trailing = this.trailing;
+    final box = Container(
+      constraints: BoxConstraints(
+        minHeight: large ? AarastV3Size.fieldAmount : AarastV3Size.field,
+      ),
+      alignment: AlignmentDirectional.centerStart,
+      padding: trailing == null
+          ? AarastV3Field.padding
+          : const EdgeInsetsDirectional.only(end: AarastV3Space.x1),
+      decoration: BoxDecoration(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(AarastV3Field.radius),
+        border: Border.all(color: color, width: error || focused ? 2 : 1),
+      ),
+      child: trailing == null
+          ? child
+          : Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      start: AarastV3Space.x4,
+                      end: AarastV3Space.x2,
+                      top: AarastV3Space.x2,
+                      bottom: AarastV3Space.x2,
+                    ),
+                    child: child,
+                  ),
+                ),
+                trailing,
+              ],
+            ),
+    );
+    if (onTap == null) return box;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: onTap,
+      child: box,
+    );
+  }
+}
+
+/// The small name over a field's value.
+class JourneyFieldLabel extends StatelessWidget {
+  const JourneyFieldLabel(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: JourneyType.of(
+      JourneyType.small,
+      color: AarastV3Color.textMuted,
+      height: AarastV3Field.labelHeight,
+    ),
+  );
+}
+
+/// A field's error, under its box.
+class JourneyFieldError extends StatelessWidget {
+  const JourneyFieldError(this.message, {super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AarastV3Space.x2,
+      AarastV3Space.x1,
+      AarastV3Space.x2,
+      0,
+    ),
+    child: Semantics(
+      liveRegion: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            LucideIcons.alertCircle,
+            size: AarastV3Icon.sm,
+            color: AarastV3Color.danger,
+          ),
+          const SizedBox(width: AarastV3Space.x1),
+          Expanded(
+            child: Text(
+              message,
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// A labelled input in the journey's look: small label, large value,
 /// 2px teal outline while focused.
 class JourneyTextField extends StatefulWidget {
@@ -1826,11 +1991,16 @@ class JourneyTextField extends StatefulWidget {
     this.maxLines = 1,
     this.trailing,
     this.enabled = true,
+    this.validator,
     super.key,
   });
 
   final String label;
   final TextEditingController controller;
+
+  /// Inside a [Form], checked when the form validates; its message shows as
+  /// the field's error.
+  final FormFieldValidator<String>? validator;
 
   /// False while a form saves or a contact is being picked.
   final bool enabled;
@@ -1886,153 +2056,122 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final error = widget.errorText;
-    final borderColor = error != null
-        ? AarastV3Color.danger
-        : _focus.hasFocus
-        ? context.accent.primary
-        : AarastV3Color.line;
-    final width = error != null || _focus.hasFocus ? 2.0 : 1.0;
+    final validator = widget.validator;
+    if (validator == null) return _field(widget.errorText, widget.onChanged);
+    return FormField<String>(
+      initialValue: widget.controller.text,
+      validator: (_) => validator(widget.controller.text),
+      builder: (state) => _field(state.errorText ?? widget.errorText, (value) {
+        state.didChange(value);
+        widget.onChanged?.call(value);
+      }),
+    );
+  }
+
+  Widget _field(String? error, ValueChanged<String>? onChanged) {
+    final valueSize = widget.large ? JourneyType.hero : JourneyType.lead;
+    // A phone number reads left to right inside Arabic, unless the screen
+    // says otherwise.
+    final textDirection =
+        widget.textDirection ??
+        (widget.keyboardType == TextInputType.phone
+            ? TextDirection.ltr
+            : Directionality.of(context));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // RA-MO-27: the whole frame, its label included, takes the tap and
-        // opens the keyboard, not only the text line inside it.
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: true,
+        JourneyFieldBox(
+          focused: _focus.hasFocus,
+          error: error != null,
+          large: widget.large,
           onTap: _focus.requestFocus,
-          child: Container(
-            padding: AarastV3Field.padding,
-            decoration: BoxDecoration(
-              color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(AarastV3Field.radius),
-              border: Border.all(color: borderColor, width: width),
-            ),
-            child: Row(
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    size: AarastV3Icon.md,
+          trailing: widget.trailing,
+          child: Row(
+            children: [
+              if (widget.icon != null) ...[
+                Icon(
+                  widget.icon,
+                  size: AarastV3Icon.md,
+                  color: AarastV3Color.textMuted,
+                ),
+                const SizedBox(width: AarastV3Field.iconGap),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    JourneyFieldLabel(widget.label),
+                    TextField(
+                      controller: widget.controller,
+                      focusNode: _focus,
+                      enabled: widget.enabled,
+                      autofocus: widget.autofocus,
+                      keyboardType: widget.keyboardType,
+                      textInputAction: widget.textInputAction,
+                      obscureText: widget.obscureText,
+                      minLines: widget.minLines,
+                      maxLines: widget.maxLines,
+                      maxLength: widget.maxLength,
+                      textDirection: textDirection,
+                      textAlign: widget.textAlign,
+                      autofillHints: widget.autofillHints,
+                      inputFormatters: widget.inputFormatters,
+                      onChanged: onChanged,
+                      onSubmitted: widget.onSubmitted,
+                      style: JourneyType.of(
+                        valueSize,
+                        weight: JourneyType.bold,
+                        height: AarastV3Field.valueHeight,
+                      ),
+                      cursorColor: context.accent.primary,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        hintText: widget.hint,
+                        hintTextDirection: textDirection,
+                        // RA-MO-27: an example in the regular weight, so it
+                        // never reads as a value already typed.
+                        hintStyle: JourneyType.of(
+                          valueSize,
+                          color: AarastV3Color.textFaint,
+                          height: AarastV3Field.valueHeight,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    if (widget.helper != null && error == null)
+                      Text(
+                        widget.helper!,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: widget.helperColor ?? context.accent.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (widget.suffix != null)
+                Text(
+                  widget.suffix!,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
                     color: AarastV3Color.textMuted,
                   ),
-                  const SizedBox(width: AarastV3Field.iconGap),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.label,
-                        style: JourneyType.of(
-                          JourneyType.label,
-                          color: AarastV3Color.textMuted,
-                        ),
-                      ),
-                      TextField(
-                        controller: widget.controller,
-                        focusNode: _focus,
-                        enabled: widget.enabled,
-                        autofocus: widget.autofocus,
-                        keyboardType: widget.keyboardType,
-                        textInputAction: widget.textInputAction,
-                        obscureText: widget.obscureText,
-                        minLines: widget.minLines,
-                        maxLines: widget.maxLines,
-                        maxLength: widget.maxLength,
-                        textDirection: widget.textDirection,
-                        textAlign: widget.textAlign,
-                        autofillHints: widget.autofillHints,
-                        inputFormatters: widget.inputFormatters,
-                        onChanged: widget.onChanged,
-                        onSubmitted: widget.onSubmitted,
-                        style: JourneyType.of(
-                          widget.large ? JourneyType.amount : JourneyType.lead,
-                          weight: JourneyType.bold,
-                        ),
-                        cursorColor: context.accent.primary,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          counterText: '',
-                          hintText: widget.hint,
-                          hintTextDirection: widget.textDirection,
-                          // RA-MO-27: an example in the regular weight, so it
-                          // never reads as a value already typed.
-                          hintStyle: JourneyType.of(
-                            widget.large
-                                ? JourneyType.amount
-                                : JourneyType.lead,
-                            color: AarastV3Color.textFaint,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                          contentPadding: const EdgeInsets.only(
-                            top: AarastV3Space.half,
-                            bottom: AarastV3Space.half,
-                          ),
-                        ),
-                      ),
-                      if (widget.helper != null && error == null)
-                        Text(
-                          widget.helper!,
-                          style: JourneyType.of(
-                            JourneyType.small,
-                            weight: JourneyType.bold,
-                            color: widget.helperColor ?? context.accent.primary,
-                          ),
-                        ),
-                    ],
-                  ),
                 ),
-                if (widget.suffix != null)
-                  Text(
-                    widget.suffix!,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                if (widget.trailing != null) ...[
-                  const SizedBox(width: AarastV3Field.iconGap),
-                  widget.trailing!,
-                ],
-              ],
-            ),
+            ],
           ),
         ),
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x2,
-              AarastV3Space.x1,
-              AarastV3Space.x2,
-              0,
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.alertCircle,
-                  size: 16,
-                  color: AarastV3Color.danger,
-                ),
-                const SizedBox(width: AarastV3Space.x1),
-                Expanded(
-                  child: Text(
-                    error,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.danger,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        if (error != null) JourneyFieldError(error),
       ],
     );
   }
@@ -2079,17 +2218,10 @@ class JourneyPickerField extends StatelessWidget {
       onTap: onTap,
       semanticLabel: ['$label، ${has ? value : placeholder}', ?note].join('، '),
       borderRadius: BorderRadius.circular(AarastV3Field.radius),
-      child: Container(
-        padding: AarastV3Field.padding,
-        decoration: BoxDecoration(
-          color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          border: Border.all(
-            color: note != null ? AarastV3Color.danger : AarastV3Color.line,
-            width: note != null ? 2 : 1,
-          ),
-        ),
+      child: JourneyFieldBox(
+        error: note != null,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
@@ -2105,19 +2237,15 @@ class JourneyPickerField extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        label,
-                        style: JourneyType.of(
-                          JourneyType.label,
-                          color: AarastV3Color.textMuted,
-                        ),
-                      ),
+                      JourneyFieldLabel(label),
                       Text(
                         has ? value! : placeholder,
                         style: JourneyType.of(
                           JourneyType.lead,
                           weight: JourneyType.bold,
+                          height: AarastV3Field.valueHeight,
                           color: has
                               ? AarastV3Color.ink
                               : AarastV3Color.textFaint,
@@ -2157,7 +2285,7 @@ class JourneyPickerField extends StatelessWidget {
                   children: [
                     const Icon(
                       LucideIcons.messageSquare,
-                      size: 16,
+                      size: AarastV3Icon.sm,
                       color: AarastV3Color.danger,
                     ),
                     const SizedBox(width: AarastV3Space.x2),
@@ -2168,7 +2296,7 @@ class JourneyPickerField extends StatelessWidget {
                           JourneyType.small,
                           weight: JourneyType.bold,
                           color: AarastV3Color.danger,
-                          height: 1.45,
+                          height: AarastV3Line.reading,
                         ),
                       ),
                     ),
@@ -2220,7 +2348,7 @@ class JourneyNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color),
+          Icon(icon, size: AarastV3Icon.md, color: color),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
@@ -2261,7 +2389,7 @@ class JourneyNote extends StatelessWidget {
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.textMuted,
-                  height: 1.55,
+                  height: AarastV3Line.reading,
                 ),
               ),
             ),
@@ -2294,7 +2422,7 @@ class JourneyNote extends StatelessWidget {
                 color: warn
                     ? AarastV3Color.brandAccentStrong
                     : AarastV3Color.textMuted,
-                height: 1.55,
+                height: AarastV3Line.reading,
               ),
             ),
           ),
@@ -2340,8 +2468,8 @@ class JourneyToggle extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
-            width: 44,
-            height: 26,
+            width: AarastV3Size.toggleWidth,
+            height: AarastV3Size.toggleHeight,
             padding: const EdgeInsets.all(AarastV3Space.x1),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
             decoration: BoxDecoration(

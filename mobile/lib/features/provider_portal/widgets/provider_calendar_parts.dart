@@ -10,7 +10,7 @@ import '../../marketplace/marketplace_api.dart'
 import '../providers/provider_dashboard_provider.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
-const _calendarDayHeight = 55.0;
+const _calendarDayHeight = AarastV3Size.calendarDay;
 
 /// What one day holds in the provider's calendar (p28), at day level: he
 /// takes his daily number of weddings (B-20, one by default) and closes
@@ -212,7 +212,7 @@ class ProviderMonthGrid extends StatelessWidget {
                     child: Text(
                       weekday,
                       style: JourneyType.of(
-                        JourneyType.label,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
@@ -284,12 +284,15 @@ class _DayCell extends StatelessWidget {
       if (isToday) 'اليوم',
     ].join('، ');
     final cell = Container(
-      height: 50,
+      height: AarastV3Size.calendarDay,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
         border: isToday
-            ? Border.all(color: AarastV3Color.primary, width: 2)
+            ? Border.all(
+                color: AarastV3Color.primary,
+                width: AarastV3Size.lineStrong,
+              )
             : null,
       ),
       child: FittedBox(
@@ -300,7 +303,7 @@ class _DayCell extends StatelessWidget {
             Text(
               '$number',
               style: JourneyType.of(
-                JourneyType.bodySmall,
+                JourneyType.small,
                 weight: JourneyType.bold,
                 color: fg,
               ).copyWith(fontFamily: AarastV3Type.displayFamily),
@@ -360,8 +363,8 @@ class ProviderCalendarLegend extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 10,
-                height: 10,
+                width: AarastV3Size.dot,
+                height: AarastV3Size.dot,
                 decoration: BoxDecoration(
                   color: providerDayColors(state).$1,
                   shape: BoxShape.circle,

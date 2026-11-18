@@ -170,7 +170,6 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         finance.loadedPlanId == plan.id &&
         finance.hasLoadedMoney;
     return AarastScreenFrame(
-      maxWidth: 560,
       backgroundColor: AarastV3Color.canvas,
       child: isLoading
           ? const Padding(

@@ -273,7 +273,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         setState(() => _tabLabel = null);
       },
       child: AarastScreenFrame(
-        maxWidth: 520,
         safeAreaBottom: false,
         backgroundColor: AarastV3Color.canvas,
         child: Consumer<ProviderMarketplaceProvider>(
@@ -555,7 +554,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         if (provider.isLoadingMore)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: AarastV3Space.x3),
-            child: Center(child: AarastInlineSpinner(dimension: 36)),
+            child: Center(
+              child: AarastInlineSpinner(dimension: AarastV3Icon.feature),
+            ),
           )
         else if (provider.loadMoreErrorMessage != null)
           JourneyListNotice(
@@ -638,7 +639,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         Text(
           'مزودين ثانيين',
           key: const ValueKey('providers-rest-title'),
-          style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+          style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
         ),
         const SizedBox(height: AarastV3Space.x2),
       ],

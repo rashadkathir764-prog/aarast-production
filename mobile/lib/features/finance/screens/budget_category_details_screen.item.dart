@@ -65,7 +65,7 @@ class _ItemGlance extends StatelessWidget {
             Text(
               value,
               style: JourneyType.of(
-                strong ? JourneyType.bodyLarge : JourneyType.body,
+                strong ? JourneyType.lead : JourneyType.body,
                 weight: JourneyType.bold,
               ),
             ),
@@ -242,7 +242,7 @@ class _ItemGlance extends StatelessWidget {
               estimate == null ? '—' : money(estimate),
               key: const ValueKey('item-estimate-figure'),
               style: JourneyType.of(
-                JourneyType.figure,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -482,7 +482,7 @@ class _ItemMarketRow extends StatelessWidget {
         subtitleMaxLines: 2,
         trailing: const Icon(
           LucideIcons.chevronLeft,
-          size: 18,
+          size: AarastV3Icon.md,
           color: AarastV3Color.textMuted,
         ),
         onTap: onTap,
@@ -516,7 +516,7 @@ class _PickAgreementSheet extends StatelessWidget {
                 subtitle: 'باقي ${money(cost.remainingAmount)}',
                 trailing: const Icon(
                   LucideIcons.chevronLeft,
-                  size: 18,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.textMuted,
                 ),
                 onTap: () => Navigator.of(context).pop(cost),

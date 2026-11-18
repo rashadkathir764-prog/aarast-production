@@ -252,7 +252,7 @@ class _QuoteTotal extends StatelessWidget {
             child: Text(
               '${formatMoneyInputValue(value)} ${currencyLabelAr(currency)}',
               style: JourneyType.of(
-                JourneyType.display,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
                 color: context.accent.primaryDark,
               ),
@@ -318,7 +318,7 @@ class _ProviderPicker extends StatefulWidget {
 }
 
 class _ProviderPickerState extends State<_ProviderPicker> {
-  static const _pageSize = 30;
+  static const _rowsPerPage = 30;
 
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
@@ -372,13 +372,13 @@ class _ProviderPickerState extends State<_ProviderPicker> {
       final results = await widget.marketplace.searchProvidersForMoneyLink(
         search: _searchController.text.trim(),
         page: nextPage,
-        limit: _pageSize,
+        limit: _rowsPerPage,
       );
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _providers = reset ? results : [..._providers, ...results];
         _page = nextPage;
-        _hasMore = results.length == _pageSize;
+        _hasMore = results.length == _rowsPerPage;
         _failed = false;
       });
     } catch (_) {
@@ -576,7 +576,7 @@ class _GuardNote extends StatelessWidget {
               children: [
                 const Icon(
                   LucideIcons.alertCircle,
-                  size: 18,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.amber,
                 ),
                 const SizedBox(width: AarastV3Space.x2),

@@ -94,7 +94,7 @@ class GuestInvitationCardImage extends StatelessWidget {
                     Text(
                       planTitle,
                       style: JourneyType.of(
-                        JourneyType.display + 6,
+                        JourneyType.pageTitle + 6,
                         weight: JourneyType.bold,
                         color: onColour,
                       ),
@@ -112,7 +112,7 @@ class GuestInvitationCardImage extends StatelessWidget {
                         Text(
                           occasion.label,
                           style: JourneyType.of(
-                            JourneyType.title,
+                            JourneyType.lead,
                             weight: JourneyType.bold,
                             color: onColour,
                           ),
@@ -122,8 +122,8 @@ class GuestInvitationCardImage extends StatelessWidget {
                           day,
                           style: JourneyType.of(
                             occasions.length > 1
-                                ? JourneyType.bodySmall
-                                : JourneyType.title,
+                                ? JourneyType.small
+                                : JourneyType.lead,
                             weight: occasions.length > 1
                                 ? FontWeight.w400
                                 : JourneyType.bold,
@@ -134,10 +134,7 @@ class GuestInvitationCardImage extends StatelessWidget {
                           when place.isNotEmpty)
                         Text(
                           place,
-                          style: JourneyType.of(
-                            JourneyType.bodySmall,
-                            color: soft,
-                          ),
+                          style: JourneyType.of(JourneyType.small, color: soft),
                         ),
                     ],
                     const SizedBox(height: AarastV3Space.x4),

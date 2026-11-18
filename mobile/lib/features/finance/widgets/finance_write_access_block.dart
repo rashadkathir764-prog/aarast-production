@@ -21,7 +21,6 @@ Widget? financeWriteAccessBlock({
       return const AarastScreenLoading(label: 'نتأكد من صلاحيتك في المال');
     }
     return AarastScreenFrame(
-      maxWidth: 520,
       child: Center(
         child: AarastErrorState(
           title: 'ما قدرنا نتأكد من صلاحيتك',
@@ -33,7 +32,6 @@ Widget? financeWriteAccessBlock({
   }
   if (!provider.canManageMoney) {
     return const AarastScreenFrame(
-      maxWidth: 520,
       child: Center(
         child: AarastEmptyState(
           title: 'للقراءة بس',
@@ -45,7 +43,6 @@ Widget? financeWriteAccessBlock({
   }
   if (ownerOnly && !provider.canManageBudget) {
     return const AarastScreenFrame(
-      maxWidth: 520,
       child: Center(
         child: AarastEmptyState(
           title: 'لصاحب الخطة',

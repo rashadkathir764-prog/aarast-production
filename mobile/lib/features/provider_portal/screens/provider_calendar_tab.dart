@@ -91,7 +91,7 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                   Text(
                     providerMonthLabel(_month),
                     style: JourneyType.of(
-                      JourneyType.bodySmall,
+                      JourneyType.small,
                       weight: JourneyType.bold,
                       color: AarastV3Color.textMuted,
                     ),

@@ -4,9 +4,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/experience_v3/aarast_v3_foundations.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _galleryPhotoHeight = 200.0;
-
 void showProviderPhotoGallery(
   BuildContext context, {
   required List<String> images,
@@ -86,13 +83,13 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                           key: ValueKey('provider-gallery-photo-$index'),
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stack) =>
-                              const SizedBox(
-                                height: _galleryPhotoHeight,
+                              const AspectRatio(
+                                aspectRatio: AarastV3Media.photo,
                                 child: Center(
                                   child: Icon(
                                     LucideIcons.image,
                                     color: AppTheme.focus,
-                                    size: 40,
+                                    size: AarastV3Icon.feature,
                                   ),
                                 ),
                               ),

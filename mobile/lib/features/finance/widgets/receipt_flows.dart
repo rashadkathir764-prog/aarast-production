@@ -204,7 +204,7 @@ class ReceiptThumb extends StatelessWidget {
   const ReceiptThumb({
     required this.receipt,
     required this.onTap,
-    this.size = 92,
+    this.size = AarastV3Size.markHero,
     this.width,
     super.key,
   });
@@ -231,7 +231,7 @@ class ReceiptThumb extends StatelessWidget {
       ),
       child: const Icon(
         LucideIcons.camera,
-        size: 28,
+        size: AarastV3Icon.xl,
         color: AarastV3Color.textFaint,
       ),
     );
@@ -250,7 +250,7 @@ class ReceiptThumb extends StatelessWidget {
                 color: context.accent.primarySoft,
                 child: Icon(
                   LucideIcons.fileText,
-                  size: 28,
+                  size: AarastV3Icon.xl,
                   color: context.accent.primary,
                 ),
               ),

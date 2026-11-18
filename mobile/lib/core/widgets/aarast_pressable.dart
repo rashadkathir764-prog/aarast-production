@@ -115,7 +115,10 @@ class _AarastPressableState extends State<AarastPressable> {
       foregroundDecoration: BoxDecoration(
         borderRadius: effectiveRadius,
         border: _showFocusHighlight
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+            ? Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: AarastV3Size.lineStrong,
+              )
             : null,
       ),
       child: core,

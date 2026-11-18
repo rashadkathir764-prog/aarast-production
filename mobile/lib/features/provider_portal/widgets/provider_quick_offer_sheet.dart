@@ -117,7 +117,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
         Text(
           'العرض صالح $providerQuickOfferDays أيام، وتقدر تعدّله من الطلب.',
           style: JourneyType.of(
-            JourneyType.label,
+            JourneyType.small,
             color: AarastV3Color.textMuted,
           ),
         ),

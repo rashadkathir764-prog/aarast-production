@@ -455,13 +455,13 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(LucideIcons.shieldCheck, size: 52),
+                    Icon(LucideIcons.shieldCheck, size: AarastV3Icon.hero),
                     SizedBox(height: AarastV3Space.x5),
                     Text(
                       'ما قدرنا نفتح التطبيق بأمان',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: JourneyType.sheetTitle,
+                        fontSize: JourneyType.pageTitle,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -470,8 +470,8 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
                       'ما حفظنا أي شي بدون حماية. سكّر التطبيق وافتحه مرة ثانية، وتأكد إن قفل الشاشة شغّال في الجوال.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: JourneyType.bodyLarge,
-                        height: 1.6,
+                        fontSize: JourneyType.lead,
+                        height: AarastV3Line.reading,
                       ),
                     ),
                   ],

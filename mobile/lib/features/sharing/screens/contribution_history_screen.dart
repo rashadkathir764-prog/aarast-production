@@ -121,7 +121,6 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
     final owner = _isOwner ?? true;
     return AarastScreenFrame(
       key: const Key('contribution-history-screen'),
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,
@@ -336,7 +335,7 @@ class _ActivityRow extends StatelessWidget {
             JourneyAvatar(
               letter: who.trim().isEmpty ? 'م' : who.trim().characters.first,
               color: color,
-              size: 36,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -371,7 +370,11 @@ class _ActivityRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AarastV3Space.x2),
-            Icon(_icon(event), size: 17, color: AarastV3Color.textFaint),
+            Icon(
+              _icon(event),
+              size: AarastV3Icon.sm,
+              color: AarastV3Color.textFaint,
+            ),
           ],
         ),
       ),

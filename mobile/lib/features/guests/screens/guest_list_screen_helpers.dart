@@ -158,7 +158,7 @@ class _GroupRow extends StatelessWidget {
                 icon: icon,
                 color: context.accent.primary,
                 soft: context.accent.primarySoft,
-                size: 42,
+                size: AarastV3Size.mark,
               ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
@@ -230,8 +230,8 @@ class _FirstGuests extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget icon(IconData data) => Container(
-      width: 44,
-      height: 44,
+      width: AarastV3Size.mark,
+      height: AarastV3Size.mark,
       decoration: BoxDecoration(
         color: context.accent.primarySoft,
         borderRadius: BorderRadius.circular(AarastV3Radius.surface),
@@ -245,7 +245,10 @@ class _FirstGuests extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         Text(
           context.say(AarastV3Copy.firstGuestTitle, 'مين بتعزمين؟'),
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.pageTitle,
+            weight: JourneyType.bold,
+          ),
         ),
         const SizedBox(height: AarastV3Space.x1),
         Text(

@@ -22,6 +22,9 @@ import '../providers/chat_provider.dart';
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _chatLoadingBubbleWidth = 250.0;
 
+/// A photo in the chat: a card photo's proportion of the bubble (D118).
+const _chatImageHeight = _chatLoadingBubbleWidth / AarastV3Media.cardPhoto;
+
 /// Reads the line under the provider's name, «يرد عادة خلال ساعتين»; the
 /// providers side supplies it so chat keeps no copy of provider pages.
 typedef ChatProviderLine =
@@ -283,7 +286,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       resizeToAvoidBottomInset: true,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
@@ -807,7 +809,7 @@ class _OfferCard extends StatelessWidget {
                 Text(
                   headline,
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -817,7 +819,7 @@ class _OfferCard extends StatelessWidget {
                   version,
                   key: const Key('chat-offer-version'),
                   style: JourneyType.of(
-                    JourneyType.bodySmall,
+                    JourneyType.small,
                     weight: JourneyType.bold,
                     color: AarastV3Color.amber,
                   ),
@@ -1078,7 +1080,11 @@ class _Composer extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AarastV3Space.x1),
               child: Row(
                 children: [
-                  Icon(LucideIcons.image, size: 18, color: _accentOf(context)),
+                  Icon(
+                    LucideIcons.image,
+                    size: AarastV3Icon.md,
+                    color: _accentOf(context),
+                  ),
                   const SizedBox(width: AarastV3Space.x2),
                   Expanded(
                     child: Text(
@@ -1092,7 +1098,7 @@ class _Composer extends StatelessWidget {
                   JourneyRoundButton(
                     icon: LucideIcons.x,
                     tooltip: 'إزالة الصورة',
-                    size: 36,
+                    size: AarastV3Size.mark,
                     onPressed: onRemoveAttachment,
                   ),
                 ],
@@ -1114,7 +1120,7 @@ class _Composer extends StatelessWidget {
       borderRadius: BorderRadius.circular(AarastV3Radius.card),
       child: Icon(
         LucideIcons.image,
-        size: providerSide ? 22 : 20,
+        size: providerSide ? AarastV3Icon.lg : AarastV3Icon.md,
         color: providerSide ? _accentOf(context) : AarastV3Color.textFaint,
       ),
     ),
@@ -1234,7 +1240,10 @@ class _Composer extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AarastV3Radius.card),
-                borderSide: BorderSide(color: _accentOf(context), width: 2),
+                borderSide: BorderSide(
+                  color: _accentOf(context),
+                  width: AarastV3Size.lineStrong,
+                ),
               ),
               suffixIcon: _imageButton(context),
             ),
@@ -1333,7 +1342,7 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
     if (_refreshing || ((_url.isEmpty || _isExpired) && !_failed)) {
       return const SizedBox(
         width: _chatLoadingBubbleWidth,
-        height: 180,
+        height: _chatImageHeight,
         child: Center(child: AarastInlineSpinner()),
       );
     }
@@ -1343,8 +1352,8 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
       child: Image.network(
         _url,
         key: ValueKey(_url),
-        width: 250,
-        height: 180,
+        width: _chatLoadingBubbleWidth,
+        height: _chatImageHeight,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) {
           _scheduleRefresh();
@@ -1352,7 +1361,7 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
               ? const _PrivateImageFailure()
               : const SizedBox(
                   width: _chatLoadingBubbleWidth,
-                  height: 180,
+                  height: _chatImageHeight,
                   child: Center(child: AarastInlineSpinner()),
                 );
         },
@@ -1368,7 +1377,7 @@ class _PrivateImageFailure extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       width: _chatLoadingBubbleWidth,
-      height: 80,
+      height: AarastV3Size.markHero,
       child: Center(child: Icon(LucideIcons.imageOff)),
     );
   }

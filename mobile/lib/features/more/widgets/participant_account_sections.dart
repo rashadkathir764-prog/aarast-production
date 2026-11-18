@@ -316,7 +316,7 @@ class _PlanRow extends StatelessWidget {
             JourneyAvatar(
               letter: source.isEmpty ? '' : source.characters.first,
               color: color,
-              size: 40,
+              size: AarastV3Size.mark,
             ),
             const SizedBox(width: AarastV3Space.x3),
             Expanded(
@@ -337,7 +337,7 @@ class _PlanRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(
-                      JourneyType.label,
+                      JourneyType.small,
                       color: AarastV3Color.textMuted,
                     ),
                   ),

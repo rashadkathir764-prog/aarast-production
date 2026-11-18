@@ -17,7 +17,7 @@ class _Fact extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: context.accent.primary),
+          Icon(icon, size: AarastV3Icon.md, color: context.accent.primary),
           const SizedBox(width: AarastV3Space.x2),
           SizedBox(
             width: _taskSheetLabelWidth,
@@ -48,18 +48,21 @@ class _FireworksHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // D118: a slim band of the sheet's width, not 120.
     return ExcludeSemantics(
-      child: Container(
-        key: const ValueKey('task-fireworks-hero'),
-        height: 120,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: context.accent.night,
-          borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        ),
-        child: CustomPaint(
-          painter: JourneyFireworksPainter(
-            bursts: JourneyFireworksPainter.burstsFor(context.accent),
+      child: AspectRatio(
+        aspectRatio: AarastV3Media.slimBand,
+        child: Container(
+          key: const ValueKey('task-fireworks-hero'),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: context.accent.night,
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
+          ),
+          child: CustomPaint(
+            painter: JourneyFireworksPainter(
+              bursts: JourneyFireworksPainter.burstsFor(context.accent),
+            ),
           ),
         ),
       ),
@@ -151,7 +154,7 @@ class _ContactCard extends StatelessWidget {
         JourneyAvatar(
           letter: nameLetter(name),
           color: context.accent.primary,
-          size: 40,
+          size: AarastV3Size.mark,
         ),
         const SizedBox(width: AarastV3Space.x3),
         Expanded(
@@ -205,7 +208,7 @@ class _NoPhoneNote extends StatelessWidget {
           Text(
             'ما عندنا رقم لـ$name، فما نقدر نرسل المهمة.',
             style: JourneyType.of(
-              JourneyType.bodySmall,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -249,7 +252,7 @@ class _TaskLinkRow extends StatelessWidget {
       },
       trailing: const Icon(
         LucideIcons.chevronLeft,
-        size: 18,
+        size: AarastV3Icon.md,
         color: AarastV3Color.textFaint,
       ),
       onTap: () => context.push(
@@ -294,7 +297,7 @@ class _TaskMenu extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 18,
+            size: AarastV3Icon.md,
             color: danger ? AarastV3Color.danger : AarastV3Color.ink,
           ),
           const SizedBox(width: AarastV3Space.x2),

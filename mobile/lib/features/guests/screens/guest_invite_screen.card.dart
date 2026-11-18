@@ -1,9 +1,5 @@
 part of 'guest_invite_screen.dart';
 
-/// The empty photo slot, and what stands in when a photo cannot be drawn:
-/// a fixed picture area, not a spacing step (D74).
-const double _photoSlotHeight = 120;
-
 /// The card photo's controls and their state.
 class _PhotoState {
   const _PhotoState({
@@ -190,43 +186,46 @@ class _PhotoSlot extends StatelessWidget {
         child: AarastPressable(
           key: const ValueKey('invite-photo-pick'),
           onTap: change,
-          child: Container(
-            height: _photoSlotHeight,
-            decoration: BoxDecoration(
-              color: context.accent.primarySoft,
-              borderRadius: BorderRadius.circular(AarastV3Radius.card),
-            ),
-            child: Center(
-              child: photo.uploading
-                  ? Text(
-                      'نرفع الصورة…',
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.imagePlus,
-                          size: AarastV3Icon.lg,
+          // D118: a slim band of the width, not 120 on every phone.
+          child: AspectRatio(
+            aspectRatio: AarastV3Media.slimBand,
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.accent.primarySoft,
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
+              ),
+              child: Center(
+                child: photo.uploading
+                    ? Text(
+                        'نرفع الصورة…',
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
                           color: context.accent.primary,
                         ),
-                        const SizedBox(height: AarastV3Space.x1),
-                        Text(
-                          whole
-                              ? '${say('اختر', 'اختاري')} البطاقة من الصور'
-                              : '${say('أضف', 'أضيفي')} الصورة',
-                          style: JourneyType.of(
-                            JourneyType.body,
-                            weight: JourneyType.bold,
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.imagePlus,
+                            size: AarastV3Icon.lg,
                             color: context.accent.primary,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: AarastV3Space.x1),
+                          Text(
+                            whole
+                                ? '${say('اختر', 'اختاري')} البطاقة من الصور'
+                                : '${say('أضف', 'أضيفي')} الصورة',
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
+                              color: context.accent.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),
@@ -242,8 +241,8 @@ class _PhotoSlot extends StatelessWidget {
       key: const ValueKey('invite-card-photo'),
       fit: whole ? BoxFit.contain : BoxFit.cover,
       semanticLabel: whole ? 'بطاقة الدعوة' : 'صورة الدعوة',
-      errorBuilder: (_, _, _) => SizedBox(
-        height: _photoSlotHeight,
+      errorBuilder: (_, _, _) => AspectRatio(
+        aspectRatio: AarastV3Media.slimBand,
         child: Center(
           child: Text(
             'ما قدرنا نعرض الصورة الحين',
@@ -262,10 +261,14 @@ class _PhotoSlot extends StatelessWidget {
           borderRadius: BorderRadius.circular(AarastV3Radius.card),
           child: whole
               ? ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 360),
+                  constraints: BoxConstraints(
+                    maxHeight:
+                        MediaQuery.sizeOf(context).height *
+                        AarastV3Media.previewShare,
+                  ),
                   child: image,
                 )
-              : AspectRatio(aspectRatio: 4 / 3, child: image),
+              : AspectRatio(aspectRatio: AarastV3Media.feature, child: image),
         ),
         if (change != null)
           Align(

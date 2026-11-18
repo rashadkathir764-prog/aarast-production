@@ -17,7 +17,7 @@ class _StepTitle extends StatelessWidget {
           child: Text(
             text,
             style: JourneyType.of(
-              JourneyType.display,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
             ),
           ),
@@ -28,7 +28,7 @@ class _StepTitle extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,
-              height: 1.45,
+              height: AarastV3Line.reading,
             ),
           ),
       ],
@@ -55,7 +55,7 @@ class _FieldError extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.alertCircle,
-            size: 16,
+            size: AarastV3Icon.sm,
             color: AarastV3Color.danger,
           ),
           const SizedBox(width: AarastV3Space.x1),

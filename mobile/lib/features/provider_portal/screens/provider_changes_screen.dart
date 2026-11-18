@@ -69,7 +69,6 @@ class ProviderChangesScreen extends StatelessWidget {
     final notedAt = profile.reviewedAt;
     final error = errorMessage;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [

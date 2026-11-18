@@ -177,7 +177,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _scheduleInitialPlanContext(plans, marketplace, selectedPlanId);
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: requiresAuth
@@ -951,7 +950,7 @@ class _PlanRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: context.accent.primary),
+            Icon(icon, size: AarastV3Icon.md, color: context.accent.primary),
             const SizedBox(width: AarastV3Space.x2),
             SizedBox(
               width: _quoteStepperWidth,
@@ -978,7 +977,7 @@ class _PlanRow extends StatelessWidget {
             const SizedBox(width: AarastV3Space.x2),
             const Icon(
               LucideIcons.pencil,
-              size: 18,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textFaint,
             ),
           ],

@@ -69,7 +69,7 @@ class _InviteRights extends StatelessWidget {
                   ),
                   Icon(
                     on ? LucideIcons.check : LucideIcons.x,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: on ? AarastV3Color.mint : AarastV3Color.textFaint,
                   ),
                 ],

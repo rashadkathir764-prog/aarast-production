@@ -33,7 +33,7 @@ class AarastPageScaffold extends StatelessWidget {
     this.showBack = false,
     this.onBack,
     this.padding = AppTheme.screenPadding,
-    this.maxWidth = 560,
+    this.maxWidth = AarastV3Density.readableWidth,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.resizeToAvoidBottomInset,
@@ -118,7 +118,7 @@ class AarastScaffold extends AarastPageScaffold {
 class AarastScreenFrame extends StatelessWidget {
   const AarastScreenFrame({
     required this.child,
-    this.maxWidth = 560,
+    this.maxWidth = AarastV3Density.readableWidth,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.resizeToAvoidBottomInset,
@@ -336,7 +336,7 @@ class AarastSectionHeader extends StatelessWidget {
         if (icon != null) ...[
           Padding(
             padding: const EdgeInsets.only(top: AarastV3Space.x1),
-            child: Icon(icon, color: AppTheme.brand, size: 22),
+            child: Icon(icon, color: AppTheme.brand, size: AarastV3Icon.lg),
           ),
           const SizedBox(width: AarastV3Space.x2),
         ],
@@ -362,7 +362,7 @@ class AarastSectionHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
-                    height: 1.4,
+                    height: AarastV3Line.normal,
                   ),
                 ),
               ],
@@ -403,12 +403,15 @@ class AarastStatusPill extends StatelessWidget {
         border: Border.all(color: color.withAlpha(42)),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 230),
+        // A status word never takes more than half a panel.
+        constraints: const BoxConstraints(
+          maxWidth: AarastV3Density.narrowWidth / 2,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: color),
+              Icon(icon, size: AarastV3Icon.sm, color: color),
               const SizedBox(width: AarastV3Space.x1),
             ],
             Flexible(

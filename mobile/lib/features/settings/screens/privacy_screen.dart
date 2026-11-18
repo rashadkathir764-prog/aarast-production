@@ -122,7 +122,6 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     final reviewFirstOnly = _reviewFirstNameOnly;
     final assistantLimit = _assistantDailyLimit;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -185,7 +184,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 subtitle: 'ملف فيه خطتك كاملة',
                 trailing: _downloading
                     ? AarastInlineSpinner(
-                        dimension: 18,
+                        dimension: AarastV3Icon.md,
                         color: context.accent.primary,
                       )
                     : null,
@@ -235,7 +234,7 @@ class _Toggle extends StatelessWidget {
                 Text(
                   title,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),

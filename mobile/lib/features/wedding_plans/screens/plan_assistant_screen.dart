@@ -257,7 +257,6 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     final status = _status;
     final usable = status != null && status.available;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -423,7 +422,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
                 key: const ValueKey('assistant-copy'),
                 icon: LucideIcons.copy,
                 tooltip: context.say('انسخ الإجابة', 'انسخي الإجابة'),
-                size: 40,
+                size: AarastV3Size.mark,
                 onPressed: () => _copy(answer.answer),
               ),
           ],
@@ -451,7 +450,9 @@ class _QuestionBubble extends StatelessWidget {
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
+        constraints: const BoxConstraints(
+          maxWidth: AarastV3Density.narrowWidth,
+        ),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: context.accent.primary,
@@ -476,7 +477,7 @@ class _QuestionBubble extends StatelessWidget {
                   exchange.question,
                   key: const ValueKey('assistant-question-bubble'),
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     color: AarastV3Color.onPrimary,
                   ),
                 ),
@@ -522,14 +523,14 @@ class _AnswerCard extends StatelessWidget {
             children: [
               Icon(
                 LucideIcons.sparkles,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: context.accent.primary,
               ),
               const SizedBox(width: AarastV3Space.x1),
               Text(
                 'من خطتك',
                 style: JourneyType.of(
-                  JourneyType.bodySmall,
+                  JourneyType.small,
                   weight: JourneyType.bold,
                   color: context.accent.primary,
                 ),
@@ -539,7 +540,10 @@ class _AnswerCard extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x2),
           SelectableText(
             answer.answer,
-            style: JourneyType.of(JourneyType.body, height: 1.7),
+            style: JourneyType.of(
+              JourneyType.body,
+              height: AarastV3Line.reading,
+            ),
           ),
           if (!answer.declined && !answer.marketDataAvailable) ...[
             const SizedBox(height: AarastV3Space.x2),
@@ -674,7 +678,11 @@ class _AskField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.sparkles, size: 20, color: context.accent.primary),
+          Icon(
+            LucideIcons.sparkles,
+            size: AarastV3Icon.md,
+            color: context.accent.primary,
+          ),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: TextField(
@@ -686,14 +694,14 @@ class _AskField extends StatelessWidget {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
-              style: JourneyType.of(JourneyType.bodyLarge),
+              style: JourneyType.of(JourneyType.lead),
               cursorColor: context.accent.primary,
               decoration: InputDecoration(
                 isDense: true,
                 counterText: '',
                 hintText: context.say('اسأل عن عرسك…', 'اسألي عن عرسك…'),
                 hintStyle: JourneyType.of(
-                  JourneyType.bodyLarge,
+                  JourneyType.lead,
                   color: AarastV3Color.textFaint,
                 ),
                 border: InputBorder.none,
@@ -718,8 +726,8 @@ class _AskField extends StatelessWidget {
               onTap: enabled ? onSend : null,
               borderRadius: BorderRadius.circular(AarastV3Radius.feature),
               child: Container(
-                width: 48,
-                height: 48,
+                width: AarastV3Size.mark,
+                height: AarastV3Size.mark,
                 decoration: BoxDecoration(
                   color: enabled
                       ? context.accent.primary
@@ -728,7 +736,7 @@ class _AskField extends StatelessWidget {
                 ),
                 child: const Icon(
                   LucideIcons.send,
-                  size: 20,
+                  size: AarastV3Icon.md,
                   color: AarastV3Color.onPrimary,
                 ),
               ),
@@ -754,7 +762,7 @@ class _ConsentSheet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: context.accent.primary),
+          Icon(icon, size: AarastV3Icon.lg, color: context.accent.primary),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],

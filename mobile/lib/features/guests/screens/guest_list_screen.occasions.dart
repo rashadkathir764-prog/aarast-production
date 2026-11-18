@@ -152,7 +152,7 @@ class _OccasionSummaryCard extends StatelessWidget {
                   // Rashad's phone 2026-11-17: in bold it spoke louder
                   // than «كم بيحضر؟» beside the figure.
                   style: JourneyType.of(
-                    JourneyType.bodySmall,
+                    JourneyType.small,
                     color: AarastV3Color.onPrimary,
                   ),
                 ),
@@ -276,7 +276,7 @@ class _DoorRow extends StatelessWidget {
                 icon: icon,
                 color: context.accent.primary,
                 soft: context.accent.primarySoft,
-                size: 42,
+                size: AarastV3Size.mark,
               ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
@@ -305,7 +305,7 @@ class _DoorRow extends StatelessWidget {
                 Directionality.of(context) == TextDirection.rtl
                     ? LucideIcons.chevronLeft
                     : LucideIcons.chevronRight,
-                size: 18,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textMuted,
               ),
             ],

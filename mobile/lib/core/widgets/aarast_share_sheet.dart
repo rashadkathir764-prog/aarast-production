@@ -97,7 +97,11 @@ class _ShareSheetState extends State<_ShareSheet> {
               ),
             const SizedBox(height: AarastV3Space.x2),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
+              constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.sizeOf(context).height *
+                    AarastV3Media.previewShare,
+              ),
               child: Container(
                 padding: const EdgeInsets.all(AarastV3Space.x3),
                 decoration: BoxDecoration(
@@ -109,7 +113,9 @@ class _ShareSheetState extends State<_ShareSheet> {
                   child: Text(
                     text,
                     key: const Key('share-sheet-preview'),
-                    style: textTheme.bodySmall?.copyWith(height: 1.6),
+                    style: textTheme.bodySmall?.copyWith(
+                      height: AarastV3Line.reading,
+                    ),
                   ),
                 ),
               ),

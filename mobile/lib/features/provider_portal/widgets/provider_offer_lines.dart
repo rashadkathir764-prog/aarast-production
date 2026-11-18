@@ -108,7 +108,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
                 IconButton(
                   key: Key('provider-offer-line-remove-$index'),
                   tooltip: 'إزالة السطر',
-                  icon: const Icon(LucideIcons.x, size: 18),
+                  icon: const Icon(LucideIcons.x, size: AarastV3Icon.md),
                   onPressed: () => widget.onChanged([
                     for (var i = 0; i < widget.lines.length; i++)
                       if (i != index) widget.lines[i],

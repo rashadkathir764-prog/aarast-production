@@ -104,7 +104,6 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
         finance.isLoadingMorePayments;
 
     return AarastScreenFrame(
-      maxWidth: 560,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         onRefresh: _load,
@@ -173,13 +172,13 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                         icon: LucideIcons.users,
                         color: context.accent.primary,
                         soft: context.accent.primarySoft,
-                        size: 40,
+                        size: AarastV3Size.mark,
                       )
                     else
                       JourneyAvatar(
                         letter: payerAvatarLetter(label(chosen)),
                         color: context.accent.primary,
-                        size: 40,
+                        size: AarastV3Size.mark,
                       ),
                     const SizedBox(width: AarastV3Space.x3),
                     Expanded(
@@ -192,7 +191,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                                 profile,
                               ),
                         style: JourneyType.of(
-                          JourneyType.bodyLarge,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                         ),
                       ),
@@ -200,7 +199,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                     Text(
                       amount(paid),
                       style: JourneyType.of(
-                        JourneyType.title,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                         color: context.accent.primary,
                       ),
@@ -254,7 +253,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                           trailing: Text(
                             amount(payment.amount),
                             style: JourneyType.of(
-                              JourneyType.bodyLarge,
+                              JourneyType.lead,
                               weight: JourneyType.bold,
                             ),
                           ),

@@ -129,7 +129,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final proven = auth.phoneProofFor(_phoneController.text) != null;
     final serverError = offline ? null : auth.errorMessage;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       child: JourneyPage(

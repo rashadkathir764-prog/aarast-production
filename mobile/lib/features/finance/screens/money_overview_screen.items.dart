@@ -288,7 +288,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
           for (var index = 0; index < rows.length; index++) ...[
             if (index > 0)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 16,
                 endIndent: 16,
                 color: AarastV3Color.line,
@@ -476,7 +476,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
                 Text(
                   context.say('أضف بند', 'أضيفي بند'),
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -621,7 +621,7 @@ class _MoneyItemRow extends StatelessWidget {
                           const Icon(
                             LucideIcons.lock,
                             key: ValueKey('cost-private-lock'),
-                            size: 14,
+                            size: AarastV3Icon.sm,
                             color: AarastV3Color.textMuted,
                           ),
                           const SizedBox(width: AarastV3Space.x1),
@@ -632,7 +632,7 @@ class _MoneyItemRow extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: JourneyType.of(
-                              JourneyType.bodyLarge,
+                              JourneyType.lead,
                               weight: JourneyType.bold,
                               color: ink,
                             ),
@@ -648,7 +648,7 @@ class _MoneyItemRow extends StatelessWidget {
                               child: Text(
                                 amount,
                                 style: JourneyType.of(
-                                  JourneyType.bodyLarge,
+                                  JourneyType.lead,
                                   weight: JourneyType.bold,
                                   color: ink,
                                 ),
@@ -664,7 +664,7 @@ class _MoneyItemRow extends StatelessWidget {
                       color: muted
                           ? AarastV3Color.textFaint
                           : context.accent.primary,
-                      height: 5,
+                      height: AarastV3Size.bar,
                     ),
                     const SizedBox(height: AarastV3Space.x1),
                     Row(

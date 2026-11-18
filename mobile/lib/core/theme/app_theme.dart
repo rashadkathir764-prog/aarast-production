@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../experience_v3/aarast_journey.dart' show JourneyType;
 import '../experience_v3/aarast_v3_foundations.dart';
 import 'aarast_design_tokens.dart';
 import 'aarast_motion.dart';
@@ -180,7 +181,7 @@ class AppTheme {
               backgroundColor: brand,
               foregroundColor: onBrand,
               elevation: 0,
-              minimumSize: const Size.fromHeight(48),
+              minimumSize: const Size.fromHeight(AarastV3Size.action),
               padding: const EdgeInsets.symmetric(
                 horizontal: AarastV3Space.x4,
                 vertical: AarastV3Space.x3,
@@ -206,7 +207,7 @@ class AppTheme {
             FilledButton.styleFrom(
               backgroundColor: brand,
               foregroundColor: onBrand,
-              minimumSize: const Size.fromHeight(48),
+              minimumSize: const Size.fromHeight(AarastV3Size.action),
               padding: const EdgeInsets.symmetric(
                 horizontal: AarastV3Space.x4,
                 vertical: AarastV3Space.x3,
@@ -231,10 +232,10 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
           backgroundColor: surfaceRaised,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size.fromHeight(AarastV3Size.action),
           side: const BorderSide(
             color: AarastSemanticTokens.border,
-            width: 1.2,
+            width: AarastV3Size.line,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusControl),
@@ -303,7 +304,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          borderSide: const BorderSide(color: brand, width: 2),
+          borderSide: const BorderSide(
+            color: brand,
+            width: AarastV3Size.lineStrong,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
@@ -311,7 +315,10 @@ class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          borderSide: const BorderSide(color: danger, width: 2),
+          borderSide: const BorderSide(
+            color: danger,
+            width: AarastV3Size.lineStrong,
+          ),
         ),
       ),
       cardTheme: CardThemeData(
@@ -406,7 +413,10 @@ class AppTheme {
           return surfaceRaised;
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
-        side: const BorderSide(color: AarastSemanticTokens.border, width: 1.2),
+        side: const BorderSide(
+          color: AarastSemanticTokens.border,
+          width: AarastV3Size.line,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AarastV3Radius.xs),
         ),
@@ -482,7 +492,7 @@ class AppTheme {
       double? size,
       FontWeight? weight,
       String? family,
-      double height = 1.35,
+      double height = AarastV3Line.normal,
     }) {
       return source?.copyWith(
         fontFamily: family ?? textFontFamily,
@@ -499,33 +509,69 @@ class AppTheme {
       displaySmall: style(base.displaySmall, family: displayFontFamily),
       headlineLarge: style(
         base.headlineLarge,
-        size: 28,
+        size: JourneyType.hero,
         weight: FontWeight.w700,
         family: displayFontFamily,
-        height: 1.2,
+        height: AarastV3Line.tight,
       ),
       headlineMedium: style(
         base.headlineMedium,
-        size: 24,
+        size: JourneyType.hero,
         weight: FontWeight.w700,
         family: displayFontFamily,
-        height: 1.2,
+        height: AarastV3Line.tight,
       ),
       headlineSmall: style(
         base.headlineSmall,
-        size: 22,
+        size: JourneyType.hero,
         weight: FontWeight.w700,
-        height: 1.25,
+        height: AarastV3Line.tight,
       ),
-      titleLarge: style(base.titleLarge, size: 20, weight: FontWeight.w800),
-      titleMedium: style(base.titleMedium, size: 16, weight: FontWeight.w700),
-      titleSmall: style(base.titleSmall, size: 14, weight: FontWeight.w700),
-      bodyLarge: style(base.bodyLarge, size: 16, weight: FontWeight.w400),
-      bodyMedium: style(base.bodyMedium, size: 14, weight: FontWeight.w400),
-      bodySmall: style(base.bodySmall, size: 12, weight: FontWeight.w400),
-      labelLarge: style(base.labelLarge, size: 14, weight: FontWeight.w800),
-      labelMedium: style(base.labelMedium, size: 12, weight: FontWeight.w700),
-      labelSmall: style(base.labelSmall, size: 11, weight: FontWeight.w600),
+      titleLarge: style(
+        base.titleLarge,
+        size: JourneyType.pageTitle,
+        weight: FontWeight.w800,
+      ),
+      titleMedium: style(
+        base.titleMedium,
+        size: JourneyType.lead,
+        weight: FontWeight.w700,
+      ),
+      titleSmall: style(
+        base.titleSmall,
+        size: JourneyType.body,
+        weight: FontWeight.w700,
+      ),
+      bodyLarge: style(
+        base.bodyLarge,
+        size: JourneyType.lead,
+        weight: FontWeight.w400,
+      ),
+      bodyMedium: style(
+        base.bodyMedium,
+        size: JourneyType.body,
+        weight: FontWeight.w400,
+      ),
+      bodySmall: style(
+        base.bodySmall,
+        size: JourneyType.small,
+        weight: FontWeight.w400,
+      ),
+      labelLarge: style(
+        base.labelLarge,
+        size: JourneyType.body,
+        weight: FontWeight.w800,
+      ),
+      labelMedium: style(
+        base.labelMedium,
+        size: JourneyType.small,
+        weight: FontWeight.w700,
+      ),
+      labelSmall: style(
+        base.labelSmall,
+        size: JourneyType.caption,
+        weight: FontWeight.w600,
+      ),
     );
   }
 }

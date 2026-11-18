@@ -139,17 +139,23 @@ class AarastDashboardState extends StatelessWidget {
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(
+                maxWidth: AarastV3Density.narrowWidth,
+              ),
               child: Column(
                 children: [
                   Container(
-                    width: 88,
-                    height: 88,
+                    width: AarastV3Size.markHero,
+                    height: AarastV3Size.markHero,
                     decoration: BoxDecoration(
                       color: soft,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, color: accent, size: 36),
+                    child: Icon(
+                      icon,
+                      color: accent,
+                      size: AarastV3Icon.feature,
+                    ),
                   ),
                   const SizedBox(height: AarastV3Space.x4),
                   Semantics(
@@ -158,7 +164,7 @@ class AarastDashboardState extends StatelessWidget {
                       title,
                       textAlign: TextAlign.center,
                       style: JourneyType.of(
-                        JourneyType.title,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -170,7 +176,7 @@ class AarastDashboardState extends StatelessWidget {
                     style: JourneyType.of(
                       JourneyType.body,
                       color: AarastV3Color.textMuted,
-                      height: 1.5,
+                      height: AarastV3Line.reading,
                     ),
                   ),
                   const SizedBox(height: AarastV3Space.x4),

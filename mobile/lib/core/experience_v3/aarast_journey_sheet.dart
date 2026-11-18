@@ -123,7 +123,7 @@ class JourneySheetBody extends StatelessWidget {
             child: Text(
               title,
               style: JourneyType.of(
-                JourneyType.sheetTitle,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
               ),
             ),
@@ -132,7 +132,7 @@ class JourneySheetBody extends StatelessWidget {
           Text(
             subtitle,
             style: JourneyType.of(
-              JourneyType.bodySmall,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -205,13 +205,95 @@ class _JourneySheetHandle extends StatelessWidget {
     return Center(
       child: Container(
         key: const ValueKey('journey-sheet-handle'),
-        width: 40,
-        height: 5,
+        width: AarastV3Size.handleWidth,
+        height: AarastV3Size.handleHeight,
         decoration: BoxDecoration(
           color: AarastV3Color.line,
           borderRadius: BorderRadius.circular(AarastV3Radius.xs),
         ),
       ),
+    );
+  }
+}
+
+/// One choice of a [JourneyChoiceField].
+class JourneyChoice<T> {
+  const JourneyChoice(this.value, this.label);
+
+  final T value;
+  final String label;
+}
+
+/// A field that picks one of a few named choices (a city, a category): the
+/// one field box ([JourneyPickerField]) that opens a sheet of the choices.
+/// Inside a [Form], [validator] is checked with the others and its message
+/// shows under the box.
+class JourneyChoiceField<T> extends StatelessWidget {
+  const JourneyChoiceField({
+    required this.label,
+    required this.value,
+    required this.choices,
+    required this.onChanged,
+    this.icon,
+    this.placeholder = 'اختر',
+    this.validator,
+    super.key,
+  });
+
+  final String label;
+  final T? value;
+  final List<JourneyChoice<T>> choices;
+  final ValueChanged<T?> onChanged;
+  final IconData? icon;
+  final String placeholder;
+  final FormFieldValidator<T>? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<T>(
+      // The form checks the value the screen holds, not a copy taken once.
+      key: ValueKey(value),
+      initialValue: value,
+      validator: validator,
+      builder: (state) {
+        String? chosen;
+        for (final choice in choices) {
+          if (choice.value == value) chosen = choice.label;
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            JourneyPickerField(
+              label: label,
+              value: chosen,
+              icon: icon,
+              placeholder: placeholder,
+              onTap: () async {
+                final picked = await showJourneySheet<JourneyChoice<T>>(
+                  context: context,
+                  builder: (sheet) => JourneySheetBody(
+                    title: label,
+                    children: [
+                      for (final choice in choices) ...[
+                        JourneyOption(
+                          title: choice.label,
+                          selected: choice.value == value,
+                          onTap: () => Navigator.of(sheet).pop(choice),
+                        ),
+                        const SizedBox(height: AarastV3Space.x2),
+                      ],
+                    ],
+                  ),
+                );
+                if (picked == null) return;
+                state.didChange(picked.value);
+                onChanged(picked.value);
+              },
+            ),
+            if (state.errorText case final error?) JourneyFieldError(error),
+          ],
+        );
+      },
     );
   }
 }

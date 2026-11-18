@@ -57,7 +57,7 @@ class _MarketplaceSearch extends StatelessWidget {
                 children: [
                   Icon(
                     LucideIcons.slidersHorizontal,
-                    size: 18,
+                    size: AarastV3Icon.md,
                     color: picked
                         ? context.accent.primary
                         : AarastV3Color.textMuted,
@@ -110,7 +110,7 @@ class _MarketplaceSearch extends StatelessWidget {
             fillColor: AarastV3Color.paper,
             prefixIcon: const Icon(
               LucideIcons.search,
-              size: 20,
+              size: AarastV3Icon.md,
               color: AarastV3Color.textMuted,
             ),
             border: border(AarastV3Color.line, 1),
@@ -128,7 +128,7 @@ class _MarketplaceSearch extends StatelessWidget {
                         controller.clear();
                         provider.setSearch('');
                       },
-                      icon: const Icon(LucideIcons.x, size: 18),
+                      icon: const Icon(LucideIcons.x, size: AarastV3Icon.md),
                     ),
                   filter,
                 ],
@@ -158,8 +158,9 @@ class _FilterChips extends StatelessWidget {
     final itemChip = item != null && item.providerCategoryIds.isNotEmpty
         ? item
         : null;
+    // The strip is a chip's touch band tall, so every chip keeps its 48.
     return SizedBox(
-      height: AarastV3Space.x10,
+      height: AarastV3Size.touch,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
@@ -323,7 +324,11 @@ class _BudgetMatchContextCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.sparkles, size: 18, color: context.accent.primary),
+          Icon(
+            LucideIcons.sparkles,
+            size: AarastV3Icon.md,
+            color: context.accent.primary,
+          ),
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(

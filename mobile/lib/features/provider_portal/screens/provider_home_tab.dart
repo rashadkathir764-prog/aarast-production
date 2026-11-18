@@ -261,7 +261,7 @@ class _BookingAsked extends StatelessWidget {
             icon: LucideIcons.calendarCheck,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 42,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -278,7 +278,7 @@ class _BookingAsked extends StatelessWidget {
                 Text(
                   'طلب حجز ${formatArabicWeekdayDayMonth(booking.eventDate)}',
                   style: JourneyType.of(
-                    JourneyType.label,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
                   ),
                 ),
@@ -321,7 +321,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
                 icon: LucideIcons.shieldAlert,
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,
-                size: 42,
+                size: AarastV3Size.mark,
               ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
@@ -341,7 +341,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,
-              height: 1.5,
+              height: AarastV3Line.reading,
             ),
           ),
           const SizedBox(height: AarastV3Space.x2),

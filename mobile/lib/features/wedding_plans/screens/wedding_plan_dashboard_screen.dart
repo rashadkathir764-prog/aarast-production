@@ -546,7 +546,9 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     final errorMessage = _isLocalGuestPlan
         ? _localErrorMessage
         : provider.errorMessage;
-    final bottomPadding = widget.embedded ? 158.0 : 36.0;
+    final bottomPadding = widget.embedded
+        ? AarastV3Density.pageBottomWithQuickAction
+        : AarastV3Space.x8;
 
     if ((isLoading || !_loadedOnce) && summary == null) {
       return AnimatedSwitcher(

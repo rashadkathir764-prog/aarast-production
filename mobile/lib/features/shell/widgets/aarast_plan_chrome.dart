@@ -55,7 +55,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
         .toDouble();
 
     // The bar speaks the app's own language: the shape of its sheets (white,
-    // 24 corners on top, resting on the bottom edge) and the selected fill of
+    // 24 corners on top, a hairline edge, resting on the bottom edge) and the selected fill of
     // its switchers (the plan's colour, white words). Every tab is the same
     // width with its icon over its name; the chosen one is filled, so the row
     // never jumps when a tab changes.
@@ -67,13 +67,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(AarastV3Radius.sheet),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AarastV3Color.ink.withValues(alpha: 0.06),
-              blurRadius: AarastV3Space.x6,
-              offset: const Offset(0, -AarastV3Space.x1),
-            ),
-          ],
+          border: Border.all(color: AarastV3Color.line),
         ),
         child: SafeArea(
           top: false,
@@ -110,7 +104,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
 }
 
 /// A tab's height: an icon over its name, a full touch target (D74).
-const _navigationHeight = 56.0;
+const _navigationHeight = AarastV3Size.navigationTab;
 
 /// What the bar grows by at the largest text size the app allows.
 const _navigationGrowth = 18.0;
@@ -200,10 +194,10 @@ class _PlanNavigationItem extends StatelessWidget {
                     item.label,
                     maxLines: 1,
                     style: JourneyType.of(
-                      JourneyType.label,
+                      JourneyType.small,
                       weight: active ? JourneyType.bold : FontWeight.w500,
                       color: foreground,
-                      height: 1.2,
+                      height: AarastV3Line.tight,
                     ),
                   ),
                 ),

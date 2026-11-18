@@ -128,7 +128,6 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
     final quote = _read(dashboard);
     if (quote == null) {
       return AarastScreenFrame(
-        maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: ListView(
           padding: AarastV3Density.pageInsets,
@@ -150,7 +149,6 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
     final open = quote.pendingOffer;
     final line = providerRequestLine(quote);
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -244,7 +242,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                     Text(
                       'التسليم بعد العرس',
                       style: JourneyType.of(
-                        JourneyType.bodySmall,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
@@ -266,7 +264,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                     Text(
                       'صالح لـ',
                       style: JourneyType.of(
-                        JourneyType.bodySmall,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
@@ -368,7 +366,7 @@ class _CurrencyField extends StatelessWidget {
             Text(
               'العملة',
               style: JourneyType.of(
-                JourneyType.label,
+                JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),
@@ -446,7 +444,10 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
               const SizedBox(height: AarastV3Space.x2),
               Text(
                 widget.message,
-                style: JourneyType.of(JourneyType.body, height: 1.5),
+                style: JourneyType.of(
+                  JourneyType.body,
+                  height: AarastV3Line.reading,
+                ),
               ),
               // RA-MO-289: «كذا يوصل» left out what the price covers and
               // the delivery promise, both of which the customer receives.
@@ -464,7 +465,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                       if (line.amount case final price?)
                         providerMoneyLabel(price, currency),
                     ].join(' · '),
-                    style: JourneyType.of(JourneyType.bodySmall),
+                    style: JourneyType.of(JourneyType.small),
                   ),
                 ),
               if (widget.deliveryDays case final days?)
@@ -473,7 +474,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                   padding: const EdgeInsets.only(top: AarastV3Space.x1),
                   child: Text(
                     'التسليم خلال $days يوم بعد العرس',
-                    style: JourneyType.of(JourneyType.bodySmall),
+                    style: JourneyType.of(JourneyType.small),
                   ),
                 ),
               if (until != null) ...[
@@ -482,14 +483,14 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                   children: [
                     const Icon(
                       LucideIcons.clock,
-                      size: 18,
+                      size: AarastV3Icon.md,
                       color: AarastV3Color.textMuted,
                     ),
                     const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       child: Text(
                         'صالح لين ${formatArabicDayMonth(until.toLocal())}',
-                        style: JourneyType.of(JourneyType.bodySmall),
+                        style: JourneyType.of(JourneyType.small),
                       ),
                     ),
                   ],

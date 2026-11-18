@@ -228,7 +228,6 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
 
     final locked = body is _Locked;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -326,7 +325,11 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
 const _ratingWords = ['ما كان زين', 'مقبول', 'زين', 'ممتاز', 'ممتاز جدًا'];
 
 class _Stars extends StatelessWidget {
-  const _Stars({required this.rating, this.size = 40, this.onRate});
+  const _Stars({
+    required this.rating,
+    this.size = AarastV3Icon.feature,
+    this.onRate,
+  });
 
   final int rating;
   final double size;
@@ -437,7 +440,7 @@ class _Rate extends StatelessWidget {
                     icon: providerServiceIcon(provider.service),
                     color: context.accent.primary,
                     soft: context.accent.primarySoft,
-                    size: 44,
+                    size: AarastV3Size.mark,
                   ),
                   const SizedBox(width: AarastV3Space.x3),
                   Expanded(
@@ -447,7 +450,7 @@ class _Rate extends StatelessWidget {
                         Text(
                           provider.name,
                           style: JourneyType.of(
-                            JourneyType.title,
+                            JourneyType.lead,
                             weight: JourneyType.bold,
                           ),
                         ),
@@ -477,7 +480,7 @@ class _Rate extends StatelessWidget {
                   child: Text(
                     _ratingWords[rating - 1],
                     style: JourneyType.of(
-                      JourneyType.bodyLarge,
+                      JourneyType.lead,
                       weight: JourneyType.bold,
                       color: AarastV3Color.brandAccentStrong,
                     ),
@@ -499,7 +502,7 @@ class _Rate extends StatelessWidget {
                   children: [
                     const Icon(
                       LucideIcons.lock,
-                      size: 16,
+                      size: AarastV3Icon.sm,
                       color: AarastV3Color.textMuted,
                     ),
                     const SizedBox(width: AarastV3Space.x1),
@@ -549,7 +552,7 @@ class _RatedList extends StatelessWidget {
           ),
           child: Text(
             context.say('قيّمتهم', 'قيّمتيهم'),
-            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
           ),
         ),
         JourneyList(
@@ -571,7 +574,10 @@ class _RatedList extends StatelessWidget {
                           color: AarastV3Color.textMuted,
                         ),
                       )
-                    : _Stars(rating: mine[item.providerId]!, size: 16),
+                    : _Stars(
+                        rating: mine[item.providerId]!,
+                        size: AarastV3Icon.sm,
+                      ),
               ),
           ],
         ),
@@ -596,7 +602,7 @@ class _Sent extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.checkCircle2,
-            size: 20,
+            size: AarastV3Icon.md,
             color: AarastV3Color.mint,
           ),
           const SizedBox(width: AarastV3Space.x2),
@@ -622,14 +628,14 @@ class _Sent extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 64,
+            size: AarastV3Size.markLarge,
           ),
         ),
         const SizedBox(height: AarastV3Space.x3),
         Text(
           'وصل تقييمك عن ${sent.name}',
           textAlign: TextAlign.center,
-          style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+          style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
         ),
         const SizedBox(height: AarastV3Space.x1),
         Text(
@@ -676,10 +682,7 @@ class _Sent extends StatelessWidget {
             ),
             child: Text(
               context.say('باقي تقيّم', 'باقي تقيّمين'),
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
             ),
           ),
           JourneyList(
@@ -718,14 +721,17 @@ class _Locked extends StatelessWidget {
             icon: LucideIcons.star,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            size: 64,
+            size: AarastV3Size.markLarge,
           ),
         ),
         const SizedBox(height: AarastV3Space.x3),
         Text(
           'التقييم بعد العرس',
           textAlign: TextAlign.center,
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.pageTitle,
+            weight: JourneyType.bold,
+          ),
         ),
         const SizedBox(height: AarastV3Space.x1),
         Text(

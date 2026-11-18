@@ -349,7 +349,7 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
         Text(
           'الوقت',
           style: JourneyType.of(
-            JourneyType.bodySmall,
+            JourneyType.small,
             weight: JourneyType.bold,
             color: AarastV3Color.textMuted,
           ),

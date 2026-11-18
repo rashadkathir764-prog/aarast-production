@@ -254,8 +254,8 @@ class _PlanRow extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 26,
-            height: 26,
+            width: AarastV3Size.check,
+            height: AarastV3Size.check,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: line.paidNow

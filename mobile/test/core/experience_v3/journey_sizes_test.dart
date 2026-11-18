@@ -42,14 +42,14 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'المال'), 24);
-    expect(_size(tester, 'ماشية'), 14.5);
-    expect(_size(tester, 'تفاصيل البند'), 18);
-    expect(_size(tester, 'قاعة سبأ'), 13);
-    expect(_size(tester, 'الدفعات القادمة'), 16);
+    expect(_size(tester, 'المال'), JourneyType.hero);
+    expect(_size(tester, 'ماشية'), JourneyType.body);
+    expect(_size(tester, 'تفاصيل البند'), JourneyType.pageTitle);
+    expect(_size(tester, 'قاعة سبأ'), JourneyType.small);
+    expect(_size(tester, 'الدفعات القادمة'), JourneyType.lead);
   });
 
-  testWidgets('the question page asks at 25', (tester) async {
+  testWidgets('the question page asks at the hero size', (tester) async {
     await tester.pumpWidget(
       _host(
         SizedBox(
@@ -66,8 +66,7 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'وين العرس؟'), JourneyType.question);
-    expect(_size(tester, 'وين العرس؟'), 25);
+    expect(_size(tester, 'وين العرس؟'), JourneyType.hero);
     // D75: the count is the progress track's spoken label, not drawn text.
     expect(find.text('1 من 4'), findsNothing);
     expect(
@@ -76,10 +75,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(_size(tester, 'التالي'), 16);
+    expect(_size(tester, 'التالي'), JourneyType.lead);
   });
 
-  testWidgets('the tab switch is a 48 band of tabs with 13 bold names', (
+  testWidgets('the tab switch is a 48 band of tabs with small bold names', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -96,7 +95,7 @@ void main() {
     expect(tester.getSize(find.byType(JourneyTabSwitch)).height, 48);
     expect(
       tester.getSize(find.byKey(const ValueKey('journey-tab-0'))).height,
-      closeTo(8 + 13 * 1.35 + 8, 0.5),
+      closeTo(8 + JourneyType.small * AarastV3Line.normal + 8, 0.5),
     );
     final tab = find.ancestor(
       of: find.byKey(const ValueKey('journey-tab-1')),
@@ -104,13 +103,11 @@ void main() {
     );
     expect(tester.getSize(tab.first).height, 48);
     final name = tester.widget<Text>(find.text('الكل'));
-    expect(name.style?.fontSize, 13);
+    expect(name.style?.fontSize, JourneyType.small);
     expect(name.style?.fontWeight, FontWeight.w700);
   });
 
-  testWidgets('a chip is 13.5 bold, 14 / 9 inside, about 36 tall', (
-    tester,
-  ) async {
+  testWidgets('a chip is small bold, about 36 tall', (tester) async {
     await tester.pumpWidget(
       _host(
         Wrap(
@@ -121,15 +118,12 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'صنعاء'), 13.5);
+    expect(_size(tester, 'صنعاء'), JourneyType.small);
     final chip = find.ancestor(
       of: find.text('صنعاء'),
       matching: find.byType(Container),
     );
-    expect(
-      tester.getSize(chip.first).height,
-      closeTo(9 + 13.5 * 1.35 + 9, 0.5),
-    );
+    expect(tester.getSize(chip.first).height, closeTo(AarastV3Size.chip, 0.5));
     // The outlined one carries its 1-point line on each side.
     final outlined = find.ancestor(
       of: find.text('عدن'),
@@ -137,7 +131,7 @@ void main() {
     );
     expect(
       tester.getSize(outlined.first).height,
-      closeTo(1 + 8 + 13.5 * 1.35 + 8 + 1, 0.5),
+      closeTo(AarastV3Size.chip, 0.5),
     );
     // RA-MO-28 (D74): drawn about 36, touched in 48.
     for (final label in ['صنعاء', 'عدن']) {
@@ -168,7 +162,7 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'كلها'), 13.5);
+    expect(_size(tester, 'كلها'), JourneyType.small);
     expect(
       tester.getSize(find.byKey(const ValueKey('linked'))).height,
       tester.getSize(find.byKey(const ValueKey('plain'))).height,
@@ -181,50 +175,54 @@ void main() {
     );
   });
 
-  testWidgets('fields: 12 label, 16 value, 24 large, no picker chevron', (
-    tester,
-  ) async {
-    final name = TextEditingController(text: 'محمد');
-    final budget = TextEditingController(text: '10,000,000');
-    addTearDown(name.dispose);
-    addTearDown(budget.dispose);
-    await tester.pumpWidget(
-      _host(
-        Column(
-          children: [
-            JourneyTextField(label: 'اسمك', controller: name),
-            JourneyTextField(
-              label: 'ميزانية عرسك',
-              controller: budget,
-              large: true,
-            ),
-            JourneyPickerField(
-              label: 'موعد العرس',
-              value: 'الخميس 21 يناير',
-              onTap: () {},
-            ),
-          ],
+  testWidgets(
+    'fields: small label, lead value, hero large, no picker chevron',
+    (tester) async {
+      final name = TextEditingController(text: 'محمد');
+      final budget = TextEditingController(text: '10,000,000');
+      addTearDown(name.dispose);
+      addTearDown(budget.dispose);
+      await tester.pumpWidget(
+        _host(
+          Column(
+            children: [
+              JourneyTextField(label: 'اسمك', controller: name),
+              JourneyTextField(
+                label: 'ميزانية عرسك',
+                controller: budget,
+                large: true,
+              ),
+              JourneyPickerField(
+                label: 'موعد العرس',
+                value: 'الخميس 21 يناير',
+                onTap: () {},
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-    expect(_size(tester, 'اسمك'), 12);
-    expect(_size(tester, 'موعد العرس'), 12);
-    expect(_size(tester, 'الخميس 21 يناير'), 16);
-    final fields = tester.widgetList<TextField>(find.byType(TextField));
-    expect(fields.map((field) => field.style?.fontSize), [16, 24]);
-    expect(
-      find.descendant(
-        of: find.byType(JourneyPickerField),
-        matching: find.byIcon(LucideIcons.chevronLeft),
-      ),
-      findsNothing,
-    );
-    // The one field padding (AarastV3Field, D74).
-    final box = find
-        .ancestor(of: find.text('اسمك'), matching: find.byType(Container))
-        .first;
-    expect(tester.widget<Container>(box).padding, AarastV3Field.padding);
-  });
+      );
+      expect(_size(tester, 'اسمك'), JourneyType.small);
+      expect(_size(tester, 'موعد العرس'), JourneyType.small);
+      expect(_size(tester, 'الخميس 21 يناير'), JourneyType.lead);
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields.map((field) => field.style?.fontSize), [
+        JourneyType.lead,
+        JourneyType.hero,
+      ]);
+      expect(
+        find.descendant(
+          of: find.byType(JourneyPickerField),
+          matching: find.byIcon(LucideIcons.chevronLeft),
+        ),
+        findsNothing,
+      );
+      // The one field padding (AarastV3Field, D74).
+      final box = find
+          .ancestor(of: find.text('اسمك'), matching: find.byType(Container))
+          .first;
+      expect(tester.widget<Container>(box).padding, AarastV3Field.padding);
+    },
+  );
 
   testWidgets('a list row keeps its subtitle to one line', (tester) async {
     await tester.pumpWidget(
@@ -242,6 +240,6 @@ void main() {
       find.text('الدفعة الثانية · 500 ألف · قبل العرس بأسبوع'),
     );
     expect(subtitle.maxLines, 1);
-    expect(_size(tester, 'قاعة سبأ'), 14.5);
+    expect(_size(tester, 'قاعة سبأ'), JourneyType.body);
   });
 }

@@ -50,10 +50,10 @@ class ProviderBookingAftercare extends StatelessWidget {
               Text(
                 'من ${formatArabicWeekdayDayMonth(change.fromDate)} '
                 'إلى ${formatArabicWeekdayDayMonth(change.toDate)}',
-                style: JourneyType.of(JourneyType.bodySmall),
+                style: JourneyType.of(JourneyType.small),
               ),
               if (change.note case final note?)
-                Text('«$note»', style: JourneyType.of(JourneyType.bodySmall)),
+                Text('«$note»', style: JourneyType.of(JourneyType.small)),
               const SizedBox(height: AarastV3Space.x2),
               Row(
                 children: [

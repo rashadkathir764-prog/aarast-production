@@ -423,7 +423,6 @@ class _OtpScreenState extends State<OtpScreen> {
         : null;
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       child: JourneyPage(

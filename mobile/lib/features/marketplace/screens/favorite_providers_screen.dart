@@ -66,7 +66,6 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
     );
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: ListView(
         padding: AarastV3Density.pageInsets,
@@ -198,7 +197,7 @@ class _CompareColumn extends StatelessWidget {
           Text(
             price ?? 'حسب الطلب',
             style: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.lead,
               weight: JourneyType.bold,
               color: context.accent.primary,
             ),
@@ -214,7 +213,7 @@ class _CompareColumn extends StatelessWidget {
                     padding: EdgeInsets.only(top: AarastV3Space.half),
                     child: Icon(
                       LucideIcons.check,
-                      size: 16,
+                      size: AarastV3Icon.sm,
                       color: AarastV3Color.mint,
                     ),
                   ),
@@ -237,7 +236,7 @@ class _CompareColumn extends StatelessWidget {
               children: [
                 const Icon(
                   LucideIcons.star,
-                  size: 15,
+                  size: AarastV3Icon.sm,
                   color: AarastV3Color.brandAccentStrong,
                 ),
                 const SizedBox(width: AarastV3Space.x1),

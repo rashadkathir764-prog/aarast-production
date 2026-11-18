@@ -146,7 +146,7 @@ class ProviderChatStrip extends StatelessWidget {
           children: [
             const Icon(
               LucideIcons.fileText,
-              size: 18,
+              size: AarastV3Icon.md,
               color: AarastV3Color.primary,
             ),
             const SizedBox(width: AarastV3Space.x2),
@@ -154,7 +154,7 @@ class ProviderChatStrip extends StatelessWidget {
               child: Text(
                 text,
                 style: JourneyType.of(
-                  JourneyType.detail,
+                  JourneyType.small,
                   weight: JourneyType.bold,
                   color: AarastV3Color.primary,
                 ),

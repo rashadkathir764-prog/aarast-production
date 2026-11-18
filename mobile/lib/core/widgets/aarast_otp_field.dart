@@ -12,7 +12,7 @@ import '../experience_v3/aarast_v3_foundations.dart';
 import '../forms/latin_digits_formatter.dart';
 
 /// The hidden input under the code boxes only carries the digits.
-const _hiddenInputSize = 1.0;
+const _hiddenInput = AarastV3Space.hair;
 
 /// الحالة البصرية لحقل رمز التحقق الموحّد.
 enum AarastOtpFieldState { idle, error, success }
@@ -61,7 +61,7 @@ class AarastOtpField extends StatefulWidget {
 
 class _AarastOtpFieldState extends State<AarastOtpField>
     with TickerProviderStateMixin {
-  static const _boxHeight = 52.0;
+  static const _boxHeight = AarastV3Size.codeBox;
 
   late final AnimationController _shakeController;
   late final AnimationController _fillController;
@@ -219,9 +219,9 @@ class _AarastOtpFieldState extends State<AarastOtpField>
     Widget digit = Text(
       char,
       style: JourneyType.of(
-        JourneyType.amount,
+        JourneyType.hero,
         weight: JourneyType.bold,
-        height: 1.2,
+        height: AarastV3Line.tight,
         color: switch (widget.state) {
           AarastOtpFieldState.error => AppTheme.danger,
           AarastOtpFieldState.success => AppTheme.success,
@@ -270,7 +270,11 @@ class _AarastOtpFieldState extends State<AarastOtpField>
             ),
           ),
           child: isSuccess && char.isEmpty
-              ? const Icon(LucideIcons.check, color: AppTheme.success, size: 22)
+              ? const Icon(
+                  LucideIcons.check,
+                  color: AppTheme.success,
+                  size: AarastV3Icon.lg,
+                )
               : digit,
         ),
       ),
@@ -317,7 +321,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
                     style: const TextStyle(
                       color: Colors.transparent,
                       // The real input is invisible under the boxes.
-                      fontSize: _hiddenInputSize,
+                      fontSize: _hiddenInput,
                     ),
                     cursorColor: Colors.transparent,
                     decoration: const InputDecoration(

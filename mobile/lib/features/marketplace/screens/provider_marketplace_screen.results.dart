@@ -137,7 +137,7 @@ class _ProviderShelfRow extends StatelessWidget {
               child: Text(
                 title,
                 style: JourneyType.of(
-                  JourneyType.title,
+                  JourneyType.lead,
                   weight: JourneyType.bold,
                 ),
               ),

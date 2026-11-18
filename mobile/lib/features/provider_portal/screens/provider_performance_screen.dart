@@ -75,7 +75,6 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
             ),
           ];
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
@@ -179,7 +178,7 @@ class _Metric extends StatelessWidget {
           Text(
             value,
             style: JourneyType.of(
-              JourneyType.display,
+              JourneyType.pageTitle,
               weight: JourneyType.bold,
             ),
           ),

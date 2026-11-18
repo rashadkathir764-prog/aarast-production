@@ -126,7 +126,7 @@ class _StarterTasksCard extends StatelessWidget {
                     Text(
                       context.say('ابدأ بمهام جاهزة', 'ابدئي بمهام جاهزة'),
                       style: JourneyType.of(
-                        JourneyType.bodyLarge,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),

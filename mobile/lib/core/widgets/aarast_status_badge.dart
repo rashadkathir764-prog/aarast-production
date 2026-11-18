@@ -33,7 +33,7 @@ class AarastStatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: color),
+            Icon(icon, size: AarastV3Icon.sm, color: color),
             const SizedBox(width: AarastV3Space.x1),
           ],
           Flexible(

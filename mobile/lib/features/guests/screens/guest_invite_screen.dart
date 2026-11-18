@@ -288,7 +288,6 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         if (!didPop) unawaited(_backAsked(dirty));
       },
       child: AarastScreenFrame(
-        maxWidth: 600,
         backgroundColor: AarastV3Color.canvas,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

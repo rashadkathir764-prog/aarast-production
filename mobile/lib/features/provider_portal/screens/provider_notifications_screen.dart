@@ -77,7 +77,6 @@ class _ProviderNotificationsScreenState
         if (isProviderNotice(notice)) notice,
     ];
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
@@ -144,14 +143,14 @@ class _ProviderNotificationsScreenState
       icon: look.icon,
       color: look.color,
       soft: look.soft,
-      iconSize: 40,
+      iconSize: AarastV3Size.mark,
       title: look.title,
       subtitle: look.subtitle,
       trailing: notice.isUnread
           ? Container(
               key: Key('provider-notice-unread-${notice.id}'),
-              width: 9,
-              height: 9,
+              width: AarastV3Size.dot,
+              height: AarastV3Size.dot,
               decoration: const BoxDecoration(
                 color: AarastV3Color.danger,
                 shape: BoxShape.circle,

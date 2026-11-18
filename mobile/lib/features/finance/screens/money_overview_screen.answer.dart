@@ -79,7 +79,7 @@ class _LateDueCard extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.alertCircle,
-                size: 16,
+                size: AarastV3Icon.sm,
                 color: AarastV3Color.danger,
               ),
               const SizedBox(width: AarastV3Space.x1),
@@ -106,7 +106,7 @@ class _LateDueCard extends StatelessWidget {
                     Text(
                       line.title,
                       style: JourneyType.of(
-                        JourneyType.title,
+                        JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
                     ),
@@ -133,7 +133,7 @@ class _LateDueCard extends StatelessWidget {
                   _figure(context, line.amount, currency),
                   textAlign: TextAlign.end,
                   style: JourneyType.of(
-                    JourneyType.figure,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -276,7 +276,7 @@ class _ShareHero extends StatelessWidget {
               // Rashad's phone 2026-11-17: in bold it spoke louder than
               // «باقي عليك» beside the figure; a detail stays under it.
               style: JourneyType.of(
-                JourneyType.bodySmall,
+                JourneyType.small,
                 color: AarastV3Color.onPrimary,
               ),
             ),
@@ -341,7 +341,7 @@ class _CoverTag extends StatelessWidget {
                   : tag.ok
                   ? LucideIcons.checkCircle2
                   : LucideIcons.alertCircle,
-              size: 18,
+              size: AarastV3Icon.md,
               color: onColour,
             ),
             const SizedBox(width: AarastV3Space.x2),
@@ -945,7 +945,7 @@ class _HowWeCountedSheet extends StatelessWidget {
                   money(coverage.cash),
                   textAlign: TextAlign.end,
                   style: JourneyType.of(
-                    JourneyType.figure,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -1016,7 +1016,7 @@ class _HowWeCountedSheet extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x3),
         Text(
           'ايش ما حسبناه:',
-          style: JourneyType.of(JourneyType.detail, weight: JourneyType.bold),
+          style: JourneyType.of(JourneyType.small, weight: JourneyType.bold),
         ),
         const SizedBox(height: AarastV3Space.x1),
         for (final line in [
@@ -1033,7 +1033,7 @@ class _HowWeCountedSheet extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.small,
                 color: AarastV3Color.textMuted,
-                height: 1.6,
+                height: AarastV3Line.reading,
               ),
             ),
           ),

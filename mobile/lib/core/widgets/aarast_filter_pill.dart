@@ -63,7 +63,7 @@ class AarastFilterPill extends StatelessWidget {
               if (icon != null) ...[
                 Icon(
                   icon,
-                  size: 15,
+                  size: AarastV3Icon.sm,
                   color: selected
                       ? Colors.white
                       : onSurface

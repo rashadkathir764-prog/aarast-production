@@ -48,7 +48,7 @@ class MoneyPrivacyButton extends StatelessWidget {
                 children: [
                   Icon(
                     hidden ? LucideIcons.eye : LucideIcons.eyeOff,
-                    size: 17,
+                    size: AarastV3Icon.sm,
                     color: context.accent.primary,
                   ),
                   const SizedBox(width: AarastV3Space.x1),

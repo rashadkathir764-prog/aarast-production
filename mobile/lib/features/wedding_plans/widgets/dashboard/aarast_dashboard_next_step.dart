@@ -100,7 +100,7 @@ class _JourneyNextStep extends StatelessWidget {
         ),
         Text(
           title,
-          style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+          style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
         ),
         Text.rich(
           TextSpan(
@@ -168,7 +168,7 @@ class _JourneyNextStep extends StatelessWidget {
                     ? LucideIcons.chevronLeft
                     : LucideIcons.chevronRight,
                 key: const ValueKey('aarast-next-step-action'),
-                size: 20,
+                size: AarastV3Icon.md,
                 color: AarastV3Color.textMuted,
               ),
             ],
@@ -209,10 +209,10 @@ class _DaysTile extends StatelessWidget {
                 Text(
                   '$days',
                   style: JourneyType.of(
-                    JourneyType.figure,
+                    JourneyType.pageTitle,
                     weight: JourneyType.bold,
                     color: color,
-                    height: 1,
+                    height: AarastV3Line.numeral,
                   ),
                 ),
                 Text(
@@ -224,10 +224,10 @@ class _DaysTile extends StatelessWidget {
                     many: 'يوم',
                   ),
                   style: JourneyType.of(
-                    JourneyType.tabLabel,
+                    JourneyType.caption,
                     weight: JourneyType.bold,
                     color: color,
-                    height: 1.2,
+                    height: AarastV3Line.tight,
                   ),
                 ),
               ],

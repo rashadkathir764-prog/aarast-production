@@ -294,7 +294,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
               'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونقول لك كم باقي.',
             ),
             style: JourneyType.of(
-              JourneyType.bodySmall,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -374,7 +374,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                 children: [
                   Icon(
                     LucideIcons.wallet,
-                    size: 17,
+                    size: AarastV3Icon.sm,
                     color: AarastV3Color.textMuted,
                   ),
                   const SizedBox(width: AarastV3Space.x1),
@@ -382,7 +382,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                     child: Text(
                       title,
                       style: JourneyType.of(
-                        JourneyType.bodySmall,
+                        JourneyType.small,
                         weight: JourneyType.bold,
                         color: AarastV3Color.textMuted,
                       ),
@@ -416,7 +416,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                                     ? LucideIcons.eye
                                     : LucideIcons.eyeOff,
                                 color: context.accent.primary,
-                                size: 17,
+                                size: AarastV3Icon.sm,
                               ),
                               const SizedBox(width: AarastV3Space.x1),
                               Text(

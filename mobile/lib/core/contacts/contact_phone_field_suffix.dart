@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -39,8 +39,10 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
       icon: _isPicking
           ? const SizedBox(
               width: AarastV3Space.x4,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              height: AarastV3Space.x4,
+              child: CircularProgressIndicator(
+                strokeWidth: AarastV3Size.lineStrong,
+              ),
             )
           : const Icon(LucideIcons.contact),
     );

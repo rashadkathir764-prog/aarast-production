@@ -47,7 +47,6 @@ class ProviderClaimScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final refusal = this.refusal;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
@@ -61,7 +60,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     icon: LucideIcons.store,
                     color: AarastV3Color.primary,
                     soft: AarastV3Color.primarySoft,
-                    size: 64,
+                    size: AarastV3Size.markLarge,
                     radius: 24,
                   ),
                 ),
@@ -72,7 +71,7 @@ class ProviderClaimScreen extends StatelessWidget {
                     'لقينا ملف بنفس رقمك',
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
-                      JourneyType.display,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -178,7 +177,6 @@ class ProviderClaimPendingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final sentAt = this.sentAt;
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [

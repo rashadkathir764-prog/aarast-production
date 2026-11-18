@@ -13,9 +13,6 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _settingsLoadingHeight = 420.0;
-
 /// g07 «التنبيهات»: the reminders the server sends, each saved the moment
 /// it is switched. Kept to what the server has (C60): tasks, payments (a
 /// week before, the server's lead time) and offers with conversations.
@@ -66,13 +63,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final Widget body;
     if (_showLoginGate) {
-      body = const SizedBox(
-        height: _settingsLoadingHeight,
-        child: AuthGatePanel(
-          title: 'سجّل الدخول لإدارة الإعدادات',
-          body: 'التنبيهات مرتبطة بحسابك عشان نحفظها لك.',
-          icon: LucideIcons.bell,
-        ),
+      body = const AuthGatePanel(
+        title: 'سجّل الدخول لإدارة الإعدادات',
+        body: 'التنبيهات مرتبطة بحسابك عشان نحفظها لك.',
+        icon: LucideIcons.bell,
+        scrolls: false,
       );
     } else if (_isCheckingAccount || (provider.isLoading && draft == null)) {
       body = const JourneyListState(
@@ -145,7 +140,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: context.accent.primary,

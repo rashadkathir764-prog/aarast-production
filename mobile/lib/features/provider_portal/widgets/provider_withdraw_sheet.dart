@@ -46,7 +46,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
         Text(
           'يقفل العرض ويوصل $first سطر هادي إنه ما عاد متاح. '
           'ويرجع الطلب عندك في «جديد»، و7 أيام لعرض جديد أو اعتذار.',
-          style: JourneyType.of(JourneyType.body, height: 1.55),
+          style: JourneyType.of(JourneyType.body, height: AarastV3Line.reading),
         ),
         if (_error case final error?) ...[
           const SizedBox(height: AarastV3Space.x2),

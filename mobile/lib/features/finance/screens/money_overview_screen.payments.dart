@@ -196,7 +196,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
           for (var index = 0; index < rows.length; index++) ...[
             if (index > 0)
               const Divider(
-                height: 1,
+                height: AarastV3Space.hair,
                 indent: 16,
                 endIndent: 16,
                 color: AarastV3Color.line,
@@ -287,7 +287,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
                 money(sum(shown)),
                 semanticsLabel: _spokenMoney(money(sum(shown)), currency),
                 style: JourneyType.of(
-                  JourneyType.display,
+                  JourneyType.pageTitle,
                   weight: JourneyType.bold,
                   color: context.accent.primaryDark,
                 ),
@@ -368,7 +368,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
     }
     return [
       const SizedBox(height: AarastV3Space.x3),
-      const Divider(height: 1, color: AarastV3Color.line),
+      const Divider(height: AarastV3Space.hair, color: AarastV3Color.line),
       for (final entry in bySource.entries) ...[
         JourneySectionTitle(
           'سداد ${entry.value.first.title}',
@@ -595,14 +595,14 @@ class _DuesChart extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        height: _duesChartHeight,
+                        height: _duesChart,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             if (month.amount > month.owner)
                               Container(
                                 height:
-                                    _duesChartHeight *
+                                    _duesChart *
                                     (month.amount - month.owner) /
                                     (most <= 0 ? 1 : most),
                                 color: others,
@@ -610,7 +610,7 @@ class _DuesChart extends StatelessWidget {
                             if (month.owner > 0)
                               Container(
                                 height:
-                                    _duesChartHeight *
+                                    _duesChart *
                                     month.owner /
                                     (most <= 0 ? 1 : most),
                                 color: month.month == weddingMonth
@@ -647,7 +647,7 @@ class _DuesChart extends StatelessWidget {
 }
 
 /// The chart's height: a fixed dimension, like the progress bars'.
-const _duesChartHeight = 56.0;
+const _duesChart = AarastV3Size.chart;
 
 /// One thing still to pay: when, whose, how much of it was paid, and its
 /// actions (pay, a new date, its reminder) when the reader may.
@@ -810,7 +810,7 @@ class _DueLine extends StatelessWidget {
             Text(
               context.say('دفعتها', 'دفعتيها'),
               style: JourneyType.of(
-                JourneyType.bodyLarge,
+                JourneyType.lead,
                 weight: JourneyType.bold,
                 color: AarastV3Color.onPrimary,
               ),

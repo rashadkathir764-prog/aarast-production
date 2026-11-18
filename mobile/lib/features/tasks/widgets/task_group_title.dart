@@ -26,7 +26,7 @@ class TaskGroupTitle extends StatelessWidget {
           Text(
             group.label,
             style: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.lead,
               weight: JourneyType.bold,
               color: late ? AarastV3Color.danger : AarastV3Color.ink,
             ),

@@ -1,8 +1,5 @@
 part of 'participant_home_screen.dart';
 
-/// A fixed dimension of this layout, not a spacing step (D74).
-const _participantArtHeight = 300.0;
-
 /// «أهلًا صالح», the plan with «أنت مساعد», the bell and the account.
 class _Greeting extends StatelessWidget {
   const _Greeting({
@@ -46,7 +43,7 @@ class _Greeting extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(
-                      JourneyType.display,
+                      JourneyType.pageTitle,
                       weight: JourneyType.bold,
                     ),
                   ),
@@ -61,7 +58,7 @@ class _Greeting extends StatelessWidget {
                       Text(
                         '$planTitle ·',
                         style: JourneyType.of(
-                          JourneyType.bodySmall,
+                          JourneyType.small,
                           color: AarastV3Color.textMuted,
                         ),
                       ),
@@ -119,7 +116,7 @@ class _Greeting extends StatelessWidget {
                   child: JourneyAvatar(
                     letter: first.isEmpty ? '' : first.characters.first,
                     color: AarastV3Color.brandAccentStrong,
-                    size: 40,
+                    size: AarastV3Size.mark,
                   ),
                 ),
               ),
@@ -215,76 +212,66 @@ class _DayHero extends StatelessWidget {
       child: ClipRRect(
         key: const ValueKey('participant-day-hero'),
         borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-        child: SizedBox(
-          height: _participantArtHeight,
-          child: Stack(
-            fit: StackFit.expand,
+        // D118: four by three of the width, taller only when its words need
+        // it; it was 300 on every phone.
+        child: JourneyArtFrame(
+          ratio: AarastV3Media.feature,
+          art: JourneyWeddingSky(
+            base: voice.bride ? AarastV3Color.rose : AarastV3Color.primaryDark,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              JourneyWeddingSky(
-                base: voice.bride
-                    ? AarastV3Color.rose
-                    : AarastV3Color.primaryDark,
-              ),
-              PositionedDirectional(
-                start: 20,
-                end: 20,
-                bottom: 18,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'اليوم',
+                    style: JourneyType.of(
+                      JourneyType.count,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.onPrimary,
+                      height: AarastV3Line.numeral,
+                    ),
+                  ),
+                  const SizedBox(width: AarastV3Space.x3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'اليوم',
+                          title,
                           style: JourneyType.of(
-                            JourneyType.count,
+                            JourneyType.lead,
                             weight: JourneyType.bold,
                             color: AarastV3Color.onPrimary,
-                            height: 1,
                           ),
                         ),
-                        const SizedBox(width: AarastV3Space.x3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: JourneyType.of(
-                                  JourneyType.lead,
-                                  weight: JourneyType.bold,
-                                  color: AarastV3Color.onPrimary,
-                                ),
-                              ),
-                              if (line.isNotEmpty)
-                                Text(
-                                  line,
-                                  style: JourneyType.of(
-                                    JourneyType.small,
-                                    color: AarastV3Color.brandAccent,
-                                  ),
-                                ),
-                            ],
+                        if (line.isNotEmpty)
+                          Text(
+                            line,
+                            style: JourneyType.of(
+                              JourneyType.small,
+                              color: AarastV3Color.brandAccent,
+                            ),
                           ),
-                        ),
-                        const JourneyTag(
-                          label: 'يوم العرس',
-                          color: AarastV3Color.ink,
-                          soft: AarastV3Color.saffron,
-                        ),
                       ],
                     ),
-                    const SizedBox(height: AarastV3Space.x3),
-                    const JourneySegments(
-                      total: 5,
-                      done: 3,
-                      filled: AarastV3Color.onPrimary,
-                      current: AarastV3Color.saffron,
-                      empty: AarastV3Color.primaryDark,
-                    ),
-                  ],
-                ),
+                  ),
+                  const JourneyTag(
+                    label: 'يوم العرس',
+                    color: AarastV3Color.ink,
+                    soft: AarastV3Color.saffron,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AarastV3Space.x3),
+              const JourneySegments(
+                total: 5,
+                done: 3,
+                filled: AarastV3Color.onPrimary,
+                current: AarastV3Color.saffron,
+                empty: AarastV3Color.primaryDark,
               ),
             ],
           ),
@@ -342,7 +329,7 @@ class _NextTaskCard extends StatelessWidget {
                   icon: taskCategoryIcon(task.taskCategory),
                   color: AarastV3Color.brandAccentStrong,
                   soft: AarastV3Color.brandAccentSoft,
-                  size: 44,
+                  size: AarastV3Size.mark,
                 ),
                 const SizedBox(width: AarastV3Space.x3),
                 Expanded(
@@ -361,7 +348,7 @@ class _NextTaskCard extends StatelessWidget {
                       Text(
                         task.title,
                         style: JourneyType.of(
-                          JourneyType.title,
+                          JourneyType.lead,
                           weight: JourneyType.bold,
                         ),
                       ),
@@ -518,7 +505,7 @@ class _ChangeCard extends StatelessWidget {
             icon: LucideIcons.key,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.paper,
-            size: 42,
+            size: AarastV3Size.mark,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -528,16 +515,16 @@ class _ChangeCard extends StatelessWidget {
                 Text(
                   title,
                   style: JourneyType.of(
-                    JourneyType.bodyLarge,
+                    JourneyType.lead,
                     weight: JourneyType.bold,
                   ),
                 ),
                 Text(
                   body,
                   style: JourneyType.of(
-                    JourneyType.detail,
+                    JourneyType.small,
                     color: AarastV3Color.textMuted,
-                    height: 1.45,
+                    height: AarastV3Line.reading,
                   ),
                 ),
               ],

@@ -82,7 +82,7 @@ class _JourneySuggestions extends StatelessWidget {
                       onPressed: () => _answer(context, item),
                       icon: const Icon(
                         LucideIcons.moreHorizontal,
-                        size: 20,
+                        size: AarastV3Icon.md,
                         color: AarastV3Color.textMuted,
                       ),
                     ),

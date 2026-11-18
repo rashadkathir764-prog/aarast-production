@@ -126,7 +126,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     final reserve = total - mahrTaken - allocated;
 
     return AarastScreenFrame(
-      maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

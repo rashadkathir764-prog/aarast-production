@@ -79,7 +79,7 @@ enum _Phase { checking, saving, choosing, failed, local }
 /// Fixed dimensions of this layout, not spacing steps (D74): where the
 /// saving or failure sits on the page, and its mark.
 const _outcomeTop = 140.0;
-const _markSize = 72.0;
+const _markSize = AarastV3Media.logoLarge;
 
 /// Why saving into the account did not happen, in words for the user.
 class _SaveFailure implements Exception {
@@ -477,7 +477,6 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       onPressed: _busy ? null : _retry,
     );
     return AarastScreenFrame(
-      maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: JourneyPage(
         bottom: failed
@@ -586,10 +585,7 @@ class _Outcome extends StatelessWidget {
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: JourneyType.of(
-              JourneyType.question,
-              weight: JourneyType.bold,
-            ),
+            style: JourneyType.of(JourneyType.hero, weight: JourneyType.bold),
           ),
         ),
         if (body != null) ...[
@@ -598,9 +594,9 @@ class _Outcome extends StatelessWidget {
             body!,
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              JourneyType.bodyLarge,
+              JourneyType.lead,
               color: AarastV3Color.textMuted,
-              height: 1.55,
+              height: AarastV3Line.reading,
             ),
           ),
         ],
@@ -838,7 +834,7 @@ class _CountCard extends StatelessWidget {
           Text(
             label,
             style: JourneyType.of(
-              JourneyType.label,
+              JourneyType.small,
               color: AarastV3Color.textMuted,
             ),
           ),

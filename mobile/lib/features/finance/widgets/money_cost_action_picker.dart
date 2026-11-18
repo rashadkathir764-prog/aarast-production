@@ -83,7 +83,7 @@ Future<MoneyCostActionSelection?> showMoneyCostActionPicker(
                       : 'باقي ${fullMoneyParts(moneyValue(cost.remainingAmount), currencyCode: currency).plainText}',
                   trailing: const Icon(
                     LucideIcons.chevronLeft,
-                    size: 20,
+                    size: AarastV3Icon.md,
                     color: AarastV3Color.textMuted,
                   ),
                   onTap: () => Navigator.of(

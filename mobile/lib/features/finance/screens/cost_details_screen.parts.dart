@@ -218,7 +218,11 @@ class _TimelineRow extends StatelessWidget {
             children: [
               mark,
               const SizedBox(width: AarastV3Space.x3),
+              // The title keeps two thirds of the row; the amount has the
+              // rest and shrinks in it (an even split broke «الدفعة الأولى»
+              // onto two lines).
               Expanded(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

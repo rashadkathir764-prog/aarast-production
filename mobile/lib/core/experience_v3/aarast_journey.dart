@@ -246,14 +246,20 @@ class JourneyButton extends StatelessWidget {
           Icon(icon, size: AarastV3Icon.md, color: fg),
           const SizedBox(width: AarastV3Space.x2),
         ],
+        // A button's words are one line: they shrink a little in a narrow
+        // button rather than break («حفظ» over «الضيف»).
         Flexible(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: JourneyType.of(
-              large ? JourneyType.lead : JourneyType.body,
-              weight: JourneyType.bold,
-              color: fg,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                large ? JourneyType.lead : JourneyType.body,
+                weight: JourneyType.bold,
+                color: fg,
+              ),
             ),
           ),
         ),
@@ -1089,6 +1095,9 @@ class _SectionLink extends StatelessWidget {
 }
 
 /// A row in a white list: icon tile, title, one-line subtitle, trailing.
+/// The most of a list row its end (an amount, a tag) takes.
+const _trailingShare = 0.4;
+
 class JourneyListRow extends StatelessWidget {
   const JourneyListRow({
     required this.icon,
@@ -1119,47 +1128,59 @@ class JourneyListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final row = Padding(
       padding: AarastV3Density.chipInsets,
-      child: Row(
-        children: [
-          JourneyIconTile(icon: icon, color: color, soft: soft, size: iconSize),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: AarastV3Size.titleLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: subtitleMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-              ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            JourneyIconTile(
+              icon: icon,
+              color: color,
+              soft: soft,
+              size: iconSize,
             ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: AarastV3Space.x2),
-            // An amount or a tag gets at most 45% of the row, so large text
-            // wraps it instead of pushing the row off the screen.
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * .45,
+            const SizedBox(width: AarastV3Space.x3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: AarastV3Size.titleLines,
+                    overflow: TextOverflow.ellipsis,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: subtitleMaxLines,
+                    overflow: TextOverflow.ellipsis,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
               ),
-              child: trailing,
             ),
+            if (trailing != null) ...[
+              const SizedBox(width: AarastV3Space.x2),
+              // An amount or a tag takes at most two fifths of the row itself
+              // (it took 45% of the screen, and squeezed the title onto two
+              // lines), and shrinks in it rather than wrap.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * _trailingShare,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: trailing,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
     if (onTap == null) return row;

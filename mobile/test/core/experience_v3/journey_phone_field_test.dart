@@ -68,9 +68,20 @@ void main() {
     expect(controller.selection.baseOffset, 2);
   });
 
-  testWidgets('a number with its code is left as typed', (tester) async {
+  testWidgets('a Yemeni number pasted with its code loses the code', (
+    tester,
+  ) async {
+    // The field already shows +967; it read «+967 +967777123456».
     final controller = await pump(tester);
     await tester.enterText(find.byType(TextField), '+967777123456');
-    expect(controller.text, '+967777123456');
+    expect(controller.text, '777 123 456');
+    await tester.enterText(find.byType(TextField), '00967777123456');
+    expect(controller.text, '777 123 456');
+  });
+
+  testWidgets('any other number with a code is left as typed', (tester) async {
+    final controller = await pump(tester);
+    await tester.enterText(find.byType(TextField), '+966501234567');
+    expect(controller.text, '+966501234567');
   });
 }

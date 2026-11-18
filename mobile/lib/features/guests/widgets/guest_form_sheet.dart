@@ -564,15 +564,20 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ),
             if (!_editing) ...[
               const SizedBox(width: AarastV3Space.x2),
-              JourneyButton(
-                key: const ValueKey('guest-form-save-next'),
-                label:
-                    'حفظ و${context.say('أضف', 'أضيفي')} '
-                    '${context.planWord('التالي', 'التالية')}',
-                background: context.accent.primarySoft,
-                foreground: context.accent.primary,
-                large: true,
-                onPressed: () => _submit(addAnother: true),
+              // The two share the row evenly: the second took its whole
+              // width first and broke «حفظ الضيف» onto two lines.
+              Expanded(
+                child: JourneyButton(
+                  key: const ValueKey('guest-form-save-next'),
+                  label:
+                      'حفظ و${context.say('أضف', 'أضيفي')} '
+                      '${context.planWord('التالي', 'التالية')}',
+                  background: context.accent.primarySoft,
+                  foreground: context.accent.primary,
+                  large: true,
+                  expand: true,
+                  onPressed: () => _submit(addAnother: true),
+                ),
               ),
             ],
           ],

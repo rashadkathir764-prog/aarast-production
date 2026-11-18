@@ -179,14 +179,18 @@ class _HomeTile extends StatelessWidget {
                 children: [
                   Icon(icon, size: AarastV3Icon.sm, color: color),
                   const SizedBox(width: AarastV3Space.x1),
+                  // The section's name shrinks a little before it is cut:
+                  // «الضيو…» named nothing.
                   Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                        ),
                       ),
                     ),
                   ),

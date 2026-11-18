@@ -196,47 +196,54 @@ class _BoardRow extends StatelessWidget {
           : null,
       child: Padding(
         padding: AarastV3Density.chipInsets,
-        child: Row(
-          children: [
-            JourneyIconTile(
-              icon: providerServiceIcon(row.title),
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              size: AarastV3Size.mark,
-            ),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    row.title,
-                    style: JourneyType.of(
-                      JourneyType.lead,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                  Text(
-                    row.detail,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: AarastV3Space.x1),
-                  _StageBar(stage: row.stage),
-                ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              JourneyIconTile(
+                icon: providerServiceIcon(row.title),
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                size: AarastV3Size.mark,
               ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            // Like JourneyListRow: the action never squeezes the name out.
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+              const SizedBox(width: AarastV3Space.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.title,
+                      style: JourneyType.of(
+                        JourneyType.lead,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    Text(
+                      row.detail,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: AarastV3Space.x1),
+                    _StageBar(stage: row.stage),
+                  ],
+                ),
               ),
-              child: trailing,
-            ),
-          ],
+              const SizedBox(width: AarastV3Space.x2),
+              // Like JourneyListRow: the action takes two fifths of the row at
+              // most and shrinks in it; it never squeezes the name or is cut.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.4,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: trailing,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

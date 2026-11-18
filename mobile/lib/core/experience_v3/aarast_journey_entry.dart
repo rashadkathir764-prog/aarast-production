@@ -862,6 +862,16 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
         selection: TextSelection.collapsed(offset: 0),
       );
     }
+    // A pasted or autofilled number that carries its country code
+    // («+967777123456», «00967…») sits after the field's own +967: the code
+    // is dropped, so the field never reads «+967 +967…».
+    final withCode = RegExp(
+      r'^(?:\+|00)?(?:967|٩٦٧)([0-9٠-٩]{9})$',
+    ).firstMatch(digits);
+    if (withCode != null) {
+      digits = withCode.group(1)!;
+      before = digits.length;
+    }
     if (!RegExp(r'^[0-9٠-٩]{1,9}$').hasMatch(digits)) return newValue;
     final buffer = StringBuffer();
     for (var i = 0; i < digits.length; i++) {

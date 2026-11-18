@@ -626,7 +626,11 @@ class _MoneyItemRow extends StatelessWidget {
                           ),
                           const SizedBox(width: AarastV3Space.x1),
                         ],
+                        // The title keeps two thirds of the row; the amount
+                        // has the rest and shrinks in it (an even split
+                        // broke «الدفعة الأولى» onto two lines).
                         Expanded(
+                          flex: 2,
                           child: Text(
                             title,
                             maxLines: 2,

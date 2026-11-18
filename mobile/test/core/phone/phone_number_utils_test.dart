@@ -33,13 +33,14 @@ void main() {
     test(
       'isolates a displayed phone before embedding it in Arabic RTL text',
       () {
+        // The groups keep together on one line (no-break spaces).
         expect(
           PhoneNumberUtils.directionalDisplay(expected),
-          '\u2066+967 777 758 200\u2069',
+          '\u2066+967\u00a0777\u00a0758\u00a0200\u2069',
         );
         expect(
           'الهاتف: ${PhoneNumberUtils.directionalDisplay(expected)}',
-          'الهاتف: \u2066+967 777 758 200\u2069',
+          'الهاتف: \u2066+967\u00a0777\u00a0758\u00a0200\u2069',
         );
       },
     );

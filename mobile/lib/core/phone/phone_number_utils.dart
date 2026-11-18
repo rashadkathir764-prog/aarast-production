@@ -144,10 +144,13 @@ class PhoneNumberUtils {
 
   /// نسخة آمنة للدمج داخل نص عربي. للعروض المستقلة استخدم
   /// `AarastPhoneText` حتى يكون اتجاه عنصر النص نفسه LTR أيضًا.
+  ///
+  /// Its groups are joined by no-break spaces: a line never breaks inside a
+  /// number («+967» over «777 000 111» on a guest's page).
   static String? directionalDisplay(String? input) {
     final value = display(input);
     if (value == null) return null;
-    return isolateLtr(value);
+    return isolateLtr(value.replaceAll(' ', '\u00a0'));
   }
 
   static String? comparisonKey(String? input) {

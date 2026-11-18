@@ -52,7 +52,7 @@ void main() {
     expect(invite.displayNamePhone, '+967777123456');
     expect(
       invite.directionalDisplayName,
-      PhoneNumberUtils.isolateLtr('+967 777 123 456'),
+      PhoneNumberUtils.isolateLtr('+967\u00a0777\u00a0123\u00a0456'),
     );
   });
 }

@@ -35,6 +35,11 @@ const _shelfPhotoHeight = 132.0;
 const _shelfLogoSize = 76.0;
 const _shelfLogoRing = 3.0;
 
+/// Fixed dimensions of this layout (D74): the profile card's soft band and
+/// the logo's disc that sits half on its edge.
+const _bandHeight = 84.0;
+const _profileLogoSize = 84.0;
+
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
 String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
@@ -138,6 +143,13 @@ class ProviderResultCard extends StatelessWidget {
     // g02 «توفير البيانات»: no photo loads in the list.
     final dataSaver = context.watch<DevicePreferences?>()?.dataSaver ?? false;
     final photoUrl = dataSaver ? null : _clean(imageUrl);
+    final logo = dataSaver ? null : _clean(logoUrl);
+    // Rashad's phone 2026-11-18 («ما أعجبني»): a provider with a logo and
+    // no cover was a small row. It is a profile card now: a soft band, the
+    // logo large in a ringed disc on its edge, the words under it. Only a
+    // provider with neither keeps the letter's row (no empty band).
+    final profile = photoUrl == null && logo != null;
+    final rich = photoUrl != null || profile;
     final badges = <Widget>[
       if (_clean(budgetStatusLabel) case final budget?)
         JourneyTag(
@@ -176,9 +188,9 @@ class ProviderResultCard extends StatelessWidget {
     final words = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // With a photo the heart is on the photo, so the name and the
+        // With a photo or a band the heart is on it, so the name and the
         // rating share the line; without one the name stops short of it.
-        if (photoUrl != null)
+        if (rich)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -194,7 +206,7 @@ class ProviderResultCard extends StatelessWidget {
             padding: const EdgeInsetsDirectional.only(end: _heartRoom),
             child: name,
           ),
-        if (where.isNotEmpty || (photoUrl == null && ratingCount > 0))
+        if (where.isNotEmpty || (!rich && ratingCount > 0))
           // The place gives way first; with large text the rating goes
           // under it.
           Wrap(
@@ -211,7 +223,7 @@ class ProviderResultCard extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-              if (photoUrl == null && ratingCount > 0)
+              if (!rich && ratingCount > 0)
                 _Rating(average: ratingAverage, count: ratingCount),
             ],
           ),
@@ -268,6 +280,69 @@ class ProviderResultCard extends StatelessWidget {
                     ),
                   ],
                 )
+              : profile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: _bandHeight + _profileLogoSize / 2,
+                      child: Stack(
+                        children: [
+                          PositionedDirectional(
+                            top: 0,
+                            start: 0,
+                            end: 0,
+                            height: _bandHeight,
+                            // The hero's qamariya in faint paper lines,
+                            // away from the logo (no gradient: D45).
+                            child: ColoredBox(
+                              key: const Key('provider-card-band'),
+                              color: context.accent.primarySoft,
+                              child: CustomPaint(
+                                painter: JourneyQamariyaPainter(
+                                  alpha: 0.75,
+                                  centreX:
+                                      Directionality.of(context) ==
+                                          TextDirection.rtl
+                                      ? 0.2
+                                      : 0.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          PositionedDirectional(
+                            top: _bandHeight - _profileLogoSize / 2,
+                            start: AarastV3Space.x4,
+                            child: _LogoDisc(
+                              logoUrl: logo,
+                              name: businessName,
+                              size: _profileLogoSize,
+                            ),
+                          ),
+                          PositionedDirectional(
+                            top: AarastV3Space.x1,
+                            end: AarastV3Space.x1,
+                            child: _FavoriteHeart(
+                              isFavorite: isFavorite,
+                              onTap: onFavorite,
+                              buttonKey: favoriteButtonKey,
+                              onPhoto: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AarastV3Space.x4,
+                        AarastV3Space.x2,
+                        AarastV3Space.x4,
+                        AarastV3Space.x4,
+                      ),
+                      child: words,
+                    ),
+                  ],
+                )
               : Stack(
                   children: [
                     Padding(
@@ -275,10 +350,7 @@ class ProviderResultCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Letter(
-                            name: businessName,
-                            logoUrl: dataSaver ? null : _clean(logoUrl),
-                          ),
+                          _Letter(name: businessName),
                           const SizedBox(width: AarastV3Space.x3),
                           Expanded(child: words),
                         ],
@@ -554,25 +626,7 @@ class _KindArt extends StatelessWidget {
         child: Center(
           child: logo == null || logo.isEmpty
               ? icon
-              : Container(
-                  width: _shelfLogoSize,
-                  height: _shelfLogoSize,
-                  padding: const EdgeInsets.all(_shelfLogoRing),
-                  decoration: const BoxDecoration(
-                    color: AarastV3Color.paper,
-                    shape: BoxShape.circle,
-                  ),
-                  child: ClipOval(
-                    child: Image.network(
-                      logo,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => ColoredBox(
-                        color: context.accent.primarySoft,
-                        child: Center(child: _LetterText(name: name)),
-                      ),
-                    ),
-                  ),
-                ),
+              : _LogoDisc(logoUrl: logo, name: name, size: _shelfLogoSize),
         ),
       ),
     );
@@ -684,31 +738,63 @@ class _Photo extends StatelessWidget {
 /// Without a cover photo: the provider's logo in a small rounded square, or
 /// its letter when there is no logo (or it fails to load).
 class _Letter extends StatelessWidget {
-  const _Letter({required this.name, this.logoUrl});
+  const _Letter({required this.name});
 
   final String name;
-  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
-    final letter = Center(child: _LetterText(name: name));
-    final logo = logoUrl;
     return Container(
-      key: Key(logo == null ? 'provider-card-letter' : 'provider-card-logo'),
+      key: const Key('provider-card-letter'),
       width: _letterSize,
       height: _letterSize,
-      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: context.accent.primarySoft,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
       ),
-      child: logo == null
-          ? letter
-          : Image.network(
-              logo,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => letter,
-            ),
+      child: _LetterText(name: name),
+    );
+  }
+}
+
+/// The provider's logo in a paper-ringed disc: the profile card's, on its
+/// band's edge, and a shelf card's without a cover. Its letter on a tint
+/// when the logo fails to load.
+class _LogoDisc extends StatelessWidget {
+  const _LogoDisc({
+    required this.logoUrl,
+    required this.name,
+    required this.size,
+  });
+
+  final String logoUrl;
+  final String name;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('provider-card-logo'),
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(_shelfLogoRing),
+      decoration: const BoxDecoration(
+        color: AarastV3Color.paper,
+        shape: BoxShape.circle,
+      ),
+      child: ClipOval(
+        child: Image.network(
+          logoUrl,
+          fit: BoxFit.cover,
+          // A face sits in the top half of a portrait.
+          alignment: const Alignment(0, -0.4),
+          errorBuilder: (_, _, _) => ColoredBox(
+            color: context.accent.primarySoft,
+            child: Center(child: _LetterText(name: name)),
+          ),
+        ),
+      ),
     );
   }
 }

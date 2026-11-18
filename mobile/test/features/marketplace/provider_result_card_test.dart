@@ -273,9 +273,10 @@ void main() {
     });
 
     // Rashad's phone 2026-11-18: a logo stretched over the card's top was a
-    // face cut at the mouth. Only a cover photo fills the top; a logo sits
-    // in the small square by the name.
-    testWidgets('a logo alone stays in the small square', (tester) async {
+    // face cut at the mouth, and a small square by the name read as a plain
+    // row («ما أعجبني»). A logo alone makes a profile card: a soft band and
+    // the logo whole in a round disc on its edge, never cropped to a strip.
+    testWidgets('a logo alone makes a profile card', (tester) async {
       tester.view.physicalSize = const Size(360, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -302,8 +303,11 @@ void main() {
       );
       await tester.pump();
       expect(find.byKey(const Key('provider-card-photo')), findsNothing);
+      expect(find.byKey(const Key('provider-card-band')), findsOneWidget);
       final logo = tester.getSize(find.byKey(const Key('provider-card-logo')));
-      expect(logo.width, lessThanOrEqualTo(48));
+      expect(logo.width, logo.height);
+      expect(logo.width, greaterThanOrEqualTo(72));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('nothing overflows at 320 with the largest text', (

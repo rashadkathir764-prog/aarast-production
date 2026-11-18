@@ -296,7 +296,10 @@ void main() {
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
       expect(find.textContaining('برّا الميزانية'), findsNothing);
-      expect(find.textContaining('منها المهر'), findsNothing);
+      // Changed on purpose (walks 2026-11-18): «اتفقت على» holds the mahr
+      // and says so under it (D79); without it the figure read as his
+      // agreements alone. The card says what was handed and what is left.
+      expect(find.textContaining('منها المهر'), findsOneWidget);
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
     });
   });

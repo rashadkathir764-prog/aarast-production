@@ -592,7 +592,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             const SizedBox(height: AarastV3Space.x2),
             _BudgetMatchContextCard(
               intent: provider.budgetMatchIntent!,
-              categoryName: _activeCategoryName(provider),
+              categoryName: _activeCategoryName(context, provider),
               onClear: provider.clearBudgetMatch,
             ),
           ],
@@ -636,14 +636,14 @@ class _FavoriteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = provider.primaryCategory?.nameAr.trim();
+    final kind = providerKindName(context, provider.primaryCategory);
     final cover = provider.coverUrl?.trim();
     // Soft, as on the f02 card, so the picking box shows on it.
     final placeholder = ColoredBox(
       color: context.accent.primarySoft,
       child: Center(
         child: Icon(
-          providerServiceIcon(kind ?? ''),
+          providerServiceIcon(kind),
           size: 32,
           color: context.accent.primary,
         ),
@@ -735,7 +735,7 @@ class _FavoriteCard extends StatelessWidget {
                       weight: JourneyType.bold,
                     ),
                   ),
-                  if (kind != null && kind.isNotEmpty)
+                  if (kind.isNotEmpty)
                     Text(
                       kind,
                       maxLines: 1,

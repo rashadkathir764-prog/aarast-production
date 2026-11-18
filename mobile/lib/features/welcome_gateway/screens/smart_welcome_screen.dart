@@ -878,6 +878,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         onInside: (inside) => setState(() {
           _mahrInBudget = inside;
           _mahrChoiceAsked = false;
+          // Answered is seen (walks 2026-11-18): «التالي» stopped him to
+          // show a choice he had just made when it sat half off screen.
+          _mahrChoiceSeen = true;
         }),
         onNext: _confirmMahr,
         onSkip: _skipMahr,

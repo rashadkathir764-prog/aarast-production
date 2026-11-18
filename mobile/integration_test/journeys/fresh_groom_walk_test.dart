@@ -175,7 +175,9 @@ void main() {
       await walk.step('c10_add_cost', 'سجّل اتفاقًا: القاعة', () async {
         // The floating button (it names its four choices since 2026-11-17),
         // then the agreement on the sheet it opens.
-        await walk.tapText('اتفاق أو دفعة');
+        // By its key: the button folds its words away once the list runs
+        // under it (PlanShellChrome), as on the items list here.
+        await walk.tapKey('aarast-quick-action', wait: 2);
         await walk.tapText('إضافة اتفاق', last: true, wait: 3);
         walk.note(walk.visibleTexts().take(20).join(' · '));
       });
@@ -287,7 +289,9 @@ void main() {
         // before the unit is a non-breaking one, so the two are matched apart.
         walk.expectSee('دفعت 250', why: 'الرئيسية تعرف الدفعة (R1)');
         walk.expectSee('ألف', why: 'الرقم المختصر معه وحدته (V-01)');
-        walk.expectSee('مع المهر', why: 'المجموع يقول إنه مع المهر (D79)');
+        // «اتفقت على» says it holds the mahr («منها المهر»), as it does with
+        // the budget holding it (2026-11-18).
+        walk.expectSee('منها المهر', why: 'المجموع يقول إنه مع المهر (D79)');
         walk.expectNotSee('ابدأ قائمة الضيوف', why: 'أضفنا ضيفًا (R1)');
       });
 

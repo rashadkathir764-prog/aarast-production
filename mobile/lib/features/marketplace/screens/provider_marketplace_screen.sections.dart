@@ -186,7 +186,7 @@ class _FilterChips extends StatelessWidget {
             const SizedBox(width: AarastV3Space.x2),
             JourneyChip(
               key: ValueKey('category-chip-${category.id}'),
-              label: category.nameAr,
+              label: providerKindName(context, category),
               icon: providerServiceIcon(category.nameAr),
               selected: selectedCategory == category.id,
               selectedColor: context.accent.primary,
@@ -244,7 +244,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                 ),
                 for (final category in provider.categories)
                   JourneyChip(
-                    label: category.nameAr,
+                    label: providerKindName(context, category),
                     selected: provider.categoryId == category.id,
                     selectedColor: context.accent.primary,
                     onTap: () => provider.setCategory(category.id),

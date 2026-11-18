@@ -618,7 +618,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         if (!onShelf.contains(item.id)) item,
     ];
     final names = {
-      for (final category in provider.categories) category.id: category.nameAr,
+      for (final category in provider.categories)
+        category.id: providerKindName(context, category),
     };
     return [
       for (final shelf in shelves) ...[

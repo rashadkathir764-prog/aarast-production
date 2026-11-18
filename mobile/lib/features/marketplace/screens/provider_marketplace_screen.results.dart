@@ -47,17 +47,7 @@ class _ProviderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = provider.services.isEmpty ? null : provider.services.first;
-    final primaryCategory = provider.primaryCategory?.nameAr.trim();
-    final summaryCategories = provider.serviceSummary?.categories;
-    final summaryCategory =
-        summaryCategories == null || summaryCategories.isEmpty
-        ? null
-        : summaryCategories.first.nameAr.trim();
-    final category = primaryCategory?.isNotEmpty == true
-        ? primaryCategory
-        : summaryCategory?.isNotEmpty == true
-        ? summaryCategory
-        : service?.category?.nameAr.trim();
+    final category = _providerKindLabel(context, provider);
     final location = _providerLocationLabel(provider);
     // RA-MO-259: the item is in riyals; a price in another currency is not
     // compared with it (as the provider's page does, f03), the card says
@@ -192,7 +182,7 @@ class _ProviderShelfRow extends StatelessWidget {
                       businessName: item.businessName,
                       ratingAverage: item.ratingAverage,
                       ratingCount: item.ratingCount,
-                      categoryLabel: _providerKindLabel(item),
+                      categoryLabel: _providerKindLabel(context, item),
                       locationLabel: _providerLocationLabel(item),
                       fromPriceLabel: _providerFromPriceLabel(item),
                       imageUrl: _providerImageUrl(item),
@@ -217,17 +207,21 @@ class _ProviderShelfRow extends StatelessWidget {
   }
 }
 
-/// The provider's kind in words: its primary kind, else its services'.
-String? _providerKindLabel(MarketplaceProvider provider) {
-  final primary = provider.primaryCategory?.nameAr.trim();
-  if (primary != null && primary.isNotEmpty) return primary;
+/// The provider's kind in words: its primary kind, else its services', as
+/// the plan says it ([providerKindName]). The list card and the row card
+/// read this one.
+String? _providerKindLabel(BuildContext context, MarketplaceProvider provider) {
   final summary = provider.serviceSummary?.categories;
-  if (summary != null && summary.isNotEmpty) {
-    final name = summary.first.nameAr.trim();
+  final service = provider.services.isEmpty ? null : provider.services.first;
+  for (final category in [
+    provider.primaryCategory,
+    if (summary != null && summary.isNotEmpty) summary.first,
+    service?.category,
+  ]) {
+    final name = providerKindName(context, category);
     if (name.isNotEmpty) return name;
   }
-  final service = provider.services.isEmpty ? null : provider.services.first;
-  return service?.category?.nameAr.trim();
+  return null;
 }
 
 /// «من 450,000 ر.ي»: where a provider's published prices start, or the one

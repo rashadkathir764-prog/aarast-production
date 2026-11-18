@@ -215,7 +215,13 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         agreed: agreed,
         paidByOwner: paidByOwner,
         paidByOthers: paidByOthers,
-        mahrInside: mahrInside ? mahr.total : null,
+        // D79: «اتفقت على» holds the mahr. Its own line says so outside the
+        // budget; where the mahr's card hides that line (2026-11-17), the
+        // agreed figure says it itself, or 3 million read as his agreements
+        // with 1 million agreed (walks 2026-11-18).
+        mahrInside: mahrInside || (withMahr && widget.mahrCardShown)
+            ? mahr.total
+            : null,
         figure: (value) => write(value.toDouble()),
       ))
         _MoneyCellData(

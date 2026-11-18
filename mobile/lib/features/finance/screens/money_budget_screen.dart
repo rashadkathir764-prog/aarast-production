@@ -383,7 +383,12 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   currency: _currency,
                   asksBeforeGoingOn: choiceAsked,
                   onChanged: (inside) {
-                    setSheetState(() => choiceAsked = false);
+                    setSheetState(() {
+                      choiceAsked = false;
+                      // Answered is seen: the save is not stopped to show
+                      // a choice just made.
+                      choiceSeen = true;
+                    });
                     setState(() => _includesMahr = inside);
                     _draft?.changed();
                   },

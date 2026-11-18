@@ -1,12 +1,28 @@
 part of 'provider_marketplace_screen.dart';
 
-String? _activeCategoryName(ProviderMarketplaceProvider provider) {
+String? _activeCategoryName(
+  BuildContext context,
+  ProviderMarketplaceProvider provider,
+) {
   final id = provider.categoryId;
   if (id == null) return null;
   for (final category in provider.categories) {
-    if (category.id == id) return category.nameAr;
+    if (category.id == id) return providerKindName(context, category);
   }
   return null;
+}
+
+/// A kind of provider as the plan says it (Rashad 2026-11-18, the groom
+/// and the bride alike): the catalog has one hall kind, «صالة», for both,
+/// while the groom's app says «قاعة» everywhere else (the search, «نبدأ
+/// بالقاعة», the next step). The hall is named by the plan's word; every
+/// other kind by the catalog's.
+String providerKindName(BuildContext context, ProviderCategory? category) {
+  if (category == null) return '';
+  if (category.slug == venueCategorySlug) {
+    return context.planWord('قاعة', 'صالة');
+  }
+  return category.nameAr.trim();
 }
 
 String _emptyProvidersMessage({

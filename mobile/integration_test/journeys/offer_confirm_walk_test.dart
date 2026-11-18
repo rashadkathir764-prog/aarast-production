@@ -28,7 +28,18 @@ void main() {
 
       await walk.step('p16_open', 'افتح طلب محمد', () async {
         await walk.tapText('طلب حجز', required: false, wait: 2.5);
-        await walk.tapText('محمد', wait: 3);
+        // Since RA-MO-303 the list card itself says «طلب حجز»: that press
+        // already opens the request with its sheet up, and a press on
+        // «محمد» behind the sheet closed it again. Only when it did not.
+        final sheetUp = find
+            .byWidgetPredicate((widget) {
+              final key = widget.key;
+              return key is ValueKey<String> &&
+                  key.value.startsWith('provider-booking-confirm-');
+            })
+            .evaluate()
+            .isNotEmpty;
+        if (!sheetUp) await walk.tapText('محمد', wait: 3);
         walk.note(walk.visibleTexts().take(24).join(' · '));
       });
 

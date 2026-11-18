@@ -411,7 +411,9 @@ void main() {
       expect(inCard('باقي منها 7$_nbspمليون'), findsOneWidget);
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
       expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
-      expect(find.textContaining('منها المهر'), findsNothing);
+      // Changed on purpose (walks 2026-11-18): the agreed figure holds the
+      // mahr and says so (D79), as with the budget holding it.
+      expect(find.textContaining('منها المهر'), findsOneWidget);
       // As above: the mahr's card says it, once.
       expect(find.textContaining('برّا الميزانية'), findsNothing);
       expect(
@@ -439,10 +441,15 @@ void main() {
         find.descendant(of: card, matching: find.textContaining('الميزانية')),
         findsNothing,
       );
-      // As above: the mahr's card says it, once.
+      // As above: the mahr's own line is left to its card; the agreed
+      // figure only says it holds the mahr (D79, walks 2026-11-18).
       expect(
         find.descendant(of: card, matching: find.textContaining('المهر')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.textContaining('منها المهر')),
+        findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     });

@@ -304,6 +304,9 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                       : (inside) => setState(() {
                           _inside = inside;
                           _choiceAsked = false;
+                          // Answered is seen: the save is not stopped to
+                          // show a choice just made.
+                          _choiceSeen = true;
                         }),
                 ),
               ],

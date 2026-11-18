@@ -31,8 +31,9 @@ const _shelfLogoSize = AarastV3Media.logoLarge;
 const _shelfLogoRing = 3.0;
 
 /// The profile card's soft band and the logo's disc that sits half on its
-/// edge (D118: the large logo, and a band as tall as it).
-const _bandHeight = AarastV3Media.logoLarge;
+/// edge (D118): a band a large mark tall under the profile's logo, so the
+/// card's top is 92, not the 126 that pushed its name down a third of it.
+const _bandHeight = AarastV3Size.markLarge;
 const _profileLogoSize = AarastV3Media.logoLarge;
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8

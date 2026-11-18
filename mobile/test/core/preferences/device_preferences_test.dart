@@ -24,24 +24,29 @@ void main() {
     },
   );
 
-  // D30: the phone's text size and «خط كبير» together stop at 1.3.
-  test('the text size follows the phone and «خط كبير», up to 1.3', () {
-    double scale(double system, {bool largeText = false}) =>
-        DevicePreferences.textScalerFor(
-          TextScaler.linear(system),
-          largeText: largeText,
-        ).scale(10) /
-        10;
+  // D30, D119: half of the phone's step, up to 1.15; «خط كبير» a step more,
+  // up to 1.3.
+  test(
+    'the text size takes half the phone\'s step and «خط كبير», up to 1.3',
+    () {
+      double scale(double system, {bool largeText = false}) =>
+          DevicePreferences.textScalerFor(
+            TextScaler.linear(system),
+            largeText: largeText,
+          ).scale(10) /
+          10;
 
-    expect(scale(1), 1);
-    expect(scale(1, largeText: true), closeTo(1.15, 1e-9));
-    expect(scale(1.1, largeText: true), closeTo(1.265, 1e-9));
-    expect(scale(1.15, largeText: true), closeTo(1.3, 1e-9));
-    expect(scale(1.2), closeTo(1.2, 1e-9));
-    expect(scale(2), closeTo(1.3, 1e-9));
-    expect(scale(2, largeText: true), closeTo(1.3, 1e-9));
-    expect(scale(0.85), closeTo(0.85, 1e-9));
-  });
+      expect(scale(1), 1);
+      expect(scale(1, largeText: true), closeTo(1.15, 1e-9));
+      expect(scale(1.2), closeTo(1.1, 1e-9));
+      expect(scale(1.25), closeTo(1.125, 1e-9));
+      expect(scale(1.3), closeTo(1.15, 1e-9));
+      expect(scale(2), closeTo(1.15, 1e-9));
+      expect(scale(1.2, largeText: true), closeTo(1.265, 1e-9));
+      expect(scale(2, largeText: true), closeTo(1.3, 1e-9));
+      expect(scale(0.85), closeTo(0.85, 1e-9));
+    },
+  );
 
   test('a switch outlives the app', () async {
     SharedPreferences.setMockInitialValues({});

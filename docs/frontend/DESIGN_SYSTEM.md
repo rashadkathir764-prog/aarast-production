@@ -95,7 +95,8 @@ countdown card (D45).
 
 Tajawal is the app's text family (`JourneyType.family`). Sizes come from
 `JourneyType`; a screen never passes a number, and a test fails if one does.
-The text scale on top stops at 1.3 (`DevicePreferences.textScalerFor`).
+The app takes half of the phone's text size above normal, up to 1.15, and
+«خط كبير» a step more, up to 1.3 (`DevicePreferences.textScalerFor`, D119).
 
 Numbers, dates and phone values keep their direction inside RTL text.
 

@@ -130,13 +130,22 @@ class JourneyPlanHero extends StatelessWidget {
                                       color: AarastV3Color.onPrimary,
                                     ),
                                   ),
+                                  // The date is one line: it shrinks a
+                                  // little beside the tag before it wraps a
+                                  // word onto a line of its own.
                                   if (subtitle case final line?)
-                                    Text(
-                                      line,
-                                      style: JourneyType.of(
-                                        JourneyType.small,
-                                        color: AarastV3Color.onPrimary
-                                            .withValues(alpha: 0.78),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment:
+                                          AlignmentDirectional.centerStart,
+                                      child: Text(
+                                        line,
+                                        maxLines: 1,
+                                        style: JourneyType.of(
+                                          JourneyType.small,
+                                          color: AarastV3Color.onPrimary
+                                              .withValues(alpha: 0.78),
+                                        ),
                                       ),
                                     ),
                                 ],

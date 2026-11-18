@@ -32,21 +32,33 @@ class DevicePreferences extends ChangeNotifier {
   /// How much bigger «خط كبير» makes every text.
   static const largeTextFactor = 1.15;
 
-  /// The most any text grows. The phone's own size and «خط كبير» together
-  /// stop here, so the design's screens still fit a phone (D30).
+  /// The most any text grows, with «خط كبير» on (D30).
   static const maxTextScale = 1.3;
 
-  /// The one text size of the app: the phone's own, a step bigger with
-  /// «خط كبير», never past [maxTextScale]. Without «خط كبير» the phone's
-  /// own scaler is kept as it is, up to the cap.
+  /// How much of the phone's own text size the app takes (D119). Phones are
+  /// often set a step or two above normal (Rashad's about 1.25), and taken
+  /// whole that made every word a quarter bigger than the screens it was
+  /// set in: cards swelled, titles wrapped, counts were cut. The app takes
+  /// half of the phone's step, and no more than [maxPhoneScale];
+  /// «خط كبير» is the app's own way to a bigger text.
+  static const phoneScaleShare = 0.5;
+
+  /// The most the phone's own size grows the text without «خط كبير».
+  static const maxPhoneScale = 1.15;
+
+  /// The one text size of the app: half of the phone's step above normal
+  /// (a smaller phone size is kept as it is), up to [maxPhoneScale]; a step
+  /// bigger with «خط كبير», never past [maxTextScale].
   static TextScaler textScalerFor(
     TextScaler system, {
     required bool largeText,
   }) {
-    final chosen = largeText
-        ? TextScaler.linear(system.scale(1) * largeTextFactor)
-        : system;
-    return chosen.clamp(maxScaleFactor: maxTextScale);
+    final phone = system.scale(1);
+    final taken = phone <= 1
+        ? phone
+        : (1 + (phone - 1) * phoneScaleShare).clamp(1.0, maxPhoneScale);
+    final chosen = largeText ? taken * largeTextFactor : taken;
+    return TextScaler.linear(chosen.clamp(0.0, maxTextScale));
   }
 
   /// The Hijri date next to the Gregorian one.

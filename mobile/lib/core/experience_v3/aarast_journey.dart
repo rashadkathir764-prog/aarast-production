@@ -648,8 +648,10 @@ class JourneyLevelSwitch extends StatelessWidget {
                   child: Container(
                     // Critique ط6: 48, as every target in the kit (D74); at
                     // 32 a slip here gave a participant the money.
+                    // A short word («لا») is still a full 48 wide.
                     constraints: const BoxConstraints(
                       minHeight: AarastV3Size.touch,
+                      minWidth: AarastV3Size.touch,
                     ),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(

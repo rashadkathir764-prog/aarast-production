@@ -166,39 +166,49 @@ class _ProviderShelfRow extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x1),
         // Past the list's own padding, so the row runs to the screen's
         // edges as it scrolls and its first card lines up with the page.
+        // The row's own width plus the list's side padding, not the
+        // screen's: the frame holds «استكشف» to 520 on a wide screen, and a
+        // screen-wide row spilled off both sides there (walks 2026-11-18).
         SizedBox(
           height: height,
-          child: OverflowBox(
-            maxWidth: MediaQuery.sizeOf(context).width,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
-              itemCount: providers.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: AarastV3Space.x3),
-              itemBuilder: (context, index) {
-                final item = providers[index];
-                return SizedBox(
-                  width: width,
-                  child: ProviderShelfCard(
-                    key: Key('provider-shelf-card-${item.id}'),
-                    businessName: item.businessName,
-                    ratingAverage: item.ratingAverage,
-                    ratingCount: item.ratingCount,
-                    categoryLabel: _providerKindLabel(item),
-                    locationLabel: _providerLocationLabel(item),
-                    fromPriceLabel: _providerFromPriceLabel(item),
-                    imageUrl: _providerImageUrl(item),
-                    logoUrl: _providerLogoUrl(item),
-                    isFeatured: item.isFeaturedAt(appNow()),
-                    isClaimed: item.isClaimed,
-                    isFavorite: favorites.contains(item.id),
-                    onFavorite: () => onFavorite(item.id),
-                    onDetails: () => onOpen(item.id),
-                    detailsButtonKey: Key('super5-provider-details-${item.id}'),
-                  ),
-                );
-              },
+          child: LayoutBuilder(
+            builder: (context, constraints) => OverflowBox(
+              maxWidth: constraints.maxWidth + 2 * AarastV3Space.x4,
+              minWidth: constraints.maxWidth + 2 * AarastV3Space.x4,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AarastV3Space.x4,
+                ),
+                itemCount: providers.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AarastV3Space.x3),
+                itemBuilder: (context, index) {
+                  final item = providers[index];
+                  return SizedBox(
+                    width: width,
+                    child: ProviderShelfCard(
+                      key: Key('provider-shelf-card-${item.id}'),
+                      businessName: item.businessName,
+                      ratingAverage: item.ratingAverage,
+                      ratingCount: item.ratingCount,
+                      categoryLabel: _providerKindLabel(item),
+                      locationLabel: _providerLocationLabel(item),
+                      fromPriceLabel: _providerFromPriceLabel(item),
+                      imageUrl: _providerImageUrl(item),
+                      logoUrl: _providerLogoUrl(item),
+                      isFeatured: item.isFeaturedAt(appNow()),
+                      isClaimed: item.isClaimed,
+                      isFavorite: favorites.contains(item.id),
+                      onFavorite: () => onFavorite(item.id),
+                      onDetails: () => onOpen(item.id),
+                      detailsButtonKey: Key(
+                        'super5-provider-details-${item.id}',
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),

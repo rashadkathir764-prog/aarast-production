@@ -14,14 +14,17 @@ TextEditingValue _type(TextInputFormatter formatter, String text) =>
 void main() {
   // A WhatsApp code, a guest count or a price typed on an Arabic keyboard
   // («٥٠٠٠٠٠») vanished under `digitsOnly`, and the field stayed empty.
-  test('Arabic-Indic and Eastern digits become 0-9; anything else is dropped', () {
-    const digits = LatinDigitsFormatter();
-    expect(_type(digits, '١٢٣٤٥٦').text, '123456');
-    expect(_type(digits, '۱۲۳').text, '123');
-    expect(_type(digits, '12 ٣-4').text, '1234');
-    expect(_type(digits, '1.5').text, '15', reason: 'no decimals by default');
-    expect(_type(digits, '٥٠٠').selection.baseOffset, 3);
-  });
+  test(
+    'Arabic-Indic and Eastern digits become 0-9; anything else is dropped',
+    () {
+      const digits = LatinDigitsFormatter();
+      expect(_type(digits, '١٢٣٤٥٦').text, '123456');
+      expect(_type(digits, '۱۲۳').text, '123');
+      expect(_type(digits, '12 ٣-4').text, '1234');
+      expect(_type(digits, '1.5').text, '15', reason: 'no decimals by default');
+      expect(_type(digits, '٥٠٠').selection.baseOffset, 3);
+    },
+  );
 
   test('a price keeps one decimal point and its two digits', () {
     const price = LatinDigitsFormatter(decimals: 2);

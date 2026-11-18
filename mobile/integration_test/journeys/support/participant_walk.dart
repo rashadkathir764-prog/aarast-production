@@ -137,7 +137,9 @@ Future<void> runParticipantWalk(
     await walk.tab('المهام');
     if (p.managesTasks) {
       walk.expectSee('رتّب الغداء');
-      walk.expectSee('معك');
+      // Rashad 2026-11-18: the owner's tasks hero says what is left to him
+      // («مهمة وحدة باقية»), not «معك» in the header.
+      walk.expectSee('باقية', why: 'ما بقي عليه من مهامه');
       walk.expectNotSee('حدد موعد عقد القران', why: 'مهمة العريس مو عليه');
     } else {
       walk.expectNotSee(
@@ -160,7 +162,8 @@ Future<void> runParticipantWalk(
     if (p.managesGuests) {
       // D80: the helper reads every guest of the plan; he edits, and reads
       // the number of, only the guests he added.
-      walk.expectSee('124 مدعو', why: 'عدد ضيوف الخطة كلها (D80)');
+      // The header counts the guests («124 ضيف»), as the owner's list.
+      walk.expectSee('124 ضيف', why: 'عدد ضيوف الخطة كلها (D80)');
       walk.expectSee('أكدوا من 124');
       walk.expectSee('أرقام البقية عند العريس', why: 'يقال له لمن الأرقام');
       walk.expectNotSee(' 4 مقعد', why: 'العدد 3–10 جمعه «مقاعد»');
@@ -189,7 +192,7 @@ Future<void> runParticipantWalk(
     } else {
       // D52: the plan's guests by name and reply, never their phones.
       walk.expectNotSee('ما عندك صلاحية');
-      walk.expectSee('124 مدعو', why: 'عدد الضيوف كله');
+      walk.expectSee('124 ضيف', why: 'عدد الضيوف كله');
       walk.expectSee('أكدوا من 124');
       walk.expectSee('كل الضيوف');
       walk.expectSee('أرقام الجوالات والإضافة والتعديل عند العريس');

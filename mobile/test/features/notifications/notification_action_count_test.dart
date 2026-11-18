@@ -34,12 +34,15 @@ final _notice = AarastNotification(
 void main() {
   // The count after an action is a read: its failure said «تعذر أرشفة
   // التنبيه» over a notice that was archived.
-  test('an archived notice is archived even when the count read fails', () async {
-    final api = _CountFailsApi();
-    final notices = NotificationsProvider(api);
+  test(
+    'an archived notice is archived even when the count read fails',
+    () async {
+      final api = _CountFailsApi();
+      final notices = NotificationsProvider(api);
 
-    expect(await notices.archiveNotification(_notice), isTrue);
-    expect(api.archived, 1);
-    expect(notices.errorMessage, isNull);
-  });
+      expect(await notices.archiveNotification(_notice), isTrue);
+      expect(api.archived, 1);
+      expect(notices.errorMessage, isNull);
+    },
+  );
 }

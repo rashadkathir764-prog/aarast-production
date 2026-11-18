@@ -191,7 +191,8 @@ Future<void> runReviewStatesWalk(WidgetTester tester) async {
       walk.fail('ما ظهرت حالة «قيد المراجعة»');
     }
     walk.expectSee('فرقة الأمجاد للبرع');
-    walk.expectSee('عدّل طلبك');
+    // Critique ب3: «تعديل طلبك», said to any provider.
+    walk.expectSee('تعديل طلبك');
     walk.expectNotSee('الرد الحين', why: 'المزود غير المعتمد ما يستقبل طلبات');
   });
   await signOutFromReview('p08_logout');

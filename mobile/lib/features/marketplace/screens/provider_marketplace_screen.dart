@@ -94,6 +94,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// The conversations read once for «المحادثات 2» (no live connection).
   bool _chatCountRead = false;
 
+  /// The kinds that make rows in «استكشف», fixed on the list's first page,
+  /// and the list they were fixed for.
+  Set<String>? _shelfKinds;
+  String? _shelfSource;
+
   /// Whether this reader has an account, once asked. Null until the answer
   /// is back. «no account» is an answer, not a wait: without it the tabs
   /// that need one sat on a loading skeleton that could never end.
@@ -585,10 +590,24 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         // The search that ran, not the letters still being typed: the rows
         // stay until the results change, not a beat before.
         provider.search.trim().isEmpty;
+    final order = [for (final category in provider.categories) category.id];
+    // The rows' kinds are fixed on the list's first page (review 2026-11-18):
+    // a page loaded at the end fills rows already drawn, and never draws a
+    // new one above what is being read. A new list (a refresh, another
+    // place) fixes them again.
+    final source = provider.providers.isEmpty
+        ? null
+        : '${provider.providers.first.id}|${provider.cityId}|'
+              '${provider.totalProviders}';
+    if (browsing && source != _shelfSource) {
+      _shelfSource = source;
+      _shelfKinds = {
+        for (final shelf in providerShelves(provider.providers, order))
+          shelf.categoryId,
+      };
+    }
     final shelves = browsing
-        ? providerShelves(provider.providers, [
-            for (final category in provider.categories) category.id,
-          ])
+        ? providerShelves(provider.providers, order, allowedKinds: _shelfKinds)
         : const <ProviderShelf>[];
     final onShelf = {
       for (final shelf in shelves)

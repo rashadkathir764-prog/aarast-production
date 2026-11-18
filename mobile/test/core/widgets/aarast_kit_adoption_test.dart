@@ -57,7 +57,8 @@ const _baseline = <String, int>{
   'lib/features/finance/screens/funding_sources_screen.dart': 2,
   'lib/features/finance/widgets/receipt_flows.dart': 5,
   'lib/features/guests/widgets/guest_groups_sheet.dart': 5,
-  'lib/features/marketplace/screens/provider_marketplace_screen.sections.dart': 1,
+  'lib/features/marketplace/screens/provider_marketplace_screen.sections.dart':
+      1,
   'lib/features/provider_portal/screens/add_provider_package_screen.dart': 6,
   'lib/features/provider_portal/screens/add_provider_service_screen.dart': 7,
   'lib/features/provider_portal/screens/edit_provider_profile_screen.dart': 4,
@@ -90,7 +91,10 @@ void main() {
       expect(rawKitBypasses('DropdownButton<String>('), 1);
       expect(rawKitBypasses('ListTile(title: t)'), 1);
       expect(rawKitBypasses('AppBar(title: t)'), 1);
-      expect(rawKitBypasses('tapTargetSize: MaterialTapTargetSize.shrinkWrap'), 1);
+      expect(
+        rawKitBypasses('tapTargetSize: MaterialTapTargetSize.shrinkWrap'),
+        1,
+      );
       expect(rawKitBypasses('visualDensity: VisualDensity.compact'), 1);
     });
 

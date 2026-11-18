@@ -450,15 +450,13 @@ class AarastDashboardView extends StatelessWidget {
                         hidden: amountsHidden,
                       ),
                     ],
-                    // The item the next step already names is not suggested
-                    // again under it.
-                    if ([
-                          for (final item in _homeSuggestions(summary))
-                            if (focus.item?.entityId == null ||
-                                focus.item?.entityId != item.budgetCategoryId)
-                              item,
-                        ]
-                        case final suggestions
+                    // The item the next step names stays in this list
+                    // (review 2026-11-18): taking it out after the list was
+                    // cut to three dropped a fourth suggestion, and took
+                    // away its «⋯» (ما أحتاجها / بعدين), the one way to
+                    // answer it from the home. The next step points at one
+                    // of these; the list is where they are answered.
+                    if (_homeSuggestions(summary) case final suggestions
                         when suggestions.isNotEmpty &&
                             onAnswerSuggestion != null) ...[
                       const SizedBox(height: AarastV3Space.x3),

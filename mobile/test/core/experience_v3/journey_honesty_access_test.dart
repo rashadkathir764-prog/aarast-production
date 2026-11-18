@@ -33,10 +33,7 @@ void main() {
   test('an avatar letter takes the colour that reads on its fill', () {
     expect(JourneyAvatar.onFill(AarastV3Color.saffron), AarastV3Color.ink);
     expect(JourneyAvatar.onFill(AarastV3Color.ink), AarastV3Color.onPrimary);
-    expect(
-      JourneyAvatar.onFill(AarastV3Color.danger),
-      AarastV3Color.onPrimary,
-    );
+    expect(JourneyAvatar.onFill(AarastV3Color.danger), AarastV3Color.onPrimary);
   });
 
   testWidgets('a person without a name shows a person, not a letter', (

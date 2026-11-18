@@ -84,6 +84,9 @@ void main() {
       await walk.step('a06_mahr', 'المهر', () async {
         walk.note(walk.visibleTexts().take(12).join(' · '));
         await fillNth(0, '2000000');
+        // D114: the mahr screen asks whether the budget holds the mahr, and
+        // «التالي» waits for the answer. This plan keeps them apart.
+        await walk.tapText('لا، المهر لحاله', wait: 1);
         await walk.tapText('التالي');
         walk.expectSee('خطتك جاهزة', why: 'المهر وصّل لشاشة «جاهزة»');
         walk.expectSee('5 مليون', why: 'الميزانية التي كُتبت تظهر');

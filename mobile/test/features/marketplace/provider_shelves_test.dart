@@ -60,7 +60,23 @@ void main() {
     expect(ids.length, 5);
   });
 
-  test('a kind the catalog does not list comes after the listed ones', () {
+  test('only the allowed kinds make rows: a later page adds no new row', () {
+    final shelves = providerShelves(
+      [
+        _provider('hall-1', 'hall'),
+        _provider('hall-2', 'hall'),
+        _provider('photo-1', 'photo'),
+        _provider('photo-2', 'photo'),
+      ],
+      ['hall', 'photo'],
+      allowedKinds: {'hall'},
+    );
+    expect([for (final shelf in shelves) shelf.categoryId], ['hall']);
+  });
+
+  // Changed on purpose (review 2026-11-18): an unlisted kind had no name
+  // for its row's title; its providers stay with the cards.
+  test('a kind the catalog does not list makes no row', () {
     final shelves = providerShelves(
       [
         _provider('x-1', 'unlisted'),
@@ -70,9 +86,6 @@ void main() {
       ],
       ['hall'],
     );
-    expect(
-      [for (final shelf in shelves) shelf.categoryId],
-      ['hall', 'unlisted'],
-    );
+    expect([for (final shelf in shelves) shelf.categoryId], ['hall']);
   });
 }

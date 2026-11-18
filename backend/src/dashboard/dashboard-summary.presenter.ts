@@ -78,7 +78,12 @@ export function buildImportantItems({
   /** The plan's nearest open task, whatever its day (or none). */
   nextTask?: DashboardTaskRecord | null;
   /** G23's first essential still open and not answered away. */
-  missingEssential?: Pick<PlanEssential, "key" | "budgetCategoryId"> | null;
+  missingEssential?:
+    | (Pick<PlanEssential, "key" | "budgetCategoryId"> & {
+        /** The plan's own item name; the fixed word when it is missing. */
+        name?: string | null;
+      })
+    | null;
   paymentSchedules: DashboardDueMoneyItem[];
   today: Date;
   receivedQuotes: number;
@@ -254,13 +259,18 @@ export function buildImportantItems({
     canManageProviders
   ) {
     const itemId = missingEssential.budgetCategoryId;
+    // The item's own name (review 2026-11-18): a fixed word named «البدلة
+    // والكسوة» an item called «فستان» in a helper's plan.
+    const itemName =
+      missingEssential.name?.trim() ||
+      essentialName(missingEssential.key, planPersona);
     const itemRoute = `/wedding-plans/${weddingPlanId}/providers/requests?item=${encodeURIComponent(itemId)}`;
     later.push({
       id: `essential:${missingEssential.key}:${weddingPlanId}`,
       type: "ESSENTIAL_MISSING",
       title: say(
-        `ما اتفقت على ${essentialName(missingEssential.key, planPersona)} بعد`,
-        `ما اتفقتِ على ${essentialName(missingEssential.key, planPersona)} بعد`,
+        `ما اتفقت على ${itemName} بعد`,
+        `ما اتفقتِ على ${itemName} بعد`,
       ),
       subtitle: say(
         "اطلب عروض من المزودين، أو سجّل اتفاقك لو اتفقت",
@@ -275,7 +285,8 @@ export function buildImportantItems({
       amount: null,
       route: itemRoute,
       routeTarget: itemRoute,
-      // The money item it reads: the home leaves it out of its suggestions.
+      // The money item it reads; the home's suggestions keep it, with its
+      // «⋯», the place to answer it (review 2026-11-18).
       entityId: itemId,
       data: { weddingPlanId, budgetCategoryId: itemId },
     });
@@ -382,7 +393,16 @@ export function buildImportantItems({
   // plan's providers have their own list (`planProviders`).
 
   const limit = 3;
-  return [...selectTopDashboardActions(items, limit), ...later].slice(0, limit);
+  const top = selectTopDashboardActions(items, limit);
+  // Review 2026-11-18: «اطلب أول عرض سعر» already sends to the providers;
+  // a missing essential beside it said the same step twice.
+  const asksQuotes = top.some((item) => item.type === "REQUEST_QUOTE");
+  return [
+    ...top,
+    ...later.filter(
+      (item) => !(asksQuotes && item.type === "ESSENTIAL_MISSING"),
+    ),
+  ].slice(0, limit);
 }
 
 export function toProviderPreviewResponse(

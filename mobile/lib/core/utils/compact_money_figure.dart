@@ -1,6 +1,30 @@
 import 'keep_currency_on_line.dart';
 import 'money_formatters.dart';
 
+/// [compactMoneyFigure] when shortening loses nothing («1.5 مليون», «250
+/// ألف»), else the amount in full («1,450,000 ر.ي»): for figures read
+/// together that add up (critique م2: «اتفقت 3.4، دفعت 1.5، باقي 2», and
+/// 1.5 + 2 is not 3.4). The rule is [shortensWithoutLoss]; for millions it
+/// is [sumSafeMoneyParts]'s own (a tenth of a million), which sits in the
+/// pinned Core formatter and is not edited for a tidy-up.
+String sumSafeMoneyFigure(num value, {required String currencyCode}) {
+  if (shortensWithoutLoss(value)) {
+    return compactMoneyFigure(value, currencyCode: currencyCode);
+  }
+  return keepCurrencyOnLine(
+    fullMoneyParts(value, currencyCode: currencyCode).plainText,
+  );
+}
+
+/// The one rule for a short figure that adds up (critique م2): a million's
+/// tenth, or a thousand's tenth below a million, keeps [value] whole.
+bool shortensWithoutLoss(num value) {
+  final abs = value.abs();
+  if (abs >= 1000000) return abs % 100000 == 0;
+  if (abs >= 1000) return abs % 100 == 0;
+  return true;
+}
+
 /// A short money figure that always carries its unit (V-01): «3 مليون»,
 /// «250 ألف», and below a thousand the currency itself («750 ر.ي»). One
 /// convention for every figure in a column, so no line reads a bare number
@@ -8,23 +32,6 @@ import 'money_formatters.dart';
 ///
 /// Millions come from [compactMoneyParts] (one decimal); thousands follow
 /// the same rule.
-/// [compactMoneyFigure] when shortening loses nothing («1.5 مليون», «250
-/// ألف»), else the amount in full («1,450,000 ر.ي»): for figures read
-/// together that add up (critique م2: «اتفقت 3.4، دفعت 1.5، باقي 2», and
-/// 1.5 + 2 is not 3.4).
-String sumSafeMoneyFigure(num value, {required String currencyCode}) {
-  final abs = value.abs();
-  final lossless = abs >= 1000000
-      ? abs % 100000 == 0
-      : abs >= 1000
-      ? abs % 100 == 0
-      : true;
-  if (lossless) return compactMoneyFigure(value, currencyCode: currencyCode);
-  return keepCurrencyOnLine(
-    fullMoneyParts(value, currencyCode: currencyCode).plainText,
-  );
-}
-
 String compactMoneyFigure(num value, {required String currencyCode}) {
   final parts = compactMoneyParts(value, currencyCode: currencyCode);
   final million = parts.millionUnit;

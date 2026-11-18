@@ -27,31 +27,37 @@ String? providerShelfKind(MarketplaceProvider provider) {
   return null;
 }
 
-/// The directory's rows while browsing everything: each kind with at least
-/// [providerShelfMinimum] providers, in [categoryOrder] (the catalog's
-/// order; a kind the catalog does not list comes after it), each row in the
-/// directory's own order (the server's ranking). A provider sits on one row
-/// at most, its own kind's.
+/// The directory's rows while browsing everything: each kind of the catalog
+/// with at least [providerShelfMinimum] providers, in [categoryOrder] (the
+/// catalog's order), each row in the directory's own order (the server's
+/// ranking). A provider sits on one row at most, its own kind's.
+///
+/// Review 2026-11-18: a kind the catalog does not list makes no row (it had
+/// no name to title it, and «الكل» filtered by an id no chip knows); its
+/// providers stay with the cards. [allowedKinds], when given, are the only
+/// kinds that may make a row: the screen fixes them on the first page, so a
+/// later page fills rows already drawn and never puts a new one above what
+/// is being read.
 List<ProviderShelf> providerShelves(
   List<MarketplaceProvider> providers,
-  List<String> categoryOrder,
-) {
+  List<String> categoryOrder, {
+  Set<String>? allowedKinds,
+}) {
   final byKind = <String, List<MarketplaceProvider>>{};
   for (final provider in providers) {
     final kind = providerShelfKind(provider);
-    if (kind == null) continue;
+    if (kind == null || !categoryOrder.contains(kind)) continue;
+    if (allowedKinds != null && !allowedKinds.contains(kind)) continue;
     (byKind[kind] ??= []).add(provider);
   }
-  int rank(String kind) {
-    final index = categoryOrder.indexOf(kind);
-    return index < 0 ? categoryOrder.length : index;
-  }
-
   final kinds =
       byKind.keys
           .where((kind) => byKind[kind]!.length >= providerShelfMinimum)
           .toList()
-        ..sort((a, b) => rank(a).compareTo(rank(b)));
+        ..sort(
+          (a, b) =>
+              categoryOrder.indexOf(a).compareTo(categoryOrder.indexOf(b)),
+        );
   return [
     for (final kind in kinds) (categoryId: kind, providers: byKind[kind]!),
   ];

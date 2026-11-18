@@ -242,9 +242,7 @@ void main() {
     expect(harness.controller.errorMessage, isNull);
   });
 
-  testWidgets('J1-03: a refused code says it may have expired', (
-    tester,
-  ) async {
+  testWidgets('J1-03: a refused code says it may have expired', (tester) async {
     final harness = await _authHarness();
     harness.repository
       ..failVerify = true

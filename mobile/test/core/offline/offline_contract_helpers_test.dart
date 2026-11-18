@@ -157,7 +157,10 @@ void main() {
   });
 
   group('loan repayments while the server is out of reach', () {
-    Map<String, dynamic> loan({String id = 'f1', List<Object> repayments = const []}) => {
+    Map<String, dynamic> loan({
+      String id = 'f1',
+      List<Object> repayments = const [],
+    }) => {
       'id': id,
       'weddingPlanId': 'p1',
       'kind': 'LOAN',
@@ -207,43 +210,43 @@ void main() {
 
     // RA-MO-88: keyed by the repayment, the first answer (the loan) read as
     // an id swap and re-pointed the second change at the loan's id (404).
-    test('two waiting changes of one repayment both reach its own path', () async {
-      final (api, offline, server, reachability) = await _setUpSimple({
-        'PATCH /api/v1/loan-repayments/r1': loan(
-          repayments: [
-            {...planned, 'status': 'PAID'},
-          ],
-        ),
-        'DELETE /api/v1/loan-repayments/r1': loan(),
-      });
-      await offline.database.saveCachedItem(
-        table: OfflineTables.cachedFundingSources,
-        json: loan(repayments: [planned]),
-      );
-      server.down = true;
-      final funding = FundingApi(api, offline: offline);
-      final repayment = LoanRepayment.fromJson(planned);
+    test(
+      'two waiting changes of one repayment both reach its own path',
+      () async {
+        final (api, offline, server, reachability) = await _setUpSimple({
+          'PATCH /api/v1/loan-repayments/r1': loan(
+            repayments: [
+              {...planned, 'status': 'PAID'},
+            ],
+          ),
+          'DELETE /api/v1/loan-repayments/r1': loan(),
+        });
+        await offline.database.saveCachedItem(
+          table: OfflineTables.cachedFundingSources,
+          json: loan(repayments: [planned]),
+        );
+        server.down = true;
+        final funding = FundingApi(api, offline: offline);
+        final repayment = LoanRepayment.fromJson(planned);
 
-      await funding.setRepaymentStatus(repayment, 'PAID');
-      await funding.deleteRepayment(repayment);
-      final waiting = await offline.database.pendingSyncItems();
-      expect(waiting, hasLength(2));
-      expect(waiting.map((item) => item.localEntityId).toSet(), {'f1'});
+        await funding.setRepaymentStatus(repayment, 'PAID');
+        await funding.deleteRepayment(repayment);
+        final waiting = await offline.database.pendingSyncItems();
+        expect(waiting, hasLength(2));
+        expect(waiting.map((item) => item.localEntityId).toSet(), {'f1'});
 
-      server.down = false;
-      reachability.noteReached();
-      await offline.syncPendingChanges();
+        server.down = false;
+        reachability.noteReached();
+        await offline.syncPendingChanges();
 
-      expect(await offline.database.pendingSyncCount(), 0);
-      expect(await offline.database.blockedSyncItems(), isEmpty);
-      expect(
-        server.calls.where((call) => !call.startsWith('GET')).skip(2),
-        [
+        expect(await offline.database.pendingSyncCount(), 0);
+        expect(await offline.database.blockedSyncItems(), isEmpty);
+        expect(server.calls.where((call) => !call.startsWith('GET')).skip(2), [
           'PATCH /api/v1/loan-repayments/r1',
           'DELETE /api/v1/loan-repayments/r1',
-        ],
-      );
-    });
+        ]);
+      },
+    );
   });
 
   group('OfflineWrites.queued', () {

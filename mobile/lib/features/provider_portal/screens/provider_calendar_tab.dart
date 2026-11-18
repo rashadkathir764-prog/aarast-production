@@ -289,7 +289,14 @@ class _MonthHero extends StatelessWidget {
               label: switch (asked) {
                 1 => 'حجز ينتظر تأكيدك',
                 2 => 'حجزين ينتظرون تأكيدك',
-                _ => '$asked ينتظرون تأكيدك',
+                // Review 2026-11-18: the counted word, as for one and two.
+                _ => arabicCount(
+                  asked,
+                  one: 'حجز ينتظر تأكيدك',
+                  two: 'حجزين ينتظرون تأكيدك',
+                  few: 'حجوزات تنتظر تأكيدك',
+                  many: 'حجز ينتظر تأكيدك',
+                ),
               },
             ),
       semanticLabel: [

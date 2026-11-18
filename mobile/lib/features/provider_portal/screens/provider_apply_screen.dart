@@ -586,7 +586,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         if (result == ProviderJoinResult.sentWithoutAddress) {
           AarastToast.showInfo(
             context,
-            'انرسل طلبك، بس مكان المحل ما انحفظ. تضيفه من «عدّل طلبك».',
+            // The button's own words (critique ب3 made them «تعديل طلبك»).
+            'انرسل طلبك، بس مكان المحل ما انحفظ. تضيفه من «تعديل طلبك».',
           );
         }
         await _enterPortal();

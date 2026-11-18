@@ -406,19 +406,30 @@ export class DashboardService {
           venueSecured: venueCost || venueBooked,
         })
       : null;
+    const missing =
+      essentials?.find(
+        (item) =>
+          item.status === "MISSING" &&
+          !item.hidden &&
+          item.budgetCategoryId !== null,
+      ) ?? null;
     const importantItems = buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
       // Rashad 2026-11-17: with nothing late or due, the next step is the
       // nearest task with a day, then the first essential still open.
       nextTask,
-      missingEssential:
-        essentials?.find(
-          (item) =>
-            item.status === "MISSING" &&
-            !item.hidden &&
-            item.budgetCategoryId !== null,
-        ) ?? null,
+      // Review 2026-11-18: named by the plan's own item, not a fixed word
+      // («فستان» in a helper's plan was called «البدلة والكسوة»).
+      missingEssential: missing
+        ? {
+            ...missing,
+            name:
+              planItems?.find(
+                (category) => category.categoryId === missing.budgetCategoryId,
+              )?.name ?? null,
+          }
+        : null,
       paymentSchedules: dueMoneyItems,
       today,
       receivedQuotes,

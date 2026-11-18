@@ -852,7 +852,10 @@ class JourneyTabHeader extends StatelessWidget {
             textScaler: scaler,
             maxLines: 1,
           )..layout();
-          return painter.width;
+          final width = painter.width;
+          // Review 2026-11-18: a painter holds native text resources.
+          painter.dispose();
+          return width;
         }
 
         final titleWidth = widthOf(

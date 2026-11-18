@@ -208,6 +208,51 @@ test('dashboard next step: the nearest task, then the open essential, never an i
   );
 });
 
+// Review 2026-11-18: the step named a fixed word («البدلة والكسوة») for an
+// item called «فستان» in a helper's plan, and said «اطلب عروض» beside
+// «اطلب أول عرض سعر», the same step twice.
+test('dashboard next step: the essential is named by the plan item, never beside the first quote', () => {
+  const base = {
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    nextTask: null,
+    paymentSchedules: [],
+    today: new Date(2026, 10, 17),
+    receivedQuotes: 0,
+    hasLocation: true,
+    hasBudget: true,
+    guestCount: 4,
+    acceptedProviders: 0,
+    canManageMoney: true,
+    canManageGuests: true,
+    canManagePlan: true,
+    canManageProviders: true,
+    form: 'MASCULINE' as const,
+    planPersona: 'HELPER',
+    mahrRecorded: true,
+    weddingCostsCount: 2,
+    missingEssential: {
+      key: 'DRESS' as const,
+      budgetCategoryId: 'cat-dress',
+      name: 'فستان',
+    },
+  };
+  const named = dashboardPresenter.buildImportantItems({
+    ...base,
+    quoteRequestsCount: 3,
+  });
+  assert.equal(named[0].type, 'ESSENTIAL_MISSING');
+  assert.equal(named[0].title, 'ما اتفقت على فستان بعد');
+
+  const firstQuote = dashboardPresenter.buildImportantItems({
+    ...base,
+    quoteRequestsCount: 0,
+  });
+  const types = firstQuote.map((item) => item.type);
+  assert.ok(types.includes('REQUEST_QUOTE'));
+  assert.ok(!types.includes('ESSENTIAL_MISSING'));
+});
+
 test('dashboard next step: a missing basic still comes before a dated task', () => {
   const items = dashboardPresenter.buildImportantItems({
     weddingPlanId: 'plan-1',

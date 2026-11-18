@@ -214,7 +214,8 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
           ? '$unanswered ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}'
           : null,
       if (notSent > 0) '$notSent ${words.noInvitation}',
-      if (summary.declined > 0) '${summary.declined} ${words.declined}',
+      if (summary.declined > 0)
+        '${summary.declined} ${words.declinedOf(summary.declined)}',
     ].whereType<String>().join(' · ');
     return [
       JourneyBox(
@@ -302,7 +303,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                   if (event.counts.notTold > 0)
                     '${event.counts.notTold} ${words.noInvitation}',
                   if (event.counts.declined > 0)
-                    '${event.counts.declined} ${words.declined}',
+                    '${event.counts.declined} ${words.declinedOf(event.counts.declined)}',
                 ].join(' · '),
                 style: JourneyType.of(
                   JourneyType.detail,

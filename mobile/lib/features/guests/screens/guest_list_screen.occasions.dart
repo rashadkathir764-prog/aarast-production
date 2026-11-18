@@ -109,7 +109,8 @@ class _OccasionSummaryCard extends StatelessWidget {
     final unanswered = counts.unanswered;
     final parts = [
       if (unanswered > 0) '$unanswered ${words.pending}',
-      if (counts.declined > 0) '${counts.declined} ${words.declined}',
+      if (counts.declined > 0)
+        '${counts.declined} ${words.declinedOf(counts.declined)}',
       if (counts.notTold > 0) '${counts.notTold} ${words.noInvitation}',
     ];
     final invited = counts.invited;

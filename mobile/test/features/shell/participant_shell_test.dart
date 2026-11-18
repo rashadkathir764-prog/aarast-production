@@ -185,7 +185,10 @@ void main() {
 
     expect(find.byType(ParticipantTasksScreen), findsOneWidget);
     // RA-MO-57: what is still theirs to do, not the one they finished.
-    expect(find.text('عرس محمد · معك 1'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-18): the owner's tasks hero says
+    // it; the header names the plan.
+    expect(find.text('عرس محمد'), findsOneWidget);
+    expect(find.text('مهمة وحدة باقية'), findsOneWidget);
     expect(find.text('لي'), findsOneWidget);
     expect(find.text('كل مهام الخطة'), findsOneWidget);
     expect(find.text('لك'), findsOneWidget);
@@ -209,7 +212,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('participant-tasks-plan')));
     await tester.pumpAndSettle();
     expect(harness.wedding.readViewCalls, greaterThan(0));
-    expect(find.text('1 من 4'), findsOneWidget);
+    // Changed on purpose (Rashad 2026-11-18): the owner's tasks hero says
+    // it, not a number beside the chips.
+    expect(find.text('خلصت 1 من 4 مهام'), findsOneWidget);
     expect(find.text('حدد موعد عقد القران'), findsOneWidget);
     expect(find.text('متأخرة'), findsOneWidget);
     expect(find.text('خلصت'), findsWidgets);
@@ -251,7 +256,10 @@ void main() {
 
       await _openTab(tester, 'المهام');
       expect(find.byType(ParticipantTasksScreen), findsOneWidget);
-      expect(find.text('عرس محمد · خلصت 1 من 4'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-18): the plan's counts are the
+      // owner's tasks hero; the header names the plan.
+      expect(find.text('عرس محمد'), findsOneWidget);
+      expect(find.text('خلصت 1 من 4 مهام'), findsOneWidget);
       expect(
         find.text('تتابع المهام وين وصلت. الإضافة والتعديل عند العريس.'),
         findsOneWidget,
@@ -272,7 +280,11 @@ void main() {
       // not see who an invitation reached, so no reply is «ما أكّد بعد»,
       // never «ما ردّ» of a guest nobody asked yet.
       // Changed on purpose (critique ض1): each word agrees with its count.
-      expect(find.text('3 ضيوف · 1 أكد · 1 ما أكد بعد'), findsOneWidget);
+      // Changed on purpose (Rashad 2026-11-18): the header counts the
+      // guests; the owner's guests hero says who confirmed, once.
+      expect(find.text('3 ضيوف'), findsOneWidget);
+      expect(find.text('أكد من 3'), findsOneWidget);
+      expect(find.text('1 ما أكد بعد · 1 اعتذر'), findsOneWidget);
       expect(find.text('عبدالله الحمدي'), findsOneWidget);
       expect(find.text('أكّد'), findsOneWidget);
       expect(find.text('اعتذر'), findsOneWidget);
@@ -397,8 +409,14 @@ void main() {
       ),
       findsOneWidget,
     );
+    // The owner's hero now (2026-11-18), in the plan's colour.
     final hero = tester.widget<JourneyBox>(
-      find.byKey(const ValueKey('participant-count-hero')),
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('participant-count-hero')),
+            matching: find.byType(JourneyBox),
+          )
+          .first,
     );
     expect(hero.color, AarastV3Color.rose);
 
@@ -423,7 +441,12 @@ void main() {
     expect(find.text('أنت تتابع بس'), findsOneWidget);
     expect(find.text('أنتِ تتابعين بس'), findsNothing);
     final hero = tester.widget<JourneyBox>(
-      find.byKey(const ValueKey('participant-count-hero')),
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('participant-count-hero')),
+            matching: find.byType(JourneyBox),
+          )
+          .first,
     );
     expect(hero.color, AarastV3Color.rose);
     expect(

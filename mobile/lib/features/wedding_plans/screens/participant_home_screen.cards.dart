@@ -171,53 +171,16 @@ class _CountHero extends StatelessWidget {
     final detail = day == null
         ? 'لما يثبّته ${voice.owner} يطلع هنا'
         : formatArabicWeekdayDayMonth(day);
-    return Semantics(
-      label: [?figure, line, detail].join(' '),
-      excludeSemantics: true,
-      child: JourneyBox(
-        key: const ValueKey('participant-count-hero'),
-        color: voice.accent,
-        radius: 24,
-        padding: const EdgeInsets.all(AarastV3Space.x4),
-        child: Row(
-          children: [
-            if (figure != null) ...[
-              Text(
-                figure,
-                style: JourneyType.of(
-                  JourneyType.count,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.onPrimary,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x3),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    line,
-                    style: JourneyType.of(
-                      JourneyType.lead,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.onPrimary,
-                    ),
-                  ),
-                  Text(
-                    detail,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.onPrimaryMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    // Rashad 2026-11-18 («كل المسارات»): the owner's hero, the same look
+    // and size, in the plan's own colour; it was a flat box with a smaller
+    // figure. Without the five stages under it: that path and its sheet
+    // belong to the owner's home, which steers by them.
+    return JourneyPlanHero(
+      key: const ValueKey('participant-count-hero'),
+      figure: figure,
+      title: line,
+      subtitle: detail,
+      semanticLabel: [?figure, line, detail].join(' '),
     );
   }
 }

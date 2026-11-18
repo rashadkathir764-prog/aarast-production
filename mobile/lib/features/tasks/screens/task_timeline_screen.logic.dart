@@ -55,25 +55,4 @@ String _statusLine(
       : '${_taskCountLabel(week)} خلال أسبوع';
 }
 
-/// The hero's tag: «ثنتين متأخرة», or null with none late.
-String? _lateTag(List<WeddingTask> tasks, DateTime today) {
-  final overdue = tasks
-      .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
-      .length;
-  if (overdue == 0) return null;
-  return arabicCount(
-    overdue,
-    one: 'واحدة متأخرة',
-    two: 'ثنتين متأخرة',
-    few: 'متأخرة',
-    many: 'متأخرة',
-  );
-}
-
-String _taskCountLabel(int count) => arabicCount(
-  count,
-  one: 'مهمة وحدة',
-  two: 'مهمتين',
-  few: 'مهام',
-  many: 'مهمة',
-);
+String _taskCountLabel(int count) => taskCountLabel(count);

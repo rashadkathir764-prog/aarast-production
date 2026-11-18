@@ -8,9 +8,8 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/name_letter.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
-    show PlanReadGuest, PlanReadViewProvider;
+    show PlanReadGuest, PlanReadView, PlanReadViewProvider;
 import '../utils/guest_display.dart';
-import '../widgets/guest_summary_figures.dart';
 
 /// «الضيوف» for a participant who follows the plan without working on its
 /// guests (D52): e01's figures and every guest by name with their reply,
@@ -83,19 +82,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
           ),
           const SizedBox(height: AarastV3Space.x3),
         ],
-        if (view.guestsTotal > 0) ...[
-          JourneyBox(
-            key: const ValueKey('participant-guests-summary'),
-            padding: const EdgeInsets.all(AarastV3Space.x4),
-            child: GuestSummaryFigures(
-              words: words,
-              total: view.guestsTotal,
-              confirmed: view.guestsConfirmed,
-              pending: view.guestsPending,
-            ),
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-        ],
+        // The figures box that was here said the hero's counts again.
         JourneyNote(
           key: const ValueKey('participant-guests-read-only'),
           text:
@@ -157,22 +144,69 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
               // invitation reached, so a guest with no reply is «ما أكّد
               // بعد» (as the figures say), never «ما ردّ» of a guest nobody
               // asked yet; and «0 أكدوا» is not said.
+              // Rashad 2026-11-18 («كل المسارات»): the count of guests only;
+              // the hero under it says who confirmed, as on the owner's list.
               status: view == null || view.guestsTotal == 0
                   ? ''
-                  // Critique ض1: each word agrees with its count, as on the
-                  // owner's list.
-                  : [
-                      words.count(view.guestsTotal),
-                      if (view.guestsConfirmed > 0)
-                        '${view.guestsConfirmed} ${words.confirmedOf(view.guestsConfirmed)}',
-                      if (view.guestsPending > 0)
-                        '${view.guestsPending} ${words.notYetConfirmedOf(view.guestsPending)}',
-                    ].join(' · '),
+                  : words.count(view.guestsTotal),
             ),
+            if (view != null && view.guestsTotal > 0) ...[
+              _ReadGuestsHero(view: view, words: words),
+            ],
             const SizedBox(height: AarastV3Space.x3),
             ...children,
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The owner's guests hero for a reader (Rashad 2026-11-18): the confirmed
+/// as the big figure of all the guests, «كم بيحضر؟», who has not confirmed
+/// and who declined, and the share confirmed as the bar. D3 of the closing
+/// round: the reader does not see who an invitation reached, so a guest
+/// with no reply is «ما أكّد بعد», never «ما ردّ».
+class _ReadGuestsHero extends StatelessWidget {
+  const _ReadGuestsHero({required this.view, required this.words});
+
+  final PlanReadView view;
+  final GuestWords words;
+
+  @override
+  Widget build(BuildContext context) {
+    final confirmed = view.guestsConfirmed;
+    final total = view.guestsTotal;
+    final parts = [
+      if (view.guestsPending > 0)
+        '${view.guestsPending} ${words.notYetConfirmedOf(view.guestsPending)}',
+      if (view.guestsDeclined > 0)
+        '${view.guestsDeclined} ${words.declinedOf(view.guestsDeclined)}',
+    ];
+    return JourneyPlanHero(
+      key: const ValueKey('participant-guests-hero'),
+      figure: '$confirmed',
+      title: '${words.confirmedOf(confirmed)} من $total',
+      subtitle: 'كم بيحضر؟',
+      semanticLabel: [
+        '$confirmed ${words.confirmedOf(confirmed)} من $total',
+        ...parts,
+      ].join('، '),
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (parts.isNotEmpty) ...[
+            Text(
+              parts.join(' · '),
+              style: JourneyType.of(
+                JourneyType.bodySmall,
+                color: AarastV3Color.onPrimary,
+              ),
+            ),
+            const SizedBox(height: AarastV3Space.x2),
+          ],
+          JourneyHeroBar(value: total == 0 ? 0 : confirmed / total),
+        ],
       ),
     );
   }

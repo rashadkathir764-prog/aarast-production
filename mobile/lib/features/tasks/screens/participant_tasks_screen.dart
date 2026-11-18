@@ -21,6 +21,7 @@ import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../utils/task_groups.dart';
 import '../widgets/task_group_title.dart';
+import '../widgets/task_progress_hero.dart';
 import '../widgets/task_row.dart' show taskWhenLabel;
 
 part 'participant_tasks_screen.plan.dart';
@@ -121,24 +122,31 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
             task.status != 'CANCELLED')
           task,
     ];
-    final done = view == null
+    // Rashad 2026-11-18 («كل المسارات»): the owner's tasks hero here too,
+    // counting what the page shows: the reader's own tasks, or the plan's.
+    // The header says the plan only; the hero says the counts once.
+    final status = title;
+    final today = appNow();
+    final Widget? hero = _showsPlan
+        ? view == null || view.tasksTotal == 0
+              ? null
+              : TaskProgressHero(
+                  open: view.tasksTotal - view.tasksDone,
+                  done: view.tasksDone,
+                  total: view.tasksTotal,
+                )
+        : mine.isEmpty
         ? null
-        : '${view.tasksDone} من ${view.tasksTotal}';
-
-    // «عرس محمد · معك 3» for whoever works on tasks, counting what is still
-    // theirs to do (RA-MO-57: it counted the ones they finished); «عرس محمد ·
-    // خلصت 12 من 20» for whoever only follows the plan.
-    final stillOpen = mine.where((task) => !task.isDone).length;
-    final status = [
-      if (title.isNotEmpty) title,
-      if (widget.canManage && stillOpen > 0)
-        'معك $stillOpen'
-      else if (widget.canManage && mine.isNotEmpty)
-        // Nothing left; with no task at all the list itself says so.
-        'خلصت مهامك'
-      else if (!widget.canManage && done != null)
-        'خلصت $done',
-    ].join(' · ');
+        : TaskProgressHero(
+            open: mine
+                .where((task) => isOpenTaskGroup(taskGroupOf(task, today)))
+                .length,
+            done: mine.where((task) => task.isDone).length,
+            total: mine.length,
+            late: mine
+                .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
+                .length,
+          );
 
     final Future<void> Function() onRefresh = _showsPlan
         ? _loadPlan
@@ -167,6 +175,11 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                   ),
               ],
             ),
+            if (hero != null) ...[
+              hero,
+              // The chips under it bring their own gap.
+              if (!widget.canManage) const SizedBox(height: AarastV3Space.x3),
+            ],
             if (widget.canManage) ...[
               const SizedBox(height: AarastV3Space.x3),
               Row(
@@ -186,16 +199,6 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                     selectedColor: context.accent.primary,
                     onTap: () => _select(true),
                   ),
-                  const Spacer(),
-                  if (_planTasks && done != null)
-                    Text(
-                      done,
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
-                    ),
                 ],
               ),
             ],

@@ -165,7 +165,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('1 أكدوا من 3'), findsOneWidget);
-    expect(find.text('1 بلا دعوة · 1 اعتذروا'), findsOneWidget);
+    // Changed on purpose (critique ض1, 2026-11-18): one guest «اعتذر»,
+    // as one «أكد»; «1 اعتذروا» did not agree with its count.
+    expect(find.text('1 بلا دعوة · 1 اعتذر'), findsOneWidget);
   });
 
   testWidgets('everyone answered: no reminder', (tester) async {

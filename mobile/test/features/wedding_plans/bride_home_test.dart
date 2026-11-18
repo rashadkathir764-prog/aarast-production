@@ -479,7 +479,7 @@ void main() {
     }
   });
 
-  testWidgets('her tab bar names «الضيفات» and her home pill is rose', (
+  testWidgets('her tab bar names «الضيفات» and her home tab is rose', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -502,6 +502,11 @@ void main() {
     final pill = tester.widget<AnimatedContainer>(
       find.byKey(const ValueKey('الرئيسية-true')),
     );
-    expect((pill.decoration! as BoxDecoration).color, AarastV3Color.rose);
+    // The chosen tab: her soft rose behind the icon, her rose on the name.
+    expect((pill.decoration! as BoxDecoration).color, AarastV3Color.roseSoft);
+    expect(
+      tester.widget<Text>(find.text('الرئيسية')).style!.color,
+      AarastV3Color.rose,
+    );
   });
 }

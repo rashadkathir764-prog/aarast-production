@@ -51,42 +51,38 @@ class AarastPlanNavigationBar extends StatelessWidget {
             ),
         ];
     final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final extraHeight = ((textScale - 1).clamp(0.0, 1.0) * 18).toDouble();
-    // 48 inside the 5 of padding: every tab is a full touch target (D74).
-    final navigationHeight = 58 + extraHeight;
+    final extraHeight = ((textScale - 1).clamp(0.0, 1.0) * _navigationGrowth)
+        .toDouble();
 
+    // The bar sits on the screen's bottom edge, as the phone's own bars do:
+    // white to the edge, one hairline above it, and the system's gesture
+    // area inside its white. Every tab is the same width and the same shape,
+    // its icon over its name; the chosen one is told by the plan's colour and
+    // a soft pill behind its icon, so the row never jumps when a tab changes.
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x4,
-            0,
-            AarastV3Space.x4,
-            AarastV3Space.x2,
-          ),
-          child: Container(
-            height: navigationHeight,
-            padding: const EdgeInsets.all(AarastV3Space.x1),
-            decoration: BoxDecoration(
-              color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(AarastV3Radius.card),
-              border: Border.all(color: AarastV3Color.line),
-            ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AarastV3Color.paper,
+          border: Border(top: BorderSide(color: AarastV3Color.line)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: _navigationHeight + extraHeight,
             child: Row(
               children: [
                 for (var index = 0; index < items.length; index++)
                   Expanded(
-                    // The active tab is wide enough for its name beside
-                    // its icon.
-                    flex: activeIndex == index ? 3 : 2,
                     child: _PlanNavigationItem(
                       item: items[index],
                       active: activeIndex == index,
                       color: planTabs
                           ? JourneySection.values[index].colorOf(context)
                           : context.accent.primary,
+                      soft: planTabs
+                          ? JourneySection.values[index].softOf(context)
+                          : context.accent.primarySoft,
                       onTap: () => onSelected(index),
                     ),
                   ),
@@ -99,51 +95,62 @@ class AarastPlanNavigationBar extends StatelessWidget {
   }
 }
 
+/// The bar's own height above the system's gesture area: a 32 pill, a 4
+/// step and a 12 name between 8 above and 8 below, every tab a full touch
+/// target (D74).
+const _navigationHeight = 64.0;
+
+/// What the bar grows by at the largest text size the app allows.
+const _navigationGrowth = 18.0;
+
+/// The soft pill behind the chosen tab's icon.
+const _indicatorWidth = 56.0;
+const _indicatorHeight = 32.0;
+
 class _PlanNavigationItem extends StatelessWidget {
   const _PlanNavigationItem({
     required this.item,
     required this.active,
     required this.onTap,
     required this.color,
+    required this.soft,
   });
 
   final AarastNavigationItem item;
   final bool active;
   final VoidCallback onTap;
 
-  /// The tab's section colour: the active tab is a pill in it (b02).
+  /// The plan's colour: the chosen tab's icon and name.
   final Color color;
+
+  /// The plan's soft colour: the pill behind the chosen tab's icon.
+  final Color soft;
 
   @override
   Widget build(BuildContext context) {
-    // The active tab is a pill with an 18 icon and its bold name; the
-    // others a faint 20 icon over a regular muted name.
-    final foreground = active
-        ? AarastV3Color.onPrimary
-        : AarastV3Color.textMuted;
+    final foreground = active ? color : AarastV3Color.textMuted;
     final icon = Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(
-          item.icon,
-          color: active ? AarastV3Color.onPrimary : AarastV3Color.textFaint,
-          size: active ? 18 : 20,
-        ),
+        Icon(item.icon, color: foreground, size: AarastV3Icon.md),
         if (item.badge > 0)
           PositionedDirectional(
-            start: -7,
-            top: -7,
+            start: -AarastV3Space.x2,
+            top: -AarastV3Space.x1,
             child: Container(
-              constraints: const BoxConstraints(minWidth: 16),
-              height: 16,
+              constraints: const BoxConstraints(minWidth: AarastV3Space.x4),
+              height: AarastV3Space.x4,
               padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AarastV3Color.danger,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+                border: Border.all(color: AarastV3Color.paper),
               ),
               child: Text(
                 item.badge > 9 ? '9+' : '${item.badge}',
+                // «9+» reads as written, not mirrored into «+9».
+                textDirection: TextDirection.ltr,
                 textScaler: TextScaler.noScaling,
                 style: JourneyType.of(
                   JourneyType.badge,
@@ -155,20 +162,6 @@ class _PlanNavigationItem extends StatelessWidget {
           ),
       ],
     );
-    // A tab name shrinks a little before it is ever cut.
-    final label = FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(
-        item.label,
-        maxLines: 1,
-        style: JourneyType.of(
-          active ? JourneyType.bodySmall : JourneyType.tabLabel,
-          weight: active ? JourneyType.bold : FontWeight.w400,
-          color: foreground,
-          height: 1.1,
-        ),
-      ),
-    );
 
     return AarastPressable(
       onTap: onTap,
@@ -177,34 +170,43 @@ class _PlanNavigationItem extends StatelessWidget {
           : item.label,
       selected: active,
       borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      child: AnimatedContainer(
-        key: ValueKey('${item.label}-$active'),
-        duration: AppTheme.motionFast,
-        curve: AppTheme.motionCurve,
-        // Fills the bar, which grows with the person's text size.
-        height: double.infinity,
-        padding: const EdgeInsets.all(AarastV3Space.x1),
-        decoration: BoxDecoration(
-          color: active ? color : null,
-          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-        ),
-        child: active
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  icon,
-                  const SizedBox(width: AarastV3Space.x1),
-                  Flexible(child: label),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  icon,
-                  const SizedBox(height: AarastV3Space.half),
-                  label,
-                ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              key: ValueKey('${item.label}-$active'),
+              duration: AppTheme.motionFast,
+              curve: AppTheme.motionCurve,
+              width: _indicatorWidth,
+              height: _indicatorHeight,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active ? soft : soft.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(AarastV3Radius.pill),
               ),
+              child: icon,
+            ),
+            const SizedBox(height: AarastV3Space.x1),
+            // A tab name shrinks a little before it is ever cut.
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  style: JourneyType.of(
+                    JourneyType.label,
+                    weight: active ? JourneyType.bold : FontWeight.w500,
+                    color: active ? color : AarastV3Color.textMuted,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

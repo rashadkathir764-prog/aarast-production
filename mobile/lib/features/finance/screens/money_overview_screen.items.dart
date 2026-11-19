@@ -626,40 +626,37 @@ class _MoneyItemRow extends StatelessWidget {
                           ),
                           const SizedBox(width: AarastV3Space.x1),
                         ],
-                        // The title keeps two thirds of the row; the amount
-                        // has the rest and shrinks in it (an even split
-                        // broke «الدفعة الأولى» onto two lines).
+                        // The amount takes what it needs, up to half the
+                        // row, and the title the rest (JourneyEndRow).
                         Expanded(
-                          flex: 2,
-                          child: Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: JourneyType.of(
-                              JourneyType.lead,
-                              weight: JourneyType.bold,
-                              color: ink,
-                            ),
-                          ),
-                        ),
-                        if (amount.isNotEmpty) ...[
-                          const SizedBox(width: AarastV3Space.x2),
-                          // An amount shrinks before it pushes past the row.
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: AlignmentDirectional.centerEnd,
-                              child: Text(
-                                amount,
-                                style: JourneyType.of(
-                                  JourneyType.lead,
-                                  weight: JourneyType.bold,
-                                  color: ink,
-                                ),
+                          child: JourneyEndRow(
+                            share: JourneyEndRow.amountShare,
+                            start: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: JourneyType.of(
+                                JourneyType.lead,
+                                weight: JourneyType.bold,
+                                color: ink,
                               ),
                             ),
+                            end: amount.isEmpty
+                                ? null
+                                : FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: Text(
+                                      amount,
+                                      style: JourneyType.of(
+                                        JourneyType.lead,
+                                        weight: JourneyType.bold,
+                                        color: ink,
+                                      ),
+                                    ),
+                                  ),
                           ),
-                        ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: AarastV3Space.x2),

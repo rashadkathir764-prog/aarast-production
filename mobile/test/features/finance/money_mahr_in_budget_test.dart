@@ -599,9 +599,9 @@ void main() {
         planTitle: 'عرس محمد',
         hideAmounts: false,
       );
-      expect(text, contains('• الميزانية: 7 مليون ر.ي، فيها المهر'));
-      expect(text, contains('• باقي من الميزانية: 5 مليون ر.ي'));
-      expect(text, contains('• المهر (من الميزانية): 2 مليون ر.ي'));
+      expect(text, contains('• الميزانية: 7\u00a0مليون\u00a0ر.ي، فيها المهر'));
+      expect(text, contains('• باقي من الميزانية: 5\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• المهر (من الميزانية): 2\u00a0مليون\u00a0ر.ي'));
       expect(text, isNot(contains('برا الميزانية')));
     });
 
@@ -611,10 +611,10 @@ void main() {
         planTitle: 'عرس محمد',
         hideAmounts: false,
       );
-      expect(text, contains('• الميزانية: 7 مليون ر.ي'));
+      expect(text, contains('• الميزانية: 7\u00a0مليون\u00a0ر.ي'));
       expect(text, isNot(contains('فيها المهر')));
-      expect(text, contains('• باقي من الميزانية: 7 مليون ر.ي'));
-      expect(text, contains('• المهر (برا الميزانية): 2 مليون ر.ي'));
+      expect(text, contains('• باقي من الميزانية: 7\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• المهر (برا الميزانية): 2\u00a0مليون\u00a0ر.ي'));
     });
   });
 

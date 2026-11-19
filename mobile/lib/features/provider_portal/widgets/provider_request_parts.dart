@@ -15,6 +15,7 @@ import '../data/provider_offer_queue.dart'
     show ProviderDroppedOffer, ProviderOfferDropReason;
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_join_parts.dart' show providerMomentLabel;
+import '../../../core/utils/keep_currency_on_line.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _requestLabelWidth = 92.0;
@@ -229,10 +230,10 @@ String? providerBudgetLabel(QuoteRequest quote) {
   final max = providerGroupedAmount(quote.budgetMax);
   final currency = currencyLabelAr(quote.weddingPlanCurrency);
   if (min != null && max != null && min != max) {
-    return '$min لين $max $currency';
+    return keepCurrencyOnLine('$min لين $max $currency');
   }
   final one = max ?? min;
-  return one == null ? null : '$one $currency';
+  return one == null ? null : keepCurrencyOnLine('$one $currency');
 }
 
 /// «550,000 ر.ي»: the money formatter's one reading (critique ب2), or what

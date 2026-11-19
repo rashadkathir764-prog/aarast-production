@@ -105,8 +105,8 @@ void main() {
 
       expect(find.text('قاعة السلام'), findsOneWidget);
       // f03: the price box, then the packages, each in its own currency.
-      expect(find.text('1,200 ر.س'), findsOneWidget);
-      expect(find.text('3,500 ر.ي'), findsOneWidget);
+      expect(find.text('1,200\u00a0ر.س'), findsOneWidget);
+      expect(find.text('3,500\u00a0ر.ي'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       // D13: the old page's planning-reference badge is not in f03.
       expect(find.text('مرجع تخطيطي'), findsNothing);
@@ -219,7 +219,10 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
+          expect(
+            find.text('450,000\u00a0-\u00a0600,000\u00a0ر.ي'),
+            findsOneWidget,
+          );
           expect(
             find.text('ضمن بندك'),
             shown ? findsOneWidget : findsNothing,
@@ -535,8 +538,8 @@ void main() {
       expect(find.text('قاعة السلام'), findsOneWidget);
       expect(find.text('قاعة الأمل'), findsOneWidget);
       // Each in its own currency, never the raw code.
-      expect(find.text('1,200 ر.س'), findsOneWidget);
-      expect(find.text('باقة استقبال · 3,500 ر.ي'), findsNWidgets(2));
+      expect(find.text('1,200\u00a0ر.س'), findsOneWidget);
+      expect(find.text('باقة استقبال · 3,500\u00a0ر.ي'), findsNWidgets(2));
       expect(find.text('حسب الطلب'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       // Neither is marked better (C47, «أنسب لك» dropped).

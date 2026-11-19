@@ -11,16 +11,17 @@ void main() {
   test('a record amount is written whole (م1)', () {
     expect(
       fullMoneyParts(1250000, currencyCode: 'YER').plainText,
-      '1,250,000 ر.ي',
+      '1,250,000\u00a0ر.ي',
     );
     expect(
       fullMoneyParts(-450000, currencyCode: 'SAR').plainText,
-      '-450,000 ر.س',
+      '-450,000\u00a0ر.س',
     );
     expect(
       stripMoneyDirectionalityMarks(
         formatFullMoney(999999, currencyCode: 'YER'),
       ),
+      // Stripped for reading back: its no-break spaces become plain.
       '999,999 ر.ي',
     );
   });
@@ -30,7 +31,7 @@ void main() {
       fullMoneyFromText('1250000', 'YER'),
       isNot(fullMoneyFromText('1340000', 'YER')),
     );
-    expect(fullMoneyFromText('1,250,000', null), '1,250,000 ر.ي');
+    expect(fullMoneyFromText('1,250,000', null), '1,250,000\u00a0ر.ي');
     expect(fullMoneyFromText('', 'YER'), isNull);
     expect(fullMoneyFromText('abc', 'YER'), isNull);
   });
@@ -40,19 +41,19 @@ void main() {
     () {
       expect(
         sumSafeMoneyParts(3000000, currencyCode: 'YER').plainText,
-        '3 مليون ر.ي',
+        '3\u00a0مليون\u00a0ر.ي',
       );
       expect(
         sumSafeMoneyParts(1500000, currencyCode: 'YER').plainText,
-        '1.5 مليون ر.ي',
+        '1.5\u00a0مليون\u00a0ر.ي',
       );
       expect(
         sumSafeMoneyParts(1450000, currencyCode: 'YER').plainText,
-        '1,450,000 ر.ي',
+        '1,450,000\u00a0ر.ي',
       );
       expect(
         sumSafeMoneyParts(800000, currencyCode: 'YER').plainText,
-        '800,000 ر.ي',
+        '800,000\u00a0ر.ي',
       );
       expect(
         sumSafeMoneyFigure(1450000, currencyCode: 'YER'),
@@ -73,7 +74,7 @@ void main() {
   test('a headline keeps the short way', () {
     expect(
       compactMoneyParts(1250000, currencyCode: 'YER').plainText,
-      '1.3 مليون ر.ي',
+      '1.3\u00a0مليون\u00a0ر.ي',
     );
   });
 }

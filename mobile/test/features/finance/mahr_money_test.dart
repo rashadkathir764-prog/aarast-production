@@ -161,7 +161,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.textContaining('2.2 مليون'), findsOneWidget);
+      expect(find.textContaining('2.2\u00a0مليون'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('money-whole-left')),
@@ -237,7 +237,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('money-whole-budget')),
-          matching: find.textContaining('5.4 مليون'),
+          matching: find.textContaining('5.4\u00a0مليون'),
         ),
         findsOneWidget,
       );
@@ -261,7 +261,7 @@ void main() {
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('money-whole-budget')),
-            matching: find.textContaining('5.4 مليون'),
+            matching: find.textContaining('5.4\u00a0مليون'),
           ),
           findsOneWidget,
         );
@@ -276,7 +276,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('money-whole-budget')),
-          matching: find.textContaining('2.4 مليون'),
+          matching: find.textContaining('2.4\u00a0مليون'),
         ),
         findsOneWidget,
       );
@@ -295,7 +295,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('money-whole-budget')),
-          matching: find.textContaining('2.4 مليون'),
+          matching: find.textContaining('2.4\u00a0مليون'),
         ),
         findsOneWidget,
       );
@@ -467,7 +467,7 @@ void main() {
     // Her voice: what she spent of what reached her.
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('money-cash-how'))).data,
-      contains('صرفتِ منها 1.2 مليون'),
+      contains('صرفتِ منها 1.2\u00a0مليون'),
     );
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('money-cash-figure'))).data,

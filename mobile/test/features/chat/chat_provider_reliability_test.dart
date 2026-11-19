@@ -1046,7 +1046,7 @@ void main() {
       );
       expect(find.text('وصلك عرض'), findsOneWidget);
       expect(find.text('ينتهي بعد 6 أيام'), findsOneWidget);
-      expect(find.text('صور وفيديو · 550,000 ر.ي'), findsOneWidget);
+      expect(find.text('صور وفيديو · 550,000\u00a0ر.ي'), findsOneWidget);
       expect(find.text('مصورين · فيلم 10 دقائق · ألبوم مطبوع'), findsOneWidget);
       expect(find.text('اقبل العرض'), findsOneWidget);
       expect(find.text('قارن'), findsOneWidget);

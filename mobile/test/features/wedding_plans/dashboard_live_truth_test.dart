@@ -147,7 +147,7 @@ void main() {
     // figure, so «المال» over «باقي تدفع» is one row.
     expect(find.text('المال'), findsNothing);
     expect(find.text('باقي تدفع'), findsOneWidget);
-    expect(find.text('500,000 ر.س'), findsOneWidget);
+    expect(find.text('500,000\u00a0ر.س'), findsOneWidget);
     // V-01: the far side writes every figure short, with its unit.
     expect(find.text('اتفقت على 900 ألف'), findsOneWidget);
     expect(find.text('دفعت 400 ألف'), findsOneWidget);
@@ -172,7 +172,7 @@ void main() {
     expect(find.text('••••'), findsOneWidget);
     expect(find.text('اتفقت على ••••'), findsOneWidget);
     expect(find.text('دفعت ••••'), findsOneWidget);
-    expect(find.text('500,000 ر.س'), findsNothing);
+    expect(find.text('500,000\u00a0ر.س'), findsNothing);
     expect(
       tester
           .getSemantics(

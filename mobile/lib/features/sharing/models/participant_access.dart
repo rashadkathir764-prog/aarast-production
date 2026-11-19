@@ -131,5 +131,9 @@ String participantOwnRoleWord(String? role, {bool feminine = false}) =>
 String? participantPhone(String? phone) {
   final display = PhoneNumberUtils.display(phone);
   if (display == null) return null;
-  return display.startsWith('+967 ') ? display.substring(5) : display;
+  // The display joins its groups with no-break spaces (D118).
+  const prefix = '+967\u00a0';
+  return display.startsWith(prefix)
+      ? display.substring(prefix.length)
+      : display;
 }

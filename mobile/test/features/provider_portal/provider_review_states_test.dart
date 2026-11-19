@@ -242,7 +242,7 @@ void main() {
       expect(find.text('صنعاء'), findsOneWidget);
       expect(find.text('نبذة النشاط'), findsOneWidget);
       expect(find.text('خدمة «صور وفيديو»'), findsOneWidget);
-      expect(find.text('550,000 ر.ي'), findsOneWidget);
+      expect(find.text('550,000\u00a0ر.ي'), findsOneWidget);
       expect(
         find.text('اكتب ايش تشمل: كم صورة، ومدة الفيلم، والألبوم.'),
         findsOneWidget,
@@ -287,7 +287,7 @@ void main() {
         await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
         await tester.pumpAndSettle();
         expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
-        expect(find.text('600,000 ر.ي'), findsOneWidget);
+        expect(find.text('600,000\u00a0ر.ي'), findsOneWidget);
       },
     );
 

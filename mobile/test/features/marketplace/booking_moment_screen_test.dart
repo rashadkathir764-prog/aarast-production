@@ -127,7 +127,7 @@ void main() {
     expect(find.text('ليلتك محجوزة\nعند فرقة الأفراح'), findsOneWidget);
     expect(find.text('الخميس 21 يناير · بعد المغرب'), findsOneWidget);
     expect(find.text('الفنان والفرقة'), findsOneWidget);
-    expect(find.text('400,000 ر.ي'), findsOneWidget);
+    expect(find.text('400,000\u00a0ر.ي'), findsOneWidget);
     // No needed-providers list exists to count «4 من 6» against (C25).
     expect(find.textContaining('من 6'), findsNothing);
     // Without a cost to pay into, the moment just closes.
@@ -143,7 +143,7 @@ void main() {
     final opened = await _pump(tester, finance: finance);
 
     expect(find.text('العربون'), findsOneWidget);
-    expect(find.text('100,000 ر.ي · 14 يناير'), findsOneWidget);
+    expect(find.text('100,000\u00a0ر.ي · 14 يناير'), findsOneWidget);
     await tester.tap(find.text('سجّل العربون'));
     await tester.pumpAndSettle();
 
@@ -216,7 +216,7 @@ void main() {
 
     await _pump(tester, finance: finance);
 
-    expect(find.text('400,000 ر.ي'), findsNothing);
+    expect(find.text('400,000\u00a0ر.ي'), findsNothing);
     expect(find.text('••••'), findsOneWidget);
     expect(find.text('•••• · 14 يناير'), findsOneWidget);
   });

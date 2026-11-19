@@ -1,4 +1,5 @@
 import 'currency_label.dart';
+import 'keep_currency_on_line.dart';
 
 class CompactYemeniMoneyParts {
   const CompactYemeniMoneyParts({
@@ -13,9 +14,12 @@ class CompactYemeniMoneyParts {
   final String currency;
   final String spokenCurrency;
 
+  /// The amount as text, kept on one line ([keepCurrencyOnLine]).
   String get plainText {
     final unit = millionUnit;
-    return unit == null ? '$number $currency' : '$number $unit $currency';
+    return keepCurrencyOnLine(
+      unit == null ? '$number $currency' : '$number $unit $currency',
+    );
   }
 
   String get semanticText {
@@ -32,14 +36,10 @@ class CompactYemeniMoneyParts {
   /// reordering from turning `1.5 مليون ر.ي` into a detached unit/currency.
   String get directionalText {
     final unit = millionUnit;
-    // A line never breaks inside an amount: no-break spaces between its
-    // parts, and a word joiner after the dot of «ر.ي» (a narrow row read
-    // «300,000 ر.» over «ي»).
-    final shown = currency.replaceAll('.', '.$_wordJoiner');
     final suffix = unit == null
-        ? _isolateRtl(shown)
-        : '${_isolateRtl(unit)}$_noBreakSpace${_isolateRtl(shown)}';
-    return _isolateLtr('$number$_noBreakSpace$suffix');
+        ? _isolateRtl(currency)
+        : '${_isolateRtl(unit)} ${_isolateRtl(currency)}';
+    return keepCurrencyOnLine(_isolateLtr('$number $suffix'));
   }
 }
 
@@ -148,8 +148,7 @@ String plainCompactYemeniMoneyForTests(num value) {
 
 String stripMoneyDirectionalityMarks(String value) {
   return value
-      .replaceAll(_wordJoiner, '')
-      .replaceAll(_noBreakSpace, ' ')
+      .replaceAll('\u00a0', ' ')
       .replaceAll('\u2066', '')
       .replaceAll('\u2067', '')
       .replaceAll('\u2068', '')
@@ -157,9 +156,6 @@ String stripMoneyDirectionalityMarks(String value) {
       .replaceAll('\u200e', '')
       .replaceAll('\u200f', '');
 }
-
-const _noBreakSpace = '\u00a0';
-const _wordJoiner = '\u2060';
 
 String _isolateLtr(String value) => '\u2066$value\u2069';
 

@@ -868,7 +868,7 @@ void main() {
 
     expect(find.text('فرقة الأفراح'), findsOneWidget);
     expect(find.text('ضوء صنعاء'), findsOneWidget);
-    expect(find.text('350,000 - 450,000 ر.ي'), findsOneWidget);
+    expect(find.text('350,000\u00a0-\u00a0450,000\u00a0ر.ي'), findsOneWidget);
     // «حسب الطلب» only where nothing is priced, never while unknown.
     expect(find.text('حسب الطلب'), findsOneWidget);
     expect(marketplace.pageLoads, ['p3']);

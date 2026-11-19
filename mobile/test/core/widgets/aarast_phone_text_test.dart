@@ -28,12 +28,14 @@ void main() {
       ),
     );
 
-    final text = tester.widget<Text>(find.text('+967 777 758 200'));
+    final text = tester.widget<Text>(
+      find.text('+967\u00a0777\u00a0758\u00a0200'),
+    );
     expect(text.textDirection, TextDirection.ltr);
     expect(text.textAlign, TextAlign.right);
     expect(
-      tester.getSemantics(find.text('+967 777 758 200')).label,
-      '+967 777 758 200',
+      tester.getSemantics(find.text('+967\u00a0777\u00a0758\u00a0200')).label,
+      '+967\u00a0777\u00a0758\u00a0200',
     );
     expect(tester.takeException(), isNull);
     semantics.dispose();

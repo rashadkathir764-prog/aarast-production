@@ -349,7 +349,10 @@ void main() {
     expect(find.text('بعد العرس'), findsOneWidget);
     expect(find.text('1.9'), findsOneWidget);
     expect(find.text('مليون باقي عليك'), findsOneWidget);
-    expect(find.text('سددت 2.3 مليون ر.ي من 4.2 مليون ر.ي'), findsOneWidget);
+    expect(
+      find.text('سددت 2.3\u00a0مليون\u00a0ر.ي من 4.2\u00a0مليون\u00a0ر.ي'),
+      findsOneWidget,
+    );
     // No bookings without an account, so no providers to rate.
     expect(find.text('قيّم'), findsNothing);
   });

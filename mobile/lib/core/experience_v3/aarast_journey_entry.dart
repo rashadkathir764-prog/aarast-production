@@ -497,6 +497,10 @@ class _JourneyPhoneFieldState extends State<JourneyPhoneField> {
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9٠-٩+ ]'),
                             ),
+                            // The code goes before the length is cut: a long
+                            // pasted «00 967 777 123 456» kept its code and
+                            // lost its last digit.
+                            const _CountryCodeFormatter(),
                             LengthLimitingTextInputFormatter(16),
                             const _PhoneGroupsFormatter(),
                           ],
@@ -834,8 +838,31 @@ class JourneyCodeResendRow extends StatelessWidget {
   }
 }
 
+/// A Yemeni number pasted or autofilled with its country code («+967…»,
+/// «00967…», «٠٠٩٦٧…», spaced or not) loses the code: the field already shows
+/// +967, and read «+967 +967…». Any other text is left as it is.
+class _CountryCodeFormatter extends TextInputFormatter {
+  const _CountryCodeFormatter();
+
+  static final _withCode = RegExp(r'^(?:\+|00|٠٠)?(?:967|٩٦٧)([0-9٠-٩]{9})$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final match = _withCode.firstMatch(newValue.text.replaceAll(' ', ''));
+    if (match == null) return newValue;
+    final local = match.group(1)!;
+    return TextEditingValue(
+      text: local,
+      selection: TextSelection.collapsed(offset: local.length),
+    );
+  }
+}
+
 /// «777 123 456»: a nine-digit local number in threes as it is typed, the
-/// way it is read out. Anything else (a +967 or 00 prefix pasted in) is left
+/// way it is read out. Anything longer (a number of another country) is left
 /// as typed; the number is normalised before it is sent.
 class _PhoneGroupsFormatter extends TextInputFormatter {
   const _PhoneGroupsFormatter();
@@ -851,7 +878,9 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
     // A backspace that took only a group's space takes the digit before it,
     // or the space would come back and the backspace would do nothing.
     final oldDigits = oldValue.text.replaceAll(' ', '');
-    if (newValue.text.length < oldValue.text.length &&
+    // Only a single character gone counts: a paste that leaves the same
+    // digits (a number with its code, cleaned above) is not a backspace.
+    if (newValue.text.length == oldValue.text.length - 1 &&
         digits == oldDigits &&
         before > 0) {
       digits = digits.substring(0, before - 1) + digits.substring(before);
@@ -861,16 +890,6 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
       return const TextEditingValue(
         selection: TextSelection.collapsed(offset: 0),
       );
-    }
-    // A pasted or autofilled number that carries its country code
-    // («+967777123456», «00967…») sits after the field's own +967: the code
-    // is dropped, so the field never reads «+967 +967…».
-    final withCode = RegExp(
-      r'^(?:\+|00)?(?:967|٩٦٧)([0-9٠-٩]{9})$',
-    ).firstMatch(digits);
-    if (withCode != null) {
-      digits = withCode.group(1)!;
-      before = digits.length;
     }
     if (!RegExp(r'^[0-9٠-٩]{1,9}$').hasMatch(digits)) return newValue;
     final buffer = StringBuffer();

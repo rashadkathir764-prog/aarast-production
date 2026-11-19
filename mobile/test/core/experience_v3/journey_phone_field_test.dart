@@ -77,6 +77,12 @@ void main() {
     expect(controller.text, '777 123 456');
     await tester.enterText(find.byType(TextField), '00967777123456');
     expect(controller.text, '777 123 456');
+    // Longer than the field's 16 with its spaces: the code goes first, so
+    // the last digit is kept.
+    await tester.enterText(find.byType(TextField), '00 967 777 123 456');
+    expect(controller.text, '777 123 456');
+    await tester.enterText(find.byType(TextField), '٠٠٩٦٧٧٧٧١٢٣٤٥٦');
+    expect(controller.text, '٧٧٧ ١٢٣ ٤٥٦');
   });
 
   testWidgets('any other number with a code is left as typed', (tester) async {

@@ -96,11 +96,11 @@ void main() {
       );
 
       expect(text, startsWith('ملخص ميزانية «عرس أحمد»'));
-      expect(text, contains('الميزانية: 5 مليون'));
-      expect(text, contains('• تكلفة العرس المتوقعة: 3.2 مليون'));
+      expect(text, contains('الميزانية: 5\u00a0مليون'));
+      expect(text, contains('• تكلفة العرس المتوقعة: 3.2\u00a0مليون'));
       expect(text, contains('(64٪ من الميزانية)'));
-      expect(text, contains('• باقي من الميزانية: 1.8 مليون'));
-      expect(text, contains('• الذهب: 1.7 مليون'));
+      expect(text, contains('• باقي من الميزانية: 1.8\u00a0مليون'));
+      expect(text, contains('• الذهب: 1.7\u00a0مليون'));
       expect(text.indexOf('الذهب'), lessThan(text.indexOf('القاعة')));
       expect(text, isNot(contains('شهر العسل')));
       expect(text, contains('⚠ فوق المخصص لها: الذهب'));
@@ -109,7 +109,7 @@ void main() {
         expect(text, isNot(contains(formal)), reason: formal);
       }
       expect(text, isNot(contains('777')));
-      expect(text, isNot(contains('9 مليون')));
+      expect(text, isNot(contains('9\u00a0مليون')));
     },
   );
 
@@ -183,21 +183,23 @@ void main() {
       // Before D59: the agreements with the mahr, 7.9 million (113٪).
       expect(
         text,
-        contains('• تكلفة العرس المتوقعة: 4.9 مليون ر.ي (70٪ من الميزانية)'),
+        contains(
+          '• تكلفة العرس المتوقعة: 4.9\u00a0مليون\u00a0ر.ي (70٪ من الميزانية)',
+        ),
       );
       expect(text, isNot(contains('7.9')));
-      expect(text, contains('• اندفع: 2.6 مليون ر.ي'));
-      expect(text, contains('• منه دفعه غير العريس: 1.3 مليون ر.ي'));
-      expect(text, contains('• باقي على الاتفاقات: 2.3 مليون ر.ي'));
+      expect(text, contains('• اندفع: 2.6\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• منه دفعه غير العريس: 1.3\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• باقي على الاتفاقات: 2.3\u00a0مليون\u00a0ر.ي'));
       expect(
         text,
         contains(
-          '• المهر (برا الميزانية): 3 مليون ر.ي، انسلّم منه 2 مليون ر.ي',
+          '• المهر (برا الميزانية): 3\u00a0مليون\u00a0ر.ي، انسلّم منه 2\u00a0مليون\u00a0ر.ي',
         ),
       );
       // Never among the biggest items.
       expect(text, isNot(contains('• المهر: ')));
-      expect(text, contains('• القاعة: 2 مليون ر.ي'));
+      expect(text, contains('• القاعة: 2\u00a0مليون\u00a0ر.ي'));
 
       final hidden = moneyShareText(
         groomWithMahr(),
@@ -228,7 +230,7 @@ void main() {
       bridePlan: true,
     );
     expect(text, isNot(contains('المهر')));
-    expect(text, isNot(contains('3 مليون')));
+    expect(text, isNot(contains('3\u00a0مليون')));
   });
 
   test('the task summary counts progress and lists the next open tasks', () {

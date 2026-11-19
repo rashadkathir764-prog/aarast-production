@@ -4044,11 +4044,12 @@ function assertTrackedPlanningBatch({
   // (fullMoneyParts, formatFullMoney, fullMoneyFromText), the sum-safe way
   // (sumSafeMoneyParts) and formatMoneyNumber; the short way is unchanged.
   // Re-pinned (2026-11-18, Rashad's «صلح كل شيء»): an amount never breaks
-  // across lines (no-break spaces, a word joiner after «ر.»); the figures
-  // themselves are unchanged.
+  // across lines; the figures themselves are unchanged. Re-pinned again
+  // (2026-11-19, the code review): every reading, plainText included, goes
+  // through the one keepCurrencyOnLine, and the word joiner is gone.
   assert.equal(
     createHash('sha256').update(coreFormatterText).digest('hex'),
-    '1602b5b2445664dc264e7695dfafba70a59d83da43289b087e56c7896dc6aeda',
+    'd8a5691fe1137d581e02759f7e5c5d9c95cbad09b4bbc3fc1aaa34a9af528f65',
     'Planning batch Core money formatter normalized hash mismatch',
   );
   const restoredFinanceFormatterText = coreFormatterText.replace(
@@ -4060,7 +4061,7 @@ function assertTrackedPlanningBatch({
     createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
     // Re-pinned with the one above (2026-11-18): the same file, read back
     // under its old name.
-    '996dc0708ffb8469ccd009adb1db48c84d6104df62cc1f403004bf699b365c21',
+    '32433ecb334f9552b584f755282d42e316f2f535f2639fe1089bb64394d1dbc4',
     'Planning batch original Finance money formatter hash mismatch',
   );
 

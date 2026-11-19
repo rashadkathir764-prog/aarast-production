@@ -520,7 +520,10 @@ void main() {
       // expected cost (estimates are in it).
       final cost = find.byKey(const ValueKey('money-whole-cost'));
       expect(
-        find.descendant(of: cost, matching: find.textContaining('2.6 مليون')),
+        find.descendant(
+          of: cost,
+          matching: find.textContaining('2.6\u00a0مليون'),
+        ),
         findsOneWidget,
       );
 
@@ -542,7 +545,7 @@ void main() {
       await _open(tester, both!);
       // Mahr 800,000; hall 800,000 left + photo 350,000: 1,150,000.
       expect(find.textContaining('باقي المهر 800,000'), findsOneWidget);
-      expect(find.textContaining('اتفاقاتك 1.2 مليون'), findsOneWidget);
+      expect(find.textContaining('اتفاقاتك 1.2\u00a0مليون'), findsOneWidget);
 
       final hallOnly = await tester.runAsync(
         () => _plan(costs: _hallCost, payments: _hallPaid, dates: _hallDates),
@@ -747,7 +750,7 @@ void main() {
       final cover = await _coverText(tester);
       // «معك» 1,600,000 (2,000,000 in, 400,000 paid), less 300,000 and
       // 500,000.
-      expect(cover, contains('معك 1.6 مليون'));
+      expect(cover, contains('معك 1.6\u00a0مليون'));
       expect(cover, contains('يكفي دفعاتك بمواعيدها'));
       expect(cover, contains('ويبقى 800,000'));
       expect(find.byKey(const ValueKey('money-late-due')), findsOneWidget);

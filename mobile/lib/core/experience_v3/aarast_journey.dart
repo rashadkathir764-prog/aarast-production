@@ -246,20 +246,19 @@ class JourneyButton extends StatelessWidget {
           Icon(icon, size: AarastV3Icon.md, color: fg),
           const SizedBox(width: AarastV3Space.x2),
         ],
-        // A button's words are one line: they shrink a little in a narrow
-        // button rather than break («حفظ» over «الضيف»).
+        // A button's words keep the reader's text size: in a narrow button
+        // they wrap to a second line, never shrink out of reach.
         Flexible(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: JourneyType.of(
-                large ? JourneyType.lead : JourneyType.body,
-                weight: JourneyType.bold,
-                color: fg,
-              ),
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              large ? JourneyType.lead : JourneyType.body,
+              weight: JourneyType.bold,
+              color: fg,
+              height: AarastV3Line.tight,
             ),
           ),
         ),
@@ -1094,10 +1093,54 @@ class _SectionLink extends StatelessWidget {
   }
 }
 
-/// A row in a white list: icon tile, title, one-line subtitle, trailing.
-/// The most of a list row its end (an amount, a tag) takes.
-const _trailingShare = 0.4;
+/// A row's words and its end (an amount, a tag, an action), D118: the end
+/// takes what it needs, up to [share] of the row's own width, and the words
+/// take the rest. The one rule for every row with an end; the end is never
+/// scaled, so a button or a switch keeps its full touch target, and text in
+/// it wraps (or, for a figure, is wrapped in a FittedBox by its caller).
+class JourneyEndRow extends StatelessWidget {
+  const JourneyEndRow({
+    required this.start,
+    required this.end,
+    this.share = actionShare,
+    this.gap = AarastV3Space.x2,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    super.key,
+  });
 
+  /// An action, a tag, or a short line at a row's end.
+  static const actionShare = 0.4;
+
+  /// An amount beside its title.
+  static const amountShare = 0.5;
+
+  final Widget start;
+  final Widget? end;
+  final double share;
+  final double gap;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final end = this.end;
+    if (end == null) return start;
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          Expanded(child: start),
+          SizedBox(width: gap),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth * share),
+            child: end,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A row in a white list: icon tile, title, one-line subtitle, trailing.
 class JourneyListRow extends StatelessWidget {
   const JourneyListRow({
     required this.icon,
@@ -1128,8 +1171,8 @@ class JourneyListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final row = Padding(
       padding: AarastV3Density.chipInsets,
-      child: LayoutBuilder(
-        builder: (context, constraints) => Row(
+      child: JourneyEndRow(
+        start: Row(
           children: [
             JourneyIconTile(
               icon: icon,
@@ -1163,24 +1206,9 @@ class JourneyListRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: AarastV3Space.x2),
-              // An amount or a tag takes at most two fifths of the row itself
-              // (it took 45% of the screen, and squeezed the title onto two
-              // lines), and shrinks in it rather than wrap.
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * _trailingShare,
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: trailing,
-                ),
-              ),
-            ],
           ],
         ),
+        end: trailing,
       ),
     );
     if (onTap == null) return row;

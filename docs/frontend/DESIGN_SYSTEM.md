@@ -158,6 +158,15 @@ width or size written as a number in `lib`, and on any named fixed height.
   centred panel 400 (`narrowWidth`).
 - A row's or a card's title takes at most two lines (`titleLines`) and a
   secondary line one; the rest is read on the page it opens.
+- A row with an end (an amount, a tag, an action) is a `JourneyEndRow`: the
+  end takes what it needs, up to 40% of the row (an amount beside its title
+  up to 50%), and the words the rest. The end is never scaled, so a button
+  keeps its touch target; a figure in it may sit in a FittedBox.
+- A button's words keep the reader's text size and wrap to a second line
+  rather than shrink.
+- An amount and a phone number never break across lines: every reading of
+  the money formatter goes through `keepCurrencyOnLine`, and
+  `PhoneNumberUtils.display` joins its groups with no-break spaces.
 - The bottom bar (D117) rests on the screen's edge in the shape of the app's
   sheets; every tab is one width, its icon over its name, the chosen one
   filled in the plan's colour.

@@ -218,16 +218,40 @@ class _TimelineRow extends StatelessWidget {
             children: [
               mark,
               const SizedBox(width: AarastV3Space.x3),
-              // The title keeps two thirds of the row; the amount has the
-              // rest and shrinks in it (an even split broke «الدفعة الأولى»
-              // onto two lines).
+              // The amount takes what it needs, up to half the row, and the
+              // title the rest (JourneyEndRow).
               Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.title,
+                child: JourneyEndRow(
+                  share: JourneyEndRow.amountShare,
+                  start: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.title,
+                        style: JourneyType.of(
+                          JourneyType.lead,
+                          weight: JourneyType.bold,
+                          color: muted
+                              ? AarastV3Color.textFaint
+                              : AarastV3Color.ink,
+                        ),
+                      ),
+                      Text(
+                        entry.line,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: state == _EntryState.current
+                              ? AarastV3Color.brandAccentStrong
+                              : AarastV3Color.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  end: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Text(
+                      amount,
                       style: JourneyType.of(
                         JourneyType.lead,
                         weight: JourneyType.bold,
@@ -235,32 +259,6 @@ class _TimelineRow extends StatelessWidget {
                             ? AarastV3Color.textFaint
                             : AarastV3Color.ink,
                       ),
-                    ),
-                    Text(
-                      entry.line,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: state == _EntryState.current
-                            ? AarastV3Color.brandAccentStrong
-                            : AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x2),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Text(
-                    amount,
-                    style: JourneyType.of(
-                      JourneyType.lead,
-                      weight: JourneyType.bold,
-                      color: muted
-                          ? AarastV3Color.textFaint
-                          : AarastV3Color.ink,
                     ),
                   ),
                 ),

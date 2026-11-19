@@ -163,7 +163,7 @@ void main() {
     await harness.pump(tester);
 
     expect(find.text('حسابي'), findsOneWidget);
-    expect(find.text('مساهم · 777 123 456'), findsOneWidget);
+    expect(find.text('مساهم · 777\u00a0123\u00a0456'), findsOneWidget);
     expect(find.text('الخطط اللي أشارك فيها'), findsOneWidget);
     expect(
       find.byKey(

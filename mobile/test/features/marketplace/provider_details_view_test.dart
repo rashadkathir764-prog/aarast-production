@@ -33,13 +33,13 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('يرد عادة خلال ساعتين'), findsOneWidget);
-    expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
+    expect(find.text('450,000\u00a0-\u00a0600,000\u00a0ر.ي'), findsOneWidget);
     expect(find.text('ضمن بندك'), findsOneWidget);
     expect(find.text('آخر تحديث للسعر قبل 3 أسابيع'), findsOneWidget);
     expect(find.text('الباقات'), findsOneWidget);
     expect(find.text('صور فقط'), findsOneWidget);
     expect(find.text('مصور واحد · 300 صورة'), findsOneWidget);
-    expect(find.text('350,000 ر.ي'), findsOneWidget);
+    expect(find.text('350,000\u00a0ر.ي'), findsOneWidget);
     expect(find.text('صور وفيديو'), findsOneWidget);
     expect(find.text('مصورين · فيلم 10 دقائق · ألبوم'), findsOneWidget);
     expect(find.text('1 / 3 صورة'), findsOneWidget);
@@ -120,7 +120,7 @@ void main() {
 
     expect(find.text('الباقات'), findsOneWidget);
     expect(find.text('تصوير كامل'), findsOneWidget);
-    expect(find.text('600,000 ر.ي'), findsOneWidget);
+    expect(find.text('600,000\u00a0ر.ي'), findsOneWidget);
     expect(find.text('ضمن بندك'), findsNothing);
   });
 

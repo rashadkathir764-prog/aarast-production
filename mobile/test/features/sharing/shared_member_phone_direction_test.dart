@@ -12,8 +12,8 @@ import 'package:provider/provider.dart';
 
 void main() {
   test('a Yemeni mobile reads «777 123 456»; others stay as shown', () {
-    expect(participantPhone('+967777123456'), '777 123 456');
-    expect(participantPhone('777123456'), '777 123 456');
+    expect(participantPhone('+967777123456'), '777\u00a0123\u00a0456');
+    expect(participantPhone('777123456'), '777\u00a0123\u00a0456');
     expect(participantPhone(null), isNull);
     expect(participantPhone('+966501234567'), '+966501234567');
   });
@@ -40,7 +40,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text(PhoneNumberUtils.isolateLtr('777 123 456')),
+      find.text(PhoneNumberUtils.isolateLtr('777\u00a0123\u00a0456')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

@@ -13,6 +13,7 @@ import '../models/provider_portfolio.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
 import 'provider_trust_signals.dart';
+import '../../../core/utils/keep_currency_on_line.dart';
 
 /// f03 «صفحة المزود»: the photos, who the provider is and how they answer,
 /// their prices and how old they are, and their packages. Asking for a quote
@@ -663,8 +664,8 @@ String? providerPriceRange(List<MarketplaceService> services) {
   }
   if (min == null || max == null) return null;
   final unit = currencyLabelAr(unitCode);
-  if (min == max) return '${_grouped(min)} $unit';
-  return '${_grouped(min)} - ${_grouped(max)} $unit';
+  if (min == max) return keepCurrencyOnLine('${_grouped(min)} $unit');
+  return keepCurrencyOnLine('${_grouped(min)} - ${_grouped(max)} $unit');
 }
 
 String _grouped(num value) {

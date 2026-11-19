@@ -265,8 +265,12 @@ String? _providerPriceRangeLabel(MarketplaceProvider provider) {
   final summaryMax = _moneyValueOrNull(summary?.maxPrice);
   if (summaryMin != null && summaryMax != null) {
     final unit = currencyLabelAr(summary?.currency);
-    if (summaryMin == summaryMax) return '${_formatMoney(summaryMin)} $unit';
-    return '${_formatMoney(summaryMin)} - ${_formatMoney(summaryMax)} $unit';
+    if (summaryMin == summaryMax) {
+      return keepCurrencyOnLine('${_formatMoney(summaryMin)} $unit');
+    }
+    return keepCurrencyOnLine(
+      '${_formatMoney(summaryMin)} - ${_formatMoney(summaryMax)} $unit',
+    );
   }
 
   double? min;
@@ -285,6 +289,8 @@ String? _providerPriceRangeLabel(MarketplaceProvider provider) {
     return hasServices ? 'السعر عبر طلب عرض' : null;
   }
   final unit = currencyLabelAr(currency);
-  if (min == max) return '${_formatMoney(min)} $unit';
-  return '${_formatMoney(min)} - ${_formatMoney(max)} $unit';
+  if (min == max) return keepCurrencyOnLine('${_formatMoney(min)} $unit');
+  return keepCurrencyOnLine(
+    '${_formatMoney(min)} - ${_formatMoney(max)} $unit',
+  );
 }

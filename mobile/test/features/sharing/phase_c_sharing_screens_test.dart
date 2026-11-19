@@ -285,7 +285,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final phoneTexts = tester.widgetList<Text>(find.text('777 123 456'));
+        final phoneTexts = tester.widgetList<Text>(
+          find.text('777\u00a0123\u00a0456'),
+        );
         expect(phoneTexts, hasLength(2));
         expect(
           phoneTexts.every((text) => text.textDirection == TextDirection.ltr),

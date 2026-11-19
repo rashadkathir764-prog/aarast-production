@@ -130,10 +130,15 @@ class PhoneNumberUtils {
     return analysis.normalizedPhone;
   }
 
+  /// The number to show, its groups joined by no-break spaces: a line never
+  /// breaks inside a number («+967» over «777 000 111»).
   static String? display(String? input) {
     final analysis = analyze(input);
     if (analysis.isEmpty) return null;
-    return analysis.displayPhone ?? analysis.rawPhone;
+    return (analysis.displayPhone ?? analysis.rawPhone).replaceAll(
+      ' ',
+      '\u00a0',
+    );
   }
 
   /// يعزل النص اللاتيني داخل واجهة RTL حتى لا ينقلب ترتيب `+` أو مجموعات
@@ -144,13 +149,10 @@ class PhoneNumberUtils {
 
   /// نسخة آمنة للدمج داخل نص عربي. للعروض المستقلة استخدم
   /// `AarastPhoneText` حتى يكون اتجاه عنصر النص نفسه LTR أيضًا.
-  ///
-  /// Its groups are joined by no-break spaces: a line never breaks inside a
-  /// number («+967» over «777 000 111» on a guest's page).
   static String? directionalDisplay(String? input) {
     final value = display(input);
     if (value == null) return null;
-    return isolateLtr(value.replaceAll(' ', '\u00a0'));
+    return isolateLtr(value);
   }
 
   static String? comparisonKey(String? input) {

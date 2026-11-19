@@ -183,7 +183,7 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('قاعة السلام'), findsOneWidget);
-      expect(find.text('250,000 ر.ي'), findsOneWidget);
+      expect(find.text('250,000\u00a0ر.ي'), findsOneWidget);
       expect(find.text('0.0 (0)'), findsNothing);
       expect(find.textContaining('قريب منك'), findsNothing);
       expect(find.textContaining('الأفضل'), findsNothing);
@@ -242,7 +242,7 @@ void main() {
       );
 
       expect(find.text('التصوير'), findsOneWidget);
-      expect(find.text('250,000 - 400,000 ر.ي'), findsOneWidget);
+      expect(find.text('250,000\u00a0-\u00a0400,000\u00a0ر.ي'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -385,7 +385,7 @@ void main() {
 
       expect(find.textContaining('قريبين من بند الصالة'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('450,000 ر.ي'),
+        find.text('450,000\u00a0ر.ي'),
         320,
         scrollable: find.byType(Scrollable).first,
       );

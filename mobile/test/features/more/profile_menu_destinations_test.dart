@@ -67,7 +67,7 @@ void main() {
     await _settleEntry(tester);
 
     expect(find.text('رشاد'), findsOneWidget);
-    expect(find.text('+967 777 000 000'), findsOneWidget);
+    expect(find.text('+967\u00a0777\u00a0000\u00a0000'), findsOneWidget);
     expect(find.byTooltip('تعديل صورة الحساب'), findsOneWidget);
     expect(find.text('تغيير رقم الجوال'), findsOneWidget);
 

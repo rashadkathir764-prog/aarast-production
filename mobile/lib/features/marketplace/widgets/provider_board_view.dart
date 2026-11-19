@@ -196,8 +196,8 @@ class _BoardRow extends StatelessWidget {
           : null,
       child: Padding(
         padding: AarastV3Density.chipInsets,
-        child: LayoutBuilder(
-          builder: (context, constraints) => Row(
+        child: JourneyEndRow(
+          start: Row(
             children: [
               JourneyIconTile(
                 icon: providerServiceIcon(row.title),
@@ -229,21 +229,10 @@ class _BoardRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AarastV3Space.x2),
-              // Like JourneyListRow: the action takes two fifths of the row at
-              // most and shrinks in it; it never squeezes the name or is cut.
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * 0.4,
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: trailing,
-                ),
-              ),
             ],
           ),
+          // Like JourneyListRow: the action never squeezes the name out.
+          end: trailing,
         ),
       ),
     );

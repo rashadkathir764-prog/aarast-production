@@ -78,7 +78,7 @@ void main() {
     expect(find.text('كذا بيشوفك العرسان'), findsOneWidget);
     expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
     expect(find.text('التصوير · صنعاء'), findsOneWidget);
-    expect(find.text('من 550,000 ر.ي'), findsOneWidget);
+    expect(find.text('من 550,000\u00a0ر.ي'), findsOneWidget);
     expect(find.text('نشاطك ومدينتك'), findsOneWidget);
     expect(find.text('مكان المحل'), findsOneWidget);
     expect(find.text('صور وفيديو للزفاف'), findsOneWidget);

@@ -281,9 +281,9 @@ void main() {
     await _open(tester, providers!);
 
     final hero = find.byKey(const ValueKey('money-cash-hero'));
-    expect(_said(tester, hero), contains('1.2 مليون'));
+    expect(_said(tester, hero), contains('1.2\u00a0مليون'));
     // In 1,800,000; out of it, 400,000 on the hall and 200,000 paid back.
-    expect(_said(tester, hero), contains('وصلك 1.8 مليون'));
+    expect(_said(tester, hero), contains('وصلك 1.8\u00a0مليون'));
     expect(_said(tester, hero), contains('منها 600,000'));
     // The photographer is the father's: only the hall is on him.
     expect(_said(tester, hero), contains('من العرس 800,000'));
@@ -346,7 +346,7 @@ void main() {
     // 1,200,000 + 300,000.
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('money-cash-figure'))).data,
-      contains('1.5 مليون'),
+      contains('1.5\u00a0مليون'),
     );
     expect(moneyValue(finance.summary.funding?.availableCash), 1500000);
   });
@@ -372,7 +372,11 @@ void main() {
     final uncle = find.byKey(const ValueKey('money-family-1'));
     expect(_said(tester, uncle), contains('200,000'));
     expect(_said(tester, uncle), contains('موعود'));
-    expect(_said(tester, uncle), isNot(contains('0 ر.ي')));
+    // No standalone zero (a «0» not part of a larger figure).
+    expect(
+      _said(tester, uncle),
+      isNot(contains(RegExp(r'(?<![\d,])0\u00a0ر\.ي'))),
+    );
 
     final loan = find.byKey(const ValueKey('money-loan-track-f-loan'));
     await _show(tester, loan);

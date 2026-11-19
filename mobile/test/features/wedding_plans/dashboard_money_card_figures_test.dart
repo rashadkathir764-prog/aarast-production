@@ -138,7 +138,7 @@ void main() {
       expect(find.text('دفعت 250$_nbspألف'), findsOneWidget);
       // Never a bare number beside a full figure.
       expect(find.text('اتفقت على 3'), findsNothing);
-      expect(find.text('دفعت 250,000 ر.ي'), findsNothing);
+      expect(find.text('دفعت 250,000\u00a0ر.ي'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -381,7 +381,7 @@ void main() {
       await _pump(tester, plan(inside: true), mahr: mahr, funding: funding);
 
       expect(inCard('باقي عليك'), findsOneWidget);
-      expect(inCard('1.5 مليون ر.ي'), findsOneWidget);
+      expect(inCard('1.5\u00a0مليون\u00a0ر.ي'), findsOneWidget);
       expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
       expect(inCard('باقي منها 5$_nbspمليون'), findsOneWidget);
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
@@ -406,7 +406,7 @@ void main() {
       await _pump(tester, plan(inside: false), mahr: mahr, funding: funding);
 
       expect(inCard('باقي عليك'), findsOneWidget);
-      expect(inCard('1.5 مليون ر.ي'), findsOneWidget);
+      expect(inCard('1.5\u00a0مليون\u00a0ر.ي'), findsOneWidget);
       expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
       expect(inCard('باقي منها 7$_nbspمليون'), findsOneWidget);
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);

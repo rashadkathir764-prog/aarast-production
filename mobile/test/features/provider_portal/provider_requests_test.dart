@@ -453,7 +453,7 @@ void main() {
       await tester.tap(find.byKey(const Key('provider-offer-preview')));
       await tester.pumpAndSettle();
       expect(find.text('كذا يوصل محمد'), findsOneWidget);
-      expect(find.text('550,000 ر.ي'), findsOneWidget);
+      expect(find.text('550,000\u00a0ر.ي'), findsOneWidget);
 
       final before = DateTime.now();
       await tester.tap(find.byKey(const Key('provider-offer-submit')));
@@ -505,7 +505,7 @@ void main() {
       expect(find.text('الخميس 21 يناير · صور وفيديو'), findsOneWidget);
       expect(find.text('ردّيت'), findsOneWidget);
       // B-06: p19 «550,000 ر.ي · نسخة 1».
-      expect(find.text('550,000 ر.ي · نسخة 1'), findsOneWidget);
+      expect(find.text('550,000\u00a0ر.ي · نسخة 1'), findsOneWidget);
       expect(find.textContaining('صالح لين'), findsOneWidget);
       expect(find.textContaining('باقي 8 أيام'), findsOneWidget);
       expect(find.text('تعديل العرض'), findsOneWidget);
@@ -604,7 +604,10 @@ void main() {
         quotes: [quoteJson(id: 'quote-2', name: 'عادل الريمي', share: true)],
       );
       await pumpHarness(tester, shared, initial: '/provider/requests/quote-2');
-      expect(find.text('300,000 لين 600,000 ر.ي'), findsOneWidget);
+      expect(
+        find.text('300,000\u00a0لين\u00a0600,000\u00a0ر.ي'),
+        findsOneWidget,
+      );
       expect(find.text('777123456'), findsOneWidget);
       expect(find.byKey(const Key('provider-request-privacy')), findsNothing);
     });

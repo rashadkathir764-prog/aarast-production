@@ -36,6 +36,8 @@ class _ProviderCard extends StatelessWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.onTap,
+    this.place = ProviderRowPlace.only,
+    this.showKind = true,
   });
 
   final MarketplaceProvider provider;
@@ -44,10 +46,16 @@ class _ProviderCard extends StatelessWidget {
   final VoidCallback onFavorite;
   final VoidCallback onTap;
 
+  /// Where the row stands in its group.
+  final ProviderRowPlace place;
+
+  /// False under a kind's own title, where the kind would repeat it.
+  final bool showKind;
+
   @override
   Widget build(BuildContext context) {
     final service = provider.services.isEmpty ? null : provider.services.first;
-    final category = _providerKindLabel(context, provider);
+    final category = showKind ? _providerKindLabel(context, provider) : null;
     final location = _providerLocationLabel(provider);
     // RA-MO-259: the item is in riyals; a price in another currency is not
     // compared with it (as the provider's page does, f03), the card says
@@ -92,21 +100,59 @@ class _ProviderCard extends StatelessWidget {
       isFavorite: isFavorite,
       onFavorite: onFavorite,
       onDetails: onTap,
+      place: place,
       detailsButtonKey: Key('super5-provider-details-${provider.id}'),
     );
   }
 }
 
 /// A fixed dimension of this layout, not a spacing step (D74): a shelf
-/// card's width, a little over half a phone, so the next card shows and
-/// says the row goes on.
-const _shelfCardWidth = 216.0;
+/// card's width (Rashad 2026-11-19). Two cards and the edge of a third on a
+/// phone, so the row says it goes on; its picture is as tall as it is wide.
+const _shelfCardWidth = 168.0;
 
 /// The widest a shelf card grows with a large text size.
-const _shelfCardWidestWidth = 280.0;
+const _shelfCardWidestWidth = 216.0;
 
-/// The three lines under a shelf card's photo at the normal text size.
-const _shelfWordsRoom = 66.0;
+/// A section's title, with «الكل» to open the kind when it holds more than
+/// what is shown.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({
+    required this.title,
+    this.onAll,
+    this.allKey,
+    super.key,
+  });
+
+  final String title;
+  final VoidCallback? onAll;
+  final Key? allKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = onAll;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
+          ),
+        ),
+        if (all != null)
+          JourneyTextAction(
+            key: allKey,
+            label: 'الكل',
+            icon: Directionality.of(context) == TextDirection.rtl
+                ? LucideIcons.chevronLeft
+                : LucideIcons.chevronRight,
+            color: context.accent.primary,
+            onPressed: all,
+          ),
+      ],
+    );
+  }
+}
 
 /// One sideways row of «استكشف» (Rashad 2026-11-18): the kind's name with
 /// «الكل», and its providers as shelf cards, running to the screen's edges.
@@ -134,37 +180,34 @@ class _ProviderShelfRow extends StatelessWidget {
     final width = scaler
         .scale(_shelfCardWidth)
         .clamp(_shelfCardWidth, _shelfCardWidestWidth);
-    // The photo (a card photo's share of the card's own width, D118), the
-    // padding, and three lines that grow with the text. It was 132 for the
-    // photo whatever the width, and a wider card's photo cut its words.
-    final height =
-        width / AarastV3Media.cardPhoto +
-        AarastV3Space.x5 +
-        scaler.scale(_shelfWordsRoom);
+    // The square picture, the gap under it, and the words as the text
+    // draws them at the reader's size: the name on two lines, the rating,
+    // the price. Measured, not guessed: a guessed room cut a two-line name
+    // at a large text size.
+    double line(TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: 'أ', style: style),
+        textDirection: TextDirection.rtl,
+        textScaler: scaler,
+      )..layout();
+      final height = painter.height;
+      painter.dispose();
+      return height;
+    }
+
+    final words =
+        2 * line(JourneyType.of(JourneyType.body, weight: JourneyType.bold)) +
+        math.max(line(JourneyType.of(JourneyType.small)), AarastV3Icon.sm) +
+        line(JourneyType.of(JourneyType.small, weight: JourneyType.bold)) +
+        3 * AarastV3Space.x1;
+    final height = width + AarastV3Space.x2 + words;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: JourneyType.of(
-                  JourneyType.lead,
-                  weight: JourneyType.bold,
-                ),
-              ),
-            ),
-            JourneyTextAction(
-              key: ValueKey('providers-shelf-all-${providers.first.id}'),
-              label: 'الكل',
-              icon: Directionality.of(context) == TextDirection.rtl
-                  ? LucideIcons.chevronLeft
-                  : LucideIcons.chevronRight,
-              color: context.accent.primary,
-              onPressed: onAll,
-            ),
-          ],
+        _SectionTitle(
+          title: title,
+          onAll: onAll,
+          allKey: ValueKey('providers-shelf-all-${providers.first.id}'),
         ),
         const SizedBox(height: AarastV3Space.x1),
         // Past the list's own padding, so the row runs to the screen's

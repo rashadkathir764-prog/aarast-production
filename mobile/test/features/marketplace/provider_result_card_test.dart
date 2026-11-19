@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 import 'package:flutter/material.dart';
@@ -195,27 +196,25 @@ void main() {
       await tester.pump();
     }
 
-    // Changed on purpose (Rashad 2026-11-18, «استكشف» made anew): the photo
-    // is the card's top, as wide as the card. It is still never a strip:
-    // three high for every four wide, over twice RA-MO-316's 120.
-    testWidgets('the photo is the card top, never a strip', (tester) async {
+    // Changed on purpose (Rashad 2026-11-19, «شكل الكروت سيء»): a provider
+    // is a row. The photo is a square at its start, as tall as three lines
+    // of words, never a strip and never half the screen.
+    testWidgets('the photo is a square at the row start', (tester) async {
       for (final width in [320.0, 360.0, 420.0]) {
         await pumpAt(
           tester,
           width: width,
           imageUrl: 'https://media.example/provider-cover/a.jpg',
         );
-        final card = tester.getSize(find.byKey(const Key('card')));
-        final photo = tester.getSize(
+        final card = tester.getRect(find.byKey(const Key('card')));
+        final photo = tester.getRect(
           find.byKey(const Key('provider-card-photo')),
         );
-        expect(photo.width, card.width, reason: 'at $width');
-        expect(
-          photo.height,
-          closeTo(photo.width * 3 / 4, 1),
-          reason: 'at $width',
-        );
-        expect(photo.height, greaterThan(200), reason: 'at $width');
+        expect(photo.width, photo.height, reason: 'at $width');
+        expect(photo.width, AarastV3Size.markHero, reason: 'at $width');
+        // RTL: the row starts at the right.
+        expect(photo.right, greaterThan(card.center.dx), reason: 'at $width');
+        expect(card.height, lessThan(card.width * 0.6), reason: 'at $width');
       }
     });
 
@@ -255,17 +254,18 @@ void main() {
     });
 
     // Rashad 2026-11-17: without a photo a quarter of every card was a
-    // tinted band holding one letter. The letter is a small square now, and
-    // the words take the card.
-    testWidgets('without a photo: a small letter, not a band', (tester) async {
+    // tinted band holding one letter. Without a photo or a logo the letter
+    // fills the row's small square, the same square a photo takes.
+    testWidgets('without a photo: the letter in the row square', (
+      tester,
+    ) async {
       await pumpAt(tester, width: 360);
       expect(find.byKey(const Key('provider-card-photo')), findsNothing);
       final letter = tester.getSize(
         find.byKey(const Key('provider-card-letter')),
       );
-      final card = tester.getSize(find.byKey(const Key('card')));
-      expect(letter.width, lessThanOrEqualTo(48));
-      expect(letter.height, lessThan(card.height));
+      expect(letter.width, AarastV3Size.markHero);
+      expect(letter.height, AarastV3Size.markHero);
       // «الفنان علي عنبه» is «ف», not the «ا» of the article.
       expect(providerInitial('الفنان علي عنبه'), 'ف');
       expect(providerInitial('استوديو ضوء'), 'ا');
@@ -273,10 +273,9 @@ void main() {
     });
 
     // Rashad's phone 2026-11-18: a logo stretched over the card's top was a
-    // face cut at the mouth, and a small square by the name read as a plain
-    // row («ما أعجبني»). A logo alone makes a profile card: a soft band and
-    // the logo whole in a round disc on its edge, never cropped to a strip.
-    testWidgets('a logo alone makes a profile card', (tester) async {
+    // face cut at the mouth. A logo alone fills the row's square whole, the
+    // same size as a photo, so a row without a cover is not lesser.
+    testWidgets('a logo alone takes the row square', (tester) async {
       tester.view.physicalSize = const Size(360, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -303,10 +302,9 @@ void main() {
       );
       await tester.pump();
       expect(find.byKey(const Key('provider-card-photo')), findsNothing);
-      expect(find.byKey(const Key('provider-card-band')), findsOneWidget);
       final logo = tester.getSize(find.byKey(const Key('provider-card-logo')));
       expect(logo.width, logo.height);
-      expect(logo.width, greaterThanOrEqualTo(72));
+      expect(logo.width, AarastV3Size.markHero);
       expect(tester.takeException(), isNull);
     });
 

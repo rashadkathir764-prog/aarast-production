@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -98,6 +99,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// The kinds that make rows in «استكشف», fixed on the list's first page,
   /// and the list they were fixed for.
   Set<String>? _shelfKinds;
+  Set<String>? _sectionKinds;
   String? _shelfSource;
 
   /// Whether this reader has an account, once asked. Null until the answer
@@ -579,64 +581,107 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     ];
   }
 
-  /// Rashad 2026-11-18, «استكشف» made anew. Browsing the whole directory
-  /// (no kind, no item, no search), each kind with two providers or more is
-  /// a sideways row with «الكل» to open it, in the catalog's order; the
-  /// providers no row holds follow as big cards. A kind picked, an item's
-  /// search or a typed name shows big cards only. No provider is shown
-  /// twice.
+  /// Rashad 2026-11-19, the staged layout. Browsing the whole directory
+  /// (no kind, no item, no search), each kind is a section in the catalog's
+  /// order: more than five providers make a sideways row, fewer a short list
+  /// of rows (three at most, «الكل» for the rest). The providers no section
+  /// holds follow. A kind picked, an item's search or a typed name shows rows
+  /// only, in one list. No provider is shown twice.
   List<Widget> _directory(ProviderMarketplaceProvider provider) {
     final browsing =
         provider.categoryId == null &&
         provider.budgetMatchIntent == null &&
-        // The search that ran, not the letters still being typed: the rows
-        // stay until the results change, not a beat before.
+        // The search that ran, not the letters still being typed: the
+        // sections stay until the results change, not a beat before.
         provider.search.trim().isEmpty;
     final order = [for (final category in provider.categories) category.id];
-    // The rows' kinds are fixed on the list's first page (review 2026-11-18):
-    // a page loaded at the end fills rows already drawn, and never draws a
-    // new one above what is being read. A new list (a refresh, another
-    // place) fixes them again.
+    // The sections and which of them are rows are fixed on the list's first
+    // page (review 2026-11-18): a page loaded at the end fills sections
+    // already drawn, and never draws a new one, or turns a list into a row,
+    // above what is being read. A new list (a refresh, another place) fixes
+    // them again.
     final source = provider.providers.isEmpty
         ? null
         : '${provider.providers.first.id}|${provider.cityId}|'
               '${provider.totalProviders}';
     if (browsing && source != _shelfSource) {
       _shelfSource = source;
+      final first = providerSections(provider.providers, order);
+      _sectionKinds = {for (final section in first) section.categoryId};
       _shelfKinds = {
-        for (final shelf in providerShelves(provider.providers, order))
-          shelf.categoryId,
+        for (final section in first)
+          if (section.providers.length >= providerShelfMinimum)
+            section.categoryId,
       };
     }
-    final shelves = browsing
-        ? providerShelves(provider.providers, order, allowedKinds: _shelfKinds)
+    final sections = browsing
+        ? providerSections(
+            provider.providers,
+            order,
+            allowedKinds: _sectionKinds,
+          )
         : const <ProviderShelf>[];
-    final onShelf = {
-      for (final shelf in shelves)
-        for (final item in shelf.providers) item.id,
+    final inSection = {
+      for (final section in sections)
+        for (final item in section.providers) item.id,
     };
     final rest = [
       for (final item in provider.providers)
-        if (!onShelf.contains(item.id)) item,
+        if (!inSection.contains(item.id)) item,
     ];
     final names = {
       for (final category in provider.categories)
         category.id: providerKindName(context, category),
     };
+    Widget row(
+      MarketplaceProvider item,
+      ProviderRowPlace place, {
+      bool showKind = true,
+    }) => _ProviderCard(
+      provider: item,
+      budgetIntent: provider.budgetMatchIntent,
+      isFavorite: provider.favoriteProviderIds.contains(item.id),
+      onFavorite: () => _toggleFavorite(provider, item.id),
+      onTap: () => _openProviderDetails(item.id),
+      place: place,
+      showKind: showKind,
+    );
     return [
-      for (final shelf in shelves) ...[
-        _ProviderShelfRow(
-          key: ValueKey('providers-shelf-${shelf.categoryId}'),
-          title: names[shelf.categoryId] ?? '',
-          providers: shelf.providers,
-          favorites: provider.favoriteProviderIds,
-          onAll: () => provider.setCategory(shelf.categoryId),
-          onFavorite: (id) => _toggleFavorite(provider, id),
-          onOpen: _openProviderDetails,
-        ),
-        const SizedBox(height: AarastV3Space.x5),
+      for (final section in sections) ...[
+        if (_shelfKinds?.contains(section.categoryId) ?? false)
+          _ProviderShelfRow(
+            key: ValueKey('providers-shelf-${section.categoryId}'),
+            title: names[section.categoryId] ?? '',
+            providers: section.providers,
+            favorites: provider.favoriteProviderIds,
+            onAll: () => provider.setCategory(section.categoryId),
+            onFavorite: (id) => _toggleFavorite(provider, id),
+            onOpen: _openProviderDetails,
+          )
+        else ...[
+          _SectionTitle(
+            key: ValueKey('providers-section-${section.categoryId}'),
+            title: names[section.categoryId] ?? '',
+            onAll: section.providers.length > providerSectionPreview
+                ? () => provider.setCategory(section.categoryId)
+                : null,
+            allKey: ValueKey('providers-section-all-${section.categoryId}'),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          for (final (index, item)
+              in section.providers.take(providerSectionPreview).indexed)
+            row(
+              item,
+              providerRowPlace(
+                index,
+                section.providers.length.clamp(0, providerSectionPreview),
+              ),
+              showKind: false,
+            ),
+        ],
+        const SizedBox(height: AarastV3Space.x6),
       ],
-      if (shelves.isNotEmpty && rest.isNotEmpty) ...[
+      if (sections.isNotEmpty && rest.isNotEmpty) ...[
         Text(
           'مزودين ثانيين',
           key: const ValueKey('providers-rest-title'),
@@ -644,17 +689,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         ),
         const SizedBox(height: AarastV3Space.x2),
       ],
-      // f02: the cards alone; each says where it stands against the item.
-      for (final item in rest) ...[
-        _ProviderCard(
-          provider: item,
-          budgetIntent: provider.budgetMatchIntent,
-          isFavorite: provider.favoriteProviderIds.contains(item.id),
-          onFavorite: () => _toggleFavorite(provider, item.id),
-          onTap: () => _openProviderDetails(item.id),
-        ),
-        const SizedBox(height: AarastV3Space.x3),
-      ],
+      // f02: the rows in one group; each says where it stands against the
+      // item.
+      for (final (index, item) in rest.indexed)
+        row(item, providerRowPlace(index, rest.length)),
     ];
   }
 

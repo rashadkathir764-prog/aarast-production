@@ -10,31 +10,26 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 
-/// The photo's shape on the list card (Rashad 2026-11-18, «استكشف» made
-/// anew): across the card's top, four wide for every three high, so a
-/// portrait keeps the face and the shoulders, and a hall shows its room.
-/// RA-MO-316's strip (120 high across the card) showed a nose and a mouth.
-const _photoAspect = AarastV3Media.feature;
+/// The picture at a row's start (Rashad 2026-11-19, «شكل الكروت سيء»): a
+/// square as tall as three lines of words, so a row is a row and not half
+/// the screen. The cover, else the logo whole, else the letter.
+const _thumbSide = AarastV3Size.markHero;
 
-/// The provider's letter without a photo: a small square by the name, not a
-/// band as tall as the card (Rashad 2026-11-17: a coloured quarter of every
-/// card held one letter).
-const _letterSize = AarastV3Media.logoSmall;
-
-/// What the name leaves for the heart's 48 target in the card's corner,
-/// past the card's own padding.
-const _heartRoom = 36.0;
-
-/// Fixed dimensions of this layout (D74): the logo's disc on a shelf card
-/// without a cover, and the paper ring around it.
-const _shelfLogoSize = AarastV3Media.logoLarge;
+/// The logo's disc on a shelf card without a cover, and its paper ring.
+const _shelfLogoSide = AarastV3Media.logoLarge;
 const _shelfLogoRing = 3.0;
 
-/// The profile card's soft band and the logo's disc that sits half on its
-/// edge (D118): a band a large mark tall under the profile's logo, so the
-/// card's top is 92, not the 126 that pushed its name down a third of it.
-const _bandHeight = AarastV3Size.markLarge;
-const _profileLogoSize = AarastV3Media.logoLarge;
+/// Where a row stands in its group: the group is one paper surface with a
+/// hair between rows (Rashad 2026-11-19), so only its outer corners round.
+enum ProviderRowPlace { only, first, middle, last }
+
+/// The place of row [index] in a group of [count].
+ProviderRowPlace providerRowPlace(int index, int count) {
+  if (count <= 1) return ProviderRowPlace.only;
+  if (index == 0) return ProviderRowPlace.first;
+  if (index == count - 1) return ProviderRowPlace.last;
+  return ProviderRowPlace.middle;
+}
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
@@ -70,14 +65,13 @@ Future<void> showProviderFeaturedSheet(BuildContext context) {
   );
 }
 
-/// f02 a provider in «استكشف»: the photo, the name and rating, where, the
-/// facts that matter (ضمن بندك، موثّق، غير مفعّل، مميز) and the price with
-/// how old it is (w33). Only real facts; nothing is invented.
+/// f02 a provider in «استكشف», as a row (Rashad 2026-11-19): the picture
+/// small at the start, then the name, the rating and where, the facts that
+/// matter (ضمن بندك، غير مفعّل، مميز) and the price with how old it is
+/// (w33). The heart at the end. Only real facts; nothing is invented.
 ///
-/// Rashad 2026-11-18: with a photo, the photo is the card's top, wide and
-/// tall, the heart on it; the words under it take the card's width, so a
-/// price and its age sit on one line. Without one there is no band: the
-/// letter's small square by the name, as before.
+/// Rows sit in one paper group with a hair between them ([place]), as a
+/// list of choices to compare, not a pile of separate boxes.
 class ProviderResultCard extends StatelessWidget {
   const ProviderResultCard({
     required this.businessName,
@@ -97,6 +91,7 @@ class ProviderResultCard extends StatelessWidget {
     this.budgetStatusColor,
     this.imageUrl,
     this.logoUrl,
+    this.place = ProviderRowPlace.only,
     this.detailsButtonKey,
     this.favoriteButtonKey,
     super.key,
@@ -104,8 +99,7 @@ class ProviderResultCard extends StatelessWidget {
 
   final String businessName;
 
-  /// The provider's logo: in the small square by the name when there is no
-  /// cover photo, never stretched over the card's top.
+  /// The provider's logo: the row's picture when there is no cover photo.
   final String? logoUrl;
   final bool isFeatured;
   final double ratingAverage;
@@ -120,6 +114,8 @@ class ProviderResultCard extends StatelessWidget {
   /// False for a listing added from a public directory that its owner has
   /// not taken over yet: it does not take requests.
   final bool isClaimed;
+
+  /// The kind; left out under a kind's own title, where it would repeat it.
   final String? categoryLabel;
   final String? locationLabel;
   final String? priceLabel;
@@ -129,6 +125,9 @@ class ProviderResultCard extends StatelessWidget {
   final String? budgetStatusLabel;
   final Color? budgetStatusColor;
   final String? imageUrl;
+
+  /// Where the row stands in its group.
+  final ProviderRowPlace place;
   final Key? detailsButtonKey;
   final Key? favoriteButtonKey;
 
@@ -140,12 +139,6 @@ class ProviderResultCard extends StatelessWidget {
     final dataSaver = context.watch<DevicePreferences?>()?.dataSaver ?? false;
     final photoUrl = dataSaver ? null : _clean(imageUrl);
     final logo = dataSaver ? null : _clean(logoUrl);
-    // Rashad's phone 2026-11-18 («ما أعجبني»): a provider with a logo and
-    // no cover was a small row. It is a profile card now: a soft band, the
-    // logo large in a ringed disc on its edge, the words under it. Only a
-    // provider with neither keeps the letter's row (no empty band).
-    final profile = photoUrl == null && logo != null;
-    final rich = photoUrl != null || profile;
     final badges = <Widget>[
       if (_clean(budgetStatusLabel) case final budget?)
         JourneyTag(
@@ -161,208 +154,103 @@ class ProviderResultCard extends StatelessWidget {
           label: 'غير مفعّل',
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
-        )
-      // Critique ز1: «جديد» stood for «not verified», so a provider with 125
-      // reviews read as new. Only «موثّق» is said; the rest say nothing.
-      else if (isVerified)
-        JourneyTag(
-          key: const Key('provider-card-verified'),
-          label: 'موثّق',
-          color: context.accent.primary,
-          soft: context.accent.primarySoft,
         ),
       // The drawn «مميز» (f02). It is a paid placement (B-43), so a tap
       // says so plainly: not a recommendation from اعّرست.
       if (isFeatured) const _FeaturedTag(),
     ];
-    final name = Text(
-      businessName,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
-    );
     final words = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // With a photo or a band the heart is on it, so the name and the
-        // rating share the line; without one the name stops short of it.
-        if (rich)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: name),
-              if (ratingCount > 0) ...[
-                const SizedBox(width: AarastV3Space.x2),
-                _Rating(average: ratingAverage, count: ratingCount),
-              ],
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: _heartRoom),
-            child: name,
+        _NameLine(
+          name: businessName,
+          // Critique ز1: only «موثّق» is said, and a listing nobody answers
+          // for never is. A mark by the name, not a tag on every card.
+          verified: isClaimed && isVerified,
+        ),
+        if (ratingCount > 0 || where.isNotEmpty) ...[
+          const SizedBox(height: AarastV3Space.x1),
+          _MetaLine(
+            ratingAverage: ratingAverage,
+            ratingCount: ratingCount,
+            where: where,
           ),
-        if (where.isNotEmpty || (!rich && ratingCount > 0))
-          // The place gives way first; with large text the rating goes
-          // under it.
-          Wrap(
-            spacing: AarastV3Space.x2,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (where.isNotEmpty)
-                Text(
-                  where,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-              if (!rich && ratingCount > 0)
-                _Rating(average: ratingAverage, count: ratingCount),
-            ],
-          ),
-        // No badge, no empty row between the place and the price.
+        ],
         if (badges.isNotEmpty) ...[
           const SizedBox(height: AarastV3Space.x2),
-          Wrap(spacing: 6, runSpacing: 6, children: badges),
+          Wrap(
+            spacing: AarastV3Space.x1,
+            runSpacing: AarastV3Space.x1,
+            children: badges,
+          ),
         ],
         const SizedBox(height: AarastV3Space.x2),
         ..._priceLines(context, price),
       ],
     );
+    final corner = Radius.circular(AarastV3Radius.card);
+    final top =
+        place == ProviderRowPlace.only || place == ProviderRowPlace.first;
+    final bottom =
+        place == ProviderRowPlace.only || place == ProviderRowPlace.last;
     return Semantics(
       button: true,
       label: 'عرض تفاصيل $businessName',
       child: Material(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
+        borderRadius: BorderRadius.vertical(
+          top: top ? corner : Radius.zero,
+          bottom: bottom ? corner : Radius.zero,
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: detailsButtonKey,
           onTap: onDetails,
-          child: photoUrl != null
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!top)
+                const Divider(
+                  height: AarastV3Size.line,
+                  thickness: AarastV3Size.line,
+                  indent: AarastV3Space.x3,
+                  endIndent: AarastV3Space.x3,
+                  color: AarastV3Color.line,
+                ),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: AarastV3Space.x3,
+                  top: AarastV3Space.x3,
+                  bottom: AarastV3Space.x3,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AspectRatio(
-                      aspectRatio: _photoAspect,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _Photo(imageUrl: photoUrl, name: businessName),
-                          PositionedDirectional(
-                            top: AarastV3Space.x1,
-                            end: AarastV3Space.x1,
-                            child: _FavoriteHeart(
-                              isFavorite: isFavorite,
-                              onTap: onFavorite,
-                              buttonKey: favoriteButtonKey,
-                              onPhoto: true,
-                            ),
-                          ),
-                        ],
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        AarastV3Radius.control,
+                      ),
+                      child: SizedBox.square(
+                        dimension: _thumbSide,
+                        child: _Thumb(
+                          photoUrl: photoUrl,
+                          logoUrl: logo,
+                          name: businessName,
+                        ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AarastV3Space.x4,
-                        AarastV3Space.x3,
-                        AarastV3Space.x4,
-                        AarastV3Space.x4,
-                      ),
-                      child: words,
-                    ),
-                  ],
-                )
-              : profile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: _bandHeight + _profileLogoSize / 2,
-                      child: Stack(
-                        children: [
-                          PositionedDirectional(
-                            top: 0,
-                            start: 0,
-                            end: 0,
-                            height: _bandHeight,
-                            // The hero's qamariya in faint paper lines,
-                            // away from the logo (no gradient: D45).
-                            child: ColoredBox(
-                              key: const Key('provider-card-band'),
-                              color: context.accent.primarySoft,
-                              child: CustomPaint(
-                                painter: JourneyQamariyaPainter(
-                                  alpha: 0.75,
-                                  centreX:
-                                      Directionality.of(context) ==
-                                          TextDirection.rtl
-                                      ? 0.2
-                                      : 0.8,
-                                ),
-                              ),
-                            ),
-                          ),
-                          PositionedDirectional(
-                            top: _bandHeight - _profileLogoSize / 2,
-                            start: AarastV3Space.x4,
-                            child: _LogoDisc(
-                              logoUrl: logo,
-                              name: businessName,
-                              size: _profileLogoSize,
-                            ),
-                          ),
-                          PositionedDirectional(
-                            top: AarastV3Space.x1,
-                            end: AarastV3Space.x1,
-                            child: _FavoriteHeart(
-                              isFavorite: isFavorite,
-                              onTap: onFavorite,
-                              buttonKey: favoriteButtonKey,
-                              onPhoto: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AarastV3Space.x4,
-                        AarastV3Space.x2,
-                        AarastV3Space.x4,
-                        AarastV3Space.x4,
-                      ),
-                      child: words,
-                    ),
-                  ],
-                )
-              : Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(AarastV3Space.x3),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _Letter(name: businessName),
-                          const SizedBox(width: AarastV3Space.x3),
-                          Expanded(child: words),
-                        ],
-                      ),
-                    ),
-                    PositionedDirectional(
-                      top: 0,
-                      end: 0,
-                      child: _FavoriteHeart(
-                        isFavorite: isFavorite,
-                        onTap: onFavorite,
-                        buttonKey: favoriteButtonKey,
-                      ),
+                    const SizedBox(width: AarastV3Space.x3),
+                    Expanded(child: words),
+                    _FavoriteHeart(
+                      isFavorite: isFavorite,
+                      onTap: onFavorite,
+                      buttonKey: favoriteButtonKey,
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -390,11 +278,7 @@ class ProviderResultCard extends StatelessWidget {
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: JourneyType.of(
-            JourneyType.lead,
-            weight: JourneyType.bold,
-            color: context.accent.primary,
-          ),
+          style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
         ),
       // An unclaimed listing has no one to answer a request
       // (409 PROVIDER_NOT_CLAIMED), price or not.
@@ -407,7 +291,7 @@ class ProviderResultCard extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
-            price == null ? JourneyType.body : JourneyType.small,
+            JourneyType.small,
             weight: JourneyType.bold,
             color: AarastV3Color.textMuted,
           ),
@@ -418,6 +302,114 @@ class ProviderResultCard extends StatelessWidget {
   static String? _clean(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+}
+
+/// The name, on two lines at most, and «موثّق» as a mark beside it.
+class _NameLine extends StatelessWidget {
+  const _NameLine({required this.name, required this.verified});
+
+  final String name;
+  final bool verified;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: name),
+          if (verified)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: AarastV3Space.x1,
+                ),
+                child: Semantics(
+                  label: 'موثّق',
+                  child: Icon(
+                    LucideIcons.badgeCheck,
+                    key: const Key('provider-card-verified'),
+                    size: AarastV3Icon.sm,
+                    color: context.accent.primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+    );
+  }
+}
+
+/// «★ 4.8 (63) · صنعاء»: the rating first, then where; the place gives
+/// way first, and with large text it goes under the rating.
+class _MetaLine extends StatelessWidget {
+  const _MetaLine({
+    required this.ratingAverage,
+    required this.ratingCount,
+    required this.where,
+  });
+
+  final double ratingAverage;
+  final int ratingCount;
+  final String where;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AarastV3Space.x2,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (ratingCount > 0)
+          _Rating(average: ratingAverage, count: ratingCount),
+        if (where.isNotEmpty)
+          Text(
+            where,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A row's picture: the cover; else the logo whole; else the letter.
+class _Thumb extends StatelessWidget {
+  const _Thumb({
+    required this.photoUrl,
+    required this.logoUrl,
+    required this.name,
+  });
+
+  final String? photoUrl;
+  final String? logoUrl;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = photoUrl;
+    if (photo != null) return _Photo(imageUrl: photo, name: name);
+    final logo = logoUrl;
+    if (logo != null) {
+      return SizedBox.expand(
+        key: const Key('provider-card-logo'),
+        child: Image.network(
+          logo,
+          fit: BoxFit.cover,
+          alignment: const Alignment(0, -0.4),
+          errorBuilder: (context, error, stack) => _Letter(name: name),
+        ),
+      );
+    }
+    return _Letter(name: name);
   }
 }
 
@@ -472,121 +464,88 @@ class ProviderShelfCard extends StatelessWidget {
     final photoUrl = dataSaver || url == null || url.isEmpty ? null : url;
     final kind = categoryLabel?.trim() ?? '';
     final place = locationLabel?.trim() ?? '';
-    final where = [
-      if (kind.isNotEmpty) kind,
-      if (place.isNotEmpty) place,
-    ].join(' · ');
     final price = fromPriceLabel?.trim();
+    final priced = isClaimed && price != null && price.isNotEmpty;
+    // Rashad 2026-11-19: no box. The picture is the card, its corners
+    // round; the words sit on the page under it, so a row of cards reads
+    // light and a short name leaves no empty paper.
     return Semantics(
       button: true,
       label: 'عرض تفاصيل $businessName',
       child: Material(
-        color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        clipBehavior: Clip.antiAlias,
+        type: MaterialType.transparency,
         child: InkWell(
           key: detailsButtonKey,
           onTap: onDetails,
+          borderRadius: BorderRadius.circular(AarastV3Radius.card),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // D118: a card photo's proportion of the shelf card's width.
-              AspectRatio(
-                aspectRatio: AarastV3Media.cardPhoto,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (photoUrl != null)
-                      _Photo(imageUrl: photoUrl, name: businessName)
-                    else
-                      _KindArt(
-                        kind: kind,
-                        name: businessName,
-                        logoUrl: dataSaver ? null : logoUrl?.trim(),
-                      ),
-                    if (isFeatured)
-                      const PositionedDirectional(
-                        bottom: AarastV3Space.x2,
-                        start: AarastV3Space.x2,
-                        child: _FeaturedTag(onPhoto: true),
-                      ),
-                    PositionedDirectional(
-                      top: AarastV3Space.x1,
-                      end: AarastV3Space.x1,
-                      child: _FavoriteHeart(
-                        isFavorite: isFavorite,
-                        onTap: onFavorite,
-                        buttonKey: null,
-                        onPhoto: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AarastV3Space.x3,
-                    AarastV3Space.x2,
-                    AarastV3Space.x3,
-                    AarastV3Space.x3,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AarastV3Radius.card),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Text(
-                        businessName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
+                      if (photoUrl != null)
+                        _Photo(imageUrl: photoUrl, name: businessName)
+                      else
+                        _KindArt(
+                          kind: kind,
+                          name: businessName,
+                          logoUrl: dataSaver ? null : logoUrl?.trim(),
                         ),
-                      ),
-                      Row(
-                        children: [
-                          if (ratingCount > 0) ...[
-                            _Rating(
-                              average: ratingAverage,
-                              count: ratingCount,
-                              compact: true,
-                            ),
-                            if (where.isNotEmpty)
-                              const SizedBox(width: AarastV3Space.x1),
-                          ],
-                          if (where.isNotEmpty)
-                            Expanded(
-                              child: Text(
-                                where,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: JourneyType.of(
-                                  JourneyType.caption,
-                                  color: AarastV3Color.textMuted,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Text(
-                        !isClaimed
-                            ? 'ما يستقبل طلبات بعد'
-                            : price == null || price.isEmpty
-                            ? context.say('اطلب عرض', 'اطلبي عرض')
-                            : price,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          JourneyType.small,
-                          weight: JourneyType.bold,
-                          color: !isClaimed || price == null || price.isEmpty
-                              ? AarastV3Color.textMuted
-                              : context.accent.primary,
+                      if (isFeatured)
+                        const PositionedDirectional(
+                          bottom: AarastV3Space.x2,
+                          start: AarastV3Space.x2,
+                          child: _FeaturedTag(onPhoto: true),
+                        ),
+                      PositionedDirectional(
+                        top: 0,
+                        end: 0,
+                        child: _FavoriteHeart(
+                          isFavorite: isFavorite,
+                          onTap: onFavorite,
+                          buttonKey: null,
+                          onPhoto: true,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x2),
+              Text(
+                businessName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x1),
+              // Under its kind's title the kind is not said again.
+              _MetaLine(
+                ratingAverage: ratingAverage,
+                ratingCount: ratingCount,
+                where: place,
+              ),
+              const SizedBox(height: AarastV3Space.x1),
+              Text(
+                !isClaimed
+                    ? 'ما يستقبل طلبات بعد'
+                    : priced
+                    ? price
+                    : context.say('اطلب عرض', 'اطلبي عرض'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: priced ? AarastV3Color.ink : AarastV3Color.textMuted,
                 ),
               ),
             ],
@@ -623,7 +582,7 @@ class _KindArt extends StatelessWidget {
         child: Center(
           child: logo == null || logo.isEmpty
               ? icon
-              : _LogoDisc(logoUrl: logo, name: name, size: _shelfLogoSize),
+              : _LogoDisc(logoUrl: logo, name: name, size: _shelfLogoSide),
         ),
       ),
     );
@@ -633,15 +592,10 @@ class _KindArt extends StatelessWidget {
 /// «★ 4.8 (62)» in one dark colour (critique ز2: the saffron read 2.0 on
 /// white).
 class _Rating extends StatelessWidget {
-  const _Rating({
-    required this.average,
-    required this.count,
-    this.compact = false,
-  });
+  const _Rating({required this.average, required this.count});
 
   final double average;
   final int count;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -653,13 +607,15 @@ class _Rating extends StatelessWidget {
           size: AarastV3Icon.sm,
           color: AarastV3Color.brandAccentStrong,
         ),
-        Text(
-          ' ${average.toStringAsFixed(1)} ($count)',
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-          style: JourneyType.of(
-            compact ? JourneyType.caption : JourneyType.small,
-            weight: JourneyType.bold,
+        // Gives way before the row does, on the narrowest phone at the
+        // largest text.
+        Flexible(
+          child: Text(
+            ' ${average.toStringAsFixed(1)} ($count)',
+            textDirection: TextDirection.ltr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: JourneyType.of(JourneyType.small, weight: JourneyType.bold),
           ),
         ),
       ],
@@ -732,8 +688,8 @@ class _Photo extends StatelessWidget {
   }
 }
 
-/// Without a cover photo: the provider's logo in a small rounded square, or
-/// its letter when there is no logo (or it fails to load).
+/// Without a cover or a logo: the provider's letter on the plan's soft
+/// colour, filling the row's square picture.
 class _Letter extends StatelessWidget {
   const _Letter({required this.name});
 
@@ -741,16 +697,10 @@ class _Letter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       key: const Key('provider-card-letter'),
-      width: _letterSize,
-      height: _letterSize,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: context.accent.primarySoft,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-      ),
-      child: _LetterText(name: name),
+      color: context.accent.primarySoft,
+      child: Center(child: _LetterText(name: name)),
     );
   }
 }

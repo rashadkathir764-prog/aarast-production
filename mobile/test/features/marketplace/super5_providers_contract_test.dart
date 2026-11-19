@@ -648,6 +648,62 @@ void main() {
     },
   );
 
+  // Rashad 2026-11-19, the staged layout: browsing everything, a kind with
+  // more than five providers is a sideways row; a smaller one is a short
+  // list of three rows, «الكل» for the rest, the kind not said again.
+  testWidgets('six of a kind make a row, fewer make a short list', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(392, 2400);
+    addTearDown(tester.view.reset);
+    MarketplaceProvider of(String id, String kind) => MarketplaceProvider(
+      id: id,
+      businessName: id,
+      ownerName: 'owner',
+      ratingAverage: 0,
+      ratingCount: 0,
+      primaryCategory: ProviderCategory(id: kind, nameAr: kind),
+    );
+    final state = _FakeMarketplaceProvider(
+      providers: [
+        for (var i = 0; i < 6; i++) of('hall-$i', 'cat-venue'),
+        for (var i = 0; i < 5; i++) of('photo-$i', 'cat-photo'),
+      ],
+      categories: const [
+        ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+        ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+      ],
+    );
+    await _pumpMarketplace(tester, state, authenticated: true, embedded: true);
+
+    expect(
+      find.byKey(const ValueKey('providers-shelf-cat-venue')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('providers-shelf-cat-photo')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('providers-section-cat-photo')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('provider-marketplace-card-photo-2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('provider-marketplace-card-photo-3')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('providers-section-all-cat-photo')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'embedded providers tab keeps the approved browse-first visual',
     (tester) async {

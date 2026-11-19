@@ -102,6 +102,12 @@ class _ProviderCard extends StatelessWidget {
 /// says the row goes on.
 const _shelfCardWidth = 216.0;
 
+/// The widest a shelf card grows with a large text size.
+const _shelfCardWidestWidth = 280.0;
+
+/// The three lines under a shelf card's photo at the normal text size.
+const _shelfWordsRoom = 66.0;
+
 /// One sideways row of «استكشف» (Rashad 2026-11-18): the kind's name with
 /// «الكل», and its providers as shelf cards, running to the screen's edges.
 class _ProviderShelfRow extends StatelessWidget {
@@ -125,9 +131,16 @@ class _ProviderShelfRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scaler = MediaQuery.textScalerOf(context);
-    // The photo, the padding, and three lines that grow with the text.
-    final height = 132.0 + AarastV3Space.x5 + scaler.scale(66);
-    final width = scaler.scale(_shelfCardWidth).clamp(_shelfCardWidth, 280.0);
+    final width = scaler
+        .scale(_shelfCardWidth)
+        .clamp(_shelfCardWidth, _shelfCardWidestWidth);
+    // The photo (a card photo's share of the card's own width, D118), the
+    // padding, and three lines that grow with the text. It was 132 for the
+    // photo whatever the width, and a wider card's photo cut its words.
+    final height =
+        width / AarastV3Media.cardPhoto +
+        AarastV3Space.x5 +
+        scaler.scale(_shelfWordsRoom);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

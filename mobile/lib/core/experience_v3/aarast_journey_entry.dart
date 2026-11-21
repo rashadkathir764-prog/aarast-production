@@ -398,6 +398,26 @@ class JourneySkyBand extends StatelessWidget {
   }
 }
 
+/// A saved/routed number uses the same local display as a number just typed.
+/// Run this before building the field, rather than changing its caller's
+/// controller while a widget is building. Invalid/foreign input remains visible
+/// so the existing validation can explain it; the account's number is unchanged.
+TextEditingValue journeyPhoneInitialValue(String? initialPhone) {
+  final text = initialPhone?.trim() ?? '';
+  final value = TextEditingValue(
+    text: text,
+    selection: TextSelection.collapsed(offset: text.length),
+  );
+  final local = const _CountryCodeFormatter().formatEditUpdate(
+    TextEditingValue.empty,
+    value,
+  );
+  return const _PhoneGroupsFormatter().formatEditUpdate(
+    TextEditingValue.empty,
+    local,
+  );
+}
+
 /// «رقم جوالك»: the Yemeni code, then the number, left to right as it is
 /// read and dialled. The app takes Yemeni numbers today, so the code is
 /// fixed, not a picker.

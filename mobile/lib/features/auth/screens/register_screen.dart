@@ -47,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = widget.initialPhone?.trim() ?? '';
+    _phoneController.value = journeyPhoneInitialValue(widget.initialPhone);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Someone already signed in has no account to make here (J1-15).

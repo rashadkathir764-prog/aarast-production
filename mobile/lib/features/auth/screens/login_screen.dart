@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = widget.initialPhone?.trim() ?? '';
+    _phoneController.value = journeyPhoneInitialValue(widget.initialPhone);
     // Someone already signed in has no sign-in to do here (J1-15): the app
     // takes them where they were heading, as after any sign-in.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -245,7 +245,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _openResetPassword() {
-    final phone = _phoneController.text.trim();
+    final input = _phoneController.text.trim();
+    // The field shows a local number; a valid recovery hint still carries
+    // the account's canonical number. Keep invalid input for correction.
+    final phone = isValidYemeniPhoneInput(input)
+        ? normalizeYemeniPhone(input)
+        : input;
     final resume = _safeResumeLocation(context);
     final location = Uri.parse(AppRouter.resetPassword)
         .replace(

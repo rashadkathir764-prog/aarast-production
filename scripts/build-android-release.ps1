@@ -33,11 +33,13 @@ $keyProperties = Join-Path $mobile 'android\key.properties'
 if (-not (Test-Path $valuesFile)) {
   throw "Missing $valuesFile (KEY=VALUE per line). See the top of this script."
 }
+$releaseLineNumber = 0
 foreach ($line in Get-Content $valuesFile) {
+  $releaseLineNumber++
   $trimmed = $line.Trim()
   if ($trimmed -eq '' -or $trimmed.StartsWith('#')) { continue }
   $at = $trimmed.IndexOf('=')
-  if ($at -lt 1) { throw "Not KEY=VALUE in .env.release: $trimmed" }
+  if ($at -lt 1) { throw "Not KEY=VALUE in .env.release at line $releaseLineNumber." }
   Set-Item -Path ("env:" + $trimmed.Substring(0, $at).Trim()) -Value $trimmed.Substring($at + 1).Trim()
 }
 

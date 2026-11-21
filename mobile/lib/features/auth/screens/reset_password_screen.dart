@@ -61,7 +61,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = widget.initialPhone?.trim() ?? '';
+    _phoneController.value = journeyPhoneInitialValue(widget.initialPhone);
     _passwordController.addListener(_onPasswordChanged);
   }
 

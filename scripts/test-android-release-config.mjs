@@ -48,6 +48,30 @@ const identity = {
   AARAST_ANDROID_APP_LABEL: 'Aarast Test Release',
   AARAST_ANDROID_SIGNING_PROFILE: 'qa',
 };
+
+test('release env syntax failures identify the line without exposing its contents', () => {
+  for (const malformed of ['not-a-real-secret--release-log-sentinel', '=not-a-real-secret--release-log-sentinel']) {
+    const fixture = fs.mkdtempSync(path.join(scratch, 'private-env-'));
+    fs.mkdirSync(path.join(fixture, 'scripts'));
+    fs.mkdirSync(path.join(fixture, 'mobile', 'android'), { recursive: true });
+    const script = path.join(fixture, 'scripts', 'build-android-release.ps1');
+    fs.copyFileSync(path.join(root, 'scripts', 'build-android-release.ps1'), script);
+    fs.writeFileSync(path.join(fixture, 'mobile', 'android', '.env.release'),
+      `# private release configuration\n\n${malformed}\n`);
+    const shell = process.platform === 'win32' ? 'powershell.exe' : 'pwsh';
+    const result = spawnSync(shell, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
+      encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024,
+    });
+    assert.ifError(result.error);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0, 'Malformed release configuration must stop before a build.');
+    assert.match(output, /Not KEY=VALUE/, 'The real release parser must reject the malformed input.');
+    assert.doesNotMatch(output, /not-a-real-secret--release-log-sentinel/,
+      'A malformed private configuration line must never be echoed into logs.');
+    assert.match(output, /\.env\.release at line 3/, 'The operator still needs the physical line number.');
+  }
+});
+
 function run(overrides = {}, env = {}) {
   const values = { ...defines, ...overrides };
   const encoded = Object.entries(values).filter(([, v]) => v !== null)

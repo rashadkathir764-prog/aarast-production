@@ -41,7 +41,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = widget.initialPhone?.trim() ?? '';
+    _phoneController.value = journeyPhoneInitialValue(widget.initialPhone);
   }
 
   @override

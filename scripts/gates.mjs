@@ -82,7 +82,7 @@ const gates = [
     name: 'deploy and supply-chain contracts',
     cwd: '.',
     cmd: 'node',
-    args: () => ['--test', ...trackedFiles('deploy/**/*.test.mjs'), 'scripts/check-deploy-encoding.test.mjs', 'scripts/supply-chain-contract.test.mjs'],
+    args: () => ['--test', ...trackedFiles('deploy/**/*.test.mjs'), 'scripts/check-deploy-encoding.test.mjs', 'scripts/supply-chain-contract.test.mjs', 'scripts/walks/process-ownership.test.mjs'],
     // deploy/aws/direct-ip-contract.test.mjs renders its Caddy file in a
     // container. With Docker stopped the gate failed on a pipe error that
     // read like a broken contract (2026-11-12); it is said as a missing tool.

@@ -68,7 +68,8 @@ $env:PORT = "$port"
 $env:AUTH_OTP_MODE = 'dev'
 $env:AUTH_DEV_OTP_CODE = '123456'
 $env:NODE_ENV = 'development'
-$api = Start-Process -PassThru -WindowStyle Hidden -FilePath node -ArgumentList '--env-file=.env', '-r', 'ts-node/register', '-r', 'tsconfig-paths/register', 'src/main.ts' -RedirectStandardOutput (Join-Path $S 'api.log') -RedirectStandardError (Join-Path $S 'api.err')
+$apiEntry = (Resolve-Path 'src/main.ts').Path
+$api = Start-Process -PassThru -WindowStyle Hidden -FilePath node -ArgumentList '--env-file=.env', '-r', 'ts-node/register', '-r', 'tsconfig-paths/register', ('"{0}"' -f $apiEntry) -RedirectStandardOutput (Join-Path $S 'api.log') -RedirectStandardError (Join-Path $S 'api.err')
 "api pid: $($api.Id)"
 for ($i = 0; $i -lt 60; $i++) {
   if ($api.HasExited) { throw "api exited: $(Get-Content (Join-Path $S 'api.err') -Tail 4)" }

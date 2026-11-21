@@ -35,7 +35,16 @@ foreach ($f in 'windows\flutter\generated_plugins.cmake', 'windows\flutter\gener
 }
 
 try {
-  Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'src/main.ts' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  # A different project may also run src/main.ts. Stop only this checkout's
+  # absolute entry, and only when it owns the isolated walk API port. An
+  # unknown listener is left for walks-clean's occupied-port error.
+  $walkApiEntry = [IO.Path]::GetFullPath((Join-Path $repo 'backend/src/main.ts')).Replace('\', '/')
+  $walkApiEntryPattern = '(?:^|\s|")' + [regex]::Escape($walkApiEntry) + '(?:"|\s|$)'
+  $walkApiOwners = @(Get-NetTCPConnection -State Listen -LocalPort 3116 -ErrorAction SilentlyContinue | ForEach-Object OwningProcess)
+  Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {
+    $walkApiOwners -contains $_.ProcessId -and
+      $_.CommandLine.Replace('\', '/') -match $walkApiEntryPattern
+  } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }
   & (Join-Path $S 'walks-clean.ps1') 2>&1 | Where-Object { "$_" -match 'api pid|api up|successfully|keys|Docker' } | ForEach-Object { "$_".Substring(0, [Math]::Min(100, "$_".Length)) }
   $pass = (Get-Content (Join-Path $S 'walk-pass.txt') -Raw).Trim()
   $ids = [IO.File]::ReadAllText((Join-Path $S 'sweep-ids.txt'))

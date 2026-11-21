@@ -160,6 +160,7 @@ jobs:
           node-version: 22
       - run: node scripts/docs-sync.mjs --check
       - run: node scripts/docs-verify.mjs
+      - run: node --test scripts/walks/process-ownership.test.mjs
 
   secrets-scan:
     runs-on: ubuntu-latest

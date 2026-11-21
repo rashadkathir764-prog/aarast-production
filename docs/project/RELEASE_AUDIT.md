@@ -519,7 +519,7 @@
 
 **الأدلة الدائمة:** `D:/projects/aarast-audit-2026-11-12/after/2026-11-21-verification/`؛ صور الجوال في `device/`، و48 ورقة مقارنة الصور وفهرسها في `visual-diffs/`، والسجلات والرحلات في `checks/`. صورتا ما قبل إصلاح شريط النظام في `D:/projects/aarast-audit-2026-11-12/before/2026-11-21-verification/`. لا تُحتسب تقارير أقدم من الجولة دليلًا لها.
 
-**GitHub CI:** لم يُشغّل بعد على هذه الدفعة؛ المتبقي حفظ الإصلاحات ورفع فرع العمل ومتابعة كل وظائفه. لا تُنسب إليه نتائج الجولة القديمة على `fc5ff0a9d`.
+**GitHub CI:** دفعة الإصلاحات `2fc871d36be7a99efe1d6b5cc8fbfceba1c28460` رُفعت إلى فرع العمل؛ [التشغيل 44934986360](https://github.com/rashadkathir764-prog/aarast-production/actions/runs/44934986360) انتهى **9/9 وظائف ناجحة**، وكل وظيفة `completed/success`: `staging-config` و`backend` و`backend-image` و`backend-e2e` و`admin-web` و`mobile` و`docs` و`secrets-scan` و`dependency-audit`. يشمل ذلك بناء الصور وفحص ثغرات المرشح، واختبارات الخادم، ورحلات API المعزولة. لم يُعدّل workflow أو يُحذف فحص أو يُخفّف شرط. لينكس يستثني صور golden بحسب workflow الموجود أصلًا؛ أدلتها مقارنة ويندوز العادية الناجحة أعلاه. لقطة الوظائف والسجل الكامل في `checks/github-ci-code-44934986360.json` و`checks/github-ci-code-44934986360.log`. نتيجة هذا التشغيل تخص التزام الإصلاحات المذكور؛ والتحقق من CI يشمل كل رفعة لاحقة للوثائق.
 
 #### الإصلاحات وأدلتها
 

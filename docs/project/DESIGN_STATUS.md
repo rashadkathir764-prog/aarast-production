@@ -4,7 +4,7 @@
 
 ## كيف يُقرأ
 
-- **الجرد** (الأقسام 2 إلى 9 و«أخرى» تحت): كل سطح يراه المستخدم، 277 سطحًا: 140 شاشة وحالة، 15 تبويبًا، 122 نافذة. استُخرج من جداول المسارات ومواضع فتح النوافذ في 2026-11-12. هو هوية السطوح، لا حكم عليها.
+- **الجرد الحالي قيد المطابقة:** 280 سطحًا حتى دفعة 2026-11-21: 142 شاشة وحالة، 15 تبويبًا، 123 نافذة. بدأ بـ277 في 2026-11-12؛ أُضيفت شاشة اختيار إرسال الضيوف ونافذة مدعوي المناسبة وحالة الحجز المنتهي بعد تتبع مداخلها الحالية. هذا جرد مصدر، لا حكم تحقق؛ بقية مطابقة الفتح والحالات مستمرة.
 - **الحكم** في «سجل الحكم» تحت، دفعة دفعة. لكل سطح حُكم عليه صف فيه: حاله قبل (الصورة والوصف)، مشاكله المثبتة في كل بُعد بمعرّفاتها (`RA-*` في القسم 4 من [RELEASE_AUDIT.md](RELEASE_AUDIT.md))، ما أُصلح، ما شُغّل فعلًا ونتيجته، وصورته بعد.
 - حكم كل بُعد (الوظيفة، التجربة، الشكل) واحد من: «فُحص»، «أُصلح»، «تحقق». **سطح ليس له صف في «سجل الحكم» لم يُفحص.** لا يُكتب «تحقق» لفحص لم يُشغَّل، وما تعذّر فحصه يُكتب سببه.
 - الصور: «قبل» في `D:\projects\aarast-audit-2026-11-12\before`، و«بعد» في `…\after` (خارج git). 78 شاشة وتبويبًا و115 نافذة بلا صورة «قبل» بعد (القائمة في آخر الملف)؛ تُصوَّر حين يبدأ الحكم على دفعتها.
@@ -19,6 +19,16 @@
 | عرض المال القديم ذي الكسور | اختبار فشل قبل الإصلاح؛ صار الكامل و«يحفظ المجموع» يعرضان `700.25` و`0.25` كما خُزّنا؛ اختبار السداد الدقيق الموجود يمر | رحلات المال والحجز ودون اتصال على ويندوز خضراء؛ Samsung أثبت الإخفاء واستعادة المال دون اتصال؛ لم تُجرّب كسور قديمة فعليًا على الجوال | لم تُنشأ شاشة جديدة؛ صيغة الأرقام الصحيحة لم تتغير؛ فروق المال ضمن المراجع المراجعة |
 | شريط النظام | اختبار فشل قبل الإصلاح ثم مر: رجوع نمط الأيقونات بعد الشاشة الداكنة | صور التطبيق الفعلي على Samsung قبل/بعد أثبتت قراءة الساعة وأيقونات النظام في البداية والدخول | نطاق النمط الدائم أصلح الأبيض على الفاتح؛ تجاوز الشاشة الداكنة بقي كما هو |
 | المقاسات والتنقل والحقول D117–D120 | البوابة الكاملة 28/28؛ التحليل بلا ملاحظات؛ الجوال 2929/2929 مع مقارنة صور ويندوز العادية | 16 ملف رحلة و17 تقريرًا و253 خطوة بلا فشل؛ تحقق Samsung ضمن النطاق المسجل، ولا إثبات لجوالين أو الإنتاج | 191 مقارنة قبل/بعد: 1–96 روجعت محليًا، و97–191 بمراجع مستقل. لا تراجع مانع ظاهر في الأجزاء المصورة؛ المكونات المفردة والصفحات الطويلة ليست دليل جهاز كامل |
+
+## جولة الإغلاق المعتمدة (2026-11-21)
+
+اعتمد رشاد فحص كل سطح حالي وإغلاق كل عيب مثبت قبل الدمج، بما فيه البسيط. Google Play ومراجعة حسابه والرفع عليه لرشاد في النهاية. في هذه الدفعة جرت مطابقة المصدر فقط: 534 ملف Dart بلا أخطاء نحوية، و90 تعريف مسار و163 صنف شاشة/نافذة و170 نداء فتح محتمل؛ لا تساوي هذه الأعداد عدد السطوح ولا تثبت فتحها.
+
+- شاشة التحديث كانت محسوبة في 10.05؛ صُحح اسم صنفها الداخلي، ولم تُحسب مرة أخرى.
+- مسار `moments/:moment` العام يغطي 5.21 و5.22، ومسار موعد الدفعة القديم يحوّل إلى التفصيل؛ لا سطح مستقل لهما بسبب تهجئة المسار وحدها.
+- 6.16 صار مدخلًا لحالة التذكير في شاشة الإرسال؛ 6.18 صار `InvitationQueueSheet`، وملف `GuestSendSheet` القديم محذوف. أُضيف 6.19 و6.20 بعد تتبع مدخليهما.
+- أُفرد 9.59 للحجز المنتهي، وله صنف ومدخل مختلفان عن الحجز القائم 9.33.
+- `_OccasionPicker` شريط اختيار داخل 6.01، وليس نافذة مستقلة. بقية مطابقة الحالات والفتح مستمرة؛ لم يُمنح أي سطح جديد حكم تحقق أو صورة لم تُلتقط.
 
 ## تقدم دفعات الجرد كما سُجلت وقتها
 
@@ -383,10 +393,10 @@
 
 | # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
 |---|---|---|---|---|---|---|
-| 6.01 | «الضيوف» / «الضيفات» (الأرقام، فلتر العائلات والردود، بطاقة الدعوة، من جهات الاتصال، الصق قائمة) | `/wedding-plans/:id/guests`، وتبويب 3 في `/home` | `features/guests/screens/guest_list_screen.dart` (+ `_helpers.dart`) · `GuestListScreen` | قائمة | أي عضو على المسار؛ للمشارك بدون `canManageGuests` يُبنى 6.08 داخل `/home` | rs/25__wedding-plans_planId_guests.png، g/21_e01_guests.png، g/22_e01_guests_all.png، b/20_e01_guests.png، b/21_e01_guests_all.png، og/04_o04_guests.png، op/04_p__.png، or/02_r02_guest_synced.png |
+| 6.01 | «الضيوف» / «الضيفات» (الأرقام، فلتر العائلات والردود، بطاقة الدعوة، من جهات الاتصال، الصق قائمة) | `/wedding-plans/:id/guests`، وتبويب 3 في `/home` | `features/guests/screens/guest_list_screen.dart` (+ `guest_list_screen.occasions.dart`) · `GuestListScreen` | قائمة | أي عضو على المسار؛ للمشارك بدون `canManageGuests` يُبنى 6.08 داخل `/home` | rs/25__wedding-plans_planId_guests.png، g/21_e01_guests.png، g/22_e01_guests_all.png، b/20_e01_guests.png، b/21_e01_guests_all.png، og/04_o04_guests.png، op/04_p__.png، or/02_r02_guest_synced.png |
 | 6.02 | إضافة ضيف (القائمة مع النافذة مفتوحة) | `/wedding-plans/:id/guests/add` | `GuestListScreen(openAddOnStart: true)` | نموذج | `manageGuests` | rs/26__wedding-plans_planId_guests_add.png |
 | 6.03 | «إضافة ضيف» / «تعديل ضيف» | نافذة من 6.01 و6.02 و6.09 | `features/guests/widgets/guest_form_sheet.dart` · `GuestFormSheet` | نافذة | `canManageGuests` | og/05_o05_add_guest.png، g/24_e06_guest_lunch.png (غالبًا) |
-| 6.04 | «عائلة جديدة» | نافذة من 6.03 | `guest_form_sheet.dart` (سطر 244، 599) | نافذة | `canManageGuests` | لا صورة |
+| 6.04 | «عائلة جديدة» | نافذة من 6.03 | `guest_form_sheet.dart` · `_NewGroupSheet` | نافذة | `canManageGuests` | لا صورة |
 | 6.05 | «المجموعات» | نافذة من 6.01 | `features/guests/widgets/guest_groups_sheet.dart` · `GuestGroupsSheet` | نافذة | `canManageGuests` (لا مجموعات لخطة الجوال) | لا صورة |
 | 6.06 | اسم المجموعة | نافذة (`showDialog`) من 6.05 | `guest_groups_sheet.dart` · `_GroupNameDialog` | نافذة | `canManageGuests` | لا صورة |
 | 6.07 | «حذف مجموعة «<الاسم>»؟» | نافذة (`showDialog`) من 6.05 | `guest_groups_sheet.dart` (سطر 70) | نافذة | `canManageGuests` | لا صورة |
@@ -398,9 +408,12 @@
 | 6.13 | «أضف مجموعة ضيوف» (الصق قائمة) | `/wedding-plans/:id/guests/import` (`from=paste` أو بدون) | `GuestImportScreen(source: paste)` | نموذج | `manageGuests` | rs/28__wedding-plans_planId_guests_import.png |
 | 6.14 | «كم بيحضر؟» | `/wedding-plans/:id/guests/attendance` | `features/guests/screens/guest_attendance_screen.dart` · `GuestAttendanceScreen` | قائمة | `manageGuests` | rs/27__wedding-plans_planId_guests_attendance.png |
 | 6.15 | «بطاقة الدعوة» | `/wedding-plans/:id/guests/invite` | `features/guests/screens/guest_invite_screen.dart` (+ `.card.dart`) · `GuestInviteScreen` | نموذج | `manageGuests` | rs/29__wedding-plans_planId_guests_invite.png |
-| 6.16 | «تذكير اللي <ما ردّوا>» | `/wedding-plans/:id/guests/invite?mode=remind` | `GuestInviteScreen(reminder: true)` | نموذج | `manageGuests` | لا صورة |
+| 6.16 | اختيار «وصلتهم وما ردّوا» للتذكير | `/wedding-plans/:id/guests/invite?mode=remind` يحوّل إلى حالة 6.19 | `features/guests/screens/guest_send_screen.dart` · `GuestSendScreen(initialAudience: remind)` | حالة | `manageGuests` | لم تُصوّر في جولة الإغلاق |
 | 6.17 | صورة البطاقة (كاميرا/معرض) | نافذة من 6.15 | `guest_invite_screen.card.dart` · `showImageSourceSheet` | نافذة | `manageGuests` | لا صورة |
-| 6.18 | نافذة الإرسال (واحد واحد على واتساب) | نافذة من 6.15/6.16 | `features/guests/widgets/guest_send_sheet.dart` · `GuestSendSheet` | نافذة | `manageGuests` | لا صورة |
+| 6.18 | جولة الإرسال: النص ثم البطاقة وتأكيد الإرسال | نافذة من 6.19 أو صفحة الضيف 6.09 | `features/guests/widgets/invitation_queue_sheet.dart` · `InvitationQueueSheet`؛ استبدلت `GuestSendSheet` المحذوفة | نافذة | `manageGuests` | لم تُصوّر في جولة الإغلاق |
+
+| 6.19 | اختيار المناسبة والمجموعة والمرسل إليهم قبل إرسال الدعوات | `/wedding-plans/:id/guests/send` (`event` و`audience` اختياريان) | `features/guests/screens/guest_send_screen.dart` · `GuestSendScreen` | قائمة | `manageGuests` | لم تُصوّر في جولة الإغلاق |
+| 6.20 | اختيار مدعوي مناسبة إضافية | نافذة من 6.01 بعد اختيار مناسبة غير العرس | `features/guests/widgets/occasion_invitees_sheet.dart` · `OccasionInviteesSheet` | نافذة | من يدير الضيوف حسب شرط المدخل في `GuestListScreen`؛ الفحص الفعلي للدور لم يُجر | لم تُصوّر في جولة الإغلاق |
 
 ## 7. المزودون (جهة العرسان) والدردشة
 
@@ -519,6 +532,8 @@
 | 9.57 | «شارك ملفك» | `/provider/share` | `features/provider_portal/screens/provider_share_screen.dart` · `ProviderShareScreen` | تفصيل | مزود مفعّل | لا صورة |
 | 9.58 | المحادثة من جهة المزود (مع كرت الطلب) | `/conversations/:id` | `ChatScreen` + `features/provider_portal/widgets/provider_chat_case.dart` · `providerChatCase` | تفصيل | مزود طرف في الطلب | لا صورة (rs/07 من جهة العريس) |
 
+| 9.59 | الحجز الملغي أو الذي اعتذر عنه المزود | حالة في `/provider/requests/:id` عند `bookingCancelled` أو `bookingDeclined` | `features/provider_portal/screens/provider_booking_screen.dart` · `ProviderBookingEndedScreen`؛ المدخل `ProviderRequestScreen` | حالة | المزود طرف الطلب | لم تُصوّر في جولة الإغلاق |
+
 ## أخرى
 
 | # | الشاشة | المسار | الملف | النوع | من يفتحها | صورة قبل |
@@ -527,7 +542,7 @@
 | 10.02 | شاشة خطأ البناء | بدل أي ودجت يفشل بناؤه | `app.dart` · `AarastBuildErrorScreen` | حالة | الكل | لا صورة |
 | 10.03 | انتظار الجلسة (فحص الدخول / إنهاء الجلسة) | فوق كل شيء أثناء تحول الجلسة | `app.dart` · `_SessionWait` (`AarastSessionTransitionGate`) | حالة | الكل | لا صورة |
 | 10.04 | قفل التطبيق (إدخال الرمز) | بوابة فوق كل شيء | `core/security/app_lock_gate.dart` · `AppLockScreen` | نموذج | من فعّل القفل | لا صورة |
-| 10.05 | «حدّث اعّرست» | بوابة فوق كل شيء | `core/widgets/app_update_gate.dart` · `AppUpdateGate` | حالة | الكل لما الخادم يرفض النسخة | لا صورة |
+| 10.05 | «حدّث اعّرست» | بوابة فوق كل شيء | `core/widgets/app_update_gate.dart` · `AppUpdateGate` → `AppUpdateRequiredScreen` | حالة | الكل لما الخادم يرفض النسخة | لا صورة |
 | 10.06 | «هذه الخطوة تحتاج حساباً» | نافذة من رئيسية خطة الجوال، و«حسابي»، وصفحة المزود، ومهمة جديدة، والرئيسية | `features/auth/utils/auth_action_guard.dart` · `AuthActionGuard.requireAccount` | نافذة | بلا حساب | لا صورة |
 | 10.07 | لوحة «سجّل الدخول…» داخل الشاشة | حالة في 3.28، 3.35، 8.01، 8.07 | `auth_action_guard.dart` · `AuthGatePanel` | حالة | بلا حساب أو جلسة منتهية | لا صورة |
 | 10.08 | حجب الخطة: «هذا القسم مو مفتوح لك» / «هذي الخطة ما عادت لك» / «ما قدرنا نتأكد من الخطة» / «سجّل الدخول» | حالة في كل مسار `/wedding-plans/:id/*` | `features/account_contexts/widgets/wedding_plan_context_gate.dart` · `_MismatchedPlanContext`، `_LoginRequiredPlanContext` | حالة | من لا يملك الصلاحية المطلوبة | لا صورة |
@@ -596,12 +611,12 @@
 | 3. الرئيسية والهيكل | 29 | 0 | 15 | 44 |
 | 4. المال | 17 | 4 | 31 | 52 |
 | 5. المهام واليوم | 9 | 2 | 11 | 22 |
-| 6. الضيوف | 9 | 0 | 9 | 18 |
+| 6. الضيوف | 10 | 0 | 10 | 20 |
 | 7. المزودون والدردشة | 14 | 4 | 14 | 32 |
 | 8. المشاركون | 6 | 0 | 6 | 12 |
-| 9. بوابة المزود | 30 | 5 | 23 | 58 |
+| 9. بوابة المزود | 31 | 5 | 23 | 59 |
 | أخرى | 8 | 0 | 3 | 11 |
-| **الكل** | **140** | **15** | **122** | **277** |
+| **الكل** | **142** | **15** | **123** | **280** |
 
 طريقة العد: خطوات الباب وطلب الانضمام محسوبة شاشات لأن كل وحدة تملأ الشاشة. وأقسام الشريط السفلي (الرئيسية، المال، المهام، الضيوف، المزودين) محسوبة شاشات لا تبويبات، لأن لكل واحد مساره. «نافذة» تشمل الأوراق السفلية والحوارات والقوائم المنبثقة (⋮) ومنتقيات التاريخ والوقت.
 

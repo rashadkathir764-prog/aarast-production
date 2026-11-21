@@ -504,6 +504,308 @@
 | RA-MO-62 | 2 | بطاقة الدعوة تفتح «متغيرة» وتحفظ المدينة مكان القاعة لما المناسبة بلا مكان، وممكن تكتب فوق مكان القاعة لو فتحت قبل ما توصل المناسبات (`guest_invite_screen.dart:152-198`) | **أُصلحت:** خانة المكان فيها مكان موعد الزفاف المحفوظ بس، وتتعبى لما توصل المناسبات؛ والمدينة تطلع على البطاقة وهي فاضية وما تنحفظ. **تحقق:** اختباران (زفاف بلا مكان، وقاعة توصل بعد الخطة) يفشلان على الكود القديم |
 | RA-MO-63 | 2 | الرئيسية: «N يوم على العرس» للمشارك («7 يوم»)، وجمل مذكّرة للعروسة («ما انحفظ جوابك، جرّب»)، وخطوة «أضف أول ضيف» تفتح القائمة مو النموذج، و«بعدين» يقول «بنذكّرك بعد أسبوع» وما في تذكير | **أُصلحت:** «7 أيام على العرس» (11 وفوق «يوم»)؛ و«جرّبي» للعروسة؛ وخطوة الخادم «أضف أول ضيف» تفتح الإضافة (`/guests/add`)؛ و«بعدين» يقول «تطلع لك هنا مرة ثانية بعد أسبوع» (البند يختفي أسبوع ويرجع، ما في إشعار). **تحقق:** اختبار عدّاد المشارك، واختبار عارض الرئيسية في الخادم |
 
+### تحقق أحدث فرع على ويندوز (2026-11-21)
+
+الفرع `phase/branch-fixes-2026-11-16` استوعب رأس السحابة `af65ee79e` بتقديم مباشر. بقي `main` و`origin/main` على `51f292741`؛ لا دمج إلى main ولا نشر. نقطة الاستئناف ونتيجة CI في [STATUS.md](STATUS.md).
+
+| النطاق | النتيجة المثبتة | الدليل |
+|---|---|---|
+| البوابة الكاملة على ويندوز | `node scripts/gates.mjs --full --strict`: **28/28**، صفر فشل وصفر تخطٍّ على مستوى البوابات | `checks/all-gates-final.log` |
+| الخادم | 2140 ناجحة، صفر فشل، 28 تخطي منصة من 2168؛ التهيئة 54/54 وحراسة ثبات الملفات ناجحة؛ كل دخانات API مرت | السجل نفسه |
+| الجوال | تحليل Flutter بلا ملاحظات و**2929/2929**، مع مقارنة صور ويندوز العادية | السجل نفسه |
+| الإدارة والجذر | الاختبارات والحدود والبناء وفحص التشغيل والتدقيق الأمني والعقود وإعداد أندرويد وgitleaks كلها مرت | السجل نفسه |
+| الأمان | صفر تنبيهات بكل الدرجات في الخادم والإدارة؛ حماية قفل الخادم 27/27 | `checks/backend-audit-final.json` و`checks/effect-override-green.log` |
+| التطبيق الحقيقي | 16 ملف رحلة، 17 تقريرًا، **253 خطوة وصفر فشل** بعد إعادة المتأثر | `checks/walks/<journey>/report.json` والصور والنصوص بجانبه |
+
+**الأدلة الدائمة:** `D:/projects/aarast-audit-2026-11-12/after/2026-11-21-verification/`؛ صور الجوال في `device/`، و48 ورقة مقارنة الصور وفهرسها في `visual-diffs/`، والسجلات والرحلات في `checks/`. صورتا ما قبل إصلاح شريط النظام في `D:/projects/aarast-audit-2026-11-12/before/2026-11-21-verification/`. لا تُحتسب تقارير أقدم من الجولة دليلًا لها.
+
+**GitHub CI:** لم يُشغّل بعد على هذه الدفعة؛ المتبقي حفظ الإصلاحات ورفع فرع العمل ومتابعة كل وظائفه. لا تُنسب إليه نتائج الجولة القديمة على `fc5ff0a9d`.
+
+#### الإصلاحات وأدلتها
+
+- **استكشف:** بطاقة الشاشة قبل التعديل: قائمة لمقارنة مزودي النوع وفتح الملف، من الكتالوج الحالي، بلا تغيير البيانات أو الصلاحيات أو الهوية. اختبار أثبت بقاء الأقسام القديمة بعد استبدال الصفحة الأولى مع بقاء أول معرّف وإجمالي العدد. صار المصدر يعلن نسخة عند استبدال الدليل أو المراجع؛ الشاشة تعيد التقسيم عندها، وتحافظ على النسخة عند إلحاق صفحة. اختبار الواجهة واختبار التصفح بالصفحات نجحا.
+- **المال القديم:** Q25 يمنع الكسور الجديدة ويبقي المخزّن القديم. اختبار فشل لأن الكامل و«يحفظ المجموع» يقرّبان `700.25` و`0.25`. المنسّق يحفظ الآن خانتي التخزين ويزيل الأصفار الزائدة؛ اختبار السداد الدقيق الموجود مر كما هو. الإدخال وقواعد المال لم تتغير. بصمتا المنسّق في فحص الحدود أُعيد تثبيتهما، مع بقاء شروط الرفض.
+- **شريط النظام:** بطاقة السطح: إطار النظام للترحيب والدخول وبقية المسارات؛ الهدف قراءة الساعة والأيقونات، من النمط الفاتح مع تجاوز الشاشة الداكنة. صورتا البداية والدخول أثبتتا أيقونات بيضاء فوق سطح فاتح بعد مغادرة البداية. استُبدل الإرسال مرة عند بناء الجذر بنطاق نمط دائم، مع بقاء تجاوز الشاشات الداكنة. اختبار فشل قبل التنفيذ ومر بعده؛ `phone-system-ui-after.png` و`phone-login-system-ui-after.png` أثبتا الإصلاح على Samsung الحقيقي.
+- **مراجع ويندوز:** روجعت 191 مقارنة قبل اعتماد الصور؛ 1–96 محليًا، و97–191 بمراجع مستقل. لا تراجع مانع ظاهر في الأجزاء المصورة، والهوية بقيت فيروز. حزمة تحديث المراجع مرت 2924/2924، ثم مرت المقارنة العادية، وآخر حزمة بعد إضافات الاختبارات 2929/2929. صور المكونات والصفحات الطويلة لا تحكم على جهاز كامل.
+
+#### الأمان من المصدر، والاستثناء المعتمد
+
+بدأ التدقيق بـ8 تنبيهات: 3 عالية و4 متوسطة و1 منخفضة. تحديث Firebase Admin إلى `14.5.1` في القفل ضمن نطاق البيان الحالي أزال سلسلة rimraf/glob/minimatch، وأوصل fast-xml-parser إلى `5.12.1`؛ وفق [سجل Firebase الرسمي](https://firebase.google.com/support/release-notes/admin/node). لا override جديد لهذه السلسلة.
+
+الثلاثة العالية كانت من effect عبر Prisma. رفض رشاد الاكتفاء بحل مؤقت أولًا، ثم اعتمد صراحة تثبيت التصحيح الرسمي `effect@3.22.1` باستثناء واحد مع اختبار وشرط إزالة؛ القرار في DECISIONS.md. الإصدار المصحح موثق في [GHSA-7589-6fvf-x4pw](https://github.com/advisories/GHSA-7589-6fvf-x4pw). Prisma 6 بقي `6.19.3`؛ الترقية إلى المستقر 7.10.1 وحدها لا تعالج التبعية المصابة كما أثبتت بيانات npm وقت الجولة.
+
+أُعيد `npm ci` وتوليد Prisma. القفل النهائي بصمته `01f40fc21e705a5aa5e2eb9b56e3d91ef71e98ff6242cdfd871af8e08dfe8dd5`. آلية البصمات الموجودة تقبل هذا القفل المحدد، وتحفظ البصمات التاريخية؛ لا قبول لقفل عشوائي أو نطاق effect آخر. اختبار الاستثناء يفحص النسخة المثبتة والنسخة المقفلة وغياب نسخة أخرى، ويجبر مراجعة الاستثناء عند تغير متطلب Prisma. **يُزال عندما يدعم Prisma التصحيح مباشرة.**
+
+فشلت فحوص البنية بعد تحديث البيان أول مرة بسبب بصمته التاريخية، فبقي نطاق Firebase الأصلي وحُدّث القفل فقط. فشلت تجهيزات تاريخية كانت تنسخ استثناء effect الجديد إلى عصر يسبقه؛ صُحّحت التجهيزات فقط، وبقيت كل حالات رفض العبث والمخالفة. فحوص الحماية 27/27، وفحص R5 المحدد 2/2، ثم الحزمة الكاملة مرت. مصدر Prisma وعمليات الدمج الفعلية والملكية والمخطط والترحيلات المنشورة لم تُعدّل.
+
+#### أداة الرحلات ونتيجة التطبيق الحقيقي
+
+- مطابقة النص كانت ترفض مسافات formatter غير القابلة للكسر وعلامات الاتجاه. اختبار أثبتها؛ المطابقة تقبل تلك المسافات وتحافظ على كل رقم وعلامة ترقيم، وتظل ترفض `1.7` بدل `1.6`.
+- الرجوع بـ`go` من تفصيل مدفوع بـ`push` ترك قائمة التنبيهات في حالة فتح معلّقة. اختبار حقيقي بسبعة إشعارات فشل في الخمسة التالية بعد العرض والدفعة، ثم مر بفتح السبعة والرجوع الفعلي منها. محاولتا الإشعارين السابقتان لم تُحتسبا إثباتًا للحالة. تهيئة الجولة تولّد التذكيرات بخدمة مالكها على قاعدة الرحلات المحلية فقط، فلا تعتمد التغطية على cron الساعة.
+- فحص العروسة كان يربط اسم الصالة بوسم «غير مفعّل» في أي صف؛ الصورة أثبتت أن الوسم تحت مصور الحارة. الفحص الآن داخل سطح الصالة المحدد، ويفشل عند غيابه أو تعدده؛ اختبار يرفض الوسم إذا ظهر داخل صفها. إعادة العروسة 36/36.
+- ترتيب الجولة سبق عدم الاتصال بحجز غيّر المبلغ من 1.6 إلى 2.2 مليون. المعروض قبل الفصل وبعده كان 2.2، فكان توقع البذر سبب الفشل. offline_prime يسجل الآن المبلغ ووحدته من الهيرو المعروض، وتقارنهما رحلة الفصل تمامًا؛ تغيّر المبلغ أو الوحدة أو غياب التهيئة يفشل. اختبارات العقد الثلاثة مرت؛ إعادة الرحلة دون اتصال 7/7، وعودة الضيف والمزامنة 2/2.
+- تجربة معزولة أثبتت أن المشغّل يعيد 0 رغم فشل Flutter. صار يعيد الفشل لأي رحلة، ويستعيد ملفات إضافات ويندوز/لينكس الستة بايتًا ببايت في النهاية؛ أثبتته التجربة والجولة الحقيقية ذات الفشل. أخطاء الترحيلات والبذر والتذكيرات والمعرّفات توقف التهيئة.
+- دخل ويندوز السكون التلقائي أثناء تأكيد الحجز (Kernel-Power 42، 2026-11-21 05:29:41، System Idle)، فتوقفت الرحلة بمهلة وفشل الفحص المعتمد عليها. أُعيد التأكيد والمهمة على القاعدة نفسها بعد التحقق من مالك منفذها، فنجحا 5/5 و3/3. طلب إبقاء الجهاز نشطًا أثناء بقية التحقق مؤقت ومحدود العمر، لا يغيّر خطة الطاقة الدائمة.
+
+| الرحلة | ناجح/المجموع |
+|---|---|
+| العريس | 39/39 |
+| العروسة | 36/36 |
+| تنبيه العرض؛ والرجوع بين التنبيهات | 3/3؛ 2/2 |
+| المشارك صالح؛ المشارك الوالد | 8/8؛ 8/8 |
+| الاستوديو؛ حالات مراجعة المزود | 20/20؛ 9/9 |
+| مسح المسارات | 64/64 |
+| فتح البند من الطلبات | 7/7 |
+| العرض إلى الحجز؛ التأكيد؛ إنهاء المهمة بالحجز | 9/9؛ 5/5؛ 3/3 |
+| التهيئة دون اتصال؛ العمل دونه؛ العودة والمزامنة | 6/6؛ 7/7؛ 2/2 |
+| عريس جديد يحفظ فعلًا | 25/25 |
+
+#### الجوال الفعلي وحدود الإثبات
+
+Samsung SM-S938B، دقة 1440×3120 وخط النظام 1.15، بتطبيق منفصل `com.aarast.aarast_mobile.qa20261121` على الخادم المعزول 3116. التطبيق الشخصي وبياناته لم يُمسا. نسخة التجربة: `D:/projects/aarast-apk/aarast-verify-af65ee79e-isolated-debug.apk`؛ SHA256 `32E83E6E7525BF1B5D69933D72C62A9BD1CA66466D73EFF9D1E8A378AA0C905A`.
+
+- فُتحت الرئيسية والمال والمهام والضيوف واستكشف وملف المزود. كُتبت «قاعة» ثم «ضوء» من كيبورد سامسونج العربي؛ الثانية أظهرت استوديو ضوء صنعاء، وبقي البحث بعد الرجوع الفعلي من ملفه. فُتح نموذج الضيف وكيبورد الاسم وأُغلق بلا حفظ، ولم تظهر فجوة ارتفاع ثانية للكيبورد.
+- إخفاء المال أخفى الأرقام من الصورة ومن نصوص إمكانية الوصول. فُصل تحويل منفذ الجوال وحده وأُعيد تشغيل تطبيق QA؛ استعاد الخطة والمال من النسخة المحفوظة وذكر سبب انقطاع الاتصال. أُعيد الاتصال وزال التنبيه.
+- فُعّل قفل QA برمز تجريبي؛ كانت شاشة المال نشطة ولقطتها سوداء محمية. بعد أكثر من دقيقة في الخلفية ظهر القفل، وبقي بعد رجوع أندرويد وإعادة الفتح؛ الرمز الصحيح أعاد الخطة إلى الرئيسية. أُزيل قفل التجربة بالرمز وصارت لقطة المال ظاهرة ثانية. عاد القفل مطفأ والكيبورد للإنجليزية كما بدآ.
+- لم يُثبت استمرار التبويب السابق بعد القفل. صور المزود التجريبية لم تُحمّل وظهر بديلها، فلا تُحتسب صورًا حقيقية متحققًا منها. لم تُجر هذه الجولة على الإنتاج أو المتجر، ولم تُرسل رسائل واتساب فعلية أو يُختبر دفع حقيقي. لا حكم شامل على تجربة وشكل كل السطوح الـ277 من نتائج البناء وحدها.
+
+**تحذيرات غير مخفية:** docs-verify مر بصفر أخطاء و9 تحذيرات قِدم وثائق؛ لم تُغيّر تواريخها لإخفائها. يوجد تحذير قديم أيضًا في `now_money_test.dart` لحالة `m05 share`: نقر عنصر قائمة قبل اكتمال موضعه؛ ظهر في السجل السابق والنهائي. لم يُسكت ولم يُعتبر نجاح صورته إثباتًا لمسار المشاركة. تحذيرات npm للحزم المهجورة وسياسة install scripts، وتحذيرات تحويل نهايات الأسطر، محفوظة في السجلات؛ سياسة السماح لم تُغيّر.
+
+#### كل ملفات هذه الدفعة
+
+الجدول التالي يشمل كل ملفات المصدر والاختبار والوثائق المتغيرة؛ وتحتَه كل صور المقارنة المتغيرة. لا ملف خطة أو تقرير متابعة جديد داخل المستودع.
+
+
+| الملف | سبب التغيير |
+|---|---|
+| [backend/package-lock.json](../../backend/package-lock.json) | تحديث Firebase وتوابعه إلى النسخ المصححة، وتثبيت effect الرسمي المصحح؛ إزالة السلسلة المصابة. |
+| [backend/package.json](../../backend/package.json) | إضافة override واحد معتمد لـ effect 3.22.1؛ نطاق Firebase الأصلي بقي كما كان. |
+| [backend/scripts/security/prisma-config-merge-security.cjs](../../backend/scripts/security/prisma-config-merge-security.cjs) | تثبيت بصمة القفل المعتمد وإسقاط الاستثناء المحدد فقط عند إسقاط البيان إلى بصمته التاريخية؛ القيود الأخرى باقية. |
+| [backend/test/architecture-r5-identity-relocation.test.ts](../../backend/test/architecture-r5-identity-relocation.test.ts) | تصحيح التجهيز التاريخي ليبقى من دون الاستثناء الذي أُضيف لاحقًا؛ كل اختبارات رفض المخالفات باقية. |
+| [backend/test/prisma-config-merge-security.test.ts](../../backend/test/prisma-config-merge-security.test.ts) | حماية النسخ المصححة والقفل، رفض العبث والنسخ غير المعتمدة، وفرض مراجعة إزالة استثناء effect عند تغير متطلب Prisma. |
+| [docs/project/DECISIONS.md](../../docs/project/DECISIONS.md) | تصحيح موضع D113 وتسجيل موافقة رشاد على الاستثناء المحدد وخطة إزالته وطلب CI. |
+| [docs/project/DESIGN_STATUS.md](../../docs/project/DESIGN_STATUS.md) | فصل دليل الوظيفة والتجربة والشكل وحدود التحقق الحالي. |
+| [docs/project/PRODUCT.md](../../docs/project/PRODUCT.md) | مطابقة وصف الميزانية مع قرار budgetIncludesMahr الساري. |
+| [docs/project/RELEASE_AUDIT.md](../../docs/project/RELEASE_AUDIT.md) | أدلة الجولة ونتائجها وحدودها وسجل الملفات المتغيرة. |
+| [docs/project/STATUS.md](../../docs/project/STATUS.md) | نقطة الاستئناف والنتيجة الحالية؛ تمييز الفرع المحلي والسحابي من main والنشر. |
+| [docs/qa/JOURNEY_WALKS.md](../../docs/qa/JOURNEY_WALKS.md) | توثيق تهيئة التذكيرات الحتمية وفشل المشغّل ومقارنة المال قبل الفصل وبعده. |
+| [mobile/integration_test/journeys/notification_open_walk_test.dart](../../mobile/integration_test/journeys/notification_open_walk_test.dart) | فحص التنقل بين إشعارات المال والمهام والعرض؛ يمنع النجاح بتغطية إشعارين فقط. |
+| [mobile/integration_test/journeys/offline_groom_walk_test.dart](../../mobile/integration_test/journeys/offline_groom_walk_test.dart) | مطابقة المبلغ ووحدته مع ما عُرض قبل فصل الخادم بدل افتراض مبلغ البذر. |
+| [mobile/integration_test/journeys/offline_prime_walk_test.dart](../../mobile/integration_test/journeys/offline_prime_walk_test.dart) | تسجيل المبلغ والوحدة المعروضين قبل فصل الاتصال. |
+| [mobile/integration_test/journeys/support/journey_harness.dart](../../mobile/integration_test/journeys/support/journey_harness.dart) | مطابقة مسافات المال دون تغيير الأرقام، الرجوع الفعلي، حصر الفحص داخل سطحه، ومقارنة المال المحفوظ. |
+| [mobile/integration_test/journeys/support/owner_walk.dart](../../mobile/integration_test/journeys/support/owner_walk.dart) | فحص وسم الصالة داخل صف الصالة نفسها، مع فشل إذا لم يتحدد الصف. |
+| [mobile/lib/app.dart](../../mobile/lib/app.dart) | نطاق دائم لنمط النظام يعيد الأيقونات الداكنة بعد إغلاق الشاشة الداكنة. |
+| [mobile/lib/core/utils/money_formatters.dart](../../mobile/lib/core/utils/money_formatters.dart) | حفظ كسور المال القديمة بدقتها في العرض الكامل والذي يحفظ المجموع. |
+| [mobile/lib/features/marketplace/providers/marketplace_provider.dart](../../mobile/lib/features/marketplace/providers/marketplace_provider.dart) | إعلان نسخة الدليل عند استبداله. |
+| [mobile/lib/features/marketplace/providers/marketplace_provider.directory.dart](../../mobile/lib/features/marketplace/providers/marketplace_provider.directory.dart) | تغيير النسخة عند تبديل الصفحة الأولى أو المراجع، والمحافظة عليها عند إلحاق صفحة. |
+| [mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart](../../mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart) | إعادة تقسيم الدليل عند تغير نسخته، حتى مع بقاء أول معرف وإجمالي العدد. |
+| [mobile/test/core/utils/money_formatters_test.dart](../../mobile/test/core/utils/money_formatters_test.dart) | حالات الكسور القديمة والكسر الصغير والسالب وصيغة النص. |
+| [mobile/test/core/widgets/app_system_ui_test.dart](../../mobile/test/core/widgets/app_system_ui_test.dart) | إثبات رجوع نمط الأيقونات بعد الشاشة الداكنة. |
+| [mobile/test/features/marketplace/quote_stability_test.dart](../../mobile/test/features/marketplace/quote_stability_test.dart) | إثبات أن الإلحاق يحافظ على النسخة وإعادة الصفحة الأولى تغيرها. |
+| [mobile/test/features/marketplace/super5_providers_contract_test.dart](../../mobile/test/features/marketplace/super5_providers_contract_test.dart) | إثبات تحديث الأقسام عند تبديل مزودي الصفحة الأولى. |
+| [mobile/test/features/notifications/notification_open_failure_test.dart](../../mobile/test/features/notifications/notification_open_failure_test.dart) | تغطية الرجوع من تفصيل مدفوع قبل فتح التنبيه التالي. |
+| [mobile/test/journey_harness_contract_test.dart](../../mobile/test/journey_harness_contract_test.dart) | رفض الأرقام المختلفة والوسم في سطحه وتغير مبلغ المال أو وحدته وغياب تهيئة المقارنة. |
+| [scripts/check-mobile-boundaries.test.mjs](../../scripts/check-mobile-boundaries.test.mjs) | إعادة تثبيت بصمتي منسّق المال مع بقاء فحوص الحدود والرفض كما هي. |
+| [scripts/walks/walks-clean.ps1](../../scripts/walks/walks-clean.ps1) | تهيئة التذكيرات بخدمة مالكها على قاعدة محلية معزولة، وإيقاف الجولة عند فشل التهيئة. |
+| [scripts/walks/walks.ps1](../../scripts/walks/walks.ps1) | إعادة رمز الفشل لأي رحلة فاشلة، مع استعادة ملفات الإضافات الستة في النهاية. |
+
+<details>
+<summary>صور ويندوز المرجعية: 191 ملفًا</summary>
+
+- [mobile/test/features/account_contexts/goldens/account_context_error.png](../../mobile/test/features/account_contexts/goldens/account_context_error.png)
+- [mobile/test/features/guests/goldens/guest_invite_320.png](../../mobile/test/features/guests/goldens/guest_invite_320.png)
+- [mobile/test/features/guests/goldens/guest_invite_360_scale13.png](../../mobile/test/features/guests/goldens/guest_invite_360_scale13.png)
+- [mobile/test/features/guests/goldens/guest_invite_360.png](../../mobile/test/features/guests/goldens/guest_invite_360.png)
+- [mobile/test/features/guests/goldens/guest_invite_keyboard_320.png](../../mobile/test/features/guests/goldens/guest_invite_keyboard_320.png)
+- [mobile/test/features/guests/goldens/guest_invite_page_360.png](../../mobile/test/features/guests/goldens/guest_invite_page_360.png)
+- [mobile/test/features/guests/goldens/guest_send_remind_320.png](../../mobile/test/features/guests/goldens/guest_send_remind_320.png)
+- [mobile/test/features/guests/goldens/guest_send_remind_360.png](../../mobile/test/features/guests/goldens/guest_send_remind_360.png)
+- [mobile/test/features/marketplace/goldens/provider_marketplace_compact.png](../../mobile/test/features/marketplace/goldens/provider_marketplace_compact.png)
+- [mobile/test/goldens/aarast_dashboard_active_420.png](../../mobile/test/goldens/aarast_dashboard_active_420.png)
+- [mobile/test/goldens/aarast_dashboard_fresh_320.png](../../mobile/test/goldens/aarast_dashboard_fresh_320.png)
+- [mobile/test/goldens/aarast_dashboard_wide_1000.png](../../mobile/test/goldens/aarast_dashboard_wide_1000.png)
+- [mobile/test/goldens/aarast_foundation_states.png](../../mobile/test/goldens/aarast_foundation_states.png)
+- [mobile/test/goldens/aarast_top_feedback.png](../../mobile/test/goldens/aarast_top_feedback.png)
+- [mobile/test/goldens/auth_login.png](../../mobile/test/goldens/auth_login.png)
+- [mobile/test/goldens/auth_otp.png](../../mobile/test/goldens/auth_otp.png)
+- [mobile/test/goldens/create_task_form.png](../../mobile/test/goldens/create_task_form.png)
+- [mobile/test/goldens/favorite_providers.png](../../mobile/test/goldens/favorite_providers.png)
+- [mobile/test/goldens/guests_add_sheet.png](../../mobile/test/goldens/guests_add_sheet.png)
+- [mobile/test/goldens/guests_screen.png](../../mobile/test/goldens/guests_screen.png)
+- [mobile/test/goldens/money_budget_category_action.png](../../mobile/test/goldens/money_budget_category_action.png)
+- [mobile/test/goldens/money_overview_mahr_inside.png](../../mobile/test/goldens/money_overview_mahr_inside.png)
+- [mobile/test/goldens/money_overview_mahr_outside.png](../../mobile/test/goldens/money_overview_mahr_outside.png)
+- [mobile/test/goldens/money_overview.png](../../mobile/test/goldens/money_overview.png)
+- [mobile/test/goldens/more_menu.png](../../mobile/test/goldens/more_menu.png)
+- [mobile/test/goldens/my_wedding_plans.png](../../mobile/test/goldens/my_wedding_plans.png)
+- [mobile/test/goldens/notifications_feed.png](../../mobile/test/goldens/notifications_feed.png)
+- [mobile/test/goldens/provider_details.png](../../mobile/test/goldens/provider_details.png)
+- [mobile/test/goldens/provider_results.png](../../mobile/test/goldens/provider_results.png)
+- [mobile/test/goldens/settings_dense.png](../../mobile/test/goldens/settings_dense.png)
+- [mobile/test/goldens/sharing_add_member.png](../../mobile/test/goldens/sharing_add_member.png)
+- [mobile/test/goldens/sharing_members.png](../../mobile/test/goldens/sharing_members.png)
+- [mobile/test/goldens/support_links.png](../../mobile/test/goldens/support_links.png)
+- [mobile/test/goldens/tasks_timeline.png](../../mobile/test/goldens/tasks_timeline.png)
+- [mobile/test/goldens/welcome_gateway_name_date.png](../../mobile/test/goldens/welcome_gateway_name_date.png)
+- [mobile/test/goldens/welcome_gateway_start.png](../../mobile/test/goldens/welcome_gateway_start.png)
+- [mobile/test/goldens/welcome_gateway_whose.png](../../mobile/test/goldens/welcome_gateway_whose.png)
+- [mobile/test/prototype/now_account/out/a01_more.png](../../mobile/test/prototype/now_account/out/a01_more.png)
+- [mobile/test/prototype/now_account/out/a03_logout_confirm.png](../../mobile/test/prototype/now_account/out/a03_logout_confirm.png)
+- [mobile/test/prototype/now_account/out/a05_settings.png](../../mobile/test/prototype/now_account/out/a05_settings.png)
+- [mobile/test/prototype/now_account/out/a06_lock_on.png](../../mobile/test/prototype/now_account/out/a06_lock_on.png)
+- [mobile/test/prototype/now_account/out/a07_lock_choose.png](../../mobile/test/prototype/now_account/out/a07_lock_choose.png)
+- [mobile/test/prototype/now_account/out/a08_change_phone.png](../../mobile/test/prototype/now_account/out/a08_change_phone.png)
+- [mobile/test/prototype/now_account/out/a09_lock_wrong.png](../../mobile/test/prototype/now_account/out/a09_lock_wrong.png)
+- [mobile/test/prototype/now_account/out/a10_support.png](../../mobile/test/prototype/now_account/out/a10_support.png)
+- [mobile/test/prototype/now_account/out/a11_my_plans.png](../../mobile/test/prototype/now_account/out/a11_my_plans.png)
+- [mobile/test/prototype/now_account/out/a12_contexts.png](../../mobile/test/prototype/now_account/out/a12_contexts.png)
+- [mobile/test/prototype/now_account/out/a13_plan_center.png](../../mobile/test/prototype/now_account/out/a13_plan_center.png)
+- [mobile/test/prototype/now_account/out/a15_archive_confirm.png](../../mobile/test/prototype/now_account/out/a15_archive_confirm.png)
+- [mobile/test/prototype/now_account/out/a16_sharing.png](../../mobile/test/prototype/now_account/out/a16_sharing.png)
+- [mobile/test/prototype/now_account/out/a17_sharing_empty.png](../../mobile/test/prototype/now_account/out/a17_sharing_empty.png)
+- [mobile/test/prototype/now_account/out/a18_add_member.png](../../mobile/test/prototype/now_account/out/a18_add_member.png)
+- [mobile/test/prototype/now_account/out/a19_add_member_custom.png](../../mobile/test/prototype/now_account/out/a19_add_member_custom.png)
+- [mobile/test/prototype/now_account/out/a20_edit_member.png](../../mobile/test/prototype/now_account/out/a20_edit_member.png)
+- [mobile/test/prototype/now_account/out/a21_history.png](../../mobile/test/prototype/now_account/out/a21_history.png)
+- [mobile/test/prototype/now_account/out/a22_history_empty.png](../../mobile/test/prototype/now_account/out/a22_history_empty.png)
+- [mobile/test/prototype/now_guests/out/guest_add_details.png](../../mobile/test/prototype/now_guests/out/guest_add_details.png)
+- [mobile/test/prototype/now_guests/out/guest_add_menu.png](../../mobile/test/prototype/now_guests/out/guest_add_menu.png)
+- [mobile/test/prototype/now_guests/out/guest_add.png](../../mobile/test/prototype/now_guests/out/guest_add.png)
+- [mobile/test/prototype/now_guests/out/guest_details.png](../../mobile/test/prototype/now_guests/out/guest_details.png)
+- [mobile/test/prototype/now_guests/out/guest_edit.png](../../mobile/test/prototype/now_guests/out/guest_edit.png)
+- [mobile/test/prototype/now_guests/out/guest_groups.png](../../mobile/test/prototype/now_guests/out/guest_groups.png)
+- [mobile/test/prototype/now_guests/out/guest_menu.png](../../mobile/test/prototype/now_guests/out/guest_menu.png)
+- [mobile/test/prototype/now_guests/out/guests_empty.png](../../mobile/test/prototype/now_guests/out/guests_empty.png)
+- [mobile/test/prototype/now_guests/out/guests_family.png](../../mobile/test/prototype/now_guests/out/guests_family.png)
+- [mobile/test/prototype/now_guests/out/guests_list.png](../../mobile/test/prototype/now_guests/out/guests_list.png)
+- [mobile/test/prototype/now_home/out/assistant_answer.png](../../mobile/test/prototype/now_home/out/assistant_answer.png)
+- [mobile/test/prototype/now_home/out/assistant_consent.png](../../mobile/test/prototype/now_home/out/assistant_consent.png)
+- [mobile/test/prototype/now_home/out/assistant_limit.png](../../mobile/test/prototype/now_home/out/assistant_limit.png)
+- [mobile/test/prototype/now_home/out/assistant_off.png](../../mobile/test/prototype/now_home/out/assistant_off.png)
+- [mobile/test/prototype/now_home/out/assistant.png](../../mobile/test/prototype/now_home/out/assistant.png)
+- [mobile/test/prototype/now_home/out/device_plan.png](../../mobile/test/prototype/now_home/out/device_plan.png)
+- [mobile/test/prototype/now_home/out/home_active.png](../../mobile/test/prototype/now_home/out/home_active.png)
+- [mobile/test/prototype/now_home/out/home_after_owing.png](../../mobile/test/prototype/now_home/out/home_after_owing.png)
+- [mobile/test/prototype/now_home/out/home_after_settled.png](../../mobile/test/prototype/now_home/out/home_after_settled.png)
+- [mobile/test/prototype/now_home/out/home_after.png](../../mobile/test/prototype/now_home/out/home_after.png)
+- [mobile/test/prototype/now_home/out/home_day.png](../../mobile/test/prototype/now_home/out/home_day.png)
+- [mobile/test/prototype/now_home/out/home_dues.png](../../mobile/test/prototype/now_home/out/home_dues.png)
+- [mobile/test/prototype/now_home/out/home_error.png](../../mobile/test/prototype/now_home/out/home_error.png)
+- [mobile/test/prototype/now_home/out/home_fresh.png](../../mobile/test/prototype/now_home/out/home_fresh.png)
+- [mobile/test/prototype/now_home/out/home_loading.png](../../mobile/test/prototype/now_home/out/home_loading.png)
+- [mobile/test/prototype/now_home/out/home_mahr_inside_320_13.png](../../mobile/test/prototype/now_home/out/home_mahr_inside_320_13.png)
+- [mobile/test/prototype/now_home/out/home_mahr_inside.png](../../mobile/test/prototype/now_home/out/home_mahr_inside.png)
+- [mobile/test/prototype/now_home/out/home_mahr_outside.png](../../mobile/test/prototype/now_home/out/home_mahr_outside.png)
+- [mobile/test/prototype/now_home/out/home_no_date.png](../../mobile/test/prototype/now_home/out/home_no_date.png)
+- [mobile/test/prototype/now_home/out/home_offline.png](../../mobile/test/prototype/now_home/out/home_offline.png)
+- [mobile/test/prototype/now_home/out/home_sync_blocked.png](../../mobile/test/prototype/now_home/out/home_sync_blocked.png)
+- [mobile/test/prototype/now_home/out/home_week.png](../../mobile/test/prototype/now_home/out/home_week.png)
+- [mobile/test/prototype/now_home/out/notifications_empty.png](../../mobile/test/prototype/now_home/out/notifications_empty.png)
+- [mobile/test/prototype/now_home/out/notifications.png](../../mobile/test/prototype/now_home/out/notifications.png)
+- [mobile/test/prototype/now_money/out/m01_overview.png](../../mobile/test/prototype/now_money/out/m01_overview.png)
+- [mobile/test/prototype/now_money/out/m02_overview_exceeded.png](../../mobile/test/prototype/now_money/out/m02_overview_exceeded.png)
+- [mobile/test/prototype/now_money/out/m03_overview_no_budget.png](../../mobile/test/prototype/now_money/out/m03_overview_no_budget.png)
+- [mobile/test/prototype/now_money/out/m05_share.png](../../mobile/test/prototype/now_money/out/m05_share.png)
+- [mobile/test/prototype/now_money/out/m06_offline.png](../../mobile/test/prototype/now_money/out/m06_offline.png)
+- [mobile/test/prototype/now_money/out/m07_budget.png](../../mobile/test/prototype/now_money/out/m07_budget.png)
+- [mobile/test/prototype/now_money/out/m08_category.png](../../mobile/test/prototype/now_money/out/m08_category.png)
+- [mobile/test/prototype/now_money/out/m09_category_form.png](../../mobile/test/prototype/now_money/out/m09_category_form.png)
+- [mobile/test/prototype/now_money/out/m12_cost_detail.png](../../mobile/test/prototype/now_money/out/m12_cost_detail.png)
+- [mobile/test/prototype/now_money/out/m13_cost_menu.png](../../mobile/test/prototype/now_money/out/m13_cost_menu.png)
+- [mobile/test/prototype/now_money/out/m14_cost_form.png](../../mobile/test/prototype/now_money/out/m14_cost_form.png)
+- [mobile/test/prototype/now_money/out/m15_record_payment.png](../../mobile/test/prototype/now_money/out/m15_record_payment.png)
+- [mobile/test/prototype/now_money/out/m16_payment_detail.png](../../mobile/test/prototype/now_money/out/m16_payment_detail.png)
+- [mobile/test/prototype/now_money/out/m17_payment_reverse.png](../../mobile/test/prototype/now_money/out/m17_payment_reverse.png)
+- [mobile/test/prototype/now_money/out/m19_schedule_pay.png](../../mobile/test/prototype/now_money/out/m19_schedule_pay.png)
+- [mobile/test/prototype/now_money/out/m21_funding.png](../../mobile/test/prototype/now_money/out/m21_funding.png)
+- [mobile/test/prototype/now_money/out/m22_funding_add.png](../../mobile/test/prototype/now_money/out/m22_funding_add.png)
+- [mobile/test/prototype/now_money/out/m23_loan.png](../../mobile/test/prototype/now_money/out/m23_loan.png)
+- [mobile/test/prototype/now_onboarding/out/n01_splash.png](../../mobile/test/prototype/now_onboarding/out/n01_splash.png)
+- [mobile/test/prototype/now_onboarding/out/n02_path.png](../../mobile/test/prototype/now_onboarding/out/n02_path.png)
+- [mobile/test/prototype/now_onboarding/out/n03_role.png](../../mobile/test/prototype/now_onboarding/out/n03_role.png)
+- [mobile/test/prototype/now_onboarding/out/n04_setup.png](../../mobile/test/prototype/now_onboarding/out/n04_setup.png)
+- [mobile/test/prototype/now_onboarding/out/n04b_budget.png](../../mobile/test/prototype/now_onboarding/out/n04b_budget.png)
+- [mobile/test/prototype/now_onboarding/out/n04c_mahr.png](../../mobile/test/prototype/now_onboarding/out/n04c_mahr.png)
+- [mobile/test/prototype/now_onboarding/out/n05_register.png](../../mobile/test/prototype/now_onboarding/out/n05_register.png)
+- [mobile/test/prototype/now_onboarding/out/n06_register_errors.png](../../mobile/test/prototype/now_onboarding/out/n06_register_errors.png)
+- [mobile/test/prototype/now_onboarding/out/n07_otp.png](../../mobile/test/prototype/now_onboarding/out/n07_otp.png)
+- [mobile/test/prototype/now_onboarding/out/n08_otp_wrong.png](../../mobile/test/prototype/now_onboarding/out/n08_otp_wrong.png)
+- [mobile/test/prototype/now_onboarding/out/n09_login.png](../../mobile/test/prototype/now_onboarding/out/n09_login.png)
+- [mobile/test/prototype/now_onboarding/out/n10_reset.png](../../mobile/test/prototype/now_onboarding/out/n10_reset.png)
+- [mobile/test/prototype/now_onboarding/out/n11_local_draft.png](../../mobile/test/prototype/now_onboarding/out/n11_local_draft.png)
+- [mobile/test/prototype/now_onboarding/out/n11b_local_draft_failed.png](../../mobile/test/prototype/now_onboarding/out/n11b_local_draft_failed.png)
+- [mobile/test/prototype/now_onboarding/out/n12_lock.png](../../mobile/test/prototype/now_onboarding/out/n12_lock.png)
+- [mobile/test/prototype/now_onboarding/out/n13_needs_account.png](../../mobile/test/prototype/now_onboarding/out/n13_needs_account.png)
+- [mobile/test/prototype/now_participants/out/p02_invite_phone.png](../../mobile/test/prototype/now_participants/out/p02_invite_phone.png)
+- [mobile/test/prototype/now_participants/out/p03_invite_account.png](../../mobile/test/prototype/now_participants/out/p03_invite_account.png)
+- [mobile/test/prototype/now_participants/out/p04_invite_otp.png](../../mobile/test/prototype/now_participants/out/p04_invite_otp.png)
+- [mobile/test/prototype/now_participants/out/p05_invite_decision.png](../../mobile/test/prototype/now_participants/out/p05_invite_decision.png)
+- [mobile/test/prototype/now_participants/out/p06_invite_joined.png](../../mobile/test/prototype/now_participants/out/p06_invite_joined.png)
+- [mobile/test/prototype/now_participants/out/p07_invite_decline.png](../../mobile/test/prototype/now_participants/out/p07_invite_decline.png)
+- [mobile/test/prototype/now_participants/out/p08_choose_path.png](../../mobile/test/prototype/now_participants/out/p08_choose_path.png)
+- [mobile/test/prototype/now_participants/out/p09_workspace_helper.png](../../mobile/test/prototype/now_participants/out/p09_workspace_helper.png)
+- [mobile/test/prototype/now_participants/out/p10_workspace_viewer.png](../../mobile/test/prototype/now_participants/out/p10_workspace_viewer.png)
+- [mobile/test/prototype/now_participants/out/p11_workspace_money_view.png](../../mobile/test/prototype/now_participants/out/p11_workspace_money_view.png)
+- [mobile/test/prototype/now_participants/out/p13_account_menu.png](../../mobile/test/prototype/now_participants/out/p13_account_menu.png)
+- [mobile/test/prototype/now_participants/out/p14_leave_confirm.png](../../mobile/test/prototype/now_participants/out/p14_leave_confirm.png)
+- [mobile/test/prototype/now_participants/out/p15_section_blocked.png](../../mobile/test/prototype/now_participants/out/p15_section_blocked.png)
+- [mobile/test/prototype/now_participants/out/p16_money_read_only.png](../../mobile/test/prototype/now_participants/out/p16_money_read_only.png)
+- [mobile/test/prototype/now_participants/out/p17_removed.png](../../mobile/test/prototype/now_participants/out/p17_removed.png)
+- [mobile/test/prototype/now_participants/out/p19_contribution_history.png](../../mobile/test/prototype/now_participants/out/p19_contribution_history.png)
+- [mobile/test/prototype/now_participants/out/p20_notifications.png](../../mobile/test/prototype/now_participants/out/p20_notifications.png)
+- [mobile/test/prototype/now_participants/out/p21_owner_members.png](../../mobile/test/prototype/now_participants/out/p21_owner_members.png)
+- [mobile/test/prototype/now_provider_side/out/v01_register.png](../../mobile/test/prototype/now_provider_side/out/v01_register.png)
+- [mobile/test/prototype/now_provider_side/out/v02_apply.png](../../mobile/test/prototype/now_provider_side/out/v02_apply.png)
+- [mobile/test/prototype/now_provider_side/out/v02b_apply_service.png](../../mobile/test/prototype/now_provider_side/out/v02b_apply_service.png)
+- [mobile/test/prototype/now_provider_side/out/v03_claim.png](../../mobile/test/prototype/now_provider_side/out/v03_claim.png)
+- [mobile/test/prototype/now_provider_side/out/v03b_claim_pending.png](../../mobile/test/prototype/now_provider_side/out/v03b_claim_pending.png)
+- [mobile/test/prototype/now_provider_side/out/v04_pending.png](../../mobile/test/prototype/now_provider_side/out/v04_pending.png)
+- [mobile/test/prototype/now_provider_side/out/v05_needs_changes.png](../../mobile/test/prototype/now_provider_side/out/v05_needs_changes.png)
+- [mobile/test/prototype/now_provider_side/out/v06_rejected.png](../../mobile/test/prototype/now_provider_side/out/v06_rejected.png)
+- [mobile/test/prototype/now_provider_side/out/v07_suspended.png](../../mobile/test/prototype/now_provider_side/out/v07_suspended.png)
+- [mobile/test/prototype/now_provider_side/out/v08_home.png](../../mobile/test/prototype/now_provider_side/out/v08_home.png)
+- [mobile/test/prototype/now_provider_side/out/v09_home_fresh.png](../../mobile/test/prototype/now_provider_side/out/v09_home_fresh.png)
+- [mobile/test/prototype/now_provider_side/out/v10_requests.png](../../mobile/test/prototype/now_provider_side/out/v10_requests.png)
+- [mobile/test/prototype/now_provider_side/out/v11_offer.png](../../mobile/test/prototype/now_provider_side/out/v11_offer.png)
+- [mobile/test/prototype/now_provider_side/out/v12_services.png](../../mobile/test/prototype/now_provider_side/out/v12_services.png)
+- [mobile/test/prototype/now_provider_side/out/v13_edit_package.png](../../mobile/test/prototype/now_provider_side/out/v13_edit_package.png)
+- [mobile/test/prototype/now_provider_side/out/v14_messages.png](../../mobile/test/prototype/now_provider_side/out/v14_messages.png)
+- [mobile/test/prototype/now_provider_side/out/v15_profile.png](../../mobile/test/prototype/now_provider_side/out/v15_profile.png)
+- [mobile/test/prototype/now_provider_side/out/v16_add_service.png](../../mobile/test/prototype/now_provider_side/out/v16_add_service.png)
+- [mobile/test/prototype/now_provider_side/out/v17_add_package.png](../../mobile/test/prototype/now_provider_side/out/v17_add_package.png)
+- [mobile/test/prototype/now_provider_side/out/v18_edit_profile.png](../../mobile/test/prototype/now_provider_side/out/v18_edit_profile.png)
+- [mobile/test/prototype/now_providers/out/board.png](../../mobile/test/prototype/now_providers/out/board.png)
+- [mobile/test/prototype/now_providers/out/booking_request.png](../../mobile/test/prototype/now_providers/out/booking_request.png)
+- [mobile/test/prototype/now_providers/out/bookings.png](../../mobile/test/prototype/now_providers/out/bookings.png)
+- [mobile/test/prototype/now_providers/out/cancel_booking.png](../../mobile/test/prototype/now_providers/out/cancel_booking.png)
+- [mobile/test/prototype/now_providers/out/chat_menu.png](../../mobile/test/prototype/now_providers/out/chat_menu.png)
+- [mobile/test/prototype/now_providers/out/chat.png](../../mobile/test/prototype/now_providers/out/chat.png)
+- [mobile/test/prototype/now_providers/out/chats_empty.png](../../mobile/test/prototype/now_providers/out/chats_empty.png)
+- [mobile/test/prototype/now_providers/out/chats.png](../../mobile/test/prototype/now_providers/out/chats.png)
+- [mobile/test/prototype/now_providers/out/city_filter.png](../../mobile/test/prototype/now_providers/out/city_filter.png)
+- [mobile/test/prototype/now_providers/out/compare_offers.png](../../mobile/test/prototype/now_providers/out/compare_offers.png)
+- [mobile/test/prototype/now_providers/out/details.png](../../mobile/test/prototype/now_providers/out/details.png)
+- [mobile/test/prototype/now_providers/out/explore_empty.png](../../mobile/test/prototype/now_providers/out/explore_empty.png)
+- [mobile/test/prototype/now_providers/out/explore.png](../../mobile/test/prototype/now_providers/out/explore.png)
+- [mobile/test/prototype/now_providers/out/favorites_compare.png](../../mobile/test/prototype/now_providers/out/favorites_compare.png)
+- [mobile/test/prototype/now_providers/out/favorites.png](../../mobile/test/prototype/now_providers/out/favorites.png)
+- [mobile/test/prototype/now_providers/out/first_visit.png](../../mobile/test/prototype/now_providers/out/first_visit.png)
+- [mobile/test/prototype/now_providers/out/quote_form.png](../../mobile/test/prototype/now_providers/out/quote_form.png)
+- [mobile/test/prototype/now_providers/out/rate_row.png](../../mobile/test/prototype/now_providers/out/rate_row.png)
+- [mobile/test/prototype/now_tasks/out/t01_tasks_empty.png](../../mobile/test/prototype/now_tasks/out/t01_tasks_empty.png)
+- [mobile/test/prototype/now_tasks/out/t02_tasks_active.png](../../mobile/test/prototype/now_tasks/out/t02_tasks_active.png)
+- [mobile/test/prototype/now_tasks/out/t03_tasks_done_open.png](../../mobile/test/prototype/now_tasks/out/t03_tasks_done_open.png)
+- [mobile/test/prototype/now_tasks/out/t04_months.png](../../mobile/test/prototype/now_tasks/out/t04_months.png)
+- [mobile/test/prototype/now_tasks/out/t04_person.png](../../mobile/test/prototype/now_tasks/out/t04_person.png)
+- [mobile/test/prototype/now_tasks/out/t05_task_menu.png](../../mobile/test/prototype/now_tasks/out/t05_task_menu.png)
+- [mobile/test/prototype/now_tasks/out/t06_delete_confirm.png](../../mobile/test/prototype/now_tasks/out/t06_delete_confirm.png)
+- [mobile/test/prototype/now_tasks/out/t07_create_task.png](../../mobile/test/prototype/now_tasks/out/t07_create_task.png)
+- [mobile/test/prototype/now_tasks/out/t08_edit_task.png](../../mobile/test/prototype/now_tasks/out/t08_edit_task.png)
+- [mobile/test/prototype/now_tasks/out/t09_edit_private.png](../../mobile/test/prototype/now_tasks/out/t09_edit_private.png)
+- [mobile/test/prototype/now_tasks/out/t10_starter.png](../../mobile/test/prototype/now_tasks/out/t10_starter.png)
+
+</details>
+
 ### إصلاح ما في الفرعين السحابيين (2026-11-16)، على الفرع `phase/branch-fixes-2026-11-16`
 
 بأمر رشاد («شوف ايش يوجد في الفروع وصحلهن»). الفرعان: `claude/design-critique-2026-11-14` (نقد التصميم، دخلت وثيقته `DESIGN_CRITIQUE.md`) و`claude/user-flow-logic-i0ps0l` (القرار D113، دخل `DECISIONS.md`). الرموز من الوثيقة.

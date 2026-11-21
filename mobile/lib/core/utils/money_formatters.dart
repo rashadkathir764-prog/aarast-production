@@ -66,7 +66,7 @@ CompactYemeniMoneyParts fullMoneyParts(
 }) {
   final negative = value < 0 ? '-' : '';
   return CompactYemeniMoneyParts(
-    number: '$negative${_formatMoney(value.abs())}',
+    number: '$negative${_formatExactMoney(value.abs())}',
     currency: currencyLabelAr(currencyCode),
     spokenCurrency: currencySpokenLabelAr(currencyCode),
   );
@@ -80,7 +80,7 @@ CompactYemeniMoneyParts sumSafeMoneyParts(
   required String currencyCode,
 }) {
   final hundredThousands = value / 100000;
-  if (value.abs() < 1000000 ||
+  if (value.abs() >= 1000000 &&
       hundredThousands == hundredThousands.roundToDouble()) {
     return compactMoneyParts(value, currencyCode: currencyCode);
   }
@@ -169,6 +169,15 @@ String compactTenths(num value, num unit) {
   final whole = tenths ~/ 10;
   final part = tenths % 10;
   return part == 0 ? '$whole' : '$whole.$part';
+}
+
+// Q25 keeps new input whole; stored pre-Q25 amounts have two decimal places
+// and must still be read exactly (RA-MO-52), including a rest below one rial.
+String _formatExactMoney(num value) {
+  final fixed = value.toStringAsFixed(2).split('.');
+  final fraction = fixed[1].replaceFirst(RegExp(r'0+$'), '');
+  final whole = _formatMoney(int.parse(fixed[0]));
+  return fraction.isEmpty ? whole : '$whole.$fraction';
 }
 
 String _formatMoney(num value) {

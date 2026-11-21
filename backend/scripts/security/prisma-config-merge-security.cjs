@@ -68,7 +68,13 @@ const PINNED_PACKAGE_JSON_SHA256 =
 // body-parser 2.4.0, engine.io 6.6.11, sharp 0.35.5, @fastify/busboy 3.2.4,
 // @grpc/grpc-js 1.14.6, qs 6.16.1, and the overrides multer 2.5.0 and
 // brace-expansion 5.0.12; every version resolved with `--before=2026-10-23`,
-// so each was public for two weeks). Live callers validate the current lock;
+// so each was public for two weeks), then the 2026-11-21 Firebase security
+// update: Firebase Admin 14.5.1 and fast-xml-parser 5.12.1, with the vulnerable
+// rimraf/glob/minimatch chain removed by Firebase's own stable dependencies;
+// the owner's explicitly approved effect 3.22.1 override fixes
+// GHSA-7589-6fvf-x4pw until Prisma directly supports the patched release.
+// The package range remains unchanged; npm ci installs the exact pinned lock.
+// Live callers validate the current lock;
 // historical projections re-validate the lock of their own era, so the
 // default accepts exactly this lineage and nothing else.
 const R12B_PACKAGE_LOCK_SHA256 =
@@ -77,12 +83,15 @@ const R12C_PACKAGE_LOCK_SHA256 =
   'c1980760454f8ff757b2545fa39b40cee3a233cd28ba88343d16901d339123cb';
 const V1_ASSISTANT_PACKAGE_LOCK_SHA256 =
   'f83eaf7fd4063180c276d2dbfe866b30418e1177789e0540c3e0d3257e1e188a';
-const PINNED_PACKAGE_LOCK_SHA256 =
+const V1_RELEASE_PACKAGE_LOCK_SHA256 =
   '36142d501155fca2e52ec983a9d860f3406fbfdb68fd65c28666fab4d8e0d6df';
+const PINNED_PACKAGE_LOCK_SHA256 =
+  '01f40fc21e705a5aa5e2eb9b56e3d91ef71e98ff6242cdfd871af8e08dfe8dd5';
 const PACKAGE_LOCK_LINEAGE = Object.freeze([
   R12B_PACKAGE_LOCK_SHA256,
   R12C_PACKAGE_LOCK_SHA256,
   V1_ASSISTANT_PACKAGE_LOCK_SHA256,
+  V1_RELEASE_PACKAGE_LOCK_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
 ]);
 const R12B_MULTER_OVERRIDE = '2.2.0';
@@ -92,6 +101,7 @@ const R12C_MULTER_OVERRIDE = '2.3.0';
 // GHSA-qhr7-859c-m2p7 and GHSA-6j4f-fj2g-mc7p for brace-expansion < 5.0.12).
 const V1_SECURITY_MULTER_OVERRIDE = '2.5.0';
 const V1_SECURITY_BRACE_EXPANSION_OVERRIDE = '5.0.12';
+const V1_SECURITY_EFFECT_OVERRIDE = '3.22.1';
 const PREDECESSOR_BRACE_EXPANSION_OVERRIDE = '5.0.9';
 // The planning assistant's SDK (V1 checklist 4.12): pinned to its approved
 // minor; the historical chain fingerprints the package without it.
@@ -368,6 +378,14 @@ function projectR12CArchitectureScripts(value) {
     projectedOverrides.multer = R12B_MULTER_OVERRIDE;
     projectedOverrides['brace-expansion'] = PREDECESSOR_BRACE_EXPANSION_OVERRIDE;
   } else if (multer !== R12B_MULTER_OVERRIDE) fail();
+  // One approved security override, projected away only for the immutable
+  // historical package fingerprint. Every other range still fails closed.
+  // The live test checks the installed version and forces review/removal
+  // when Prisma changes its upstream effect requirement.
+  if (hasOwn(overrides, 'effect')) {
+    if (ownValue(overrides, 'effect') !== V1_SECURITY_EFFECT_OVERRIDE) fail();
+    delete projectedOverrides.effect;
+  }
   const dependencies = plainRecord(ownValue(packageJson, 'dependencies'));
   const projectedDependencies = { ...dependencies };
   if (hasOwn(dependencies, V1_ASSISTANT_SDK)) {
@@ -1076,6 +1094,7 @@ module.exports = {
   R12B_PACKAGE_LOCK_SHA256,
   R12C_PACKAGE_LOCK_SHA256,
   V1_ASSISTANT_PACKAGE_LOCK_SHA256,
+  V1_RELEASE_PACKAGE_LOCK_SHA256,
   V1_ASSISTANT_SDK_RANGE,
   V1_SECURITY_BRACE_EXPANSION_OVERRIDE,
   V1_SECURITY_MULTER_OVERRIDE,

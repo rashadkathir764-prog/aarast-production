@@ -10,6 +10,7 @@
 // so the seed stays as it was and the walk can be rerun.
 import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:aarast_mobile/core/utils/plan_day.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
@@ -655,8 +656,16 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('استوديو ضوء صنعاء');
     if (!walk.sees('قاعة سبأ')) await walk.scroll(pixels: 700);
     walk.expectSee('قاعة سبأ', why: 'مزود نشط وموثّق في البيانات');
-    if (walk.sees(p.hallProvider) && walk.sees('غير مفعّل') && p.bride) {
-      walk.fail('الصالة المحجوزة لها تظهر في الدليل «غير مفعّل»');
+    if (p.bride) {
+      walk.expectNotSee(
+        'غير مفعّل',
+        within: find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == 'عرض تفاصيل ${p.hallProvider}',
+        ),
+        why: 'الصالة المحجوزة لها لا تظهر «غير مفعّل» داخل صفها',
+      );
     }
   });
 

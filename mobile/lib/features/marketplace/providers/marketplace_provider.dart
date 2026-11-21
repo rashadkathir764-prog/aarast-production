@@ -78,6 +78,7 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   List<MarketplaceCity> _cities = const [];
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
+  int _directoryRevision = 0;
   ProviderBudgetMatchIntent? _budgetMatchIntent;
   final Map<String, MarketplaceProvider> _details = {};
   final Map<String, List<MarketplaceService>> _services = {};
@@ -142,6 +143,9 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
       .where((category) => category.isVisibleFor(_catalogAudience))
       .toList(growable: false);
   List<MarketplaceProvider> get providers => _providers;
+
+  /// Changes when the first page or its catalog is replaced, never on append.
+  int get directoryRevision => _directoryRevision;
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
   List<FavoriteProvider> get favoriteProviders => _favoriteProviders;

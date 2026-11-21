@@ -1,5 +1,5 @@
-// D85: the app works without the server. Run right after the groom walk on
-// the same machine (its local copy stays), with AARAST_API_BASE_URL pointing
+// D85: the app works without the server. Run right after offline_prime on
+// the same machine (its local copy and displayed money stay), with AARAST_API_BASE_URL pointing
 // at a closed port: the plan opens from the phone, every tab shows its copy,
 // a guest is added and kept, and nothing asks to retry.
 // Run: see docs/qa/JOURNEY_WALKS.md.
@@ -37,9 +37,9 @@ void main() {
         await walk.tab('المال');
         // The summary's first figure, read from the phone's copy.
         walk.expectSee('باقي عليك', why: 'الملخص من نسخة الجوال');
-        // The hero draws the figure big on its own, its unit beside it.
-        walk.expectSee('1.6', why: 'رقم الملخص نفسه بلا خادم');
-        walk.expectSee('مليون ر.ي');
+        // A prior booking walk changes the seed's 1.6. Preserve the exact
+        // figure AND unit that offline_prime actually displayed online.
+        await walk.expectRememberedMoneyHero();
         walk.expectNotSee('أعد المحاولة');
         walk.expectNotSee('جرّب مرة ثانية');
       });

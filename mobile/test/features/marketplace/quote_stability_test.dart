@@ -170,13 +170,17 @@ void main() {
     final provider = ProviderMarketplaceProvider(api);
 
     await provider.loadMarketplace(includeAccountData: false);
+    final firstPageRevision = provider.directoryRevision;
     await provider.loadMoreProviders();
+    expect(provider.directoryRevision, firstPageRevision);
 
     expect(provider.currentPage, 2);
     expect(provider.totalProviders, 3);
     expect(provider.totalPages, 2);
     expect(provider.hasMoreProviders, false);
     expect(provider.providers.map((item) => item.id), ['p1', 'p2', 'p3']);
+    await provider.loadMarketplace(includeAccountData: false);
+    expect(provider.directoryRevision, greaterThan(firstPageRevision));
   });
 
   test(

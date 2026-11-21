@@ -4,9 +4,9 @@
 # or from PowerShell: & .\scripts\walks\walks.ps1 -walks @('groom','route_sweep')
 # A walk whose name starts with "offline_groom" is launched against a closed
 # port (the server out of reach) and keeps the local copy the previous walk
-# left on this machine; run offline_prime (or groom) before it.
+# left on this machine; run offline_prime before it to record the money shown.
 # Screens and logs land in scripts/walks/out/<walk>/ (git-ignored).
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 $S = $PSScriptRoot
 $repo = Resolve-Path (Join-Path $S '..\..')
 $mobile = Join-Path $repo 'mobile'
@@ -49,6 +49,7 @@ try {
     $env:JAVA_HOME = $gradleJdk.FullName
   }
   Set-Location $mobile
+  $failedWalks = @()
   foreach ($walk in $walks) {
     "=== $walk $(Get-Date -Format HH:mm:ss)"
     $out = Join-Path $dir "$walk.log"
@@ -58,9 +59,12 @@ try {
       "--dart-define=DEMO_PASSWORD=$pass" `
       "--dart-define=AARAST_WALKS_DIR=$dir" `
       "--dart-define=AARAST_SWEEP_IDS=$ids" *> $out
+    $walkExit = $LASTEXITCODE
+    if ($walkExit -ne 0) { $failedWalks += "$walk (exit $walkExit)" }
     (Get-Content $out -Encoding utf8 | Select-String -Pattern 'All tests passed|Some tests failed|Build process failed|Error:' | Select-Object -Last 2 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(120, $_.Line.Length)) })
   }
   "=== done $(Get-Date -Format HH:mm:ss)"
+  if ($failedWalks.Count -gt 0) { throw "Failed walks: $($failedWalks -join ', ')" }
 } finally {
   foreach ($path in $snapshot.Keys) { [IO.File]::WriteAllBytes($path, $snapshot[$path]) }
 }

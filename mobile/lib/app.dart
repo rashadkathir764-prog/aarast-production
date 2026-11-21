@@ -42,6 +42,27 @@ class AarastApp extends StatefulWidget {
   State<AarastApp> createState() => _AarastAppState();
 }
 
+/// The default is present on every frame, so a dark route's explicit light
+/// icons do not remain after it closes onto the app's light canvas.
+class AarastSystemUiScope extends StatelessWidget {
+  const AarastSystemUiScope({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+    child: child,
+  );
+}
+
 class _AarastAppState extends State<AarastApp> {
   // Created once per app lifetime: rebuilding the root widget must never
   // recreate the router, or the whole navigation state would be lost.
@@ -101,78 +122,69 @@ class _AarastAppState extends State<AarastApp> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-    );
-
-    return AarastBuildErrorBoundary(
-      child: MaterialApp.router(
-        title: 'اعّرست',
-        debugShowCheckedModeBanner: false,
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: AppTheme.light(),
-        routeInformationProvider: _router.routeInformationProvider,
-        routeInformationParser: _router.routeInformationParser,
-        routerDelegate: _router.routerDelegate,
-        backButtonDispatcher: _backButtonDispatcher,
-        // RA-MO-311: what the system is told about back includes the places
-        // the dispatcher goes back to, not the navigator's pages alone.
-        onNavigationNotification:
-            _backButtonDispatcher.onNavigationNotification,
-        builder: (context, child) {
-          final auth = context.watch<AuthController>();
-          // g02 «خط كبير»: every text a step bigger, on top of the phone's;
-          // the two together stop at 1.3 (D30).
-          final largeText =
-              context.watch<DevicePreferences?>()?.largeText ?? false;
-          final media = MediaQuery.of(context);
-          final scaled = media.copyWith(
-            textScaler: DevicePreferences.textScalerFor(
-              media.textScaler,
-              largeText: largeText,
-            ),
-          );
-          final authenticatedUserId = auth.status == AuthStatus.authenticated
-              ? auth.user?.id
-              : null;
-          return AarastPlanProfileScope(
-            child: MediaQuery(
-              data: scaled,
-              child: Directionality(
-                textDirection: TextDirection.rtl,
-                child: AarastPushLifecycleBridge(
-                  router: _router,
-                  authenticatedUserId: authenticatedUserId,
-                  isProviderAccount: () => _providerAccount(context),
-                  child: AarastV3AdaptiveExperienceShell(
-                    routeListenable: _router.routeInformationProvider,
-                    readLocation: () =>
-                        _router.routeInformationProvider.value.uri.toString(),
-                    child: AarastSessionTransitionGate(
-                      child: AarastAuthFlowRedirector(
-                        router: _router,
-                        child: AppLockGate(
-                          onForgotCode: auth.signOutForgottenAppLockCode,
-                          name: auth.user?.name,
-                          child: AarastDeletionPendingGate(
-                            // D93: «حدّث التطبيق» once the server stops
-                            // serving this app's contract.
-                            child: AppUpdateGate(
-                              // RA-MO-312: an app the system closed in the
-                              // background comes back to its page, not to
-                              // the opening screen.
-                              child: LastPlaceKeeper(
-                                router: _router,
-                                child: child ?? const SizedBox.shrink(),
+    return AarastSystemUiScope(
+      child: AarastBuildErrorBoundary(
+        child: MaterialApp.router(
+          title: 'اعّرست',
+          debugShowCheckedModeBanner: false,
+          locale: const Locale('ar'),
+          supportedLocales: const [Locale('ar')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          theme: AppTheme.light(),
+          routeInformationProvider: _router.routeInformationProvider,
+          routeInformationParser: _router.routeInformationParser,
+          routerDelegate: _router.routerDelegate,
+          backButtonDispatcher: _backButtonDispatcher,
+          // RA-MO-311: what the system is told about back includes the places
+          // the dispatcher goes back to, not the navigator's pages alone.
+          onNavigationNotification:
+              _backButtonDispatcher.onNavigationNotification,
+          builder: (context, child) {
+            final auth = context.watch<AuthController>();
+            // g02 «خط كبير»: every text a step bigger, on top of the phone's;
+            // the two together stop at 1.3 (D30).
+            final largeText =
+                context.watch<DevicePreferences?>()?.largeText ?? false;
+            final media = MediaQuery.of(context);
+            final scaled = media.copyWith(
+              textScaler: DevicePreferences.textScalerFor(
+                media.textScaler,
+                largeText: largeText,
+              ),
+            );
+            final authenticatedUserId = auth.status == AuthStatus.authenticated
+                ? auth.user?.id
+                : null;
+            return AarastPlanProfileScope(
+              child: MediaQuery(
+                data: scaled,
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: AarastPushLifecycleBridge(
+                    router: _router,
+                    authenticatedUserId: authenticatedUserId,
+                    isProviderAccount: () => _providerAccount(context),
+                    child: AarastV3AdaptiveExperienceShell(
+                      routeListenable: _router.routeInformationProvider,
+                      readLocation: () =>
+                          _router.routeInformationProvider.value.uri.toString(),
+                      child: AarastSessionTransitionGate(
+                        child: AarastAuthFlowRedirector(
+                          router: _router,
+                          child: AppLockGate(
+                            onForgotCode: auth.signOutForgottenAppLockCode,
+                            name: auth.user?.name,
+                            child: AarastDeletionPendingGate(
+                              // D93: «حدّث التطبيق» once the server stops
+                              // serving this app's contract.
+                              child: AppUpdateGate(
+                                // RA-MO-312: an app the system closed in the
+                                // background comes back to its page, not to
+                                // the opening screen.
+                                child: LastPlaceKeeper(
+                                  router: _router,
+                                  child: child ?? const SizedBox.shrink(),
+                                ),
                               ),
                             ),
                           ),
@@ -182,9 +194,9 @@ class _AarastAppState extends State<AarastApp> {
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

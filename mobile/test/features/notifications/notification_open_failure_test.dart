@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../../integration_test/journeys/support/journey_harness.dart';
 
 // Offline, a notice cannot be marked read; it still opens what it points to.
 // An archive that fails says so.
@@ -25,6 +26,27 @@ import '../account_contexts/account_context_test_data.dart';
 const _planId = 'plan-1';
 
 void main() {
+  testWidgets(
+    'the journey returns from a pushed notice before opening the next',
+    (tester) async {
+      await _pump(
+        tester,
+        _Api(count: 2, target: '/wedding-plans/$_planId/tasks/task-1'),
+      );
+      final walk = _WidgetWalk(tester);
+      await walk.step('open-notices', 'open every notice', () async {
+        await walk.openEachNotice(
+          keyPrefix: 'notification-',
+          home: '/notifications',
+        );
+      }, screenshot: false);
+      expect(walk.steps.single.problems, isEmpty);
+      expect(
+        walk.steps.single.notes.where((note) => note.contains('→')),
+        hasLength(2),
+      );
+    },
+  );
   testWidgets('a notice opens even when marking it read fails', (tester) async {
     await _pump(tester, _Api(failWrites: true));
 
@@ -205,6 +227,13 @@ Future<AccountContextController> _pump(
         path: '/wedding-plans/:id/tasks',
         builder: (_, _) => const Scaffold(body: Text('opened tasks')),
       ),
+      GoRoute(
+        path: '/wedding-plans/:id/tasks/:taskId',
+        builder: (_, _) => Scaffold(
+          appBar: AppBar(),
+          body: const Text('opened tasks'),
+        ),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -227,11 +256,15 @@ Future<AccountContextController> _pump(
 }
 
 class _Api extends NotificationsApi {
-  _Api({this.failWrites = false, this.target = '/wedding-plans/$_planId/tasks'})
-    : super(ApiClient(tokenProvider: () async => 'token'));
+  _Api({
+    this.failWrites = false,
+    this.target = '/wedding-plans/$_planId/tasks',
+    this.count = 1,
+  }) : super(ApiClient(tokenProvider: () async => 'token'));
 
   final bool failWrites;
   final String target;
+  final int count;
 
   /// Holds marking read until completed (RA-MO-150).
   Completer<void>? holdMarkRead;
@@ -246,21 +279,22 @@ class _Api extends NotificationsApi {
     final at = DateTime.now().subtract(const Duration(hours: 2));
     return NotificationsPage(
       items: [
-        AarastNotification(
-          id: 'n1',
-          userId: 'u1',
-          weddingPlanId: _planId,
-          type: 'TASK_ASSIGNED_TEST',
-          title: 'محمد عطاك مهمة',
-          body: 'رتّب سيارات الزفة',
-          routeTarget: target,
-          createdAt: at,
-          updatedAt: at,
-        ),
+        for (var index = 1; index <= count; index++)
+          AarastNotification(
+            id: 'n$index',
+            userId: 'u1',
+            weddingPlanId: _planId,
+            type: 'TASK_ASSIGNED_TEST',
+            title: 'محمد عطاك مهمة',
+            body: 'رتّب سيارات الزفة',
+            routeTarget: target,
+            createdAt: at,
+            updatedAt: at,
+          ),
       ],
       page: page,
       limit: limit,
-      total: 1,
+      total: count,
       totalPages: 1,
       hasMore: false,
     );
@@ -280,6 +314,21 @@ class _Api extends NotificationsApi {
   Future<AarastNotification> archiveNotification(String id) async {
     if (!failWrites) throw StateError('unexpected archive');
     throw const ApiException('ما وصلنا', isNetworkFailure: true);
+  }
+}
+
+// Unit bindings use fake async; real screenshots and file IO belong to the
+// integration run. Keep the same navigation and notice-opening code here.
+class _WidgetWalk extends JourneyWalk {
+  _WidgetWalk(WidgetTester tester)
+    : super(tester, 'notification-return-contract');
+
+  @override
+  Future<String> capture(String name) async => name;
+
+  @override
+  Future<void> settle({double seconds = 1.5}) async {
+    await tester.pumpAndSettle();
   }
 }
 

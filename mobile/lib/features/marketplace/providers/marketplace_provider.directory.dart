@@ -7,6 +7,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     final normalized = _normalizedAudience(audience);
     if (_catalogAudience == normalized) return;
     _catalogAudience = normalized;
+    _directoryRevision++;
     final currentCategoryId = _categoryId;
     if (currentCategoryId != null &&
         !categories.any((category) => category.id == currentCategoryId)) {
@@ -92,6 +93,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
         if (bundle.cities.isNotEmpty) _cities = bundle.cities;
         if (bundle.categories.isNotEmpty) _categories = bundle.categories;
         _providers = bundle.providers.items;
+        _directoryRevision++;
         _currentPage = bundle.providers.currentPage;
         _totalProviders = bundle.providers.total;
         _totalPages = bundle.providers.totalPages;
@@ -208,6 +210,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
       }
       _cities = cities;
       _categories = categories;
+      _directoryRevision++;
     } catch (_) {
       _referenceDataErrorMessage = providerReferenceDataErrorMessage;
     } finally {

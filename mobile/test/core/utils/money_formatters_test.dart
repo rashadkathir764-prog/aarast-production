@@ -8,6 +8,24 @@ import 'package:flutter_test/flutter_test.dart';
 // ways.
 
 void main() {
+  test('full and sum-safe amounts preserve stored legacy fractions', () {
+    for (final entry in <num, String>{
+      1000.50: '1,000.5',
+      700.25: '700.25',
+      0.25: '0.25',
+      -0.25: '-0.25',
+    }.entries) {
+      expect(
+        fullMoneyParts(entry.key, currencyCode: 'YER').number,
+        entry.value,
+      );
+      expect(
+        sumSafeMoneyParts(entry.key, currencyCode: 'YER').number,
+        entry.value,
+      );
+    }
+    expect(fullMoneyFromText('700.25', 'YER'), contains('700.25'));
+  });
   test('a record amount is written whole (م1)', () {
     expect(
       fullMoneyParts(1250000, currencyCode: 'YER').plainText,

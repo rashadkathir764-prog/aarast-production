@@ -31,7 +31,7 @@
 
 ## نموذج المال
 
-- `WeddingPlan.estimatedBudget`: الميزانية العامة، بدون المهر.
+- `WeddingPlan.estimatedBudget`: الميزانية العامة؛ في خطة العريس يحدد `budgetIncludesMahr` هل تشمل المهر (D114)، والافتراضي والخطط السابقة لا تشمل. في خطة العروسة المهر مال داخل، فلا يدخل في تكلفة الميزانية.
 - `BudgetCategory`: البند.
 - `WeddingCost`: اتفاق داخل بند.
 - `CostPayment`: دفعة حصلت فعلًا.

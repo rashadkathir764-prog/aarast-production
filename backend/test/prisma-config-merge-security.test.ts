@@ -14,6 +14,50 @@ const checkerPath = path.join(
 );
 
 type JsonRecord = Record<string, unknown>;
+test('the approved effect override is patched and is reviewed when Prisma changes its requirement', () => {
+  const checker = require(checkerPath);
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const installed = JSON.parse(readFileSync(path.join(backendRoot, 'node_modules/effect/package.json'), 'utf8'));
+  const config = JSON.parse(readFileSync(path.join(backendRoot, 'node_modules/@prisma/config/package.json'), 'utf8'));
+  assert.equal(packageJson.overrides.effect, '3.22.1');
+  assert.equal(packageLock.packages['node_modules/effect'].version, '3.22.1');
+  assert.equal(installed.version, '3.22.1');
+  assert.equal(config.dependencies.effect, '3.21.0',
+    'Prisma changed its effect requirement: remove this override once the patched release is supported directly.');
+  assert.deepEqual(Object.keys(packageLock.packages).filter(
+    (key) => key === 'node_modules/effect' || key.endsWith('/node_modules/effect'),
+  ), ['node_modules/effect']);
+  const projected = checker.projectR12BArchitectureScripts(packageJson);
+  assert.equal(projected.overrides.effect, undefined);
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+  for (const value of ['3.21.0', '^3.22.1', '3.22.2', 'latest']) {
+    const drifted = structuredClone(packageJson);
+    drifted.overrides.effect = value;
+    assert.throws(() => checker.projectR12BArchitectureScripts(drifted), `effect override ${value}`);
+  }
+});
+
+test('the Firebase security update is pinned exactly and still rejects lock tampering', () => {
+  const checker = require(checkerPath);
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const projected = checker.projectR12BArchitectureScripts(packageJson);
+  assert.equal(packageLock.packages['node_modules/firebase-admin'].version, '14.5.1');
+  assert.equal(packageLock.packages['node_modules/fast-xml-parser'].version, '5.12.1');
+  for (const name of ['glob', 'minimatch', 'rimraf']) {
+    assert.equal(Object.keys(packageLock.packages).some(
+      (key) => key === `node_modules/${name}` || key.endsWith(`/node_modules/${name}`),
+    ), false);
+  }
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+  for (const name of ['firebase-admin', 'fast-xml-parser']) {
+    const changed = structuredClone(packageLock);
+    changed.packages[`node_modules/${name}`].version = '0.0.0';
+    assert.throws(() => checker.validatePackageGraph(projected, changed));
+  }
+});
+
 test('R12C Task 5 strict import command preserves the pinned package graph without an allowance', () => {
   const checker = require(checkerPath);
   const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
@@ -67,7 +111,10 @@ test('the security prerequisites project the overrides and accept only the appro
   assert.equal(packageJson.overrides.multer, checker.V1_SECURITY_MULTER_OVERRIDE);
   assert.equal(packageJson.overrides['brace-expansion'], checker.V1_SECURITY_BRACE_EXPANSION_OVERRIDE);
   assert.equal(packageLock.packages['node_modules/multer'].version, '2.5.0');
-  assert.equal(packageLock.packages['node_modules/brace-expansion'].version, '5.0.12');
+  // Firebase's supported dependency update removed the glob/minimatch tree,
+  // which was the remaining brace-expansion consumer. Keep the override
+  // pinned above; the live lock must not resurrect the unused dependency.
+  assert.equal(packageLock.packages['node_modules/brace-expansion'], undefined);
   assert.equal(packageLock.packages['node_modules/sharp'].version, '0.35.5');
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
   const projected = checker.projectR12CArchitectureScripts(packageJson);
@@ -79,9 +126,10 @@ test('the security prerequisites project the overrides and accept only the appro
     checker.R12B_PACKAGE_LOCK_SHA256,
     checker.R12C_PACKAGE_LOCK_SHA256,
     checker.V1_ASSISTANT_PACKAGE_LOCK_SHA256,
+    checker.V1_RELEASE_PACKAGE_LOCK_SHA256,
     checker.PINNED_PACKAGE_LOCK_SHA256,
   ]);
-  assert.equal(new Set(checker.PACKAGE_LOCK_LINEAGE).size, 4);
+  assert.equal(new Set(checker.PACKAGE_LOCK_LINEAGE).size, 5);
   for (const value of ['5.0.9', '5.0.11', '^5.0.12', undefined]) {
     const copy = structuredClone(packageJson);
     if (value === undefined) delete copy.overrides['brace-expansion']; else copy.overrides['brace-expansion'] = value;
@@ -376,6 +424,8 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   // without the planning assistant's SDK (V1 checklist 4.12).
   (validR8.overrides as JsonRecord).multer = '2.2.0';
   delete (validR8.dependencies as JsonRecord)['@anthropic-ai/sdk'];
+  // The historical package also predates the 2026-11-21 effect correction.
+  delete (validR8.overrides as JsonRecord).effect;
   // ...and before the V1 release security prerequisite's brace-expansion pin.
   (validR8.overrides as JsonRecord)['brace-expansion'] = '5.0.9';
   delete (validR8.scripts as JsonRecord)['architecture:r12c'];
@@ -934,6 +984,7 @@ test('R12B package wiring and security projection are exact and fail closed', ()
   // ...and predated the planning assistant's SDK (V1 checklist 4.12) and the
   // V1 release security prerequisite's brace-expansion pin.
   delete livePackage.dependencies['@anthropic-ai/sdk'];
+  delete livePackage.overrides.effect;
   livePackage.overrides['brace-expansion'] = '5.0.9';
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
@@ -980,6 +1031,7 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
   // The R12B-era package predates the planning assistant's SDK (V1 checklist 4.12)
   // and the V1 release security prerequisite's brace-expansion pin.
   delete predecessor.dependencies['@anthropic-ai/sdk'];
+  delete predecessor.overrides.effect;
   predecessor.overrides['brace-expansion'] = '5.0.9';
   assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
   assert.equal(checker.projectR12CArchitectureScripts(packageJson).scripts['architecture:imports:baseline'], retiredGenerator);

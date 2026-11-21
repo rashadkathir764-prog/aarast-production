@@ -30,8 +30,37 @@ $env:DATABASE_URL = $url.Replace($uri.AbsolutePath, "/$dbName")
 $env:DEMO_SEED_TODAY = [DateTime]::UtcNow.AddHours(3).ToString('yyyy-MM-dd')
 $env:DEMO_PASSWORD = (Get-Content (Join-Path $S 'walk-pass.txt') -Raw).Trim()
 npx prisma migrate deploy 2>&1 | Select-Object -Last 1
+if ($LASTEXITCODE -ne 0) { throw 'Walk database migration failed.' }
 npx ts-node prisma/demo-seed.ts 2>&1 | Select-Object -Last 1
+if ($LASTEXITCODE -ne 0) { throw 'Walk database seed failed.' }
+$env:AUTH_OTP_MODE = 'dev'
+$env:AUTH_DEV_OTP_CODE = '123456'
+$env:NODE_ENV = 'development'
+# Exercise reminder links on every run, independently of the hourly cron.
+# Use the notification owner's real service against this isolated fixture DB.
+@'
+const db = new URL(process.env.DATABASE_URL);
+if (!['localhost', '127.0.0.1'].includes(db.hostname) ||
+    db.pathname !== '/aarast_walks_20261101') {
+  throw new Error('Reminder setup requires the isolated local walk database');
+}
+const { NestFactory } = require('@nestjs/core');
+const { AppModule } = require('./src/app.module');
+const { NotificationsService } = require('./src/notifications/notifications.service');
+(async () => {
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  try {
+    const count = await app.get(NotificationsService).generateDueNotifications();
+    if (count == null) throw new Error('Reminder generation did not acquire its lock');
+    console.log('Walk reminders generated: ' + count);
+  } finally {
+    await app.close();
+  }
+})().catch(() => { console.error('Walk reminder setup failed'); process.exitCode = 1; });
+'@ | node --env-file=.env -r ts-node/register -r tsconfig-paths/register -
+if ($LASTEXITCODE -ne 0) { throw 'Walk reminder setup failed.' }
 $ids = (node (Join-Path $S 'sweep-ids.cjs') 2>&1 | Select-Object -Last 1).ToString()
+if ($LASTEXITCODE -ne 0) { throw 'Walk route fixture lookup failed.' }
 [IO.File]::WriteAllText((Join-Path $S 'sweep-ids.txt'), $ids)
 "ids keys: " + (($ids -split ',' | ForEach-Object { ($_ -split '=')[0] }) -join ' ')
 

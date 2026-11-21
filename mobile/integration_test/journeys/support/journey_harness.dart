@@ -18,6 +18,8 @@ import 'dart:ui' as ui;
 
 import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart'
     show JourneyTextField;
+import 'package:aarast_mobile/core/experience_v3/aarast_journey_hero.dart'
+    show JourneyPlanHero;
 import 'package:aarast_mobile/features/notifications/notifications_api.dart'
     show NotificationsProvider, resolveNotificationRouteTarget;
 import 'package:aarast_mobile/main.dart' as app;
@@ -148,7 +150,15 @@ class JourneyWalk {
 
   // ------------------------------------------------------------ finders
 
-  Finder text(String value) => find.textContaining(value, findRichText: true);
+  Finder text(String value) {
+    // Nonbreaking spaces and bidi isolates change layout, not the amount or
+    // words a person reads. Keep every digit and punctuation exact.
+    final pattern = RegExp.escape(value).replaceAllMapped(
+      RegExp(r'\s+'),
+      (_) => r'[\s\u00a0\u202f\u200e\u200f\u2066-\u2069]+',
+    );
+    return find.textContaining(RegExp(pattern), findRichText: true);
+  }
 
   bool sees(String value) => text(value).evaluate().isNotEmpty;
 
@@ -215,6 +225,46 @@ class JourneyWalk {
 
   void note(String value) => _current?.notes.add(value);
 
+  // Test-only state cleared by boot(), preserved only by the offline walk.
+  static const _offlineMoneyKey = '__aarast_walks_money_before_disconnect';
+
+  Future<void> rememberMoneyHero() async {
+    final hero = tester.widget<JourneyPlanHero>(
+      find.byKey(const ValueKey('money-share-hero')),
+    );
+    final figure = num.tryParse(hero.figure?.replaceAll(',', '') ?? '');
+    if (figure == null || !figure.isFinite || hero.title.trim().isEmpty) {
+      fail('ما ظهر مبلغ ووحدة صالحان قبل فصل الخادم');
+      return;
+    }
+    await (await SharedPreferences.getInstance()).setStringList(
+      _offlineMoneyKey,
+      [hero.figure!, hero.title],
+    );
+    note('قبل فصل الخادم: ${hero.figure} ${hero.title}');
+  }
+
+  Future<void> expectRememberedMoneyHero() async {
+    final expected = (await SharedPreferences.getInstance()).getStringList(
+      _offlineMoneyKey,
+    );
+    if (expected == null || expected.length != 2) {
+      fail('شغّل offline_prime قبل فحص المال دون خادم');
+      return;
+    }
+    final hero = tester.widget<JourneyPlanHero>(
+      find.byKey(const ValueKey('money-share-hero')),
+    );
+    if (hero.figure != expected[0] || hero.title != expected[1]) {
+      fail(
+        'تغيّر المبلغ بعد فصل الخادم: ${hero.figure} ${hero.title} بدل ${expected.join(' ')}',
+      );
+      return;
+    }
+    expectSee(expected[0]);
+    expectSee(expected[1]);
+  }
+
   /// The user must see [value] on this screen.
   bool expectSee(String value, {String? why}) {
     if (sees(value)) return true;
@@ -223,8 +273,15 @@ class JourneyWalk {
   }
 
   /// The user must NOT see [value] here (privacy, wrong role, stale text).
-  bool expectNotSee(String value, {String? why}) {
-    if (!sees(value)) return true;
+  bool expectNotSee(String value, {String? why, Finder? within}) {
+    if (within != null && within.evaluate().length != 1) {
+      fail('ما تحددت مساحة الفحص مرة واحدة${why == null ? '' : ' ($why)'}');
+      return false;
+    }
+    final matches = within == null
+        ? text(value)
+        : find.descendant(of: within, matching: text(value));
+    if (matches.evaluate().isEmpty) return true;
     fail('يظهر «$value» وما لازم${why == null ? '' : ' ($why)'}');
     return false;
   }
@@ -546,8 +603,14 @@ class JourneyWalk {
       } else {
         note('${notice.type} «${notice.title}» → $landed');
       }
-      GoRouter.of(find.byType(Navigator).evaluate().first).go(home);
-      await settle(seconds: 3);
+      // Close the pushed detail as a person does. Replacing its URL with go
+      // can preserve the list while leaving its pending push unfinished.
+      await back(wait: 3);
+      final returned = currentLocation();
+      if (returned != home) {
+        fail('الرجوع من تنبيه «${notice.title}» وصل $returned بدل $home');
+        break;
+      }
     }
     if (opened == 0) fail('ما فيه تنبيه يُفتح في القائمة');
   }

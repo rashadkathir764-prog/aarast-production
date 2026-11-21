@@ -705,6 +705,56 @@ void main() {
   });
 
   testWidgets(
+    'a refreshed first page rebuilds sections with the same first ID and total',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(392, 2400);
+      addTearDown(tester.view.reset);
+      MarketplaceProvider item(int i, String kind) => MarketplaceProvider(
+        id: 'provider-$i',
+        businessName: 'provider-$i',
+        ownerName: 'owner',
+        ratingAverage: 0,
+        ratingCount: 0,
+        primaryCategory: ProviderCategory(id: kind, nameAr: kind),
+      );
+      final state = _FakeMarketplaceProvider(
+        providers: [
+          for (var i = 0; i < 6; i++)
+            item(i, i < 3 ? 'cat-venue' : 'cat-photo'),
+        ],
+        categories: const [
+          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+          ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+        ],
+      );
+      await _pumpMarketplace(
+        tester,
+        state,
+        authenticated: true,
+        embedded: true,
+      );
+      expect(
+        find.byKey(const ValueKey('providers-section-cat-venue')),
+        findsOneWidget,
+      );
+      state.replaceDirectory([
+        for (var i = 0; i < 6; i++) item(i, 'cat-venue'),
+      ]);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('providers-shelf-cat-venue')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('providers-section-cat-photo')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'embedded providers tab keeps the approved browse-first visual',
     (tester) async {
       tester.view.devicePixelRatio = 1;
@@ -1082,7 +1132,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
        favoriteProvidersErrorData = favoriteProvidersError,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
-  final List<MarketplaceProvider> providersData;
+  List<MarketplaceProvider> providersData;
   final List<ProviderCategory> categoriesData;
   final List<QuoteRequest> quoteRequestsData;
   bool isLoadingMoreData;
@@ -1094,6 +1144,16 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   bool _includeAccountData = true;
   bool? lastIncludeAccountData;
+  int _directoryRevision = 0;
+  @override
+  int get directoryRevision => _directoryRevision;
+
+  void replaceDirectory(List<MarketplaceProvider> providers) {
+    providersData = providers;
+    _directoryRevision++;
+    notifyListeners();
+  }
+
   String? _categoryId;
   String _search;
 

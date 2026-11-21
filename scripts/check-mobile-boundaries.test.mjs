@@ -4047,9 +4047,12 @@ function assertTrackedPlanningBatch({
   // across lines; the figures themselves are unchanged. Re-pinned again
   // (2026-11-19, the code review): every reading, plainText included, goes
   // through the one keepCurrencyOnLine, and the word joiner is gone.
+  // Re-pinned (2026-11-21 verification): full and sum-safe display preserves
+  // stored Q25-era fractions. money_formatters_test proves 700.25 and 0.25;
+  // money_detail_screens_test still proves exact legacy settlement.
   assert.equal(
     createHash('sha256').update(coreFormatterText).digest('hex'),
-    'd8a5691fe1137d581e02759f7e5c5d9c95cbad09b4bbc3fc1aaa34a9af528f65',
+    '8021779809aece8a0f4d935d732f2bbf8d2b80b75c0cce9e4dc174e475de1e38',
     'Planning batch Core money formatter normalized hash mismatch',
   );
   const restoredFinanceFormatterText = coreFormatterText.replace(
@@ -4061,7 +4064,7 @@ function assertTrackedPlanningBatch({
     createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
     // Re-pinned with the one above (2026-11-18): the same file, read back
     // under its old name.
-    '32433ecb334f9552b584f755282d42e316f2f535f2639fe1089bb64394d1dbc4',
+    '31c062eda09062518bdf6a9b4a85b5245ec622209495e3ae7321c250ba8a4bd1',
     'Planning batch original Finance money formatter hash mismatch',
   );
 

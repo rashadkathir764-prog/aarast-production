@@ -602,8 +602,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     // them again.
     final source = provider.providers.isEmpty
         ? null
-        : '${provider.providers.first.id}|${provider.cityId}|'
-              '${provider.totalProviders}';
+        : '${provider.directoryRevision}|${provider.cityId}';
     if (browsing && source != _shelfSource) {
       _shelfSource = source;
       final first = providerSections(provider.providers, order);

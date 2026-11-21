@@ -176,7 +176,11 @@ class _WhoseStep extends StatelessWidget {
           accent: JourneyAccent.bride,
           title: 'العروسة',
           subtitle: 'عرس النساء، والمهر اللي تستلمينه',
-          picture: const CustomPaint(painter: JourneyDressPainter()),
+          picture: Image.asset(
+            'assets/images/journey/bride.png',
+            fit: BoxFit.cover,
+            excludeFromSemantics: true,
+          ),
           onTap: () => onChoose(GuestPersona.bride),
         ),
         const SizedBox(height: AarastV3Space.x4),

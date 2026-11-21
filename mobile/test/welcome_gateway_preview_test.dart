@@ -67,13 +67,18 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('door-plan')));
     await tester.pumpAndSettle();
-    // The groom's photo decodes off the test clock; wait for it.
-    await tester.runAsync(
-      () => precacheImage(
-        const AssetImage('assets/images/journey/groom.jpg'),
-        tester.element(find.byType(SmartWelcomeScreen)),
-      ),
-    );
+    // The persona photos decode off the test clock; wait for both.
+    await tester.runAsync(() async {
+      for (final asset in [
+        'assets/images/journey/groom.jpg',
+        'assets/images/journey/bride.png',
+      ]) {
+        await precacheImage(
+          AssetImage(asset),
+          tester.element(find.byType(SmartWelcomeScreen)),
+        );
+      }
+    });
     await tester.pumpAndSettle();
 
     await expectLater(

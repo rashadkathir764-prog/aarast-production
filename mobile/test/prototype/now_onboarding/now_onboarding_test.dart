@@ -122,6 +122,12 @@ void main() {
         ),
       ),
     );
+    await tester.runAsync(
+      () => precacheImage(
+        const AssetImage('assets/images/journey/celebration.png'),
+        tester.element(find.byType(SplashScreen)),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 700));
     await expectLater(
       find.byType(MaterialApp),

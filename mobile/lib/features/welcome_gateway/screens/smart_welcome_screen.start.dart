@@ -32,14 +32,18 @@ class _StartStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AarastV3Color.canvas,
+      color: AarastV3Color.paper,
       child: Column(
         children: [
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const JourneySkyBand(),
+                // Keep the former sky band's space, without drawing any art.
+                const AspectRatio(
+                  aspectRatio: AarastV3Media.band,
+                  child: SizedBox(),
+                ),
                 const SizedBox(height: AarastV3Space.x4),
                 Padding(
                   padding: const EdgeInsets.symmetric(

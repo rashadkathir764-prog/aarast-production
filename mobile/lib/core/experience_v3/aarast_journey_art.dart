@@ -216,6 +216,51 @@ class JourneyWeddingSky extends StatelessWidget {
   }
 }
 
+/// The splash photo, restricted to its sky and the kit's soft solid floor.
+class JourneyCelebrationSky extends StatelessWidget {
+  const JourneyCelebrationSky({required this.base, super.key});
+
+  final Color base;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: ColoredBox(
+        color: base,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRect(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    heightFactor: 0.5,
+                    child: Image.asset(
+                      'assets/images/journey/celebration.png',
+                      excludeFromSemantics: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: FractionallySizedBox(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: CustomPaint(painter: _FadeIntoPainter(base)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// A solid band at the bottom, softened by blur so the sky melts into it.
 class _FadeIntoPainter extends CustomPainter {
   const _FadeIntoPainter(this.color);

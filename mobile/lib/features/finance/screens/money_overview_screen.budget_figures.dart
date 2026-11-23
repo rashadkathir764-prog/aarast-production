@@ -27,7 +27,9 @@ class _BudgetFigures extends StatelessWidget {
     // Each figure whole on its line: «1.5» was left at a line's end with
     // «مليون ر.ي» under it.
     String money(Object? value) =>
-        _figure(context, value, currency).replaceAll(' ', ' ');
+        // Read together and added up (RA-MO-168): a figure the tenths of a
+        // million would round is written whole.
+        _exactFigure(context, value, currency).replaceAll(' ', ' ');
     final budget = summary.budget;
     final hasBudget = moneyValue(budget.total) > 0;
     final mahr = _mahrPaid(summary);

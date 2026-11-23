@@ -100,7 +100,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
     super.didUpdateWidget(oldWidget);
     // The stored budget arrives after the screen opens.
     if (oldWidget.budgetTotal != widget.budgetTotal &&
-        _amount(_budget.text) == _amount(oldWidget.budgetTotal ?? '')) {
+        _amount(_cleanBudget) == _amount(_budgetText(oldWidget.budgetTotal))) {
       _budget.text = _budgetText(widget.budgetTotal);
     }
   }
@@ -122,8 +122,12 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
 
   bool get _titleChanged => _title.text.trim() != widget.plan.title.trim();
 
+  // Against what the field showed, not the stored figure: a budget kept
+  // from before whole input (Q25), 7000000.50, shows «7,000,001»; compared
+  // with what is stored it counted as changed, and saving a new name alone
+  // saved 7000001 without a word.
   bool get _budgetChanged =>
-      _amount(_cleanBudget) != _amount(widget.budgetTotal ?? '');
+      _amount(_cleanBudget) != _amount(_budgetText(widget.budgetTotal));
 
   /// D114: the answer picked here; null until he picks one.
   bool? _inside;

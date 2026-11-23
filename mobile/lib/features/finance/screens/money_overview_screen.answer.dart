@@ -130,7 +130,7 @@ class _LateDueCard extends StatelessWidget {
               // it, never pushes the name off the card.
               Flexible(
                 child: Text(
-                  _figure(context, line.amount, currency),
+                  _fullFigure(context, line.amount, currency),
                   textAlign: TextAlign.end,
                   style: JourneyType.of(
                     JourneyType.pageTitle,
@@ -199,17 +199,20 @@ class _ShareHero extends StatelessWidget {
     // without the lead's figure twice; with no mahr, the lead says it all.
     final ownerMahr = moneyValue(outstanding?.ownerMahr);
     final ownerAgreements = moneyValue(outstanding?.owner) - ownerMahr;
+    // The parts are read with the lead and add up to it (critique م2): a
+    // part the tenths of a million would round is written whole, or «1.5»
+    // and «2» stood under a lead of «3.4».
     final chips = <String>[
       if (owner && outstanding != null) ...[
         if (ownerMahr > 0 && ownerAgreements > 0) ...[
-          'باقي المهر ${_figure(context, outstanding.ownerMahr, currency)}',
-          'اتفاقاتك ${_figure(context, ownerAgreements, currency)}',
+          'باقي المهر ${_exactFigure(context, outstanding.ownerMahr, currency)}',
+          'اتفاقاتك ${_exactFigure(context, ownerAgreements, currency)}',
         ] else if (ownerMahr > 0)
           'كله باقي المهر',
       ] else
         for (final group in summary.payers)
           if (moneyValue(group.outstanding) > 0)
-            '${group.ownerMoney ? 'على ${profile.plan('العريس', 'العروسة')}' : 'على ${payerLabel(group.payer, group.payerName, bridePlan: profile.isBride, owner: false)}'} ${_figure(context, group.outstanding, currency)}',
+            '${group.ownerMoney ? 'على ${profile.plan('العريس', 'العروسة')}' : 'على ${payerLabel(group.payer, group.payerName, bridePlan: profile.isBride, owner: false)}'} ${_exactFigure(context, group.outstanding, currency)}',
     ];
     final coverage = summary.coverage;
     // Rashad 2026-11-17: the home's hero, its look and size exactly
@@ -244,7 +247,7 @@ class _ShareHero extends StatelessWidget {
     } else {
       final verdict = moneyCoverTag(
         coverage,
-        (value) => _figure(context, value, summary.currency),
+        (value) => _coverFigure(context, value, summary.currency),
       );
       tag = JourneyHeroTag(
         key: const ValueKey('money-cover'),
@@ -500,13 +503,13 @@ class _ComingDues extends StatelessWidget {
                 subtitle: [
                   _whenWords(line.dueDate!),
                   if (line.isPartlyPaid)
-                    'اندفع ${_figure(context, line.paidTowards, currency)} من ${_figure(context, line.scheduledAmount, currency)}'
+                    'اندفع ${_fullFigure(context, line.paidTowards, currency)} من ${_fullFigure(context, line.scheduledAmount, currency)}'
                   else
                     ?line.note,
                   _payerOf(context, line),
                 ].join(' · '),
                 trailing: Text(
-                  _figure(context, line.amount, currency),
+                  _fullFigure(context, line.amount, currency),
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,

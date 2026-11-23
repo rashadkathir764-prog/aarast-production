@@ -217,7 +217,8 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
     Widget title(String text, num amount, {Color? colour}) =>
         JourneySectionTitle(
           text,
-          action: money(amount),
+          // One payment's amount: whole, as on its own page (critique م1).
+          action: _fullFigure(context, amount, currency),
           actionColor: colour ?? AarastV3Color.textMuted,
         );
     final chart = [
@@ -361,7 +362,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
     List<MoneyObligation> loans,
     String currency,
   ) {
-    String money(Object? value) => _figure(context, value, currency);
+    String money(Object? value) => _fullFigure(context, value, currency);
     final bySource = <String, List<MoneyObligation>>{};
     for (final line in loans) {
       bySource.putIfAbsent(line.fundingSourceId ?? line.id, () => []).add(line);
@@ -445,7 +446,7 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
 
   List<Widget> _done(BuildContext context, FinanceProvider provider) {
     final currency = provider.summary.currency;
-    String money(Object? value) => _figure(context, value, currency);
+    String money(Object? value) => _fullFigure(context, value, currency);
     final payments = [
       for (final payment in provider.payments)
         if (!payment.isReversal) payment,
@@ -668,7 +669,7 @@ class _DueLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.journeyProfile;
-    String money(Object? value) => _figure(context, value, currency);
+    String money(Object? value) => _fullFigure(context, value, currency);
     final day = line.dueDate;
     final late = day != null && line.isOverdue;
     final facts = <_Fact>[

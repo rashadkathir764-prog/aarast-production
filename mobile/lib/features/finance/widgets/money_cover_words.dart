@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/compact_money_figure.dart';
 import '../models/money_plan.dart';
 import '../models/wedding_cost.dart' show moneyValue;
 
@@ -51,6 +52,17 @@ String moneyIfEstimatesWords(
 /// stays on the money tab ([moneyCoverWords]); the two come from the same
 /// [coverage], so they never disagree.
 typedef MoneyCoverTag = ({bool ok, bool conditional, String words});
+
+/// The figure of [moneyCoverTag] («ينقصك 250 ألف»), one way on the home and
+/// on the money tab: they wrote «250 ألف» and «250,000 ر.ي» for the same
+/// shortfall. «أخفِ المبالغ» hides it.
+String moneyCoverFigure(
+  Object? value, {
+  required String currency,
+  required bool hidden,
+}) => hidden
+    ? '••••'
+    : compactMoneyFigure(moneyValue(value), currencyCode: currency);
 
 MoneyCoverTag moneyCoverTag(
   MoneyCoverage coverage,

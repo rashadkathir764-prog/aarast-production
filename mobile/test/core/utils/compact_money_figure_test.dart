@@ -48,4 +48,19 @@ void main() {
     expect(figure(-250000), '-250$nbspألف');
     expect(figure(-3000000), '-3$nbspمليون');
   });
+
+  test('a stored amount with a fraction is written whole, not rounded', () {
+    // Below a thousand every amount «shortened without loss», so a pre-Q25
+    // 700.25 read «700 ر.ي» while the same record read 700.25 on its own
+    // page (RA-MO-52).
+    String plain(String text) =>
+        text.replaceAll(RegExp('[\u2066-\u2069\u00a0\u202f]'), ' ');
+    expect(shortensWithoutLoss(700.25), isFalse);
+    expect(
+      plain(sumSafeMoneyFigure(700.25, currencyCode: 'YER')),
+      contains('700.25'),
+    );
+    expect(shortensWithoutLoss(700), isTrue);
+    expect(shortensWithoutLoss(1000.5), isFalse);
+  });
 }

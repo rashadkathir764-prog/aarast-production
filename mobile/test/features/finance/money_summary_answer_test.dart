@@ -545,7 +545,11 @@ void main() {
       await _open(tester, both!);
       // Mahr 800,000; hall 800,000 left + photo 350,000: 1,150,000.
       expect(find.textContaining('باقي المهر 800,000'), findsOneWidget);
-      expect(find.textContaining('اتفاقاتك 1.2\u00a0مليون'), findsOneWidget);
+      // Changed on purpose (critique م2, review 2026-11-23): the parts add
+      // up to the lead, so a part the tenths of a million would round is
+      // written whole; «1.2 مليون» was a rounded part («1.5» and «2» stood
+      // under a lead of «3.4»).
+      expect(find.textContaining('اتفاقاتك 1,150,000'), findsOneWidget);
 
       final hallOnly = await tester.runAsync(
         () => _plan(costs: _hallCost, payments: _hallPaid, dates: _hallDates),

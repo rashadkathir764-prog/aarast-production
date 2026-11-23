@@ -36,6 +36,7 @@ Future<List<_Saved>> _pump(
   VoidCallback? onArchive,
   bool? budgetIncludesMahr,
   num? mahrTotal,
+  String budgetTotal = '7000000.00',
   Size size = const Size(390, 844),
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -50,7 +51,7 @@ Future<List<_Saved>> _pump(
         child: Scaffold(
           body: PlanDetailsView(
             plan: _plan(day: day, city: city),
-            budgetTotal: '7000000.00',
+            budgetTotal: budgetTotal,
             budgetIncludesMahr: budgetIncludesMahr,
             mahrTotal: mahrTotal,
             onBack: () {},
@@ -150,6 +151,33 @@ void main() {
     expect(saved.single.title, isNull);
     expect(saved.single.firstDay, isNull);
     expect(saved.single.budgetTotal, '8000000');
+  });
+
+  testWidgets('a stored budget with a fraction is not saved untouched', (
+    tester,
+  ) async {
+    // A budget kept from before Q25 (whole input) showed whole, «7,000,001»,
+    // and counted as changed against its stored 7000000.50: renaming the
+    // plan alone saved 7000001 without a word.
+    final saved = await _pump(
+      tester,
+      day: DateTime(2027, 1, 21),
+      budgetTotal: '7000000.50',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('plan-details-title')),
+        matching: find.byType(EditableText),
+      ),
+      'عرسي',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plan-details-save')));
+    await tester.pumpAndSettle();
+
+    expect(saved, hasLength(1));
+    expect(saved.single.title, 'عرسي');
+    expect(saved.single.budgetTotal, isNull);
   });
 
   testWidgets('a set day changes only through g03', (tester) async {

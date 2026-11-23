@@ -26,6 +26,29 @@ String _exactFigure(BuildContext context, Object? value, String currency) {
   );
 }
 
+/// One record's amount (a payment, a date to pay, a mahr): whole, never
+/// rounded (critique م1, م3); the same amount reads the same in the list and
+/// on its own page.
+String _fullFigure(BuildContext context, Object? value, String currency) {
+  final hidden = context.select<FinanceProvider?, bool>(
+    (provider) => provider?.amountsHidden ?? false,
+  );
+  if (hidden) return '••••';
+  return keepCurrencyOnLine(
+    fullMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+  );
+}
+
+/// A hidden-aware [moneyCoverFigure] for the money tab's verdict tags.
+String _coverFigure(BuildContext context, Object? value, String currency) =>
+    moneyCoverFigure(
+      value,
+      currency: currency,
+      hidden: context.select<FinanceProvider?, bool>(
+        (provider) => provider?.amountsHidden ?? false,
+      ),
+    );
+
 String _amount(BuildContext context, Object? value, String currency) {
   final hidden = context.select<FinanceProvider?, bool>(
     (provider) => provider?.amountsHidden ?? false,

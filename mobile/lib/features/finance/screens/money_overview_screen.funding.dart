@@ -223,7 +223,10 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 const SizedBox(height: AarastV3Space.x3),
                 _CoverTag(
                   key: const ValueKey('money-sources-cover'),
-                  tag: moneyCoverTag(coverage, money),
+                  tag: moneyCoverTag(
+                    coverage,
+                    (value) => _coverFigure(context, value, currency),
+                  ),
                   howCounted: widget.onHowCounted,
                   onPaper: true,
                   linkKey: const ValueKey('money-sources-how-counted'),

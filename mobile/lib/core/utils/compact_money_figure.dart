@@ -22,7 +22,9 @@ bool shortensWithoutLoss(num value) {
   final abs = value.abs();
   if (abs >= 1000000) return abs % 100000 == 0;
   if (abs >= 1000) return abs % 100 == 0;
-  return true;
+  // Below a thousand the figure is the amount itself: whole is kept whole,
+  // a stored fraction (before Q25) is not rounded away.
+  return abs == abs.truncateToDouble();
 }
 
 /// A short money figure that always carries its unit (V-01): «3 مليون»,

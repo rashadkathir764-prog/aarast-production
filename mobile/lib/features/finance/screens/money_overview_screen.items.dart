@@ -241,7 +241,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
           key: ValueKey('money-item-mahr-${cost.id}'),
           icon: LucideIcons.heartHandshake,
           title: cost.title,
-          amount: _amount(context, cost.totalAmount, currency),
+          amount: _fullFigure(context, cost.totalAmount, currency),
           paidRatio: moneyValue(cost.totalAmount) <= 0
               ? 0
               : moneyValue(cost.paidAmount) / moneyValue(cost.totalAmount),
@@ -254,7 +254,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
                 )
               : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
               ? 'سُلّم كامل'
-              : '${context.ownerDid('سلّمت', 'سلّمتِ', groom: 'العريس سلّم', bride: 'العروسة سلّمت')} ${_amount(context, cost.paidAmount, currency)}',
+              : '${context.ownerDid('سلّمت', 'سلّمتِ', groom: 'العريس سلّم', bride: 'العروسة سلّمت')} ${_fullFigure(context, cost.paidAmount, currency)}',
           note: switch (mahrDue(_nextDueDay(provider, cost))) {
             final due? => (due, AarastV3Color.brandAccentStrong),
             null => null,

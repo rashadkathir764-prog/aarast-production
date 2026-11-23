@@ -31,6 +31,11 @@ export 'widgets/mahr_fields.dart' show MahrFields, mahrWords, pickMahrDueDate;
 export 'widgets/money_budget_words.dart'
     show mahrOnItsOwnWords, moneyBudgetCells;
 export 'widgets/money_cover_words.dart'
-    show MoneyCoverTag, MoneyCoverWords, moneyCoverTag, moneyCoverWords;
+    show
+        MoneyCoverTag,
+        MoneyCoverWords,
+        moneyCoverFigure,
+        moneyCoverTag,
+        moneyCoverWords;
 export 'widgets/money_input_formatter.dart'
     show MoneyInputFormatter, formatMoneyInputValue;

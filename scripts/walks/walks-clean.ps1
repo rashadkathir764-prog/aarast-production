@@ -1,9 +1,11 @@
-﻿# Reseeds the isolated walk database and starts its API on port 3116.
+﻿# Reseeds the isolated walk database and starts its API on -port (3116).
 # Called by walks.ps1; safe to run alone. Needs Docker Desktop (container
 # aarast-db) and scripts/walks/walk-pass.txt (the demo password, git-ignored).
+# PowerShell 7.2+ only, as walks.ps1 says why.
+param([int]$port = 3116)
+#Requires -Version 7.2
 $S = $PSScriptRoot
 $dbName = 'aarast_walks_20261101'
-$port = 3116
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..\..\backend')
 
@@ -56,7 +58,7 @@ const { NotificationsService } = require('./src/notifications/notifications.serv
   } finally {
     await app.close();
   }
-})().catch(() => { console.error('Walk reminder setup failed'); process.exitCode = 1; });
+})().catch((error) => { console.error('Walk reminder setup failed: ' + (error && error.name ? error.name : 'unknown')); process.exitCode = 1; });
 '@ | node --env-file=.env -r ts-node/register -r tsconfig-paths/register -
 if ($LASTEXITCODE -ne 0) { throw 'Walk reminder setup failed.' }
 $ids = (node (Join-Path $S 'sweep-ids.cjs') 2>&1 | Select-Object -Last 1).ToString()

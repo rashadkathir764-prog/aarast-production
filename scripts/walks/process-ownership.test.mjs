@@ -82,3 +82,8 @@ test('a checkout process on another port is never stopped', () => {
 test('an entry name sharing the prefix is not ownership of the API', () => {
   assert.deepEqual(shutdown([{ ProcessId: 22, CommandLine: `node "${entry}.backup"` }], [22]).stopped, []);
 });
+
+test('a port owner whose command line cannot be read is left for the occupied-port guard', () => {
+  // Another user's or an elevated node.exe shows no command line.
+  assert.deepEqual(shutdown([{ ProcessId: 22, CommandLine: null }], [22]).stopped, []);
+});

@@ -239,3 +239,37 @@ test("Redis throttle outage falls back to an enforcing in-process limiter", asyn
     "Error",
   );
 });
+
+test("rate-limit storage hands shutdown to the stores it wraps", async () => {
+  // Nest calls lifecycle hooks on the registered storage only. Without
+  // passing them on, the Redis store's client stayed open after
+  // app.close(), so a process built on AppModule never exited (the walks'
+  // reminder setup hung) and the API's shutdown left a socket behind.
+  const calls: string[] = [];
+  const store = (
+    name: string,
+  ): ThrottlerStorage & {
+    onModuleDestroy(): void;
+    onApplicationShutdown(): void;
+  } => ({
+    increment: async () => ({
+      totalHits: 1,
+      timeToExpire: 1,
+      isBlocked: false,
+      timeToBlockExpire: 0,
+    }),
+    onModuleDestroy: () => calls.push(`${name}:destroy`),
+    onApplicationShutdown: () => calls.push(`${name}:shutdown`),
+  });
+  const storage = new ResilientThrottlerStorage(store("redis"), store("local"));
+
+  await storage.onModuleDestroy();
+  await storage.onApplicationShutdown();
+
+  assert.deepEqual(calls, [
+    "redis:destroy",
+    "local:destroy",
+    "redis:shutdown",
+    "local:shutdown",
+  ]);
+});

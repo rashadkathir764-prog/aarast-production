@@ -53,6 +53,10 @@ const tools = {
   flutter: () => has('flutter') || 'Flutter is not on PATH',
   java: () => has('java', ['-version']) || 'Java is not on PATH',
   gitleaks: () => has('gitleaks', ['version']) || 'gitleaks is not installed',
+  // The walk and release scripts are PowerShell; their tests run the real
+  // scripts. Windows always has powershell.exe; elsewhere pwsh must be there,
+  // or the tests fail on a spawn error that reads like a broken contract.
+  pwsh: () => isWindows || has('pwsh', ['-NoProfile', '-Command', 'exit 0']) || 'PowerShell (pwsh) is not on PATH',
 };
 
 // Golden images are drawn on Windows (docs/qa/README.md); elsewhere they are
@@ -82,14 +86,15 @@ const gates = [
     name: 'deploy and supply-chain contracts',
     cwd: '.',
     cmd: 'node',
-    args: () => ['--test', ...trackedFiles('deploy/**/*.test.mjs'), 'scripts/check-deploy-encoding.test.mjs', 'scripts/supply-chain-contract.test.mjs', 'scripts/walks/process-ownership.test.mjs'],
+    args: () => ['--test', ...trackedFiles('deploy/**/*.test.mjs'), 'scripts/check-deploy-encoding.test.mjs', 'scripts/supply-chain-contract.test.mjs'],
     // deploy/aws/direct-ip-contract.test.mjs renders its Caddy file in a
     // container. With Docker stopped the gate failed on a pipe error that
     // read like a broken contract (2026-11-12); it is said as a missing tool.
     needs: ['docker'],
   },
+  { area: 'root', name: 'walk API ownership (PowerShell)', cwd: '.', cmd: 'node', args: ['--test', 'scripts/walks/process-ownership.test.mjs'], needs: ['pwsh'] },
   { area: 'root', name: 'admin staging build origin', cwd: '.', cmd: 'node', args: ['--test', 'admin-web/scripts/staging-build-origin.contract.mjs'] },
-  { area: 'root', name: 'android release config (Gradle)', cwd: '.', cmd: 'node', args: ['scripts/test-android-release-config.mjs'], full: true, needs: ['java'] },
+  { area: 'root', name: 'android release config (Gradle)', cwd: '.', cmd: 'node', args: ['scripts/test-android-release-config.mjs'], full: true, needs: ['java', 'pwsh'] },
   { area: 'root', name: 'compose config', cwd: '.', cmd: 'docker', args: ['compose', 'config', '--quiet'], full: true, needs: ['docker'] },
   { area: 'root', name: 'secrets scan (gitleaks)', cwd: '.', cmd: 'gitleaks', args: ['detect', '--redact', '--no-banner'], full: true, needs: ['gitleaks'] },
   { area: 'root', name: 'whitespace (git diff --check)', cwd: '.', cmd: 'git', args: ['diff', '--check', 'HEAD'] },

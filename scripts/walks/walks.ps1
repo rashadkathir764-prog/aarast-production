@@ -1,7 +1,11 @@
 ﻿param([string[]]$walks)
+#Requires -Version 7.2
 # Runs real-app walks on the Windows build against the isolated API:
 #   pwsh -File scripts/walks/walks.ps1 -walks groom,route_sweep
-# or from PowerShell: & .\scripts\walks\walks.ps1 -walks @('groom','route_sweep')
+# or from pwsh: & .\scripts\walks\walks.ps1 -walks @('groom','route_sweep')
+# PowerShell 7.2+ only: Windows PowerShell 5.1 turns a native tool's
+# redirected stderr into errors that stop the script under 'Stop', so a
+# Flutter or Docker warning ended the run at random.
 # A walk whose name starts with "offline_groom" is launched against a closed
 # port (the server out of reach) and keeps the local copy the previous walk
 # left on this machine; run offline_prime before it to record the money shown.
@@ -38,14 +42,17 @@ try {
   # A different project may also run src/main.ts. Stop only this checkout's
   # absolute entry, and only when it owns the isolated walk API port. An
   # unknown listener is left for walks-clean's occupied-port error.
+  $walkApiPort = 3116
   $walkApiEntry = [IO.Path]::GetFullPath((Join-Path $repo 'backend/src/main.ts')).Replace('\', '/')
   $walkApiEntryPattern = '(?:^|\s|")' + [regex]::Escape($walkApiEntry) + '(?:"|\s|$)'
-  $walkApiOwners = @(Get-NetTCPConnection -State Listen -LocalPort 3116 -ErrorAction SilentlyContinue | ForEach-Object OwningProcess)
+  $walkApiOwners = @(Get-NetTCPConnection -State Listen -LocalPort $walkApiPort -ErrorAction SilentlyContinue | ForEach-Object OwningProcess)
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {
-    $walkApiOwners -contains $_.ProcessId -and
+    # Another user's or an elevated process shows no command line; it is not
+    # this checkout's, and walks-clean says the port is taken.
+    $walkApiOwners -contains $_.ProcessId -and $_.CommandLine -and
       $_.CommandLine.Replace('\', '/') -match $walkApiEntryPattern
   } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }
-  & (Join-Path $S 'walks-clean.ps1') 2>&1 | Where-Object { "$_" -match 'api pid|api up|successfully|keys|Docker' } | ForEach-Object { "$_".Substring(0, [Math]::Min(100, "$_".Length)) }
+  & (Join-Path $S 'walks-clean.ps1') -port $walkApiPort 2>&1 | Where-Object { "$_" -match 'api pid|api up|successfully|keys|Docker' } | ForEach-Object { "$_".Substring(0, [Math]::Min(100, "$_".Length)) }
   $pass = (Get-Content (Join-Path $S 'walk-pass.txt') -Raw).Trim()
   $ids = [IO.File]::ReadAllText((Join-Path $S 'sweep-ids.txt'))
   $dir = Join-Path $S 'out'
@@ -62,7 +69,7 @@ try {
   foreach ($walk in $walks) {
     "=== $walk $(Get-Date -Format HH:mm:ss)"
     $out = Join-Path $dir "$walk.log"
-    $base = if ($walk -like 'offline_groom*') { 'http://127.0.0.1:9' } else { 'http://127.0.0.1:3116' }
+    $base = if ($walk -like 'offline_groom*') { 'http://127.0.0.1:9' } else { "http://127.0.0.1:$walkApiPort" }
     flutter test --no-pub "integration_test/journeys/${walk}_walk_test.dart" -d windows `
       "--dart-define=AARAST_API_BASE_URL=$base" `
       "--dart-define=DEMO_PASSWORD=$pass" `

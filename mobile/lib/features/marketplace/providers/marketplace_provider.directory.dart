@@ -8,6 +8,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     if (_catalogAudience == normalized) return;
     _catalogAudience = normalized;
     _directoryRevision++;
+    _fixBrowseKinds();
     final currentCategoryId = _categoryId;
     if (currentCategoryId != null &&
         !categories.any((category) => category.id == currentCategoryId)) {
@@ -37,6 +38,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     _loadMoreErrorMessage = null;
     final generation = ++_loadGeneration;
     bool current() => generation == _loadGeneration;
+    final query = _currentQuery();
 
     // D85: the phone's copy of the directory shows at once; the server's
     // answer replaces it, and a server out of reach keeps the copy (stale)
@@ -93,7 +95,10 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
         if (bundle.cities.isNotEmpty) _cities = bundle.cities;
         if (bundle.categories.isNotEmpty) _categories = bundle.categories;
         _providers = bundle.providers.items;
+        _appliedQuery = query;
+        _firstPageLength = _providers.length;
         _directoryRevision++;
+        _fixBrowseKinds();
         _currentPage = bundle.providers.currentPage;
         _totalProviders = bundle.providers.total;
         _totalPages = bundle.providers.totalPages;
@@ -211,6 +216,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
       _cities = cities;
       _categories = categories;
       _directoryRevision++;
+      _fixBrowseKinds();
     } catch (_) {
       _referenceDataErrorMessage = providerReferenceDataErrorMessage;
     } finally {

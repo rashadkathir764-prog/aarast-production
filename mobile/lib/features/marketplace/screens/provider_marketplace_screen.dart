@@ -96,12 +96,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// The conversations read once for «المحادثات 2» (no live connection).
   bool _chatCountRead = false;
 
-  /// The kinds that make rows in «استكشف», fixed on the list's first page,
-  /// and the list they were fixed for.
-  Set<String>? _shelfKinds;
-  Set<String>? _sectionKinds;
-  String? _shelfSource;
-
   /// Whether this reader has an account, once asked. Null until the answer
   /// is back. «no account» is an answer, not a wait: without it the tabs
   /// that need one sat on a loading skeleton that could never end.
@@ -499,20 +493,26 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   /// f02: the directory results, or why there are none.
   List<Widget> _exploreResults(ProviderMarketplaceProvider provider) {
+    // A search that could not load, with no copy of it on the phone, left an
+    // earlier search's page in place: it is not this search's answer, so it
+    // is not shown as one. While the answer loads the page stays, as before.
+    final shown = provider.providersAnswerFilters || provider.isLoading
+        ? provider.providers
+        : const <MarketplaceProvider>[];
     return [
-      if (provider.errorMessage != null && provider.providers.isEmpty)
+      if (provider.errorMessage != null && shown.isEmpty)
         JourneyListState(
           key: const ValueKey('marketplace-directory-error'),
           phase: JourneyListPhase.error,
           section: JourneySection.providers,
           onRetry: provider.loadMarketplace,
         )
-      else if (provider.isLoading && provider.providers.isEmpty)
+      else if (provider.isLoading && shown.isEmpty)
         const JourneyListState(
           phase: JourneyListPhase.loading,
           section: JourneySection.providers,
         )
-      else if (provider.providers.isEmpty && !_hasDirectoryFilters(provider))
+      else if (shown.isEmpty && !_hasDirectoryFilters(provider))
         // Nothing is filtered, so "change the filters" would be
         // a false lead: the directory itself is empty.
         JourneyListState(
@@ -524,7 +524,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
               'أول ما يسجّل مزودين ويعتمدهم فريق اعّرست، بيظهرون هنا. '
               '${context.say('تعرف مزود؟ قل له', 'تعرفين مزود؟ قولي له')} يسجّل في اعّرست.',
         )
-      else if (provider.providers.isEmpty)
+      else if (shown.isEmpty)
         JourneyListState(
           key: const ValueKey('marketplace-filtered-empty'),
           phase: JourneyListPhase.empty,
@@ -553,7 +553,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           ),
           const SizedBox(height: AarastV3Space.x3),
         ],
-        ..._directory(provider),
+        ..._directory(provider, shown),
         if (provider.isLoadingMore)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: AarastV3Space.x3),
@@ -587,37 +587,20 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   /// of rows (three at most, «الكل» for the rest). The providers no section
   /// holds follow. A kind picked, an item's search or a typed name shows rows
   /// only, in one list. No provider is shown twice.
-  List<Widget> _directory(ProviderMarketplaceProvider provider) {
-    final browsing =
-        provider.categoryId == null &&
-        provider.budgetMatchIntent == null &&
-        // The search that ran, not the letters still being typed: the
-        // sections stay until the results change, not a beat before.
-        provider.search.trim().isEmpty;
+  List<Widget> _directory(
+    ProviderMarketplaceProvider provider,
+    List<MarketplaceProvider> shown,
+  ) {
+    // The search that ran, not the letters still being typed: the sections
+    // stay until the results change, not a beat before. The kinds and which
+    // of them are rows are fixed by the provider on the first page.
+    final browsing = provider.showsWholeDirectory;
     final order = [for (final category in provider.categories) category.id];
-    // The sections and which of them are rows are fixed on the list's first
-    // page (review 2026-11-18): a page loaded at the end fills sections
-    // already drawn, and never draws a new one, or turns a list into a row,
-    // above what is being read. A new list (a refresh, another place) fixes
-    // them again.
-    final source = provider.providers.isEmpty
-        ? null
-        : '${provider.directoryRevision}|${provider.cityId}';
-    if (browsing && source != _shelfSource) {
-      _shelfSource = source;
-      final first = providerSections(provider.providers, order);
-      _sectionKinds = {for (final section in first) section.categoryId};
-      _shelfKinds = {
-        for (final section in first)
-          if (section.providers.length >= providerShelfMinimum)
-            section.categoryId,
-      };
-    }
     final sections = browsing
         ? providerSections(
-            provider.providers,
+            shown,
             order,
-            allowedKinds: _sectionKinds,
+            allowedKinds: provider.browseSectionKinds,
           )
         : const <ProviderShelf>[];
     final inSection = {
@@ -625,7 +608,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         for (final item in section.providers) item.id,
     };
     final rest = [
-      for (final item in provider.providers)
+      for (final item in shown)
         if (!inSection.contains(item.id)) item,
     ];
     final names = {
@@ -647,7 +630,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     );
     return [
       for (final section in sections) ...[
-        if (_shelfKinds?.contains(section.categoryId) ?? false)
+        if (provider.browseShelfKinds.contains(section.categoryId))
           _ProviderShelfRow(
             key: ValueKey('providers-shelf-${section.categoryId}'),
             title: names[section.categoryId] ?? '',

@@ -11,6 +11,7 @@ import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../models/provider_portfolio.dart';
+import '../models/provider_shelves.dart';
 
 part 'marketplace_provider.directory.dart';
 part 'marketplace_provider.details.dart';
@@ -79,6 +80,16 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
   int _directoryRevision = 0;
+
+  /// The filters the shown page answers. The filters change as soon as one
+  /// is set (a letter typed), the page only when its answer comes.
+  _DirectoryQuery? _appliedQuery;
+
+  /// The first page's length: a later page appends, and the sections are
+  /// fixed on the first page alone.
+  int _firstPageLength = 0;
+  Set<String> _browseSectionKinds = const {};
+  Set<String> _browseShelfKinds = const {};
   ProviderBudgetMatchIntent? _budgetMatchIntent;
   final Map<String, MarketplaceProvider> _details = {};
   final Map<String, List<MarketplaceService>> _services = {};
@@ -146,6 +157,63 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
 
   /// Changes when the first page or its catalog is replaced, never on append.
   int get directoryRevision => _directoryRevision;
+
+  /// The shown page answers the filters as they are now. Not so while a
+  /// new search loads, or when it could not load and no copy of it was on
+  /// the phone: then the page is an earlier search's and is not its answer.
+  /// No page loaded yet answers whatever is asked of it.
+  bool get providersAnswerFilters =>
+      _appliedQuery == null || _appliedQuery == _currentQuery();
+
+  /// The shown page is the whole directory (no kind, no item, no name), as
+  /// it was asked: the sections stay until a search's answer comes.
+  bool get showsWholeDirectory => (_appliedQuery ?? _currentQuery()).browsing;
+
+  /// The kinds that make a section, and those of them that are sideways rows,
+  /// fixed on the whole directory's first page (D120, review 2026-11-18): a
+  /// later page fills sections already drawn, and the screen being built again
+  /// does not fix them anew.
+  /// Before a page is loaded they are read from [providers] as they are.
+  Set<String> get browseSectionKinds => _appliedQuery == null
+      ? _browseKindsOf(providers).sections
+      : _browseSectionKinds;
+  Set<String> get browseShelfKinds => _appliedQuery == null
+      ? _browseKindsOf(providers).shelves
+      : _browseShelfKinds;
+
+  // Read through the getters, which the filters' setters keep.
+  _DirectoryQuery _currentQuery() => (
+    search: search.trim(),
+    cityId: cityId,
+    categoryId: categoryId,
+    intent: budgetMatchIntent?.providerCategoryIds.join(','),
+  );
+
+  ({Set<String> sections, Set<String> shelves}) _browseKindsOf(
+    List<MarketplaceProvider> page,
+  ) {
+    final order = [for (final category in categories) category.id];
+    final first = providerSections(page, order);
+    return (
+      sections: {for (final section in first) section.categoryId},
+      shelves: {
+        for (final section in first)
+          if (section.providers.length >= providerShelfMinimum)
+            section.categoryId,
+      },
+    );
+  }
+
+  /// Fixes [browseSectionKinds] and [browseShelfKinds] on the first page,
+  /// each time it or its catalog is replaced ([directoryRevision]).
+  void _fixBrowseKinds() {
+    final kinds = _browseKindsOf(
+      _providers.take(_firstPageLength).toList(growable: false),
+    );
+    _browseSectionKinds = kinds.sections;
+    _browseShelfKinds = kinds.shelves;
+  }
+
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
   List<FavoriteProvider> get favoriteProviders => _favoriteProviders;
@@ -295,3 +363,14 @@ const providerDirectoryGenericErrorMessage =
     'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.';
 const providerDetailsStaleErrorMessage =
     'ما قدرنا نحدّث بيانات المزود. نعرض لك آخر نسخة محفوظة.';
+
+typedef _DirectoryQuery = ({
+  String search,
+  String? cityId,
+  String? categoryId,
+  String? intent,
+});
+
+extension on _DirectoryQuery {
+  bool get browsing => search.isEmpty && categoryId == null && intent == null;
+}

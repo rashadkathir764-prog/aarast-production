@@ -216,9 +216,13 @@ class JourneyWeddingSky extends StatelessWidget {
   }
 }
 
-/// The splash photo, restricted to its sky and the kit's soft solid floor.
+/// The splash photo: the night sky and its fireworks, in their natural
+/// colours, melting into the kit's solid [base] at the bottom. The asset
+/// is the sky alone, cut to what is drawn, so nothing is decoded to be hidden.
 class JourneyCelebrationSky extends StatelessWidget {
   const JourneyCelebrationSky({required this.base, super.key});
+
+  static const asset = 'assets/images/journey/celebration_sky.jpg';
 
   final Color base;
 
@@ -230,30 +234,23 @@ class JourneyCelebrationSky extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ClipRect(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    heightFactor: 0.5,
-                    child: Image.asset(
-                      'assets/images/journey/celebration.png',
-                      excludeFromSemantics: true,
+            Image.asset(
+              asset,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              excludeFromSemantics: true,
+              // On a cold start the photo decodes a frame or two after the
+              // night is drawn: it comes in softly, not with a jump.
+              frameBuilder: (context, child, frame, synchronous) => synchronous
+                  ? child
+                  : AnimatedOpacity(
+                      opacity: frame == null ? 0 : 1,
+                      duration: AarastV3Motion.standard,
+                      curve: AarastV3Motion.curve,
+                      child: child,
                     ),
-                  ),
-                ),
-              ),
             ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                widthFactor: 1,
-                heightFactor: 1,
-                child: CustomPaint(painter: _FadeIntoPainter(base)),
-              ),
-            ),
+            CustomPaint(painter: _FadeIntoPainter(base)),
           ],
         ),
       ),
@@ -288,182 +285,4 @@ class _FadeIntoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FadeIntoPainter old) => old.color != color;
-}
-
-/// The bride's card picture: a white ball gown on a form, drawn with solid
-/// tones and blur (no gradients, D3).
-class JourneyDressPainter extends CustomPainter {
-  const JourneyDressPainter();
-
-  static const _backdrop = Color(0xFFE9E9E6);
-  static const _shade = Color(0xFFCFCFD4);
-  static const _form = Color(0xFFEDE7DC);
-  static const _bead = Color(0xFFA6AAB5);
-  static const _cap = Color(0xFFD9B15F);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final rnd = math.Random(11);
-    canvas.drawRect(Offset.zero & size, Paint()..color = _backdrop);
-    final cx = w * 0.5;
-    final waistY = h * 0.47;
-    final topY = h * 0.20;
-    final bw = w * 0.17;
-    final ww = w * 0.12;
-
-    // The form's neck, cap and shoulders.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(cx, h * 0.09),
-          width: w * 0.09,
-          height: h * 0.10,
-        ),
-        const Radius.circular(AarastV3Radius.xs),
-      ),
-      Paint()..color = _form,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(cx, h * 0.015),
-          width: w * 0.11,
-          height: h * 0.05,
-        ),
-        const Radius.circular(AarastV3Radius.xs),
-      ),
-      Paint()..color = _cap,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx - w * 0.045, h * 0.13)
-        ..quadraticBezierTo(
-          cx - w * 0.06,
-          topY - h * 0.01,
-          cx - bw * 0.85,
-          topY + h * 0.025,
-        )
-        ..lineTo(cx + bw * 0.85, topY + h * 0.025)
-        ..quadraticBezierTo(
-          cx + w * 0.06,
-          topY - h * 0.01,
-          cx + w * 0.045,
-          h * 0.13,
-        )
-        ..close(),
-      Paint()..color = _form,
-    );
-
-    // Skirt: grey edges, a blurred white body for the round fall, pleats.
-    final hemY = h * 1.25;
-    final skirt = Path()
-      ..moveTo(cx - ww, waistY)
-      ..cubicTo(
-        cx - w * 0.35,
-        h * 0.62,
-        cx - w * 0.75,
-        h * 0.95,
-        cx - w * 0.95,
-        hemY,
-      )
-      ..lineTo(cx + w * 0.95, hemY)
-      ..cubicTo(
-        cx + w * 0.75,
-        h * 0.95,
-        cx + w * 0.35,
-        h * 0.62,
-        cx + ww,
-        waistY,
-      )
-      ..close();
-    canvas.drawPath(skirt, Paint()..color = _shade);
-    canvas.save();
-    canvas.clipPath(skirt);
-    canvas.drawRect(
-      Rect.fromLTRB(cx - w * 0.45, waistY, cx + w * 0.35, hemY),
-      Paint()
-        ..color = AarastV3Color.paper
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.12),
-    );
-    for (var i = -8; i <= 8; i++) {
-      final f = i / 8;
-      final pleat = Path()
-        ..moveTo(cx + f * ww * 0.9, waistY)
-        ..quadraticBezierTo(cx + f * w * 0.35, h * 0.75, cx + f * w, hemY);
-      canvas.drawPath(
-        pleat,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = w * 0.035
-          ..color = _shade.withValues(alpha: 0.35)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
-      );
-    }
-    for (var i = 0; i < 220; i++) {
-      final t = math.pow(rnd.nextDouble(), 0.8).toDouble();
-      final y = waistY + t * (hemY - waistY);
-      final half = ww + (w * 0.95 - ww) * math.pow(t, 0.7);
-      canvas.drawCircle(
-        Offset(cx + (rnd.nextDouble() * 2 - 1) * half, y),
-        0.5 + rnd.nextDouble() * 1.0,
-        Paint()..color = _bead.withValues(alpha: 0.7),
-      );
-    }
-    canvas.restore();
-
-    // Bodice.
-    final bodice = Path()
-      ..moveTo(cx - bw, topY + h * 0.03)
-      ..quadraticBezierTo(cx - bw * 0.5, topY - h * 0.025, cx, topY + h * 0.04)
-      ..quadraticBezierTo(
-        cx + bw * 0.5,
-        topY - h * 0.025,
-        cx + bw,
-        topY + h * 0.03,
-      )
-      ..quadraticBezierTo(cx + bw * 0.92, h * 0.36, cx + ww, waistY)
-      ..lineTo(cx, waistY + h * 0.03)
-      ..lineTo(cx - ww, waistY)
-      ..quadraticBezierTo(cx - bw * 0.92, h * 0.36, cx - bw, topY + h * 0.03)
-      ..close();
-    canvas.drawPath(bodice, Paint()..color = _shade);
-    canvas.save();
-    canvas.clipPath(bodice);
-    canvas.drawRect(
-      Rect.fromLTRB(cx - bw * 0.6, topY, cx + bw * 0.5, waistY + h * 0.03),
-      Paint()
-        ..color = AarastV3Color.paper
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.05),
-    );
-    for (var i = 0; i < 70; i++) {
-      final k = rnd.nextDouble();
-      final y = topY + h * 0.04 + k * (waistY - topY - h * 0.04);
-      final spread = (bw * (1 - k) + ww * k) * 0.9;
-      canvas.drawCircle(
-        Offset(cx + (rnd.nextDouble() * 2 - 1) * spread, y),
-        0.6 + rnd.nextDouble() * 0.8,
-        Paint()..color = _bead,
-      );
-    }
-    canvas.restore();
-
-    // A few glints.
-    for (var i = 0; i < 14; i++) {
-      final k = rnd.nextDouble();
-      final y = waistY - h * 0.2 + k * h * 0.7;
-      final half = y < waistY ? bw * 0.8 : ww + (y - waistY) * 1.1;
-      final p = Offset(cx + (rnd.nextDouble() * 2 - 1) * half, y);
-      canvas.drawCircle(
-        p,
-        3,
-        Paint()
-          ..color = AarastV3Color.paper.withValues(alpha: 0.9)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant JourneyDressPainter old) => false;
 }

@@ -222,9 +222,12 @@ class JourneyDoor extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(minHeight: AarastV3Size.door),
           padding: const EdgeInsets.all(AarastV3Space.x4),
+          // The doors stand on the white start page (D75): a hairline is
+          // what tells each one apart from the page, as a field's does.
           decoration: BoxDecoration(
             color: AarastV3Color.paper,
             borderRadius: BorderRadius.circular(AarastV3Radius.card),
+            border: Border.all(color: AarastV3Color.line),
           ),
           child: Row(
             children: [

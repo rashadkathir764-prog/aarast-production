@@ -124,10 +124,13 @@ void main() {
     );
     await tester.runAsync(
       () => precacheImage(
-        const AssetImage('assets/images/journey/celebration.png'),
+        const AssetImage(JourneyCelebrationSky.asset),
         tester.element(find.byType(SplashScreen)),
       ),
     );
+    // The decoded photo lands on this frame and starts its fade-in; no time
+    // passes, so the splash's own animation is caught where it was.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
     await expectLater(
       find.byType(MaterialApp),

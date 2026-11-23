@@ -71,7 +71,7 @@ void main() {
     await tester.runAsync(() async {
       for (final asset in [
         'assets/images/journey/groom.jpg',
-        'assets/images/journey/bride.png',
+        'assets/images/journey/bride.jpg',
       ]) {
         await precacheImage(
           AssetImage(asset),

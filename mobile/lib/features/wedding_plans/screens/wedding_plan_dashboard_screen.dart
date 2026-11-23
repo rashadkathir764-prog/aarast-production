@@ -13,12 +13,13 @@ import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/compact_money_figure.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart'
-    show FinanceApi, FinanceProvider, moneyCoverFigure, moneyCoverTag;
+    show FinanceApi, FinanceProvider, moneyCoverTag, moneyValue;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart'
@@ -419,8 +420,11 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     // D103: the money tab's own verdict, with the home's figures and its
     // «أخفِ المبالغ» (RA-MO-53).
     final hidden = context.watch<DevicePreferences?>()?.hideAmounts ?? false;
-    String figure(Object? amount) =>
-        moneyCoverFigure(amount, currency: money.currency, hidden: hidden);
+    // The money tab's verdict writes the same figure (core
+    // compactMoneyFigure): «ينقصك» reads alike on both screens.
+    String figure(Object? amount) => hidden
+        ? '••••'
+        : compactMoneyFigure(moneyValue(amount), currencyCode: money.currency);
     final coverage = money.coverage;
     // D113: the home says the verdict as a short tag; the whole sentence is
     // the money tab's.

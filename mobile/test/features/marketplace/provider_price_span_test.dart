@@ -17,7 +17,8 @@ MarketplaceService _service(String id, String price, String currency) =>
       currency: currency,
     );
 
-String _plain(String text) => text.replaceAll(RegExp('[⁦-⁩  ]'), ' ');
+String _plain(String text) =>
+    text.replaceAll(RegExp('[\\u2066-\\u2069\\u00a0\\u202f]'), ' ');
 
 void main() {
   test('prices in another currency are not put beside the first one', () {

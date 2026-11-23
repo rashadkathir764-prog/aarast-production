@@ -13,7 +13,7 @@ import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/keep_currency_on_line.dart';
 import '../../../../core/utils/plan_day.dart';
 import '../../../../core/utils/money_formatters.dart'
-    show compactMoneyParts, sumSafeMoneyParts, fullMoneyParts;
+    show compactMoneyParts, sumSafeMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
 import '../../../finance/finance_api.dart'
     show mahrOnItsOwnWords, moneyBudgetCells;

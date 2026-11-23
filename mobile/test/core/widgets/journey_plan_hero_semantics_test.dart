@@ -4,7 +4,6 @@
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -43,9 +42,14 @@ void main() {
     expect(find.bySemanticsLabel('أكدوا من 9'), findsNothing);
 
     // The tag is its own button, and its tap is its own.
-    final tag = tester.getSemantics(find.byKey(const ValueKey('send-tag')));
-    expect(tag.label, 'أرسل الدعوة لـ12 ضيف');
-    expect(tag.hasFlag(SemanticsFlag.isButton), isTrue);
+    expect(
+      tester.getSemantics(find.byKey(const ValueKey('send-tag'))),
+      isSemantics(
+        label: 'أرسل الدعوة لـ12 ضيف',
+        isButton: true,
+        hasTapAction: true,
+      ),
+    );
     tester.semantics.tap(find.semantics.byLabel('أرسل الدعوة لـ12 ضيف'));
     await tester.pump();
     expect(sent, 1);

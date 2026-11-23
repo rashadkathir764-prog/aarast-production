@@ -211,10 +211,9 @@ class _WaitingHero extends StatelessWidget {
     }
     final dates = [for (final quote in waiting) ?quote.createdAt]..sort();
     // B-04: the first of them to end, «ينتهي بعد 6 أيام».
-    final deadlines = [for (final quote in waiting) ?quote.expiresAt]..sort();
-    final ends = deadlines.isEmpty
-        ? null
-        : offerEndsLabel(deadlines.first.toLocal(), appNow());
+    final ends = firstOfferEndsLabel([
+      for (final quote in waiting) quote.expiresAt,
+    ], appNow());
     final arrived = dates.isEmpty
         ? null
         : count == 1

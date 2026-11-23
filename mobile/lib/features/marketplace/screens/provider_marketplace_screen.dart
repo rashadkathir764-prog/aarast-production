@@ -7,7 +7,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
@@ -38,7 +37,8 @@ import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../models/provider_shelves.dart';
 import '../widgets/provider_board_view.dart';
-import '../widgets/provider_details_view.dart' show providerPriceRange;
+import '../widgets/provider_details_view.dart'
+    show providerPriceRange, providerPriceSpan, providerPriceText;
 import '../widgets/provider_hard_case_card.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';

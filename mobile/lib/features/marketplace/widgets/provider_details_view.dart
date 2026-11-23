@@ -5,7 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/utils/money_formatters.dart' show fullMoneyFromText;
+import '../../../core/utils/money_formatters.dart'
+    show fullMoneyFromText, fullMoneyParts;
 import '../../../core/widgets/aarast_pressable.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../models/marketplace_models.dart';
@@ -647,7 +648,13 @@ String? providerMoneyLabel(String? amount, String? currency) =>
 
 /// The range of the services priced in the first priced service's currency;
 /// prices in another currency never join it.
-String? providerPriceRange(List<MarketplaceService> services) {
+/// The span of a provider's published prices, in one currency: the first
+/// priced service's. A price in another currency is not put beside it, so
+/// «من 1,500 ر.ي» never comes from a price in dollars. The one reading of a
+/// provider's prices (the page, the list row, the shelf card).
+({num min, num max, String currency})? providerPriceSpan(
+  List<MarketplaceService> services,
+) {
   num? min;
   num? max;
   String? unitCode;
@@ -662,20 +669,26 @@ String? providerPriceRange(List<MarketplaceService> services) {
     min = min == null || price < min ? price : min;
     max = max == null || price > max ? price : max;
   }
-  if (min == null || max == null) return null;
-  final unit = currencyLabelAr(unitCode);
-  if (min == max) return keepCurrencyOnLine('${_grouped(min)} $unit');
-  return keepCurrencyOnLine('${_grouped(min)} - ${_grouped(max)} $unit');
+  if (min == null || max == null || unitCode == null) return null;
+  return (min: min, max: max, currency: unitCode);
 }
 
-String _grouped(num value) {
-  final digits = value.round().abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-    buffer.write(digits[i]);
-  }
-  return '${value < 0 ? '-' : ''}$buffer';
+/// «450,000 - 900,000 ر.ي», or the one price; written whole, as an offer's
+/// price is (critique ب2).
+String providerPriceText(num min, num max, String? currency) {
+  final code = currencyCodeFromDisplayInput(currency);
+  final unit = currencyLabelAr(code);
+  final low = fullMoneyParts(min, currencyCode: code).number;
+  if (min == max) return keepCurrencyOnLine('$low $unit');
+  final high = fullMoneyParts(max, currencyCode: code).number;
+  return keepCurrencyOnLine('$low - $high $unit');
+}
+
+String? providerPriceRange(List<MarketplaceService> services) {
+  final span = providerPriceSpan(services);
+  return span == null
+      ? null
+      : providerPriceText(span.min, span.max, span.currency);
 }
 
 /// «صنعاء، حدة».

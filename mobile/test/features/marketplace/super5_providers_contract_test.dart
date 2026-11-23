@@ -34,6 +34,50 @@ import '../account_contexts/account_context_test_data.dart';
 void main() {
   setUpAll(loadPreviewAppFonts);
 
+  // A provider with no city shows its address as the place; beside a rating
+  // it wrapped to a second line, and the shelf row (measured for one meta
+  // line) cut the card's price: 13 to 18 px over at every text size.
+  for (final scale in const [1.0, 1.15, 1.3]) {
+    testWidgets('a shelf card keeps one meta line at text $scale', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 2400);
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      MarketplaceProvider hall(String id) => MarketplaceProvider(
+        id: id,
+        businessName: 'قاعة الأفراح الملكية الكبرى $id',
+        ownerName: 'owner',
+        ratingAverage: 4.8,
+        ratingCount: 163,
+        address: 'شارع الستين، جوار جامع الصالح',
+        primaryCategory: const ProviderCategory(
+          id: 'cat-venue',
+          nameAr: 'القاعات',
+        ),
+      );
+      final state = _FakeMarketplaceProvider(
+        providers: [for (var i = 0; i < 7; i++) hall('h$i')],
+        categories: const [
+          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+        ],
+      );
+      await _pumpMarketplace(
+        tester,
+        state,
+        authenticated: true,
+        embedded: true,
+      );
+      expect(
+        find.byKey(const ValueKey('providers-shelf-cat-venue')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   test('provider list contract keeps category and service summary', () {
     final provider = MarketplaceProvider.fromJson({
       'id': 'provider-1',

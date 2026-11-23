@@ -227,6 +227,15 @@ void main() {
       ),
     ];
 
+    testWidgets('requests not read are not said to be none', (tester) async {
+      // «ما وصلك طلب لسا» on a list that failed to load was untrue; the
+      // hero under it was already held back, the header line was not.
+      await pumpHarness(tester, _UnreadRequestsApi());
+      expect(find.text('ما وصلك طلب لسا'), findsNothing);
+      expect(find.text('ما قدرنا نقرأ الطلبات'), findsOneWidget);
+      expect(find.byKey(const Key('provider-requests-hero')), findsNothing);
+    });
+
     testWidgets('the lists are read from the request, offer and booking', (
       tester,
     ) async {
@@ -703,6 +712,12 @@ typedef CreatedOffer = ({
 
 /// Pumps the provider's request screens behind a router: `/` holds the
 /// requests tab, `/home` the home tab (when [home] is given).
+class _UnreadRequestsApi extends RequestsApi {
+  @override
+  Future<List<QuoteRequest>> getQuoteRequests() async =>
+      throw const ApiException('ما فيه نت', isNetworkFailure: true);
+}
+
 Future<RecordingChatProvider> pumpHarness(
   WidgetTester tester,
   RequestsApi api, {

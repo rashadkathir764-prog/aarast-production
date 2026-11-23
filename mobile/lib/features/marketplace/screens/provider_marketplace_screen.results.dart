@@ -283,22 +283,28 @@ String? _providerKindLabel(BuildContext context, MarketplaceProvider provider) {
 /// «من 450,000 ر.ي»: where a provider's published prices start, or the one
 /// price; null without a published price (the card then says to ask).
 String? _providerFromPriceLabel(MarketplaceProvider provider) {
+  final span = _providerPublishedSpan(provider);
+  if (span == null) return null;
+  final amount = providerPriceText(span.min, span.min, span.currency);
+  return span.max > span.min ? 'من $amount' : amount;
+}
+
+/// The server's summary when it has one, else the services' own prices in
+/// one currency ([providerPriceSpan]).
+({num min, num max, String currency})? _providerPublishedSpan(
+  MarketplaceProvider provider,
+) {
   final summary = provider.serviceSummary;
-  var min = _moneyValueOrNull(summary?.minPrice);
-  var max = _moneyValueOrNull(summary?.maxPrice);
-  var currency = summary?.currency;
-  if (min == null) {
-    for (final service in provider.services) {
-      final price = _moneyValueOrNull(service.basePrice);
-      if (price == null) continue;
-      currency ??= service.currency;
-      min = min == null || price < min ? price : min;
-      max = max == null || price > max ? price : max;
-    }
+  final summaryMin = _moneyValueOrNull(summary?.minPrice);
+  if (summaryMin != null) {
+    final summaryMax = _moneyValueOrNull(summary?.maxPrice) ?? summaryMin;
+    return (
+      min: summaryMin,
+      max: summaryMax < summaryMin ? summaryMin : summaryMax,
+      currency: currencyCodeFromDisplayInput(summary?.currency),
+    );
   }
-  if (min == null) return null;
-  final amount = '${_formatMoney(min)} ${currencyLabelAr(currency)}';
-  return max != null && max > min ? 'من $amount' : amount;
+  return providerPriceSpan(provider.services);
 }
 
 /// صورة الغلاف وحدها تملأ رأس الكرت. الشعار يظهر صغيرًا جنب الاسم: شعار
@@ -316,37 +322,10 @@ String? _providerLogoUrl(MarketplaceProvider provider) {
 
 /// نطاق أسعار المزود المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
 String? _providerPriceRangeLabel(MarketplaceProvider provider) {
+  final span = _providerPublishedSpan(provider);
+  if (span != null) return providerPriceText(span.min, span.max, span.currency);
   final summary = provider.serviceSummary;
-  final summaryMin = _moneyValueOrNull(summary?.minPrice);
-  final summaryMax = _moneyValueOrNull(summary?.maxPrice);
-  if (summaryMin != null && summaryMax != null) {
-    final unit = currencyLabelAr(summary?.currency);
-    if (summaryMin == summaryMax) {
-      return keepCurrencyOnLine('${_formatMoney(summaryMin)} $unit');
-    }
-    return keepCurrencyOnLine(
-      '${_formatMoney(summaryMin)} - ${_formatMoney(summaryMax)} $unit',
-    );
-  }
-
-  double? min;
-  double? max;
-  String? currency;
-  for (final service in provider.services) {
-    final price = _moneyValueOrNull(service.basePrice);
-    if (price == null) continue;
-    currency ??= service.currency;
-    min = min == null ? price : (price < min ? price : min);
-    max = max == null ? price : (price > max ? price : max);
-  }
-  if (min == null || max == null) {
-    final hasServices =
-        (summary?.activeCount ?? 0) > 0 || provider.services.isNotEmpty;
-    return hasServices ? 'السعر عبر طلب عرض' : null;
-  }
-  final unit = currencyLabelAr(currency);
-  if (min == max) return keepCurrencyOnLine('${_formatMoney(min)} $unit');
-  return keepCurrencyOnLine(
-    '${_formatMoney(min)} - ${_formatMoney(max)} $unit',
-  );
+  final hasServices =
+      (summary?.activeCount ?? 0) > 0 || provider.services.isNotEmpty;
+  return hasServices ? 'السعر عبر طلب عرض' : null;
 }

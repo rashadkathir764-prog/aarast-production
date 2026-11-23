@@ -352,30 +352,47 @@ class _MetaLine extends StatelessWidget {
     required this.ratingAverage,
     required this.ratingCount,
     required this.where,
+    this.singleLine = false,
   });
 
   final double ratingAverage;
   final int ratingCount;
   final String where;
 
+  /// A shelf card is measured for one meta line: there the rating and the
+  /// place share it, each cut with an ellipsis. A long address that wrapped
+  /// under the rating pushed the card's price out of its row. A list row
+  /// grows with its words, so there they wrap.
+  final bool singleLine;
+
   @override
   Widget build(BuildContext context) {
+    final rated = ratingCount > 0;
+    final place = Text(
+      where,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
+    );
+    if (singleLine) {
+      return Row(
+        children: [
+          if (rated)
+            Flexible(
+              child: _Rating(average: ratingAverage, count: ratingCount),
+            ),
+          if (rated && where.isNotEmpty)
+            const SizedBox(width: AarastV3Space.x2),
+          if (where.isNotEmpty) Flexible(child: place),
+        ],
+      );
+    }
     return Wrap(
       spacing: AarastV3Space.x2,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        if (ratingCount > 0)
-          _Rating(average: ratingAverage, count: ratingCount),
-        if (where.isNotEmpty)
-          Text(
-            where,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
+        if (rated) _Rating(average: ratingAverage, count: ratingCount),
+        if (where.isNotEmpty) place,
       ],
     );
   }
@@ -532,6 +549,7 @@ class ProviderShelfCard extends StatelessWidget {
                 ratingAverage: ratingAverage,
                 ratingCount: ratingCount,
                 where: place,
+                singleLine: true,
               ),
               const SizedBox(height: AarastV3Space.x1),
               Text(

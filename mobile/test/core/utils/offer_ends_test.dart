@@ -24,4 +24,21 @@ void main() {
     expect(offerEndsLabel(DateTime(2026, 10, 24, 15), now), isNull);
     expect(offerEndsLabel(now, now), isNull);
   });
+
+  test('the first deadline still ahead is said, past ones do not hide it', () {
+    final now = DateTime(2026, 11, 23, 12);
+    // An expired offer sorted first used to blank the tag on the requests
+    // hero and the home's waiting card.
+    expect(
+      firstOfferEndsLabel([
+        DateTime(2026, 11, 20),
+        null,
+        DateTime(2026, 11, 29, 9),
+        DateTime(2026, 12, 2),
+      ], now),
+      'ينتهي بعد 6 أيام',
+    );
+    expect(firstOfferEndsLabel([DateTime(2026, 11, 1), null], now), isNull);
+    expect(firstOfferEndsLabel(const [], now), isNull);
+  });
 }

@@ -15,3 +15,13 @@ String? offerEndsLabel(DateTime validUntil, DateTime now) {
   if (days <= 0) return 'ينتهي اليوم';
   return 'ينتهي بعد ${arabicDays(days)}';
 }
+
+/// The first of [deadlines] still ahead, said as [offerEndsLabel] does; null
+/// when none is ahead. One already past does not hide the next one.
+String? firstOfferEndsLabel(Iterable<DateTime?> deadlines, DateTime now) {
+  final ahead = [
+    for (final deadline in deadlines)
+      if (deadline != null && deadline.isAfter(now)) deadline,
+  ]..sort();
+  return ahead.isEmpty ? null : offerEndsLabel(ahead.first.toLocal(), now);
+}

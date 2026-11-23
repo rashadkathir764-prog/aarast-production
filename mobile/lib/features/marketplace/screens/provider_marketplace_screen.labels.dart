@@ -97,9 +97,6 @@ double? _moneyValueOrNull(String? value) {
   return double.tryParse(raw);
 }
 
-// Critique ب2: the one grouping of digits is the money formatter's.
-String _formatMoney(num value) => formatMoneyNumber(value);
-
 enum _ServiceBudgetStatus {
   inRange,
   underBudget,

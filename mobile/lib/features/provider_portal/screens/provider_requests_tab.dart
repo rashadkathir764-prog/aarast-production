@@ -66,6 +66,11 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final cases = providerCases(dashboard);
+    // The list was read: before that, or after it failed, nothing is said
+    // as if it were known (no «ما وصلك طلب», no empty hero).
+    final known =
+        dashboard.quoteRequests.isNotEmpty ||
+        (!dashboard.isLoading && dashboard.errorMessage == null);
     int count(ProviderRequestTab tab) =>
         cases.where((item) => item.state.tab == tab).length;
     final waiting = providerWaitingCount(dashboard);
@@ -92,6 +97,12 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
             title: 'الطلبات',
             status: _tab == ProviderRequestTab.ended
                 ? 'اللي ما كمّل، وليش'
+                // Not «ما وصلك طلب» before the list is read, or after it
+                // could not be: the line says which.
+                : !known
+                ? (dashboard.isLoading
+                      ? 'لحظة، نقرأ الطلبات'
+                      : 'ما قدرنا نقرأ الطلبات')
                 : cases.isEmpty
                 ? 'ما وصلك طلب لسا'
                 : arabicCount(
@@ -104,8 +115,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           ),
           // Not before the list is read: «ما فيه طلب ينتظر ردك» while it
           // loads or after it failed would be untrue.
-          if (dashboard.quoteRequests.isNotEmpty ||
-              (!dashboard.isLoading && dashboard.errorMessage == null)) ...[
+          if (known) ...[
             ProviderWaitingHero(
               key: const Key('provider-requests-hero'),
               waiting: waiting,
@@ -278,14 +288,11 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
   }
 
   /// «ينتهي بعد 6 أيام»: the first new request to end (B-04).
-  static String? _firstEnds(ProviderDashboardProvider dashboard) {
-    final deadlines = [
-      for (final quote in dashboard.quoteRequests)
-        if (const {'SENT', 'VIEWED'}.contains(quote.status)) ?quote.expiresAt,
-    ]..sort();
-    if (deadlines.isEmpty) return null;
-    return offerEndsLabel(deadlines.first.toLocal(), appNow());
-  }
+  static String? _firstEnds(ProviderDashboardProvider dashboard) =>
+      firstOfferEndsLabel([
+        for (final quote in dashboard.quoteRequests)
+          if (const {'SENT', 'VIEWED'}.contains(quote.status)) quote.expiresAt,
+      ], appNow());
 
   static String _queuedName(List<ProviderCase> cases, String quoteId) {
     for (final item in cases) {

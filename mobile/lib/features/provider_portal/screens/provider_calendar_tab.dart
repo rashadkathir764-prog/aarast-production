@@ -79,7 +79,12 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                 ),
                 // While picking, the grid comes up to the header: the
                 // hero's counts wait until the days are closed.
-                if (picking == null) ...[
+                // Not before the bookings are read, or after they could not
+                // be: «ما فيه عرس مؤكد» would be untrue.
+                if (picking == null &&
+                    (dashboard.bookings.isNotEmpty ||
+                        (!dashboard.isLoading &&
+                            dashboard.errorMessage == null))) ...[
                   _MonthHero(
                     month: _month,
                     today: today,

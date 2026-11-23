@@ -343,6 +343,8 @@ void main() {
     expect(find.text('باقي على العرس كله'), findsNothing);
     expect(find.text('التكلفة المتوقعة'), findsNothing);
     expect(find.text('تكلفة العرس المسجّلة'), findsNothing);
+    // What is there instead: the cost is «اتفقت على» in the budget box.
+    expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
   });
 
   group('«البنود» follows the mode', () {

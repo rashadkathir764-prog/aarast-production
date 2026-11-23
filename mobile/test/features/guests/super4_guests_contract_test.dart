@@ -6,6 +6,7 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -153,6 +154,15 @@ void main() {
 
     // RA-MO-219: no invitation went yet.
     expect(find.text('ضيف واحد'), findsOneWidget);
+    // The guard itself: no «0 أكد» said as a status, and the one guest is
+    // «1 بلا دعوة» under the hero.
+    expect(find.textContaining('0 أكد'), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('guests-summary-parts')))
+          .data,
+      '1 بلا دعوة',
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -307,7 +317,13 @@ void main() {
     expect(provider.guests, hasLength(1));
     expect(provider.guests.single.name, 'سالم أحمد');
     expect(provider.guests.single.phone, '+967777654321');
-    expect(find.textContaining('ضيف واحد'), findsWidgets);
+    expect(
+      find.descendant(
+        of: find.byType(JourneyTabHeader),
+        matching: find.text('ضيف واحد'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('هذه الخطوة تحتاج حسابًا'), findsNothing);
     expect(tester.takeException(), isNull);
   });

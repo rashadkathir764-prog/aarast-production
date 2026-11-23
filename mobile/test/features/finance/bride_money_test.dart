@@ -118,8 +118,19 @@ void main() {
         .widget<JourneyHeroTag>(find.byKey(const ValueKey('money-cover')))
         .onTap!();
     await tester.pumpAndSettle();
-    expect(find.textContaining('فستان الزفة'), findsWidgets);
-    expect(find.textContaining('معك '), findsWidgets);
+    // Inside «كيف حسبناها؟», once each, as they were inside the card.
+    final sheet = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_HowWeCountedSheet',
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.textContaining('فستان الزفة')),
+      findsOneWidget,
+    );
+    // «معك» is in several of the sheet's lines (the sum, the day, the rest).
+    expect(
+      find.descendant(of: sheet, matching: find.textContaining('معك ')),
+      findsWidgets,
+    );
     expect(tester.takeException(), isNull);
   });
 

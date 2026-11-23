@@ -242,4 +242,25 @@ void main() {
     expect(subtitle.maxLines, 1);
     expect(_size(tester, 'قاعة سبأ'), JourneyType.body);
   });
+
+  // The values themselves, pinned once (D118): the tests above follow the
+  // roles, so a role's size could drift (25 to 24, 13.5 to 12.5) and every
+  // one of them would still pass.
+  test('the type scale and the chip keep their D118 values', () {
+    expect(
+      [
+        JourneyType.homeCount,
+        JourneyType.count,
+        JourneyType.hero,
+        JourneyType.pageTitle,
+        JourneyType.lead,
+        JourneyType.body,
+        JourneyType.small,
+        JourneyType.caption,
+        JourneyType.badge,
+      ],
+      [52, 32, 24, 19, 16, 14.5, 12.5, 11, 9],
+    );
+    expect(AarastV3Size.chip, 36);
+  });
 }

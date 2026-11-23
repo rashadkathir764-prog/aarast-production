@@ -229,10 +229,8 @@ Future<AccountContextController> _pump(
       ),
       GoRoute(
         path: '/wedding-plans/:id/tasks/:taskId',
-        builder: (_, _) => Scaffold(
-          appBar: AppBar(),
-          body: const Text('opened tasks'),
-        ),
+        builder: (_, _) =>
+            Scaffold(appBar: AppBar(), body: const Text('opened tasks')),
       ),
     ],
   );

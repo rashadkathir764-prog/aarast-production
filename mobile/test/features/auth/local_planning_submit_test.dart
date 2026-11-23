@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
 import 'package:aarast_mobile/features/tasks/screens/task_timeline_screen.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -76,7 +77,13 @@ void main() {
     expect(guestsProvider.guests.single.phone, '+967777123456');
     expect(guestsProvider.noticeMessage, localMessage);
     // Critique ض1: one guest is «ضيف واحد», not «1 مدعو».
-    expect(find.textContaining('ضيف واحد'), findsWidgets);
+    expect(
+      find.descendant(
+        of: find.byType(JourneyTabHeader),
+        matching: find.text('ضيف واحد'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text(cloudMessage), findsNothing);
     expect(tester.takeException(), isNull);
   });

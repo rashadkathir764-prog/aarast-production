@@ -441,12 +441,3 @@ String _figure(double value, String currency) {
 String _sumFigure(double value, String currency) {
   return sumSafeMoneyFigure(value, currencyCode: currency);
 }
-
-/// [_figure] as the screen reader says it: «900 ر.ي» with the currency's
-/// name; «3 مليون» as it is.
-String _spokenFigure(double value, String currency) {
-  return _figure(
-    value,
-    currency,
-  ).replaceAll(currencyLabelAr(currency), currencySpokenLabelAr(currency));
-}

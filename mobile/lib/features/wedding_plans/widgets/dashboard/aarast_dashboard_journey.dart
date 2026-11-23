@@ -296,15 +296,6 @@ class _JourneyHomeHero extends StatelessWidget {
   }
 }
 
-String _currencyLabel(String currency) {
-  return switch (currency.toUpperCase()) {
-    'YER' => 'ر.ي',
-    'SAR' => 'ر.س',
-    'USD' => r'$',
-    _ => currency,
-  };
-}
-
 /// b07: what is left to pay once the day has passed: agreements still
 /// unpaid plus loans still owed (C12), and what was paid of all of them.
 class DashboardAfterWedding {

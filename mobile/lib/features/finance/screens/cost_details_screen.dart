@@ -9,7 +9,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
-import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -18,7 +17,6 @@ import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../data/finance_local_data_source.dart';
 import '../widgets/cost_receipts_section.dart';
-import '../widgets/money_input_formatter.dart';
 import '../widgets/payment_schedule_sheet.dart';
 
 part 'cost_details_screen.parts.dart';

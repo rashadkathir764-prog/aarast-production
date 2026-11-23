@@ -245,7 +245,12 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
             figure: (value) => write(value.toDouble()),
           )
         : null;
-    String spoken(double value) => _spokenFigure(value, currency);
+    // The screen reader reads the cells as the screen writes them (sum-safe),
+    // not rounded: it said «3.4 مليون» where the card showed 3,440,000.
+    String spoken(double value) => _sumFigure(
+      value,
+      currency,
+    ).replaceAll(currencyLabelAr(currency), currencySpokenLabelAr(currency));
 
     final ownerLeft = funding?.ownerLeft;
     final verdict = known ? funding.verdict : null;
@@ -463,18 +468,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
               ] else if (pieces.any((piece) => piece.$1 > 0)) ...[
                 const SizedBox(height: AarastV3Space.x2),
                 _MoneySplitBar(pieces: pieces),
-                // What the bar measures: it was drawn without a word.
-                if (!known && agreedAny) ...[
-                  const SizedBox(height: AarastV3Space.x1),
-                  Text(
-                    '${context.ownerDid('دفعت', 'دفعتِ', groom: 'دفع العريس', bride: 'دفعت العروسة')} ${figure(paid)} من ${figure(agreed)}',
-                    key: const ValueKey('dashboard-money-bar-caption'),
-                    style: JourneyType.of(
-                      JourneyType.caption,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                ],
               ],
               // Before any agreement the lead is the budget itself. No rule
               // between them: the gap says it, in less height.

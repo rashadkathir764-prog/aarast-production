@@ -59,7 +59,12 @@ class _CostAgreementCard extends StatelessWidget {
                       child: Text(
                         hidden
                             ? '••••'
-                            : '${formatMoneyInputValue(total.round())} ${currencyLabelAr(currency)}',
+                            // Whole, as the rest beside it (RA-MO-52): a
+                            // stored 1500.50 read «1,501» over «1,500.5».
+                            : fullMoneyParts(
+                                total,
+                                currencyCode: currency,
+                              ).plainText,
                         style: JourneyType.of(
                           JourneyType.pageTitle,
                           weight: JourneyType.bold,

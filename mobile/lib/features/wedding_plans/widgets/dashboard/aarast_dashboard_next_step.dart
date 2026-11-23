@@ -51,7 +51,8 @@ class _JourneyNextStep extends StatelessWidget {
       final value = dashboardAmount(due.amount);
       dueAmount = amountsHidden || value == null
           ? null
-          : '${formatDashboardAmount(value)} ${_currencyLabel(currency)}';
+          // Whole, as on its own page (critique م1, ب2): one reading.
+          : fullMoneyParts(value, currencyCode: currency).plainText;
       reason = formatArabicWeekdayDayMonth(due.dueDate);
       action = context.say('سجّل الدفعة', 'سجّلي الدفعة');
       icon = LucideIcons.calendarClock;
@@ -61,7 +62,8 @@ class _JourneyNextStep extends StatelessWidget {
       final value = dashboardAmount(focus.item?.amount);
       dueAmount = amountsHidden || value == null
           ? null
-          : '${formatDashboardAmount(value)} ${_currencyLabel(currency)}';
+          // Whole, as on its own page (critique م1, ب2): one reading.
+          : fullMoneyParts(value, currencyCode: currency).plainText;
       reason = focus.reason;
       action = focus.actionLabel;
       icon = focus.icon;

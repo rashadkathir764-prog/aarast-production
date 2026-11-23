@@ -286,20 +286,6 @@ bool dashboardBudgetMissing(DashboardSummary summary) {
   return budget == null || budget <= 0;
 }
 
-String formatDashboardAmount(num value) {
-  final rounded = value.round();
-  final negative = rounded < 0;
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-  for (var index = 0; index < digits.length; index += 1) {
-    if (index > 0 && (digits.length - index) % 3 == 0) {
-      buffer.write(',');
-    }
-    buffer.write(digits[index]);
-  }
-  return '${negative ? '-' : ''}$buffer';
-}
-
 double? _amount(String? raw) {
   if (raw == null || raw.trim().isEmpty) return null;
   final normalized = raw.replaceAll(RegExp(r'[^0-9.\-]'), '');

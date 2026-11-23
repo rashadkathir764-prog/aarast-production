@@ -210,7 +210,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       summary.pending == 0
           ? 'كل ${words.yourGuests} ${words.profile.plan('ردّوا', 'ردّن')}'
           : unanswered > 0
-          ? '$unanswered ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}'
+          ? '$unanswered لسا ${words.pendingOf(unanswered)}'
           : null,
       if (notSent > 0) '$notSent ${words.noInvitation}',
       if (summary.declined > 0)
@@ -298,7 +298,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                   if (event.counts.unanswered == 0 && event.counts.notTold == 0)
                     words.profile.plan('كلهم ردّوا', 'كلهن ردّن')
                   else if (event.counts.unanswered > 0)
-                    '${event.counts.unanswered} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
+                    '${event.counts.unanswered} لسا ${words.pendingOf(event.counts.unanswered)}',
                   if (event.counts.notTold > 0)
                     '${event.counts.notTold} ${words.noInvitation}',
                   if (event.counts.declined > 0)

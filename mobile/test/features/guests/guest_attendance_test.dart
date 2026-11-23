@@ -86,7 +86,9 @@ void main() {
       ];
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
-    expect(find.text('1 لسا ما ردّوا · 2 بلا دعوة'), findsOneWidget);
+    // Changed on purpose (critique ض1, review 2026-11-23): the verb agrees
+    // with its count, «1 لسا ما ردّ».
+    expect(find.text('1 لسا ما ردّ · 2 بلا دعوة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -120,7 +122,8 @@ void main() {
       ];
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
-    expect(find.text('1 لسا ما ردّوا · 1 بلا دعوة'), findsOneWidget);
+    // The verb agrees with its count (as above).
+    expect(find.text('1 لسا ما ردّ · 1 بلا دعوة'), findsOneWidget);
     expect(find.byKey(const ValueKey('guest-attendance-remind')), findsNothing);
     expect(
       find.byKey(const ValueKey('guest-attendance-invite')),

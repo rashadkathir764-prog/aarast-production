@@ -34,10 +34,46 @@ class _PendingServerRepository extends AuthRepository {
   Future<SafeUser> me() => answer.future;
 }
 
+/// Stands for AarastPushLifecycleBridge and AarastAuthFlowRedirector: above
+/// the navigator, it sends the app somewhere once the account is known.
+class _ElsewhereFirst extends StatefulWidget {
+  const _ElsewhereFirst({
+    required this.router,
+    required this.to,
+    required this.child,
+  });
+
+  final GoRouter router;
+  final String to;
+  final Widget child;
+
+  @override
+  State<_ElsewhereFirst> createState() => _ElsewhereFirstState();
+}
+
+class _ElsewhereFirstState extends State<_ElsewhereFirst> {
+  bool _sent = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = context.select<AuthController, AuthStatus>(
+      (auth) => auth.status,
+    );
+    if (status != AuthStatus.checking && !_sent) {
+      _sent = true;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => widget.router.go(widget.to),
+      );
+    }
+    return widget.child;
+  }
+}
+
 Future<Widget> _opening({
   required bool celebratedBefore,
   AuthRepository Function(ApiClient, AuthStorage)? repository,
   void Function(DevicePreferences, AuthController)? capture,
+  String? elsewhere,
 }) async {
   SharedPreferences.setMockInitialValues({
     if (celebratedBefore) 'aarast_opening_celebrated': true,
@@ -63,6 +99,10 @@ Future<Widget> _opening({
         path: '/home',
         builder: (context, state) => const Scaffold(body: Text('home')),
       ),
+      GoRoute(
+        path: '/elsewhere',
+        builder: (context, state) => const Scaffold(body: Text('elsewhere')),
+      ),
     ],
   );
   return MultiProvider(
@@ -73,7 +113,13 @@ Future<Widget> _opening({
       ChangeNotifierProvider<DevicePreferences>.value(value: device),
       ChangeNotifierProvider<AuthController>.value(value: controller),
     ],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+      routerConfig: router,
+      builder: elsewhere == null
+          ? null
+          : (context, child) =>
+                _ElsewhereFirst(router: router, to: elsewhere, child: child!),
+    ),
   );
 }
 
@@ -152,5 +198,18 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
+  });
+
+  testWidgets('a later open never overrides a place the app chose first', (
+    tester,
+  ) async {
+    // A notification tapped cold, or a sign-out sending to «تسجيل الدخول»:
+    // the opening goes on only from itself, never over another choice.
+    await tester.pumpWidget(
+      await _opening(celebratedBefore: true, elsewhere: '/elsewhere'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('elsewhere'), findsOneWidget);
+    expect(find.text('welcome'), findsNothing);
   });
 }

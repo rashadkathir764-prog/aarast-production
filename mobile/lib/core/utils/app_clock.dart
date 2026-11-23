@@ -11,3 +11,7 @@ DateTime appNow() => _now();
 /// not drift with the calendar (`test/prototype/flutter_test_config.dart`).
 @visibleForTesting
 void pinAppClock(DateTime at) => _now = () => at;
+
+/// Gives [appNow] back to the phone's time after a test pinned it.
+@visibleForTesting
+void resetAppClock() => _now = DateTime.now;

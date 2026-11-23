@@ -63,8 +63,10 @@ class _SplashScreenState extends State<SplashScreen>
     // The account becoming known is heard, not polled.
     _auth.addListener(_leaveWhenReady);
     if (_celebrate) {
+      // Remembered as it starts: a sign-out or a notification that takes the
+      // app elsewhere mid-play still counts as the welcome seen.
+      unawaited(preferences?.markOpeningCelebrated());
       _animationController.forward().then((_) {
-        unawaited(preferences?.markOpeningCelebrated());
         _openingDone = true;
         _leaveWhenReady();
       });
@@ -91,13 +93,20 @@ class _SplashScreenState extends State<SplashScreen>
         status == AuthStatus.unauthenticated &&
         await context.read<GuestOnboardingStorage>().hasGuestPlan();
 
-    if (!mounted) return;
+    if (!mounted || !_stillOpening()) return;
     context.go(
       status == AuthStatus.authenticated || hasGuestPlan
           ? AppRouter.home
           : AppRouter.welcome,
     );
   }
+
+  /// The opening goes on only from itself. A notification tapped cold or a
+  /// sign-out (the push bridge, the auth redirector) may have chosen the next
+  /// page in the same frame, and that choice is not overridden.
+  bool _stillOpening() =>
+      GoRouter.of(context).routeInformationProvider.value.uri.path ==
+      AppRouter.splash;
 
   @override
   void dispose() {

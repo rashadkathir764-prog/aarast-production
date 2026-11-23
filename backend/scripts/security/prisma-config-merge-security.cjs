@@ -406,7 +406,10 @@ function validatePackageGraph(
   {
     expectedIntegrity = PINNED_DEEPMERGE_INTEGRITY,
     expectedPackageFingerprint = PINNED_PACKAGE_JSON_SHA256,
-    expectedLockFingerprint = PACKAGE_LOCK_LINEAGE,
+    // The live graph answers to the current lock alone; a superseded lock of
+    // the lineage (still vulnerable) is accepted only when a historical
+    // projection names it explicitly.
+    expectedLockFingerprint = PINNED_PACKAGE_LOCK_SHA256,
   } = {},
 ) {
   try {

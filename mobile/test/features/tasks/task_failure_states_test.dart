@@ -14,7 +14,9 @@ import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/task_details_screen.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_starter_sheet.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
+import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -228,7 +230,11 @@ void main() {
   ) async {
     // 100 days left and a 300-day task chosen: the set is compressed, so a
     // 30-day task lands 10 days before the wedding, not 30.
-    final today = DateUtils.dateOnly(DateTime.now());
+    // The day is pinned: on the phone's own day the test read a different
+    // calendar each run (2026-11-23 made the dates «21 فبراير» and «1 فبراير»).
+    pinAppClock(DateTime.utc(2026, 11, 23, 9));
+    addTearDown(resetAppClock);
+    final today = sanaaToday();
     final wedding = today.add(const Duration(days: 100));
     const templates = [
       TaskStarterTemplate(
@@ -273,12 +279,13 @@ void main() {
       longestDaysBefore: 300,
     )!;
     expect(saved, wedding.subtract(const Duration(days: 10)));
-    expect(find.textContaining(formatArabicDayMonth(saved)), findsOneWidget);
-    final uncompressed = wedding.subtract(const Duration(days: 30));
-    expect(
-      find.textContaining(formatArabicDayMonth(uncompressed)),
-      findsNothing,
+    // A day is read whole: «1 فبراير» is not the end of «21 فبراير».
+    Finder day(DateTime date) => find.textContaining(
+      RegExp('(?<![0-9٠-٩])${RegExp.escape(formatArabicDayMonth(date))}'),
     );
+    expect(day(saved), findsOneWidget);
+    final uncompressed = wedding.subtract(const Duration(days: 30));
+    expect(day(uncompressed), findsNothing);
   });
 }
 

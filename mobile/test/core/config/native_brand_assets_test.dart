@@ -87,7 +87,7 @@ void main() {
       contains('android:windowSplashScreenBackground'),
     );
     // The launch is the opening's night, the page after it carries on from
-    // it (D0 amended 2026-11-23); the mark «ع» stays on it.
+    // it (D0 amended 2026-11-23, D122); the name «اعّرست» is on it (D123).
     expect(colors, contains('<color name="splash_color">#0E2A33</color>'));
     expect(storyboard, contains('image="LaunchImage"'));
     expect(storyboard, contains('green="0.1647058824"'));

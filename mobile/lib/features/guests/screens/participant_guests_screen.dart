@@ -142,9 +142,10 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
               // D3 of the closing round: the reader does not see who an
               // invitation reached, so a guest with no reply is «ما أكّد
               // بعد» (as the figures say), never «ما ردّ» of a guest nobody
-              // asked yet; and «0 أكدوا» is not said.
+              // asked yet.
               // Rashad 2026-11-18 («كل المسارات»): the count of guests only;
-              // the hero under it says who confirmed, as on the owner's list.
+              // the hero under it says who confirmed, 0 included, as the
+              // owner's hero does.
               status: view == null || view.guestsTotal == 0
                   ? ''
                   : words.count(view.guestsTotal),

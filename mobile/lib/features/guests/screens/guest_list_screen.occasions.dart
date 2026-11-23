@@ -108,7 +108,8 @@ class _OccasionSummaryCard extends StatelessWidget {
     final words = GuestWords.of(context);
     final unanswered = counts.unanswered;
     final parts = [
-      if (unanswered > 0) '$unanswered ${words.pending}',
+      // The verb agrees with its count: «1 ما ردّ», not «1 ما ردّوا».
+      if (unanswered > 0) '$unanswered ${words.pendingOf(unanswered)}',
       if (counts.declined > 0)
         '${counts.declined} ${words.declinedOf(counts.declined)}',
       if (counts.notTold > 0) '${counts.notTold} ${words.noInvitation}',
@@ -132,7 +133,7 @@ class _OccasionSummaryCard extends StatelessWidget {
           onTap: onTap,
           semanticLabel:
               'كم بيحضر؟ ${showLabel ? '$label، ' : ''}'
-              '${counts.confirmed} ${words.confirmed} من $invited'
+              '${counts.confirmed} ${words.confirmedOf(counts.confirmed)} من $invited'
               '${parts.isEmpty ? '' : '، ${parts.join('، ')}'}',
           tag: send == null
               ? null

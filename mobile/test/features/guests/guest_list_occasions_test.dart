@@ -243,7 +243,9 @@ void main() {
     // The wedding: Yasser comes, Murad is silent, Fahd was never told.
     expect(find.byKey(const ValueKey('guests-occasions')), findsOneWidget);
     expect(find.text('أكد من 3'), findsOneWidget);
-    expect(_parts(tester), '1 ما ردّوا · 1 بلا دعوة');
+    // Changed on purpose (critique ض1, review 2026-11-23): the verb agrees
+    // with its count, «1 ما ردّ», as «اعتذر» and «أكد» already did.
+    expect(_parts(tester), '1 ما ردّ · 1 بلا دعوة');
     // Who was never told comes first.
     expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
     expect(find.text('أرسل الدعوة لـضيف واحد'), findsOneWidget);
@@ -257,7 +259,8 @@ void main() {
     // The lunch: only Yasser is invited, and he has not answered it.
     await _tap(tester, 'guests-occasion-lunch');
     expect(find.text('أكدوا من 1'), findsOneWidget);
-    expect(_parts(tester), '1 ما ردّوا');
+    // The verb agrees with its count (see above).
+    expect(_parts(tester), '1 ما ردّ');
     expect(find.byKey(const ValueKey('guests-send-new')), findsNothing);
     expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);
     expect(find.text('ذكّر ضيف واحد'), findsOneWidget);

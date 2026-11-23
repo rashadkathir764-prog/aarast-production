@@ -53,6 +53,12 @@ class JourneyPlanHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
+    // With a label of its own the hero is read once, as that label: its
+    // figure and words are kept from the screen reader, or it read them
+    // twice. The tag is never kept: it is its own button (the guests' «أرسل
+    // الدعوة» sends, it does not open the hero's page).
+    Widget quiet(Widget child) =>
+        semanticLabel == null ? child : ExcludeSemantics(child: child);
     final card = JourneyBox(
       color: context.accent.primary,
       radius: AarastV3Radius.feature,
@@ -91,23 +97,25 @@ class JourneyPlanHero extends StatelessWidget {
                             // Half the row at most: a long figure
                             // («550,000») shrinks rather than push the
                             // words off the card; the home's days fit.
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: constraints.maxWidth * 0.5,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: AlignmentDirectional.centerStart,
-                                child: Text(
-                                  big,
-                                  key:
-                                      figureKey ??
-                                      const ValueKey('plan-hero-figure'),
-                                  style: JourneyType.of(
-                                    JourneyType.homeCount,
-                                    weight: JourneyType.bold,
-                                    color: AarastV3Color.onPrimary,
-                                    height: AarastV3Line.numeral,
+                            quiet(
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: constraints.maxWidth * 0.5,
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
+                                    big,
+                                    key:
+                                        figureKey ??
+                                        const ValueKey('plan-hero-figure'),
+                                    style: JourneyType.of(
+                                      JourneyType.homeCount,
+                                      weight: JourneyType.bold,
+                                      color: AarastV3Color.onPrimary,
+                                      height: AarastV3Line.numeral,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -115,40 +123,42 @@ class JourneyPlanHero extends StatelessWidget {
                             const SizedBox(width: AarastV3Space.x2),
                           ],
                           Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AarastV3Space.x1,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: JourneyType.of(
-                                      JourneyType.lead,
-                                      weight: JourneyType.bold,
-                                      color: AarastV3Color.onPrimary,
-                                    ),
-                                  ),
-                                  // The date is one line: it shrinks a
-                                  // little beside the tag before it wraps a
-                                  // word onto a line of its own.
-                                  if (subtitle case final line?)
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment:
-                                          AlignmentDirectional.centerStart,
-                                      child: Text(
-                                        line,
-                                        maxLines: 1,
-                                        style: JourneyType.of(
-                                          JourneyType.small,
-                                          color: AarastV3Color.onPrimary
-                                              .withValues(alpha: 0.78),
-                                        ),
+                            child: quiet(
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AarastV3Space.x1,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: JourneyType.of(
+                                        JourneyType.lead,
+                                        weight: JourneyType.bold,
+                                        color: AarastV3Color.onPrimary,
                                       ),
                                     ),
-                                ],
+                                    // The date is one line: it shrinks a
+                                    // little beside the tag before it wraps a
+                                    // word onto a line of its own.
+                                    if (subtitle case final line?)
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment:
+                                            AlignmentDirectional.centerStart,
+                                        child: Text(
+                                          line,
+                                          maxLines: 1,
+                                          style: JourneyType.of(
+                                            JourneyType.small,
+                                            color: AarastV3Color.onPrimary
+                                                .withValues(alpha: 0.78),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -179,7 +189,7 @@ class JourneyPlanHero extends StatelessWidget {
                       ],
                       if (footer case final under?) ...[
                         const SizedBox(height: AarastV3Space.x3),
-                        under,
+                        quiet(under),
                       ],
                     ],
                   );
@@ -252,9 +262,15 @@ class JourneyHeroTag extends StatelessWidget {
     );
     final tap = onTap;
     if (tap == null) return pill;
+    // Its own node: inside a hero that is itself a button, a merged tag
+    // would hand its tap to the hero's.
     return Semantics(
+      container: true,
       button: true,
       label: semanticLabel ?? label,
+      // The gesture under it is excluded with its words: the tap is said
+      // here, or the button had none a screen reader could press.
+      onTap: tap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

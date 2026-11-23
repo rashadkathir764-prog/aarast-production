@@ -32,6 +32,29 @@ void main() {
     }
   });
 
+  test(
+    'the launch name is drawn at every density inside the kept circle',
+    () async {
+      // Android 12+ keeps a 192dp circle of a 288dp canvas; the name stays
+      // inside it with room (D123).
+      final densities = {
+        'mdpi': 288,
+        'hdpi': 432,
+        'xhdpi': 576,
+        'xxhdpi': 864,
+        'xxxhdpi': 1152,
+      };
+      for (final entry in densities.entries) {
+        final image = await decodePng(
+          'android/app/src/main/res/drawable-${entry.key}/splash_wordmark.png',
+        );
+        expect(image.width, entry.value, reason: entry.key);
+        expect(image.height, entry.value, reason: entry.key);
+        image.dispose();
+      }
+    },
+  );
+
   test('native splash and adaptive-icon contracts use Aarast branding', () {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',
@@ -50,8 +73,19 @@ void main() {
     ).readAsStringSync();
 
     expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
-    expect(launchBackground, contains('@drawable/launch_image'));
-    expect(android12Style, contains('@drawable/ic_launcher_foreground'));
+    // The launch is the name «اعّرست» on the opening's night (D123), the
+    // same on Android 12+ (light and dark) and before it.
+    expect(launchBackground, contains('@drawable/splash_wordmark'));
+    expect(android12Style, contains('@drawable/splash_wordmark'));
+    expect(android12Style, contains('android:windowBackground'));
+    final android12NightStyle = File(
+      'android/app/src/main/res/values-night-v31/styles.xml',
+    ).readAsStringSync();
+    expect(android12NightStyle, contains('@drawable/splash_wordmark'));
+    expect(
+      android12NightStyle,
+      contains('android:windowSplashScreenBackground'),
+    );
     // The launch is the opening's night, the page after it carries on from
     // it (D0 amended 2026-11-23); the mark «ع» stays on it.
     expect(colors, contains('<color name="splash_color">#0E2A33</color>'));

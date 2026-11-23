@@ -1656,6 +1656,20 @@ class JourneyWordmark extends StatelessWidget {
   }
 }
 
+/// The name as the phone's own launch screen draws it (D123): white, at the
+/// feature size, at the screen's centre, on the opening's night. The native
+/// `splash_wordmark` (Android) and `LaunchImage` (iOS) are this widget drawn
+/// at that size, so the pages after the launch carry it on unseen.
+class JourneyLaunchMark extends StatelessWidget {
+  const JourneyLaunchMark({super.key});
+
+  static const size = AarastV3Icon.feature;
+
+  @override
+  Widget build(BuildContext context) =>
+      const JourneyWordmark(size: size, color: AarastV3Color.onPrimary);
+}
+
 /// Colours that only decorate (never text on paper): the saffron of the
 /// wordmark dot and the lights.
 abstract final class JourneyPalette {

@@ -90,6 +90,16 @@ void main() {
     );
 
     expect(find.byType(JourneyCelebrationSky), findsOneWidget);
+    // It begins as the launch drew it: the name, at its size, at the centre.
+    final name = find.byType(JourneyWordmark);
+    expect(tester.widget<JourneyWordmark>(name).size, JourneyLaunchMark.size);
+    expect(
+      tester.getCenter(name).dy,
+      moreOrLessEquals(
+        tester.view.physicalSize.height / tester.view.devicePixelRatio / 2,
+        epsilon: 1,
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('welcome'), findsNothing, reason: 'the 900ms play');
 
@@ -106,6 +116,14 @@ void main() {
 
     expect(find.byType(JourneyCelebrationSky), findsNothing);
     expect(find.byKey(const ValueKey('opening-night')), findsOneWidget);
+    // The launch's name stays as the phone drew it until the page opens.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('opening-night')),
+        matching: find.byType(JourneyLaunchMark),
+      ),
+      findsOneWidget,
+    );
 
     // No play and no poll: the frame after the account is known.
     await tester.pump();

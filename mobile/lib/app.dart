@@ -484,8 +484,8 @@ class _SessionWait extends StatelessWidget {
   }
 }
 
-/// The start's account check, in the opening's night (2026-11-23). A known
-/// account passes in a moment and shows nothing but the night; only a long
+/// The start's account check, in the opening's night with its name (D123).
+/// A known account passes in a moment and shows nothing but the launch; a long
 /// wait (a token and no account read before, on a slow network) says what
 /// is happening, after a second, so the phone never looks stuck.
 class _OpeningWait extends StatefulWidget {
@@ -520,35 +520,46 @@ class _OpeningWaitState extends State<_OpeningWait>
       // A Material, so the words take the app's text style, as on a page.
       child: Material(
         color: JourneyAccent.groom.night,
-        child: Center(
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: _reveal,
-              curve: Interval(quiet / total, 1, curve: AarastV3Motion.curve),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AarastV3Space.x6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AarastInlineSpinner(
-                    dimension: AarastV3Icon.xl,
-                    color: AarastV3Color.onPrimary,
+        child: Stack(
+          children: [
+            // The launch's name stays where the phone drew it.
+            const Center(child: JourneyLaunchMark()),
+            Align(
+              alignment: const Alignment(0, 0.4),
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _reveal,
+                  curve: Interval(
+                    quiet / total,
+                    1,
+                    curve: AarastV3Motion.curve,
                   ),
-                  const SizedBox(height: AarastV3Space.x5),
-                  Text(
-                    'لحظة، نتأكد من دخولك…',
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.lead,
-                      weight: JourneyType.bold,
-                      color: AarastV3Color.onPrimary,
-                    ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AarastV3Space.x6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AarastInlineSpinner(
+                        dimension: AarastV3Icon.xl,
+                        color: AarastV3Color.onPrimary,
+                      ),
+                      const SizedBox(height: AarastV3Space.x5),
+                      Text(
+                        'لحظة، نتأكد من دخولك…',
+                        textAlign: TextAlign.center,
+                        style: JourneyType.of(
+                          JourneyType.lead,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.onPrimary,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

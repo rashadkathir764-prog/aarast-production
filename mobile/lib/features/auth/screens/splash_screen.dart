@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,12 +13,13 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../providers/auth_controller.dart';
 
-/// The opening (2.01). The phone shows the night with «ع» while the app
-/// starts; this page carries on from that same night (2026-11-23):
-/// - the first open on this phone is the welcome: the fireworks and the name,
-///   900ms, then on;
-/// - every later open is the night alone, and leaves the moment the account
-///   is known, with no wait of its own, as world apps open straight in.
+/// The opening (2.01). The phone shows the name «اعّرست» on the night while
+/// the app starts (D123); this page carries on from that same frame:
+/// - the first open on this phone is the welcome: the name glides from the
+///   centre to its place and grows, the fireworks come in behind it and the
+///   line under it, 900ms, then on (D122);
+/// - every later open keeps the launch frame as it is, and leaves the moment
+///   the account is known, with no wait of its own.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -28,8 +30,8 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _opacityAnimation;
+  late final Animation<double> _glide;
+  late final Animation<double> _line;
   late final AuthController _auth;
 
   /// The fireworks play on this open. No preferences (a preview) is a first
@@ -49,12 +51,13 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 900),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
-    );
-    _opacityAnimation = CurvedAnimation(
+    _glide = CurvedAnimation(
       parent: _animationController,
-      curve: const Interval(0.12, 1, curve: Curves.easeOut),
+      curve: Curves.easeInOutCubic,
+    );
+    _line = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.45, 1, curve: Curves.easeOut),
     );
 
     // The account becoming known is heard, not polled.
@@ -108,10 +111,25 @@ class _SplashScreenState extends State<SplashScreen>
     // The night the phone opened on: the sky's own colour, and the one the
     // fireworks melt into.
     final base = JourneyAccent.groom.night;
+    // The page lays out between the system bars; the launch drew the name at
+    // the whole screen's centre. That centre, said between the bars:
+    final media = MediaQuery.of(context);
+    final top = media.padding.top;
+    final safe = media.size.height - top - media.padding.bottom;
+    final centreY = safe <= 0
+        ? 0.0
+        : (media.size.height / 2 - top) / safe * 2 - 1;
     if (!_celebrate) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
-        child: ColoredBox(key: const ValueKey('opening-night'), color: base),
+        child: AarastScreenFrame(
+          key: const ValueKey('opening-night'),
+          backgroundColor: base,
+          child: Align(
+            alignment: Alignment(0, centreY),
+            child: const JourneyLaunchMark(),
+          ),
+        ),
       );
     }
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -127,30 +145,51 @@ class _SplashScreenState extends State<SplashScreen>
               backgroundDecoration: const BoxDecoration(),
               child: JourneyProfileScope(
                 profile: JourneyProfile.groom,
-                child: Align(
-                  alignment: const Alignment(0, 0.42),
-                  child: FadeTransition(
-                    opacity: _opacityAnimation,
-                    child: ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const JourneyWordmark(
-                            size: AarastV3Icon.hero,
-                            color: AarastV3Color.onPrimary,
-                          ),
-                          const SizedBox(height: AarastV3Space.x3),
-                          Text(
-                            'عرسك من أول ريال إلى آخر دفعة',
-                            textAlign: TextAlign.center,
-                            style: JourneyType.of(
-                              JourneyType.lead,
-                              color: AarastV3Color.onPrimaryMuted,
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  // From the launch's centre to where the approved splash
+                  // rests (0.42 between the bars), growing as it goes.
+                  builder: (context, _) => Align(
+                    alignment: Alignment(
+                      0,
+                      lerpDouble(centreY, 0.42, _glide.value)!,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        JourneyWordmark(
+                          size: lerpDouble(
+                            JourneyLaunchMark.size,
+                            AarastV3Icon.hero,
+                            _glide.value,
+                          )!,
+                          color: AarastV3Color.onPrimary,
+                        ),
+                        // The line takes no room until it comes, so the name
+                        // starts at the launch's very centre.
+                        ClipRect(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            heightFactor: _line.value,
+                            child: Opacity(
+                              opacity: _line.value,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  top: AarastV3Space.x3,
+                                ),
+                                child: Text(
+                                  'عرسك من أول ريال إلى آخر دفعة',
+                                  textAlign: TextAlign.center,
+                                  style: JourneyType.of(
+                                    JourneyType.lead,
+                                    color: AarastV3Color.onPrimaryMuted,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

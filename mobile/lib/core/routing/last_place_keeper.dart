@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../experience_v3/aarast_v3_foundations.dart';
 import 'aarast_back_button_dispatcher.dart';
 import 'app_router.dart';
 
@@ -133,7 +134,11 @@ class _KeeperState extends State<_Keeper> with RestorationMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (_returningTo != null) return const SizedBox.shrink();
+    // The frame before the page comes back: the app's own page colour, not
+    // the window behind the app (the opening's night).
+    if (_returningTo != null) {
+      return const ColoredBox(color: AarastV3Color.canvas);
+    }
     // The address alone is kept, here. The pages under this get no bucket:
     // the router would otherwise restore its own stack, with what each page
     // was opened with, and the doors and the celebrations with it.

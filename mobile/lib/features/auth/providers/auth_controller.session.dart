@@ -33,6 +33,16 @@ mixin _AuthSession on _AuthControllerCore {
       return;
     }
 
+    // An account this phone already holds opens at once (2026-11-23), as it
+    // does with no network (RA-MO-32): the app does not wait on the server
+    // before it opens. The server's answer follows below and only its refusal
+    // (401) ends the session. A token without an account read before still
+    // waits, since there is nothing to open on.
+    if (_user != null) {
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+    }
+
     try {
       final restoredUser = await _authRepository.me();
       if (!_isCurrentSessionOperation(operation)) return;

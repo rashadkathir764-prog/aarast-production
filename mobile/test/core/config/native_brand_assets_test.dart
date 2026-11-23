@@ -52,10 +52,16 @@ void main() {
     expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
     expect(launchBackground, contains('@drawable/launch_image'));
     expect(android12Style, contains('@drawable/ic_launcher_foreground'));
-    // Teal identity (DECISIONS 2026-10-22, D0).
-    expect(colors, contains('<color name="splash_color">#0B6E69</color>'));
+    // The launch is the opening's night, the page after it carries on from
+    // it (D0 amended 2026-11-23); the mark «ع» stays on it.
+    expect(colors, contains('<color name="splash_color">#0E2A33</color>'));
     expect(storyboard, contains('image="LaunchImage"'));
-    expect(storyboard, contains('green="0.4313725490"'));
+    expect(storyboard, contains('green="0.1647058824"'));
+    // The identity at rest stays teal: the notifications' accent.
+    expect(
+      colors,
+      contains('<color name="notification_accent">#0B6E69</color>'),
+    );
   });
 
   test('Android push uses the branded high-importance heads-up channel', () {

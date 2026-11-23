@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splash_color">#0B6E69</color>
+    <!-- The opening night (JourneyAccent night, D0 amended 2026-11-23): the
+         launch, and the window behind the app, are the night the first
+         page carries on, so the opening is one screen. -->
+    <color name="splash_color">#0E2A33</color>
     <color name="notification_accent">#0B6E69</color>
 </resources>

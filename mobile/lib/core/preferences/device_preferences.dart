@@ -25,6 +25,7 @@ class DevicePreferences extends ChangeNotifier {
   static const _pushCardKey = 'aarast_pref_push_card_hidden_until';
   static const _crashReportsKey = 'aarast_pref_crash_reports';
   static const _taskMessageKey = 'aarast_pref_task_message';
+  static const _openingCelebratedKey = 'aarast_opening_celebrated';
 
   /// How long «لاحقًا» on w39 keeps the card away.
   static const pushCardPause = Duration(days: 7);
@@ -102,6 +103,15 @@ class DevicePreferences extends ChangeNotifier {
     await _preferences.setString(_taskMessageKey, mode.name);
     notifyListeners();
   }
+
+  /// The fireworks opening has played on this phone (2026-11-23): it is the
+  /// welcome of the first open, and every later open goes straight in.
+  bool get openingCelebrated =>
+      _preferences.getBool(_openingCelebratedKey) ?? false;
+
+  /// Nothing on screen depends on it, so no one is told.
+  Future<void> markOpeningCelebrated() =>
+      _preferences.setBool(_openingCelebratedKey, true);
 
   /// D63 (w40): crash and error reports leave this phone (on by default).
   bool get crashReports => storedCrashReports(_preferences);

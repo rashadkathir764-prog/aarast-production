@@ -345,11 +345,10 @@ class AarastSessionTransitionGate extends StatelessWidget {
       return child;
     }
 
+    // Only the app's start checks the account (restoreSession). Its wait
+    // carries on the night the phone opened on, not a page of its own.
     if (status == AuthStatus.checking) {
-      return const _SessionWait(
-        key: Key('session-checking-screen'),
-        text: 'لحظة، نتأكد من دخولك…',
-      );
+      return const _OpeningWait(key: Key('session-checking-screen'));
     }
 
     if (status == AuthStatus.terminating) {
@@ -477,6 +476,77 @@ class _SessionWait extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The start's account check, in the opening's night (2026-11-23). A known
+/// account passes in a moment and shows nothing but the night; only a long
+/// wait (a token and no account read before, on a slow network) says what
+/// is happening, after a second, so the phone never looks stuck.
+class _OpeningWait extends StatefulWidget {
+  const _OpeningWait({super.key});
+
+  /// How long the night stays quiet before it says anything.
+  static const quiet = Duration(milliseconds: 1000);
+
+  @override
+  State<_OpeningWait> createState() => _OpeningWaitState();
+}
+
+class _OpeningWaitState extends State<_OpeningWait>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _reveal = AnimationController(
+    vsync: this,
+    duration: _OpeningWait.quiet + AarastV3Motion.deliberate,
+  )..forward();
+
+  @override
+  void dispose() {
+    _reveal.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _reveal.duration!.inMilliseconds;
+    final quiet = _OpeningWait.quiet.inMilliseconds;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      // A Material, so the words take the app's text style, as on a page.
+      child: Material(
+        color: JourneyAccent.groom.night,
+        child: Center(
+          child: FadeTransition(
+            opacity: CurvedAnimation(
+              parent: _reveal,
+              curve: Interval(quiet / total, 1, curve: AarastV3Motion.curve),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AarastV3Space.x6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AarastInlineSpinner(
+                    dimension: AarastV3Icon.xl,
+                    color: AarastV3Color.onPrimary,
+                  ),
+                  const SizedBox(height: AarastV3Space.x5),
+                  Text(
+                    'لحظة، نتأكد من دخولك…',
+                    textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.lead,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.onPrimary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

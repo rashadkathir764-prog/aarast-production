@@ -32,94 +32,87 @@ class _StartStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AarastV3Color.paper,
+      color: AarastV3Color.canvas,
       child: Column(
         children: [
-          // The name and the doors are one group, set by the screen's own
-          // height: on a tall phone it rests a little above the middle, with
-          // the doors near the thumb; on a short one, or in large text, the
-          // room above folds away before anything has to scroll.
           Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AarastV3Space.x4,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: AarastV3Space.x8),
-                        const Spacer(flex: 3),
-                        JourneyWordmark(
-                          size: JourneyType.count,
-                          color: context.accent.primaryDark,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const JourneySkyBand(),
+                const SizedBox(height: AarastV3Space.x4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x4,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      JourneyWordmark(
+                        size: JourneyType.count,
+                        color: context.accent.primaryDark,
+                      ),
+                      const SizedBox(height: AarastV3Space.x1),
+                      Text(
+                        'عرسك من أول ريال إلى آخر دفعة',
+                        style: JourneyType.of(
+                          JourneyType.lead,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.textMuted,
                         ),
-                        const SizedBox(height: AarastV3Space.x1),
-                        Text(
-                          'عرسك من أول ريال إلى آخر دفعة',
+                      ),
+                      const SizedBox(height: AarastV3Space.x6),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'أهلًا فيك، من وين نبدأ؟',
                           style: JourneyType.of(
-                            JourneyType.lead,
+                            JourneyType.pageTitle,
                             weight: JourneyType.bold,
-                            color: AarastV3Color.textMuted,
                           ),
                         ),
-                        const SizedBox(height: AarastV3Space.x6),
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            'أهلًا فيك، من وين نبدأ؟',
-                            style: JourneyType.of(
-                              JourneyType.pageTitle,
-                              weight: JourneyType.bold,
-                            ),
+                      ),
+                      const SizedBox(height: AarastV3Space.x3),
+                      JourneyDoor(
+                        key: const ValueKey('door-plan'),
+                        icon: LucideIcons.checkSquare,
+                        title: phonePlanTitle != null
+                            ? 'افتح خطتي'
+                            : resumeLine != null
+                            ? 'كمّل خطتي'
+                            : 'أسوّي خطة عرسي',
+                        subtitle: phonePlanTitle != null
+                            ? '$phonePlanTitle، على هذا الجوال'
+                            : resumeLine ?? 'للعريس أو للعروسة',
+                        onTap: onPlan,
+                      ),
+                      if (phonePlanTitle != null)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: JourneyTextAction(
+                            key: const ValueKey('door-replace-plan'),
+                            label: 'مو خطتك؟ ابدأ خطة جديدة بدلها',
+                            onPressed: onReplacePlan,
                           ),
                         ),
-                        const SizedBox(height: AarastV3Space.x3),
-                        JourneyDoor(
-                          key: const ValueKey('door-plan'),
-                          icon: LucideIcons.checkSquare,
-                          title: phonePlanTitle != null
-                              ? 'افتح خطتي'
-                              : resumeLine != null
-                              ? 'كمّل خطتي'
-                              : 'أسوّي خطة عرسي',
-                          subtitle: phonePlanTitle != null
-                              ? '$phonePlanTitle، على هذا الجوال'
-                              : resumeLine ?? 'للعريس أو للعروسة',
-                          onTap: onPlan,
-                        ),
-                        if (phonePlanTitle != null)
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: JourneyTextAction(
-                              key: const ValueKey('door-replace-plan'),
-                              label: 'مو خطتك؟ ابدأ خطة جديدة بدلها',
-                              onPressed: onReplacePlan,
-                            ),
-                          ),
-                        const SizedBox(height: AarastV3Space.x3),
-                        JourneyDoor(
-                          key: const ValueKey('door-invite'),
-                          icon: LucideIcons.mail,
-                          title: 'معي رابط دعوة',
-                          subtitle: 'من صاحب خطة عرس',
-                          onTap: onInvite,
-                        ),
-                        const SizedBox(height: AarastV3Space.x3),
-                        JourneyDoor(
-                          key: const ValueKey('door-provider'),
-                          icon: LucideIcons.store,
-                          title: 'أقدّم خدمة للأعراس',
-                          subtitle: 'قاعة، تصوير، كوافير، فرقة، ضيافة',
-                          onTap: onProvider,
-                        ),
-                        const Spacer(flex: 2),
-                        const SizedBox(height: AarastV3Space.x5),
-                      ],
-                    ),
+                      const SizedBox(height: AarastV3Space.x3),
+                      JourneyDoor(
+                        key: const ValueKey('door-invite'),
+                        icon: LucideIcons.mail,
+                        title: 'معي رابط دعوة',
+                        subtitle: 'من صاحب خطة عرس',
+                        onTap: onInvite,
+                      ),
+                      const SizedBox(height: AarastV3Space.x3),
+                      JourneyDoor(
+                        key: const ValueKey('door-provider'),
+                        icon: LucideIcons.store,
+                        title: 'أقدّم خدمة للأعراس',
+                        subtitle: 'قاعة، تصوير، كوافير، فرقة، ضيافة',
+                        onTap: onProvider,
+                      ),
+                      const SizedBox(height: AarastV3Space.x5),
+                    ],
                   ),
                 ),
               ],

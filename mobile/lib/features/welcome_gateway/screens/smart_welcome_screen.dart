@@ -758,9 +758,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       },
       child: AarastScreenFrame(
         safeAreaBottom: false,
-        backgroundColor: _step == _WelcomeStep.start
-            ? AarastV3Color.paper
-            : AarastV3Color.canvas,
+        backgroundColor: AarastV3Color.canvas,
         child: JourneyProfileScope(
           profile: shared ? JourneyProfile.groom : _profile,
           // Built under the scope, so every word is in the plan owner's

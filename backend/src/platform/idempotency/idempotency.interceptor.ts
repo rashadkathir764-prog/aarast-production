@@ -22,6 +22,7 @@ import {
   requestRouteTemplate,
   safeClientRequestId,
 } from '../observability/sanitize-request-target';
+import { SKIP_IDEMPOTENCY_STORE } from './skip-idempotency-store.decorator';
 
 interface RequestLike {
   baseUrl?: string;
@@ -114,6 +115,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const key = this.headerValue(request, IDEMPOTENCY_HEADER);
 
     if (!userId || !key || !MUTATING_METHODS.has(method)) {
+      return next.handle();
+    }
+    // RA-BE-159: a route marked `@SkipIdempotencyStore()` (the assistant's
+    // generated answers) is never reserved and its response never stored.
+    if (Reflect.getMetadata(SKIP_IDEMPOTENCY_STORE, context.getHandler()) === true) {
       return next.handle();
     }
 

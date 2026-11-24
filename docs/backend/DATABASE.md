@@ -515,7 +515,7 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 59 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 60 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |

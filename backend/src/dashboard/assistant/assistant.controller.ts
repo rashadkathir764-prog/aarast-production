@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../modules/identity/public/current-user.decorator';
 import type { AuthenticatedUser } from '../../modules/identity/public/identity-session.types';
 import { JwtAuthGuard } from '../../modules/identity/public/jwt-auth.guard';
+import { SkipIdempotencyStore } from '../../platform/idempotency/skip-idempotency-store.decorator';
 import { AssistantService } from './assistant.service';
 import { AskAssistantDto } from './dto/ask-assistant.dto';
 import { ReportAssistantAnswerDto } from './dto/report-assistant-answer.dto';
@@ -22,9 +23,12 @@ export class WeddingPlanAssistantController {
 
   // The daily per-account limit is the real bound; this only stops floods.
   // Asking creates nothing that can be fetched again: 200, not 201.
+  // RA-BE-159: the answer is generated text kept nowhere, not even as a
+  // replay of the phone's request id.
   @Post('questions')
   @HttpCode(200)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @SkipIdempotencyStore()
   ask(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
@@ -33,8 +37,27 @@ export class WeddingPlanAssistantController {
     return this.assistant.ask(currentUser, weddingPlanId, {
       kind: dto.kind,
       question: dto.question ?? null,
-      consent: dto.consent,
     });
+  }
+
+  // RA-BE-161: the consent sheet's «شغّل المساعد» records the account's
+  // consent with its date; w40 takes it back.
+  @Put('consent')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  recordConsent(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.assistant.recordConsent(currentUser, weddingPlanId);
+  }
+
+  @Delete('consent')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  withdrawConsent(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.assistant.withdrawConsent(currentUser, weddingPlanId);
   }
 
   // RA-ST-04 (D95): «بلّغ عن الإجابة». The account's open reports are

@@ -19,6 +19,10 @@ import {
   seesWholePlan,
 } from '../../modules/collaboration/public/collaboration-permission.port';
 import {
+  ASSISTANT_CONSENT_PORT,
+  type AssistantConsentPort,
+} from '../../modules/identity/public/assistant-consent.port';
+import {
   ASSISTANT_QUOTA_PORT,
   type AssistantQuotaPort,
 } from '../../modules/identity/public/assistant-quota.port';
@@ -39,7 +43,6 @@ import {
   renderAssistantRequest,
 } from './assistant.prompt';
 
-const OPEN_TASKS_SHOWN = 15;
 const QUOTES_SHOWN = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -50,6 +53,13 @@ export interface AssistantStatusResponse {
   allowed: boolean;
   dailyLimit: number;
   remainingToday: number;
+  /** RA-BE-161: when the reader agreed to send the plan's summary, or null. */
+  consentedAt: string | null;
+}
+
+export interface AssistantConsentResponse {
+  /** RA-BE-161: the stored record's date; null once taken back. */
+  consentedAt: string | null;
 }
 
 export interface AssistantAnswerResponse {
@@ -64,6 +74,20 @@ export interface AssistantAnswerResponse {
 
 function refusal(status: HttpStatus, code: string, message: string): HttpException {
   return new HttpException({ statusCode: status, code, message }, status);
+}
+
+function assertOwnerOrPartner(context: PlanAccessContext): void {
+  if (!seesWholePlan(context)) {
+    throw new ForbiddenException({
+      statusCode: 403,
+      code: 'ASSISTANT_OWNER_OR_PARTNER_ONLY',
+      message: 'The assistant serves the plan owner and partner',
+    });
+  }
+}
+
+function iso(value: Date | null): string | null {
+  return value ? value.toISOString() : null;
 }
 
 /** Arabic and Latin city names compared loosely (أ/ا، ة/ه، ى/ي, spacing, case). */
@@ -81,27 +105,15 @@ function money(value: Prisma.Decimal | null | undefined): string | null {
   return value === null || value === undefined ? null : value.toFixed(2);
 }
 
-/** A payer group without a written name, as the plan's people say it. */
-function payerWord(payer: string | null): string {
-  switch (payer) {
-    case 'GROOM':
-      return 'العريس';
-    case 'BRIDE':
-      return 'العروسة';
-    case 'FAMILY':
-      return 'الأهل';
-    default:
-      return 'شخص آخر';
-  }
-}
-
 /**
  * The planning assistant (V1 checklist 4.12). It answers the plan's owner or
  * partner from the plan as they see it (never another account's private
  * costs or tasks, money only with money permission, quotes only with
  * provider permission) and from market price ranges, counts each question
  * against the account's daily limit and the service's monthly spending cap,
- * and stores no question or answer.
+ * and stores no question or answer. It sends only what the consent names
+ * (RA-BE-160), and asks only with the asker's stored consent; a partner's
+ * question carries the plan's money only with its owner's (RA-BE-161).
  */
 @Injectable()
 export class AssistantService {
@@ -115,6 +127,7 @@ export class AssistantService {
     @Inject(ASSISTANT_QUOTA_PORT) private readonly quota: AssistantQuotaPort,
     private readonly runtime: AssistantRuntime,
     @Inject(ASSISTANT_REPORT_PORT) private readonly reports: AssistantReportPort,
+    @Inject(ASSISTANT_CONSENT_PORT) private readonly consent: AssistantConsentPort,
   ) {}
 
   async status(
@@ -123,8 +136,9 @@ export class AssistantService {
   ): Promise<AssistantStatusResponse> {
     const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
     const allowed = seesWholePlan(context);
+    const consentedAt = iso(await this.consent.consentedAt(currentUser.id));
     const config = this.runtime.model ? this.runtime.config : null;
-    if (!config) return { enabled: false, allowed, dailyLimit: 0, remainingToday: 0 };
+    if (!config) return { enabled: false, allowed, dailyLimit: 0, remainingToday: 0, consentedAt };
     const used = allowed
       ? await this.quota.questionsOn(currentUser.id, localDate(new Date()))
       : config.dailyLimit;
@@ -133,32 +147,52 @@ export class AssistantService {
       allowed,
       dailyLimit: config.dailyLimit,
       remainingToday: Math.max(0, config.dailyLimit - used),
+      consentedAt,
     };
+  }
+
+  /**
+   * RA-BE-161: the reader agrees, on the consent sheet, that the assistant
+   * sends this plan's summary to the model. Whoever may ask may agree; the
+   * record is the account's, with its first date.
+   */
+  async recordConsent(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<AssistantConsentResponse> {
+    const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    assertOwnerOrPartner(context);
+    return { consentedAt: iso(await this.consent.recordConsent(currentUser.id)) };
+  }
+
+  /** RA-BE-161, w40: the reader takes the consent back; asking needs it again. */
+  async withdrawConsent(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<AssistantConsentResponse> {
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    await this.consent.withdrawConsent(currentUser.id);
+    return { consentedAt: null };
   }
 
   async ask(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-    input: { kind: AssistantKind; question: string | null; consent: boolean },
+    input: { kind: AssistantKind; question: string | null },
   ): Promise<AssistantAnswerResponse> {
-    if (input.consent !== true) {
-      throw refusal(
-        HttpStatus.BAD_REQUEST,
-        'ASSISTANT_CONSENT_REQUIRED',
-        'The assistant sends plan data to an outside service only with consent',
-      );
-    }
     const question = input.question?.trim() || null;
     if (input.kind === 'QUESTION' && !question) {
       throw new BadRequestException('question must not be empty');
     }
     const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
-    if (!seesWholePlan(context)) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'ASSISTANT_OWNER_OR_PARTNER_ONLY',
-        message: 'The assistant serves the plan owner and partner',
-      });
+    assertOwnerOrPartner(context);
+    // RA-BE-161: the asker's stored consent, never a flag in the request.
+    if (!(await this.consent.consentedAt(currentUser.id))) {
+      throw refusal(
+        HttpStatus.BAD_REQUEST,
+        'ASSISTANT_CONSENT_REQUIRED',
+        'The assistant sends plan data to an outside service only with consent',
+      );
     }
     const model = this.runtime.model;
     const config = model ? this.runtime.config : null;
@@ -246,13 +280,7 @@ export class AssistantService {
     report: { kind: AssistantKind; question: string | null; answer: string; reason: string },
   ): Promise<{ reported: true }> {
     const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
-    if (!seesWholePlan(context)) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'ASSISTANT_OWNER_OR_PARTNER_ONLY',
-        message: 'The assistant serves the plan owner and partner',
-      });
-    }
+    assertOwnerOrPartner(context);
     const recorded = await this.reports.recordAnswerReport(currentUser.id, {
       kind: report.kind,
       question: report.question?.trim() || null,
@@ -269,20 +297,31 @@ export class AssistantService {
     return { reported: true };
   }
 
-  /** The plan as the reader sees it, read in one snapshot through the owners' ports. */
-  private planFacts(
+  /**
+   * The plan as the reader sees it, read in one snapshot through the owners'
+   * ports, and only what the consent names (RA-BE-160). The plan's money
+   * (its budget and the offers' prices) goes with a partner's question only
+   * when the owner has agreed too (RA-BE-161).
+   */
+  private async planFacts(
     context: PlanAccessContext,
     readerUserId: string,
     now: Date,
   ): Promise<AssistantPlanFacts> {
     const plan = context.plan;
-    const canViewMoney = this.permissions.canViewMoney(context);
+    const ownerAgreed =
+      context.isOwner || (await this.consent.consentedAt(plan.ownerUserId)) !== null;
+    const moneyWithheld = !this.permissions.canViewMoney(context)
+      ? ('NO_PERMISSION' as const)
+      : !ownerAgreed
+        ? ('OWNER_NO_CONSENT' as const)
+        : null;
     const canSeeQuotes = this.permissions.canManageProviders(context);
     return runRetryableTransaction(
       this.prisma,
       async (tx) => {
         const today = startOfRiyadhDay(now);
-        const [guests, taskDashboard, openTasks] = await Promise.all([
+        const [guests, taskDashboard] = await Promise.all([
           this.ports.guests.getPlanGuestCounters(tx, plan.id, null),
           this.ports.tasks.getPlanTaskDashboard(tx, {
             weddingPlanId: plan.id,
@@ -290,25 +329,22 @@ export class AssistantService {
             today,
             endOfToday: endOfRiyadhDay(today),
           }),
-          this.ports.tasks.listUpcomingTasks(tx, plan.id, OPEN_TASKS_SHOWN, readerUserId),
         ]);
         const [moneyFacts, quotes, market] = await Promise.all([
-          canViewMoney ? this.moneyFacts(tx, context, readerUserId) : null,
-          canSeeQuotes ? this.quoteFacts(tx, plan.id, canViewMoney) : null,
+          moneyWithheld === null ? this.moneyFacts(tx, context, readerUserId) : null,
+          canSeeQuotes ? this.quoteFacts(tx, plan.id, moneyWithheld === null) : null,
           this.marketFacts(tx, plan.city),
         ]);
         const weddingDay = plan.weddingDate ? startOfRiyadhDay(plan.weddingDate) : null;
         return {
-          title: plan.title,
           city: plan.city,
           weddingDate: plan.weddingDate ? localDate(plan.weddingDate) : null,
           daysRemaining: weddingDay
             ? Math.round((weddingDay.getTime() - today.getTime()) / DAY_MS)
             : null,
-          persona: plan.persona,
           currency: plan.currency,
-          priorities: plan.priorities,
           money: moneyFacts,
+          moneyWithheld,
           guests: {
             total: guests.total,
             confirmed: guests.confirmed,
@@ -319,10 +355,6 @@ export class AssistantService {
             total: taskDashboard.totalTasks,
             completed: taskDashboard.completedTasks,
             overdue: taskDashboard.overdueTasks,
-            open: openTasks.map((task) => ({
-              title: task.title,
-              dueDate: task.dueDate ? localDate(task.dueDate) : null,
-            })),
           },
           quotes,
           market,
@@ -337,6 +369,9 @@ export class AssistantService {
    * `money-summary` serves. The wedding's budget counts the wedding's items
    * only; the mahr is its own line (the groom's agreement, or the bride's
    * mahr coming in, which is her private funding and so the owner's only).
+   * RA-BE-160: the budget, its items and the mahr's total; nobody's name,
+   * nothing of whose money paid, what the owner holds, his loans or the
+   * mahr's handing over.
    */
   private async moneyFacts(
     tx: Prisma.TransactionClient,
@@ -355,86 +390,32 @@ export class AssistantService {
     });
     const fixed = (value: string | null) =>
       value === null ? null : new Prisma.Decimal(value).toFixed(2);
-    const mahr = picture.mahr;
     return {
       budgetTotal: fixed(picture.budget.total),
       mahrInsideBudget: picture.budget.includesMahr === true,
       committedTotal: fixed(picture.budget.confirmedCost) ?? '0.00',
       paidTotal: fixed(picture.budget.paid) ?? '0.00',
-      paidByOwner: fixed(picture.costs.paidByOwner) ?? '0.00',
-      paidByOthers: picture.payers
-        .filter((group) => !group.ownerMoney && new Prisma.Decimal(group.paid).gt(0))
-        .map((group) => ({
-          payer: group.payerName ?? payerWord(group.payer),
-          paid: fixed(group.paid) ?? '0.00',
-        })),
-      mahr: mahr
-        ? {
-            side: mahr.side,
-            total: fixed(mahr.total) ?? '0.00',
-            settled: fixed(mahr.settled) ?? '0.00',
-            remaining: fixed(mahr.remaining) ?? '0.00',
-            nextDueAt: mahr.nextDueAt ? localDate(mahr.nextDueAt) : null,
-          }
+      mahr: picture.mahr
+        ? { side: picture.mahr.side, total: fixed(picture.mahr.total) ?? '0.00' }
         : null,
-      categories: picture.categories
+      items: picture.categories
         .filter((category) => category.kind !== 'MAHR')
         .map((category) => ({
           name: category.name,
           allocated: fixed(category.allocatedAmount),
           committed: fixed(category.confirmedCost) ?? '0.00',
           paid: fixed(category.paid) ?? '0.00',
-          estimate: fixed(category.estimate),
-          expected: fixed(category.expectedCost) ?? '0.00',
         })),
-      // D105: the expected cost, as the money tab reads it.
-      expected: {
-        wedding: fixed(picture.expected.wedding.expected) ?? '0.00',
-        estimateLeft: fixed(picture.expected.wedding.estimateLeft) ?? '0.00',
-        unknownItems: picture.expected.wedding.unknownCount,
-        budgetLeft: fixed(picture.expected.budgetLeft),
-      },
-      outstanding: {
-        owner: fixed(picture.outstanding.owner) ?? '0.00',
-        others: fixed(picture.outstanding.others) ?? '0.00',
-      },
-      // D103: the same verdict the money tab and the home say.
-      coverage: picture.coverage
-        ? {
-            verdict: picture.coverage.verdict,
-            cash: fixed(picture.coverage.cash) ?? '0.00',
-            onHim: fixed(picture.coverage.total) ?? '0.00',
-            until: picture.coverage.lastDate ? localDate(picture.coverage.lastDate) : null,
-            short: shortOf(
-              picture.coverage.verdict === 'COVERED_IF_PLEDGES'
-                ? picture.coverage.withoutPledges.firstShort
-                : picture.coverage.withPledges.firstShort,
-            ),
-            needed:
-              picture.coverage.verdict === 'SHORT'
-                ? fixed(picture.coverage.withPledges.deepest?.amount ?? null)
-                : null,
-            ignoredPledges: picture.coverage.pledgesIgnored.length,
-          }
-        : null,
     };
-
-    function shortOf(value: { amount: string; date: Date | null; title: string } | null) {
-      return value
-        ? {
-            amount: fixed(value.amount) ?? '0.00',
-            date: value.date ? localDate(value.date) : null,
-            title: value.title,
-          }
-        : null;
-    }
   }
 
   /**
    * RA-BE-103: the offers as the reader may see them. Their prices are money:
    * a reader who manages providers without the money right (a partner set
    * «المال لا») gets the offers without their prices, as every other offer
-   * read does (RA-BE-73).
+   * read does (RA-BE-73), and so does a partner whose owner has not agreed
+   * (RA-BE-161). RA-BE-160: an offer is its category, price and status; the
+   * provider's name and the service's own title stay out.
    */
   private async quoteFacts(
     tx: Prisma.TransactionClient,
@@ -442,23 +423,16 @@ export class AssistantService {
     showPrices: boolean,
   ): Promise<NonNullable<AssistantPlanFacts['quotes']>> {
     const offers = await this.ports.quotes.listPlanQuoteOffers(tx, weddingPlanId, QUOTES_SHOWN);
-    const [providers, categories] = await Promise.all([
-      this.ports.providers.getProviders(tx, [...new Set(offers.map((offer) => offer.providerId))]),
-      this.ports.catalog.getCategories(tx, [
-        ...new Set(offers.flatMap((offer) => (offer.serviceCategoryId ? [offer.serviceCategoryId] : []))),
-      ]),
+    const categories = await this.ports.catalog.getCategories(tx, [
+      ...new Set(offers.flatMap((offer) => (offer.serviceCategoryId ? [offer.serviceCategoryId] : []))),
     ]);
-    const providerNames = new Map(providers.map((provider) => [provider.id, provider.businessName]));
     const categoryNames = new Map(categories.map((category) => [category.id, category.nameAr]));
     return offers.map((offer) => ({
-      provider: providerNames.get(offer.providerId) ?? 'مزود',
-      service: offer.serviceTitle ?? offer.title,
       category: offer.serviceCategoryId ? categoryNames.get(offer.serviceCategoryId) ?? null : null,
       amount: showPrices ? money(offer.amount) : null,
       priceHidden: !showPrices,
       currency: offer.currency,
       status: offer.status,
-      validUntil: offer.validUntil ? localDate(offer.validUntil) : null,
     }));
   }
 

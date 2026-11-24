@@ -1759,7 +1759,10 @@ const r19ProviderPortalApi = Object.freeze({
 // page and the guests tab read the plan's occasions, and the new round of
 // sends reads them and the plan's title (two tracked imports); the
 // occasions owner API exports its sheet (showPlanEventSheet).
-const r19LegalRecordCount = 276;
+// -2 (RA-BE-161, 2026-11-24): the assistant's consent is the server's
+// record, so the assistant screen and w40 no longer read the signed-in
+// account's id from the auth owner API (two imports of AuthController gone).
+const r19LegalRecordCount = 274;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

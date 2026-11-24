@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/plan_assistant.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_assistant_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/utils/assistant_consent.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/plan_assistant_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,7 +24,17 @@ void main() {
       'remainingToday': 4,
     });
     expect(status.available, isTrue);
+    expect(status.consentedAt, isNull);
     expect(PlanAssistantStatus.fromJson({'enabled': true}).available, isFalse);
+    // RA-BE-161: the server's stored consent, with its date.
+    expect(
+      PlanAssistantStatus.fromJson({
+        'enabled': true,
+        'allowed': true,
+        'consentedAt': '2026-11-24T09:00:00.000Z',
+      }).consentedAt,
+      DateTime.utc(2026, 11, 24, 9),
+    );
     final answer = PlanAssistantAnswer.fromJson({
       'answer': 'خطة',
       'declined': false,
@@ -72,11 +83,43 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('3 أسئلة في اليوم'), findsOneWidget);
-      expect(find.text('ما نرسل أسماء ضيوفك ولا أرقامهم'), findsOneWidget);
+      // RA-BE-160: the sheet says what the server sends and keeps.
+      expect(
+        find.text(
+          'سؤالك وملخص خطتك يروحون لخدمة Claude من Anthropic تفهمه: المدينة والموعد، والميزانية وبنودها، والعروض، وعدد الضيوف والمهام',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'ما نرسل أي اسم ولا رقم جوال: لا ضيوفك ولا أهلك، ولا اسم الخطة ولا مهامها',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'أرقام مال الخطة ما تروح مع سؤال الشريك إلا بموافقة صاحب الخطة',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'ما نحفظ أسئلتك ولا الإجابات، بس تاريخ موافقتك، وما يتغيّر شيء في خطتك',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'عند Anthropic تنحفظ حسب سياسة خدمتها، وما تدرّب عليها نماذجها',
+        ),
+        findsOneWidget,
+      );
       expect(api.asked, isEmpty, reason: 'nothing is sent before consent');
 
       await tester.tap(find.byKey(const ValueKey('assistant-consent-agree')));
       await tester.pumpAndSettle();
+      // RA-BE-161: the consent is recorded on the server before the question.
+      expect(api.consentsRecorded, ['plan-1']);
       expect(api.asked, [PlanAssistantKind.cheaper]);
       // The question sits above its answer.
       expect(
@@ -95,6 +138,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('المساعد الذكي'), findsNothing);
       expect(api.asked.last, PlanAssistantKind.forgotten);
+      expect(api.consentsRecorded, ['plan-1'], reason: 'recorded once');
     },
   );
 
@@ -109,16 +153,76 @@ void main() {
     await tester.tap(find.text('مو الآن'));
     await tester.pumpAndSettle();
     expect(api.asked, isEmpty);
+    expect(api.consentsRecorded, isEmpty);
     expect(find.byKey(const ValueKey('assistant-answer')), findsNothing);
+  });
+
+  // RA-BE-161: the server keeps the consent; one it never received opens
+  // nothing, and the question waits.
+  testWidgets('RA-BE-161: a consent the server did not receive sends no '
+      'question and says why', (tester) async {
+    final api = _FakeAssistantApi(
+      consentFailure: const ApiException(
+        'تعذر الاتصال. الموافقة تنحفظ عند اعّرست، فتحتاج النت.',
+        isNetworkFailure: true,
+      ),
+    );
+    await tester.pumpWidget(
+      app(
+        ScaffoldMessenger(
+          child: Scaffold(
+            body: PlanAssistantScreen(weddingPlanId: 'plan-1', api: api),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-consent-agree')));
+    await tester.pumpAndSettle();
+    expect(api.asked, isEmpty);
+    expect(
+      find.text('تعذر الاتصال. الموافقة تنحفظ عند اعّرست، فتحتاج النت.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('assistant-answer')), findsNothing);
+  });
+
+  test('RA-BE-161: the question carries no consent flag; consent is '
+      'recorded and taken back on the server', () async {
+    final client = _RecordingClient();
+    final api = PlanAssistantApi(client);
+    await api.ask('plan-1', kind: PlanAssistantKind.plan);
+    final (path, body) = client.posts.single;
+    expect(path, '/api/v1/wedding-plans/plan-1/assistant/questions');
+    expect(body, {'kind': 'PLAN'});
+
+    expect(await api.recordConsent('plan-1'), DateTime.utc(2026, 11, 24, 9));
+    await api.withdrawConsent('plan-1');
+    expect(client.writes, [
+      ('PUT', '/api/v1/wedding-plans/plan-1/assistant/consent'),
+      ('DELETE', '/api/v1/wedding-plans/plan-1/assistant/consent'),
+    ]);
+  });
+
+  test('RA-BE-161: w40 reads and changes the consent on the server', () async {
+    final client = _RecordingClient();
+    final read = await AssistantConsent.read(client, 'plan-1');
+    expect(read?.dailyLimit, 3);
+    expect(read?.consentedAt, isNull);
+    expect(await AssistantConsent.set(client, 'plan-1', true), isTrue);
+    expect(await AssistantConsent.set(client, 'plan-1', false), isFalse);
+    expect(client.writes, [
+      ('PUT', '/api/v1/wedding-plans/plan-1/assistant/consent'),
+      ('DELETE', '/api/v1/wedding-plans/plan-1/assistant/consent'),
+    ]);
   });
 
   testWidgets('a free question needs its text and is sent with it', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'aarast.assistant.consent.v1.device': true,
-    });
-    final api = _FakeAssistantApi();
+    final api = _FakeAssistantApi(consented: true);
     await tester.pumpWidget(
       app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
     );
@@ -143,10 +247,7 @@ void main() {
     _FakeAssistantApi? api,
     String? typed,
   }) async {
-    SharedPreferences.setMockInitialValues({
-      'aarast.assistant.consent.v1.device': true,
-    });
-    final fake = api ?? _FakeAssistantApi();
+    final fake = api ?? _FakeAssistantApi(consented: true);
     await tester.pumpWidget(
       app(
         ScaffoldMessenger(
@@ -232,6 +333,7 @@ void main() {
     final api = await askedOnce(
       tester,
       api: _FakeAssistantApi(
+        consented: true,
         reportFailure: const ApiException(
           'Too many reports are waiting for review',
           statusCode: 429,
@@ -259,7 +361,10 @@ void main() {
   testWidgets('RA-ST-04: the assistant\'s own refusal has nothing to report', (
     tester,
   ) async {
-    await askedOnce(tester, api: _FakeAssistantApi(declined: true));
+    await askedOnce(
+      tester,
+      api: _FakeAssistantApi(consented: true, declined: true),
+    );
     expect(find.byKey(const ValueKey('assistant-answer')), findsOneWidget);
     expect(find.byKey(const ValueKey('assistant-report')), findsNothing);
   });
@@ -287,10 +392,8 @@ void main() {
   });
 
   testWidgets('a refusal from the server is shown in Arabic', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'aarast.assistant.consent.v1.device': true,
-    });
     final api = _FakeAssistantApi(
+      consented: true,
       failure: const ApiException(
         'ما قدرنا نجاوب على هذا السؤال.',
         statusCode: 422,
@@ -311,14 +414,12 @@ void main() {
   testWidgets('today\'s limit and a missing connection say why (w37)', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'aarast.assistant.consent.v1.device': true,
-    });
     await tester.pumpWidget(
       app(
         PlanAssistantScreen(
           weddingPlanId: 'plan-1',
           api: _FakeAssistantApi(
+            consented: true,
             failure: const ApiException(
               'انتهت أسئلة اليوم.',
               statusCode: 429,
@@ -343,6 +444,7 @@ void main() {
         PlanAssistantScreen(
           weddingPlanId: 'plan-2',
           api: _FakeAssistantApi(
+            consented: true,
             failure: const ApiException(
               'تعذر الاتصال.',
               isNetworkFailure: true,
@@ -481,7 +583,22 @@ class _FakeAssistantApi extends PlanAssistantApi {
     this.failure,
     this.declined = false,
     this.reportFailure,
-  }) : super(ApiClient(tokenProvider: () async => null));
+    bool consented = false,
+    this.consentFailure,
+  }) : _consentedAt = consented ? DateTime.utc(2026, 11, 20) : null,
+       super(ApiClient(tokenProvider: () async => null));
+
+  /// RA-BE-161: the server's stored consent.
+  DateTime? _consentedAt;
+  final ApiException? consentFailure;
+  final List<String> consentsRecorded = [];
+
+  @override
+  Future<DateTime> recordConsent(String weddingPlanId) async {
+    if (consentFailure != null) throw consentFailure!;
+    consentsRecorded.add(weddingPlanId);
+    return _consentedAt ??= DateTime.utc(2026, 11, 24, 9);
+  }
 
   final bool enabled;
   final bool allowed;
@@ -515,6 +632,7 @@ class _FakeAssistantApi extends PlanAssistantApi {
         allowed: allowed,
         dailyLimit: 3,
         remainingToday: _remaining,
+        consentedAt: _consentedAt,
       );
 
   @override
@@ -536,11 +654,13 @@ class _FakeAssistantApi extends PlanAssistantApi {
   }
 }
 
-/// RA-ST-04: the path and body the report sends to the server.
+/// RA-ST-04: the path and body the report sends to the server; RA-BE-161:
+/// the question's body and the consent's writes.
 class _RecordingClient extends ApiClient {
   _RecordingClient() : super(tokenProvider: () async => null);
 
   final List<(String, Map<String, dynamic>)> posts = [];
+  final List<(String, String)> writes = [];
 
   @override
   Future<Map<String, dynamic>> postJson(
@@ -549,5 +669,39 @@ class _RecordingClient extends ApiClient {
   ) async {
     posts.add((path, data));
     return {'reported': true};
+  }
+
+  @override
+  Future<Map<String, dynamic>> postJsonWithReceiveTimeout(
+    String path,
+    Map<String, dynamic> data, {
+    required Duration receiveTimeout,
+  }) async {
+    posts.add((path, data));
+    return {'kind': 'PLAN', 'answer': 'خطة', 'remainingToday': 2};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getJson(String path) async => {
+    'enabled': true,
+    'allowed': true,
+    'dailyLimit': 3,
+    'remainingToday': 3,
+    'consentedAt': null,
+  };
+
+  @override
+  Future<Map<String, dynamic>> putJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    writes.add(('PUT', path));
+    return {'consentedAt': '2026-11-24T09:00:00.000Z'};
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteJson(String path) async {
+    writes.add(('DELETE', path));
+    return {'consentedAt': null};
   }
 }

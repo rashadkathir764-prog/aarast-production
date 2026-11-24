@@ -12,10 +12,14 @@ const { eraseFixtureAccount } = require('./account-grace');
  * Planning assistant smoke (V1 checklist 4.12), through the HTTP stack and a
  * real database, against a local stand-in for the Claude API (the runner
  * points ANTHROPIC_BASE_URL at it; no real key, no real call). It proves:
- * consent is required; only the plan's owner and partner may ask; what the
- * model receives is the plan as the asker sees it (never the other side's
- * private costs or tasks); the daily limit holds; a busy model gives the
- * question back; and the usage rows leave with the account.
+ * consent is the asker's stored record (RA-BE-161); only the plan's owner
+ * and partner may ask; what the model receives is the plan as the asker
+ * sees it and only what the consent names (never the other side's private
+ * costs, the plan's title or a task's title, RA-BE-160); a partner's
+ * question carries the plan's money only with the owner's consent; the
+ * answer is never kept as a replay (RA-BE-159); the daily limit holds; a
+ * busy model gives the question back; and the usage rows leave with the
+ * account.
  */
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
@@ -175,14 +179,24 @@ async function run() {
     );
     const familyStatus = await request('GET', path, null, family.token);
     check('a relative is told the assistant is not theirs', familyStatus.status === 200 && familyStatus.body?.allowed === false);
-    const familyAsk = await request('POST', `${path}/questions`, { kind: 'PLAN', consent: true }, family.token);
+    const familyAsk = await request('POST', `${path}/questions`, { kind: 'PLAN' }, family.token);
     check('a relative cannot ask', familyAsk.status === 403 && familyAsk.body?.code === 'ASSISTANT_OWNER_OR_PARTNER_ONLY');
-    const noConsent = await request('POST', `${path}/questions`, { kind: 'PLAN', consent: false }, owner.token);
-    check('nothing is sent without consent', noConsent.status === 400 && noConsent.body?.code === 'ASSISTANT_CONSENT_REQUIRED' && modelCalls.length === 0);
-    const badKind = await request('POST', `${path}/questions`, { kind: 'WEATHER', consent: true }, owner.token);
+    const familyConsent = await request('PUT', `${path}/consent`, null, family.token);
+    check('a relative cannot record consent', familyConsent.status === 403 && familyConsent.body?.code === 'ASSISTANT_OWNER_OR_PARTNER_ONLY');
+    const noConsent = await request('POST', `${path}/questions`, { kind: 'PLAN' }, owner.token);
+    check('nothing is sent without a stored consent', noConsent.status === 400 && noConsent.body?.code === 'ASSISTANT_CONSENT_REQUIRED' && modelCalls.length === 0);
+    const flag = await request('POST', `${path}/questions`, { kind: 'PLAN', consent: true }, owner.token);
+    check('a consent flag in the request is no consent', flag.status === 400 && modelCalls.length === 0);
+    const agreed = await request('PUT', `${path}/consent`, null, owner.token);
+    check('the owner\'s consent is stored with its date', agreed.status === 200 && Number.isFinite(Date.parse(agreed.body?.consentedAt)));
+    const again = await request('PUT', `${path}/consent`, null, owner.token);
+    check('a repeated agreement keeps the first date', again.status === 200 && again.body?.consentedAt === agreed.body?.consentedAt);
+    const agreedStatus = await request('GET', path, null, owner.token);
+    check('the status carries the stored consent', agreedStatus.body?.consentedAt === agreed.body?.consentedAt);
+    const badKind = await request('POST', `${path}/questions`, { kind: 'WEATHER' }, owner.token);
     check('an unknown request kind is refused', badKind.status === 400 && modelCalls.length === 0);
 
-    const first = await request('POST', `${path}/questions`, { kind: 'BUDGET_SPLIT', consent: true }, owner.token);
+    const first = await request('POST', `${path}/questions`, { kind: 'BUDGET_SPLIT' }, owner.token);
     check('the owner gets an answer', first.status === 200 && first.body?.answer === 'خطة تجريبية من المساعد' && first.body?.declined === false);
     check('the answer counts one question', first.body?.remainingToday === 1);
     const call = modelCalls[0];
@@ -190,28 +204,48 @@ async function run() {
     check('the safety fallback is on', String(call?.headers?.['anthropic-beta'] ?? '').includes('server-side-fallback-2026-07-01') && call?.body?.fallbacks === 'default');
     check('the rules are sent as the system prompt', JSON.stringify(call?.body?.system ?? '').includes('لا تخترع أسعارًا'));
     const ownerText = lastUserText();
-    check('the model sees the owner\'s plan', ownerText.includes('بند Hall') && ownerText.includes('Book the hall') && ownerText.includes('المدينة: صنعاء'));
+    check('the model sees the owner\'s plan', ownerText.includes('بند Hall') && ownerText.includes('المدينة: صنعاء') && ownerText.includes('المهام:\n- الكل '));
+    check('the model never sees the plan\'s title or a task\'s title', !ownerText.includes('Assistant plan') && !ownerText.includes('Book the hall'));
     check('the model never sees the partner\'s private cost or task', !ownerText.includes('Bride secret gift') && !ownerText.includes('Bride secret errand'));
     check('the owner\'s figures leave the private cost out', ownerText.includes('الملتزم به من ميزانية العرس: 3000.00'));
 
-    const second = await request('POST', `${path}/questions`, { kind: 'QUESTION', question: 'كم أخصص للتصوير؟', consent: true }, owner.token);
+    const questionId = randomUUID();
+    const second = await request('POST', `${path}/questions`, { kind: 'QUESTION', question: 'كم أخصص للتصوير؟' }, owner.token, questionId);
     check('a second question is answered', second.status === 200 && second.body?.remainingToday === 0);
     check('the user\'s own question reaches the model', lastUserText().includes('كم أخصص للتصوير؟'));
     const callsBefore = modelCalls.length;
-    const third = await request('POST', `${path}/questions`, { kind: 'PLAN', consent: true }, owner.token);
-    check('the daily limit holds', third.status === 429 && third.body?.code === 'ASSISTANT_DAILY_LIMIT' && modelCalls.length === callsBefore);
+    // RA-BE-159: the same request id again. A kept answer would replay as
+    // 200; the assistant keeps none, so it runs again and meets the limit.
+    const third = await request('POST', `${path}/questions`, { kind: 'QUESTION', question: 'كم أخصص للتصوير؟' }, owner.token, questionId);
+    check(
+      'the daily limit holds, and the answer was never kept as a replay',
+      third.status === 429 && third.body?.code === 'ASSISTANT_DAILY_LIMIT' && modelCalls.length === callsBefore,
+    );
 
-    const brideAsk = await request('POST', `${path}/questions`, { kind: 'FORGOTTEN', consent: true }, bride.token);
-    check('the partner gets an answer', brideAsk.status === 200 && brideAsk.body?.remainingToday === 1);
-    const brideText = lastUserText();
-    check('the partner\'s own private cost and task reach her answer', brideText.includes('الملتزم به من ميزانية العرس: 3700.00') && brideText.includes('Bride secret errand'));
+    const brideNoConsent = await request('POST', `${path}/questions`, { kind: 'FORGOTTEN' }, bride.token);
+    check('the partner asks only with her own stored consent', brideNoConsent.status === 400 && brideNoConsent.body?.code === 'ASSISTANT_CONSENT_REQUIRED');
+    await request('PUT', `${path}/consent`, null, bride.token);
+    const withdrawn = await request('DELETE', `${path}/consent`, null, owner.token);
+    check('the owner takes his consent back', withdrawn.status === 200 && withdrawn.body?.consentedAt === null);
+    const brideAlone = await request('POST', `${path}/questions`, { kind: 'FORGOTTEN' }, bride.token);
+    const brideAloneText = lastUserText();
+    check(
+      'without the owner\'s consent the partner\'s question carries no money figures',
+      brideAlone.status === 200 && !brideAloneText.includes('الميزانية الإجمالية') && brideAloneText.includes('صاحب الخطة ما وافق يرسل أرقام المال'),
+    );
+    await request('PUT', `${path}/consent`, null, owner.token);
 
     overloaded = true;
-    const busy = await request('POST', `${path}/questions`, { kind: 'CHEAPER', consent: true }, bride.token);
+    const busy = await request('POST', `${path}/questions`, { kind: 'CHEAPER' }, bride.token);
     overloaded = false;
     check('a busy model is said plainly', busy.status === 503 && busy.body?.code === 'ASSISTANT_BUSY');
     const brideStatus = await request('GET', path, null, bride.token);
     check('the busy question is given back', brideStatus.body?.remainingToday === 1);
+
+    const brideAsk = await request('POST', `${path}/questions`, { kind: 'FORGOTTEN' }, bride.token);
+    check('the partner gets an answer', brideAsk.status === 200 && brideAsk.body?.remainingToday === 0);
+    const brideText = lastUserText();
+    check('the partner\'s own private cost reaches her answer, and no task title', brideText.includes('الملتزم به من ميزانية العرس: 3700.00') && !brideText.includes('Bride secret errand'));
 
     // RA-ST-04 (D95): «بلّغ عن الإجابة». Whoever may ask may report; the
     // report reaches the team without asking the model again.

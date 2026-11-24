@@ -12,15 +12,15 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
-import '../../auth/auth_api.dart' show AuthController;
 import '../../wedding_plans/wedding_plans_api.dart' show AssistantConsent;
 import '../data/settings_api.dart';
 import '../widgets/account_data_download.dart';
 
 /// w40 «الخصوصية» (D63): what leaves the phone and what others read. Crash
 /// reports are this phone's choice; the assistant's consent is the one it
-/// asks before its first question (shown only where the assistant answers
-/// the reader); the name on reviews is kept on the server. Then the copy of
+/// asks before its first question, kept on the server (RA-BE-161; shown
+/// only where the assistant answers the reader); the name on reviews is
+/// kept on the server. Then the copy of
 /// the account's data and the way to w05. «الأجهزة» (w04) is not built.
 class PrivacyScreen extends StatefulWidget {
   const PrivacyScreen({this.downloadOpener, super.key});
@@ -38,6 +38,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   bool _reviewSaving = false;
   bool? _assistantConsent;
   int? _assistantDailyLimit;
+  String? _assistantPlanId;
   bool _downloading = false;
 
   @override
@@ -48,7 +49,6 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
 
   Future<void> _load() async {
     final api = context.read<SettingsApi>();
-    final userId = context.read<AuthController>().user?.id;
     final planId = context
         .read<AccountContextController?>()
         ?.selectedContext
@@ -68,11 +68,15 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         AarastToast.showError(context, error.message);
       }
     }
-    final consent = await AssistantConsent.isGiven(userId);
+    // RA-BE-161: the consent is the server's record, read with the
+    // assistant's daily limit.
+    bool? consent;
     int? limit;
     if (client != null && planId != null && planId.isNotEmpty) {
       try {
-        limit = await AssistantConsent.dailyLimit(client, planId);
+        final assistant = await AssistantConsent.read(client, planId);
+        consent = assistant == null ? null : assistant.consentedAt != null;
+        limit = assistant?.dailyLimit;
       } on ApiException {
         // Without the network the assistant row waits; nothing else depends on it.
         limit = null;
@@ -82,6 +86,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     setState(() {
       _assistantConsent = consent;
       _assistantDailyLimit = limit;
+      _assistantPlanId = planId;
     });
   }
 
@@ -100,9 +105,18 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   }
 
   Future<void> _setAssistant(bool value) async {
-    final userId = context.read<AuthController>().user?.id;
-    await AssistantConsent.set(userId, value);
-    if (mounted) setState(() => _assistantConsent = value);
+    final planId = _assistantPlanId;
+    if (planId == null) return;
+    try {
+      final held = await AssistantConsent.set(
+        context.read<ApiClient>(),
+        planId,
+        value,
+      );
+      if (mounted) setState(() => _assistantConsent = held);
+    } on ApiException catch (error) {
+      if (mounted) AarastToast.showError(context, error.message);
+    }
   }
 
   Future<void> _download() async {

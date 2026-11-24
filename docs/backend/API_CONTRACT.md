@@ -1733,25 +1733,42 @@ manage tasks. Read-only plan members receive `null` for that field.
 V1 checklist 4.12. Protected routes:
 
 - `GET /api/v1/wedding-plans/:weddingPlanId/assistant` returns
-  `{ enabled, allowed, dailyLimit, remainingToday }`. `enabled` is false until
+  `{ enabled, allowed, dailyLimit, remainingToday, consentedAt }`. `enabled` is false until
   the server has `ANTHROPIC_API_KEY` and a priced `AARAST_ASSISTANT_MODEL`;
-  `allowed` is true only for the plan's owner and partner (V1 checklist 4.10).
+  `allowed` is true only for the plan's owner and partner (V1 checklist 4.10);
+  `consentedAt` is the reader's stored consent (ISO time) or `null`.
+- `PUT /api/v1/wedding-plans/:weddingPlanId/assistant/consent` records the
+  reader's consent (RA-BE-161) and returns `200 { consentedAt }`; a repeated
+  agreement keeps the first date. Owner and partner only
+  (`403 ASSISTANT_OWNER_OR_PARTNER_ONLY`). The record is the account's
+  (`User.assistantConsentAt`), not the plan's.
+- `DELETE /api/v1/wedding-plans/:weddingPlanId/assistant/consent` takes it back
+  (w40) and returns `200 { consentedAt: null }`.
 - `POST /api/v1/wedding-plans/:weddingPlanId/assistant/questions` with
-  `{ kind, question?, consent }` returns `200 { kind, answer, declined,
+  `{ kind, question? }` returns `200 { kind, answer, declined,
   marketDataAvailable, remainingToday }`. `kind` is one of `PLAN`,
   `BUDGET_SPLIT`, `COMPARE_QUOTES`, `CHEAPER`, `FORGOTTEN`, `NEGOTIATION`,
   `QUESTION` (`question`, at most 500 characters, is required for `QUESTION`).
+  The request carries no consent flag: the asker's stored consent is read.
+  The route is `@SkipIdempotencyStore()` (RA-BE-159): an `X-Client-Request-Id`
+  reserves nothing and the answer is never kept as a replay row.
 
-The server sends the model the plan as the asker sees it: plan basics, guest
-and task counts, open task titles, budget categories with allocated,
-committed and paid sums only with money permission (never another account's
-private costs or tasks), received quote offers only with provider
-permission, and market price ranges (three or more providers) in the plan's
-own city only. Names, phone numbers and notes of guests and contacts are not
-sent. The rules forbid inventing prices and treat the plan data as data, not
-instructions. Nothing asked or answered is stored; only counts and cost.
+The server sends the model only what the consent names (RA-BE-160, Q-41,
+D124): the plan's city and wedding date, the guest and task counts, the
+budget with its items (name, allocation, agreed and paid sums) and the
+mahr's total only with money permission (never another account's private
+costs), the received offers (category, price with money permission, status)
+only with provider permission, and market price ranges (three or more
+providers) in the plan's own city only. It never sends a person's name (who
+paid, the family, guests, members), the plan's title, task titles, loans or
+advances, what the owner holds, or the mahr beyond its total. A partner's
+question carries the plan's money (the budget and the offers' prices) only
+when the plan's owner has stored consent too; without it the request goes
+without money figures and the model is told so. The rules forbid inventing
+prices and treat the plan data as data, not instructions. Nothing asked or
+answered is stored; only counts, cost, and the consent's date.
 
-Refusals: `400 ASSISTANT_CONSENT_REQUIRED` (`consent` is not `true`),
+Refusals: `400 ASSISTANT_CONSENT_REQUIRED` (the asker has no stored consent),
 `403 ASSISTANT_OWNER_OR_PARTNER_ONLY`, `429 ASSISTANT_DAILY_LIMIT`
 (`AARAST_ASSISTANT_DAILY_LIMIT`, default 10 a day), `503 ASSISTANT_DISABLED`,
 `503 ASSISTANT_BUDGET_EXHAUSTED` (the month's cost reached
@@ -4001,6 +4018,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/plan-view` | `dashboard.getPlanReadView` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/assistant` | `assistant.status` | 🔒 |
+| DELETE | `/api/v1/wedding-plans/:weddingPlanId/assistant/consent` | `assistant.withdrawConsent` | 🔒 |
+| PUT | `/api/v1/wedding-plans/:weddingPlanId/assistant/consent` | `assistant.recordConsent` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/questions` | `assistant.ask` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/reports` | `assistant.report` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |

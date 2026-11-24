@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Observable, defer, firstValueFrom, from, of } from "rxjs";
+import { WeddingPlanAssistantController } from "../src/dashboard/assistant/assistant.controller";
 import {
   IdempotencyInterceptor,
   requestFingerprint,
@@ -127,6 +128,10 @@ class FakeIdempotencyStore {
   };
 }
 
+/** A route with no idempotency metadata of its own. */
+function unmarkedRouteHandler(): void {}
+class UnmarkedController {}
+
 const context = (
   userId: string,
   key: string | undefined,
@@ -137,9 +142,13 @@ const context = (
     originalUrl?: string;
     baseUrl?: string;
     response?: TestResponse;
+    /** The route's handler, whose metadata the interceptor reads. */
+    routeHandler?: (...args: never[]) => unknown;
   } = {},
 ): ExecutionContext =>
   ({
+    getHandler: () => options.routeHandler ?? unmarkedRouteHandler,
+    getClass: () => UnmarkedController,
     switchToHttp: () => ({
       getRequest: () => ({
         method,
@@ -368,6 +377,43 @@ test("one-time invite bearer responses bypass replay storage and are never persi
     assert.notDeepEqual(first, second);
     assert.equal(store.row("u1", route.key), undefined);
   }
+});
+
+// RA-BE-159: the phone sends `X-Client-Request-Id` with every request, and
+// the assistant promises to keep no question or answer. Its generated text
+// (money figures in it) must never become a replay row.
+test("RA-BE-159: the assistant's generated answer is never stored for replay", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  let executions = 0;
+  const next = handler(() => {
+    executions++;
+    return of({
+      kind: "BUDGET_SPLIT",
+      answer: `وزّع 3000000 للقاعة (${executions})`,
+      declined: false,
+      marketDataAvailable: false,
+      remainingToday: 5 - executions,
+    });
+  });
+  const askContext = () =>
+    context("u1", "req-assistant-ask", "POST", {
+      body: { kind: "BUDGET_SPLIT" },
+      routePath: "/api/v1/wedding-plans/:weddingPlanId/assistant/questions",
+      originalUrl: "/api/v1/wedding-plans/plan-1/assistant/questions",
+      routeHandler: WeddingPlanAssistantController.prototype.ask,
+    });
+
+  const first = await firstValueFrom(interceptor.intercept(askContext(), next));
+  const second = await firstValueFrom(interceptor.intercept(askContext(), next));
+
+  assert.equal(executions, 2, "each identical request asks again");
+  assert.notDeepEqual(first, second);
+  assert.equal(
+    store.row("u1", "req-assistant-ask"),
+    undefined,
+    "no reservation and no body is persisted",
+  );
 });
 
 test("expired signed URLs in durable mutation replays are never returned stale", async () => {
@@ -728,6 +774,8 @@ test("idempotency rows store route templates instead of invite bearer tokens", a
     },
   } as any);
   const inviteContext = {
+    getHandler: () => unmarkedRouteHandler,
+    getClass: () => UnmarkedController,
     switchToHttp: () => ({
       getRequest: () => ({
         method: "POST",

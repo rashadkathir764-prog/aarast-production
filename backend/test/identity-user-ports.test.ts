@@ -8,6 +8,7 @@ import {
   ACTIVE_PLAN_IMPLEMENTATION,
   ASSISTANT_QUOTA_IMPLEMENTATION,
   ASSISTANT_REPORT_IMPLEMENTATION,
+  ASSISTANT_CONSENT_IMPLEMENTATION,
   IDENTITY_ADMIN_IMPLEMENTATION,
   IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
   IdentityUserInternalModule,
@@ -21,6 +22,9 @@ import { ASSISTANT_QUOTA_PORT } from '../src/modules/identity/public/assistant-q
 import { AssistantReportService } from '../src/modules/identity/infrastructure/assistant-report.service';
 import { AssistantReportPublicModule } from '../src/modules/identity/public/assistant-report-public.module';
 import { ASSISTANT_REPORT_PORT } from '../src/modules/identity/public/assistant-report.port';
+import { AssistantConsentService } from '../src/modules/identity/infrastructure/assistant-consent.service';
+import { AssistantConsentPublicModule } from '../src/modules/identity/public/assistant-consent-public.module';
+import { ASSISTANT_CONSENT_PORT } from '../src/modules/identity/public/assistant-consent.port';
 import { IdentityRealtimeSessionService } from '../src/modules/identity/infrastructure/identity-realtime-session.service';
 import { IdentityUserPortService } from '../src/modules/identity/infrastructure/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
@@ -322,12 +326,18 @@ test('the identity user public modules expose only their port tokens bound to th
     { provide: ASSISTANT_REPORT_PORT, useExisting: ASSISTANT_REPORT_IMPLEMENTATION },
   ]);
   assert.deepEqual(metadata(AssistantReportPublicModule, MODULE_METADATA.EXPORTS), [ASSISTANT_REPORT_PORT]);
+  // RA-BE-161 (Q-41): the account's stored consent to the assistant.
+  assert.deepEqual(metadata(AssistantConsentPublicModule, MODULE_METADATA.PROVIDERS), [
+    { provide: ASSISTANT_CONSENT_PORT, useExisting: ASSISTANT_CONSENT_IMPLEMENTATION },
+  ]);
+  assert.deepEqual(metadata(AssistantConsentPublicModule, MODULE_METADATA.EXPORTS), [ASSISTANT_CONSENT_PORT]);
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
     IdentityRealtimeSessionService,
     IdentityAdminService,
     AssistantQuotaService,
     AssistantReportService,
+    AssistantConsentService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
@@ -336,5 +346,6 @@ test('the identity user public modules expose only their port tokens bound to th
     { provide: IDENTITY_ADMIN_IMPLEMENTATION, useExisting: IdentityAdminService },
     { provide: ASSISTANT_QUOTA_IMPLEMENTATION, useExisting: AssistantQuotaService },
     { provide: ASSISTANT_REPORT_IMPLEMENTATION, useExisting: AssistantReportService },
+    { provide: ASSISTANT_CONSENT_IMPLEMENTATION, useExisting: AssistantConsentService },
   ]);
 });

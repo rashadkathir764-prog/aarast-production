@@ -6,7 +6,8 @@ import '../models/plan_assistant.dart';
 /// The planning assistant (V1 checklist 4.12). Online only: an answer needs
 /// the model, so no question is queued and no answer is kept. The phone
 /// keeps one thing, with [offline]: whether the assistant is open to this
-/// plan's reader, so the home draws its door at once.
+/// plan's reader, so the home draws its door at once. The consent is the
+/// server's record (RA-BE-161), never a flag the question carries.
 class PlanAssistantApi {
   PlanAssistantApi(this._client, {OfflineSyncService? offline})
     : _reads = OfflineReads(_client, offline);
@@ -20,6 +21,34 @@ class PlanAssistantApi {
       'plan-assistant-status:$weddingPlanId';
 
   static const _reportReachesTeam = 'البلاغ يوصل فريق اعّرست، فيحتاج النت.';
+  static const _consentIsKept = 'الموافقة تنحفظ عند اعّرست، فتحتاج النت.';
+
+  static String _consentPath(String weddingPlanId) =>
+      '/api/v1/wedding-plans/$weddingPlanId/assistant/consent';
+
+  /// RA-BE-161: w36 «شغّل المساعد» records the reader's consent on the
+  /// server, with its date (a repeated agreement keeps the first).
+  Future<DateTime> recordConsent(String weddingPlanId) async {
+    final json = await _writes.serverOnly(
+      reason: _consentIsKept,
+      method: 'PUT',
+      path: _consentPath(weddingPlanId),
+    );
+    final at = DateTime.tryParse(json['consentedAt']?.toString() ?? '');
+    if (at == null) {
+      throw const ApiException('ما انحفظت الموافقة. جرّب مرة ثانية.');
+    }
+    return at;
+  }
+
+  /// RA-BE-161, w40: takes the consent back on the server.
+  Future<void> withdrawConsent(String weddingPlanId) async {
+    await _writes.serverOnly(
+      reason: _consentIsKept,
+      method: 'DELETE',
+      path: _consentPath(weddingPlanId),
+    );
+  }
 
   /// The longest answer a report carries (the server's bound); a longer
   /// answer is cut to its start.
@@ -81,8 +110,6 @@ class PlanAssistantApi {
       {
         'kind': kind.apiValue,
         if (text != null && text.isNotEmpty) 'question': text,
-        // The screen asks for consent before the first question.
-        'consent': true,
       },
       receiveTimeout: answerTimeout,
     );

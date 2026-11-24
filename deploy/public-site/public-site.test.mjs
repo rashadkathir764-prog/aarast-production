@@ -247,6 +247,15 @@ assert.match(privacyHtml, /Claude من شركة Anthropic/);
 assert.match(privacyHtml, /إذا بلّغت عن إجابة، نحفظ تلك الإجابة مع سؤالك وسبب البلاغ/);
 assert.match(privacyHtml, /لا نرسل أسماء ضيوفك ولا أرقام هواتف/);
 assert.match(privacyHtml, /لا نحفظ أسئلتك ولا الإجابات/);
+// RA-BE-160, RA-BE-161 (Q-41, D124): exactly what is sent, the consent's
+// stored date, the owner's consent for a partner's money, and Anthropic's
+// own retention.
+assert.match(privacyHtml, /المدينة وموعد العرس، والميزانية وبنودها بمبالغها المتفق عليها والمدفوعة، والمهر بمبلغه الإجمالي/);
+assert.match(privacyHtml, /ولا أي اسم آخر:\s+لا أهلك ولا المشاركين، ولا اسم الخطة ولا عناوين المهام، ولا السلف والقروض/);
+assert.match(privacyHtml, /لا تُرسل أرقام مال الخطة مع سؤال الشريك إلا إذا وافق صاحب الخطة/);
+assert.match(privacyHtml, /نحفظ تاريخ موافقتك فقط/);
+assert.match(privacyHtml, /وتحتفظ Anthropic بما يصلها وفق سياسة خدمتها للمطورين \(API\)/);
+assert.doesNotMatch(privacyHtml, /عروض الأسعار التي وصلتك،\s*ونطاقات/);
 
 // V1 checklist 6.4: the download page draws the QR code of its own origin
 // with the vendored qrcode-generator 1.4.4 (MIT, npm integrity

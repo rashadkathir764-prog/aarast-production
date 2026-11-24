@@ -2,6 +2,8 @@
 
 Snapshot date: 2026-08-11. Updated 2026-11-07: the planning assistant and
 its answer reports (RA-ST-04, D95), and review reports (RA-ST-05, D94).
+Updated 2026-11-24: what the assistant sends and stores (RA-BE-159..161,
+Q-41, D124).
 
 Fill the Play Console **Data safety** section with these answers. They
 reflect what the code actually does (verified against the schema, the
@@ -38,7 +40,7 @@ HTTPS in the release environment.
 | Photos | Photos | Yes | No | App functionality (profile/provider media) | Optional |
 | App activity | Other (wedding plan content) | Yes | No | App functionality | Required |
 | App activity | Other user-generated content (reviews of providers, chat messages, reports of a review, a chat or an assistant answer) | Yes | No | App functionality, moderation | Optional |
-| App activity | Other actions (questions to the planning assistant) | Yes (count only; a reported answer is kept) | No | App functionality (planning assistant) | Optional — explicit consent before the first question |
+| App activity | Other actions (questions to the planning assistant) | Yes (count only, and the date of the user's consent; a reported answer is kept) | No | App functionality (planning assistant) | Optional — explicit consent before the first question, stored with its date and withdrawable in «الخصوصية» |
 | Device or other IDs | Firebase Installation ID (FID) | Yes | No | App functionality (Android Push delivery and account/device binding) | Required in the configured Android Production build; account binding occurs only after notification authorization |
 | App info & performance | Crash logs | Yes | No | Diagnostics | Required in the Production store build |
 | App info & performance | Diagnostics (request ids and sampled performance traces) | Yes | No | Diagnostics | Required in the Production store build |
@@ -68,13 +70,22 @@ Notes for the reviewer form:
   delivery. Aarast does not persist the FCM token in its Backend and does not
   use either identifier for advertising or cross-app tracking.
 - **Planning assistant (AI-generated content)**: after the user's explicit
-  in-app consent, a summary of the plan as that user sees it (city, date,
-  counts, budget items and amounts only with money permission, received
-  quotes, market ranges; never guest names or phone numbers, never another
-  member's private items) is processed by Anthropic (Claude) as a service
-  provider on Aarast's behalf, not for its own use and not for model
-  training; under Play's definitions this is not "Sharing". Questions and
-  answers are not stored, only their daily count. Every answer has «بلّغ عن
+  in-app consent, stored on the server with its date (`User.assistantConsentAt`)
+  and withdrawable in «الخصوصية», the question and a summary of the plan as
+  that user sees it are processed by Anthropic (Claude) as a service provider
+  on Aarast's behalf, not for its own use and not for model training; under
+  Play's definitions this is not "Sharing". The summary holds only: the city
+  and wedding date; the budget, its items (name, allocation, agreed and paid
+  sums) and the mahr's total, only with money permission; received offers
+  (category, price with money permission, status); guest and task counts;
+  and the city's market ranges. It never holds a person's name (guests,
+  family contributors, members), phone numbers, the plan's title, task
+  titles, loans or advances, the owner's cash, the mahr beyond its total, or
+  another member's private items. A partner's question carries the plan's
+  money only when the plan's owner has stored consent too. Anthropic retains
+  what it receives under its API data policy. Questions and answers are not
+  stored by Aarast (not even as a replay of the request id), only their
+  daily count and the consent's date. Every answer has «بلّغ عن
   الإجابة»: the reported answer, its question and the reason are stored for
   the moderation team («البلاغات» → «إجابات المساعد» in the admin panel)
   and deleted with the account. This is the in-app reporting Play's

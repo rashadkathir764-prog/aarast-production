@@ -14,43 +14,22 @@ export const ASSISTANT_KINDS = [
 
 export type AssistantKind = (typeof ASSISTANT_KINDS)[number];
 
-export interface AssistantCategoryFacts {
+/** A budget item as the consent names it: its name, allocation, agreements and payments. */
+export interface AssistantItemFacts {
   name: string;
   allocated: string | null;
   committed: string;
   paid: string;
-  /** D109: the estimate the rules use (the owner's, else the allocation). */
-  estimate?: string | null;
-  /** D105: agreements plus the estimate not settled yet. */
-  expected?: string;
 }
 
-/** D103: the owner's money against what is on him, on its days. */
-export interface AssistantCoverageFacts {
-  verdict: 'NOTHING_DUE' | 'COVERED' | 'COVERED_IF_PLEDGES' | 'SHORT';
-  cash: string;
-  /** Everything on him: his share, the mahr with it, his loans. */
-  onHim: string;
-  /** The last dated line on him. */
-  until: string | null;
-  /** The first day it falls short, and by how much (SHORT; COVERED_IF_PLEDGES: without the promises). */
-  short: { amount: string; date: string | null; title: string } | null;
-  /** What is needed beyond his money for everything on its day (SHORT). */
-  needed: string | null;
-  /** Promised money left out: no day, or its day passed. */
-  ignoredPledges: number;
-}
-
+/** RA-BE-160: an offer is its category, its price and its status; never the provider's name. */
 export interface AssistantQuoteFacts {
-  provider: string;
-  service: string | null;
   category: string | null;
   amount: string | null;
-  /** RA-BE-103: the reader may not see money, so the price is not given. */
+  /** RA-BE-103, RA-BE-161: the price is money the reader may not send. */
   priceHidden: boolean;
   currency: string;
   status: string;
-  validUntil: string | null;
 }
 
 export interface AssistantMarketFacts {
@@ -62,59 +41,33 @@ export interface AssistantMarketFacts {
   max: string;
 }
 
-/** What the reader may see of the plan; null sections are hidden from them. */
+/**
+ * RA-BE-160 (Q-41, D124): what the consent names, and nothing else: the
+ * city, the wedding date, the budget and its items, the offers, and the
+ * guest and task counts. Never a person's name (who paid, the family,
+ * guests, members), the plan's title, a task's title, a loan or an advance,
+ * or the mahr beyond its total.
+ */
 export interface AssistantPlanFacts {
-  title: string;
   city: string | null;
   weddingDate: string | null;
   daysRemaining: number | null;
-  persona: 'GROOM' | 'BRIDE' | 'HELPER' | null;
   currency: string;
-  priorities: string[];
-  /**
-   * The money as the app shows it (D59): the wedding's budget and what is
-   * committed and paid against it (the wedding's items only), whose money
-   * paid, and the mahr on its own line.
-   */
+  /** The money as the app shows it (D59): the wedding's budget, its items, and the mahr's total. */
   money: {
     budgetTotal: string | null;
     /** D114: the plan counts the groom's mahr in its budget. */
     mahrInsideBudget: boolean;
     committedTotal: string;
     paidTotal: string;
-    /** Every agreement's payments (the mahr's included) out of the owner's own money. */
-    paidByOwner: string;
-    /** What others paid for the owner, by payer. */
-    paidByOthers: Array<{ payer: string; paid: string }>;
-    mahr: {
-      /** PAYS: the groom's agreement with the bride's family; RECEIVES: the bride's mahr. */
-      side: 'PAYS' | 'RECEIVES';
-      total: string;
-      settled: string;
-      remaining: string;
-      nextDueAt: string | null;
-    } | null;
-    categories: AssistantCategoryFacts[];
-    /** D105: the wedding items' expected cost; not final while `unknownItems` > 0. */
-    expected?: {
-      wedding: string;
-      estimateLeft: string;
-      unknownItems: number;
-      /** The budget less the expected cost; negative: over it by that much. */
-      budgetLeft: string | null;
-    };
-    /** D102: left to pay on the owner (the mahr with it), and on others. */
-    outstanding?: { owner: string; others: string };
-    /** D103: the owner's only. */
-    coverage?: AssistantCoverageFacts | null;
+    /** PAYS: the groom's agreement with the bride's family; RECEIVES: the bride's mahr. One total only. */
+    mahr: { side: 'PAYS' | 'RECEIVES'; total: string } | null;
+    items: AssistantItemFacts[];
   } | null;
+  /** Why `money` is null: the reader may not see money, or the owner has not agreed to send it (RA-BE-161). */
+  moneyWithheld: 'NO_PERMISSION' | 'OWNER_NO_CONSENT' | null;
   guests: { total: number; confirmed: number; pending: number; declined: number };
-  tasks: {
-    total: number;
-    completed: number;
-    overdue: number;
-    open: Array<{ title: string; dueDate: string | null }>;
-  };
+  tasks: { total: number; completed: number; overdue: number };
   quotes: AssistantQuoteFacts[] | null;
   /** Market ranges in the plan's own city; empty when there are none yet. */
   market: AssistantMarketFacts[];
@@ -136,16 +89,14 @@ export const ASSISTANT_SYSTEM_PROMPT = [
 ].join('\n');
 
 const KIND_INSTRUCTIONS: Record<AssistantKind, string> = {
-  PLAN: 'ضع خطة عمل مرتبة زمنيًا حتى يوم العرس: ما يجب حسمه الآن، ثم خلال الأشهر القادمة، ثم في الأسبوع الأخير. اعتمد على المهام والبنود الموجودة، ونبّه للمتأخر منها.',
+  PLAN: 'ضع خطة عمل مرتبة زمنيًا حتى يوم العرس: ما يجب حسمه الآن، ثم خلال الأشهر القادمة، ثم في الأسبوع الأخير. اعتمد على البنود الموجودة وعدد المهام، ونبّه إن كان منها متأخر.',
   BUDGET_SPLIT: 'اقترح توزيعًا لميزانية العرس على البنود بالنسب وبالمبالغ بعملة الخطة. ابدأ من البنود الموجودة ومن المخصص لكل بند، واستند إلى نطاقات أسعار السوق إن وجدت. إذا لم تكن هناك ميزانية إجمالية فاشرح كيف يحددها أولًا.',
-  COMPARE_QUOTES: 'قارن عروض الأسعار التي وصلت للخطة: السعر، وما يشمله العرض، وصلاحيته، وموقعه من نطاق أسعار السوق إن وجد. إذا لم تصل عروض بعد فقل ذلك واشرح كيف يطلبها من المزودين في التطبيق.',
+  COMPARE_QUOTES: 'قارن عروض الأسعار التي وصلت للخطة: فئتها وسعرها وحالتها، وموقع السعر من نطاق أسعار السوق إن وجد. إذا لم تصل عروض بعد فقل ذلك واشرح كيف يطلبها من المزودين في التطبيق.',
   CHEAPER: 'اقترح طرقًا عملية لتقليل التكاليف في أكبر البنود دون أن يخسر العرس قيمته، مستندًا إلى المبالغ المسجلة ونطاقات السوق إن وجدت.',
-  FORGOTTEN: 'ما الذي قد يكون نُسي؟ قارن بنود الميزانية والمهام الموجودة بما يحتاجه العرس اليمني عادة، واذكر الناقص فقط مرتبًا حسب الأهمية.',
+  FORGOTTEN: 'ما الذي قد يكون نُسي؟ قارن بنود الميزانية الموجودة بما يحتاجه العرس اليمني عادة، واذكر الناقص فقط مرتبًا حسب الأهمية.',
   NEGOTIATION: 'اكتب رسالة تفاوض قصيرة ومهذبة يرسلها المستخدم للمزود عبر واتساب لطلب سعر أفضل أو إضافة خدمة، مستندًا إلى عرض السعر ونطاق السوق إن وجدا. اكتب الرسالة نفسها جاهزة للنسخ، ثم سطرين من النصائح.',
   QUESTION: 'أجب عن سؤال المستخدم عن تخطيط عرسه.',
 };
-
-const PERSONA_LABELS = { GROOM: 'العريس', BRIDE: 'العروسة', HELPER: 'مساعد من الأهل' } as const;
 
 /** Keeps data from closing the data block or opening an instruction tag. */
 function data(text: string): string {
@@ -155,8 +106,6 @@ function data(text: string): string {
 /** The plan as the model reads it: one fact per line, hidden sections said so. */
 export function renderPlanData(facts: AssistantPlanFacts): string {
   const lines: string[] = [];
-  lines.push(`الخطة: ${data(facts.title)}`);
-  if (facts.persona) lines.push(`المستخدم: ${PERSONA_LABELS[facts.persona]}`);
   lines.push(`المدينة: ${facts.city ? data(facts.city) : 'غير محددة'}`);
   lines.push(
     facts.weddingDate
@@ -164,9 +113,6 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
       : 'موعد العرس: غير محدد',
   );
   lines.push(`عملة الخطة: ${facts.currency}`);
-  if (facts.priorities.length > 0) {
-    lines.push(`أولويات المستخدم: ${facts.priorities.map(data).join('، ')}`);
-  }
 
   if (facts.money) {
     const money = facts.money;
@@ -184,47 +130,23 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
         ? `- الملتزم به من الميزانية (والمهر منه): ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`
         : `- الملتزم به من ميزانية العرس: ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`,
     );
-    lines.push(`- دفعه صاحب الخطة من فلوسه (كل الاتفاقات): ${money.paidByOwner}`);
-    for (const other of money.paidByOthers) {
-      lines.push(`- دفع عنه ${data(other.payer)}: ${other.paid}`);
-    }
     if (money.mahr) {
-      const mahr = money.mahr;
-      const due = mahr.nextDueAt ? `، موعد الباقي ${mahr.nextDueAt}` : '';
       lines.push(
-        mahr.side === 'PAYS'
-          ? `- المهر (اتفاق العريس مع أهل العروسة، ${mahrInside ? 'محسوب من الميزانية' : 'خارج ميزانية العرس'}): ${mahr.total}، سلّم منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`
-          : `- المهر (يصل العروسة من العريس، خارج ميزانية العرس): ${mahr.total}، وصل منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`,
+        money.mahr.side === 'PAYS'
+          ? `- المهر (اتفاق العريس مع أهل العروسة، ${mahrInside ? 'محسوب من الميزانية' : 'خارج ميزانية العرس'}): ${money.mahr.total}`
+          : `- المهر (يصل العروسة من العريس، خارج ميزانية العرس): ${money.mahr.total}`,
       );
     }
-    if (money.expected) {
-      lines.push(`- ${expectedLine(money.expected, mahrInside)}`);
-      if (money.expected.unknownItems > 0) {
-        lines.push(
-          `- بنود بلا تقدير ولا اتفاق: ${money.expected.unknownItems}، فالتكلفة المسجلة ليست نهائية.`,
-        );
-      }
-    }
-    if (money.outstanding) {
-      lines.push(
-        `- الباقي على صاحب الخطة (مع المهر): ${money.outstanding.owner}، وعلى غيره (الأهل والطرف الثاني): ${money.outstanding.others}`,
-      );
-    }
-    if (money.coverage) {
-      lines.push(`- هل تكفي فلوسه (محسوبة بالمواعيد): ${coverageLine(money.coverage)}`);
-    }
-    if (money.categories.length === 0) {
+    if (money.items.length === 0) {
       lines.push('- لا توجد بنود ميزانية بعد.');
     }
-    for (const category of money.categories) {
-      const forecast =
-        category.expected === undefined
-          ? ''
-          : `، التقدير ${category.estimate ?? 'غير محدد'}، المتوقع ${category.expected}`;
+    for (const item of money.items) {
       lines.push(
-        `- بند ${data(category.name)}: المخصص ${category.allocated ?? 'غير محدد'}، الملتزم ${category.committed}، المدفوع ${category.paid}${forecast}`,
+        `- بند ${data(item.name)}: المخصص ${item.allocated ?? 'غير محدد'}، الملتزم ${item.committed}، المدفوع ${item.paid}`,
       );
     }
+  } else if (facts.moneyWithheld === 'OWNER_NO_CONSENT') {
+    lines.push('', 'المال: صاحب الخطة ما وافق يرسل أرقام المال للمساعد، فلا أرقام مال هنا.');
   } else {
     lines.push('', 'المال: لا يملك المستخدم صلاحية رؤية أرقام المال في هذه الخطة.');
   }
@@ -238,26 +160,22 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
   lines.push(
     `- الكل ${facts.tasks.total}، المنجز ${facts.tasks.completed}، المتأخر ${facts.tasks.overdue}`,
   );
-  for (const task of facts.tasks.open) {
-    lines.push(`- مفتوحة: ${data(task.title)}${task.dueDate ? ` (موعدها ${task.dueDate})` : ''}`);
-  }
 
   if (facts.quotes) {
     lines.push('', 'عروض الأسعار التي وصلت:');
     if (facts.quotes.length === 0) lines.push('- لا توجد عروض بعد.');
     for (const quote of facts.quotes) {
       const parts = [
-        `المزود ${data(quote.provider)}`,
-        quote.service ? `الخدمة ${data(quote.service)}` : null,
-        quote.category ? `الفئة ${data(quote.category)}` : null,
+        `الفئة ${quote.category ? data(quote.category) : 'غير محددة'}`,
         quote.priceHidden
-          ? 'السعر يشوفه من له صلاحية المال'
+          ? facts.moneyWithheld === 'OWNER_NO_CONSENT'
+            ? 'السعر يشوفه من له صلاحية المال وموافقة صاحب الخطة'
+            : 'السعر يشوفه من له صلاحية المال'
           : quote.amount
             ? `السعر ${quote.amount} ${quote.currency}`
             : 'بدون سعر',
         `الحالة ${quote.status}`,
-        quote.validUntil ? `صالح حتى ${quote.validUntil}` : null,
-      ].filter(Boolean);
+      ];
       lines.push(`- ${parts.join('، ')}`);
     }
   }
@@ -289,39 +207,4 @@ export function renderAssistantRequest(
     `المطلوب: ${KIND_INSTRUCTIONS[kind]}`,
     ...(asked ? [`سؤال المستخدم أو إضافته: ${asked}`] : []),
   ].join('\n');
-}
-
-/** D105: the expected cost against the budget, said once. */
-function expectedLine(
-  expected: NonNullable<NonNullable<AssistantPlanFacts['money']>['expected']>,
-  mahrInside: boolean,
-): string {
-  const head = `التكلفة المتوقعة لبنود العرس (الاتفاقات وتقدير اللي ما انتفق عليه): ${expected.wedding}، منها تقديرات ${expected.estimateLeft}`;
-  if (expected.budgetLeft === null) return head;
-  const over = expected.budgetLeft.startsWith('-');
-  // D114: with the mahr inside, what is left is after it too.
-  const after = mahrInside ? ' بعد المهر' : '';
-  return over
-    ? `${head}، فوق الميزانية${after} بـ ${expected.budgetLeft.slice(1)}`
-    : `${head}، يبقى من الميزانية${after} ${expected.budgetLeft}`;
-}
-
-/** D103, as the money tab says it: from what he holds, on the days things are due. */
-function coverageLine(coverage: AssistantCoverageFacts): string {
-  const ignored = coverage.ignoredPledges > 0
-    ? ` (وعود ما لها موعد أو فات موعدها ما انحسبت: ${coverage.ignoredPledges})`
-    : '';
-  const short = coverage.short
-    ? `${coverage.short.amount} يوم ${coverage.short.date ?? 'بدون موعد'} (${data(coverage.short.title)})`
-    : '';
-  switch (coverage.verdict) {
-    case 'NOTHING_DUE':
-      return `ما عليه شي باقي، ومعه ${coverage.cash}`;
-    case 'COVERED':
-      return `معه ${coverage.cash}، تكفي اللي عليه (${coverage.onHim})${coverage.until ? ` لين ${coverage.until}` : ''}${ignored}`;
-    case 'COVERED_IF_PLEDGES':
-      return `معه ${coverage.cash}، وتكفي اللي عليه (${coverage.onHim}) بشرط يوصل الموعود في موعده؛ بدونه ينقصه ${short}${ignored}`;
-    case 'SHORT':
-      return `معه ${coverage.cash}، واللي عليه ${coverage.onHim}: ينقصه ${short}، ويحتاج ${coverage.needed ?? coverage.short?.amount ?? ''} زيادة عشان يدفع كل شي في موعده${ignored}`;
-  }
 }

@@ -12,15 +12,14 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/report_reason_sheet.dart';
 import '../../../core/widgets/aarast_ui.dart'
     show AarastInlineSpinner, AarastPressable, AarastScreenFrame;
-import '../../auth/auth_api.dart' show AuthController;
 import '../data/plan_assistant_api.dart';
 import '../models/plan_assistant.dart';
-import '../utils/assistant_consent.dart';
 
 /// b11 «اسأل اعّرست»: the owner or partner asks about their own plan and
 /// reads the answer under the question. w36 asks once before the first
 /// question; w37 says why no answer came (today's questions are used up,
-/// or there is no connection). Nothing is kept on the phone but the consent.
+/// or there is no connection). Nothing is kept on the phone; the consent is
+/// the server's record (RA-BE-161).
 /// The design's «لو» what-if box and the market range are dropped (the
 /// server sends neither, C22), and the field has no microphone.
 class PlanAssistantScreen extends StatefulWidget {
@@ -123,17 +122,25 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     }
   }
 
-  Future<bool> _ensureConsent(int dailyLimit) async {
-    final userId = context.read<AuthController?>()?.user?.id;
-    if (await AssistantConsent.isGiven(userId)) return true;
-    if (!mounted) return false;
+  /// RA-BE-161: the server's record opens the assistant; w36 asks once and
+  /// records the agreement there before the first question goes out.
+  Future<bool> _ensureConsent(PlanAssistantStatus status) async {
+    if (status.consentedAt != null) return true;
+    final weddingPlanId = widget.weddingPlanId;
     final agreed = await showJourneySheet<bool>(
       context: context,
-      builder: (_) => _ConsentSheet(dailyLimit: dailyLimit),
+      builder: (_) => _ConsentSheet(dailyLimit: status.dailyLimit),
     );
-    if (agreed != true) return false;
-    await AssistantConsent.set(userId, true);
-    return true;
+    if (agreed != true || !mounted) return false;
+    try {
+      final at = await _api.recordConsent(weddingPlanId);
+      if (!mounted || weddingPlanId != widget.weddingPlanId) return false;
+      setState(() => _status = _status?.copyWith(consentedAt: () => at));
+      return true;
+    } on ApiException catch (error) {
+      if (mounted) AarastToast.showError(context, error.message);
+      return false;
+    }
   }
 
   Future<void> _ask(PlanAssistantKind kind) async {
@@ -147,7 +154,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       );
       return;
     }
-    if (!await _ensureConsent(status.dailyLimit) || !mounted) return;
+    if (!await _ensureConsent(status) || !mounted) return;
     FocusScope.of(context).unfocus();
     final exchange = _Exchange(
       kind: kind,
@@ -171,12 +178,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       if (kind == PlanAssistantKind.question) _questionController.clear();
       setState(() {
         exchange.answer = answer;
-        _status = PlanAssistantStatus(
-          enabled: status.enabled,
-          allowed: status.allowed,
-          dailyLimit: status.dailyLimit,
-          remainingToday: answer.remainingToday,
-        );
+        _status = _status?.copyWith(remainingToday: answer.remainingToday);
       });
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -749,7 +751,7 @@ class _AskField extends StatelessWidget {
 }
 
 /// w36 «المساعد الذكي»: what is sent and what is not, before the first
-/// question. «ويقرأ الفواتير» and «تقدر توقفه من الحساب» are dropped: no
+/// question; RA-BE-160 made it say exactly what the server sends and keeps. «ويقرأ الفواتير» and «تقدر توقفه من الحساب» are dropped: no
 /// receipt is read and no switch exists in the account.
 class _ConsentSheet extends StatelessWidget {
   const _ConsentSheet({required this.dailyLimit});
@@ -786,20 +788,30 @@ class _ConsentSheet extends StatelessWidget {
               _row(
                 context,
                 LucideIcons.send,
-                'سؤالك وملخص خطتك (المدينة والموعد والميزانية وبنودها والعروض) يروحون لخدمة Claude من Anthropic تفهمه',
+                'سؤالك وملخص خطتك يروحون لخدمة Claude من Anthropic تفهمه: المدينة والموعد، والميزانية وبنودها، والعروض، وعدد الضيوف والمهام',
               ),
               _row(
                 context,
                 LucideIcons.eyeOff,
                 context.say(
-                  'ما نرسل أسماء ضيوفك ولا أرقامهم',
-                  'ما نرسل أسماء ضيفاتك ولا أرقامهن',
+                  'ما نرسل أي اسم ولا رقم جوال: لا ضيوفك ولا أهلك، ولا اسم الخطة ولا مهامها',
+                  'ما نرسل أي اسم ولا رقم جوال: لا ضيفاتك ولا أهلك، ولا اسم الخطة ولا مهامها',
                 ),
               ),
               _row(
                 context,
+                LucideIcons.users,
+                'أرقام مال الخطة ما تروح مع سؤال الشريك إلا بموافقة صاحب الخطة',
+              ),
+              _row(
+                context,
                 LucideIcons.checkCircle2,
-                'ما نحفظ أسئلتك، وما يتغيّر شيء في خطتك',
+                'ما نحفظ أسئلتك ولا الإجابات، بس تاريخ موافقتك، وما يتغيّر شيء في خطتك',
+              ),
+              _row(
+                context,
+                LucideIcons.clock,
+                'عند Anthropic تنحفظ حسب سياسة خدمتها، وما تدرّب عليها نماذجها',
               ),
               _row(
                 context,

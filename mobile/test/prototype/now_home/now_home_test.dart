@@ -923,9 +923,7 @@ void main() {
   });
 
   testWidgets('assistant answer', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'aarast.assistant.consent.v1.device': true,
-    });
+    SharedPreferences.setMockInitialValues({});
     // The question's bubble carries the clock time it was asked (the screen
     // reads DateTime.now()), so these few pixels change every minute. Only
     // this shot tolerates a difference that small; a moved or missing widget
@@ -939,7 +937,18 @@ void main() {
     await _shot(
       tester,
       'assistant_answer',
-      assistant(_FakeAssistantApi()),
+      // RA-BE-161: the consent is the server's record.
+      assistant(
+        _FakeAssistantApi(
+          status_: PlanAssistantStatus(
+            enabled: true,
+            allowed: true,
+            dailyLimit: 10,
+            remainingToday: 10,
+            consentedAt: DateTime.utc(2026, 11, 20),
+          ),
+        ),
+      ),
       h: 1300,
       act: () async {
         await tester.tap(find.text(PlanAssistantKind.cheaper.label));

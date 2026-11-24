@@ -74,6 +74,11 @@ model User {
   deletionPurgeFailure         String?
   // D63 (w40): reviews show only the first name while this is on.
   reviewFirstNameOnly          Boolean                       @default(true)
+  // RA-BE-161 (Q-41, D124): when the account agreed that the planning
+  // assistant sends its plan's summary to the model; null: not given, or
+  // taken back (w40). An owner's consent is also what lets a partner's
+  // question carry the plan's money.
+  assistantConsentAt           DateTime?
   createdAt                    DateTime                      @default(now())
   updatedAt                    DateTime                      @updatedAt
   dataExports                  DataExport[]

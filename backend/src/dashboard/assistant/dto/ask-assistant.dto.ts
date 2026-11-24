@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import { MaxCharacters } from '../../../shared-kernel/text/text-length';
 import { ASSISTANT_KINDS, type AssistantKind } from '../assistant.prompt';
 
@@ -12,7 +12,6 @@ export class AskAssistantDto {
   @MaxCharacters(500)
   question?: string | null;
 
-  /** V1 checklist 4.12: the user agreed to send the plan's data to the assistant's model. */
-  @IsBoolean()
-  consent!: boolean;
+  // RA-BE-161: no consent flag. The asker's stored consent
+  // (`PUT .../assistant/consent`) is what the server reads.
 }

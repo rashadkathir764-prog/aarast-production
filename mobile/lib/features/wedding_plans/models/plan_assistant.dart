@@ -24,6 +24,7 @@ class PlanAssistantStatus {
     required this.allowed,
     required this.dailyLimit,
     required this.remainingToday,
+    this.consentedAt,
   });
 
   factory PlanAssistantStatus.fromJson(Map<String, dynamic> json) {
@@ -32,6 +33,7 @@ class PlanAssistantStatus {
       allowed: json['allowed'] == true,
       dailyLimit: _int(json['dailyLimit']),
       remainingToday: _int(json['remainingToday']),
+      consentedAt: DateTime.tryParse(json['consentedAt']?.toString() ?? ''),
     );
   }
 
@@ -43,7 +45,22 @@ class PlanAssistantStatus {
   final int dailyLimit;
   final int remainingToday;
 
+  /// RA-BE-161: when the reader agreed (w36), as the server keeps it; null
+  /// before, or after w40 took it back.
+  final DateTime? consentedAt;
+
   bool get available => enabled && allowed;
+
+  PlanAssistantStatus copyWith({
+    int? remainingToday,
+    DateTime? Function()? consentedAt,
+  }) => PlanAssistantStatus(
+    enabled: enabled,
+    allowed: allowed,
+    dailyLimit: dailyLimit,
+    remainingToday: remainingToday ?? this.remainingToday,
+    consentedAt: consentedAt == null ? this.consentedAt : consentedAt(),
+  );
 }
 
 class PlanAssistantAnswer {

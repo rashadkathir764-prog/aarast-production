@@ -20,7 +20,9 @@ void main() {
     await _pump(tester, api);
 
     expect(find.text('صالح'), findsOneWidget);
-    expect(find.textContaining('أهل'), findsWidgets);
+    // The role chip, and the line under the name: the role, then the phone.
+    expect(find.text('أهل'), findsOneWidget);
+    expect(find.text('أهل · \u2066771\u00a0554\u00a0220\u2069'), findsOneWidget);
     expect(find.byType(JourneyLevelSwitch), findsNWidgets(4));
     final family = tester.widget<JourneyChip>(
       find.byKey(const ValueKey('participant-preset-FAMILY')),

@@ -523,9 +523,13 @@ class JourneyWalk {
       ),
       matching: find.byType(EditableText),
     );
-    final target = field.evaluate().isNotEmpty
-        ? field.first
-        : find.byType(EditableText).first;
+    // A field that is not on the screen is a failed step. It was typed into
+    // the first field that was, and the step passed on the wrong input.
+    if (field.evaluate().isEmpty) {
+      fail('ما فيه خانة «$label»');
+      return;
+    }
+    final target = field.first;
     await tester.tap(target, warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 150));
     await tester.enterText(target, value);

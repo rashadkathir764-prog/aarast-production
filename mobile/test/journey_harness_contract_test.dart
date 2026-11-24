@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_journey_hero.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -80,4 +81,36 @@ void main() {
       expect(walk.sees('باقي المهر 2 مليون'), isFalse);
     },
   );
+
+  // RA-TS-24: a field that was not on the screen was typed into the first
+  // field that was, and the step passed on the wrong input.
+  testWidgets('typing into a field that is not there fails and types nowhere', (
+    tester,
+  ) async {
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    addTearDown(name.dispose);
+    addTearDown(phone.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              JourneyTextField(label: 'الاسم', controller: name),
+              JourneyTextField(label: 'الجوال', controller: phone),
+            ],
+          ),
+        ),
+      ),
+    );
+    final walk = JourneyWalk(tester, 'field-contract');
+
+    await walk.enterField('الجوال', '777');
+    expect(phone.text, '777');
+    expect(name.text, isEmpty);
+
+    await expectLater(walk.enterField('البريد', 'a@b.c'), throwsStateError);
+    expect(name.text, isEmpty);
+    expect(phone.text, '777');
+  });
 }

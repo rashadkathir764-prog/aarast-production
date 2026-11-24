@@ -409,7 +409,12 @@ void main() {
     // The loan: its own block, said to be a debt and not a wedding cost.
     final loan = find.byKey(const ValueKey('money-loan-f-loan'));
     await _show(tester, loan);
-    expect(find.textContaining('مش من تكاليف العرس'), findsOneWidget);
+    expect(
+      find.text(
+        'دين عليك، مش من تكاليف العرس: ما يدخل في «دفعات العرس» ولا في تكلفته.',
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: total, matching: find.textContaining('400,000')),
       findsNothing,
@@ -502,7 +507,10 @@ void main() {
       '100000',
     );
     await tester.pump();
-    expect(find.textContaining('ويبقى عليه 200,000'), findsOneWidget);
+    expect(
+      find.text('تنسجل جزء من الموعد، ويبقى عليه 200,000\u00a0ر.ي بنفس اليوم'),
+      findsOneWidget,
+    );
     await tester.ensureVisible(find.byKey(const ValueKey('payment-save')));
     await tester.tap(find.byKey(const ValueKey('payment-save')));
     await _settle(tester);
@@ -573,7 +581,10 @@ void main() {
         .dy;
     expect(p2, lessThan(p1));
     // 300,000 + 100,000; the reversed 50,000 does not count.
-    expect(find.textContaining('400,000'), findsWidgets);
+    expect(
+      _said(tester, find.byKey(const ValueKey('money-paid-total'))),
+      contains('400,000'),
+    );
   });
 
   // RA-MO-70: «اللي اندفع» added up the payments read so far, a page at a

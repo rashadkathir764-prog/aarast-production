@@ -163,8 +163,12 @@ void main() {
     expect(find.textContaining('ينقصك'), findsNothing);
     tester.widget<JourneyHeroTag>(cover).onTap!();
     await tester.pumpAndSettle();
-    expect(find.textContaining('يكفي دفعاتك'), findsWidgets);
-    expect(find.textContaining('لين '), findsWidgets);
+    expect(
+      find.text(
+        'معك 2,500\u00a0ر.ي يكفي دفعاتك بمواعيدها لين 1 ديسمبر، ويبقى 1,000\u00a0ر.ي',
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

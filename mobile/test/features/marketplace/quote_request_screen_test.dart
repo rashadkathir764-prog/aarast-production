@@ -160,6 +160,60 @@ void main() {
     expect(find.textContaining('opened /providers/p-afrah'), findsOneWidget);
   });
 
+  // RA-TS-24: this was a grep of quote_request_screen.dart (no «_sent» flag,
+  // the route names it calls). It now sends the request and reads where the
+  // person lands.
+  testWidgets('a sent request says it arrived and opens the plan\'s providers '
+      'with that request', (tester) async {
+    final marketplace = _Marketplace(
+      kind: 'فنانين وفرق',
+      created: const QuoteRequest(
+        id: 'quote-9',
+        providerId: 'p-afrah',
+        status: 'PENDING',
+        lifecycleStatus: 'PENDING',
+        weddingPlanId: 'plan-1',
+      ),
+    );
+    await _pump(tester, marketplace);
+
+    await tester.tap(find.byKey(const ValueKey('quote-send')));
+    await tester.pumpAndSettle();
+
+    expect(marketplace.sent, hasLength(1));
+    expect(find.text('وصل طلبك للمزود.'), findsOneWidget);
+    expect(
+      find.text('sent /wedding-plans/plan-1/providers?quoteId=quote-9'),
+      findsOneWidget,
+    );
+    expect(find.text('اطلب عرض سعر'), findsNothing);
+  });
+
+  testWidgets('a request the server filed under another plan is not opened '
+      'as this plan\'s', (tester) async {
+    final marketplace = _Marketplace(
+      kind: 'فنانين وفرق',
+      created: const QuoteRequest(
+        id: 'quote-9',
+        providerId: 'p-afrah',
+        status: 'PENDING',
+        lifecycleStatus: 'PENDING',
+        weddingPlanId: 'plan-other',
+      ),
+    );
+    await _pump(tester, marketplace);
+
+    await tester.tap(find.byKey(const ValueKey('quote-send')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('ما قدرنا نتأكد إن الطلب في خطتك المفتوحة.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('sent /wedding-plans'), findsNothing);
+    expect(find.text('اطلب عرض سعر'), findsOneWidget);
+  });
+
   testWidgets('f07 stays readable at 320px and 1.3 text', (tester) async {
     await _pump(
       tester,
@@ -326,8 +380,14 @@ class _Money extends FinanceProvider {
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace({required this.kind, this.slug})
+  _Marketplace({required this.kind, this.slug, this.created})
     : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+
+  /// What the server answers a sent request with.
+  final QuoteRequest? created;
+
+  @override
+  QuoteRequest? get lastCreatedQuote => created;
 
   final String kind;
 

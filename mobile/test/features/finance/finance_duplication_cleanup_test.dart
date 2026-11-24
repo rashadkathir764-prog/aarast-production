@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3_foundations.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/catalogs/data/reference_catalog_api.dart';
 import 'package:aarast_mobile/features/catalogs/models/reference_catalog.dart';
 import 'package:aarast_mobile/features/catalogs/providers/reference_catalog_provider.dart';
@@ -221,7 +222,7 @@ void main() {
       tester,
     ) async {
       _setPhoneView(tester);
-      final now = DateTime.now();
+      final now = appNow();
       final today = DateTime(now.year, now.month, now.day);
       await tester.pumpWidget(
         _wrap(
@@ -250,7 +251,7 @@ void main() {
       tester,
     ) async {
       _setPhoneView(tester);
-      final now = DateTime.now();
+      final now = appNow();
       final today = DateTime(now.year, now.month, now.day);
       await tester.pumpWidget(
         _wrap(
@@ -284,7 +285,7 @@ void main() {
       tester,
     ) async {
       _setPhoneView(tester);
-      final now = DateTime.now();
+      final now = appNow();
       final today = DateTime(now.year, now.month, now.day);
       await tester.pumpWidget(
         _wrap(
@@ -327,7 +328,7 @@ void main() {
       tester,
     ) async {
       _setTallView(tester);
-      final now = DateTime.now();
+      final now = appNow();
       final today = DateTime(now.year, now.month, now.day);
       PaymentSchedule schedule(String id, int days) => PaymentSchedule(
         id: id,
@@ -528,7 +529,7 @@ void main() {
     // F02: hiding amounts must cover the next-payment card too.
     testWidgets('hiding amounts masks the next payment amount', (tester) async {
       _setPhoneView(tester);
-      final now = DateTime.now();
+      final now = appNow();
       final today = DateTime(now.year, now.month, now.day);
       await tester.pumpWidget(
         _wrap(
@@ -875,11 +876,8 @@ class _FakeFinanceApi extends FinanceApi {
       paymentSchedules: MoneySchedulesSummary(
         totalCount: nextSchedule == null ? 0 : 1,
         upcomingCount:
-            nextSchedule != null && !nextSchedule!.isOverdueAt(DateTime.now())
-            ? 1
-            : 0,
-        overdueCount:
-            nextSchedule != null && nextSchedule!.isOverdueAt(DateTime.now())
+            nextSchedule != null && !_serverCallsOverdue(nextSchedule!) ? 1 : 0,
+        overdueCount: nextSchedule != null && _serverCallsOverdue(nextSchedule!)
             ? 1
             : 0,
         next: nextSchedule,
@@ -903,7 +901,7 @@ class _FakeFinanceApi extends FinanceApi {
             amount: schedule.amount,
             scheduledAmount: schedule.amount,
             dueDate: schedule.dueDate,
-            isOverdue: schedule.isOverdueAt(DateTime.now()),
+            isOverdue: _serverCallsOverdue(schedule),
           ),
       ],
       categories: const [
@@ -953,6 +951,21 @@ class _FakeFinanceApi extends FinanceApi {
   @override
   Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
       dueSchedules ?? (nextSchedule == null ? const [] : [nextSchedule!]);
+}
+
+/// The server's own rule, written out here and not asked of the app's
+/// `isOverdueAt` (RA-TS-24: the fake used the code it was checking): a
+/// pending date is late once it is before the start of today in Sana'a
+/// (UTC+3).
+bool _serverCallsOverdue(PaymentSchedule schedule) {
+  if (schedule.status != 'PENDING') return false;
+  final sanaaNow = appNow().toUtc().add(const Duration(hours: 3));
+  final startOfSanaaDay = DateTime.utc(
+    sanaaNow.year,
+    sanaaNow.month,
+    sanaaNow.day,
+  ).subtract(const Duration(hours: 3));
+  return schedule.dueDate.toUtc().isBefore(startOfSanaaDay);
 }
 
 SharedMember _deniedMember() {

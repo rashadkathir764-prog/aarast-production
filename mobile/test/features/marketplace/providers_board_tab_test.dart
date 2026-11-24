@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
@@ -238,7 +239,7 @@ void main() {
     testWidgets('a decline with nothing else going offers alternatives', (
       tester,
     ) async {
-      final now = DateTime.now();
+      final now = appNow();
       await _pump(
         tester,
         openRequests: true,
@@ -271,7 +272,7 @@ void main() {
     testWidgets('a request opened a day ago without a reply is named', (
       tester,
     ) async {
-      final now = DateTime.now();
+      final now = appNow();
       await _pump(
         tester,
         _FakeMarketplaceProvider(
@@ -309,7 +310,7 @@ void main() {
 
     testWidgets('a withdrawn offer names what is gone and the other offer '
         '(B-03)', (tester) async {
-      final now = DateTime.now();
+      final now = appNow();
       await _pump(
         tester,
         _FakeMarketplaceProvider(

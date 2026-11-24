@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
     show JourneyProfile;
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
@@ -505,7 +506,7 @@ void main() {
         'ستوديو النور',
         status: 'SENT',
         lifecycle: 'PENDING_PROVIDER',
-        expiresAt: DateTime.now().subtract(const Duration(minutes: 1)),
+        expiresAt: appNow().subtract(const Duration(minutes: 1)),
       ),
     ]);
 

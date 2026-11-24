@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
@@ -113,7 +114,7 @@ void main() {
         theme: AppTheme.light(),
         home: ProviderClaimPendingScreen(
           businessName: 'الفنان علي',
-          sentAt: DateTime.now(),
+          sentAt: appNow(),
           onRefresh: () async {},
           onBack: () => backs += 1,
           onSupport: () => support += 1,

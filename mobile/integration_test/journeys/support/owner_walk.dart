@@ -601,7 +601,17 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // steps count their backs from the home shell, as before these steps.
     await walk.leaveTo('/home');
   } else if (!p.bride) {
-    walk.note('ما وصلنا planId في AARAST_SWEEP_IDS، فخطوتا الغداء متروكتان');
+    // RA-TS-24: a walk without the plan's id used to note it and pass with
+    // the two D83 steps never run. It fails, and says what to pass.
+    await walk.step(
+      'e06_lunch_plan_id',
+      'رقم الخطة لخطوتي الغداء (D83)',
+      () async {
+        walk.fail(
+          'ما وصلنا planId في AARAST_SWEEP_IDS، فخطوتا الغداء ما اتشغّلتا',
+        );
+      },
+    );
   }
 
   // -------------------------------------------------------- providers

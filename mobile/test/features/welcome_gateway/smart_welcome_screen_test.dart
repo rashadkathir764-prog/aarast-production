@@ -367,7 +367,7 @@ void main() {
     expect(find.textContaining('مش منها'), findsNothing);
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
-    expect(find.text('سبعة مليون ريال'), findsOneWidget);
+    expect(find.text('سبعة مليون ر.ي'), findsOneWidget);
     // No city: «التالي» waits; the link says what is missing and stays.
     expect(_button(tester, 'التالي').onPressed, isNull);
     await _tap(tester, 'أكمل بدون ميزانية');
@@ -443,7 +443,7 @@ void main() {
       '2000000',
     );
     await tester.pumpAndSettle();
-    expect(find.text('ثلاثة مليون ريال'), findsOneWidget);
+    expect(find.text('ثلاثة مليون ر.ي'), findsOneWidget);
     expect(find.text('سلّمت منه'), findsOneWidget);
     expect(find.text('باقي مليون'), findsOneWidget);
     expect(find.text('موعد تسليم الباقي'), findsOneWidget);
@@ -743,12 +743,12 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '1500.5');
     await tester.pumpAndSettle();
     expect(typed(), '1,500');
-    expect(find.text(amountInWords(1500)), findsOneWidget);
+    expect(find.text(amountInWords(1500, currency: 'ر.ي')), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, '5000000.00');
     await tester.pumpAndSettle();
     expect(typed(), '5,000,000');
-    expect(find.text(amountInWords(5000000)), findsOneWidget);
+    expect(find.text(amountInWords(5000000, currency: 'ر.ي')), findsOneWidget);
   });
 
   testWidgets('a05 takes any city typed by name', (tester) async {

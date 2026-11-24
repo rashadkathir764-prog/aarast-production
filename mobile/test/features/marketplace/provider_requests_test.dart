@@ -282,6 +282,22 @@ void main() {
     },
   );
 
+  // RA-MO-334: an offer's price was written inside a left-to-right isolate,
+  // which in an Arabic line puts «ر.ي» before the number the eye reads
+  // first; every other money line writes the number, then the currency.
+  testWidgets('f04 each offer\'s price reads number then currency, whole', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '1250000'),
+      _offer('q2', 'عدسة سبأ', '480000'),
+    ]);
+
+    expect(find.text('1,250,000\u00a0ر.ي'), findsOneWidget);
+    expect(find.text('480,000\u00a0ر.ي'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('x10 the polite message goes first, then the offer is declined', (
     tester,
   ) async {

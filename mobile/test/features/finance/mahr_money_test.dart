@@ -525,6 +525,26 @@ void main() {
       expect(find.text('الرئيسية'), findsOneWidget);
     });
 
+    // RA-MO-334: the field's suffix says «ر.ي» and the words under it said
+    // «ريال»; every other amount field spells the currency as its suffix.
+    testWidgets('the amount in words ends with the field\'s own currency', (
+      tester,
+    ) async {
+      await _pumpMahr(tester, JourneyProfile.groom);
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('mahr-total')),
+          matching: find.byType(EditableText),
+        ),
+        '3000000',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ثلاثة مليون ر.ي'), findsOneWidget);
+      expect(find.textContaining('ريال'), findsNothing);
+    });
+
     // D112 (Q-27): a mahr typed while the plan's own «المهر» item holds an
     // agreement was dropped without a word, the form closing as if saved.
     testWidgets('a mahr the plan did not record is said so, and the money is '

@@ -162,12 +162,16 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final known = funding != null && funding.isKnown;
     final gap = known ? funding.shortfall : null;
 
+    // RA-MO-334: one writer for the whole card. Its figures are read
+    // together and add up (the lead, what is in hand, what was agreed and
+    // paid), so each is shortened only when nothing is lost; the lead, alone
+    // on its line, names its currency. The rounding writer wrote «500,000
+    // ر.ي» over «500 ألف» and «1.3 مليون» over «1,250,000».
     String amount(double value) =>
-        amountsHidden ? '••••' : _money(value, currency);
+        amountsHidden ? '••••' : _headlineFigure(value, currency);
     String figure(double value) =>
-        amountsHidden ? '••••' : _figure(value, currency);
-    String sumFigure(double value) =>
         amountsHidden ? '••••' : _sumFigure(value, currency);
+    String sumFigure(double value) => figure(value);
 
     // D59: the owner reads what is left to them; anyone else reads it as
     // the owner's, and what others paid for the owner is said as theirs.

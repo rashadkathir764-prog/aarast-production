@@ -551,7 +551,9 @@ class _PlaceBudgetStep extends StatelessWidget {
           textAlign: TextAlign.right,
           // Whole riyals, grouped as typed: 7,000,000.
           inputFormatters: const [MoneyInputFormatter()],
-          helper: amount == null || amount <= 0 ? null : amountInWords(amount),
+          helper: amount == null || amount <= 0
+              ? null
+              : amountInWords(amount, currency: 'ر.ي'),
           helperColor: context.accent.primaryDark,
           onChanged: (_) => onBudgetChanged(),
         ),

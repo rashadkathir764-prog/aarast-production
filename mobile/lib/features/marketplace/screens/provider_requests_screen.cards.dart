@@ -75,7 +75,7 @@ class _OffersRow extends StatelessWidget {
 String providerOfferExtraPrice(String raw, String? currency) {
   final value = num.tryParse(raw.replaceAll(',', ''));
   if (value == null) return raw;
-  return formatFullMoney(value, currencyCode: currency ?? 'YER');
+  return fullMoneyParts(value, currencyCode: currency ?? 'YER').plainText;
 }
 
 class _OfferCard extends StatelessWidget {

@@ -298,7 +298,7 @@ class ProviderHardCaseCard extends StatelessWidget {
 String? _money(String? amount, String? currency) {
   final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
   if (value == null) return null;
-  return formatFullMoney(value, currencyCode: currency ?? 'YER');
+  return fullMoneyParts(value, currencyCode: currency ?? 'YER').plainText;
 }
 
 /// «أمس», «اليوم», «قبل يومين» … «15 أكتوبر».

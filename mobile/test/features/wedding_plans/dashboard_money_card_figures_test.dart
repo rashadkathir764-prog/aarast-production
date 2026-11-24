@@ -600,4 +600,77 @@ void main() {
       expect(find.text('سلّمت 2 من 3 مليون · الباقي 3 ديسمبر'), findsOneWidget);
     });
   });
+
+  // RA-MO-334: one card wrote its lead as «500,000 ر.ي» and the figures
+  // around it as «500 ألف» (the lead and the side figures were the short,
+  // rounding writer; the cells the sum-safe one), and 1,250,000 as «1.3
+  // مليون» above «1,250,000». They are one writer here: shortened only when
+  // nothing is lost, the card's lead with its currency.
+  group('RA-MO-334 one money format in one card', () {
+    testWidgets('thousands: the lead, the side and the cells say 500 ألف', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _summary(agreed: '700000', paid: '200000', outstanding: '500000'),
+        funding: const DashboardHomeFunding(
+          inHand: 300000,
+          pledged: 0,
+          shortfall: 200000,
+          sourcesCount: 1,
+          ownerLeft: 500000,
+        ),
+      );
+      final card = find.byKey(const ValueKey('aarast-dashboard-money-card'));
+
+      expect(
+        find.descendant(of: card, matching: find.text('500$_nbspألف$_nbspر.ي')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.textContaining('500,000')),
+        findsNothing,
+      );
+      expect(find.text('معك 300$_nbspألف'), findsOneWidget);
+    });
+
+    testWidgets('a figure the tenth of a million would round is said whole, '
+        'everywhere in the card', (tester) async {
+      await _pump(
+        tester,
+        _summary(agreed: '4500000', paid: '1250000', outstanding: '3250000'),
+        funding: const DashboardHomeFunding(
+          inHand: 1250000,
+          pledged: 0,
+          shortfall: null,
+          sourcesCount: 1,
+          ownerLeft: 3250000,
+        ),
+      );
+      final card = find.byKey(const ValueKey('aarast-dashboard-money-card'));
+
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text('3,250,000$_nbspر.ي'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('معك 1,250,000$_nbspر.ي'), findsOneWidget);
+      expect(find.text('دفعت 1,250,000$_nbspر.ي'), findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.textContaining('3.3')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: card, matching: find.textContaining('1.3')),
+        findsNothing,
+      );
+      // What the reader hears is what the card writes.
+      final label = tester.getSemantics(card).label;
+      expect(label, contains('3,250,000'));
+      expect(label, contains('معك 1,250,000'));
+      expect(label, isNot(contains('3.3')));
+    });
+  });
 }

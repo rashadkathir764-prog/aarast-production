@@ -87,7 +87,10 @@ class MahrFields extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    amountInWords(total),
+                    amountInWords(
+                      total,
+                      currency: currencyLabelAr(currency),
+                    ),
                     style: JourneyType.of(
                       JourneyType.small,
                       weight: JourneyType.bold,

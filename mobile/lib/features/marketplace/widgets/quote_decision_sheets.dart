@@ -17,7 +17,10 @@ import '../models/marketplace_models.dart';
 String? offerAmountLabel(QuoteOffer? offer) {
   final amount = num.tryParse(offer?.amount ?? '');
   if (amount == null) return null;
-  return formatFullMoney(amount, currencyCode: offer?.currency ?? 'YER');
+  return fullMoneyParts(
+    amount,
+    currencyCode: offer?.currency ?? 'YER',
+  ).plainText;
 }
 
 String quoteProviderName(QuoteRequest quote) =>

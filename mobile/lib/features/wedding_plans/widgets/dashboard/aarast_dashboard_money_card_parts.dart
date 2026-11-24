@@ -418,26 +418,26 @@ class _MoneySplitBar extends StatelessWidget {
   }
 }
 
-String _money(double value, String currency) {
-  return compactMoneyParts(value, currencyCode: currency).plainText;
-}
-
 /// RA-MO-181: what the screen reader says: the currency by its name
 /// («ريال يمني»), not «ر.ي» read out letter by letter.
 String _spoken(double value, String currency) {
-  return compactMoneyParts(value, currencyCode: currency).semanticText;
+  return sumSafeMoneyParts(value, currencyCode: currency).semanticText;
 }
 
 /// b02's far column (V-01): every line the same way, the short figure with
 /// its unit («3 مليون», «250 ألف», «0 ر.ي»), its unit kept on its line. The
 /// design's bare «5.4» is dropped: beside a full figure it read as another
-/// unit («اتفقت على 3» over «دفعت 250,000 ر.ي»).
-String _figure(double value, String currency) {
-  return compactMoneyFigure(value, currencyCode: currency);
-}
-
-/// [_figure] for the budget's figures under the line, which are read
-/// together and add up: shortened only when nothing is lost (critique م2).
+/// unit («اتفقت على 3» over «دفعت 250,000 ر.ي»). The figures of the card are
+/// read together and add up, so each is shortened only when nothing is lost
+/// (critique م2).
 String _sumFigure(double value, String currency) {
   return sumSafeMoneyFigure(value, currencyCode: currency);
+}
+
+/// [_sumFigure] with its currency, for a figure alone on its line («باقي
+/// عليك»): «500 ألف ر.ي», «1.5 مليون ر.ي», «1,250,000 ر.ي».
+String _headlineFigure(double value, String currency) {
+  final figure = _sumFigure(value, currency);
+  final unit = currencyLabelAr(currency);
+  return figure.contains(unit) ? figure : keepCurrencyOnLine('$figure $unit');
 }

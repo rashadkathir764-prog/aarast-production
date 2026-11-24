@@ -19,10 +19,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 // RA-MO-344: no conflict was detected but the budget's. A guest, a task, a
 // cost or a payment date edited on a phone without a net was sent later
 // over what the partner (or the guest's own answer) changed meanwhile: the
-// last writer won. Each edit now carries the version it was made from (the
-// row's `updatedAt` as the server last gave it), the server refuses an edit
-// of a row changed since (409 CHANGED_ELSEWHERE), and the phone says so as
-// it does for the budget: it reads the row again and shows it.
+// last writer won. Each edit now carries what it last read of the fields it
+// changes (`expected`, from the server's copy on the phone), the server
+// refuses it only when one of those fields changed since (409
+// CHANGED_ELSEWHERE), and the phone says so as it does for the budget: it
+// reads the row again and shows it.
 
 const _read = '2026-11-24T10:00:00.000Z';
 const _changed = '2026-11-24T11:00:00.000Z';
@@ -117,7 +118,8 @@ const _conflict = (
 );
 
 void main() {
-  test('a guest\'s edit carries the version it was made from', () async {
+  test('a guest\'s edit carries what it read of the fields it changes, '
+      'and only those', () async {
     final (api, offline, server) = await _setUp({
       'PATCH /api/v1/guests/g1': (200, _guest('خالد', _changed)),
     });
@@ -128,10 +130,9 @@ void main() {
 
     await GuestsApi(api, offline: offline).updateGuest(id: 'g1', name: 'خالد');
 
-    expect(
-      server.bodies['PATCH /api/v1/guests/g1']!.single['expectedVersion'],
-      _read,
-    );
+    expect(server.bodies['PATCH /api/v1/guests/g1']!.single['expected'], {
+      'name': 'خلد',
+    });
   });
 
   test('a guest edited twice without a net goes once, from the first '
@@ -149,8 +150,9 @@ void main() {
     await guests.updateGuest(id: 'g1', notes: 'من جهة العريس');
 
     final waiting = (await offline.database.pendingSyncItems()).single;
-    expect(waiting.payload['expectedVersion'], _read);
+    expect(waiting.payload['expected'], {'name': 'خلد'});
     expect(waiting.payload['name'], 'خالد');
+    expect(waiting.payload['notes'], 'من جهة العريس');
 
     server.down = false;
     await offline.syncPendingChanges();
@@ -198,46 +200,48 @@ void main() {
     expect(provider.errorMessage, isNot(contains('مضاف')));
   });
 
-  test('a task\'s edit carries the version it was made from', () async {
-    final (api, offline, server) = await _setUp({
-      'PATCH /api/v1/tasks/t1': (
-        200,
-        {
+  test(
+    'a task\'s edit carries what it read of the fields it changes',
+    () async {
+      final (api, offline, server) = await _setUp({
+        'PATCH /api/v1/tasks/t1': (
+          200,
+          {
+            'id': 't1',
+            'weddingPlanId': 'p1',
+            'title': 'حجز القاعة',
+            'status': 'DONE',
+            'priority': 'MEDIUM',
+            'updatedAt': _changed,
+          },
+        ),
+      });
+      await offline.database.saveCachedItem(
+        table: OfflineTables.cachedTasks,
+        json: {
           'id': 't1',
           'weddingPlanId': 'p1',
           'title': 'حجز القاعة',
-          'status': 'DONE',
+          'status': 'TODO',
           'priority': 'MEDIUM',
-          'updatedAt': _changed,
+          'updatedAt': _read,
         },
-      ),
-    });
-    await offline.database.saveCachedItem(
-      table: OfflineTables.cachedTasks,
-      json: {
-        'id': 't1',
-        'weddingPlanId': 'p1',
-        'title': 'حجز القاعة',
+      );
+
+      await TaskTimelineApi(
+        api,
+        offline: offline,
+      ).updateTask('t1', {'status': 'DONE'});
+
+      expect(server.bodies['PATCH /api/v1/tasks/t1']!.single['expected'], {
         'status': 'TODO',
-        'priority': 'MEDIUM',
-        'updatedAt': _read,
-      },
-    );
+      });
+    },
+  );
 
-    await TaskTimelineApi(
-      api,
-      offline: offline,
-    ).updateTask('t1', {'status': 'DONE'});
-
-    expect(
-      server.bodies['PATCH /api/v1/tasks/t1']!.single['expectedVersion'],
-      _read,
-    );
-  });
-
-  test('a cost\'s edit carries its version; one made while another waits '
-      'goes without, so it is not refused for the first one\'s '
-      'landing', () async {
+  test('a cost\'s edit carries what it read of what it changes; one made '
+      'while another waits goes without, so it is not refused for the first '
+      'one\'s landing', () async {
     final (api, offline, server) = await _setUp({});
     final row = {
       'id': 'c1',
@@ -274,7 +278,7 @@ void main() {
         .where((item) => item.entityType == 'cost')
         .toList();
     expect(waiting, hasLength(2));
-    expect(waiting.first.payload['expectedVersion'], _read);
-    expect(waiting.last.payload.containsKey('expectedVersion'), isFalse);
+    expect(waiting.first.payload['expected'], {'title': 'القاعة'});
+    expect(waiting.last.payload.containsKey('expected'), isFalse);
   });
 }

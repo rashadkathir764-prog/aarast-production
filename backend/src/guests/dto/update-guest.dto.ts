@@ -8,7 +8,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
-  IsISO8601,
+  IsObject,
   IsInt,
   IsOptional,
   IsString,
@@ -23,12 +23,13 @@ import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class UpdateGuestDto {
   /**
-   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
-   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   * RA-MO-344: the value this edit last read of each field it changes. A
+   * field changed since is refused (409 CHANGED_ELSEWHERE); omitted, the
+   * edit is taken as before.
    */
-  @IsISO8601()
+  @IsObject()
   @IsOptional()
-  expectedVersion?: string;
+  expected?: Record<string, unknown>;
   /**
    * RA-BE-15: as the phone's field (guest_form_sheet.dart) and its contacts
    * import; a new guest's name is held to the same in GuestsService, its

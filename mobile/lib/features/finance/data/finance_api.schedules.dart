@@ -151,14 +151,18 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
           entry.key: entry.value,
     };
     if (onServer && changes.isEmpty) return schedule;
-    // RA-MO-344: made from the date as the server last gave it.
+    // RA-MO-344: what the edit was made from, for the fields it changes
+    // (the server's list in WeddingCostsService.updateSchedule).
     if (onServer) {
-      final version = await OfflineWrites(_apiClient, _offline).editVersion(
+      final read = await OfflineWrites(_apiClient, _offline).lastRead(
         entityType: 'payment_schedule',
         table: OfflineTables.cachedPaymentSchedules,
         id: schedule.id,
+        fields: changes.keys.where(
+          const {'amount', 'dueDate', 'note', 'remindAt'}.contains,
+        ),
       );
-      if (version != null) changes['expectedVersion'] = version;
+      if (read != null) changes['expected'] = read;
     }
     final mutation = _mutation(
       'PATCH',

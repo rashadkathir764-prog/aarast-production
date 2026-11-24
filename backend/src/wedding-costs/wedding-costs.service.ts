@@ -135,7 +135,10 @@ import {
 import { arabicSearchKey } from "../shared-kernel/text/arabic-search";
 import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { mahrItemMoveViolation } from "../modules/finance/domain/mahr-policy";
-import { assertUnchangedSince } from "../shared-kernel/versioning/changed-elsewhere";
+import {
+  assertFieldsUnchangedSince,
+  checkableFields,
+} from "../shared-kernel/versioning/changed-elsewhere";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
@@ -514,9 +517,23 @@ export class WeddingCostsService {
           throw new NotFoundException("Wedding cost not found");
         }
         // RA-MO-344: an edit made from an older read of the cost.
-        assertUnchangedSince(
-          dto.expectedVersion,
-          snapshot.updatedAt,
+        assertFieldsUnchangedSince(
+          dto.expected,
+          checkableFields(snapshot, [
+            "budgetCategoryId",
+            "title",
+            "totalAmount",
+            "providerId",
+            "quoteOfferId",
+            "partyName",
+            "partyPhone",
+            "agreementDate",
+            "payer",
+            "payerName",
+            "note",
+            "estimateCover",
+            "estimatePart",
+          ]),
           "التكلفة تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
         );
         // V1 checklist 4.10: privacy is chosen when the cost is recorded; a
@@ -1314,9 +1331,9 @@ export class WeddingCostsService {
         where: { id },
       });
       // RA-MO-344: an edit made from an older read of the payment date.
-      assertUnchangedSince(
-        dto.expectedVersion,
-        schedule.updatedAt,
+      assertFieldsUnchangedSince(
+        dto.expected,
+        checkableFields(schedule, ["amount", "dueDate", "note", "remindAt"]),
         "موعد الدفع تغيّر من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
       );
       if (schedule.status !== PaymentScheduleStatus.PENDING) {

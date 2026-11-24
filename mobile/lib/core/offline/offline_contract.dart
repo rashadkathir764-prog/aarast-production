@@ -453,20 +453,21 @@ class OfflineWrites {
     return row;
   }
 
-  /// RA-MO-344: the version an edit of row [id] is made from, sent as
-  /// `expectedVersion` so the server refuses it when the row changed since
-  /// (the partner's edit, the guest's answer): the row's `updatedAt` as the
-  /// server last returned it.
+  /// RA-MO-344: what this phone last read of the [fields] an edit of row
+  /// [id] changes, sent as `expected`: the server refuses the edit only
+  /// when one of those fields changed since (the partner's edit, the
+  /// guest's own answer), never for another change to the row. Only fields
+  /// the server can check are given ([fields] is the caller's list of them).
   ///
-  /// None while a change of the row still waits: the phone's copy carries
-  /// the phone's time then, and the waiting change carries the check (an
-  /// edit merged into it keeps its version; one queued after it would be
-  /// refused for the waiting change's own landing). None for a row the
-  /// server has not named.
-  Future<String?> editVersion({
+  /// None while a change of the row still waits: the phone's copy holds the
+  /// phone's values then, and the waiting change carries its own (an edit
+  /// merged into it keeps them; one queued after it would be refused for the
+  /// waiting change's own landing). None for a row the server has not named.
+  Future<Map<String, Object?>?> lastRead({
     required String entityType,
     required String table,
     required String id,
+    required Iterable<String> fields,
   }) async {
     final database = _offline?.database;
     if (database == null || isLocalId(id) || id.startsWith('local-')) {
@@ -480,11 +481,13 @@ class OfflineWrites {
         return null;
       }
     }
-    final version = (await database.readCachedItem(
-      table: table,
-      id: id,
-    ))?['updatedAt'];
-    return version is String && version.isNotEmpty ? version : null;
+    final row = await database.readCachedItem(table: table, id: id);
+    if (row == null) return null;
+    final read = {
+      for (final field in fields)
+        if (row.containsKey(field)) field: row[field],
+    };
+    return read.isEmpty ? null : read;
   }
 
   /// The one first try of a change the phone keeps (the plan's own data).

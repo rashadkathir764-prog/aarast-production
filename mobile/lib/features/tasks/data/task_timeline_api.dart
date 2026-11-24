@@ -44,6 +44,23 @@ class TaskTimelineApi {
 
   static int _localTaskSequence = 0;
 
+  /// RA-MO-344: the task's fields the server checks an edit against (the
+  /// server's list in TasksService.update).
+  static const _checkableTaskFields = {
+    'title',
+    'description',
+    'dueDate',
+    'taskCategory',
+    'responsibleName',
+    'responsiblePhone',
+    'responsibleSource',
+    'reminderAt',
+    'status',
+    'priority',
+    'linkedBudgetCategoryId',
+    'linkedScheduleId',
+  };
+
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
 
@@ -396,13 +413,14 @@ class TaskTimelineApi {
       await offline?.syncPendingChanges();
       return WeddingTask.fromJson(json);
     }
-    // RA-MO-344: made from the task as the server last gave it.
-    final version = await _writes.editVersion(
+    // RA-MO-344: what the edit was made from, for the fields it changes.
+    final read = await _writes.lastRead(
       entityType: 'task',
       table: OfflineTables.cachedTasks,
       id: id,
+      fields: data.keys.where(_checkableTaskFields.contains),
     );
-    final sent = {...data, 'expectedVersion': ?version};
+    final sent = {...data, 'expected': ?read};
     // RA-MO-341: the shared route's try, one request id to the resend.
     final requestId = ApiClient.newClientRequestId();
     final json = await _writes.send(

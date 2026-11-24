@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEnum,
   IsISO8601,
+  IsObject,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -12,12 +13,13 @@ import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class UpdateWeddingCostDto {
   /**
-   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
-   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   * RA-MO-344: the value this edit last read of each field it changes. A
+   * field changed since is refused (409 CHANGED_ELSEWHERE); omitted, the
+   * edit is taken as before.
    */
-  @IsISO8601()
+  @IsObject()
   @IsOptional()
-  expectedVersion?: string;
+  expected?: Record<string, unknown>;
   /** V1 checklist 4.10: false shares a private cost with the plan; a shared cost never becomes private. */
   @IsBoolean()
   @IsOptional()

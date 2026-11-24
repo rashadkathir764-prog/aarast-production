@@ -85,7 +85,10 @@ import {
   updateChecklistItem,
   updateTask,
 } from '../modules/tasks/infrastructure/task-work.repository';
-import { assertUnchangedSince } from "../shared-kernel/versioning/changed-elsewhere";
+import {
+  assertFieldsUnchangedSince,
+  checkableFields,
+} from "../shared-kernel/versioning/changed-elsewhere";
 
 export interface TaskResponse {
   id: string;
@@ -378,9 +381,22 @@ export class TasksService {
       );
       await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
       // RA-MO-344: an edit made from an older read of the task.
-      assertUnchangedSince(
-        dto.expectedVersion,
-        current.updatedAt,
+      assertFieldsUnchangedSince(
+        dto.expected,
+        checkableFields(current, [
+          "title",
+          "description",
+          "dueDate",
+          "taskCategory",
+          "responsibleName",
+          "responsiblePhone",
+          "responsibleSource",
+          "reminderAt",
+          "status",
+          "priority",
+          "linkedBudgetCategoryId",
+          "linkedScheduleId",
+        ]),
         "المهمة تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
       );
       // V1 checklist 4.10: privacy is chosen when the task is created; a

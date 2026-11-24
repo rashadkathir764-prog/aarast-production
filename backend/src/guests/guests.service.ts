@@ -92,7 +92,10 @@ import {
   sendEvents,
 } from '../modules/guests/infrastructure/guest-rsvp.repository';
 import { toldOccasions } from '../modules/guests/domain/guest-invitations';
-import { assertUnchangedSince } from "../shared-kernel/versioning/changed-elsewhere";
+import {
+  assertFieldsUnchangedSince,
+  checkableFields,
+} from "../shared-kernel/versioning/changed-elsewhere";
 
 /**
  * RA-BE-82: the refusal of a name of only spaces, by what is named. Said to
@@ -457,9 +460,20 @@ export class GuestsService {
           current,
         );
         // RA-MO-344: an edit made from an older read of the guest.
-        assertUnchangedSince(
-          dto.expectedVersion,
-          current.updatedAt,
+        assertFieldsUnchangedSince(
+          dto.expected,
+          checkableFields(current, [
+            "name",
+            "phone",
+            "groupId",
+            "side",
+            "status",
+            "invitationStatus",
+            "attendanceStatus",
+            "seatsCount",
+            "companionsCount",
+            "notes",
+          ]),
           "الضيف تغيّر من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
         );
         const name =

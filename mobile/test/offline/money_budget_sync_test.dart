@@ -595,7 +595,7 @@ void main() {
       partyName: cost.partyName,
       note: 'العربون نقدًا',
     );
-    expect(client.sent.single, {'note': 'العربون نقدًا'});
+    _expectChangedFields(client.sent.single, {'note': 'العربون نقدًا'});
 
     client.sent.clear();
     await api.updateCost(
@@ -605,7 +605,10 @@ void main() {
       totalAmount: '1200',
       partyName: cost.partyName,
     );
-    expect(client.sent.single, {'title': 'قاعة سبأ', 'totalAmount': '1200'});
+    _expectChangedFields(client.sent.single, {
+      'title': 'قاعة سبأ',
+      'totalAmount': '1200',
+    });
 
     // The same amount written another way is not a change.
     client.sent.clear();
@@ -617,7 +620,7 @@ void main() {
       partyName: cost.partyName,
       payer: 'FAMILY',
     );
-    expect(client.sent.single, {'payer': 'FAMILY'});
+    _expectChangedFields(client.sent.single, {'payer': 'FAMILY'});
   });
 
   // RA-MO-240: the same for a payment date.
@@ -2173,4 +2176,18 @@ class _MoneySyncAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// RA-MO-239: the edit's fields are what changed. RA-MO-344: beside them,
+/// `expected` (when the phone has the server's copy) names only those
+/// fields, with the values read before the edit.
+void _expectChangedFields(
+  Map<String, dynamic> body,
+  Map<String, dynamic> changed,
+) {
+  expect({...body}..remove('expected'), changed);
+  final expected = body['expected'];
+  if (expected != null) {
+    expect((expected as Map).keys, everyElement(isIn(changed.keys)));
+  }
 }

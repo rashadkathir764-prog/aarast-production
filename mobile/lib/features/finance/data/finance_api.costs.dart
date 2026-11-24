@@ -257,14 +257,32 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       ...extras,
     };
     if (onServer && changes.isEmpty) return cost;
-    // RA-MO-344: made from the agreement as the server last gave it.
+    // RA-MO-344: what the edit was made from, for the fields it changes
+    // (the server's list in WeddingCostsService.updateCost).
     if (onServer) {
-      final version = await OfflineWrites(_apiClient, _offline).editVersion(
+      final read = await OfflineWrites(_apiClient, _offline).lastRead(
         entityType: 'cost',
         table: OfflineTables.cachedCosts,
         id: cost.id,
+        fields: changes.keys.where(
+          const {
+            'budgetCategoryId',
+            'title',
+            'totalAmount',
+            'providerId',
+            'quoteOfferId',
+            'partyName',
+            'partyPhone',
+            'agreementDate',
+            'payer',
+            'payerName',
+            'note',
+            'estimateCover',
+            'estimatePart',
+          }.contains,
+        ),
       );
-      if (version != null) changes['expectedVersion'] = version;
+      if (read != null) changes['expected'] = read;
     }
     final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', changes);
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {

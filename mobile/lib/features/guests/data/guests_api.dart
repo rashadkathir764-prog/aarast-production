@@ -29,6 +29,21 @@ class GuestsApi {
 
   static const _side = 'OTHER';
 
+  /// RA-MO-344: the guest's fields the server checks an edit against (the
+  /// server's list in GuestsService.update).
+  static const _checkableGuestFields = {
+    'name',
+    'phone',
+    'groupId',
+    'side',
+    'status',
+    'invitationStatus',
+    'attendanceStatus',
+    'seatsCount',
+    'companionsCount',
+    'notes',
+  };
+
   Future<List<Guest>> getGuests(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return cachedGuests(weddingPlanId);
@@ -257,13 +272,14 @@ class GuestsApi {
           }
           ..remove('eventIds')
           ..remove('eventReplies');
-    // RA-MO-344: made from the guest as the server last gave it.
-    final version = await _writes.editVersion(
+    // RA-MO-344: what the edit was made from, for the fields it changes.
+    final read = await _writes.lastRead(
       entityType: 'guest',
       table: OfflineTables.cachedGuests,
       id: id,
+      fields: payload.keys.where(_checkableGuestFields.contains),
     );
-    if (version != null) payload['expectedVersion'] = version;
+    if (read != null) payload['expected'] = read;
     final planId = cached['weddingPlanId']?.toString();
     final json = await _writes.queued(
       entityType: 'guest',

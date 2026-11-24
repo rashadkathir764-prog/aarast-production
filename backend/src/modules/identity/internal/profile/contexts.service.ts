@@ -23,6 +23,7 @@ import {
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  isPlanDeletionPending,
   PlanAccessContext,
   readerAddressForm,
   readsPlanSections,
@@ -153,7 +154,7 @@ export class ContextsService {
           entry.plan !== undefined &&
           !waitingOwners.has(entry.plan.ownerUserId) &&
           // Q-45 (D124): nor a plan its owner asked to delete.
-          entry.plan.deletionRequestedAt === null,
+          !isPlanDeletionPending(entry.plan),
       )
       .sort(
         (left, right) =>
@@ -211,7 +212,7 @@ export class ContextsService {
         membership &&
         plan &&
         plan.ownerUserId !== currentUser.id &&
-        plan.deletionRequestedAt === null &&
+        !isPlanDeletionPending(plan) &&
         (await findDeletionPendingUserIds(this.prisma, [plan.ownerUserId]))
           .size === 0
       ) {

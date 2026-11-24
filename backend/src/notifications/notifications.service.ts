@@ -37,6 +37,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  isPlanDeletionPending,
   isPlanPartnerRole,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
@@ -782,7 +783,7 @@ export class NotificationsService implements NotificationsPort {
               (plan.status === WeddingPlanStatus.PLANNING ||
                 plan.status === WeddingPlanStatus.ARCHIVED) &&
               // Q-45 (D124): a plan waiting out its deletion reminds no one.
-              plan.deletionRequestedAt === null,
+              !isPlanDeletionPending(plan),
           ),
         );
         const lockedPlans = livePlans

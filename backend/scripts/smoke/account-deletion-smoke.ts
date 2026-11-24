@@ -1465,28 +1465,39 @@ async function main() {
     const preservedClientCost = await prisma.weddingCost.findUnique({
       where: { id: clientCost.id },
     });
+    // RA-BE-178: deleting a provider keeps the customers' records: its row
+    // stays as «مزود محذوف» with no data, their conversations stay readable,
+    // and their requests stay (an open one ends).
+    const erasedProvider = await prisma.provider.findUnique({
+      where: { id: provider.id },
+      select: { erasedAt: true, status: true },
+    });
+    const keptQuotes = await prisma.quoteRequest.findMany({
+      where: { id: { in: [clientQuote.id, secondClientQuote.id] } },
+      select: { status: true },
+    });
     assertCheck(
       (await prisma.user.count({ where: { id: sentinel.id } })) === 0 &&
-        (await prisma.provider.count({ where: { id: provider.id } })) === 0 &&
+        erasedProvider?.erasedAt instanceof Date &&
+        erasedProvider?.status === 'SUSPENDED' &&
         (await prisma.conversation.count({
           where: {
             id: {
               in: [sharedConversation.id, secondClientConversation.id],
             },
           },
-        })) === 0 &&
-        (await prisma.quoteRequest.count({
-          where: { id: { in: [clientQuote.id, secondClientQuote.id] } },
-        })) === 0,
-      'provider account deletion purges conversations and requests across customer plans',
+        })) === 2 &&
+        keptQuotes.length === 2 &&
+        keptQuotes.every(
+          (quote) => !['SENT', 'VIEWED', 'RESPONDED'].includes(quote.status),
+        ),
+      'provider account deletion keeps the customers\' conversations and requests, the provider erased',
     );
     assertCheck(
       (await prisma.user.count({ where: { id: client.id } })) === 1 &&
         (await prisma.weddingPlan.count({
           where: { id: { in: clientPlans.map((item) => item.id) } },
         })) === 2 &&
-        preservedClientCost?.providerId === null &&
-        preservedClientCost?.quoteOfferId === null &&
         preservedClientCost?.totalAmount.toString() === '2400',
       'provider deletion preserves customer plans and their WeddingCost',
     );

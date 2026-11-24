@@ -72,7 +72,8 @@ Feature code uses `AarastV3Color` roles or `context.accent`, never a hex value.
 | `ink` / `text` | `#13211F` | Main text |
 | `textMuted` | `#55625E` | Secondary text |
 | `textFaint` | `#66726F` | Hints only (4.5:1 on the canvas, D124) |
-| `line` / `lineStrong` | `#E2E7E5` / `#838E8B` | Dividers / the edge of a field (3:1 on paper and canvas, D124) |
+| `line` / `lineStrong` | `#E2E7E5` / `#C9D1CE` | Dividers and fills |
+| `fieldEdge` | `#838E8B` | The edge of a field only (3:1 on paper and canvas, RA-MO-367) |
 | `primary` | `#0B6E69` | The identity, main actions |
 | `primaryDark` | `#064B47` | The countdown card's deep end |
 | `primarySoft` | `#DCEFEC` | Soft fills |

@@ -52,11 +52,11 @@ void main() {
 
   test('the field stroke is 3:1 against both paper and the canvas', () {
     expect(
-      _contrast(AarastV3Color.lineStrong, AarastV3Color.paper),
+      _contrast(AarastV3Color.fieldEdge, AarastV3Color.paper),
       greaterThanOrEqualTo(3),
     );
     expect(
-      _contrast(AarastV3Color.lineStrong, AarastV3Color.canvas),
+      _contrast(AarastV3Color.fieldEdge, AarastV3Color.canvas),
       greaterThanOrEqualTo(3),
     );
   });
@@ -65,7 +65,7 @@ void main() {
     final decoration = AppTheme.light().inputDecorationTheme;
     for (final border in [decoration.border, decoration.enabledBorder]) {
       final side = (border! as OutlineInputBorder).borderSide;
-      expect(side.color, AarastV3Color.lineStrong);
+      expect(side.color, AarastV3Color.fieldEdge);
       expect(side.width, greaterThanOrEqualTo(1));
     }
   });
@@ -85,7 +85,7 @@ void main() {
       ),
     );
     final border = (box.decoration! as BoxDecoration).border! as Border;
-    expect(border.top.color, AarastV3Color.lineStrong);
+    expect(border.top.color, AarastV3Color.fieldEdge);
   });
 
   test('the semantic roles follow the pinned tokens', () {

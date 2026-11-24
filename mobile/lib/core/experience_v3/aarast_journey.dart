@@ -1946,7 +1946,7 @@ class JourneyFieldBox extends StatelessWidget {
         ? AarastV3Color.danger
         : focused
         ? context.accent.primary
-        : AarastV3Color.lineStrong;
+        : AarastV3Color.fieldEdge;
     final trailing = this.trailing;
     final box = Container(
       constraints: BoxConstraints(

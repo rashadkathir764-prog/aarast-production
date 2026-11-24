@@ -743,7 +743,7 @@ class _AskField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-        border: Border.all(color: AarastV3Color.lineStrong),
+        border: Border.all(color: AarastV3Color.fieldEdge),
       ),
       child: Row(
         children: [

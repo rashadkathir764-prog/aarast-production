@@ -117,8 +117,8 @@ class _MarketplaceSearch extends StatelessWidget {
               size: AarastV3Icon.md,
               color: AarastV3Color.textMuted,
             ),
-            border: border(AarastV3Color.lineStrong, 1),
-            enabledBorder: border(AarastV3Color.lineStrong, 1),
+            border: border(AarastV3Color.fieldEdge, 1),
+            enabledBorder: border(AarastV3Color.fieldEdge, 1),
             focusedBorder: border(context.accent.primary, 2),
             suffixIcon: Padding(
               padding: const EdgeInsetsDirectional.only(end: AarastV3Space.x1),

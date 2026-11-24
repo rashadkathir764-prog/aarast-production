@@ -387,7 +387,18 @@ void main() {
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
       expect(find.byKey(const Key('provider-me-verified')), findsOneWidget);
-      expect(find.text('★ 4.7 · 38 تقييم'), findsOneWidget);
+      // RA-MO-331: a drawn star and the words; a ★ typed into the text is a
+      // glyph the font lacks and drew an empty box.
+      expect(find.textContaining('★'), findsNothing);
+      final rating = find.byKey(const Key('provider-me-rating'));
+      expect(
+        find.descendant(of: rating, matching: find.text('4.7 · 38 تقييم')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: rating, matching: find.byIcon(LucideIcons.star)),
+        findsOneWidget,
+      );
       expect(find.text('يرد عادة خلال 3 ساعات'), findsOneWidget);
       expect(find.text('كيف يشوفك العرسان'), findsOneWidget);
       expect(find.text('خدماتك وباقاتك'), findsOneWidget);
@@ -835,7 +846,16 @@ void main() {
 
       expect(find.byKey(const Key('provider-share-card')), findsOneWidget);
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
-      expect(find.text('★ 4.7 · 38 تقييم'), findsOneWidget);
+      expect(find.textContaining('★'), findsNothing);
+      final rating = find.byKey(const Key('provider-share-rating'));
+      expect(
+        find.descendant(of: rating, matching: find.text('4.7 · 38 تقييم')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: rating, matching: find.byIcon(LucideIcons.star)),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('provider-share-verified')), findsOneWidget);
       expect(find.textContaining('ليالي'), findsNothing);
       expect(find.text('تيك توك'), findsNothing);

@@ -107,8 +107,9 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         ),
       if (profile.ratingCount > 0)
         JourneyTag(
-          label:
-              '★ ${providerRatingLabel(profile.ratingAverage, profile.ratingCount)}',
+          key: const Key('provider-me-rating'),
+          icon: LucideIcons.star,
+          label: providerRatingLabel(profile.ratingAverage, profile.ratingCount),
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
         ),

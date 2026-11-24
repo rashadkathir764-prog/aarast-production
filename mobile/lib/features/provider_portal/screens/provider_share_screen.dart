@@ -202,8 +202,12 @@ class ProviderShareCard extends StatelessWidget {
                     children: [
                       if (profile.ratingCount > 0)
                         JourneyTag(
-                          label:
-                              '★ ${providerRatingLabel(profile.ratingAverage, profile.ratingCount)}',
+                          key: const Key('provider-share-rating'),
+                          icon: LucideIcons.star,
+                          label: providerRatingLabel(
+                            profile.ratingAverage,
+                            profile.ratingCount,
+                          ),
                           color: AarastV3Color.primaryDark,
                           soft: AarastV3Color.saffron,
                         ),

@@ -481,12 +481,17 @@ class JourneyTag extends StatelessWidget {
     required this.label,
     required this.color,
     required this.soft,
+    this.icon,
     super.key,
   });
 
   final String label;
   final Color color;
   final Color soft;
+
+  /// A drawn mark before the label. A symbol typed into the label (a ★) is
+  /// a glyph the app's font does not hold, and draws as an empty box.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -499,16 +504,27 @@ class JourneyTag extends StatelessWidget {
         color: soft,
         borderRadius: BorderRadius.circular(AarastV3Radius.control),
       ),
-      child: Text(
-        label,
-        style: JourneyType.of(
-          JourneyType.caption,
-          weight: JourneyType.bold,
-          color: color,
-        ),
-      ),
+      child: icon == null
+          ? text
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: AarastV3Icon.sm, color: color),
+                const SizedBox(width: AarastV3Space.x1),
+                Flexible(child: text),
+              ],
+            ),
     );
   }
+
+  Widget get text => Text(
+    label,
+    style: JourneyType.of(
+      JourneyType.caption,
+      weight: JourneyType.bold,
+      color: color,
+    ),
+  );
 }
 
 /// A progress bar. [value] is 0 to 1.

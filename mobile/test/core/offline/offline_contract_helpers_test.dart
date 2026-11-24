@@ -120,6 +120,101 @@ void main() {
       },
     );
 
+    // RA-MO-342: the server's answer replaced the list, so a change still
+    // waiting on the phone vanished from it (and from its copy) the moment
+    // the server answered, until it was sent.
+    test('changes still waiting stay listed when the server answers', () async {
+      final (api, offline, _, _) = await _setUpSimple({
+        'GET /api/v1/wedding-plans/p1/funding-sources': [
+          {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '100'},
+          {'id': 'f2', 'weddingPlanId': 'p1', 'amount': '50'},
+        ],
+      });
+      final database = offline.database;
+      Future<void> waiting(
+        String operation,
+        Map<String, dynamic> row, {
+        bool deleted = false,
+      }) async {
+        await database.saveCachedItem(
+          table: OfflineTables.cachedFundingSources,
+          json: row,
+          dirty: true,
+          deletedLocally: deleted,
+        );
+        await database.enqueueSync(
+          entityType: 'funding_source',
+          operation: operation,
+          endpoint: '/api/v1/funding-sources/${row['id']}',
+          method: operation == 'delete' ? 'DELETE' : 'PATCH',
+          payload: const {},
+          planId: 'p1',
+          localEntityId: row['id'] as String,
+        );
+      }
+
+      await waiting('update', {
+        'id': 'f1',
+        'weddingPlanId': 'p1',
+        'amount': '200',
+      });
+      await waiting('delete', {
+        'id': 'f2',
+        'weddingPlanId': 'p1',
+        'amount': '50',
+      }, deleted: true);
+      await waiting('create', {
+        'id': 'queued-f3',
+        'weddingPlanId': 'p1',
+        'amount': '70',
+      });
+
+      final listed = await OfflineReads(api, offline).list(
+        '/api/v1/wedding-plans/p1/funding-sources',
+        table: OfflineTables.cachedFundingSources,
+        parentColumn: 'planId',
+        parentId: 'p1',
+      );
+
+      expect({for (final row in listed) row['id']: row['amount']}, {
+        'f1': '200',
+        'queued-f3': '70',
+      });
+      // The phone's copy keeps them too, for the next read without a net.
+      final kept = await database.readCachedList(
+        table: OfflineTables.cachedFundingSources,
+        parentColumn: 'planId',
+        parentId: 'p1',
+      );
+      expect({for (final row in kept) row['id']: row['amount']}, {
+        'f1': '200',
+        'queued-f3': '70',
+      });
+    });
+
+    test('a row stands for the server\'s only while its change waits', () async {
+      final (api, offline, _, _) = await _setUpSimple({
+        'GET /api/v1/wedding-plans/p1/funding-sources': [
+          {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '100'},
+        ],
+      });
+      // Dirty, but nothing waits for it (its change was dropped).
+      await offline.database.saveCachedItem(
+        table: OfflineTables.cachedFundingSources,
+        json: {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '200'},
+        dirty: true,
+      );
+
+      final listed = await OfflineReads(api, offline).list(
+        '/api/v1/wedding-plans/p1/funding-sources',
+        table: OfflineTables.cachedFundingSources,
+        parentColumn: 'planId',
+        parentId: 'p1',
+      );
+
+      expect(listed.single['amount'], '100');
+    });
+
     test('with no copy on the phone the failure is reported', () async {
       final (api, offline, server, _) = await _setUpSimple({});
       server.down = true;

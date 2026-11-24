@@ -5,6 +5,7 @@ import '../network/api_client.dart';
 import 'cache_policy.dart';
 import 'local_database_contract.dart' show keptListMetaKey;
 import 'offline_sync_service.dart';
+import 'offline_tables.dart';
 
 /// D85: the one contract every feature's data layer follows.
 ///
@@ -47,14 +48,12 @@ class OfflineReads {
       final Object? raw = itemsKey == null
           ? await _api.getJsonList(path)
           : (await _api.getJson(path))[itemsKey];
-      final items = _maps(raw);
-      await _offline?.database.replaceCachedList(
+      return await _keepWithWaitingChanges(
+        _maps(raw),
         table: table,
-        items: items,
         parentColumn: parentColumn,
         parentId: parentId,
       );
-      return items;
     } on Object catch (error) {
       if (!await _servesCache(error)) rethrow;
       final cached = await cachedList(
@@ -70,6 +69,77 @@ class OfflineReads {
       noteCopyServed();
       return cached;
     }
+  }
+
+  /// Keeps the server's list as the phone's copy and answers it with the
+  /// phone's changes still waiting to be sent.
+  ///
+  /// RA-MO-342: the server's answer replaced the list, so a row edited,
+  /// deleted or added on the phone showed the server's old state (or
+  /// vanished) as soon as the server answered, though its change was still
+  /// waiting. A row stands for the server's while a change of it waits in
+  /// the queue (or was refused and waits for the person), and no longer.
+  Future<List<Map<String, dynamic>>> _keepWithWaitingChanges(
+    List<Map<String, dynamic>> items, {
+    required String table,
+    required String? parentColumn,
+    required String? parentId,
+  }) async {
+    final database = _offline?.database;
+    if (database == null) return items;
+    // Row id → whether its waiting change deletes it.
+    final waiting = <String, bool>{};
+    for (final change in [
+      ...await database.pendingSyncItems(),
+      ...await database.blockedSyncItems(),
+    ]) {
+      final id = change.localEntityId;
+      if (id == null ||
+          OfflineTables.tableForEntityType(change.entityType) != table) {
+        continue;
+      }
+      waiting[id] = (waiting[id] ?? false) || change.operation == 'delete';
+    }
+    final serverIds = {for (final item in items) item['id']?.toString()};
+    final phoneRows = <String, Map<String, dynamic>>{
+      for (final id in waiting.keys.where(serverIds.contains))
+        id: ?await database.readCachedItem(table: table, id: id),
+    };
+    await database.replaceCachedList(
+      table: table,
+      items: items,
+      parentColumn: parentColumn,
+      parentId: parentId,
+    );
+    // The server's rows took the place of the waiting ones: they go back.
+    for (final item in items) {
+      final id = item['id']?.toString();
+      final deleted = waiting[id];
+      if (id == null || deleted == null) continue;
+      await database.saveCachedItem(
+        table: table,
+        json: deleted ? item : phoneRows[id] ?? item,
+        dirty: true,
+        deletedLocally: deleted,
+      );
+    }
+    if (waiting.isEmpty) return items;
+    final phoneOnly = [
+      for (final row in await database.readCachedList(
+        table: table,
+        parentColumn: parentColumn,
+        parentId: parentId,
+      ))
+        if (waiting.containsKey(row['id']?.toString()) &&
+            !serverIds.contains(row['id']?.toString()))
+          row,
+    ];
+    return [
+      for (final item in items)
+        if (waiting[item['id']?.toString()] != true)
+          phoneRows[item['id']?.toString()] ?? item,
+      ...phoneOnly,
+    ];
   }
 
   /// One object kept in [table] under its own `id`.

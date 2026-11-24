@@ -3,6 +3,7 @@
 # release start needs. Sourced, never run on its own.
 
 env_file=/opt/aarast/app/.env
+release_lib_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # Push notifications: the FCM service account lives in SSM as a SecureString.
 # It is written root-made, backend-readable only (uid 1000, mode 0600) and is
@@ -65,6 +66,49 @@ PY
     fi
     echo "loaded $name:$release ($want)"
   done <<<"$lines"
+}
+
+# RA-BE-146: rolling back puts older code on the database the newer release
+# already migrated. That is safe only when every migration the older release
+# does not know leaves what it reads and writes alone. Migrations are not only
+# additions (columns and tables are dropped, enum values added, columns made
+# NOT NULL), so this names the ones the target does not know, reads their SQL
+# from the image that ran them, and refuses when any takes something away.
+# Usage: release_rollback_check <current-image> <target-image> <applied-names>
+release_rollback_check() {
+  local current=$1 target=$2 applied=$3 known unknown name count tmp reasons
+  local -a files=()
+  known=$(docker run --rm --entrypoint ls "$target" prisma/migrations) \
+    || { echo "FAIL: the migrations of $target cannot be listed" >&2; return 1; }
+  unknown=$(printf '%s\n' "$applied" | sort | grep -v '^$' | grep -vxF -f <(printf '%s\n' "$known") || true)
+  if [ -z "$unknown" ]; then
+    echo "no migration the target release does not know: the rollback is code only"
+    return 0
+  fi
+  count=$(printf '%s\n' "$unknown" | wc -l)
+  echo "$count migrations the target release does not know: $(printf '%s ' $unknown | sed 's/ $//')"
+  tmp=$(mktemp -d)
+  for name in $unknown; do
+    if ! docker run --rm --entrypoint cat "$current" "prisma/migrations/$name/migration.sql" >"$tmp/$name.sql" 2>/dev/null \
+       || [ ! -s "$tmp/$name.sql" ]; then
+      echo "FAIL: $name cannot be read from $current, so the rollback is not guessed at" >&2
+      rm -rf "$tmp"
+      return 1
+    fi
+    files+=("$name=$tmp/$name.sql")
+  done
+  if reasons=$(python3 "$release_lib_dir/migration-breaks-older-code.py" "${files[@]}"); then
+    rm -rf "$tmp"
+    echo "all of them only add (new tables, nullable or defaulted columns, indexes): the older code runs on the database as it is"
+    return 0
+  fi
+  rm -rf "$tmp"
+  {
+    echo "FAIL: this rollback is refused. The database has changes the older release breaks on:"
+    printf '  %s\n' "$reasons"
+    echo "Roll forward with a fix on top of the newer release, or restore the pre-deploy dump of the newer release (restore.sh; the data written since is lost)."
+  } >&2
+  return 1
 }
 
 # docker compose against the host env file, from the release's deploy/aws.

@@ -558,21 +558,35 @@ class JsonLocalDatabase implements LocalDatabase {
 
   @override
   Future<void> wipeAll() async {
-    for (final table in OfflineTables.cacheTables) {
-      await _writeList(_tableKey(table), []);
-    }
+    await _wipeAccountRows();
     await _writeList(_tableKey(OfflineTables.syncQueue), []);
-    await _writeMap(_metaKey, {});
+    await _writeMap(
+      _metaKey,
+      _readMap(_metaKey)..removeWhere((key, _) => !isPhonePlanMetaKey(key)),
+    );
   }
 
   @override
   Future<void> wipeCacheKeepingQueue({required String keepMetaKey}) async {
-    for (final table in OfflineTables.cacheTables) {
-      await _writeList(_tableKey(table), []);
-    }
+    await _wipeAccountRows();
     final meta = _readMap(_metaKey)
-      ..removeWhere((key, _) => key != keepMetaKey);
+      ..removeWhere(
+        (key, _) => key != keepMetaKey && !isPhonePlanMetaKey(key),
+      );
     await _writeMap(_metaKey, meta);
+  }
+
+  /// Every cached row but a phone plan's (RA-MO-319).
+  Future<void> _wipeAccountRows() async {
+    for (final table in OfflineTables.cacheTables) {
+      final planScoped = OfflineTables.planScopedCacheTables.contains(table);
+      final column = planColumnOf(table);
+      await _writeList(_tableKey(table), [
+        if (planScoped)
+          for (final row in _readList(_tableKey(table)))
+            if (isPhonePlanId(row[column])) row,
+      ]);
+    }
   }
 
   Future<void> _ensureList(String key) async {

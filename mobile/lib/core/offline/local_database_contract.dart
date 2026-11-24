@@ -1,3 +1,5 @@
+import 'local_plan_id.dart';
+import 'offline_tables.dart';
 import 'sync_queue.dart';
 
 /// RA-MO-203: the meta key that says the server's list for [table] under
@@ -11,6 +13,24 @@ String keptListMetaKey(String table, String? parentId) =>
 String keptListPlanSuffix(String planId) => ':$planId';
 
 const keptListPrefix = 'kept-list:';
+
+/// RA-MO-319: a plan kept on this phone only (made before signing in). It
+/// belongs to no account, so wiping an account's data off the phone keeps
+/// it: its guests, tasks and money live in the phone's tables, not in the
+/// queue, and nothing else holds them.
+bool isPhonePlanId(Object? planId) {
+  final value = planId?.toString().trim() ?? '';
+  return value.isNotEmpty && isLocalPlanId(value);
+}
+
+/// The column that names a row's plan in a plan-scoped [table].
+String planColumnOf(String table) =>
+    table == OfflineTables.cachedWeddingPlans ? 'id' : 'planId';
+
+/// RA-MO-319: a meta key of a phone plan: a plan's own keys (its budget, its
+/// copies, its «list kept» markers) end with `:<planId>`.
+bool isPhonePlanMetaKey(String key) =>
+    isPhonePlanId(key.substring(key.lastIndexOf(':') + 1));
 
 abstract class LocalDatabase {
   Future<void> initialize();
@@ -148,14 +168,16 @@ abstract class LocalDatabase {
 
   Future<Set<String>> pendingEntityKeys();
 
-  /// Deletes every cached row, every queued sync item and all local meta.
+  /// Deletes every cached row, every queued sync item and all local meta,
+  /// except a phone plan's rows and meta ([isPhonePlanId], RA-MO-319).
   ///
   /// Called on logout and when a different account signs in on the same
   /// device, so financial data never leaks across accounts.
   Future<void> wipeAll();
 
-  /// Deletes every cached row and all local meta except [keepMetaKey], and
-  /// keeps the queued sync items (C58). Used when a session expires: the
+  /// Deletes every cached row and all local meta except [keepMetaKey] and a
+  /// phone plan's rows and meta (RA-MO-319), and keeps the queued sync
+  /// items (C58). Used when a session expires: the
   /// queue replays only when the same account signs in again, and any other
   /// account wipes it first.
   Future<void> wipeCacheKeepingQueue({required String keepMetaKey});

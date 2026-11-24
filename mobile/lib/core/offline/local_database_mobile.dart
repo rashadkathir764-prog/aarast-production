@@ -661,26 +661,64 @@ class SqliteLocalDatabase implements LocalDatabase {
   @override
   Future<void> wipeAll() async {
     await _db.transaction((txn) async {
-      for (final table in OfflineTables.cacheTables) {
-        await txn.delete(table);
-      }
+      await _wipeAccountRows(txn);
       await txn.delete(OfflineTables.syncQueue);
-      await txn.delete(OfflineTables.localMeta);
+      await _wipeAccountMeta(txn);
     });
   }
 
   @override
   Future<void> wipeCacheKeepingQueue({required String keepMetaKey}) async {
     await _db.transaction((txn) async {
-      for (final table in OfflineTables.cacheTables) {
+      await _wipeAccountRows(txn);
+      await _wipeAccountMeta(txn, keepMetaKey: keepMetaKey);
+    });
+  }
+
+  /// Every cached row but a phone plan's (RA-MO-319).
+  static Future<void> _wipeAccountRows(Transaction txn) async {
+    for (final table in OfflineTables.cacheTables) {
+      if (!OfflineTables.planScopedCacheTables.contains(table)) {
         await txn.delete(table);
+        continue;
       }
+      final column = planColumnOf(table);
+      final kept = [
+        for (final row in await txn.query(
+          table,
+          columns: [column],
+          distinct: true,
+        ))
+          if (isPhonePlanId(row[column])) row[column]!.toString(),
+      ];
+      await txn.delete(
+        table,
+        where: kept.isEmpty
+            ? null
+            : '$column IS NULL OR $column NOT IN '
+                  '(${List.filled(kept.length, '?').join(', ')})',
+        whereArgs: kept.isEmpty ? null : kept,
+      );
+    }
+  }
+
+  /// All local meta but a phone plan's and [keepMetaKey] (RA-MO-319).
+  static Future<void> _wipeAccountMeta(
+    Transaction txn, {
+    String? keepMetaKey,
+  }) async {
+    for (final row in await txn.query(
+      OfflineTables.localMeta,
+      columns: ['key'],
+    )) {
+      final key = row['key'].toString();
+      if (key == keepMetaKey || isPhonePlanMetaKey(key)) continue;
       await txn.delete(
         OfflineTables.localMeta,
-        where: 'key != ?',
-        whereArgs: [keepMetaKey],
+        where: 'key = ?',
+        whereArgs: [key],
       );
-    });
+    }
   }
 
   Database get _db {

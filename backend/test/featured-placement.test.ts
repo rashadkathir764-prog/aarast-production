@@ -94,7 +94,7 @@ test('the customers\' list puts the featured first and cuts pages across both gr
   const client = rankedListClient([...regular, ...featured], reads);
   const where = { AND: [{ status: ProviderStatus.ACTIVE }] } as any;
   const page = async (pageNo: number, limit: number) => {
-    const rows = await searchActiveProviders(client, where, { page: pageNo, limit, skip: (pageNo - 1) * limit }, now);
+    const { rows } = await searchActiveProviders(client, where, { page: pageNo, limit, skip: (pageNo - 1) * limit }, now);
     return rows.map((row: any) => row.id);
   };
 
@@ -528,7 +528,7 @@ test('the list never badges a row of the regular group (an unclaimed listing wit
     [{ id: 'unclaimed', userId: null, featuredPeriods: [window] }],
     { wholeRowIds: [] },
   );
-  const rows = await searchActiveProviders(
+  const { rows } = await searchActiveProviders(
     client,
     { AND: [{ status: ProviderStatus.ACTIVE }] } as any,
     { page: 1, limit: 20, skip: 0 },

@@ -176,13 +176,13 @@ export class MarketplaceService {
   async findProviders(query: ListProvidersQueryDto) {
     const now = new Date();
     const { pagination, where, searchKey, availabilityDay } = MarketplaceQuery.providerSearch(query, now);
-    // One snapshot for the search, the count and the ranked page (B-43,
-    // RA-BE-151). RA-BE-09: the text is matched folded, as on the phone.
+    // One snapshot for the search and the ranked page (B-43, RA-BE-151).
+    // RA-BE-09: the text is matched folded, as on the phone. RA-BE-181: the
+    // total is the ranked candidates' count; there is no second count query.
     const [total, providerRows, unavailable] = await this.prisma.$transaction(
       async (tx) => {
         if (searchKey) where.AND.push({ id: { in: await core.findProviderIdsMatchingSearch(tx, searchKey) } });
-        const total = await core.countActiveProviders(tx, where);
-        const rows = await core.searchActiveProviders(tx, where, pagination, now);
+        const { total, rows } = await core.searchActiveProviders(tx, where, pagination, now);
         // RA-BE-150 (Q-36): who takes the asked day, for the rows of this page.
         const unavailable = availabilityDay
           ? await listProvidersUnavailableOn(tx, rows.map((row) => row.id), availabilityDay)

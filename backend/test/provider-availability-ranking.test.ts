@@ -175,7 +175,7 @@ test("the list is cut after ranking: the page holds the ranked rows, only they a
     },
   };
   const page = async (skip: number, limit: number) =>
-    (await searchActiveProviders(client, { AND: [] } as any, { page: 1, limit, skip }, NOW)).map((r: any) => [r.id, r.featuredPeriods.length]);
+    (await searchActiveProviders(client, { AND: [] } as any, { page: 1, limit, skip }, NOW)).rows.map((r: any) => [r.id, r.featuredPeriods.length]);
   assert.deepEqual(await page(0, 2), [["p3", 1], ["p2", 0]]);
   assert.deepEqual(await page(2, 2), [["p1", 0], ["p4", 0]], "an unclaimed listing is last and never badged");
   assert.deepEqual(await page(4, 2), []);

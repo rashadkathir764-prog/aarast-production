@@ -12,43 +12,55 @@ import {
   type ProviderResponseSample,
 } from "../../../marketplace/provider-responsiveness";
 import { profileCompleteness, rankProviders } from "../../../marketplace/provider-ranking";
-import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from "../../../shared-kernel/text/arabic-search";
 import { activeFeaturedPeriodInclude } from "../public/featured-placement";
 
 type Client = Prisma.TransactionClient;
 
 /**
- * RA-BE-09: the providers whose name, owner, description or address, or an
- * active service's title or description, holds the search folded as the
- * phone folds it (shared-kernel/text/arabic-search). The listing rules still
- * apply on top (the caller's where).
+ * RA-BE-181: the LIKE pattern that holds [key] anywhere, with the key's own
+ * `%`, `_` and `\` matched as themselves (LIKE's escape character is `\`).
+ */
+export function likePatternContaining(key: string): string {
+  return `%${key.replace(/[\\%_]/g, "\\$&")}%`;
+}
+
+/**
+ * RA-BE-09, RA-BE-181: the providers whose name, owner, description or
+ * address, or an active service's title or description, holds the search
+ * folded as the phone folds it (shared-kernel/text/arabic-search). The text
+ * is matched with LIKE against the folded text that three trigram indexes
+ * hold (migration 20261125130000_search_and_invite_indexes: the
+ * `aarast_*_search_text` functions are the folding in SQL, equal to
+ * arabicSearchKey), so the table is no longer read row by row; a key of one
+ * or two letters has no trigram and is still answered, by a scan. The
+ * listing rules still apply on top (the caller's where).
  */
 export async function findProviderIdsMatchingSearch(client: Client, key: string): Promise<string[]> {
+  const pattern = likePatternContaining(key);
   const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT p."id" FROM "Provider" p
-    WHERE strpos(translate(lower(concat_ws(chr(1), p."businessName", p."ownerName", p."description", p."address")),
-            ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
-       OR EXISTS (
-         SELECT 1 FROM "ProviderService" s
-         WHERE s."providerId" = p."id" AND s."isActive" = true
-           AND strpos(translate(lower(concat_ws(chr(1), s."title", s."description")),
-                 ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
-       )`);
+    WHERE "aarast_provider_search_text"(p."businessName", p."ownerName", p."description", p."address") LIKE ${pattern}
+    UNION
+    SELECT s."providerId" AS "id" FROM "ProviderService" s
+    WHERE s."isActive" = true
+      AND "aarast_service_search_text"(s."title", s."description") LIKE ${pattern}`);
   return rows.map((row) => row.id);
 }
 
-/** RA-BE-09: the services whose title or description, or provider's name, holds the folded search. */
+/**
+ * RA-BE-09, RA-BE-181: the services whose title or description, or provider's
+ * name, holds the folded search; each on its own trigram index.
+ */
 export async function findServiceIdsMatchingSearch(client: Client, key: string): Promise<string[]> {
+  const pattern = likePatternContaining(key);
   const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT s."id" FROM "ProviderService" s
+    WHERE "aarast_service_search_text"(s."title", s."description") LIKE ${pattern}
+    UNION
+    SELECT s."id" FROM "ProviderService" s
     JOIN "Provider" p ON p."id" = s."providerId"
-    WHERE strpos(translate(lower(concat_ws(chr(1), s."title", s."description", p."businessName")),
-            ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+    WHERE "aarast_search_fold"(p."businessName") LIKE ${pattern}`);
   return rows.map((row) => row.id);
-}
-
-export function countActiveProviders(client: Client, where: ProviderSearchWhere) {
-  return client.provider.count({ where });
 }
 
 /**
@@ -103,8 +115,11 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     })),
     now,
   );
+  // RA-BE-181: every listed provider is a candidate, so the total of the
+  // filter is how many there are; a second count of it was a second pass.
+  const total = ranked.length;
   const pageIds = ranked.slice(pagination.skip, pagination.skip + pagination.limit);
-  if (pageIds.length === 0) return [];
+  if (pageIds.length === 0) return { total, rows: [] };
   const featuredIds = new Set(
     ranked.filter((row) => row.featuredNow).map((row) => row.id),
   );
@@ -119,11 +134,12 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     },
   });
   const byId = new Map(rows.map((row) => [row.id, row]));
-  return pageIds.flatMap(({ id }) => {
+  const pageRows = pageIds.flatMap(({ id }) => {
     const row = byId.get(id);
     if (!row) return [];
     return [featuredIds.has(id) ? row : { ...row, featuredPeriods: [] }];
   });
+  return { total, rows: pageRows };
 }
 
 export function findActiveProviderWithServices(client: Client, id: string, now: Date) {

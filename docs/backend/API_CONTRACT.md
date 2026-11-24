@@ -3467,7 +3467,8 @@ approved photos; the women's album «حفلات النساء» is read by a brid
   request's media target (`PROVIDER_PROFILE_CHANGE_LOGO|COVER`), never the
   listing's. Removing a logo or cover (`null`), the description, phones,
   address, location, capacity, services' prices and packages stay live.
-- After approval a service (`POST|PATCH /api/v1/provider/me/services`) takes
+- After approval a service (`POST /api/v1/provider/me/services`,
+  `PATCH /api/v1/provider/me/services/:id`) takes
   only a `categoryId` the listing already shows in (its category or an
   active service's); another is `409 PROVIDER_CATEGORY_LOCKED`: a new
   section comes with a category change the team approves.

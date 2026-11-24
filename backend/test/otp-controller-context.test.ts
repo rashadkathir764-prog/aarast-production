@@ -27,7 +27,7 @@ test('every OTP-producing auth route forwards the trusted request IP', async () 
     },
   };
   const controller = new AuthController(authService as any);
-  const request = { ip: '203.0.113.10' } as any;
+  const request = { ip: '203.0.113.10', headers: {} } as any;
 
   await controller.register(
     { name: 'Test', phone: '777123456' },

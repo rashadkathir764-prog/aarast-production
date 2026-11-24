@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
@@ -49,7 +50,7 @@ void main() {
     expect(find.text('غير كذا يكلمونك من الرسائل بس'), findsOneWidget);
     expect(
       find.text(
-        'بندك ورقمك ما يوصلونهم إلا إذا فعّلتهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+        'بندك ورقمك يوصلونهم، وتقدر تطفّي أي واحد قبل ما ترسل. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
       ),
       findsOneWidget,
     );
@@ -61,13 +62,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a band request sends no guests, and no amount unless shared', (
-    tester,
-  ) async {
+  testWidgets('a band request sends no guests, and the amount and phone '
+      'unless the person switches them off (RA-BE-155)', (tester) async {
     final marketplace = _Marketplace(kind: 'فنانين وفرق');
     await _pump(tester, marketplace);
 
+    // The request arrived without the budget and the phone, which every
+    // provider then asked for in the chat: both are on until switched off.
+    for (final key in const ['quote-share-budget', 'quote-share-contact']) {
+      expect(tester.widget<JourneyToggle>(find.byKey(Key(key))).value, isTrue);
+    }
     await tester.tap(find.text('فرقة كاملة'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('quote-share-budget')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('quote-share-contact')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('quote-send')));
     await tester.pumpAndSettle();
@@ -78,21 +87,16 @@ void main() {
     expect(sent['budgetMin'], '');
     expect(sent['budgetMax'], '');
     expect(sent['eventDate'], DateTime(2027, 1, 21));
-    // B-08: nothing is shared unless switched on.
+    // B-08: switched off, nothing of them reaches the provider.
     expect(sent['shareBudget'], false);
     expect(sent['shareContact'], false);
   });
 
-  testWidgets('a shared amount and a chosen time reach the provider', (
-    tester,
-  ) async {
+  testWidgets('the amount, the phone and a chosen time reach the provider '
+      'with no switch touched (RA-BE-155)', (tester) async {
     final marketplace = _Marketplace(kind: 'فنانين وفرق');
     await _pump(tester, marketplace);
 
-    await tester.tap(find.byKey(const Key('quote-share-budget')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('quote-share-contact')));
-    await tester.pump();
     await tester.tap(find.byKey(const Key('quote-period')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('الليل · بعد المغرب'));

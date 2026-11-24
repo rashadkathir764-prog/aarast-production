@@ -65,10 +65,14 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   String? _period;
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
-  bool _shareBudget = false;
+  /// RA-BE-155: the item's amount and the phone go with the request unless
+  /// the person switches them off; a request that arrived without them
+  /// left the provider guessing and sent him to ask in the chat.
+  bool _shareBudget = true;
 
-  /// B-08: the phone reaches the provider only when shared.
-  bool _shareContact = false;
+  /// B-08: the phone reaches the provider when shared; on by default, with
+  /// the switch to keep it private.
+  bool _shareContact = true;
   String? _guestError;
   bool _didApplyInitialPlanContext = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
@@ -356,12 +360,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
             JourneyNote(
               text: budget != null
                   ? context.say(
-                      'بندك ورقمك ما يوصلونهم إلا إذا فعّلتهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
-                      'بندك ورقمك ما يوصلونهم إلا إذا فعّلتيهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'بندك ورقمك يوصلونهم، وتقدر تطفّي أي واحد قبل ما ترسل. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'بندك ورقمك يوصلونهم، وتقدرين تطفّين أي واحد قبل ما ترسلين. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
                     )
                   : context.say(
-                      'رقمك ما يوصلهم إلا إذا فعّلته. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
-                      'رقمك ما يوصلهم إلا إذا فعّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'رقمك يوصلهم، وتقدر تطفّيه قبل ما ترسل. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'رقمك يوصلهم، وتقدرين تطفّينه قبل ما ترسلين. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
                     ),
               icon: LucideIcons.lock,
               color: context.accent.primary,
@@ -490,8 +494,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         _serviceId ??= draft['serviceId'] as String?;
         _cityId ??= draft['cityId'] as String?;
         _period ??= draft['period'] as String?;
-        _shareBudget = draft['shareBudget'] == true;
-        _shareContact = draft['shareContact'] == true;
+        // A draft written before the switches defaulted on has them.
+        _shareBudget = draft['shareBudget'] != false;
+        _shareContact = draft['shareContact'] != false;
         final rawDate = draft['eventDate'] as String?;
         _eventDate ??= rawDate == null ? null : DateTime.tryParse(rawDate);
         if (_guestCountController.text.isEmpty) {

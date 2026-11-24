@@ -439,7 +439,11 @@ test("D116: a ready-made card is shown whole, without the host line and title un
   assert.equal(photo.hidden, false);
   assert.ok(hasClass(photo, "rsvp-photo-card"));
   assert.equal(page.element("rsvp-invite-line").hidden, true);
-  assert.equal(page.element("rsvp-title").hidden, true);
+  // RA-OP-31: the title is the page's only <h1>; it leaves the screen but not
+  // the page, so a screen reader still has a heading to land on.
+  assert.equal(page.element("rsvp-title").hidden, false);
+  assert.ok(hasClass(page.element("rsvp-title"), "rsvp-visually-hidden"));
+  assert.match(css, /\.rsvp-visually-hidden\s*\{[^}]*position:\s*absolute;[^}]*clip-path:\s*inset\(50%\);/);
   // The guest is still greeted, and each occasion is still told and answered.
   assert.equal(page.element("rsvp-greeting").textContent, "أهلًا عمي صالح");
   assert.equal(page.element("rsvp-details").hidden, false);
@@ -450,6 +454,7 @@ test("D116: a ready-made card is shown whole, without the host line and title un
   photo.dispatch("error");
   assert.equal(page.element("rsvp-invite-line").hidden, false);
   assert.equal(page.element("rsvp-title").hidden, false);
+  assert.equal(hasClass(page.element("rsvp-title"), "rsvp-visually-hidden"), false);
   assert.equal(page.element("rsvp-title").textContent, "عرس أحمد");
 
   const framed = await openPage([[200, withCard("PHOTO")]]);
@@ -623,4 +628,61 @@ test("RA-BE-174: a link closed after the wedding says so, on opening and on answ
   assert.equal(late.element("rsvp-title").textContent, "العرس فات");
   assert.equal(late.element("rsvp-answer").hidden, true);
   assert.equal(late.element("rsvp-events").hidden, true);
+});
+
+// RA-OP-31: the page at 360 px wide, as the audit drew it.
+const luminance = (hex) => {
+  const channel = (at) => {
+    const value = parseInt(hex.slice(at, at + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+};
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+const token_ = (name) => new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`, "i").exec(css)?.[1];
+const ruleOf = (selector) =>
+  new RegExp(`${selector.replaceAll(".", "\\.")}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? "";
+
+test("RA-OP-31: the footnote and the other small text reach 4.5:1 on their ground", () => {
+  const footnote = /\.rsvp-footnote\s*\{[^}]*color:\s*var\(--([a-z-]+)\)/.exec(css)?.[1];
+  assert.ok(footnote, "the footnote names a colour token");
+  assert.ok(contrast(token_(footnote), token_("canvas")) >= 4.5, `footnote ${footnote} on the canvas`);
+  assert.ok(contrast(token_("muted"), token_("canvas")) >= 4.5);
+  assert.ok(contrast(token_("muted"), token_("paper")) >= 4.5);
+  assert.ok(contrast(token_("danger"), token_("paper")) >= 4.5);
+  assert.ok(contrast(token_("mint"), token_("mint-soft")) >= 4.5);
+  assert.ok(contrast(token_("on-primary-muted"), token_("primary-dark")) >= 4.5);
+});
+
+test("RA-OP-31: the map link is a 44 px target", () => {
+  assert.match(ruleOf(".rsvp-map"), /min-height:\s*44px;/);
+});
+
+test("RA-OP-31: a long address or place wraps inside the 360 px column", () => {
+  assert.match(ruleOf(".rsvp-shell"), /overflow-wrap:\s*anywhere;/);
+  assert.match(css, /\.rsvp-details div,\s*\.rsvp-event\s*\{[^}]*min-width:\s*0;/);
+});
+
+test("RA-OP-31: the page announces its title, not the whole page, and names each group", async () => {
+  assert.doesNotMatch(html, /<main[^>]*aria-live/, "a live region over the whole page re-reads every change");
+  assert.match(html, /<h1 id="rsvp-title"[^>]*aria-live="polite"/);
+  const page = await openPage([[200, invitation([lunch, samra])]]);
+  const list = page.element("rsvp-events-list");
+  const groups = list.findAll((element) => element.attributes.role === "group");
+  assert.equal(groups.length, 2);
+  for (const group of groups) {
+    const labelId = group.attributes["aria-labelledby"];
+    assert.ok(labelId, "each chip group points at the question that names it");
+    assert.ok(list.findAll((element) => element.id === labelId).length === 1);
+  }
+  const articles = list.findAll((element) => element.tagName === "article");
+  for (const article of articles) {
+    const headingId = article.attributes["aria-labelledby"];
+    assert.ok(article.findAll((element) => element.id === headingId && element.tagName === "h3").length === 1);
+  }
+  assert.notEqual(groups[0].attributes["aria-labelledby"], groups[1].attributes["aria-labelledby"]);
+  assert.match(html, /id="rsvp-companions"[^>]*role="group"[^>]*aria-labelledby="rsvp-companions-label"/);
 });

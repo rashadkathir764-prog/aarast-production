@@ -180,7 +180,8 @@
   function showCardText() {
     const writtenOnCard = photoKind === "CARD" && !photo.hidden;
     inviteLine.hidden = writtenOnCard;
-    title.hidden = writtenOnCard;
+    // RA-OP-31: the only <h1> stays on the page for a screen reader.
+    title.className = writtenOnCard ? "rsvp-visually-hidden" : "";
   }
 
   // A photo that does not load (its signed link refused, the connection
@@ -347,14 +348,17 @@
     const blocks = new Map();
     eventsSection.hidden = events.length === 0;
     eventsList.replaceChildren(
-      ...events.map((event) => {
+      ...events.map((event, index) => {
         const again = Boolean(event.needsReconfirm);
         const block = document.createElement("article");
         block.className = event.id === focusId ? "rsvp-event rsvp-focus" : "rsvp-event";
         blocks.set(event.id, block);
 
+        // RA-OP-31: each occasion is a named region, its chips a named group.
         const heading = document.createElement("h3");
+        heading.id = `rsvp-event-${index}-title`;
         heading.textContent = event.label;
+        block.setAttribute("aria-labelledby", heading.id);
         block.append(heading);
 
         const whenParts = [];
@@ -367,10 +371,13 @@
 
         let picked = Math.min(event.companionsCount || 0, maxCompanions);
         if (maxCompanions > 0) {
-          block.append(paragraph("rsvp-question", "كم معك؟"));
+          const question = paragraph("rsvp-question", "كم معك؟");
+          question.id = `rsvp-event-${index}-companions`;
+          block.append(question);
           const eventChips = document.createElement("div");
           eventChips.className = "rsvp-chips";
           eventChips.setAttribute("role", "group");
+          eventChips.setAttribute("aria-labelledby", question.id);
           renderChips(eventChips, maxCompanions, picked, (count) => {
             picked = count;
           });

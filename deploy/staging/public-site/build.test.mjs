@@ -48,9 +48,11 @@ test('staging invite build rejects Production host and identity', () => {
 // were 404 on staging while every test was green.
 test('RA-OP-27: staging serves every page and asset the production image does', () => {
   const dockerfile = readFileSync(join(source, 'Dockerfile'), 'utf8');
-  const copy = /^COPY ((?:[\w.-]+ )+)\/usr\/share\/nginx\/html\/$/m.exec(dockerfile);
-  assert.ok(copy, 'the production Dockerfile has one COPY of the site files');
-  const served = copy[1].trim().split(/\s+/);
+  // The site files come from the build context, or (the pages that carry the
+  // owner's contact details) from the render stage under /out.
+  const served = [...dockerfile.matchAll(/^COPY (?:--from=\w+ )?(.+) \/usr\/share\/nginx\/html\/$/gm)]
+    .flatMap((copy) => copy[1].trim().split(/\s+/).map((name) => name.replace(/^\/out\//, '')));
+  assert.ok(served.includes('rsvp.html') && served.includes('support.html'), 'the COPY lines name the site files');
   const out = mkdtempSync(join(tmpdir(), 'aarast-invite-'));
   try {
     buildStagingInvite({ source, out, ...qa });

@@ -92,6 +92,12 @@ assert.doesNotMatch(appleAssociation, /return 404/);
 assert.doesNotMatch(appleAssociation, /appIDs|"apps"|paths|components/);
 // RA-MO-337: the invite page offers the store to a participant with no app.
 assert.match(inviteHtml, /id="get-app"/);
+// RA-OP-31: the invite page speaks the app's dialect and addresses no gender
+// (no masculine imperative), and says nothing about the plan to the public.
+assert.match(inviteHtml, /الدعوة تنفتح في تطبيق اعّرست/);
+assert.match(inviteHtml, /الرابط ما يعرض اسم الخطة ولا بيانات المشاركين لأي أحد/);
+assert.doesNotMatch(inviteHtml, /افتح الدعوة في تطبيق|ثم تحقق من|حمّله ثم ارجع افتح|لا يعرض هذا الرابط|متوفر حاليًا/);
+assert.doesNotMatch(inviteJs, /اطلب من صاحب الخطة/);
 assert.match(inviteHtml, /href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.aarast\.aarast_mobile"/);
 // RA-OP-29: the RSVP preview's mark is a real, served file.
 assert.match(nginx, /location = \/rsvp-preview\.png[\s\S]*?max-age=86400/);

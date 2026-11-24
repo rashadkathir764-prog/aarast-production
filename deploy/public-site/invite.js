@@ -13,7 +13,7 @@
     button.setAttribute("aria-disabled", "true");
     button.removeAttribute("href");
     button.textContent = "رابط الدعوة غير صالح";
-    status.textContent = "اطلب من صاحب الخطة إرسال رابط دعوة جديد.";
+    status.textContent = "صاحب الخطة يقدر يبعث لك رابط دعوة جديد.";
     return;
   }
 

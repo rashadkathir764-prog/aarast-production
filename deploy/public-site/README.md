@@ -50,6 +50,18 @@ that certificate, this file must be updated before store rollout. Apple
 association remains fail-closed until a real Apple Team ID exists. The landing
 also keeps its explicit `aarast://` open-app button as a browser fallback.
 
+RA-OP-21: the support page carries a way to ask for deletion and to reach the
+team without the app (a WhatsApp link and a mail link with the request already
+written; no form, the site's CSP allows none). The support number, the support
+address, the legal entity and the governing law are `{{TOKENS}}` on the support,
+terms and privacy pages; none is in the repository. The Docker build writes them
+in from the build arguments `AARAST_LEGAL_ENTITY`, `AARAST_SUPPORT_EMAIL`,
+`AARAST_SUPPORT_WHATSAPP` and `AARAST_GOVERNING_LAW` (`render-contact.mjs render`,
+which refuses an address on `aarast.app`, an example address or number, a
+placeholder). The release check is `node render-contact.mjs check <dir>`: it
+fails while any token is left on a page. A build without the arguments is for
+development only.
+
 The privacy, terms and support pages are static HTML/CSS with no JavaScript,
 forms, analytics, or third-party resources. The participant-invite route disables
 access logs, browser caching, and search indexing. Its small first-party script
@@ -66,7 +78,8 @@ been deployed or verified.
 ## Verify
 
 ```powershell
-node --test .\deploy\public-site\public-site.test.mjs .\deploy\public-site\rsvp-page.test.mjs
+node .\deploy\public-site\public-site.test.mjs
+node --test .\deploy\public-site\rsvp-page.test.mjs .\deploy\public-site\contact-render.test.mjs
 docker build --tag aarast-public-site:verify .\deploy\public-site
 ```
 

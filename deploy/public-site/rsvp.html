@@ -20,12 +20,12 @@
     <script src="/rsvp.js" defer></script>
   </head>
   <body>
-    <main class="rsvp-shell" aria-live="polite">
+    <main class="rsvp-shell">
       <section id="rsvp-card" class="rsvp-card" aria-labelledby="rsvp-title">
         <img id="rsvp-photo" class="rsvp-photo" alt="" hidden>
         <p id="rsvp-greeting" class="rsvp-greeting"></p>
         <p id="rsvp-invite-line" class="rsvp-invite-line"></p>
-        <h1 id="rsvp-title">نفتح الدعوة…</h1>
+        <h1 id="rsvp-title" aria-live="polite">نفتح الدعوة…</h1>
         <p id="rsvp-free-text" class="rsvp-free-text" hidden></p>
         <button id="rsvp-retry" class="rsvp-retry" type="button" hidden>إعادة المحاولة</button>
         <dl id="rsvp-details" class="rsvp-details" hidden>

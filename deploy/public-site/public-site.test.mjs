@@ -172,6 +172,18 @@ assert.match(supportHtml, /حذف الحساب/);
 // sign-in cancels, then the erasure.
 assert.match(privacyHtml, /30 يومًا/);
 assert.match(supportHtml, /30 يومًا/);
+// RA-BE-179 (Q-45, D124): every kind of data the servers clean up has its
+// period on the page, and a deleted plan its 30 days.
+assert.match(privacyHtml, /<h2>كم نحتفظ ببياناتك<\/h2>/);
+assert.match(privacyHtml, /الدعوات التي انتهت ولم تُقبل: 90 يومًا بعد انتهائها/);
+assert.match(privacyHtml, /التنبيهات المقروءة: 180 يومًا بعد قراءتها/);
+assert.match(privacyHtml, /سجل تدقيق الإدارة: سنتان/);
+assert.match(privacyHtml, /الرسائل التي فشل إرسالها من الخادم: 30 يومًا/);
+assert.match(privacyHtml, /حذف خطة العرس[\s\S]*?30 يومًا[\s\S]*?ترجعها/);
+// RA-BE-178 (D112): what a deleted account recorded in another person's
+// plan stays there, without its name.
+assert.match(privacyHtml, /«عضو سابق»/);
+assert.match(privacyHtml, /«مزود محذوف»/);
 assert.match(publicCss, /font-family:/);
 
 // Guest RSVP (V1 checklist 4.7): a private, uncached, unindexed page whose

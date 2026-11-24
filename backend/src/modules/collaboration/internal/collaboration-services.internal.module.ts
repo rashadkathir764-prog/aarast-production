@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { PlanInviteRetentionScheduler } from "../infrastructure/plan-invite-retention.scheduler";
 import { PrismaModule } from "../../../platform/database/prisma.module";
 import { InvitationDeliveryService } from "./invitation-delivery.service";
 import { InviteAccessService } from "./invite-access.service";
@@ -30,7 +31,13 @@ import { CollaborationPermissionInternalModule } from "./collaboration-permissio
     MessagingParticipationPublicModule,
     TasksPublicModule,
   ],
-  providers: [SharingService, InvitationDeliveryService, InviteAccessService],
+  providers: [
+    SharingService,
+    InvitationDeliveryService,
+    InviteAccessService,
+    // RA-BE-179: invitations expired unaccepted go after 90 days.
+    PlanInviteRetentionScheduler,
+  ],
   exports: [SharingService, InvitationDeliveryService, InviteAccessService],
 })
 export class CollaborationServicesInternalModule {}

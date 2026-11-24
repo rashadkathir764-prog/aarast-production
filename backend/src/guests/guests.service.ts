@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -19,6 +20,7 @@ import {
   GuestInvitationStatus,
   GuestSide,
   GuestStatus,
+  PlanEventType,
   Prisma,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -68,13 +70,17 @@ import {
   countGuestGroupsForSummary,
   countPlanGuests,
   createGuest,
+  createGuestEventInvites,
   createGuestGroup,
+  createGuests,
   deleteGuest,
   deleteGuestGroup,
   findDuplicateGuest,
   findGuestById,
   findGuestGroupById,
+  findSavedGuestPhones,
   type GuestEventInviteRow,
+  type NewGuestValues,
   listGuestEventInvites,
   listGuestsForSummary,
   listPlanGuestGroups,
@@ -385,28 +391,20 @@ export class GuestsService {
           currentUser,
         );
         await this.assertPlanHoldsMore(tx, weddingPlanId, dto.items.length);
-        const guests: Array<{ guest: Guest; events: GuestEventReply[] }> = [];
-        for (const item of dto.items) {
-          const eventIds = await this.resolveEventIds(
-            tx,
-            weddingPlanId,
-            item.eventIds,
-          );
-          const guest = await this.createGuestInTransaction(
-            tx,
-            weddingPlanId,
-            item,
-            context,
-            currentUser.id,
-          );
-          const events = await this.linkGuestEvents(tx, guest.id, eventIds);
+        const guests = await this.createGuestsInTransaction(
+          tx,
+          weddingPlanId,
+          dto.items,
+          context,
+          currentUser.id,
+        );
+        for (const { guest } of guests) {
           await this.recordGuestContribution(
             tx,
             context,
             guest,
             ContributionAction.CREATED,
           );
-          guests.push({ guest, events });
         }
         return guests;
       }),
@@ -890,7 +888,17 @@ export class GuestsService {
     eventIds: readonly string[] | undefined,
   ): Promise<string[] | undefined> {
     if (eventIds === undefined) return undefined;
-    const events = await this.plans.listPlanEvents(tx, weddingPlanId);
+    return this.pickPlanEventIds(
+      await this.plans.listPlanEvents(tx, weddingPlanId),
+      eventIds,
+    );
+  }
+
+  /** The asked ids that are the plan's own events; the rest refuses the list. */
+  private pickPlanEventIds(
+    events: ReadonlyArray<{ id: string; type: PlanEventType }>,
+    eventIds: readonly string[],
+  ): string[] {
     const allowed = new Set(invitableEvents(events).map((event) => event.id));
     // D116: every guest is invited to the wedding, whose row is now always
     // there and may come back in a list the phone built from it; it is no
@@ -1176,26 +1184,125 @@ export class GuestsService {
       normalizedPhone: phone,
     });
 
-    return createGuest(tx, {
-        weddingPlanId,
-        groupId: this.optionalId(dto.groupId),
-        name,
-        normalizedName,
-        phone,
-        normalizedPhone: phone,
-        side: dto.side ?? GuestSide.OTHER,
-        status:
-          dto.status ??
-          this.statusFromAttendance(dto.attendanceStatus) ??
-          GuestStatus.INVITED,
-        invitationStatus:
-          dto.invitationStatus ?? GuestInvitationStatus.NOT_SENT,
-        attendanceStatus:
-          dto.attendanceStatus ?? this.attendanceFromStatus(dto.status),
-        seatsCount: dto.seatsCount ?? 1,
-        companionsCount: dto.companionsCount ?? 0,
-        notes: this.optionalText(dto.notes),
-    });
+    return createGuest(
+      tx,
+      this.newGuestValues(weddingPlanId, dto, name, normalizedName, phone),
+    );
+  }
+
+  private newGuestValues(
+    weddingPlanId: string,
+    dto: CreateGuestDto,
+    name: string,
+    normalizedName: string,
+    phone: string | null,
+  ): NewGuestValues {
+    return {
+      weddingPlanId,
+      groupId: this.optionalId(dto.groupId),
+      name,
+      normalizedName,
+      phone,
+      normalizedPhone: phone,
+      side: dto.side ?? GuestSide.OTHER,
+      status:
+        dto.status ??
+        this.statusFromAttendance(dto.attendanceStatus) ??
+        GuestStatus.INVITED,
+      invitationStatus:
+        dto.invitationStatus ?? GuestInvitationStatus.NOT_SENT,
+      attendanceStatus:
+        dto.attendanceStatus ?? this.attendanceFromStatus(dto.status),
+      seatsCount: dto.seatsCount ?? 1,
+      companionsCount: dto.companionsCount ?? 0,
+      notes: this.optionalText(dto.notes),
+    };
+  }
+
+  /**
+   * RA-BE-181: the import's guests. The plan's events are read once, each
+   * group is checked once, the phones the plan already holds are read in one
+   * query, and the guests and their links to the plan's events are written
+   * in one statement each: the number of queries does not grow with the list.
+   * Every refusal is the one the guest-by-guest save gave, found before
+   * anything is written.
+   */
+  private async createGuestsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    items: readonly CreateGuestWithEventsDto[],
+    context: PlanAccessContext,
+    actorUserId: string,
+  ): Promise<Array<{ guest: Guest; events: GuestEventReply[] }>> {
+    const planEvents = items.some((item) => item.eventIds !== undefined)
+      ? await this.plans.listPlanEvents(tx, weddingPlanId)
+      : [];
+    const checkedGroups = new Set<string>();
+    const prepared = [];
+    for (const item of items) {
+      const eventIds = item.eventIds
+        ? this.pickPlanEventIds(planEvents, item.eventIds)
+        : undefined;
+      const groupId = this.optionalId(item.groupId);
+      if (groupId && !checkedGroups.has(groupId)) {
+        await this.assertGroupLinkableInTransaction(
+          tx,
+          groupId,
+          weddingPlanId,
+          context,
+          actorUserId,
+        );
+        checkedGroups.add(groupId);
+      }
+      const name = this.requiredName(item.name, "GUEST_NAME_REQUIRED");
+      const phone = PhoneNormalizer.normalizeOptional(item.phone);
+      prepared.push({
+        eventIds,
+        values: {
+          id: randomUUID(),
+          ...this.newGuestValues(
+            weddingPlanId,
+            item,
+            name,
+            this.normalizeGuestName(name),
+            phone,
+          ),
+        },
+      });
+    }
+
+    const phones = prepared.flatMap(({ values }) =>
+      values.normalizedPhone ? [values.normalizedPhone] : [],
+    );
+    const taken = await findSavedGuestPhones(tx, weddingPlanId, phones);
+    for (const phone of phones) {
+      // Held by the plan already, or by an earlier guest of this same list.
+      if (taken.has(phone)) throw this.duplicateGuestConflict();
+      taken.add(phone);
+    }
+
+    const guests = await createGuests(
+      tx,
+      prepared.map(({ values }) => values),
+    );
+    const byId = new Map(guests.map((guest) => [guest.id, guest]));
+    const invites = prepared.flatMap(({ values, eventIds }) =>
+      (eventIds ?? []).map((planEventId) => ({ guestId: values.id, planEventId })),
+    );
+    await createGuestEventInvites(tx, invites);
+    const events =
+      invites.length > 0
+        ? this.groupEventReplies(
+            await listGuestEventInvites(
+              tx,
+              guests.map((guest) => guest.id),
+            ),
+          )
+        : new Map<string, GuestEventReply[]>();
+    return prepared.map(({ values }) => ({
+      guest: byId.get(values.id)!,
+      events: events.get(values.id) ?? [],
+    }));
   }
 
   private async findGuestOrThrow(id: string): Promise<Guest> {

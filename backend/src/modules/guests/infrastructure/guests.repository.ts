@@ -169,41 +169,36 @@ export function countGuestGroupsForSummary(
   });
 }
 
-export function createGuest(
+export interface NewGuestValues {
+  weddingPlanId: string;
+  groupId: string | null;
+  name: string;
+  normalizedName: string;
+  phone: string | null;
+  normalizedPhone: string | null;
+  side: GuestSide;
+  status: GuestStatus;
+  invitationStatus: GuestInvitationStatus;
+  attendanceStatus: GuestAttendanceStatus;
+  seatsCount: number;
+  companionsCount: number;
+  notes: string | null;
+}
+
+export function createGuest(tx: Prisma.TransactionClient, values: NewGuestValues) {
+  return tx.guest.create({ data: values });
+}
+
+/**
+ * RA-BE-181: the import's guests in one statement. Each carries the id it is
+ * saved under, so the rows come back matched to the list whatever order the
+ * database returns them in.
+ */
+export function createGuests(
   tx: Prisma.TransactionClient,
-  values: {
-    weddingPlanId: string;
-    groupId: string | null;
-    name: string;
-    normalizedName: string;
-    phone: string | null;
-    normalizedPhone: string | null;
-    side: GuestSide;
-    status: GuestStatus;
-    invitationStatus: GuestInvitationStatus;
-    attendanceStatus: GuestAttendanceStatus;
-    seatsCount: number;
-    companionsCount: number;
-    notes: string | null;
-  },
+  values: ReadonlyArray<NewGuestValues & { id: string }>,
 ) {
-  return tx.guest.create({
-    data: {
-      weddingPlanId: values.weddingPlanId,
-      groupId: values.groupId,
-      name: values.name,
-      normalizedName: values.normalizedName,
-      phone: values.phone,
-      normalizedPhone: values.normalizedPhone,
-      side: values.side,
-      status: values.status,
-      invitationStatus: values.invitationStatus,
-      attendanceStatus: values.attendanceStatus,
-      seatsCount: values.seatsCount,
-      companionsCount: values.companionsCount,
-      notes: values.notes,
-    },
-  });
+  return tx.guest.createManyAndReturn({ data: [...values] });
 }
 
 export function findGuestGroupById(client: PrismaService | Prisma.TransactionClient, id: string) {
@@ -258,6 +253,20 @@ export function findDuplicateGuest(
     },
     select: { id: true },
   });
+}
+
+/** RA-BE-181: which of [normalizedPhones] the plan already holds, in one read. */
+export async function findSavedGuestPhones(
+  tx: Prisma.TransactionClient,
+  weddingPlanId: string,
+  normalizedPhones: readonly string[],
+): Promise<Set<string>> {
+  if (normalizedPhones.length === 0) return new Set();
+  const saved = await tx.guest.findMany({
+    where: { weddingPlanId, normalizedPhone: { in: [...normalizedPhones] } },
+    select: { normalizedPhone: true },
+  });
+  return new Set(saved.flatMap((guest) => (guest.normalizedPhone ? [guest.normalizedPhone] : [])));
 }
 
 export async function lockGuestGroupForShare(
@@ -331,6 +340,15 @@ export async function replaceGuestEventInvites(
     data: ids.map((planEventId) => ({ guestId, planEventId })),
     skipDuplicates: true,
   });
+}
+
+/** RA-BE-181: new guests' invitations to the plan's events, in one statement. */
+export function createGuestEventInvites(
+  tx: Prisma.TransactionClient,
+  invites: ReadonlyArray<{ guestId: string; planEventId: string }>,
+) {
+  if (invites.length === 0) return Promise.resolve({ count: 0 });
+  return tx.guestEventInvite.createMany({ data: [...invites], skipDuplicates: true });
 }
 
 export function recordGuestEventAnswer(

@@ -76,6 +76,19 @@ function database(seed: any[] = []) {
         rows.push(row);
         return row;
       },
+      // RA-BE-181: the import's guests are written in one statement.
+      createManyAndReturn: async ({ data }: any) => {
+        log.push("create");
+        const created = data.map((values: any) => ({
+          ...guestRow(0),
+          ...values,
+          id: values.id ?? `new-${nextId++}`,
+          createdAt: day,
+          updatedAt: day,
+        }));
+        rows.push(...created);
+        return created;
+      },
     },
     guestEventInvite: { findMany: async () => [] },
     // D116: the guest list reads what each guest was told.
@@ -176,5 +189,6 @@ test("D99: the plan is counted after its lock, in the transaction that adds", as
 
   db.log.length = 0;
   await guests.bulkCreate(owner, "plan-1", { items: [{ name: "ب" }, { name: "ج" }] } as any);
-  assert.deepEqual(db.log, ["lock", "count", "create", "create"]);
+  // RA-BE-181: still after the lock and the count; the two guests are one insert.
+  assert.deepEqual(db.log, ["lock", "count", "create"]);
 });

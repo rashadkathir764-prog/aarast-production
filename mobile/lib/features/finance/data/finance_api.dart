@@ -272,7 +272,13 @@ abstract class _FinanceApiCore {
     String method,
     String endpoint,
     Map<String, dynamic> payload,
-  ) => _FinanceMutation(_apiClient, method, endpoint, payload, _uuidV4());
+  ) => _FinanceMutation(
+    OfflineWrites(_apiClient, _offline),
+    method,
+    endpoint,
+    payload,
+    _uuidV4(),
+  );
 
   /// RA-MO-90: whether an older change to [entityId] still waits on the
   /// phone. An edit sent straight past it reached the server first, and the
@@ -288,25 +294,38 @@ abstract class _FinanceApiCore {
 
 class _FinanceMutation {
   const _FinanceMutation(
-    this.apiClient,
+    this.writes,
     this.method,
     this.endpoint,
     this.payload,
     this.clientRequestId,
   );
 
-  final ApiClient apiClient;
+  final OfflineWrites writes;
   final String method;
   final String endpoint;
   final Map<String, dynamic> payload;
   final String clientRequestId;
 
-  Future<Map<String, dynamic>> send() => apiClient.mutateJson(
-    endpoint,
-    payload,
-    method: method,
-    clientRequestId: clientRequestId,
-  );
+  /// RA-MO-340/341: the shared route's try ([OfflineWrites.send]). A change
+  /// that is to wait on the phone (the server known out of reach, or a try
+  /// that may have reached it) fails as a network failure, which every
+  /// caller keeps on the phone under [clientRequestId].
+  Future<Map<String, dynamic>> send() async {
+    final json = await writes.send(
+      method: method,
+      endpoint: endpoint,
+      payload: payload,
+      requestId: clientRequestId,
+    );
+    if (json == null) {
+      throw const ApiException(
+        CachePolicy.offlineWriteMessage,
+        isNetworkFailure: true,
+      );
+    }
+    return json;
+  }
 }
 
 class FinancePage<T> {

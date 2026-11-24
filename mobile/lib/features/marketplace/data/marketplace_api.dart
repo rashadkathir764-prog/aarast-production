@@ -404,53 +404,49 @@ class MarketplaceApi {
     await _apiClient.postJson('/api/v1/providers/$providerId/views', {});
   }
 
-  Future<void> favoriteProvider(String providerId) async {
-    try {
-      await _apiClient.postJson('/api/v1/providers/$providerId/favorite', {});
-      await _offline?.syncPendingChanges();
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedFavoriteProviders,
-        json: {'id': providerId, 'providerId': providerId},
-        dirty: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'favorite_provider',
-        operation: 'create',
-        endpoint: '/api/v1/providers/$providerId/favorite',
-        method: 'POST',
-        payload: const {},
-        planId: null,
-        localEntityId: providerId,
-      );
-      await _offline.refreshStatus();
-    }
-  }
+  Future<void> favoriteProvider(String providerId) =>
+      _keepFavorite(providerId, favorite: true);
 
-  Future<void> unfavoriteProvider(String providerId) async {
-    try {
-      await _apiClient.deleteJson('/api/v1/providers/$providerId/favorite');
-      await _offline?.syncPendingChanges();
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedFavoriteProviders,
-        json: {'id': providerId, 'providerId': providerId},
-        dirty: true,
-        deletedLocally: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'favorite_provider',
-        operation: 'delete',
-        endpoint: '/api/v1/providers/$providerId/favorite',
-        method: 'DELETE',
-        payload: const {},
-        planId: null,
-        localEntityId: providerId,
-      );
-      await _offline.refreshStatus();
+  Future<void> unfavoriteProvider(String providerId) =>
+      _keepFavorite(providerId, favorite: false);
+
+  /// RA-MO-341: through the shared route's try, so the queue resends under
+  /// the request id the try went under.
+  Future<void> _keepFavorite(
+    String providerId, {
+    required bool favorite,
+  }) async {
+    final endpoint = '/api/v1/providers/$providerId/favorite';
+    final method = favorite ? 'POST' : 'DELETE';
+    final requestId = ApiClient.newClientRequestId();
+    final sent = await _writes.send(
+      method: method,
+      endpoint: endpoint,
+      payload: const {},
+      requestId: requestId,
+    );
+    final offline = _offline;
+    if (sent != null || offline == null) {
+      await offline?.syncPendingChanges();
+      return;
     }
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedFavoriteProviders,
+      json: {'id': providerId, 'providerId': providerId},
+      dirty: true,
+      deletedLocally: !favorite,
+    );
+    await offline.database.enqueueSync(
+      entityType: 'favorite_provider',
+      operation: favorite ? 'create' : 'delete',
+      endpoint: endpoint,
+      method: method,
+      payload: const {},
+      planId: null,
+      localEntityId: providerId,
+      clientRequestId: requestId,
+    );
+    await offline.refreshStatus();
   }
 
   Future<QuoteRequest> createQuoteRequest({

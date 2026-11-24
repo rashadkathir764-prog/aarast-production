@@ -176,44 +176,47 @@ void main() {
         parentId: 'p1',
       );
 
-      expect({for (final row in listed) row['id']: row['amount']}, {
-        'f1': '200',
-        'queued-f3': '70',
-      });
+      expect(
+        {for (final row in listed) row['id']: row['amount']},
+        {'f1': '200', 'queued-f3': '70'},
+      );
       // The phone's copy keeps them too, for the next read without a net.
       final kept = await database.readCachedList(
         table: OfflineTables.cachedFundingSources,
         parentColumn: 'planId',
         parentId: 'p1',
       );
-      expect({for (final row in kept) row['id']: row['amount']}, {
-        'f1': '200',
-        'queued-f3': '70',
-      });
+      expect(
+        {for (final row in kept) row['id']: row['amount']},
+        {'f1': '200', 'queued-f3': '70'},
+      );
     });
 
-    test('a row stands for the server\'s only while its change waits', () async {
-      final (api, offline, _, _) = await _setUpSimple({
-        'GET /api/v1/wedding-plans/p1/funding-sources': [
-          {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '100'},
-        ],
-      });
-      // Dirty, but nothing waits for it (its change was dropped).
-      await offline.database.saveCachedItem(
-        table: OfflineTables.cachedFundingSources,
-        json: {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '200'},
-        dirty: true,
-      );
+    test(
+      'a row stands for the server\'s only while its change waits',
+      () async {
+        final (api, offline, _, _) = await _setUpSimple({
+          'GET /api/v1/wedding-plans/p1/funding-sources': [
+            {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '100'},
+          ],
+        });
+        // Dirty, but nothing waits for it (its change was dropped).
+        await offline.database.saveCachedItem(
+          table: OfflineTables.cachedFundingSources,
+          json: {'id': 'f1', 'weddingPlanId': 'p1', 'amount': '200'},
+          dirty: true,
+        );
 
-      final listed = await OfflineReads(api, offline).list(
-        '/api/v1/wedding-plans/p1/funding-sources',
-        table: OfflineTables.cachedFundingSources,
-        parentColumn: 'planId',
-        parentId: 'p1',
-      );
+        final listed = await OfflineReads(api, offline).list(
+          '/api/v1/wedding-plans/p1/funding-sources',
+          table: OfflineTables.cachedFundingSources,
+          parentColumn: 'planId',
+          parentId: 'p1',
+        );
 
-      expect(listed.single['amount'], '100');
-    });
+        expect(listed.single['amount'], '100');
+      },
+    );
 
     test('with no copy on the phone the failure is reported', () async {
       final (api, offline, server, _) = await _setUpSimple({});

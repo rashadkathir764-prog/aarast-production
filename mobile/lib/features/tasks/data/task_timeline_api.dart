@@ -58,27 +58,15 @@ class TaskTimelineApi {
           .map(WeddingTask.fromJson)
           .toList();
     }
-    try {
-      final items = await _getJsonMapList(
-        '/api/v1/wedding-plans/$weddingPlanId/tasks',
-      );
-      await _offline?.database.replaceCachedList(
-        table: OfflineTables.cachedTasks,
-        items: items,
-        parentColumn: 'planId',
-        parentId: weddingPlanId,
-      );
-      return items.map(WeddingTask.fromJson).toList();
-    } on Object catch (error) {
-      final cached = await _cachedListOnNetworkFailure(
-        error,
-        table: OfflineTables.cachedTasks,
-        parentColumn: 'planId',
-        parentId: weddingPlanId,
-      );
-      if (cached != null) return cached.map(WeddingTask.fromJson).toList();
-      rethrow;
-    }
+    // RA-MO-342: through the shared read, so a task changed on the phone
+    // stays as changed while its change waits.
+    final items = await OfflineReads(_apiClient, _offline).list(
+      '/api/v1/wedding-plans/$weddingPlanId/tasks',
+      table: OfflineTables.cachedTasks,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return items.map(WeddingTask.fromJson).toList();
   }
 
   /// D85: the phone's copy alone, shown before the server is asked.
@@ -234,14 +222,16 @@ class TaskTimelineApi {
     }
     // A plan on the phone has no items yet; imported tasks stay unlinked.
     if (starterKey != null) payload['starterKey'] = starterKey;
-    final Map<String, dynamic> json;
-    try {
-      json = await _apiClient.postJson(
-        '/api/v1/wedding-plans/$weddingPlanId/tasks',
-        payload,
-      );
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+    // RA-MO-341: one request id from this try to the queue's resend.
+    final requestId = ApiClient.newClientRequestId();
+    final json = await _writes.send(
+      method: 'POST',
+      endpoint: '/api/v1/wedding-plans/$weddingPlanId/tasks',
+      payload: payload,
+      requestId: requestId,
+    );
+    if (json == null) {
+      final offline = _offline!;
       final now = DateTime.now();
       final localId = _nextLocalTaskId(now);
       final localJson = {
@@ -252,12 +242,12 @@ class TaskTimelineApi {
         'createdAt': now.toIso8601String(),
         'updatedAt': now.toIso8601String(),
       };
-      await _offline.database.saveCachedItem(
+      await offline.database.saveCachedItem(
         table: OfflineTables.cachedTasks,
         json: localJson,
         dirty: true,
       );
-      await _offline.database.enqueueSync(
+      await offline.database.enqueueSync(
         entityType: 'task',
         operation: 'create',
         endpoint: '/api/v1/wedding-plans/$weddingPlanId/tasks',
@@ -265,9 +255,10 @@ class TaskTimelineApi {
         payload: payload,
         planId: weddingPlanId,
         localEntityId: localId,
+        clientRequestId: requestId,
       );
       if (_hasValue(assigneeUserId)) {
-        await _offline.database.enqueueSync(
+        await offline.database.enqueueSync(
           entityType: 'task',
           operation: 'assign',
           endpoint: '/api/v1/tasks/$localId/assign',
@@ -278,7 +269,7 @@ class TaskTimelineApi {
           replacePendingForEntity: true,
         );
       }
-      await _offline.refreshStatus();
+      await offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
     }
     // RA-MO-55: the server made the task; giving it is its own step. Lost on
@@ -390,45 +381,63 @@ class TaskTimelineApi {
     if (id.startsWith('local-task-')) {
       return _updateLocalTask(id: id, data: data);
     }
-    try {
+    final offline = _offline;
+    final cached = await offline?.database.readCachedItem(
+      table: OfflineTables.cachedTasks,
+      id: id,
+    );
+    // A task not on the phone has nothing to wait with: only the server.
+    if (offline == null || cached == null) {
       final json = await _apiClient.patchJson('/api/v1/tasks/$id', data);
-      await _offline?.database.saveCachedItem(
+      await offline?.database.saveCachedItem(
         table: OfflineTables.cachedTasks,
         json: json,
       );
-      await _offline?.syncPendingChanges();
+      await offline?.syncPendingChanges();
       return WeddingTask.fromJson(json);
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final cached = await _offline.database.readCachedItem(
-        table: OfflineTables.cachedTasks,
-        id: id,
-      );
-      if (cached == null) rethrow;
-      final localJson = {
-        ...cached,
-        ...data,
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedTasks,
-        json: localJson,
-        dirty: true,
-      );
-      await _queueTaskEdit(
-        id: id,
-        operation: 'update',
-        endpoint: '/api/v1/tasks/$id',
-        payload: await _mergedQueuedTaskPayload(
-          id: id,
-          operation: 'update',
-          data: data,
-        ),
-        planId: _taskPlanId(localJson),
-      );
-      await _offline.refreshStatus();
-      return WeddingTask.fromJson(localJson);
     }
+    // RA-MO-341: the shared route's try, one request id to the resend.
+    final requestId = ApiClient.newClientRequestId();
+    final json = await _writes.send(
+      method: 'PATCH',
+      endpoint: '/api/v1/tasks/$id',
+      payload: data,
+      requestId: requestId,
+    );
+    if (json != null) {
+      await offline.database.saveCachedItem(
+        table: OfflineTables.cachedTasks,
+        json: json,
+      );
+      await offline.syncPendingChanges();
+      return WeddingTask.fromJson(json);
+    }
+    final localJson = {
+      ...cached,
+      ...data,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: localJson,
+      dirty: true,
+    );
+    final payload = await _mergedQueuedTaskPayload(
+      id: id,
+      operation: 'update',
+      data: data,
+    );
+    await _queueTaskEdit(
+      id: id,
+      operation: 'update',
+      endpoint: '/api/v1/tasks/$id',
+      payload: payload,
+      planId: _taskPlanId(localJson),
+      // The sent id stands only for the body that was sent.
+      sentRequestId: jsonEncode(payload) == jsonEncode(data) ? requestId : null,
+    );
+    await offline.refreshStatus();
+    return WeddingTask.fromJson(localJson);
   }
 
   Future<void> deleteTask(String id) async {
@@ -468,64 +477,46 @@ class TaskTimelineApi {
       return;
     }
     if (id.startsWith('local-task-')) return;
-    try {
-      await _apiClient.deleteJson('/api/v1/tasks/$id');
-      await _offline?.syncPendingChanges();
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final cached = await _offline.database.readCachedItem(
-        table: OfflineTables.cachedTasks,
-        id: id,
-      );
-      if (cached == null) rethrow;
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedTasks,
-        json: cached,
-        dirty: true,
-        deletedLocally: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'task',
-        operation: 'delete',
-        endpoint: '/api/v1/tasks/$id',
-        method: 'DELETE',
-        payload: const {},
-        planId: _taskPlanId(cached),
-        localEntityId: id,
-        replaceAllPendingForEntity: true,
-      );
-      await _offline.refreshStatus();
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {
-    final list = await _apiClient.getJsonList(path);
-    return list
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-  }
-
-  Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(
-    Object error, {
-    required String table,
-    String? parentColumn,
-    String? parentId,
-  }) async {
-    if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
-    await _offline.noteNetworkFailure((error as ApiException).message);
-    final cached = await _offline.database.readCachedList(
-      table: table,
-      parentColumn: parentColumn,
-      parentId: parentId,
+    final cached = await offline?.database.readCachedItem(
+      table: OfflineTables.cachedTasks,
+      id: id,
     );
-    // A list kept empty is a copy (RA-MO-203).
-    if (cached.isEmpty &&
-        !await OfflineReads.listKeptOn(_offline, table, parentId: parentId)) {
-      return null;
+    // A task not on the phone has nothing to wait with: only the server.
+    if (offline == null || cached == null) {
+      await _apiClient.deleteJson('/api/v1/tasks/$id');
+      await offline?.syncPendingChanges();
+      return;
     }
-    OfflineReads.noteCopyServed();
-    return cached;
+    // RA-MO-341: the shared route's try, one request id to the resend.
+    final requestId = ApiClient.newClientRequestId();
+    final sent = await _writes.send(
+      method: 'DELETE',
+      endpoint: '/api/v1/tasks/$id',
+      payload: const {},
+      requestId: requestId,
+    );
+    if (sent != null) {
+      await offline.syncPendingChanges();
+      return;
+    }
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: cached,
+      dirty: true,
+      deletedLocally: true,
+    );
+    await offline.database.enqueueSync(
+      entityType: 'task',
+      operation: 'delete',
+      endpoint: '/api/v1/tasks/$id',
+      method: 'DELETE',
+      payload: const {},
+      planId: _taskPlanId(cached),
+      localEntityId: id,
+      replaceAllPendingForEntity: true,
+      clientRequestId: requestId,
+    );
+    await offline.refreshStatus();
   }
 
   Future<Timeline> _timelineFromCachedTasks(String weddingPlanId) async {
@@ -688,6 +679,9 @@ class TaskTimelineApi {
     required String endpoint,
     required Map<String, dynamic> payload,
     required String? planId,
+
+    /// The id a try of exactly [payload] was already sent under (RA-MO-341).
+    String? sentRequestId,
   }) async {
     final database = _offline?.database;
     if (database == null) return;
@@ -710,6 +704,7 @@ class TaskTimelineApi {
       planId: planId,
       localEntityId: id,
       replacePendingForEntity: true,
+      clientRequestId: sentRequestId,
     );
   }
 

@@ -47,7 +47,10 @@ void main() {
           'all 16 writes must preserve their request id after an ambiguous failure',
     );
     expect(api, contains('clientRequestId: mutation.clientRequestId'));
-    expect(api, contains('apiClient.mutateJson('));
+    // RA-MO-341: the wrapper's try is the shared route's, under the
+    // mutation's own request id.
+    expect(api, contains('writes.send('));
+    expect(api, contains('requestId: clientRequestId'));
     for (final unprotectedWrite in [
       '_apiClient.postJson(',
       '_apiClient.putJson(',

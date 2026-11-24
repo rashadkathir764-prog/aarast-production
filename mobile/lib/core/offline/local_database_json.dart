@@ -570,9 +570,7 @@ class JsonLocalDatabase implements LocalDatabase {
   Future<void> wipeCacheKeepingQueue({required String keepMetaKey}) async {
     await _wipeAccountRows();
     final meta = _readMap(_metaKey)
-      ..removeWhere(
-        (key, _) => key != keepMetaKey && !isPhonePlanMetaKey(key),
-      );
+      ..removeWhere((key, _) => key != keepMetaKey && !isPhonePlanMetaKey(key));
     await _writeMap(_metaKey, meta);
   }
 

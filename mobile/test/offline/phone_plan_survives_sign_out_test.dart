@@ -92,7 +92,10 @@ void main() {
 
   Future<void> expectAccountWiped(JsonLocalDatabase database) async {
     expect(
-      await database.readCachedItem(table: OfflineTables.cachedGuests, id: 'g-1'),
+      await database.readCachedItem(
+        table: OfflineTables.cachedGuests,
+        id: 'g-1',
+      ),
       isNull,
     );
     expect(

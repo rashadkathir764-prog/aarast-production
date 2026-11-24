@@ -43,6 +43,22 @@ class _Api extends ApiClient {
     patched.add(data);
     return _task(data);
   }
+
+  // RA-MO-341: a task is made through the shared route, under a request id.
+  @override
+  Future<Map<String, dynamic>> mutateJson(
+    String path,
+    Map<String, dynamic> data, {
+    required String method,
+    required String clientRequestId,
+  }) => method == 'POST'
+      ? postJson(path, data)
+      : super.mutateJson(
+          path,
+          data,
+          method: method,
+          clientRequestId: clientRequestId,
+        );
 }
 
 void main() {

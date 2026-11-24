@@ -196,8 +196,15 @@ class WeddingPlansApi {
       'currency': currency,
     };
 
-    try {
-      final json = await _apiClient.postJson('/api/v1/wedding-plans', payload);
+    // RA-MO-341: one request id from this try to the queue's resend.
+    final requestId = ApiClient.newClientRequestId();
+    final json = await OfflineWrites(_apiClient, _offline).send(
+      method: 'POST',
+      endpoint: '/api/v1/wedding-plans',
+      payload: payload,
+      requestId: requestId,
+    );
+    if (json != null) {
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: json,
@@ -205,41 +212,41 @@ class WeddingPlansApi {
       await _authStorage?.saveActivePlanId(json['id'].toString());
       await _offline?.syncPendingChanges();
       return WeddingPlan.fromJson(json);
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final now = DateTime.now();
-      final localId = 'local-plan-${now.microsecondsSinceEpoch}';
-      final localJson = {
-        'id': localId,
-        'ownerUserId': 'local',
-        'title': title.trim(),
-        if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
-        if (location != null && location.isNotEmpty) 'location': location,
-        if (weddingDate != null) 'weddingDate': planDayToJson(weddingDate),
-        if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
-          'estimatedBudget': estimatedBudget.trim(),
-        'currency': currency,
-        'status': 'PLANNING',
-        'createdAt': now.toIso8601String(),
-        'updatedAt': now.toIso8601String(),
-      };
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedWeddingPlans,
-        json: localJson,
-        dirty: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'wedding_plan',
-        operation: 'create',
-        endpoint: '/api/v1/wedding-plans',
-        method: 'POST',
-        payload: payload,
-        planId: localId,
-        localEntityId: localId,
-      );
-      await _offline.refreshStatus();
-      return WeddingPlan.fromJson(localJson);
     }
+    final offline = _offline!;
+    final now = DateTime.now();
+    final localId = 'local-plan-${now.microsecondsSinceEpoch}';
+    final localJson = {
+      'id': localId,
+      'ownerUserId': 'local',
+      'title': title.trim(),
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (location != null && location.isNotEmpty) 'location': location,
+      if (weddingDate != null) 'weddingDate': planDayToJson(weddingDate),
+      if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
+        'estimatedBudget': estimatedBudget.trim(),
+      'currency': currency,
+      'status': 'PLANNING',
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: localJson,
+      dirty: true,
+    );
+    await offline.database.enqueueSync(
+      entityType: 'wedding_plan',
+      operation: 'create',
+      endpoint: '/api/v1/wedding-plans',
+      method: 'POST',
+      payload: payload,
+      planId: localId,
+      localEntityId: localId,
+      clientRequestId: requestId,
+    );
+    await offline.refreshStatus();
+    return WeddingPlan.fromJson(localJson);
   }
 
   Future<ActiveWeddingPlan> setActiveWeddingPlan(String id) async {
@@ -256,47 +263,63 @@ class WeddingPlansApi {
     String id,
     Map<String, dynamic> data,
   ) async {
-    try {
+    final offline = _offline;
+    final cached = await offline?.database.readCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      id: id,
+    );
+    // A plan not on the phone has nothing to wait with: only the server.
+    if (offline == null || cached == null) {
       final json = await _apiClient.patchJson(
         '/api/v1/wedding-plans/$id',
         data,
       );
-      await _offline?.database.saveCachedItem(
+      await offline?.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: json,
       );
-      await _offline?.syncPendingChanges();
+      await offline?.syncPendingChanges();
       return WeddingPlan.fromJson(json);
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final cached = await _offline.database.readCachedItem(
-        table: OfflineTables.cachedWeddingPlans,
-        id: id,
-      );
-      if (cached == null) rethrow;
-      // `moveOpenTasks` is a request to the server, not part of the plan.
-      final localJson = {
-        ...cached,
-        ...data,
-        'updatedAt': DateTime.now().toIso8601String(),
-      }..remove('moveOpenTasks');
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedWeddingPlans,
-        json: localJson,
-        dirty: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'wedding_plan',
-        operation: 'update',
-        endpoint: '/api/v1/wedding-plans/$id',
-        method: 'PATCH',
-        payload: data,
-        planId: id,
-        localEntityId: id,
-      );
-      await _offline.refreshStatus();
-      return WeddingPlan.fromJson(localJson);
     }
+    // RA-MO-341: the shared route's try, one request id to the resend.
+    final requestId = ApiClient.newClientRequestId();
+    final json = await OfflineWrites(_apiClient, offline).send(
+      method: 'PATCH',
+      endpoint: '/api/v1/wedding-plans/$id',
+      payload: data,
+      requestId: requestId,
+    );
+    if (json != null) {
+      await offline.database.saveCachedItem(
+        table: OfflineTables.cachedWeddingPlans,
+        json: json,
+      );
+      await offline.syncPendingChanges();
+      return WeddingPlan.fromJson(json);
+    }
+    // `moveOpenTasks` is a request to the server, not part of the plan.
+    final localJson = {
+      ...cached,
+      ...data,
+      'updatedAt': DateTime.now().toIso8601String(),
+    }..remove('moveOpenTasks');
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: localJson,
+      dirty: true,
+    );
+    await offline.database.enqueueSync(
+      entityType: 'wedding_plan',
+      operation: 'update',
+      endpoint: '/api/v1/wedding-plans/$id',
+      method: 'PATCH',
+      payload: data,
+      planId: id,
+      localEntityId: id,
+      clientRequestId: requestId,
+    );
+    await offline.refreshStatus();
+    return WeddingPlan.fromJson(localJson);
   }
 
   Future<WeddingPlan> archiveWeddingPlan(String id) async {

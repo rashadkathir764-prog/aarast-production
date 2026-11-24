@@ -24,13 +24,13 @@ const _baseline = <String, int>{
   'finance/data/finance_api.payments.dart': 2,
   // Own queue for favourites; the rest are provider-side actions that
   // reach another person and plan-side requests, each said so.
-  'marketplace/data/marketplace_api.dart': 33,
-  'tasks/data/task_timeline_api.dart': 6,
+  'marketplace/data/marketplace_api.dart': 31,
+  'tasks/data/task_timeline_api.dart': 4,
   // Found, not added: the pattern above missed this file. A question needs
   // the model now, with its own long wait; the status is asked fresh for
   // what is left today, and kept on the phone for the home's door.
   'wedding_plans/data/plan_assistant_api.dart': 2,
-  'wedding_plans/data/wedding_plans_api.dart': 9,
+  'wedding_plans/data/wedding_plans_api.dart': 8,
 };
 
 void main() {

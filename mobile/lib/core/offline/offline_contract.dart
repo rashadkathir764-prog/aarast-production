@@ -460,6 +460,11 @@ class OfflineWrites {
   ///
   /// RA-MO-340: while the server is known out of reach no try is made, so
   /// «حفظ بدون نت» does not wait out a timeout first.
+  ///
+  /// RA-MO-341: every write path that keeps a change on the phone makes its
+  /// try here, so a try and its resend are one request to the server. A
+  /// server error (5xx) waits too: the server may have done the change, and
+  /// a resend under the same id is answered with its first answer.
   Future<Map<String, dynamic>?> send({
     required String method,
     required String endpoint,
@@ -476,8 +481,10 @@ class OfflineWrites {
         clientRequestId: requestId,
       );
     } on Object catch (error) {
-      if (offline == null || !CachePolicy.shouldQueueWrite(error)) rethrow;
-      await offline.noteNetworkFailure((error as ApiException).message);
+      if (offline == null || !CachePolicy.shouldQueueReplay(error)) rethrow;
+      if ((error as ApiException).isNetworkFailure) {
+        await offline.noteNetworkFailure(error.message);
+      }
       return null;
     }
   }

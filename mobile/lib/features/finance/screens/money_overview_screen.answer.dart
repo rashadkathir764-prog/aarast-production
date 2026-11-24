@@ -909,11 +909,16 @@ class _HowWeCountedSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = summary.currency;
-    String money(Object? value) => _figure(context, value, currency);
+    // RA-MO-320: what the sheet adds up (the cash, each balance, what is on
+    // others, the verdict) is written as «الصورة كاملة» writes it, shortened
+    // only when nothing is lost; one record (a line, a pledge) is written
+    // whole. A rounded line beside a rounded balance did not add up.
+    String money(Object? value) => _exactFigure(context, value, currency);
+    String record(Object? value) => _fullFigure(context, value, currency);
     final words = moneyCoverWords(
       context,
       coverage,
-      (value) => _figure(context, value, summary.currency),
+      (value) => _exactFigure(context, value, summary.currency),
     );
     final profile = context.journeyProfile;
     final others = [
@@ -986,7 +991,7 @@ class _HowWeCountedSheet extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${step.inflow ? '+' : '−'}${money(step.amount)}',
+                      '${step.inflow ? '+' : '−'}${record(step.amount)}',
                       style: JourneyType.of(
                         JourneyType.body,
                         weight: JourneyType.bold,
@@ -1025,7 +1030,7 @@ class _HowWeCountedSheet extends StatelessWidget {
         for (final line in [
           if (others.isNotEmpty) 'اللي على ${others.join(' و')}، لأنه مو عليك.',
           for (final pledge in coverage.pledgesIgnored)
-            'وعد ${pledge.sourceName} (${money(pledge.amount)})، لأنه ${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر عن موعده' : 'ما له موعد'}.',
+            'وعد ${pledge.sourceName} (${record(pledge.amount)})، لأنه ${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر عن موعده' : 'ما له موعد'}.',
           if (estimates > 0)
             'التقديرات، لأنها مو اتفاقات. ${moneyIfEstimatesWords(context, coverage, money)}',
         ])

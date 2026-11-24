@@ -908,5 +908,43 @@ void main() {
       expect(find.textContaining('950,000'), findsNothing);
       expect(find.textContaining('300,000'), findsNothing);
     });
+
+    // RA-MO-320: every line of the sheet was rounded to a tenth of a million,
+    // so 2.6 million less 1,250,000 read «−1.3 مليون، يبقى 1.4 مليون». A line
+    // is one record (written whole), a balance and the verdict's figures are
+    // sums (shortened only when nothing is lost): the lines add up on screen.
+    testWidgets('«كيف حسبناها؟» writes lines whole and balances sum-safe', (
+      tester,
+    ) async {
+      final apis = await tester.runAsync(
+        () => _plan(
+          costs: [_cost('k-a', 'c-hall', 'قاعة الريان', '1250000')],
+          dates: [_date('s-a', 'k-a', '1250000', 5)],
+          sources: [_source('f-save', 'SAVINGS', 'مدخراتي', '2600000')],
+        ),
+      );
+      await _open(tester, apis!);
+
+      tester
+          .widget<JourneyHeroTag>(find.byKey(const ValueKey('money-cover')))
+          .onTap!();
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(JourneySheetBody);
+      String textOf(Finder under) => tester
+          .widgetList<Text>(find.descendant(of: under, matching: find.byType(Text)))
+          .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+          .join('\n');
+      final step = find.byKey(const ValueKey('money-counted-step-0'));
+      final line = textOf(step);
+      expect(line, contains('−1,250,000'));
+      expect(line, contains('يبقى 1,350,000'));
+      // The sheet never says the tenth of a million the lines do not add to.
+      final all = textOf(sheet);
+      expect(all, isNot(contains('1.3')));
+      expect(all, isNot(contains('1.4')));
+      expect(all, contains('ويبقى 1,350,000'));
+      expect(tester.takeException(), isNull);
+    });
   });
 }

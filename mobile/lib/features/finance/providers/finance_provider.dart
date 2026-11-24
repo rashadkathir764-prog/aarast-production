@@ -1024,7 +1024,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         // read it, and the server kept that budget. It is read again here,
         // so the screen shows it and the next save is made from it; left
         // as it was, every save after would be refused the same way.
-        if (error.serverCode == 'BUDGET_CHANGED_ELSEWHERE') {
+        // RA-MO-344: so with an agreement or a payment date changed on
+        // another phone since this one read it.
+        final budget = error.serverCode == 'BUDGET_CHANGED_ELSEWHERE';
+        if (budget || error.isChangedElsewhere) {
           var reread = false;
           _loadErrorMessage = null;
           try {
@@ -1032,10 +1035,14 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
             reread = _loadErrorMessage == null;
           } catch (_) {}
           _loadErrorMessage = null;
-          _errorMessage = reread
+          _errorMessage = !reread
+              ? error.message
+              : budget
               ? 'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
                     'هذي هي الآن، عدّل عليها.'
-              : error.message;
+              // Said to either reader, with no verb to a man or a woman.
+              : 'فيه تعديل من جهاز ثاني سبق تعديلك، فما انحفظ. '
+                    'اللي قدامك الحين هو الجديد.';
           return false;
         }
         _errorMessage = error.message;

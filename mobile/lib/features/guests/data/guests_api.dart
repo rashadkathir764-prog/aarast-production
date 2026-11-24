@@ -257,6 +257,13 @@ class GuestsApi {
           }
           ..remove('eventIds')
           ..remove('eventReplies');
+    // RA-MO-344: made from the guest as the server last gave it.
+    final version = await _writes.editVersion(
+      entityType: 'guest',
+      table: OfflineTables.cachedGuests,
+      id: id,
+    );
+    if (version != null) payload['expectedVersion'] = version;
     final planId = cached['weddingPlanId']?.toString();
     final json = await _writes.queued(
       entityType: 'guest',

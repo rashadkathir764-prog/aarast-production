@@ -7,6 +7,13 @@ import {
 import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class UpdatePaymentScheduleDto {
+  /**
+   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
+   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   */
+  @IsISO8601()
+  @IsOptional()
+  expectedVersion?: string;
   @IsNotEmpty()
   @IsOptional()
   amount?: string | number;

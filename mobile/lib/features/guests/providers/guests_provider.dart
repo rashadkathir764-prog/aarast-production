@@ -292,7 +292,9 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _guestErrorMessage(error, savingGuest: true);
+      _errorMessage = error.isChangedElsewhere
+          ? await _rereadAfterConflict(guest.weddingPlanId, error)
+          : _guestErrorMessage(error, savingGuest: true);
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نحدّث الضيف.';
@@ -301,6 +303,22 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  /// RA-MO-344, as the budget (D112, Q-4): the guest changed elsewhere
+  /// since this phone read it (the partner, the guest's own answer) and the
+  /// server kept that. It is read again, so the list shows it and the next
+  /// edit is made from it.
+  Future<String> _rereadAfterConflict(
+    String weddingPlanId,
+    ApiException error,
+  ) async {
+    await loadGuests(weddingPlanId);
+    return _loadErrorMessage == null
+        // Said to either reader, with no verb to a man or a woman.
+        ? 'الضيف تغيّر من جهاز ثاني قبل تعديلك، فما انحفظ. '
+              'اللي قدامك الحين هو الجديد.'
+        : error.message;
   }
 
   Future<bool> deleteGuest(Guest guest) async {

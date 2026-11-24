@@ -1,5 +1,5 @@
 import { WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
-import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsISO8601, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import {
   TASK_DESCRIPTION_MAX,
@@ -8,6 +8,13 @@ import {
 } from '../../modules/tasks/public/task-text-limits';
 
 export class UpdateTaskDto {
+  /**
+   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
+   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   */
+  @IsISO8601()
+  @IsOptional()
+  expectedVersion?: string;
   @IsString()
   @IsOptional()
   @MaxCharacters(TASK_TITLE_MAX)

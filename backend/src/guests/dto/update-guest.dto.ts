@@ -8,6 +8,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsISO8601,
   IsInt,
   IsOptional,
   IsString,
@@ -21,6 +22,13 @@ import { GUEST_NAME_MAX, GUEST_NOTES_MAX } from '../../modules/guests/public/gue
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
 
 export class UpdateGuestDto {
+  /**
+   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
+   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   */
+  @IsISO8601()
+  @IsOptional()
+  expectedVersion?: string;
   /**
    * RA-BE-15: as the phone's field (guest_form_sheet.dart) and its contacts
    * import; a new guest's name is held to the same in GuestsService, its

@@ -453,6 +453,40 @@ class OfflineWrites {
     return row;
   }
 
+  /// RA-MO-344: the version an edit of row [id] is made from, sent as
+  /// `expectedVersion` so the server refuses it when the row changed since
+  /// (the partner's edit, the guest's answer): the row's `updatedAt` as the
+  /// server last returned it.
+  ///
+  /// None while a change of the row still waits: the phone's copy carries
+  /// the phone's time then, and the waiting change carries the check (an
+  /// edit merged into it keeps its version; one queued after it would be
+  /// refused for the waiting change's own landing). None for a row the
+  /// server has not named.
+  Future<String?> editVersion({
+    required String entityType,
+    required String table,
+    required String id,
+  }) async {
+    final database = _offline?.database;
+    if (database == null || isLocalId(id) || id.startsWith('local-')) {
+      return null;
+    }
+    for (final change in [
+      ...await database.pendingSyncItems(),
+      ...await database.blockedSyncItems(),
+    ]) {
+      if (change.entityType == entityType && change.localEntityId == id) {
+        return null;
+      }
+    }
+    final version = (await database.readCachedItem(
+      table: table,
+      id: id,
+    ))?['updatedAt'];
+    return version is String && version.isNotEmpty ? version : null;
+  }
+
   /// The one first try of a change the phone keeps (the plan's own data).
   /// Answers the server's row, or null when the change is to wait on the
   /// phone: the caller queues it under [requestId], the id this try went

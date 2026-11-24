@@ -297,7 +297,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       await _refreshTaskData(weddingPlanId);
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = await _saveFailure(weddingPlanId, error);
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نشارك المهمة الحين.';
@@ -378,7 +378,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return true;
     } on ApiException catch (error) {
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
-        _errorMessage = error.message;
+        _errorMessage = await _saveFailure(weddingPlanId, error);
       }
       return false;
     } catch (_) {
@@ -541,7 +541,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return true;
     } on ApiException catch (error) {
       _replaceTask(previousTask);
-      _errorMessage = error.message;
+      _errorMessage = await _saveFailure(weddingPlanId, error);
       return false;
     } catch (_) {
       _replaceTask(previousTask);
@@ -732,6 +732,19 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isCurrentStatusMutation(String taskId, int mutationVersion) {
     return _statusMutationVersions[taskId] == mutationVersion;
+  }
+
+  /// RA-MO-344, as the budget (D112, Q-4): the task changed on another
+  /// phone since this one read it, and the server kept that. It is read
+  /// again, so the screen shows it and the next edit is made from it.
+  Future<String> _saveFailure(String weddingPlanId, ApiException error) async {
+    if (!error.isChangedElsewhere) return error.message;
+    await load(weddingPlanId);
+    return _loadErrorMessage == null
+        // Said to either reader, with no verb to a man or a woman.
+        ? 'المهمة تغيّرت من جهاز ثاني قبل تعديلك، فما انحفظ. '
+              'اللي قدامك الحين هو الجديد.'
+        : error.message;
   }
 
   Future<void> _refreshTaskData(String weddingPlanId) async {

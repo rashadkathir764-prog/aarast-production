@@ -396,12 +396,19 @@ class TaskTimelineApi {
       await offline?.syncPendingChanges();
       return WeddingTask.fromJson(json);
     }
+    // RA-MO-344: made from the task as the server last gave it.
+    final version = await _writes.editVersion(
+      entityType: 'task',
+      table: OfflineTables.cachedTasks,
+      id: id,
+    );
+    final sent = {...data, 'expectedVersion': ?version};
     // RA-MO-341: the shared route's try, one request id to the resend.
     final requestId = ApiClient.newClientRequestId();
     final json = await _writes.send(
       method: 'PATCH',
       endpoint: '/api/v1/tasks/$id',
-      payload: data,
+      payload: sent,
       requestId: requestId,
     );
     if (json != null) {
@@ -425,7 +432,7 @@ class TaskTimelineApi {
     final payload = await _mergedQueuedTaskPayload(
       id: id,
       operation: 'update',
-      data: data,
+      data: sent,
     );
     await _queueTaskEdit(
       id: id,
@@ -434,7 +441,7 @@ class TaskTimelineApi {
       payload: payload,
       planId: _taskPlanId(localJson),
       // The sent id stands only for the body that was sent.
-      sentRequestId: jsonEncode(payload) == jsonEncode(data) ? requestId : null,
+      sentRequestId: jsonEncode(payload) == jsonEncode(sent) ? requestId : null,
     );
     await offline.refreshStatus();
     return WeddingTask.fromJson(localJson);

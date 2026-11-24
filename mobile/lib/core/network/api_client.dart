@@ -923,6 +923,13 @@ class ApiException implements Exception {
   final String? serverCode;
   final int? retryAfterSeconds;
 
+  /// RA-MO-344: the row was changed elsewhere since the phone read it (the
+  /// partner, another phone, the guest's own answer), so the edit made from
+  /// that read was refused, as the budget's is (`BUDGET_CHANGED_ELSEWHERE`).
+  static const changedElsewhereCode = 'CHANGED_ELSEWHERE';
+
+  bool get isChangedElsewhere => serverCode == changedElsewhereCode;
+
   bool get isUnauthorized {
     return statusCode == 401 || message.contains('بيانات الدخول');
   }

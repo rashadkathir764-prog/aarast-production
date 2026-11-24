@@ -257,6 +257,15 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       ...extras,
     };
     if (onServer && changes.isEmpty) return cost;
+    // RA-MO-344: made from the agreement as the server last gave it.
+    if (onServer) {
+      final version = await OfflineWrites(_apiClient, _offline).editVersion(
+        entityType: 'cost',
+        table: OfflineTables.cachedCosts,
+        id: cost.id,
+      );
+      if (version != null) changes['expectedVersion'] = version;
+    }
     final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', changes);
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       return _local.updateCost(cost: cost, payload: payload);

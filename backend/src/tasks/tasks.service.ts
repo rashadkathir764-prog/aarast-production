@@ -85,6 +85,7 @@ import {
   updateChecklistItem,
   updateTask,
 } from '../modules/tasks/infrastructure/task-work.repository';
+import { assertUnchangedSince } from "../shared-kernel/versioning/changed-elsewhere";
 
 export interface TaskResponse {
   id: string;
@@ -376,6 +377,12 @@ export class TasksService {
         existing.weddingPlanId,
       );
       await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
+      // RA-MO-344: an edit made from an older read of the task.
+      assertUnchangedSince(
+        dto.expectedVersion,
+        current.updatedAt,
+        "المهمة تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
+      );
       // V1 checklist 4.10: privacy is chosen when the task is created; a
       // shared task never becomes private (it would vanish from the other
       // side), and only the account it is private to reaches it to share it.

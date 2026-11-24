@@ -11,6 +11,13 @@ import {
 import { MaxCharacters } from "../../shared-kernel/text/text-length";
 
 export class UpdateWeddingCostDto {
+  /**
+   * RA-MO-344: the row's `updatedAt` this edit was made from. A row changed
+   * since is refused (409 CHANGED_ELSEWHERE); omitted, the edit is taken.
+   */
+  @IsISO8601()
+  @IsOptional()
+  expectedVersion?: string;
   /** V1 checklist 4.10: false shares a private cost with the plan; a shared cost never becomes private. */
   @IsBoolean()
   @IsOptional()

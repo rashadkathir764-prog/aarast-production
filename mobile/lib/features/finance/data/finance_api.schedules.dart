@@ -151,6 +151,15 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
           entry.key: entry.value,
     };
     if (onServer && changes.isEmpty) return schedule;
+    // RA-MO-344: made from the date as the server last gave it.
+    if (onServer) {
+      final version = await OfflineWrites(_apiClient, _offline).editVersion(
+        entityType: 'payment_schedule',
+        table: OfflineTables.cachedPaymentSchedules,
+        id: schedule.id,
+      );
+      if (version != null) changes['expectedVersion'] = version;
+    }
     final mutation = _mutation(
       'PATCH',
       '/api/v1/payment-schedules/${schedule.id}',

@@ -177,6 +177,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      # direct-ip-contract runs the pinned Caddy image by digest; pull the
+      # exact image the AWS compose file pins (the runner has none cached).
+      - name: Pull the pinned Caddy image
+        run: docker pull "$(grep -oE 'caddy:[^ ]+@sha256:[0-9a-f]{64}' deploy/aws/compose.yml | head -1)"
       - run: node --test 'deploy/**/*.test.mjs' scripts/check-deploy-encoding.test.mjs scripts/supply-chain-contract.test.mjs
 
   # Runs the real Gradle release guard (no AAB build, no signing material).
@@ -194,7 +198,13 @@ jobs:
           echo "$(curl -fsSL "https://services.gradle.org/distributions/gradle-${version}-bin.zip.sha256")  gradle-${version}-bin.zip" | sha256sum --check
           unzip -q "gradle-${version}-bin.zip" -d "${RUNNER_TEMP}"
           echo "GRADLE_HOME=${RUNNER_TEMP}/gradle-${version}" >> "$GITHUB_ENV"
-      - run: node scripts/test-android-release-config.mjs
+      # The app builds with Java 17 (build.gradle.kts); the runner's default
+      # JDK is newer than the pinned Gradle reads, so use its preinstalled 17.
+      - name: Run the release guard on Java 17
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          node scripts/test-android-release-config.mjs
 
   docs:
     runs-on: ubuntu-latest

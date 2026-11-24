@@ -496,21 +496,31 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ]);
       }
       // q17 (the bride's plan) and q09 (the groom's plan read by a woman):
-      // the plan keeps its owner's colours, the reader has her own plan.
-      if (voice.bride || context.journeyProfile.feminine) {
-        children.addAll([
-          const SizedBox(height: AarastV3Space.x3),
-          JourneyNote(
-            key: const ValueKey('participant-owner-colours'),
-            text:
-                '${voice.bride ? 'الخطة بألوان صاحبتها' : 'الخطة بألوان صاحبها'}. '
-                '${context.say('لو عندك خطة أنت، تبدّل لها من «حسابي».', 'لو عندك خطة أنتِ، تبدّلين لها من «حسابي».')}',
-            icon: LucideIcons.palette,
-            color: voice.accent,
-            soft: voice.soft,
+      // the plan keeps its owner's colours, and the reader has her own plan.
+      // RA-MO-339: the way to the reader's own plan is said to every reader,
+      // a man in a groom's plan too; the colours are said only where they are
+      // not the reader's own.
+      final colours = voice.bride
+          ? 'الخطة بألوان صاحبتها. '
+          : context.journeyProfile.feminine
+          ? 'الخطة بألوان صاحبها. '
+          : '';
+      children.addAll([
+        const SizedBox(height: AarastV3Space.x3),
+        JourneyNote(
+          key: ValueKey(
+            colours.isEmpty
+                ? 'participant-switch-hint'
+                : 'participant-owner-colours',
           ),
-        ]);
-      } else if (!selected.permissions.canViewMoney) {
+          text:
+              '$colours${context.say('لو عندك خطة أنت، تبدّل لها من «حسابي».', 'لو عندك خطة أنتِ، تبدّلين لها من «حسابي».')}',
+          icon: LucideIcons.palette,
+          color: voice.accent,
+          soft: voice.soft,
+        ),
+      ]);
+      if (colours.isEmpty && !selected.permissions.canViewMoney) {
         children.addAll([
           const SizedBox(height: AarastV3Space.x3),
           const JourneyNote(

@@ -92,6 +92,13 @@ void main() {
       expect(find.text('ذكّر آل الحمدي اللي ما ردّوا'), findsOneWidget);
       // Privacy: nothing of the money, only that it is hidden.
       expect(find.text('المال مخفي عنك.'), findsOneWidget);
+      // RA-MO-339: the way to his own plan is said to a man in a groom's plan
+      // too, without the colours (they are his own).
+      expect(
+        find.text('لو عندك خطة أنت، تبدّل لها من «حسابي».'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('الخطة بألوان'), findsNothing);
       expect(find.textContaining('ر.ي'), findsNothing);
       expect(find.textContaining('اطلب من'), findsNothing);
       expect(tester.takeException(), isNull);

@@ -51,7 +51,7 @@ String _statusLine(
   // Rashad 2026-11-17: the hero under this line says how many are left and
   // carries the late ones as its tag; the line says the week only.
   return week == 0
-      ? 'ما فيه مهام خلال أسبوع'
+      ? 'ما فيه مهام جاية خلال أسبوع'
       : '${_taskCountLabel(week)} خلال أسبوع';
 }
 

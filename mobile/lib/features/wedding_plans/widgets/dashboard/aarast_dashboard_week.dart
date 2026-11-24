@@ -369,10 +369,10 @@ class _ProgramEmpty extends StatelessWidget {
           Text(
             onAdd == null
                 ? 'لما تتسجل مناسبات العرس تطلع هنا.'
-                : context.say(
-                    'سجّل السمرة والمقيل والزفاف، وتطلع هنا بأيامها.',
-                    'سجّلي مناسباتك، وتطلع هنا بأيامها.',
-                  ),
+                // D55: the plan's own occasions (her «الحفلة» and «الزفة»).
+                : '${context.say('سجّل', 'سجّلي')} '
+                      '${context.planWord('السمرة والمقيل والزفاف', 'الحفلة والغداء والزفة')}'
+                      '، وتطلع هنا بأيامها.',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
+    show JourneyProfile;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -201,6 +203,27 @@ void main() {
       // Changed on purpose (Rashad 2026-11-18): booked of the plan's three
       // services, so the line says what is left.
       expect(providerBoardStatus(rows), 'محجوز 1 من 3 · عرضين ينتظرونك');
+    });
+
+    // RA-MO-324 (D55): the board says «اخترت», «طلبت» and «ما بدأت» to the
+    // reader in her own form.
+    test('the board speaks to a bride in her own form', () {
+      final bride = JourneyProfile.bride;
+      final started = buildProviderBoard(
+        items: items,
+        costs: const [],
+        costItemById: const {},
+        quotes: [_waiting('q3', 'أ'), _waiting('q4', 'ب')],
+        reader: bride,
+      );
+      expect(
+        started.firstWhere((row) => row.key == 'photo').detail,
+        'طلبتِ من اثنين · ينتظر الرد',
+      );
+      expect(started.firstWhere((row) => row.key == 'hall').detail, 'ما بدأتِ');
+      expect(providerBoardStatus(started, reader: bride), 'ما حجزتِ شي بعد');
+      expect(providerBoardStatus(const [], reader: bride), 'اختاري مزوديك');
+      expect(providerBoardStatus(const []), 'اختر مزوديك');
     });
 
     test('an accepted offer files under the item its cost went to', () {

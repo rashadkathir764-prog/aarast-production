@@ -153,6 +153,7 @@ Future<_Api> _pump(
   List<Guest>? guests,
   bool withEvents = true,
   String? location,
+  JourneyProfile profile = JourneyProfile.groom,
   void Function(GoRouter router)? onRouter,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -206,10 +207,7 @@ Future<_Api> _pump(
         routerConfig: router,
         builder: (context, child) => Directionality(
           textDirection: TextDirection.rtl,
-          child: JourneyProfileScope(
-            profile: JourneyProfile.groom,
-            child: child!,
-          ),
+          child: JourneyProfileScope(profile: profile, child: child!),
         ),
       ),
     ),
@@ -301,6 +299,19 @@ void main() {
     expect(find.byKey(const ValueKey('guests-invite-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('guests-occasions-door')), findsOneWidget);
     expect(find.text('العرس بس. أضف غداء أو سمرة'), findsOneWidget);
+  });
+
+  // RA-MO-324 (D55): the plan's own words, and the reader's own form. In her
+  // plan the example is not his «سمرة», and the card's line speaks to her.
+  testWidgets("a bride's doors speak her words and her form", (tester) async {
+    await _pump(tester, withEvents: false, profile: JourneyProfile.bride);
+
+    expect(find.text('العرس بس. أضيفي غداء أو حفلة'), findsOneWidget);
+    expect(
+      find.text('شكل الدعوة وكلامها، وشوفي وش يوصل الضيفة'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('سمرة'), findsNothing);
   });
 
   testWidgets('the doors open the card and the occasions', (tester) async {

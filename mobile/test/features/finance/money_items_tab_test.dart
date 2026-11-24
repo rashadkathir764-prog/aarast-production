@@ -187,6 +187,7 @@ Future<_App> _open(
   FinanceProvider provider, {
   String? at,
   double textScale = 1.3,
+  JourneyProfile profile = JourneyProfile.groom,
 }) async {
   tester.view.physicalSize = const Size(320, 760);
   tester.view.devicePixelRatio = 1.0;
@@ -249,9 +250,12 @@ Future<_App> _open(
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: child!,
+          child: JourneyProfileScope(
+            profile: profile,
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: child!,
+            ),
           ),
         ),
       ),
@@ -407,6 +411,28 @@ void main() {
       }
     });
   });
+
+  // RA-MO-324 (D55): the example of an expense is the plan's own: his qat of
+  // the afternoon, her sweets of the hospitality.
+  for (final (profile, example) in [
+    (JourneyProfile.groom, 'قات المقيل'),
+    (JourneyProfile.bride, 'حلويات الضيافة'),
+  ]) {
+    testWidgets('«ايش الفرق؟» gives an expense the plan\'s own example: '
+        '$example', (tester) async {
+      final provider = await tester.runAsync(_plan);
+      await _open(tester, provider!, profile: profile);
+      await _items(tester);
+      await _show(tester, find.byKey(const ValueKey('money-items-explain')));
+      await tester.tap(find.byKey(const ValueKey('money-items-explain')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('مثل $example'), findsOneWidget);
+      expect(
+        find.textContaining(profile.isBride ? 'مثل قات' : 'مثل حلويات'),
+        findsNothing,
+      );
+    });
+  }
 
   group('an item\'s page', () {
     testWidgets('a part agreement: what is left of the estimate still counts', (

@@ -228,7 +228,8 @@ class _InvitationDoors extends StatelessWidget {
             key: const ValueKey('guests-invite-card'),
             icon: LucideIcons.mail,
             title: 'بطاقة الدعوة',
-            subtitle: 'شكل الدعوة وكلامها، وشوف وش يوصل الضيف',
+            subtitle:
+                'شكل الدعوة وكلامها، ${context.say('وشوف', 'وشوفي')} وش يوصل ${GuestWords.of(context).profile.plan('الضيف', 'الضيفة')}',
             onTap: () => context.push(AppRouter.guestInvite(weddingPlanId)),
           ),
           _DoorRow(
@@ -236,7 +237,7 @@ class _InvitationDoors extends StatelessWidget {
             icon: LucideIcons.calendarHeart,
             title: 'المناسبات',
             subtitle: others <= 0
-                ? 'العرس بس. ${context.say('أضف', 'أضيفي')} غداء أو سمرة'
+                ? 'العرس بس. ${context.say('أضف', 'أضيفي')} ${context.planWord('غداء أو سمرة', 'غداء أو حفلة')}'
                 : 'العرس و${arabicCount(others, one: 'مناسبة ثانية', two: 'مناسبتين ثانيتين', few: 'مناسبات ثانية', many: 'مناسبة ثانية')}، كل وحدة بموعدها ومكانها',
             onTap: () => context.push(AppRouter.planEvents(weddingPlanId)),
           ),
@@ -353,7 +354,7 @@ Future<_AddChoice?> _showAddMenu(
               _AddChoice.contacts => 'أكثر من اسم مرة وحدة',
               _AddChoice.paste => 'كل سطر اسم',
               _AddChoice.occasion =>
-                'غداء، سمرة، أو أي مناسبة، بموعدها ومكانها',
+                '${context.planWord('غداء، سمرة', 'غداء، حفلة')}، أو أي مناسبة، بموعدها ومكانها',
               _AddChoice.group => 'الأهل، الأصدقاء، الجيران',
             },
             onTap: () => Navigator.of(sheetContext).pop(choice),

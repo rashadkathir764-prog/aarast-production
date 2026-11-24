@@ -1,3 +1,5 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
+    show JourneyProfile, JourneyProfileScope;
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
@@ -25,6 +27,8 @@ Future<void> _pump(
   required DateTime now,
   required PlanEventsView events,
   VoidCallback? onArchivePlan,
+  VoidCallback? onOpenEvents,
+  JourneyProfile profile = JourneyProfile.groom,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 2200);
@@ -32,26 +36,30 @@ Future<void> _pump(
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light(),
-      home: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          body: AarastDashboardView(
-            summary: _summary(),
-            userName: 'رشاد',
-            bottomPadding: 24,
-            now: now,
-            events: events,
-            onArchivePlan: onArchivePlan,
-            onNotifications: () {},
-            onProfile: () {},
-            onOpenPlan: () {},
-            onOpenMoney: () {},
-            onOpenTasks: () {},
-            onOpenProviders: () {},
-            onOpenGuests: () {},
-            onOpenSharing: () {},
-            onOpenNextStep: () {},
-            onOpenImportantItem: (_) {},
+      home: JourneyProfileScope(
+        profile: profile,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: AarastDashboardView(
+              summary: _summary(),
+              userName: 'رشاد',
+              bottomPadding: 24,
+              now: now,
+              events: events,
+              onArchivePlan: onArchivePlan,
+              onNotifications: () {},
+              onProfile: () {},
+              onOpenPlan: () {},
+              onOpenMoney: () {},
+              onOpenTasks: () {},
+              onOpenProviders: () {},
+              onOpenGuests: () {},
+              onOpenSharing: () {},
+              onOpenNextStep: () {},
+              onOpenImportantItem: (_) {},
+              onOpenEvents: onOpenEvents,
+            ),
           ),
         ),
       ),
@@ -88,6 +96,26 @@ void main() {
     // The samra's night has passed: one tick, its own.
     expect(find.byIcon(LucideIcons.checkCircle), findsOneWidget);
   });
+
+  // RA-MO-324 (D55): an empty week asks for the plan's own occasions, said to
+  // the reader in her own form: not the men's «السمرة والمقيل» to a bride.
+  for (final (profile, line) in [
+    (JourneyProfile.groom, 'سجّل السمرة والمقيل والزفاف، وتطلع هنا بأيامها.'),
+    (JourneyProfile.bride, 'سجّلي الحفلة والغداء والزفة، وتطلع هنا بأيامها.'),
+  ]) {
+    testWidgets('an empty wedding week asks for ${profile.plan('his', 'her')} '
+        'occasions', (tester) async {
+      await _pump(
+        tester,
+        now: DateTime.utc(2027, 1, 18, 9),
+        events: _events(const []),
+        onOpenEvents: () {},
+        profile: profile,
+      );
+
+      expect(find.text(line), findsOneWidget);
+    });
+  }
 
   // 13:00 UTC is 16:00 in Sana'a: the wedding (after the asr) is under
   // way, not the lunch the phone's own hour pointed at.

@@ -470,9 +470,10 @@ class _ItemsExplainSheet extends StatelessWidget {
             word(
               LucideIcons.banknote,
               'المصروف',
+              // D55: the example is the plan's own (her hospitality, not his qat).
               context.say(
-                'شي دفعته كامل مرة وحدة، مثل قات المقيل. يتسجل اتفاق خالص.',
-                'شي دفعتيه كامل مرة وحدة، مثل قات المقيل. يتسجل اتفاق خالص.',
+                'شي دفعته كامل مرة وحدة، مثل ${context.planWord('قات المقيل', 'حلويات الضيافة')}. يتسجل اتفاق خالص.',
+                'شي دفعتيه كامل مرة وحدة، مثل ${context.planWord('قات المقيل', 'حلويات الضيافة')}. يتسجل اتفاق خالص.',
               ),
             ),
           ],

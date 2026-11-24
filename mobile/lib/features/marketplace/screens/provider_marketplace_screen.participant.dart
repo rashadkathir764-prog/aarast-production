@@ -44,7 +44,7 @@ extension _ParticipantPlan on _ProviderMarketplaceScreenState {
   /// «محجوز 2» from the plan when the participant's own board has nothing
   /// booked or waiting, so the line is the plan's truth.
   String _boardStatus(List<ProviderBoardRow> board) {
-    final own = providerBoardStatus(board);
+    final own = providerBoardStatus(board, reader: context.journeyProfile);
     final bookings = _participantBookings(watch: true);
     if (bookings == null || bookings.isEmpty) return own;
     if (board.any((row) => row.booked || row.waitingOffers > 0)) return own;

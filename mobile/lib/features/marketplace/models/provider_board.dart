@@ -240,7 +240,7 @@ ProviderBoardRow _row({
       final day = confirmed.booking!.eventDate;
       return make(
         4,
-        ReaderVoice.say(
+        reader.say(
           '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}',
           '${_providerName(confirmed)} · أكّدي ${formatArabicDayMonth(day)}',
         ),
@@ -258,13 +258,18 @@ ProviderBoardRow _row({
   if (accepted != null) {
     return make(
       2,
-      'اخترت ${_providerName(accepted)} · '
+      '${reader.say('اخترت', 'اخترتِ')} ${_providerName(accepted)} · '
       '${reader.say('اطلب الحجز', 'اطلبي الحجز')}',
     );
   }
   if (waiting > 0) return make(2, _offerCount(waiting));
-  if (asked > 0) return make(1, 'طلبت من ${_requestCount(asked)} · ينتظر الرد');
-  return make(0, 'ما بدأت');
+  if (asked > 0) {
+    return make(
+      1,
+      '${reader.say('طلبت', 'طلبتِ')} من ${_requestCount(asked)} · ينتظر الرد',
+    );
+  }
+  return make(0, reader.say('ما بدأت', 'ما بدأتِ'));
 }
 
 /// A request still in play: not declined, cancelled, or ended unanswered
@@ -289,7 +294,10 @@ String? _searchCategory(String title, List<QuoteRequest> quotes) {
 }
 
 /// The tab's status line: «محجوز 3 · عرضين ينتظرونك».
-String providerBoardStatus(List<ProviderBoardRow> rows) {
+String providerBoardStatus(
+  List<ProviderBoardRow> rows, {
+  JourneyProfile reader = JourneyProfile.groom,
+}) {
   final booked = rows.where((row) => row.booked).length;
   final waiting = rows.fold<int>(0, (sum, row) => sum + row.waitingOffers);
   final parts = <String>[
@@ -307,8 +315,8 @@ String providerBoardStatus(List<ProviderBoardRow> rows) {
   ];
   if (parts.isEmpty) {
     return rows.isEmpty
-        ? ReaderVoice.say('اختر مزوديك', 'اختاري مزوديك')
-        : 'ما حجزت شي بعد';
+        ? reader.say('اختر مزوديك', 'اختاري مزوديك')
+        : reader.say('ما حجزت شي بعد', 'ما حجزتِ شي بعد');
   }
   return parts.join(' · ');
 }

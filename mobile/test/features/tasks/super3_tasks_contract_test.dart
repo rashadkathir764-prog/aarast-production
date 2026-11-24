@@ -252,6 +252,10 @@ void main() {
     // Changed on purpose (Rashad 2026-11-17): the hero says «مهمتين باقية»
     // with the late one as its saffron tag.
     expect(find.text('مهمتين باقية'), findsOneWidget);
+    // RA-MO-335: beside a late task the line does not say there are none; it
+    // says none are coming this week.
+    expect(find.text('ما فيه مهام جاية خلال أسبوع'), findsOneWidget);
+    expect(find.text('ما فيه مهام خلال أسبوع'), findsNothing);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('tasks-hero-late')),

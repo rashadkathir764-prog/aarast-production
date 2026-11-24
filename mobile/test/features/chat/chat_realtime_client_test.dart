@@ -47,7 +47,7 @@ void main() {
       });
 
       factory.sockets.single.serverDisconnect('transport close');
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
       expect(factory.sockets, hasLength(2));
 
       factory.sockets.last.serverEvent('chat:ready', {'userId': 'user-1'});
@@ -82,7 +82,7 @@ void main() {
 
     await _saveSession(storage, userId: 'user-1', token: 'token-2');
     factory.sockets.single.serverDisconnect('transport close');
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    await pumpEventQueue();
 
     expect(await factory.sockets.last.resolveAuth(), {'token': 'token-2'});
     client.dispose();
@@ -108,10 +108,10 @@ void main() {
       await connecting;
 
       factory.sockets.single.serverDisconnect('transport close');
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
 
       expect(factory.sockets, hasLength(2));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
       expect(factory.sockets, hasLength(2));
       client.dispose();
     },
@@ -137,7 +137,7 @@ void main() {
 
     client.reset();
     factory.sockets.single.serverDisconnect('transport close');
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    await pumpEventQueue();
 
     expect(factory.sockets, hasLength(1));
     expect(client.desiredConversationIds, isEmpty);
@@ -264,7 +264,7 @@ void main() {
 
     client.didChangeAppLifecycleState(AppLifecycleState.paused);
     expect(factory.sockets.single.connected, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await pumpEventQueue();
     expect(factory.sockets, hasLength(1), reason: 'no reconnect while away');
     client.join('conversation-2');
 
@@ -296,7 +296,7 @@ void main() {
         onRead: (_, _, _) {},
       ),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    await pumpEventQueue();
     expect(factory.sockets, isEmpty);
     client.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await Future<void>.delayed(Duration.zero);

@@ -10,6 +10,7 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -157,9 +158,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(420, 1000);
     addTearDown(tester.view.reset);
+    // RA-TS-26: the card reads its days and its bar against appNow. Unpinned,
+    // the picture said «مرّ العرس» from the day the date passed; pinned, it
+    // is drawn on one day: 31 days before the wedding.
+    pinAppClock(DateTime(2025, 12, 1, 9));
+    addTearDown(resetAppClock);
 
     final provider = _FakePlansProvider([
-      // تاريخ ماضٍ عمدًا: يثبّت شريط التقدم على 100% فلا تتغير الصورة يوميًا.
       WeddingPlan(
         id: 'plan-1',
         ownerUserId: 'user-1',

@@ -64,8 +64,8 @@ void main() {
             ratingAverage: 4.8,
             ratingCount: 125,
             categoryLabel: 'صالات',
-            locationLabel: 'جدة',
-            priceLabel: '15,000 - 35,000 ر.س',
+            locationLabel: 'صنعاء',
+            priceLabel: '1,200,000 - 2,000,000 ر.ي',
             isFavorite: true,
             onFavorite: () {},
             onDetails: () {},
@@ -77,8 +77,8 @@ void main() {
             ratingAverage: 4.9,
             ratingCount: 98,
             categoryLabel: 'فنانين',
-            locationLabel: 'جدة',
-            priceLabel: '8,000 - 20,000 ر.س',
+            locationLabel: 'صنعاء',
+            priceLabel: '350,000 - 450,000 ر.ي',
             isFavorite: false,
             onFavorite: () {},
             onDetails: () {},
@@ -90,8 +90,8 @@ void main() {
             ratingAverage: 4.7,
             ratingCount: 76,
             categoryLabel: 'تصوير',
-            locationLabel: 'الرياض',
-            priceLabel: '6,000 - 12,000 ر.س',
+            locationLabel: 'عدن',
+            priceLabel: '250,000 - 600,000 ر.ي',
             isFavorite: false,
             onFavorite: () {},
             onDetails: () {},
@@ -121,8 +121,8 @@ void main() {
         ratingAverage: 4.8,
         ratingCount: 125,
         categoryLabel: 'قاعات ومناسبات',
-        locationLabel: 'الرياض، حي الملقا',
-        priceLabel: '15,000 - 35,000 ر.س',
+        locationLabel: 'صنعاء، حي حدة',
+        priceLabel: '1,200,000 - 2,000,000 ر.ي',
         budgetStatusLabel: 'ضمن الميزانية المقترحة',
         isFavorite: false,
         onFavorite: () => favoriteTaps += 1,
@@ -138,8 +138,8 @@ void main() {
     expect(find.byType(FilledButton), findsNothing);
     // f02: the whole card opens the details (no «عرض التفاصيل» button); the
     // kind and the place read as one line.
-    expect(find.text('قاعات ومناسبات · الرياض، حي الملقا'), findsOneWidget);
-    expect(find.text('15,000 - 35,000 ر.س'), findsOneWidget);
+    expect(find.text('قاعات ومناسبات · صنعاء، حي حدة'), findsOneWidget);
+    expect(find.text('1,200,000 - 2,000,000 ر.ي'), findsOneWidget);
     expect(find.text('ضمن الميزانية المقترحة'), findsOneWidget);
     expect(find.byKey(const Key('compact-vendor-details')), findsOneWidget);
     expect(find.byKey(const Key('compact-vendor-favorite')), findsOneWidget);

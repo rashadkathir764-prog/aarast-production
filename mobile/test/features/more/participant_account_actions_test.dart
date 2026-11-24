@@ -104,7 +104,7 @@ void main() {
       expect(await restartedStore.readAll(), isEmpty);
       // releasePlanQuarantine schedules the remaining non-plan queue replay.
       // Let that owned async task finish before disposing the notifier.
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
     },
   );
 

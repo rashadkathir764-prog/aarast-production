@@ -8,6 +8,7 @@ library;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
@@ -25,6 +26,11 @@ const _planId = 'plan-sharing-preview';
 
 void main() {
   setUpAll(loadPreviewAppFonts);
+  // RA-TS-26: the pending invite expires on 20 July 2026. Read against the
+  // real clock it was drawn as an expired invite that is still «PENDING», a
+  // state the server never serves; the day is pinned inside its week.
+  setUp(() => pinAppClock(DateTime(2026, 7, 10, 9)));
+  tearDown(resetAppClock);
 
   testWidgets('sharing screen — compact member rows (420)', (tester) async {
     tester.view.devicePixelRatio = 1;

@@ -342,9 +342,7 @@ Future<_App> _open(
 
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 12; i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 20)),
-    );
+    await tester.runAsync(pumpEventQueue);
     await tester.pump(const Duration(milliseconds: 50));
   }
   await tester.pumpAndSettle();

@@ -240,9 +240,7 @@ Future<_Screen> _open(
   );
   // The store answers off the test clock.
   for (var i = 0; i < 12; i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 20)),
-    );
+    await tester.runAsync(pumpEventQueue);
     await tester.pump(const Duration(milliseconds: 50));
   }
   await tester.pumpAndSettle();

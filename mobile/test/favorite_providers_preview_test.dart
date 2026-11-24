@@ -30,7 +30,7 @@ MarketplaceProvider _venue() {
     ownerName: 'إدارة القصر',
     ratingAverage: 4.8,
     ratingCount: 125,
-    city: MarketplaceCity(id: 'city-jed', nameAr: 'جدة'),
+    city: MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
     services: [
       MarketplaceService(
         id: 's1',
@@ -38,8 +38,8 @@ MarketplaceProvider _venue() {
         title: 'قاعة كبرى',
         isActive: true,
         category: ProviderCategory(id: 'c1', nameAr: 'صالات'),
-        basePrice: '15000',
-        currency: 'SAR',
+        basePrice: '1200000',
+        currency: 'YER',
       ),
       MarketplaceService(
         id: 's2',
@@ -47,8 +47,8 @@ MarketplaceProvider _venue() {
         title: 'قاعة كبار',
         isActive: true,
         category: ProviderCategory(id: 'c1', nameAr: 'صالات'),
-        basePrice: '35000',
-        currency: 'SAR',
+        basePrice: '2000000',
+        currency: 'YER',
       ),
     ],
   );
@@ -61,7 +61,7 @@ MarketplaceProvider _photographer() {
     ownerName: 'ريم',
     ratingAverage: 4.7,
     ratingCount: 76,
-    city: MarketplaceCity(id: 'city-ryd', nameAr: 'الرياض'),
+    city: MarketplaceCity(id: 'city-aden', nameAr: 'عدن'),
     services: [
       MarketplaceService(
         id: 's3',
@@ -69,8 +69,8 @@ MarketplaceProvider _photographer() {
         title: 'باقة تصوير كاملة',
         isActive: true,
         category: ProviderCategory(id: 'c2', nameAr: 'تصوير'),
-        basePrice: '6000',
-        currency: 'SAR',
+        basePrice: '250000',
+        currency: 'YER',
       ),
     ],
   );

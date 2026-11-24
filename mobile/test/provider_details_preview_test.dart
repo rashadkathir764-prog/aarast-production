@@ -32,9 +32,9 @@ MarketplaceProvider _provider() {
     ratingAverage: 4.8,
     ratingCount: 125,
     featuredUntil: DateTime.utc(2100),
-    city: const MarketplaceCity(id: 'city-jed', nameAr: 'جدة'),
+    city: const MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
     address: 'حي الروضة',
-    phone: '0555123456',
+    phone: '777123456',
     description:
         'قاعة فاخرة بتصميم عصري ومساحات واسعة تناسب جميع أفراحكم. فريق '
         'متخصص لخدمتكم بأعلى المعايير، مع تنسيق كامل للإضاءة والضيافة '
@@ -46,8 +46,8 @@ MarketplaceProvider _provider() {
         title: 'الباقة الماسية للقاعة الكبرى',
         isActive: true,
         category: ProviderCategory(id: 'cat-venue', nameAr: 'صالات'),
-        basePrice: '35000',
-        currency: 'SAR',
+        basePrice: '2000000',
+        currency: 'YER',
       ),
       MarketplaceService(
         id: 'svc-2',
@@ -55,8 +55,8 @@ MarketplaceProvider _provider() {
         title: 'الباقة الفضية للمناسبات الصغيرة',
         isActive: true,
         category: ProviderCategory(id: 'cat-venue', nameAr: 'صالات'),
-        basePrice: '15000',
-        currency: 'SAR',
+        basePrice: '1200000',
+        currency: 'YER',
       ),
     ],
   );
@@ -80,8 +80,8 @@ const _packages = [
     title: 'الباقة الماسية',
     isActive: true,
     serviceTitle: 'القاعة الكبرى',
-    price: '35000',
-    currency: 'SAR',
+    price: '2000000',
+    currency: 'YER',
     description: 'باقة متكاملة للأفراح الكبرى مع كل الخدمات الأساسية.',
     items: 'قاعة كبار\nأنسز\nغرفة عروس\nخدمة صف سيارات\nضيافة فاخرة',
   ),

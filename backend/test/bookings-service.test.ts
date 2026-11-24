@@ -531,6 +531,38 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
   assert.equal((await bookings.sendDueReminders(at("2027-02-18"))).sent, 0);
 });
 
+// M-2 (Q-45, D124): a plan the owner asked to delete is closed; its bookings are not reminded.
+test("a booking whose plan is pending deletion is not reminded, and is again once he takes it back", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const base = service(db);
+  const requested = await base.requestBooking(customer, "quote-1", {});
+  await base.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
+  db.notifications.length = 0;
+
+  let deletionRequestedAt: Date | null = new Date("2027-02-10T00:00:00Z");
+  const plans: any = {
+    getPlan: async () => ({ id: "plan-1", ownerUserId: "customer-1", status: "PLANNING", deletionRequestedAt }),
+  };
+  const permissions: any = { canManageProviders: () => true };
+  const notifications: any = {
+    createNotificationInTransaction: async (_tx: unknown, input: any) => {
+      db.notifications.push(input);
+      return { id: input.dedupeKey };
+    },
+  };
+  const bookings = new BookingsService(
+    db.prisma, permissions, notifications, noAgreements, undefined, undefined, plans,
+  );
+
+  const week = await bookings.sendDueReminders(new Date("2027-02-11T09:00:00Z"));
+  assert.deepEqual(week, { sent: 0, failures: [] });
+  assert.equal(db.notifications.length, 0);
+
+  deletionRequestedAt = null;
+  assert.equal((await bookings.sendDueReminders(new Date("2027-02-11T10:00:00Z"))).sent, 2);
+});
+
 test("a cancelled booking is not reminded", async () => {
   const db = fakeDatabase();
   db.addQuote("quote-1");

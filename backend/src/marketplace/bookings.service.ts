@@ -17,6 +17,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import {
   assertWeddingPlanWritable,
   COLLABORATION_PERMISSION_PORT,
+  isPlanDeletionPending,
   type CollaborationPermissionPort as PermissionService,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
@@ -486,7 +487,8 @@ export class BookingsService {
   /**
    * Reminds both sides of each confirmed booking a week and a day before.
    * Each reminder is its own transaction that re-reads the booking, and its
-   * dedupe key makes a repeated scan (or a second replica) a no-op. A failed
+   * dedupe key makes a repeated scan (or a second replica) a no-op. A booking
+   * whose plan is pending deletion is skipped. A failed
    * reminder is reported, not swallowed, and does not stop the others.
    */
   async sendDueReminders(
@@ -523,6 +525,12 @@ export class BookingsService {
               live.eventDate.getTime() !== booking.eventDate.getTime()
             ) {
               return null;
+            }
+            // Q-45 (D124): a plan its owner asked to delete is closed, so
+            // neither side is reminded of a wedding it no longer holds.
+            if (booking.quoteRequest.weddingPlanId && this.plans) {
+              const plan = await this.plans.getPlan(tx, booking.quoteRequest.weddingPlanId);
+              if (plan && isPlanDeletionPending(plan)) return null;
             }
             return this.notifications.createNotificationInTransaction(tx, reminder);
           });

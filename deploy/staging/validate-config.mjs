@@ -92,6 +92,7 @@ export function validateStagingConfig(config, {
         AARAST_MEDIA_PUBLIC_BASE_URL: `${cutoverOrigins.media}/${service.environment?.AARAST_MEDIA_BUCKET}`,
       } : name === 'admin-web' ? {
         API_ORIGIN: cutoverOrigins.api, ADMIN_PUBLIC_ORIGIN: cutoverOrigins.admin, CORS_ORIGINS: cutoverOrigins.admin,
+        MEDIA_ORIGIN: cutoverOrigins.media,
       } : {};
       for (const [key, value] of Object.entries(permitted)) {
         requireValue(service.environment?.[key] === value, `${name} ${key} must match the approved cutover origin`);
@@ -238,6 +239,10 @@ export function validateStagingConfig(config, {
   }
   requireValue(isPublicHttpsOrigin(services['admin-web']?.environment?.API_ORIGIN),
     'Admin API must be a public HTTPS origin');
+  // RA-AD-21: the admin's CSP draws photos from the origin the backend
+  // writes into every photo URL.
+  requireValue(services['admin-web']?.environment?.MEDIA_ORIGIN === backend.AARAST_MEDIA_SIGNED_ENDPOINT,
+    'Admin media origin must be the public media origin');
   requireValue(new Set([
     services['admin-web']?.environment?.API_ORIGIN,
     services['admin-web']?.environment?.ADMIN_PUBLIC_ORIGIN,

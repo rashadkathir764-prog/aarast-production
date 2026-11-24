@@ -37,3 +37,37 @@ test('the nginx runtime is immutable and sends the complete security headers', (
     2,
   );
 });
+
+// RA-AD-21: provider photos live on the media store, not on the admin
+// origin. The CSP lets the page draw them from that one origin, and the
+// guard refuses to start without it, so a photo is never swapped for the
+// placeholder in silence.
+test('the CSP draws images from the media origin the runtime is given', () => {
+  const policies = nginx.match(/Content-Security-Policy "[^"]*"/g) ?? [];
+  assert.equal(policies.length, 2);
+  for (const policy of policies) {
+    assert.match(policy, /img-src 'self' data: \$\{MEDIA_ORIGIN\};/);
+  }
+  assert.match(runtimeGuard, /: "\$\{MEDIA_ORIGIN:\?MEDIA_ORIGIN is required\}"/);
+  assert.match(runtimeGuard, /require_public_https_origin MEDIA_ORIGIN "\$MEDIA_ORIGIN"/);
+});
+
+test('every deployment gives the admin its media origin', () => {
+  const awsCompose = read('../../deploy/aws/compose.yml');
+  assert.match(
+    awsCompose,
+    /AARAST_MEDIA_PUBLIC_BASE_URL: https:\/\/\$\{AARAST_MEDIA_BUCKET\}\.s3\.\$\{AWS_REGION\}\.amazonaws\.com\n/,
+  );
+  assert.match(
+    awsCompose,
+    /MEDIA_ORIGIN: https:\/\/\$\{AARAST_MEDIA_BUCKET\}\.s3\.\$\{AWS_REGION\}\.amazonaws\.com\n/,
+  );
+  assert.match(
+    read('../../deploy/staging/docker-compose.yml'),
+    /MEDIA_ORIGIN: \$\{STAGING_MEDIA_ORIGIN:\?staging media origin required\}\n/,
+  );
+  assert.match(
+    read('../../deploy/dokploy/docker-compose.yml'),
+    /MEDIA_ORIGIN: \$\{AARAST_MEDIA_ORIGIN:\?AARAST_MEDIA_ORIGIN is required\}\n/,
+  );
+});

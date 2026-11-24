@@ -47,9 +47,11 @@ build_origin="$(
 : "${API_ORIGIN:?API_ORIGIN is required}"
 : "${ADMIN_PUBLIC_ORIGIN:?ADMIN_PUBLIC_ORIGIN is required}"
 : "${CORS_ORIGINS:?CORS_ORIGINS is required}"
+: "${MEDIA_ORIGIN:?MEDIA_ORIGIN is required}"
 
 require_public_https_origin API_ORIGIN "$API_ORIGIN"
 require_public_https_origin ADMIN_PUBLIC_ORIGIN "$ADMIN_PUBLIC_ORIGIN"
+require_public_https_origin MEDIA_ORIGIN "$MEDIA_ORIGIN"
 
 [ "$build_origin" = "$API_ORIGIN" ] ||
   fail "build API origin does not match runtime API origin"

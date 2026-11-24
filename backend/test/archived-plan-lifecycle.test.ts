@@ -518,6 +518,87 @@ test('an active provider cannot transition a quote linked to an archived plan', 
   assert.equal(quoteWrites, 0);
 });
 
+// M-3 (Q-45, D124): the plan's owner asked to delete it. The provider is refused
+// in his own words, not with the owner's sentence about taking the plan back.
+test('a provider is told the request is closed when its plan is pending deletion', async () => {
+  let quoteWrites = 0;
+  const provider = {
+    id: providerId,
+    userId: providerUserId,
+    businessName: 'Provider',
+    status: ProviderStatus.ACTIVE,
+  };
+  const pendingPlan = {
+    id: weddingPlanId,
+    status: WeddingPlanStatus.PLANNING,
+    deletionRequestedAt: new Date('2026-11-20T00:00:00Z'),
+  };
+  const tx = {
+    $queryRaw: async (query: any) => {
+      const text = query.strings?.join('') ?? String(query);
+      if (text.includes('FROM "User"')) {
+        return [
+          { id: providerUserId, status: UserStatus.ACTIVE },
+          { id: requesterId, status: UserStatus.ACTIVE },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (text.includes('FROM "WeddingPlan"')) return [{ id: weddingPlanId }];
+      if (text.includes('FROM "Provider"')) return [{ id: providerId }];
+      if (text.includes('FROM "Conversation"')) return [{ id: conversationId }];
+      if (text.includes('FROM "QuoteRequest"')) return [{ id: quoteRequestId }];
+      throw new Error(`Unexpected provider quote lock: ${text}`);
+    },
+    provider: { findUnique: async () => provider },
+    weddingPlan: { findUnique: async () => pendingPlan },
+    quoteRequest: {
+      findUnique: async () => ({
+        providerId,
+        userId: requesterId,
+        weddingPlanId,
+        conversationId,
+      }),
+      findFirst: async () => ({
+        id: quoteRequestId,
+        conversationId,
+        userId: requesterId,
+        providerId,
+        weddingPlanId,
+        weddingPlan: pendingPlan,
+        status: QuoteRequestStatus.SENT,
+      }),
+      updateMany: async () => {
+        quoteWrites += 1;
+        return { count: 1 };
+      },
+    },
+  };
+  const service = providerDashboardService(
+    {
+      provider: { findUnique: async () => provider },
+      $transaction: async (operation: (client: any) => Promise<unknown>) =>
+        operation(tx),
+    } as any,
+    {} as any,
+    {} as any, lifecycle,
+  );
+
+  await assert.rejects(
+    () =>
+      service.updateQuoteRequestStatus(providerUser, quoteRequestId, {
+        status: QuoteRequestStatus.VIEWED,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      const response = error.getResponse() as { code?: string; message?: string };
+      assert.equal(response.code, 'QUOTE_REQUEST_CLOSED');
+      assert.equal(response.message, 'الطلب مقفل.');
+      assert.doesNotMatch(String(response.message), /تنحذف|صاحبها|بيانات الخطة/);
+      return true;
+    },
+  );
+  assert.equal(quoteWrites, 0);
+});
+
 test('an active provider cannot create or update an offer for an archived plan', async () => {
   const provider = {
     id: providerId,

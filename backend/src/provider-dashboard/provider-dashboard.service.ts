@@ -86,7 +86,10 @@ import {
   type NotificationsPort,
 } from '../modules/notifications/public/notifications.port';
 import { PrismaService } from '../platform/database/prisma.service';
-import { assertWeddingPlanWritable } from '../modules/collaboration/public/collaboration-permission.port';
+import {
+  assertWeddingPlanWritable,
+  isPlanDeletionPending,
+} from '../modules/collaboration/public/collaboration-permission.port';
 import {
   CATALOG_READ_PORT,
   type CatalogReadPort,
@@ -226,6 +229,23 @@ function providerImageVariants(
         coverThumbUrl: variants?.thumbUrl ?? null,
         coverMediumUrl: variants?.mediumUrl ?? null,
       };
+}
+
+/**
+ * A plan its owner asked to delete (Q-45, D124) is closed to the provider in
+ * the provider's own words: the owner's sentence about taking the plan back
+ * is not his to read, nor is the plan's deletion his to learn. Any other
+ * refusal is the plan's own.
+ */
+function assertPlanWritableForProvider(plan: WeddingPlan): void {
+  if (isPlanDeletionPending(plan)) {
+    throw new ConflictException({
+      statusCode: 409,
+      code: 'QUOTE_REQUEST_CLOSED',
+      message: 'الطلب مقفل.',
+    });
+  }
+  assertWeddingPlanWritable(plan);
 }
 
 @Injectable()
@@ -1818,7 +1838,7 @@ export class ProviderDashboardService {
       if (!plan) {
         throw new NotFoundException('Quote request not found');
       }
-      assertWeddingPlanWritable(plan);
+      assertPlanWritableForProvider(plan);
     }
 
     const provider = await lockOwnedProviderAfterUsersInTransaction(
@@ -1865,7 +1885,7 @@ export class ProviderDashboardService {
   ): Promise<WeddingPlan | null> {
     if (!weddingPlanId) return null;
     const plan = await this.relations.plans.getPlan(tx, weddingPlanId);
-    if (plan) assertWeddingPlanWritable(plan);
+    if (plan) assertPlanWritableForProvider(plan);
     return plan;
   }
 

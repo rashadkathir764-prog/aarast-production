@@ -336,11 +336,19 @@ class MoneyMahrSummary {
     this.complete = false,
   });
 
-  factory MoneyMahrSummary.fromJson(Map<String, dynamic> json) {
+  /// The mahr as the server sends it, or null when it does not say whose
+  /// side it is on (RA-MO-321): a missing or unknown side was read as
+  /// «يدفع», and a bride's mahr, which she receives, was drawn as one she
+  /// pays.
+  static MoneyMahrSummary? fromJson(Map<String, dynamic> json) {
+    final side = switch (json['side']?.toString()) {
+      'PAYS' => MahrSide.pays,
+      'RECEIVES' => MahrSide.receives,
+      _ => null,
+    };
+    if (side == null) return null;
     return MoneyMahrSummary(
-      side: json['side']?.toString() == 'RECEIVES'
-          ? MahrSide.receives
-          : MahrSide.pays,
+      side: side,
       total: json['total']?.toString() ?? '0',
       settled: json['settled']?.toString() ?? '0',
       remaining: json['remaining']?.toString() ?? '0',

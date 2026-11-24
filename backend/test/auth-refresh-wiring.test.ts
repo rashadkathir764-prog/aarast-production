@@ -316,7 +316,8 @@ test("reusing a rotated refresh token outside grace revokes its descendant", asy
     id: "refresh-old",
     userId: "user-1",
     tokenHash: hashRefreshToken(stolenOldToken),
-    revokedAt: new Date(now.getTime() - 10_000),
+    // RA-BE-142: past the 30-second grace.
+    revokedAt: new Date(now.getTime() - 31_000),
     expiresAt: new Date(now.getTime() + 60_000),
     replacedById: "refresh-new",
     scope: AuthSessionScope.APPLICATION,
@@ -539,6 +540,7 @@ function createRefreshFamilyHarness(rows: RefreshFamilyRow[]) {
     appRole: "WEDDING_USER",
     status: "ACTIVE",
     phoneVerifiedAt: now,
+    appAccountActivatedAt: now,
     lastLoginAt: now,
     avatarUrl: null,
     locale: "ar",
@@ -761,13 +763,14 @@ test("admin logout follows a refresh-won replacement chain", async () => {
   assert.deepEqual(harness.disconnectedSessions, []);
 });
 
-test("reusing a rotated application refresh token immediately revokes the winner", async () => {
+test("reusing a rotated application refresh token after the 30-second grace revokes the winner", async () => {
   const oldToken = createRefreshTokenValue("application");
   const rows = [
     refreshFamilyRow({
       id: "grace-old",
       token: oldToken,
-      revokedAt: new Date(Date.now() - 1_000),
+      // RA-BE-142: one second past the grace.
+      revokedAt: new Date(Date.now() - 31_000),
       replacedById: "grace-winner",
     }),
     refreshFamilyRow({
@@ -949,7 +952,8 @@ test("repeated old-token replay revokes only its descendants, never a new login 
     refreshFamilyRow({
       id: "replay-old",
       token: oldToken,
-      revokedAt: new Date(Date.now() - 10_000),
+      // RA-BE-142: past the 30-second grace.
+      revokedAt: new Date(Date.now() - 31_000),
       replacedById: "replay-descendant",
     }),
     refreshFamilyRow({
@@ -1025,4 +1029,104 @@ test("a refresh publishes the session's next id; a revoke publishes none", async
     { sessionId: "session-1", replacedBySessionId: "session-2" },
     { sessionId: "session-2" },
   ]);
+});
+
+// RA-BE-142 (RA-BE-98): a refresh whose answer was lost on a weak network
+// left the phone with the token it had just spent; sending it again revoked
+// the whole family and signed the person out. For 30 seconds after its
+// rotation the previous application token is taken once, while the token
+// that replaced it was never used: the replacement is rotated in its turn.
+test("the previous application token is taken once within 30 seconds while its replacement was never used", async () => {
+  const oldToken = createRefreshTokenValue("application");
+  const rows = [
+    refreshFamilyRow({
+      id: "lost-old",
+      token: oldToken,
+      revokedAt: new Date(Date.now() - 5_000),
+      replacedById: "lost-replacement",
+    }),
+    refreshFamilyRow({
+      id: "lost-replacement",
+      token: createRefreshTokenValue("application"),
+    }),
+  ];
+  const harness = createRefreshFamilyHarness(rows);
+
+  const auth = await harness.service.refresh({ refreshToken: oldToken });
+
+  assert.match(auth.refreshToken, /^aarast_app_[a-f0-9]{64}$/);
+  const next = rows.find((row) => row.tokenHash === hashRefreshToken(auth.refreshToken));
+  assert.ok(next);
+  assert.equal(next.revokedAt, null);
+  // The replacement the phone never received is spent; the next one carries on.
+  assert.ok(rows[1].revokedAt);
+  assert.equal(rows[1].replacedById, next.id);
+  assert.deepEqual(harness.disconnectedUsers, []);
+  assert.deepEqual(harness.disconnectedSessions, ["lost-replacement"]);
+  // The push registration follows the session to its next id.
+  assert.deepEqual(
+    harness.outboxEvents.map((event) => event.payload),
+    [{ sessionId: "lost-replacement", replacedBySessionId: next.id }],
+  );
+
+  // Taken once: the same token again revokes the whole family.
+  await assert.rejects(
+    () => harness.service.refresh({ refreshToken: oldToken }),
+    /Session is invalid or expired/,
+  );
+  assert.ok(next.revokedAt);
+});
+
+test("within the grace, a previous token whose replacement was already used revokes the family", async () => {
+  const oldToken = createRefreshTokenValue("application");
+  const rows = [
+    refreshFamilyRow({
+      id: "used-old",
+      token: oldToken,
+      revokedAt: new Date(Date.now() - 5_000),
+      replacedById: "used-replacement",
+    }),
+    refreshFamilyRow({
+      id: "used-replacement",
+      token: createRefreshTokenValue("application"),
+      revokedAt: new Date(Date.now() - 2_000),
+      replacedById: "used-current",
+    }),
+    refreshFamilyRow({
+      id: "used-current",
+      token: createRefreshTokenValue("application"),
+    }),
+  ];
+  const harness = createRefreshFamilyHarness(rows);
+
+  await assert.rejects(
+    () => harness.service.refresh({ refreshToken: oldToken }),
+    /Session is invalid or expired/,
+  );
+  assert.ok(rows[2].revokedAt);
+  assert.deepEqual(harness.disconnectedSessions, ["used-current"]);
+});
+
+test("within the grace, a previous token whose family was signed out stays refused", async () => {
+  const oldToken = createRefreshTokenValue("application");
+  const rows = [
+    refreshFamilyRow({
+      id: "out-old",
+      token: oldToken,
+      revokedAt: new Date(Date.now() - 5_000),
+      replacedById: "out-replacement",
+    }),
+    refreshFamilyRow({
+      id: "out-replacement",
+      token: createRefreshTokenValue("application"),
+      revokedAt: new Date(Date.now() - 1_000),
+    }),
+  ];
+  const harness = createRefreshFamilyHarness(rows);
+
+  await assert.rejects(
+    () => harness.service.refresh({ refreshToken: oldToken }),
+    /Session is invalid or expired/,
+  );
+  assert.equal(rows.length, 2, "no new session is made");
 });

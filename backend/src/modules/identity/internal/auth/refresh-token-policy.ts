@@ -6,6 +6,13 @@ const refreshTokenLifetimeMs = 30 * 24 * 60 * 60 * 1000;
  * opened it; a refresh rotates the token and keeps that end.
  */
 export const ADMIN_SESSION_LIFETIME_MS = 12 * 60 * 60 * 1000;
+/**
+ * RA-BE-142 (RA-BE-98): how long after its rotation an application refresh
+ * token is still taken once, for the phone whose refresh answer was lost on
+ * a weak network. Past it, a rotated token presented again revokes its
+ * whole family, as before.
+ */
+export const REFRESH_REUSE_GRACE_MS = 30_000;
 const refreshTokenPrefixes = {
   application: 'aarast_app_',
   admin: 'aarast_admin_',

@@ -79,6 +79,7 @@ import {
   createRefreshTokenValue,
   hashRefreshToken,
   isRefreshTokenForScope,
+  REFRESH_REUSE_GRACE_MS,
   refreshTokenExpiry,
   RefreshTokenScope,
 } from "./refresh-token-policy";
@@ -864,7 +865,11 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
         };
       }
       const family = lockedFamily.rows;
-      const existingRow = family[0];
+      // RA-BE-142: within the grace the previous token stands for the
+      // replacement it was never given, which is rotated in its turn.
+      const existingRow = this.isLostRefreshAnswer(family, sessionScope, now)
+        ? family[1]
+        : family[0];
       const existing = existingRow
         ? await this.sessions.findWithUser(tx, existingRow.id)
         : null;
@@ -946,6 +951,35 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     }
     const { revokedSessionId: _revokedSessionId, ...auth } = result;
     return auth;
+  }
+
+  /**
+   * RA-BE-142 (RA-BE-98): the presented application token was rotated less
+   * than REFRESH_REUSE_GRACE_MS ago and its replacement was never used,
+   * revoked or expired: the refresh answer was lost, not the token stolen.
+   * Once its replacement is rotated, the family is three long and the same
+   * token revokes it, so it is taken once. Admin sessions have no grace.
+   */
+  private isLostRefreshAnswer(
+    family: readonly LockedRefreshTokenRow[],
+    scope: AuthSessionScope,
+    now: Date,
+  ): boolean {
+    if (scope !== AuthSessionScope.APPLICATION || family.length !== 2) {
+      return false;
+    }
+    const [previous, replacement] = family;
+    const rotatedAgoMs = previous.revokedAt
+      ? now.getTime() - previous.revokedAt.getTime()
+      : Number.NaN;
+    return (
+      previous.replacedById === replacement.id &&
+      rotatedAgoMs >= 0 &&
+      rotatedAgoMs <= REFRESH_REUSE_GRACE_MS &&
+      replacement.revokedAt === null &&
+      replacement.replacedById === null &&
+      replacement.expiresAt > now
+    );
   }
 
   refreshAdmin(refreshToken: string): Promise<AuthResponse> {

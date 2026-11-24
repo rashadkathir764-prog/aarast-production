@@ -390,7 +390,7 @@ test('RA-BE-144: phones behind one shared address each get the address allowance
     {
       NODE_ENV: 'production',
       AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
-      OTP_GLOBAL_DAILY_LIMIT: '2000',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
     },
     async () => {
       const harness = createHarness();
@@ -417,7 +417,7 @@ test('RA-BE-144: the shared address keeps a ceiling across every phone id', asyn
     {
       NODE_ENV: 'production',
       AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
-      OTP_GLOBAL_DAILY_LIMIT: '2000',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
     },
     async () => {
       const harness = createHarness();
@@ -438,14 +438,15 @@ test('RA-BE-144: the shared address keeps a ceiling across every phone id', asyn
 });
 
 // RA-BE-140: the app's day of codes ran out for everyone when a few networks
-// spent it. A phone has its own allowance across numbers and addresses, and
-// the app-wide safety cap is much higher (and still configurable).
+// spent it. A phone has its own allowance across numbers and addresses; the
+// app-wide cap stays 150 by D92 (the WhatsApp number's protection), and
+// configurable.
 test('RA-BE-140: one phone has its own allowance across numbers and addresses', async () => {
   await withEnvironment(
     {
       NODE_ENV: 'production',
       AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
-      OTP_GLOBAL_DAILY_LIMIT: '2000',
+      OTP_GLOBAL_DAILY_LIMIT: '150',
     },
     async () => {
       const harness = createHarness();
@@ -469,8 +470,10 @@ test('RA-BE-140: one phone has its own allowance across numbers and addresses', 
   );
 });
 
-test('RA-BE-140: the app-wide daily cap defaults much higher than any one sender reaches', () => {
-  assert.equal(otpGlobalDailyLimit({}), 2000);
-  assert.equal(otpGlobalDailyLimit({ OTP_GLOBAL_DAILY_LIMIT: '5000' }), 5000);
-  assert.ok(otpGlobalDailyLimit({}) >= 4 * OtpDispatchQuotaService.addressDailyCeiling);
+test('RA-BE-140: the app-wide daily cap stays 150 by D92, and configurable', () => {
+  assert.equal(otpGlobalDailyLimit({}), 150);
+  assert.equal(otpGlobalDailyLimit({ OTP_GLOBAL_DAILY_LIMIT: '500' }), 500);
+  // One phone's day, and one address's across every id, are shares of it.
+  assert.ok(OtpDispatchQuotaService.deviceDailyLimit * 5 <= otpGlobalDailyLimit({}));
+  assert.ok(OtpDispatchQuotaService.addressDailyCeiling * 2 <= otpGlobalDailyLimit({}));
 });

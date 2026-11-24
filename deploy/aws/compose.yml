@@ -170,9 +170,9 @@ services:
       AUTH_OTP_MODE: openwa
       AUTH_LOGIN_THROTTLE_PEPPER: ${AUTH_LOGIN_THROTTLE_PEPPER:?AUTH_LOGIN_THROTTLE_PEPPER is required}
       CONTRIBUTION_ACTOR_REF_SECRET: ${CONTRIBUTION_ACTOR_REF_SECRET:?CONTRIBUTION_ACTOR_REF_SECRET is required}
-      # RA-BE-140: the WhatsApp sender's safety cap, far above what one number,
-      # phone or address may ask; tune it in the host env file.
-      OTP_GLOBAL_DAILY_LIMIT: ${OTP_GLOBAL_DAILY_LIMIT:-2000}
+      # D92: the app-wide day of WhatsApp codes protects the number from a
+      # ban; set from the host env file, 150 when unset.
+      OTP_GLOBAL_DAILY_LIMIT: ${OTP_GLOBAL_DAILY_LIMIT:-150}
       OPENWA_BASE_URL: http://openwa:2785
       OPENWA_CREDENTIAL_FILE: /run/aarast/openwa.env
       OPENWA_OTP_TIMEOUT_MS: 15000

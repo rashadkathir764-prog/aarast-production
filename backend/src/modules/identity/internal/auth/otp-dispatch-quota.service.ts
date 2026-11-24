@@ -170,12 +170,13 @@ export class OtpDispatchQuotaService {
    * The address's allowance (10 in ten minutes, 50 a day, D92) is counted
    * per phone at that address; a phone that sends no id shares one. The
    * address keeps a ceiling across every phone, because the id is only the
-   * phone's word: rotating it buys no more than this.
+   * phone's word: rotating it buys no more than this, half of the app's day
+   * (D92, 150), so one address never spends the day alone.
    */
   static readonly addressTenMinuteLimit = 10;
   static readonly addressDailyLimit = 50;
-  static readonly addressTenMinuteCeiling = 100;
-  static readonly addressDailyCeiling = 500;
+  static readonly addressTenMinuteCeiling = 30;
+  static readonly addressDailyCeiling = 75;
 
   private policies(
     phone: string,

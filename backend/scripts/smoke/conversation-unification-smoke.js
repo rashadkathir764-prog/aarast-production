@@ -588,6 +588,16 @@ async function run() {
   check('Quote offer id exists', typeof offerBody?.id === 'string');
   fixture.offerIds.push(offerBody.id);
 
+  // RA-BE-139 (Q-33 (أ)): a helper who manages providers reads only the
+  // conversations of his own requests; the owner asked here, so it is closed.
+  const helperTimeline = await request('GET', `/api/v1/conversations/${planConversationId}/timeline?limit=50`, null, member.token);
+  await expectStatus('A helper does not read the owner\'s provider conversation', helperTimeline, 404);
+  // A partner (the bride) reads every conversation of the plan.
+  const toPartner = await request('PATCH', `/api/v1/wedding-plans/${planOneId}/members/${memberBody.id}`, {
+    role: 'BRIDE',
+    canManageProviders: true,
+  }, owner.token);
+  await expectStatus('Owner makes the member a partner', toPartner, 200);
   const memberTimeline = await request('GET', `/api/v1/conversations/${planConversationId}/timeline?limit=50`, null, member.token);
   const memberTimelineBody = await expectStatus('Authorized member reads complete timeline', memberTimeline, 200);
   check('Member sees prior owner message', memberTimelineBody.items.some((item) => item.kind === 'MESSAGE' && item.message?.id === ownerMessageBody.id));

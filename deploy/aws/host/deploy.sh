@@ -44,6 +44,18 @@ cat >/etc/cron.d/aarast-backup-sync <<EOF
 EOF
 chmod 0644 /etc/cron.d/aarast-backup-sync
 
+# RA-BE-147: the WAL Postgres archives goes to the bucket every five minutes,
+# and a base backup every Sunday at 01:10 UTC; together they are a point in
+# time (host/pitr-restore.sh).
+cat >/etc/cron.d/aarast-wal-sync <<CRON
+*/5 * * * * root bash /opt/aarast/current/deploy/aws/host/wal-sync.sh $ops_bucket
+CRON
+chmod 0644 /etc/cron.d/aarast-wal-sync
+cat >/etc/cron.d/aarast-base-backup <<CRON
+10 1 * * 0 root bash /opt/aarast/current/deploy/aws/host/base-backup.sh $ops_bucket
+CRON
+chmod 0644 /etc/cron.d/aarast-base-backup
+
 # Keep the two newest release trees and their images: the live one and the
 # one rollback.sh can return to.
 ls -1dt /opt/aarast/releases/*/ | tail -n +3 | while read -r old; do

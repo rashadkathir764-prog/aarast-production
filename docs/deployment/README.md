@@ -16,7 +16,8 @@ The live system runs on one AWS host in Frankfurt with Docker Compose (`deploy/a
 
 ## Release rules
 
-- `deploy/aws/release.ps1` ships the last commit. Uncommitted work does not ship.
+- `deploy/aws/release.ps1 -Run <id>` ships the images the `Release images` workflow built from a commit CI passed, each checked on the host against its recorded digest (RA-OP-25). The host builds nothing; uncommitted work does not ship.
+- `deploy/aws/host/rollback.sh` refuses a rollback over a migration the older release cannot live with (RA-BE-146); Postgres archives its WAL and `deploy/aws/host/pitr-restore.sh` recovers to a chosen second in a scratch instance (RA-BE-147).
 - Take a manual database backup before any release with a migration.
 - Published migrations never change. Their fingerprints are pinned in `backend/architecture/published-migrations.json`.
 - A release is not done without checking `/ready` afterwards.

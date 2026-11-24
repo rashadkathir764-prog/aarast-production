@@ -16,19 +16,54 @@ services:
   postgres:
     image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     restart: unless-stopped
-    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40"]
+    # RA-BE-147: every finished WAL segment is copied to /wal-archive (and a
+    # partly filled one after five minutes at most), which host/wal-sync.sh
+    # sends to the ops bucket; with a weekly base backup (host/base-backup.sh)
+    # the database can be brought back to a chosen second (host/pitr-restore.sh).
+    # A segment is written under a temporary name and renamed, and one already
+    # there is accepted only if it is the same file.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=40
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=300
+      - -c
+      - "archive_command=( [ ! -f /wal-archive/%f ] && cp %p /wal-archive/%f.partial && mv /wal-archive/%f.partial /wal-archive/%f ) || cmp -s %p /wal-archive/%f"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_OWNER_USER:?POSTGRES_OWNER_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is required}
+    depends_on:
+      wal-archive-init:
+        condition: service_completed_successfully
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - postgres_wal:/wal-archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 10
     mem_limit: 384m
+    logging: *logging
+    networks: [internal]
+
+  # RA-BE-147: a new volume belongs to root, and a Postgres that cannot write
+  # its archive keeps every WAL segment on the disk until it is full. The
+  # volume is handed to the postgres user (uid 70 in this image) first.
+  wal-archive-init:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    restart: "no"
+    entrypoint: ["sh", "-ec"]
+    command: ["chown 70:70 /wal-archive && chmod 0700 /wal-archive"]
+    volumes:
+      - postgres_wal:/wal-archive
+    mem_limit: 32m
     logging: *logging
     networks: [internal]
 
@@ -278,6 +313,8 @@ volumes:
   postgres_data:
   postgres_backups:
     name: aarast_postgres_backups
+  postgres_wal:
+    name: aarast_postgres_wal
   openwa_credential:
   caddy_data:
   caddy_config:

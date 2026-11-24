@@ -184,7 +184,7 @@ async function main(): Promise<void> {
       passwordHash: "managed-smoke-not-a-credential",
     },
   });
-  await service.disableUser(authenticatedActor, target.id);
+  await service.disableUser(authenticatedActor, target.id, { reason: "phase2 smoke" });
   const [disabledTarget, sessionRevocation] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: target.id } }),
     prisma.outboxEvent.findFirst({

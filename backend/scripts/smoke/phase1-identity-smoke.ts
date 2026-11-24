@@ -79,7 +79,7 @@ async function assertOperationsCannotManageAdmin(): Promise<void> {
       const actor = authenticatedAdmin(operations);
 
       await assert.rejects(
-        () => service.disableUser(actor, fixture.peerAdmin.id),
+        () => service.disableUser(actor, fixture.peerAdmin.id, { reason: "phase1 smoke" }),
         (error: any) => error?.getStatus?.() === 403,
       );
       await assert.rejects(
@@ -103,8 +103,8 @@ async function assertConcurrentDisableKeepsOneSuperAdmin(): Promise<void> {
       const acting = authenticatedAdmin(fixture.actingAdmin);
       const peer = authenticatedAdmin(fixture.peerAdmin);
       const results = await Promise.allSettled([
-        service.disableUser(acting, fixture.peerAdmin.id),
-        service.disableUser(peer, fixture.actingAdmin.id),
+        service.disableUser(acting, fixture.peerAdmin.id, { reason: "phase1 smoke" }),
+        service.disableUser(peer, fixture.actingAdmin.id, { reason: "phase1 smoke" }),
       ]);
       assert.equal(
         results.filter((result) => result.status === 'fulfilled').length,
@@ -158,6 +158,7 @@ async function assertOperationsCanManageNonAdminAndRevokeSessions(): Promise<voi
       const disabled = await service.disableUser(
         authenticatedAdmin(operations),
         regular.id,
+        { reason: 'phase1 smoke' },
       );
       assert.equal(disabled.status, UserStatus.DISABLED);
       const revoked = await prisma.refreshToken.findUniqueOrThrow({
@@ -184,6 +185,7 @@ async function assertSelfDisableIsRejected(): Promise<void> {
           service.disableUser(
             authenticatedAdmin(fixture.actingAdmin),
             fixture.actingAdmin.id,
+            { reason: 'phase1 smoke' },
           ),
         (error: any) => error?.getStatus?.() === 400,
       );

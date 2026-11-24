@@ -72,7 +72,13 @@ export function contributionHistoryService(
   prisma: unknown,
   permissions: PermissionService,
 ): ContributionHistoryService {
-  return new ContributionHistoryService(prisma as any, ownerPorts.plans, permissions);
+  return new ContributionHistoryService(
+    prisma as any,
+    ownerPorts.plans,
+    permissions,
+    ownerPorts.guests,
+    ownerPorts.users,
+  );
 }
 
 /** `SharingService` with the five owner ports it takes after the history service. */

@@ -1058,9 +1058,17 @@ note, invitation link, offer or message can reach a reader through it):
   whoever made them; no amount or offer (q16).
 
 The existing section lists (`GET /api/v1/wedding-plans/:weddingPlanId/tasks`,
-`GET /api/v1/wedding-plans/:weddingPlanId/guests`,
-`GET /api/v1/me/wedding-plans/:weddingPlanId/bookings` and the plan's quote
+`GET /api/v1/wedding-plans/:weddingPlanId/guests` and the plan's quote
 requests) keep their meaning: what the reader may work on.
+
+`GET /api/v1/me/wedding-plans/:weddingPlanId/bookings` (RA-MO-338, Q-51 (أ),
+D80) lists the plan's open requests and upcoming confirmed bookings to every
+participant, with `providerName`, `weddingPlanId` and `canAct`. A booking
+the reader may confirm or cancel (the owner and partner with provider
+rights, or the member with them who asked for it; the same rule the
+customer routes enforce) comes whole with `canAct: true`; any other carries
+only `{ id, providerId, eventDate, status, lifecycleStatus }` and
+`canAct: false`: no note, link, offer or amount.
 
 ## Notifications
 

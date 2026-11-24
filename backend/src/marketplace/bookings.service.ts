@@ -261,9 +261,11 @@ export class BookingsService {
   /**
    * The plan's open booking requests and upcoming confirmed bookings (V1
    * checklist 4.13: when the wedding moves, the app names the bookings made
-   * for the old day). The owner and partner see the plan's; another member
-   * with provider rights sees the ones they requested; without provider
-   * rights, none.
+   * for the old day). RA-MO-338 (Q-51 (أ), D80): every participant reads
+   * all of them, without amounts. A booking the reader may act on (the owner
+   * and partner with provider rights, or the member with them who asked for
+   * it) comes whole with `canAct`; another's carries only its provider, day
+   * and state, never its note, links or offer.
    */
   async listForPlan(currentUser: AuthenticatedUser, weddingPlanId: string) {
     return runRetryableTransaction(
@@ -274,16 +276,28 @@ export class BookingsService {
           weddingPlanId,
           currentUser,
         );
-        if (!this.permissions.canManageProviders(context)) return [];
+        const manages = this.permissions.canManageProviders(context);
         const wholePlan = seesWholePlan(context);
         const rows = await bookings.listPlanBookings(tx, weddingPlanId, bookingToday());
-        return rows
-          .filter((row) => wholePlan || row.quoteRequest.userId === currentUser.id)
-          .map((row) => ({
-            ...toBookingResponse(row),
+        return rows.map((row) => {
+          const booking = toBookingResponse(row);
+          const read = {
             providerName: row.provider.businessName,
             weddingPlanId: row.quoteRequest.weddingPlanId,
-          }));
+          };
+          const canAct =
+            manages && (wholePlan || row.quoteRequest.userId === currentUser.id);
+          if (canAct) return { ...booking, ...read, canAct };
+          return {
+            id: booking.id,
+            providerId: booking.providerId,
+            eventDate: booking.eventDate,
+            status: booking.status,
+            lifecycleStatus: booking.lifecycleStatus,
+            ...read,
+            canAct,
+          };
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );

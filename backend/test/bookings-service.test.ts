@@ -603,3 +603,65 @@ test("RA-BE-138: a decline with no item left says nothing of money", async () =>
   await bookings.decideAsProvider(providerUser, first.id, "DECLINE", {});
   assert.doesNotMatch(JSON.stringify(db.notifications.slice(-1)[0].body), /بنده/);
 });
+
+// RA-MO-338 (Q-51 (أ), D80): every participant reads all of the plan's
+// bookings, without amounts; confirming and cancelling stay with whoever
+// may act on the request (the owner and partner, or the member who asked).
+test("RA-MO-338: every participant reads the plan's bookings; acting stays with the request's side", async () => {
+  const row = (id: string, userId: string) => ({
+    id,
+    quoteRequestId: `quote-${id}`,
+    quoteOfferId: `offer-${id}`,
+    providerId: "provider-1",
+    eventDate: new Date("2099-02-18T00:00:00Z"),
+    status: "CONFIRMED",
+    cancelledBy: null,
+    note: "رقم القاعة عند أبوي",
+    confirmedAt: new Date(0),
+    declinedAt: null,
+    cancelledAt: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    changes: [],
+    quoteRequest: { userId, weddingPlanId: "plan-1", contactName: "x" },
+    provider: { businessName: id === "owners" ? "قاعة السعادة" : "الفنان علي" },
+  });
+  const rows = [row("owners", "owner-1"), row("helpers", "helper-1")];
+  const db: any = {
+    booking: { findMany: async () => rows },
+  };
+  db.$transaction = async (operation: any) => operation(db);
+  const readAs = (manages: boolean, owner: boolean) =>
+    new BookingsService(
+      db,
+      {
+        assertPlanReadableInTransaction: async () => ({
+          plan: { id: "plan-1", ownerUserId: "owner-1", status: "PLANNING" },
+          isOwner: owner,
+          sharedMember: owner ? null : { role: manages ? "HELPER" : "VIEWER" },
+        }),
+        canManageProviders: () => manages,
+      } as any,
+      {} as any,
+      noAgreements,
+    );
+
+  const helper = await readAs(true, false).listForPlan({ id: "helper-1" } as any, "plan-1");
+  assert.deepEqual(
+    helper.map((booking: any) => [booking.providerName, booking.canAct]),
+    [["قاعة السعادة", false], ["الفنان علي", true]],
+  );
+  // Another's booking is read without its note, links or offer.
+  assert.equal("note" in helper[0], false);
+  assert.equal("quoteOfferId" in helper[0], false);
+  assert.equal((helper[1] as any).note, "رقم القاعة عند أبوي");
+
+  const viewer = await readAs(false, false).listForPlan({ id: "viewer-1" } as any, "plan-1");
+  assert.deepEqual(
+    viewer.map((booking: any) => [booking.providerName, booking.status, booking.canAct]),
+    [["قاعة السعادة", "CONFIRMED", false], ["الفنان علي", "CONFIRMED", false]],
+  );
+
+  const owner = await readAs(true, true).listForPlan({ id: "owner-1" } as any, "plan-1");
+  assert.deepEqual(owner.map((booking: any) => booking.canAct), [true, true]);
+});

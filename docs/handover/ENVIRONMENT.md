@@ -43,9 +43,10 @@
 |---|---|
 | `AARAST_API_BASE_URL` | عنوان الخادم الذي يتصل به التطبيق |
 | `AARAST_INVITE_HOST` | دومين روابط الدعوات وتأكيد الحضور |
+| `AARAST_PUBLIC_ORIGIN` | أصل الروابط الذي يكتبه الخادم (`INVITE_PUBLIC_ORIGIN`)، `https://<الدومين>` بلا مسار؛ مضيفه يجب أن يساوي `AARAST_INVITE_HOST` وإلا يفشل فحص الإصدار (RA-OP-30) |
 | `AARAST_FIREBASE_API_KEY` / `AARAST_FIREBASE_APP_ID` / `AARAST_FIREBASE_MESSAGING_SENDER_ID` / `AARAST_FIREBASE_PROJECT_ID` | ربط الإشعارات (من ملف `google-services.json` لمشروع Firebase) |
 | `AARAST_SENTRY_DSN` / `AARAST_SENTRY_TRACES_SAMPLE_RATE` | أعطال التطبيق إلى Sentry |
-| `AARAST_SUPPORT_WHATSAPP` | رقم واتساب فريق الدعم بالصيغة الدولية (مثل `+967777000111`)، يظهر في «المساعدة». بدونه تختفي بطاقة واتساب |
+| `AARAST_SUPPORT_WHATSAPP` | رقم واتساب فريق الدعم بالصيغة الدولية (`+<رمز الدولة><الرقم>`، أرقام فقط)، يظهر في «المساعدة». رقم الفريق الحقيقي من صاحب المشروع؛ نسخة المتجر (`bundleRelease`) تفشل بدونه أو مع مثال التوثيق (RA-ST-09) |
 | `AARAST_ANDROID_APPLICATION_ID` | معرّف التطبيق (الافتراضي `com.aarast.aarast_mobile`) |
 | `AARAST_ANDROID_APP_LABEL` | اسم التطبيق تحت الأيقونة (الافتراضي "اعّرست") |
 | `AARAST_ANDROID_STORE_FILE` / `AARAST_ANDROID_STORE_PASSWORD` / `AARAST_ANDROID_KEY_ALIAS` / `AARAST_ANDROID_KEY_PASSWORD` | مفتاح توقيع التطبيق |

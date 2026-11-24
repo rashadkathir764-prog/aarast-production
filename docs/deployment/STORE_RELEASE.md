@@ -98,6 +98,8 @@ flutter build appbundle --release `
   --build-number=$buildNumber `
   --dart-define=AARAST_API_BASE_URL=https://aarast-api.shadowgardn.com `
   --dart-define=AARAST_INVITE_HOST=aarast.shadowgardn.com `
+  --dart-define=AARAST_PUBLIC_ORIGIN=https://aarast.shadowgardn.com `
+  --dart-define=AARAST_SUPPORT_WHATSAPP=$env:AARAST_SUPPORT_WHATSAPP `
   --dart-define=AARAST_FIREBASE_API_KEY=$env:AARAST_FIREBASE_API_KEY `
   --dart-define=AARAST_FIREBASE_APP_ID=$env:AARAST_FIREBASE_APP_ID `
   --dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$env:AARAST_FIREBASE_MESSAGING_SENDER_ID `
@@ -118,6 +120,19 @@ back to `aarast.shadowgardn.com`, which today is the old server on rk-server.
 App Link verification is for domain names, so on the IP the link is expected
 to open the invite page in the browser (not yet tried on a device), and its
 button opens the app through the custom scheme.
+
+RA-OP-30: the release also names `AARAST_PUBLIC_ORIGIN`, the server's
+`INVITE_PUBLIC_ORIGIN` (`https://<host>`, no port, path or credentials), and
+the build fails unless its host is `AARAST_INVITE_HOST`. The server writes every
+link on that origin; an app that listens on another host (the sslip.io name
+while the links are on the IP) never opens them.
+
+RA-ST-09: a store bundle (`bundleRelease`) fails without
+`AARAST_SUPPORT_WHATSAPP`, the support team's real number as
+`+<country code><digits>`. The number is the owner's and is never committed;
+the documentation's old example `+967777000111` is refused too, so the app
+cannot ship with the support card silently left out or pointed at a number
+nobody answers.
 
 Release also rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`. The API URL must be
 an explicit public HTTPS host without credentials, query, fragment, localhost,

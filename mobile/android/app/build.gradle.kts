@@ -150,6 +150,50 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
         )
     }
 
+    // RA-OP-30: every link the server writes is on its INVITE_PUBLIC_ORIGIN
+    // (AARAST_PUBLIC_ORIGIN on AWS: the Elastic IP until the domain exists),
+    // and the app's App Link filter matches only AARAST_INVITE_HOST. A host
+    // that is not the origin's host builds a filter no server link matches, so
+    // the release names the origin and the two must agree. A staging build's
+    // origin is held to its host by the Staging site build instead.
+    val publicOrigin = defines["AARAST_PUBLIC_ORIGIN"]?.trim().orEmpty()
+    if (publicOrigin.isEmpty() && defines["AARAST_ENVIRONMENT"]?.trim() != "staging") {
+        throw GradleException(
+            "Release builds require AARAST_PUBLIC_ORIGIN: the origin of the " +
+                "server's INVITE_PUBLIC_ORIGIN (https://<host>), whose host is " +
+                "AARAST_INVITE_HOST.",
+        )
+    }
+    if (publicOrigin.isNotEmpty()) {
+        val originUri = try {
+            URI(publicOrigin)
+        } catch (error: Exception) {
+            throw GradleException("AARAST_PUBLIC_ORIGIN is not a valid URI.", error)
+        }
+        if (!originUri.scheme.equals("https", ignoreCase = true) ||
+            originUri.host.isNullOrBlank() ||
+            originUri.userInfo != null ||
+            originUri.port != -1 ||
+            !originUri.rawPath.isNullOrEmpty() ||
+            originUri.query != null ||
+            originUri.fragment != null ||
+            isLocalOrPrivateHost(originUri.host)
+        ) {
+            throw GradleException(
+                "AARAST_PUBLIC_ORIGIN must be a public HTTPS origin " +
+                    "(https://<host>) without credentials, port, path, query " +
+                    "or fragment.",
+            )
+        }
+        if (!originUri.host.equals(releaseInviteHost, ignoreCase = true)) {
+            throw GradleException(
+                "AARAST_INVITE_HOST must be the host of AARAST_PUBLIC_ORIGIN: " +
+                    "the server writes its links on $publicOrigin, and an app " +
+                    "that listens on $releaseInviteHost never opens them.",
+            )
+        }
+    }
+
     val bypassLoginGates = defines["AARAST_DEV_BYPASS_LOGIN_GATES"]?.trim()
     if (
         bypassLoginGates.equals("true", ignoreCase = true) ||
@@ -204,6 +248,19 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
         if (defines["AARAST_ENVIRONMENT"]?.trim() != "production") {
             throw GradleException(
                 "Store app bundles require AARAST_ENVIRONMENT=production.",
+            )
+        }
+        // RA-ST-09: without the number the app leaves its WhatsApp support
+        // card out, silently. The number is the owner's: a store bundle is
+        // not built with an empty one or with the documentation's example.
+        val supportWhatsApp = defines["AARAST_SUPPORT_WHATSAPP"]?.trim().orEmpty()
+        if (!supportWhatsApp.matches(Regex("^\\+[1-9][0-9]{7,14}$")) ||
+            supportWhatsApp == "+967777000111"
+        ) {
+            throw GradleException(
+                "Store app bundles require AARAST_SUPPORT_WHATSAPP: the support " +
+                    "team's real WhatsApp number in international form " +
+                    "(+<country code><number>, digits only), not a placeholder.",
             )
         }
         val tracesSampleRate = defines["AARAST_SENTRY_TRACES_SAMPLE_RATE"]

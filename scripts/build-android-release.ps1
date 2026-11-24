@@ -11,6 +11,11 @@
 #
 #   AARAST_API_BASE_URL                 https://aarast-api.shadowgardn.com
 #   AARAST_INVITE_HOST                  aarast.shadowgardn.com
+#   AARAST_PUBLIC_ORIGIN                https://aarast.shadowgardn.com (the server's
+#                                       INVITE_PUBLIC_ORIGIN; its host must be
+#                                       AARAST_INVITE_HOST, RA-OP-30)
+#   AARAST_SUPPORT_WHATSAPP             the support team's number, +<country code><number>
+#                                       (the owner's; a store build fails without a real one, RA-ST-09)
 #   AARAST_FIREBASE_API_KEY             from the Firebase Android app
 #   AARAST_FIREBASE_APP_ID
 #   AARAST_FIREBASE_MESSAGING_SENDER_ID
@@ -44,7 +49,7 @@ foreach ($line in Get-Content $valuesFile) {
 }
 
 $required = @(
-  'AARAST_API_BASE_URL', 'AARAST_INVITE_HOST',
+  'AARAST_API_BASE_URL', 'AARAST_INVITE_HOST', 'AARAST_PUBLIC_ORIGIN', 'AARAST_SUPPORT_WHATSAPP',
   'AARAST_FIREBASE_API_KEY', 'AARAST_FIREBASE_APP_ID',
   'AARAST_FIREBASE_MESSAGING_SENDER_ID', 'AARAST_FIREBASE_PROJECT_ID',
   'AARAST_SENTRY_DSN', 'SENTRY_AUTH_TOKEN', 'SENTRY_ORG', 'SENTRY_PROJECT'
@@ -71,6 +76,8 @@ try {
     --build-number=$buildNumber `
     "--dart-define=AARAST_API_BASE_URL=$($env:AARAST_API_BASE_URL)" `
     "--dart-define=AARAST_INVITE_HOST=$($env:AARAST_INVITE_HOST)" `
+    "--dart-define=AARAST_PUBLIC_ORIGIN=$($env:AARAST_PUBLIC_ORIGIN)" `
+    "--dart-define=AARAST_SUPPORT_WHATSAPP=$($env:AARAST_SUPPORT_WHATSAPP)" `
     "--dart-define=AARAST_FIREBASE_API_KEY=$($env:AARAST_FIREBASE_API_KEY)" `
     "--dart-define=AARAST_FIREBASE_APP_ID=$($env:AARAST_FIREBASE_APP_ID)" `
     "--dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$($env:AARAST_FIREBASE_MESSAGING_SENDER_ID)" `

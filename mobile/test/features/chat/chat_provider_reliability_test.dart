@@ -579,6 +579,30 @@ void main() {
     expect(now.single.blockedByMe, isFalse);
   });
 
+  // RA-BE-169: on the customer's side the block is its blocker's. Blocking
+  // a conversation another manager already blocked keeps theirs, so the
+  // phone shows the server's answer, not «ارفع الحظر» it cannot do.
+  test('a block another manager holds stays theirs on this phone', () async {
+    final open = _conversation();
+    final api = _FakeChatApi(conversations: [open])
+      ..blockAnswer = (blocked: true, blockedByMe: false);
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    addTearDown(chat.dispose);
+    await chat.initialize();
+
+    expect(await chat.setBlocked(open, true), isTrue);
+
+    expect(api.blockedValues, [true]);
+    final now = chat.conversations.where((item) => item.id == open.id);
+    expect(now.single.blocked, isTrue);
+    expect(now.single.blockedByMe, isFalse);
+    expect(now.single.canSend, isFalse);
+  });
+
   // RA-MO-255 (batch 7): the plan's conversations listed every conversation
   // of the account; another plan's opened as «هذي الخطة ما عادت لك».
   testWidgets('a plan\'s conversations are that plan\'s only', (tester) async {
@@ -1797,9 +1821,16 @@ class _FakeChatApi extends ChatApi {
 
   final List<bool> blockedValues = [];
 
+  /// What the server answers a block; by default, what was asked.
+  ({bool blocked, bool blockedByMe})? blockAnswer;
+
   @override
-  Future<void> setBlocked(String conversationId, bool enabled) async {
+  Future<({bool blocked, bool blockedByMe})> setBlocked(
+    String conversationId,
+    bool enabled,
+  ) async {
     blockedValues.add(enabled);
+    return blockAnswer ?? (blocked: enabled, blockedByMe: enabled);
   }
 
   final List<ChatConversation> conversations;

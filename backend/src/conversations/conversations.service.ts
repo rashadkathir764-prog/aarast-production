@@ -50,6 +50,7 @@ import {
   lockUserLifecycleRowsInTransaction,
 } from '../modules/identity/public/user-lifecycle-lock';
 import {
+  customerSideBlockWrite,
   hasJoinedProvider,
   isActiveConversationParticipant,
   MESSAGES_PER_MINUTE,
@@ -581,7 +582,7 @@ export class ConversationsService {
 
   async setBlocked(currentUser: AuthenticatedUser, conversationId: string, enabled: boolean) {
     return runSerializableTransaction(this.prisma, async (tx) => {
-      const { access } = await this.assertActiveAccessInTransaction(
+      const { access, conversation: current } = await this.assertActiveAccessInTransaction(
         tx,
         currentUser,
         conversationId,
@@ -590,9 +591,14 @@ export class ConversationsService {
           participants: 'SHARE',
         },
       );
-      const conversation = await this.repository.setConversationBlocked(
-        tx, conversationId, currentUser.id, access.side === 'PROVIDER', enabled,
-      );
+      // RA-BE-169: the customer's side block is its blocker's to lift.
+      const conversation =
+        access.side === 'PROVIDER' ||
+        customerSideBlockWrite(current, currentUser.id, enabled) === 'WRITE'
+          ? await this.repository.setConversationBlocked(
+              tx, conversationId, currentUser.id, access.side === 'PROVIDER', enabled,
+            )
+          : current;
       return {
         conversationId,
         blocked:

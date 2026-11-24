@@ -109,3 +109,39 @@ export function hasJoinedProvider(
       isActiveConversationParticipant(participants, providerUserId),
   );
 }
+
+interface CustomerSideBlock {
+  customerSideBlockedAt: Date | null;
+  customerSideBlockedById: string | null;
+}
+
+/**
+ * RA-BE-169: whether [actorUserId]'s block or unblock on the customer's side
+ * is written. The block is its blocker's: blocking again keeps the first
+ * blocker, and only they lift it (anyone else is refused). A blocker whose
+ * account is gone (the reference cleared) leaves it to whoever manages the
+ * conversation now. Asking for what already holds writes nothing.
+ */
+export function customerSideBlockWrite(
+  current: CustomerSideBlock,
+  actorUserId: string,
+  enabled: boolean,
+): 'WRITE' | 'KEEP' {
+  const blocked = current.customerSideBlockedAt !== null;
+  if (enabled) return blocked ? 'KEEP' : 'WRITE';
+  if (!blocked) return 'KEEP';
+  if (
+    current.customerSideBlockedById !== null &&
+    current.customerSideBlockedById !== actorUserId
+  ) {
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.FORBIDDEN,
+        code: 'CONVERSATION_BLOCKED_BY_OTHER',
+        message: 'الحظر حطّه غيرك في الخطة، وهو بس يقدر يرفعه.',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+  return 'WRITE';
+}

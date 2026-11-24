@@ -86,6 +86,22 @@ export async function lockConversationRowForShare(
   return rows.length === 1;
 }
 
+/**
+ * RA-BE-169: the conversation's two block marks, read on the caller's
+ * transaction (which holds the row's share lock); null when it is gone.
+ */
+export async function findConversationBlockRow(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+): Promise<{ customerSideBlockedAt: Date | null; providerSideBlockedAt: Date | null } | null> {
+  const rows = await tx.$queryRaw<
+    Array<{ customerSideBlockedAt: Date | null; providerSideBlockedAt: Date | null }>
+  >(Prisma.sql`
+    SELECT "customerSideBlockedAt", "providerSideBlockedAt" FROM "Conversation" WHERE "id" = ${conversationId}
+  `);
+  return rows[0] ?? null;
+}
+
 export function findConversationProvider(
   client: ConversationLifecycleClient,
   conversationId: string,

@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
-import { ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+import { ensureConversationContext, findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
 import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables, catalogWithoutMoneyLinks } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
@@ -7,6 +7,7 @@ const lifecycle: ConversationLifecyclePort = {
   recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
+  isConversationBlockedInTransaction: isConversationBlocked,
   findConversationProviderId,
 };
 import "reflect-metadata";
@@ -1109,4 +1110,108 @@ test("a received provider offer opens its exact marketplace quote", async () => 
   assert.equal(sent.length, 1);
   assert.equal(sent[0].type, "QUOTE_OFFER_RECEIVED");
   assert.equal(sent[0].routeTarget, `/wedding-plans/${PLAN_ID}/providers/requests?quote=${QUOTE_ID}`);
+});
+
+// RA-BE-169: a conversation either side blocked takes no new offer and no
+// edit of one, so neither reaches the customer as a notice.
+test("a blocked conversation refuses a new offer and an edit, and tells no one", async () => {
+  const { sent, notifications } = capture();
+  const provider = providerRow(PROVIDER_USER_ID);
+  const quote = {
+    id: QUOTE_ID,
+    userId: requester.id,
+    providerId: PROVIDER_ID,
+    weddingPlanId: PLAN_ID,
+    conversationId: "conversation-1",
+    status: "SENT",
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  };
+  let writes = 0;
+  const write = async () => {
+    writes += 1;
+    throw new Error("no offer write is reached");
+  };
+  const tx = {
+    ...eventTxFields(),
+    quoteOfferVersion: { create: write },
+    $queryRaw: async (query: unknown) => {
+      const sql = rawSqlText(query);
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: PROVIDER_USER_ID, status: "ACTIVE" },
+          { id: requester.id, status: "ACTIVE" },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (sql.includes('FROM "WeddingPlan"')) return [{ id: PLAN_ID }];
+      if (sql.includes('FROM "Provider"')) return [{ id: PROVIDER_ID }];
+      if (sql.includes('"customerSideBlockedAt"')) {
+        return [{ customerSideBlockedAt: new Date(), providerSideBlockedAt: null }];
+      }
+      if (sql.includes('FROM "Conversation"')) return [{ id: quote.conversationId }];
+      if (sql.includes('FROM "QuoteRequest"')) return [{ id: QUOTE_ID }];
+      if (sql.includes('FROM "QuoteOffer"')) return [{ id: OFFER_ID }];
+      return [];
+    },
+    provider: { findUnique: async () => provider },
+    weddingPlan: { findUnique: async () => ({ status: "PLANNING" }) },
+    quoteOffer: {
+      findUnique: async () => ({
+        id: OFFER_ID,
+        providerId: PROVIDER_ID,
+        quoteRequest: { userId: requester.id, weddingPlanId: PLAN_ID, conversationId: quote.conversationId },
+      }),
+      findFirst: async ({ where }: any) =>
+        where.quoteRequestId
+          ? null
+          : {
+              id: OFFER_ID,
+              providerId: PROVIDER_ID,
+              quoteRequestId: QUOTE_ID,
+              status: "PENDING",
+              amount: new Prisma.Decimal(1000),
+              currency: "YER",
+              currentVersionNo: 1,
+              quoteRequest: { status: "RESPONDED", weddingPlanId: PLAN_ID, conversationId: quote.conversationId },
+            },
+      create: write,
+      updateMany: write,
+    },
+    quoteRequest: {
+      findUnique: async () => quote,
+      findFirst: async () => quote,
+      update: write,
+      updateMany: write,
+    },
+  };
+  const service = providerDashboardService(
+    {
+      provider: { findUnique: async () => provider },
+      quoteRequest: { findFirst: async () => quote },
+      $transaction: async (fn: any) => fn(tx),
+    } as any,
+    notifications as any,
+    {} as any, lifecycle,
+  );
+  const blocked = (error: any) =>
+    error?.getStatus?.() === 409 &&
+    error.getResponse().code === "CONVERSATION_BLOCKED" &&
+    /[؀-ۿ]/u.test(error.getResponse().message);
+
+  await assert.rejects(
+    service.createQuoteOffer({ id: PROVIDER_USER_ID } as any, QUOTE_ID, {
+      message: "offer",
+      amount: "1000",
+      currency: "YER",
+    } as any),
+    blocked,
+  );
+  await assert.rejects(
+    service.updateQuoteOffer({ id: PROVIDER_USER_ID } as any, OFFER_ID, {
+      message: "a better offer",
+      amount: "900",
+    } as any),
+    blocked,
+  );
+  assert.equal(writes, 0);
+  assert.equal(sent.length, 0);
 });

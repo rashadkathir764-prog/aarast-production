@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  isConversationBlocked,
   lockConversationForShare,
   lockConversationForUpdate,
 } from '../src/conversations/conversation-lifecycle';
@@ -55,9 +56,29 @@ test('the lifecycle implementation binds the locks next to the two lifecycle ope
     [
       'ensureConversationContext',
       'findConversationProviderId',
+      'isConversationBlockedInTransaction',
       'lockConversationForShareInTransaction',
       'lockConversationForUpdateInTransaction',
       'recordConversationEvent',
     ],
   );
+});
+
+// RA-BE-169: whether either side stopped the conversation, read on the
+// caller's transaction (after its share lock) by the quote writes it stops.
+test('a conversation reads as blocked when either side blocked it', async () => {
+  const at = new Date('2026-11-24T10:00:00Z');
+  const customer = client([{ customerSideBlockedAt: at, providerSideBlockedAt: null }] as any);
+  assert.equal(await isConversationBlocked(customer.tx, 'conversation-1'), true);
+  assert.deepEqual(customer.calls, [
+    {
+      sql: 'SELECT "customerSideBlockedAt", "providerSideBlockedAt" FROM "Conversation" WHERE "id" = ?',
+      values: ['conversation-1'],
+    },
+  ]);
+  const provider = client([{ customerSideBlockedAt: null, providerSideBlockedAt: at }] as any);
+  assert.equal(await isConversationBlocked(provider.tx, 'conversation-1'), true);
+  const open = client([{ customerSideBlockedAt: null, providerSideBlockedAt: null }] as any);
+  assert.equal(await isConversationBlocked(open.tx, 'conversation-1'), false);
+  assert.equal(await isConversationBlocked(client([]).tx, 'conversation-9'), false);
 });

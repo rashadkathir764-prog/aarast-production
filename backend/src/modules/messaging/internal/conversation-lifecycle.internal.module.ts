@@ -2,6 +2,7 @@ import { Inject, Injectable, Module } from '@nestjs/common';
 import {
   ensureConversationContext,
   findConversationProviderId,
+  isConversationBlocked,
   lockConversationForShare,
   lockConversationForUpdate,
   recordConversationEvent,
@@ -53,6 +54,10 @@ export class ConversationLifecycleService implements ConversationLifecyclePort {
 
   findConversationProviderId(client: ConversationLifecycleClient, conversationId: string) {
     return findConversationProviderId(client, conversationId);
+  }
+
+  isConversationBlockedInTransaction(tx: ConversationLifecycleClient, conversationId: string) {
+    return isConversationBlocked(tx, conversationId);
   }
 }
 

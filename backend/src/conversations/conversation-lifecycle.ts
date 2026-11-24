@@ -15,6 +15,7 @@ import type { ProviderReadPort } from '../modules/marketplace/public/provider-re
 import type { PlanReadPort } from '../modules/planning/public/plan-read.port';
 import {
   addCoreConversationParticipants,
+  findConversationBlockRow,
   findConversationEventByDedupeKey,
   findConversationProvider,
   insertConversationEvent,
@@ -74,6 +75,15 @@ export async function lockConversationForShare(
   conversationId: string,
 ): Promise<boolean> {
   return lockConversationRowForShare(tx, conversationId);
+}
+
+/** RA-BE-169: whether either side blocked the conversation. */
+export async function isConversationBlocked(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+): Promise<boolean> {
+  const row = await findConversationBlockRow(tx, conversationId);
+  return Boolean(row?.customerSideBlockedAt || row?.providerSideBlockedAt);
 }
 
 export async function findConversationProviderId(

@@ -65,4 +65,12 @@ export interface ConversationLifecyclePort {
     client: ConversationLifecycleClient,
     conversationId: string,
   ): Promise<string | null>;
+  /**
+   * RA-BE-169: whether either side blocked the conversation; a provider's
+   * new offer or edit of one is refused there. Read after the share lock.
+   */
+  isConversationBlockedInTransaction(
+    tx: ConversationLifecycleClient,
+    conversationId: string,
+  ): Promise<boolean>;
 }

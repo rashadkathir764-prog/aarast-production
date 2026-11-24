@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
+  customerSideBlockWrite,
   hasJoinedProvider,
   isActiveConversationParticipant,
   normalizeMessageBody,
@@ -160,4 +161,37 @@ test('conversation reports keep an admin review surface without one-quote identi
   assert.match(owners, /provider: \{ id: provider\.id, businessName: provider\.businessName \}/);
   assert.match(owners, /quoteRequests: latestQuoteId \? \[\{ id: latestQuoteId \}\] : \[\]/);
   assert.doesNotMatch(owners, /quoteRequestId/);
+});
+
+// RA-BE-169: on the customer's side a block is the blocker's own: another
+// manager can neither lift it nor take it over by blocking again.
+test('RA-BE-169: only the one who blocked lifts the block', () => {
+  const at = new Date('2026-11-24T10:00:00Z');
+  const open = { customerSideBlockedAt: null, customerSideBlockedById: null };
+  const byOwner = { customerSideBlockedAt: at, customerSideBlockedById: 'owner-1' };
+
+  assert.equal(customerSideBlockWrite(open, 'helper-1', true), 'WRITE');
+  assert.equal(customerSideBlockWrite(open, 'helper-1', false), 'KEEP');
+  assert.equal(customerSideBlockWrite(byOwner, 'owner-1', false), 'WRITE');
+  assert.equal(customerSideBlockWrite(byOwner, 'owner-1', true), 'KEEP');
+  // Blocking again keeps the first blocker, who alone may lift it.
+  assert.equal(customerSideBlockWrite(byOwner, 'helper-1', true), 'KEEP');
+  assert.throws(
+    () => customerSideBlockWrite(byOwner, 'helper-1', false),
+    (error: any) =>
+      error.getStatus() === 403 &&
+      error.getResponse().code === 'CONVERSATION_BLOCKED_BY_OTHER' &&
+      /[\u0600-\u06FF]/u.test(error.getResponse().message),
+  );
+  // A blocker whose account is gone (the reference cleared) leaves it to
+  // whoever manages the conversation now.
+  assert.equal(
+    customerSideBlockWrite({ customerSideBlockedAt: at, customerSideBlockedById: null }, 'helper-1', false),
+    'WRITE',
+  );
+});
+
+test('RA-BE-169: setting the block goes through that rule', () => {
+  const service = readFileSync(join(process.cwd(), 'src/conversations/conversations.service.ts'), 'utf8');
+  assert.match(service, /customerSideBlockWrite\(/);
 });

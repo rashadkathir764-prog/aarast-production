@@ -180,12 +180,21 @@ class ChatApi {
     );
   }
 
-  Future<void> setBlocked(String conversationId, bool enabled) async {
-    await _writes.serverOnly(
+  /// The block as the server holds it after the change (RA-BE-169: on the
+  /// customer's side it stays with whoever set it first).
+  Future<({bool blocked, bool blockedByMe})> setBlocked(
+    String conversationId,
+    bool enabled,
+  ) async {
+    final json = await _writes.serverOnly(
       reason: 'الحظر يحتاج النت.',
       method: 'PATCH',
       path: '/api/v1/conversations/$conversationId/block',
       body: {'enabled': enabled},
+    );
+    return (
+      blocked: json['blocked'] == true,
+      blockedByMe: json['blockedByMe'] == true,
     );
   }
 

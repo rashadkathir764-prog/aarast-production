@@ -1308,6 +1308,7 @@ export class ProviderDashboardService {
       if (!quote) {
         throw new NotFoundException('Quote request not found');
       }
+      await this.assertConversationNotBlocked(tx, seed.conversationId);
       const quotePlan = await this.assertQuotePlanWritable(
         tx,
         quote.weddingPlanId,
@@ -1425,6 +1426,7 @@ export class ProviderDashboardService {
       if (!existing) {
         throw new NotFoundException('Quote offer not found');
       }
+      await this.assertConversationNotBlocked(tx, seed.quoteRequest.conversationId);
       const offerPlan = await this.assertQuotePlanWritable(
         tx,
         existing.quoteRequest.weddingPlanId,
@@ -1755,6 +1757,23 @@ export class ProviderDashboardService {
       throw new NotFoundException('Quote request not found');
     }
     return provider;
+  }
+
+  /**
+   * RA-BE-169: a conversation either side blocked takes no new offer and no
+   * edit of one, so neither reaches the customer. The provider who blocked
+   * lifts it first; a withdrawal stays open (it frees the customer).
+   */
+  private async assertConversationNotBlocked(
+    tx: Prisma.TransactionClient,
+    conversationId: string,
+  ): Promise<void> {
+    if (await this.lifecycle.isConversationBlockedInTransaction(tx, conversationId)) {
+      throw new ConflictException({
+        code: 'CONVERSATION_BLOCKED',
+        message: 'المراسلة في هذي المحادثة موقوفة، فما ينفع ترسل عرض أو تعدّله.',
+      });
+    }
   }
 
   /** A quote's plan (planning's row) must still be writable; null for a plan-less quote. */

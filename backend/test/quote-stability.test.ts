@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
-import { ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+import { ensureConversationContext, findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
 import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables, catalogWithoutMoneyLinks } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
@@ -7,6 +7,7 @@ const lifecycle: ConversationLifecyclePort = {
   recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
+  isConversationBlockedInTransaction: isConversationBlocked,
   findConversationProviderId,
 };
 import "reflect-metadata";

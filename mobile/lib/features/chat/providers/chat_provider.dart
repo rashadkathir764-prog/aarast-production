@@ -546,10 +546,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<bool> setBlocked(ChatConversation conversation, bool enabled) async {
     _errorMessage = null;
     try {
-      await _api.setBlocked(conversation.id, enabled);
+      final held = await _api.setBlocked(conversation.id, enabled);
       var next = conversation.copyWith(
-        blocked: enabled || conversation.blockedByCounterpart,
-        blockedByMe: enabled,
+        blocked: held.blocked,
+        blockedByMe: held.blockedByMe,
         // Blocking closes the writing at once; lifting it opens it only if
         // nothing else closed it (below).
         canSend: false,

@@ -224,7 +224,8 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------ grant and ranking
   const before = expect(await list(), 200, "the list before");
-  assert.deepEqual(before.items.map((item: any) => item.id), [providerB.id, unclaimed.id, providerA.id]);
+  // RA-BE-151 (Q-36): featured first, then claimed listings, then unclaimed.
+  assert.deepEqual(before.items.map((item: any) => item.id), [providerB.id, providerA.id, unclaimed.id]);
   assert.ok(before.items.every((item: any) => item.isFeatured === false));
   const granted = expect(
     await grant(opsToken, providerA.id, { endsOn: yemenDay(30), note: "كاش · شهر" }),
@@ -314,7 +315,8 @@ async function main(): Promise<void> {
     data: { startsAt: new Date(Date.now() - 40 * DAY_MS), endsAt: new Date(Date.now() - 60 * 1000) },
   });
   const lapsed = expect(await list(), 200, "the list after the end");
-  assert.deepEqual(lapsed.items.map((item: any) => item.id), [providerB.id, unclaimed.id, providerA.id]);
+  // RA-BE-151 (Q-36): featured first, then claimed listings, then unclaimed.
+  assert.deepEqual(lapsed.items.map((item: any) => item.id), [providerB.id, providerA.id, unclaimed.id]);
   assert.ok(lapsed.items.every((item: any) => item.isFeatured === false));
   const lapsedProfile = expect(await call("GET", "/api/v1/provider/me/profile", ownerAToken), 200, "his profile after the end");
   assert.equal(lapsedProfile.featured, null);

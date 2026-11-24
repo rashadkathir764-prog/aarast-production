@@ -293,6 +293,34 @@ String? _searchCategory(String title, List<QuoteRequest> quotes) {
   return title;
 }
 
+/// RA-MO-338 (Q-51 (أ), D80): the line of a participant who works on the
+/// plan's providers. The bookings are the plan's, whoever asked
+/// («محجوز 3 · ينتظر 1»); the offers waiting are his own requests'. Before
+/// the plan's bookings are read, his own line.
+String participantBoardStatus(
+  List<ProviderBoardRow> rows, {
+  required int planBooked,
+  required int planWaiting,
+  JourneyProfile reader = JourneyProfile.groom,
+}) {
+  if (planBooked == 0 && planWaiting == 0) {
+    return providerBoardStatus(rows, reader: reader);
+  }
+  final offers = rows.fold<int>(0, (sum, row) => sum + row.waitingOffers);
+  return [
+    if (planBooked > 0) 'محجوز $planBooked',
+    if (planWaiting > 0) 'ينتظر $planWaiting',
+    if (offers > 0)
+      arabicCount(
+        offers,
+        one: 'عرض ينتظرك',
+        two: 'عرضين ينتظرونك',
+        few: 'عروض تنتظرك',
+        many: 'عرض ينتظرك',
+      ),
+  ].join(' · ');
+}
+
 /// The tab's status line: «محجوز 3 · عرضين ينتظرونك».
 String providerBoardStatus(
   List<ProviderBoardRow> rows, {

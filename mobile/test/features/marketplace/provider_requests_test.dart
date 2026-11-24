@@ -205,6 +205,35 @@ void main() {
       expect(providerBoardStatus(rows), 'محجوز 1 من 3 · عرضين ينتظرونك');
     });
 
+    // RA-MO-338 (Q-51 (أ), D80): a participant who works on the plan's
+    // providers reads all of its bookings; the tab's line said only his own
+    // («محجوز 1 من 3») while the card under it listed the plan's three.
+    test(
+      'a participant\'s line counts the plan\'s bookings, his offers his own',
+      () {
+        final rows = buildProviderBoard(
+          items: items,
+          costs: const [
+            (budgetCategoryId: 'hall', providerId: null, partyName: 'قاعة سبأ'),
+          ],
+          costItemById: const {},
+          quotes: [
+            _offer('q1', 'ضوء صنعاء', '550000'),
+            _offer('q2', 'عدسة سبأ', '480000'),
+          ],
+        );
+        expect(
+          participantBoardStatus(rows, planBooked: 3, planWaiting: 1),
+          'محجوز 3 · ينتظر 1 · عرضين ينتظرونك',
+        );
+        // Without the plan's bookings read yet, his own line stays.
+        expect(
+          participantBoardStatus(rows, planBooked: 0, planWaiting: 0),
+          providerBoardStatus(rows),
+        );
+      },
+    );
+
     // RA-MO-324 (D55): the board says «اخترت», «طلبت» and «ما بدأت» to the
     // reader in her own form.
     test('the board speaks to a bride in her own form', () {

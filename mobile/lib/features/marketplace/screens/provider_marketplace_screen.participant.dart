@@ -1,9 +1,10 @@
 part of 'provider_marketplace_screen.dart';
 
 /// A participant who works on the plan's providers (a helper) sees only the
-/// requests they made on «طلباتي». Reading is separate from editing (D52):
-/// the plan's bookings, whoever made them, are read from the plan's view,
-/// so the tab never says the plan has not started when it has.
+/// requests they made on «طلباتي». Reading is separate from editing (D52,
+/// D80, Q-51): the plan's bookings, whoever made them, are read from the
+/// plan's view, without amounts, in the card and in the tab's line; only
+/// the side of a request acts on its booking.
 extension _ParticipantPlan on _ProviderMarketplaceScreenState {
   /// The plan's id when the reader is its participant, otherwise null.
   String? get _participantPlanId {
@@ -41,19 +42,18 @@ extension _ParticipantPlan on _ProviderMarketplaceScreenState {
       _participantBookings() == null &&
       context.read<PlanReadViewProvider?>()?.errorMessage == null;
 
-  /// «محجوز 2» from the plan when the participant's own board has nothing
-  /// booked or waiting, so the line is the plan's truth.
+  /// RA-MO-338 (Q-51 (أ)): «محجوز 3 · ينتظر 1» are the plan's bookings,
+  /// whoever asked, as the card under it lists them; the offers waiting
+  /// are his own requests'.
   String _boardStatus(List<ProviderBoardRow> board) {
-    final own = providerBoardStatus(board, reader: context.journeyProfile);
-    final bookings = _participantBookings(watch: true);
-    if (bookings == null || bookings.isEmpty) return own;
-    if (board.any((row) => row.booked || row.waitingOffers > 0)) return own;
+    final bookings = _participantBookings(watch: true) ?? const [];
     final booked = bookings.where((booking) => booking.confirmed).length;
-    final waiting = bookings.length - booked;
-    return [
-      if (booked > 0) 'محجوز $booked',
-      if (waiting > 0) 'ينتظر $waiting',
-    ].join(' · ');
+    return participantBoardStatus(
+      board,
+      planBooked: booked,
+      planWaiting: bookings.length - booked,
+      reader: context.journeyProfile,
+    );
   }
 
   /// q16's card at the top of «طلباتي» for a participant: what the plan has

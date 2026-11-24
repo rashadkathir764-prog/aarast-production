@@ -1,9 +1,9 @@
 // a11 «البلاغات»: the open reports beside the one being read, the chats'
 // and, in their own tab, the assistant answers' (RA-ST-04, D95). RA-AD-22:
 // the reported party is named by the server, the customer included, with
-// what can be done about him: the provider's decisions (suspend…) for whom
-// holds PROVIDERS_WRITE, and the customer's account page, where disabling
-// lives. The reported message, «احذف الرسالة» and the history on the same
+// what can be done about him: suspending an active provider (its reason
+// reaches him, as a06's «إيقاف») for whom holds PROVIDERS_WRITE, and the
+// customer's account page, where disabling lives. The reported message, «احذف الرسالة» and the history on the same
 // party wait for B-41. Closing the report stays: «ما فيه شيء» (dismissed)
 // and «تمت المراجعة».
 import { useCallback, useEffect, useState } from 'react';
@@ -14,8 +14,8 @@ import {
   updateConversationReportStatus,
 } from './api';
 import { AssistantReportsPanel } from './AssistantReportsPanel';
-import { getProvider, type ProviderApplication } from '../providers/api';
-import { ProviderDecisions } from '../providers/providerHelpers';
+import { suspendProvider } from '../providers/api';
+import { ConfirmDialog } from '../../design_system/ConfirmDialog';
 import { AdminPermission, Can, hasAdminPermission, useAuth } from '../auth/api';
 import {
   DeskButton,
@@ -74,8 +74,6 @@ function ChatReports() {
   const canOpenUsers = hasAdminPermission(user, AdminPermission.USERS_READ);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Page | null>(null);
-  // The reported provider as its decisions read it (status, verification).
-  const [reportedProvider, setReportedProvider] = useState<ProviderApplication | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -105,22 +103,8 @@ function ChatReports() {
   }, [load]);
 
   const selected = result?.items.find((report) => report.id === selectedId) ?? null;
-  const selectedProviderId =
-    selected?.reported.kind === 'PROVIDER' ? selected.reported.provider.id : null;
-
-  const loadReportedProvider = useCallback(async () => {
-    setReportedProvider(null);
-    if (!selectedProviderId) return;
-    try {
-      setReportedProvider(await getProvider(selectedProviderId));
-    } catch (value) {
-      setActionError(value instanceof Error ? value.message : 'ما قدرنا نقرأ ملف المزود.');
-    }
-  }, [selectedProviderId]);
-
-  useEffect(() => {
-    void loadReportedProvider();
-  }, [loadReportedProvider]);
+  const reportedProvider =
+    selected?.reported.kind === 'PROVIDER' ? selected.reported.provider : null;
 
   function customerName(report: ConversationReport): string {
     return report.reported.kind === 'CUSTOMER'
@@ -232,13 +216,28 @@ function ChatReports() {
                     </>
                   )}
                 </p>
-                {selected.reported.kind === 'PROVIDER' && reportedProvider ? (
-                  <div className="desk-report__actions">
-                    <ProviderDecisions
-                      provider={reportedProvider}
-                      onChanged={() => loadReportedProvider()}
-                    />
-                  </div>
+                {reportedProvider?.status === 'ACTIVE' ? (
+                  <Can permission={AdminPermission.PROVIDERS_WRITE}>
+                    <div className="desk-report__actions">
+                      <ConfirmDialog
+                        title={`إيقاف ${reportedProvider.businessName}`}
+                        effects={[
+                          'يختفي من الدليل وما توصله طلبات جديدة.',
+                          'يوصله السبب، ويقدر يتواصل مع الدعم.',
+                        ]}
+                        needsNote
+                        noteMaxLength={2000} // AdminReviewActionDto.reason
+                        noteLabel="السبب (يوصل المزود)"
+                        confirmLabel="أوقف"
+                        confirmTone="coral"
+                        trigger={<DeskButton tone="coral">إيقاف</DeskButton>}
+                        onConfirm={async (reason) => {
+                          await suspendProvider(reportedProvider.id, reason);
+                          await load();
+                        }}
+                      />
+                    </div>
+                  </Can>
                 ) : null}
                 {selected.reported.kind === 'CUSTOMER' && selected.reported.user && canOpenUsers ? (
                   <div className="desk-report__actions">

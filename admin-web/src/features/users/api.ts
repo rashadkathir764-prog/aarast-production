@@ -15,7 +15,7 @@ export type AdminUserRecord = AdminUser & {
 };
 
 /** RA-AD-25: a plan the account owns or shares; no money, no guests. */
-export type AdminUserPlan = {
+type AdminUserPlan = {
   id: string;
   title: string;
   role: 'OWNER' | 'MEMBER';
@@ -24,7 +24,7 @@ export type AdminUserPlan = {
 };
 
 /** RA-AD-25: a chat report the account filed, or one filed on it. */
-export type AdminUserReport = {
+type AdminUserReport = {
   id: string;
   reason: string;
   status: 'OPEN' | 'REVIEWED' | 'DISMISSED';
@@ -35,14 +35,14 @@ export type AdminUserReport = {
 };
 
 /** RA-AD-25: the live sessions, by realm, and the last sign-in. */
-export type AdminUserSessions = {
+type AdminUserSessions = {
   application: number;
   admin: number;
   lastLoginAt: string | null;
 };
 
 /** a13: the account as its page reads it. */
-export type AdminUserDetail = AdminUserRecord & {
+type AdminUserDetail = AdminUserRecord & {
   plans: AdminUserPlan[];
   reports: AdminUserReport[];
   sessions: AdminUserSessions;

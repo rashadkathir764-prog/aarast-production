@@ -24,7 +24,7 @@ export type AdminAuditLog = {
   createdAt: string;
 };
 
-export type AdminAuditState = Record<string, string | number | boolean | null>;
+type AdminAuditState = Record<string, string | number | boolean | null>;
 
 type QueryParams = {
   page?: number;

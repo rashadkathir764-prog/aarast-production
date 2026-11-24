@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activateUser, disableUser, getUser, type AdminUserDetail } from './api';
+import { activateUser, disableUser, getUser } from './api';
+
+type AdminUserDetail = Awaited<ReturnType<typeof getUser>>;
 import { AdminPermission } from '../auth/api';
 import { UserDetailsPage } from './UserDetailsPage';
 

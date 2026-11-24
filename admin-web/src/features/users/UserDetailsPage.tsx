@@ -10,8 +10,6 @@ import {
   activateUser,
   disableUser,
   getUser,
-  type AdminUserDetail,
-  type AdminUserReport,
 } from './api';
 import { AdminPermission, hasAdminPermission, useAuth } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
@@ -28,6 +26,9 @@ import { dayAgo, dayMonth, whenClock } from '../../platform/i18n/deskTime';
 
 /** RA-AD-23: the server's `MaxLength` of the reason (RA-AD-16). */
 const DISABLE_REASON_MAX_LENGTH = 500;
+
+type AdminUserDetail = Awaited<ReturnType<typeof getUser>>;
+type AdminUserReport = AdminUserDetail['reports'][number];
 
 const REPORT_STATUS: Record<AdminUserReport['status'], string | null> = {
   OPEN: null,

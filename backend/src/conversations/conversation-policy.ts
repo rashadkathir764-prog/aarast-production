@@ -15,6 +15,23 @@ export const REPORT_REASON_MAX_CHARACTERS = 500;
  */
 export const MESSAGES_PER_MINUTE = 30;
 
+/**
+ * RA-BE-171: how many `conversation:join` events one socket sends in a
+ * minute. The phone joins every conversation it has loaded each time its
+ * socket comes up (each loaded conversation twice), so the bound sits far
+ * above a full inbox of loaded pages; past it a socket is refused before
+ * any read.
+ */
+export const REALTIME_JOINS_PER_MINUTE = 300;
+
+/**
+ * RA-BE-171: how many `conversation:read` receipts one socket sends in a
+ * minute. The phone sends one when it opens a conversation and one for each
+ * message it receives in the open one; the receipt itself is saved through
+ * HTTP, so a refused socket receipt loses no state.
+ */
+export const REALTIME_READS_PER_MINUTE = 120;
+
 export function messageRateLimited(): HttpException {
   return new HttpException(
     {

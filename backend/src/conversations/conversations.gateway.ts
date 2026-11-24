@@ -27,6 +27,10 @@ import {
   sessionRoom,
   userRoom,
 } from './conversation-rooms';
+import {
+  REALTIME_JOINS_PER_MINUTE,
+  REALTIME_READS_PER_MINUTE,
+} from './conversation-policy';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
@@ -36,6 +40,8 @@ type AuthenticatedSocket = Socket & {
     user?: AuthenticatedUser;
     sessionId?: string;
     messageTimestamps?: number[];
+    joinTimestamps?: number[];
+    readTimestamps?: number[];
   };
 };
 
@@ -49,6 +55,8 @@ interface SendConversationMessageEvent extends ConversationEvent {
 }
 
 export { conversationRoom, sessionRoom, userRoom };
+
+const SOCKET_MESSAGES_PER_MINUTE = 20;
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -160,9 +168,23 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: ConversationEvent,
   ) {
+    // RA-BE-171: the phone re-joins every loaded conversation each time its
+    // socket comes up; the socket's budget is spent before any read.
+    this.assertSocketRate(
+      socket,
+      'joinTimestamps',
+      REALTIME_JOINS_PER_MINUTE,
+      'Join rate limit exceeded',
+    );
     const user = await this.liveSocketUser(socket);
-    await this.conversations.authorize(user, event.conversationId);
     const room = conversationRoom(event.conversationId);
+    // A socket holds a conversation's room only while it may hear it: a
+    // revocation removes it (`revokeConversationAccess`), so a re-join of a
+    // held room has nothing left to check.
+    if (socket.rooms.has(room)) {
+      return { conversationId: event.conversationId, joined: true };
+    }
+    await this.conversations.authorize(user, event.conversationId);
     await socket.join(room);
     try {
       // Authorization can be revoked after the first check but before the
@@ -183,7 +205,12 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @MessageBody() event: SendConversationMessageEvent,
   ) {
     const user = await this.liveSocketUser(socket);
-    this.assertMessageRate(socket);
+    this.assertSocketRate(
+      socket,
+      'messageTimestamps',
+      SOCKET_MESSAGES_PER_MINUTE,
+      'Message rate limit exceeded',
+    );
     const message = await this.conversations.send(user, event.conversationId, {
       body: event.body,
       attachments: event.attachments,
@@ -196,6 +223,12 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: ConversationEvent,
   ) {
+    this.assertSocketRate(
+      socket,
+      'readTimestamps',
+      REALTIME_READS_PER_MINUTE,
+      'Read rate limit exceeded',
+    );
     const user = await this.liveSocketUser(socket);
     const receipt = await this.conversations.markRead(user, event.conversationId);
     return receipt;
@@ -231,14 +264,20 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     return user;
   }
 
-  private assertMessageRate(socket: AuthenticatedSocket) {
+  /** A sliding minute of one event's timestamps, kept on the socket. */
+  private assertSocketRate(
+    socket: AuthenticatedSocket,
+    key: 'messageTimestamps' | 'joinTimestamps' | 'readTimestamps',
+    perMinute: number,
+    refusal: string,
+  ) {
     const now = Date.now();
-    const active = (socket.data.messageTimestamps ?? []).filter(
+    const active = (socket.data[key] ?? []).filter(
       (timestamp: number) => now - timestamp < 60_000,
     );
-    if (active.length >= 20) {
-      throw new WsException('Message rate limit exceeded');
+    if (active.length >= perMinute) {
+      throw new WsException(refusal);
     }
-    socket.data.messageTimestamps = [...active, now];
+    socket.data[key] = [...active, now];
   }
 }

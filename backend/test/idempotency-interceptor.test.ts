@@ -6,12 +6,20 @@ import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
   InternalServerErrorException,
+  NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Observable, defer, firstValueFrom, from, of } from "rxjs";
 import { WeddingPlanAssistantController } from "../src/dashboard/assistant/assistant.controller";
+import {
+  MESSAGES_PER_MINUTE,
+  messageRateLimited,
+} from "../src/conversations/conversation-policy";
 import {
   IdempotencyInterceptor,
   requestFingerprint,
@@ -618,46 +626,35 @@ test("a validation 4xx releases the reservation for a corrected retry", async ()
   assert.deepEqual(retried, { id: "ok" });
 });
 
-test("an unknown handler error retains an ambiguous reservation", async () => {
+test("an unknown handler error releases the reservation: the answer was a 500, not a 2xx", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
   (interceptor as any).delay = async () => {};
   let executions = 0;
+  const next = handler(() => {
+    executions++;
+    return executions === 1
+      ? from(Promise.reject(new Error("unexpected failure")))
+      : of({ id: "fresh" });
+  });
 
   await assert.rejects(
     () =>
       firstValueFrom(
-        interceptor.intercept(
-          context("u1", "req-unknown-error"),
-          handler(() => {
-            executions++;
-            return from(Promise.reject(new Error("ambiguous failure")));
-          }),
-        ),
+        interceptor.intercept(context("u1", "req-unknown-error"), next),
       ),
-    /ambiguous failure/,
+    /unexpected failure/,
   );
-  const reservationId = store.row("u1", "req-unknown-error")?.id;
-  assert.ok(reservationId);
+  assert.equal(store.row("u1", "req-unknown-error"), undefined);
 
-  await assert.rejects(
-    () =>
-      firstValueFrom(
-        interceptor.intercept(
-          context("u1", "req-unknown-error"),
-          handler(() => {
-            executions++;
-            return of({ duplicated: true });
-          }),
-        ),
-      ),
-    (error: unknown) => error instanceof ServiceUnavailableException,
+  const retried = await firstValueFrom(
+    interceptor.intercept(context("u1", "req-unknown-error"), next),
   );
-  assert.equal(executions, 1);
-  assert.equal(store.row("u1", "req-unknown-error")?.id, reservationId);
+  assert.equal(executions, 2);
+  assert.deepEqual(retried, { id: "fresh" });
 });
 
-test("a 5xx handler error retains an ambiguous reservation", async () => {
+test("a 5xx handler error releases the reservation for a fresh retry", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
 
@@ -674,7 +671,122 @@ test("a 5xx handler error retains an ambiguous reservation", async () => {
     (error: unknown) => error instanceof InternalServerErrorException,
   );
 
-  assert.ok(store.row("u1", "req-5xx-error"));
+  assert.equal(store.row("u1", "req-5xx-error"), undefined);
+});
+
+test("RA-BE-143: a 4xx raised inside the transaction releases the reservation", async () => {
+  // The 409 BUDGET_CHANGED_ELSEWHERE, a 403 and a 404 are all thrown after the
+  // handler began its transaction, which rolled back with them.
+  const refusals = [
+    new ConflictException({ code: "BUDGET_CHANGED_ELSEWHERE" }),
+    new ForbiddenException(),
+    new NotFoundException(),
+  ];
+  for (const [index, refusal] of refusals.entries()) {
+    const store = new FakeIdempotencyStore();
+    const interceptor = new IdempotencyInterceptor(store as any);
+    (interceptor as any).delay = async () => {};
+    const key = `req-4xx-${index}`;
+    let executions = 0;
+    const next = handler(() => {
+      executions++;
+      return executions === 1
+        ? from(Promise.reject(refusal))
+        : of({ id: "fresh" });
+    });
+
+    await assert.rejects(
+      () => firstValueFrom(interceptor.intercept(context("u1", key), next)),
+      (error: unknown) => error === refusal,
+    );
+    const retried = await firstValueFrom(
+      interceptor.intercept(context("u1", key), next),
+    );
+    assert.equal(executions, 2, `${refusal.getStatus()}: the retry ran fresh`);
+    assert.deepEqual(retried, { id: "fresh" });
+  }
+});
+
+test("RA-BE-167: the 31st message in a minute takes a 429, and the same id after the window is sent", async () => {
+  // The chat send counts the sender's messages of the last minute inside its
+  // serializable transaction and throws the 429 from there
+  // (`conversations.service.ts`). The phone's queue waits out the 429 and
+  // sends again with the same `X-Client-Request-Id`.
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  (interceptor as any).delay = async () => {};
+  let now = Date.parse("2026-11-24T10:00:00.000Z");
+  const sentAt: number[] = [];
+  const send = (body: string) =>
+    handler(() =>
+      defer(async () => {
+        if (
+          sentAt.filter((at) => now - at < 60_000).length >=
+          MESSAGES_PER_MINUTE
+        ) {
+          throw messageRateLimited();
+        }
+        sentAt.push(now);
+        return { id: `message-${sentAt.length}`, body };
+      }),
+    );
+  const sendWithKey = (key: string) =>
+    firstValueFrom(
+      interceptor.intercept(
+        context("u1", key, "POST", {
+          routePath: "/api/v1/conversations/:conversationId/messages",
+          body: { body: key },
+        }),
+        send(key),
+      ),
+    );
+
+  for (let index = 1; index <= MESSAGES_PER_MINUTE; index++) {
+    await sendWithKey(`message-key-${index}`);
+  }
+  const lastKey = `message-key-${MESSAGES_PER_MINUTE + 1}`;
+  await assert.rejects(
+    () => sendWithKey(lastKey),
+    (error: unknown) =>
+      error instanceof HttpException &&
+      error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
+  );
+  assert.equal(store.row("u1", lastKey), undefined, "the 429 kept no reservation");
+
+  now += 61_000;
+  const sent = await sendWithKey(lastKey);
+
+  assert.deepEqual(sent, {
+    id: `message-${MESSAGES_PER_MINUTE + 1}`,
+    body: lastKey,
+  });
+  assert.ok(store.row("u1", lastKey)?.completedAt, "the 2xx is stored for replay");
+});
+
+test("a response that is not a 2xx is never stored for replay", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  let executions = 0;
+  const refusedResponse = { statusCode: 409 };
+  const next = handler(() => {
+    executions++;
+    return of({ refused: executions });
+  });
+
+  await firstValueFrom(
+    interceptor.intercept(
+      context("u1", "req-non-2xx", "POST", { response: refusedResponse }),
+      next,
+    ),
+  );
+  assert.equal(store.row("u1", "req-non-2xx"), undefined);
+
+  const retried = await firstValueFrom(
+    interceptor.intercept(context("u1", "req-non-2xx"), next),
+  );
+  assert.equal(executions, 2);
+  assert.deepEqual(retried, { refused: 2 });
+  assert.ok(store.row("u1", "req-non-2xx")?.completedAt);
 });
 
 test("Prisma P2034 rollback releases the reservation for a safe retry", async () => {
@@ -701,20 +813,20 @@ test("Prisma P2034 rollback releases the reservation for a safe retry", async ()
   assert.deepEqual(retried, { retried: true });
 });
 
-test("an ambiguous Prisma transaction API failure retains the reservation", async () => {
+test("a Prisma transaction API failure releases the reservation", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
 
   await assert.rejects(() =>
     firstValueFrom(
       interceptor.intercept(
-        context("u1", "req-prisma-ambiguous"),
+        context("u1", "req-prisma-transaction-api"),
         handler(() => from(Promise.reject(known("P2028")))),
       ),
     ),
   );
 
-  assert.ok(store.row("u1", "req-prisma-ambiguous"));
+  assert.equal(store.row("u1", "req-prisma-transaction-api"), undefined);
 });
 
 test("requests without a key or user, and non-mutating methods, are passed through", async () => {

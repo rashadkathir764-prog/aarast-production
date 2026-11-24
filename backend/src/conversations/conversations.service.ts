@@ -152,19 +152,33 @@ export class ConversationsService {
     return this.findConversation(currentUser, conversationId);
   }
 
+  /**
+   * RA-BE-171: may this account hear the conversation's realtime room? The
+   * room carries what the conversation's HTTP reads show, so this is their
+   * access rule as one read: no transaction, no lock and no write. The
+   * gateway checks again once the socket is in the room, and a revocation
+   * after that removes the socket from it.
+   */
   async authorize(currentUser: AuthenticatedUser, conversationId: string) {
-    return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.assertActiveAccessInTransaction(
-        tx,
-        currentUser,
-        conversationId,
-        {
-          conversation: 'SHARE',
-          participants: 'SHARE',
-        },
-      );
-      return { conversationId };
-    });
+    const conversation = await this.findConversationRecord(
+      this.prisma,
+      conversationId,
+    );
+    if (
+      !conversation ||
+      !this.accessFor(conversation, currentUser.id) ||
+      !isActiveConversationParticipant(
+        conversation.participants,
+        currentUser.id,
+      ) ||
+      (conversation.scope === ConversationScope.PLAN &&
+        conversation.weddingPlan &&
+        (await this.plansOpenTo(currentUser.id, [conversation.weddingPlan]))
+          .length === 0)
+    ) {
+      throw new NotFoundException('Conversation not found');
+    }
+    return { conversationId };
   }
 
   async get(currentUser: AuthenticatedUser, conversationId: string) {

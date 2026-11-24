@@ -2,7 +2,6 @@ import {
   CallHandler,
   ConflictException,
   ExecutionContext,
-  HttpException,
   Injectable,
   NestInterceptor,
   ServiceUnavailableException,
@@ -143,32 +142,32 @@ export class IdempotencyInterceptor implements NestInterceptor {
           return of(acquisition.response);
         }
         // We own the reservation: run the mutation and record its response.
-        // Unknown and server-side failures retain the reservation because the
-        // outcome may have committed before the handler threw.
+        // RA-BE-143: only a 2xx answer is stored for replay. Any other answer
+        // releases the reservation, so a retry with the same key is processed
+        // fresh: a refusal thrown inside the domain transaction (the chat's
+        // 429, a 409 BUDGET_CHANGED_ELSEWHERE) rolled back with it, and a
+        // kept reservation answered every later retry with a 503 for good.
+        // A tombstone stays only where the work did or may have committed:
+        // the process died before answering, or storing its 2xx failed. The
+        // reconciliation command resolves it.
         const reservationId = acquisition.reservationId;
         return next.handle().pipe(
-          // Release only failures with an explicit no-commit outcome. Keeping
-          // ambiguous failures trades automatic recovery for duplicate-write
-          // prevention until an operator can reconcile the tombstone.
-          catchError((error) => {
-            if (!isProvablySafeToRetry(error)) {
-              return throwError(() => error);
-            }
-            return from(this.release(reservationId)).pipe(
+          catchError((error) =>
+            from(this.release(reservationId)).pipe(
               switchMap(() => throwError(() => error)),
-            );
-          }),
-          switchMap((handlerResponse) =>
-            from(
-              this.complete(
-                reservationId,
-                handlerResponse,
-                captureReplayMetadata(http.getResponse<ResponseLike>()),
-              ),
-            ).pipe(
-              switchMap(() => of(handlerResponse)),
             ),
           ),
+          switchMap((handlerResponse) => {
+            const metadata = captureReplayMetadata(
+              http.getResponse<ResponseLike>(),
+            );
+            const stored =
+              metadata.statusCode === undefined ||
+              isSuccessStatus(metadata.statusCode)
+                ? this.complete(reservationId, handlerResponse, metadata)
+                : this.release(reservationId);
+            return from(stored).pipe(switchMap(() => of(handlerResponse)));
+          }),
         );
       }),
     );
@@ -475,20 +474,8 @@ function normalizeReplayHeader(
   return undefined;
 }
 
-function isProvablySafeToRetry(error: unknown): boolean {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2034'
-  ) {
-    // Prisma documents P2034 as an aborted transaction caused by a write
-    // conflict/deadlock. The transaction did not commit, so retry is safe.
-    return true;
-  }
-  if (!(error instanceof HttpException)) return false;
-  const status = error.getStatus();
-  // Restrict automatic release to validation statuses used before durable
-  // writes. Other 4xx responses may be raised after partial side effects.
-  return status === 400 || status === 422;
+function isSuccessStatus(statusCode: number): boolean {
+  return statusCode >= 200 && statusCode <= 299;
 }
 
 function isHttpStatus(value: unknown): value is number {

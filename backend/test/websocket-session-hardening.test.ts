@@ -13,6 +13,7 @@ interface FakeSocket {
   data: Record<string, unknown>;
   joined: string[];
   left: string[];
+  rooms: Set<string>;
   emitted: Array<{ event: string; payload: unknown }>;
   disconnected: number;
   join: (room: string) => Promise<void>;
@@ -29,13 +30,16 @@ function createSocket(): FakeSocket {
     data: {},
     joined: [],
     left: [],
+    rooms: new Set(['sock-1']),
     emitted: [],
     disconnected: 0,
     join: async (room: string) => {
       socket.joined.push(room);
+      socket.rooms.add(room);
     },
     leave: async (room: string) => {
       socket.left.push(room);
+      socket.rooms.delete(room);
     },
     emit: (event: string, payload: unknown) => {
       socket.emitted.push({ event, payload });

@@ -20,7 +20,7 @@ https://{$AARAST_DIRECT_API_IP} {
 		}
 	}
 	encode gzip
-	@public_site path /rsvp/* /invites/* /.well-known/* /rsvp.js /rsvp.css /invite.js /invite.css /invite-preview.png /public.css /privacy /privacy/ /terms /terms/ /support /support/ /download /download/ /download.js /qrcode-generator.js
+	@public_site path /rsvp/* /invites/* /.well-known/* /rsvp.js /rsvp.css /invite.js /invite.css /invite-preview.png /rsvp-preview.png /public.css /privacy /privacy/ /terms /terms/ /support /support/ /download /download/ /download.js /qrcode-generator.js
 	handle @public_site {
 		reverse_proxy public-site:80
 	}

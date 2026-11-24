@@ -54,7 +54,7 @@ test('direct IP uses public short-lived ACME, no-SNI selection, and the existing
   assert.ok(publicRoute, 'The IP must serve the RSVP pages');
   const publicPaths = publicRoute.match.flatMap((m) => m.path);
   for (const path of ['/rsvp/*', '/invites/*', '/.well-known/*', '/rsvp.js', '/rsvp.css', '/invite.js',
-    '/invite.css', '/invite-preview.png', '/public.css', '/privacy', '/terms', '/support', '/download']) {
+    '/invite.css', '/invite-preview.png', '/rsvp-preview.png', '/public.css', '/privacy', '/terms', '/support', '/download']) {
     assert.ok(publicPaths.includes(path), `${path} must be the static site on the IP`);
   }
   assert.ok(!publicPaths.some((path) => path.startsWith('/api') || path === '/*' || path === '/ready'),

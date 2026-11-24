@@ -972,7 +972,7 @@ test("a photo that cannot be signed leaves the card readable and its save answer
 // From the second review of this branch: the guest's page and the link's
 // preview named the photo's route all the same, so the guest got a broken
 // picture and WhatsApp a picture that answers with an error.
-test("a photo that cannot be signed is not offered to the guest's page or to the link's preview", async () => {
+test("a photo that cannot be signed is not offered to the guest's page (the preview never names a photo)", async () => {
   process.env.INVITE_PUBLIC_ORIGIN = "https://3.121.198.183";
   const db = fakeDatabase();
   const stored = "https://old-media.example/guest-invitation-card/owner-1/a.jpg";
@@ -986,7 +986,7 @@ test("a photo that cannot be signed is not offered to the guest's page or to the
   assert.equal(view.card?.hostLine, "آل الحمدي", "the rest of the card is still read");
   const preview = await failing.invitationPreview(token);
   assert.ok(preview);
-  assert.equal(preview.image, null);
+  assert.doesNotMatch(preview.image?.url ?? "", /card-photo/);
   // The route itself answers «no photo», not a server error.
   await assert.rejects(failing.cardPhotoDownloadUrl(token), (error: any) =>
     error.getStatus() === 404 && error.response.code === "RSVP_CARD_PHOTO_NOT_FOUND");
@@ -1041,13 +1041,17 @@ test("a crawler gets this invitation's head; an unknown, replaced or archived li
   const preview = await rsvp.invitationPreview(token);
   assert.ok(preview);
   assert.equal(preview.title, "يتشرف أبو أحمد بدعوتكم لحضور عرس أحمد");
-  assert.match(preview.description, /18\/2\/2027/);
-  assert.match(preview.description, /قاعة سبأ/);
   assert.equal(preview.url, `https://3.121.198.183/rsvp/${token}`);
+  // RA-OP-29 (Q-44): the message keeps the preview after the link is
+  // archived, so it holds the names and اعّرست's mark and nothing else: not
+  // the card's photo, not the day, not the place.
+  assert.equal(preview.description, "نرجو تأكيد حضورك من الرابط.");
+  assert.doesNotMatch(preview.description, /18\/2\/2027|قاعة سبأ/);
   assert.deepEqual(preview.image, {
-    url: `https://3.121.198.183/api/v1/public/rsvp/${token}/card-photo`,
-    type: "image/webp",
+    url: "https://3.121.198.183/rsvp-preview.png",
+    type: "image/png",
   });
+  assert.doesNotMatch(JSON.stringify(preview), /card-photo|media\.example/);
 
   assert.equal(await rsvp.invitationPreview("short"), null);
   assert.equal(await rsvp.invitationPreview("D".repeat(43)), null);
@@ -1055,12 +1059,12 @@ test("a crawler gets this invitation's head; an unknown, replaced or archived li
   await rsvp.replaceInvitationLink(owner, "guest-1");
   assert.equal(await rsvp.invitationPreview(token), null, "a replaced link names nobody");
 
-  // Without a photo the head has no image.
+  // A card with no photo previews the same way.
   const fresh = fakeDatabase();
   const plain = service(fresh);
   const plainToken = tokenOf((await plain.createInvitationLink(owner, "guest-1")).url);
   const plainPreview = await plain.invitationPreview(plainToken);
-  assert.equal(plainPreview?.image, null);
+  assert.equal(plainPreview?.image?.url, "https://3.121.198.183/rsvp-preview.png");
   assert.equal(plainPreview?.title, "يسعدنا دعوتك لحضور عرس أحمد");
 });
 
@@ -1076,7 +1080,7 @@ test("the head escapes what the hosts typed and names the image only when there 
   assert.match(head, /<meta property="og:url" content="https:\/\/3\.121\.198\.183\/rsvp\/t">/);
   assert.match(head, /<meta property="og:image" content="https:\/\/3\.121\.198\.183\/api\/v1\/public\/rsvp\/t\/card-photo">/);
   assert.match(head, /<meta property="og:image:type" content="image\/jpeg">/);
-  assert.match(head, /<meta name="twitter:card" content="summary_large_image">/);
+  assert.match(head, /<meta name="twitter:card" content="summary">/);
 
   const bare = renderRsvpPreviewHead({ title: "عرس", description: "د", url: "https://x/rsvp/t", image: null });
   assert.doesNotMatch(bare, /og:image/);

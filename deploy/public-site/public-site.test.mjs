@@ -33,6 +33,7 @@ for (const asset of [
   "invite.js",
   "invite.css",
   "invite-preview.png",
+  "rsvp-preview.png",
   "privacy.html",
   "terms.html",
   "support.html",
@@ -82,10 +83,18 @@ assert.match(nginx, /location ~ \/\\\.\(\?!well-known/);
 assert.match(nginx, /Dockerfile\|docker-compose/);
 assert.match(nginx, /location = \/\.well-known\/assetlinks\.json/);
 assert.match(nginx, /try_files \/assetlinks\.json =404;/);
-assert.match(
-  nginx,
-  /location = \/\.well-known\/apple-app-site-association\s*\{\s*return 404;/,
-);
+// RA-MO-337: valid, and naming no app (fail-closed until a real Apple Team ID).
+const appleAssociation =
+  /location = \/\.well-known\/apple-app-site-association\s*\{([\s\S]*?)\n    \}/.exec(nginx)?.[1] ?? "";
+assert.match(appleAssociation, /default_type application\/json;/);
+assert.match(appleAssociation, /return 200 '\{"applinks":\{"details":\[\]\}\}';/);
+assert.doesNotMatch(appleAssociation, /return 404/);
+assert.doesNotMatch(appleAssociation, /appIDs|"apps"|paths|components/);
+// RA-MO-337: the invite page offers the store to a participant with no app.
+assert.match(inviteHtml, /id="get-app"/);
+assert.match(inviteHtml, /href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.aarast\.aarast_mobile"/);
+// RA-OP-29: the RSVP preview's mark is a real, served file.
+assert.match(nginx, /location = \/rsvp-preview\.png[\s\S]*?max-age=86400/);
 assert.match(nginx, /invite-preview\.png[\s\S]*?max-age=86400/);
 assert.doesNotMatch(nginx, /invite-preview\.png[\s\S]*?immutable/);
 assert.equal(assetLinks[0].target.namespace, "android_app");

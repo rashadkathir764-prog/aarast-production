@@ -99,7 +99,7 @@ import {
   runSerializableTransaction,
 } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
-import { imageTypeOf, type RsvpPreview } from "./rsvp-preview";
+import { RSVP_PREVIEW_LOGO_PATH, type RsvpPreview } from "./rsvp-preview";
 
 /**
  * The most companions any guest could be given: a guest takes at most 20
@@ -705,32 +705,21 @@ export class GuestRsvpService {
     );
     if (!found) return null;
     const { plan, context } = found;
-    const wedding = this.weddingRow(context.events);
-    const when = whenLine({
-      date: plan.weddingDate,
-      timeSlot: wedding?.timeSlot ?? null,
-      exactTime: wedding?.exactTime ?? null,
-    });
-    const place = wedding?.placeLabel?.trim() || this.locationLabel(plan);
-    const details = [
-      ...(when ? [`الموعد: ${when}`] : []),
-      ...(place ? [`المكان: ${place}`] : []),
-    ].join(" · ");
-    const photoUrl = context.card?.photoUrl ?? null;
-    const photoRoute = await this.offeredCardPhoto(token, photoUrl);
+    // RA-OP-29 (Q-44): the preview stays in the message after the link is
+    // archived or replaced and cannot be taken back, so it carries only the
+    // two names (the title) and اعّرست's own mark: never the card's photo,
+    // the day or the place.
     return {
       title: invitationLine(
         hostPhrase(context.card?.hostLine, plan.persona),
         plan.title,
       ),
-      description: details
-        ? `${details}. نرجو تأكيد حضورك من الرابط.`
-        : "نرجو تأكيد حضورك من الرابط.",
+      description: "نرجو تأكيد حضورك من الرابط.",
       url: new URL(`/rsvp/${token}`, rsvpPublicOrigin()).toString(),
-      image:
-        photoUrl && photoRoute
-          ? { url: photoRoute, type: imageTypeOf(photoUrl) }
-          : null,
+      image: {
+        url: new URL(RSVP_PREVIEW_LOGO_PATH, rsvpPublicOrigin()).toString(),
+        type: "image/png",
+      },
     };
   }
 

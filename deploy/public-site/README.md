@@ -30,10 +30,15 @@ files, or runtime secrets into the image.
   tags name the host it is served on: nginx `sub_filter` swaps the canonical
   origin in `invite.html` for `https://$host` when the host is a plain name.
 - `/invite-preview.png` - generic social preview used by the landing page.
+- `/rsvp-preview.png` - the app mark an RSVP link's preview carries instead of the
+  invitation card's photo (RA-OP-29): the preview stays in the message, so it
+  holds the names and this mark only.
 - `/.well-known/assetlinks.json` - Android App Link association for the signed
   MVP APK.
-- `/.well-known/apple-app-site-association` - deliberately returns `404` until
-  the real Apple Team ID and bundle association are approved.
+- `/.well-known/apple-app-site-association` - answers `200` with an association
+  that names no app (RA-MO-337), until the real Apple Team ID and bundle
+  association are approved: an iPhone never gets a `404`, and no link opens an
+  app on iOS.
 
 Only the explicitly allowlisted page assets are also served. The root and every
 other route return `404`; marketing, account, API, directory listing, and SPA

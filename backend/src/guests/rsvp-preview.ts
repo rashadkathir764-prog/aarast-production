@@ -10,22 +10,12 @@ export interface RsvpPreview {
   description: string;
   /** The link itself, on the public origin. */
   url: string;
-  /** The card photo through the link's own route, when the card has one. */
+  /** اعّرست's own mark. RA-OP-29: never the invitation card's photo. */
   image: { url: string; type: string | null } | null;
 }
 
-const IMAGE_TYPES: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
-
-/** The stored photo's media type, from the extension the upload gave it. */
-export function imageTypeOf(storedUrl: string): string | null {
-  const extension = /\.([a-z0-9]+)$/i.exec(new URL(storedUrl).pathname)?.[1];
-  return extension ? (IMAGE_TYPES[extension.toLowerCase()] ?? null) : null;
-}
+/** The public site's copy of اعّرست's launcher icon (deploy/public-site). */
+export const RSVP_PREVIEW_LOGO_PATH = "/rsvp-preview.png";
 
 function escapeAttribute(value: string): string {
   return value
@@ -53,10 +43,7 @@ export function renderRsvpPreviewHead(preview: RsvpPreview): string {
           meta("property", "og:image:alt", preview.title),
         ]
       : []),
-    meta(
-      "name",
-      "twitter:card",
-      preview.image ? "summary_large_image" : "summary",
-    ),
+    // A square mark, not a photo: the small card.
+    meta("name", "twitter:card", "summary"),
   ].join("\n");
 }

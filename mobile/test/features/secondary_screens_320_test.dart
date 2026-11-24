@@ -216,30 +216,22 @@ void main() {
         expect(tester.takeException(), isNull);
 
         await tester.scrollUntilVisible(
-          find.text('خلّها خطة ثانية'),
+          find.text('احفظها خطة ثانية'),
           240,
           scrollable: find.byType(Scrollable).last,
         );
         await tester.pump();
-        await tester.tap(find.text('خلّها خطة ثانية'));
-        await tester.pump();
-        await tester.scrollUntilVisible(
-          find.text('متابعة'),
-          240,
-          scrollable: find.byType(Scrollable).last,
-        );
-        await tester.pump();
-        await tester.tap(find.text('متابعة'));
+        await tester.tap(find.text('احفظها خطة ثانية'));
         await tester.pump();
         expect(service.migrateCalls, 1);
-        expect(find.text('تجاهلها'), findsOneWidget);
+        expect(find.text('امسحها من الجوال'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
         await _pumpFrames(tester);
 
         expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
-        expect(find.text('متابعة'), findsOneWidget);
+        expect(find.text('احفظها خطة ثانية'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

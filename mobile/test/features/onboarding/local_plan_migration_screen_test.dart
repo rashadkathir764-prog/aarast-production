@@ -31,7 +31,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// plan and money APIs.
 void main() {
   testWidgets(
-    'an account with a plan sees both plans by name and two choices',
+    'an account with a plan sees both plans by the same facts, and saving '
+    'leads',
     (tester) async {
       final harness = await _Harness.create(tester);
 
@@ -48,15 +49,33 @@ void main() {
       expect(find.text('عرس أحمد · تعز'), findsOneWidget);
       expect(find.textContaining('عرس سالم'), findsNothing);
       expect(harness.plans.summaryPlanIds, ['plan-open']);
-      expect(find.text('خلّها خطة ثانية'), findsOneWidget);
+      // RA-MO-327: each side says the same facts, its name and its counts;
+      // the phone's was a name against the account's counts.
+      expect(find.text('5 بنود · 8 مهام'), findsOneWidget);
+      expect(find.text('14 بند · 23 مهمة'), findsOneWidget);
+      // RA-MO-327: saving it is the sheet's action; dropping it is the quiet
+      // way out, not a choice of the same weight («تجاهلها» beside it).
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is JourneyButton &&
+              widget.key == const ValueKey('local-plan-second'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('احفظها خطة ثانية'), findsOneWidget);
       expect(find.text('مثلًا لو هي لعرس أخوك'), findsOneWidget);
-      expect(find.text('تجاهلها'), findsOneWidget);
-      expect(find.text('تنحذف من الجوال بس'), findsOneWidget);
-      // Nothing is chosen for the person: «متابعة» waits for a choice.
-      final next = find.byKey(const ValueKey('local-plan-continue'));
-      expect(tester.widget<JourneyButton>(next).onPressed, isNull);
-      await tester.tap(next, warnIfMissed: false);
-      await _settle(tester);
+      expect(find.text('تجاهلها'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is JourneyTextAction &&
+              widget.key == const ValueKey('local-plan-drop'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('امسحها من الجوال'), findsOneWidget);
+      // Nothing is done for the person.
       expect(harness.plans.importCalls, 0);
       expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
       // There is no merge mode on the server.
@@ -79,8 +98,6 @@ void main() {
 
       expect(find.byKey(const ValueKey('local-plan-second')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('local-plan-keep-for-owner')));
-      await _settle(tester);
-      await tester.tap(find.byKey(const ValueKey('local-plan-continue')));
       await _settle(tester);
 
       // Nothing imported, nothing dropped: the plan waits on the phone.
@@ -137,9 +154,7 @@ void main() {
     final gate = Completer<OnboardingCompleteResponse>();
     harness.plans.onImport = () => gate.future;
 
-    await tester.tap(find.text('خلّها خطة ثانية'));
-    await tester.pump();
-    await tester.tap(find.text('متابعة'));
+    await tester.tap(find.text('احفظها خطة ثانية'));
     await tester.pump();
 
     expect(harness.plans.importCalls, 1);
@@ -162,9 +177,7 @@ void main() {
     harness.plans.onImport = () =>
         Future.error(const ApiException('تعذر استيراد الخطة المحلية.'));
 
-    await tester.tap(find.text('خلّها خطة ثانية'));
-    await tester.pump();
-    await tester.tap(find.text('متابعة'));
+    await tester.tap(find.text('احفظها خطة ثانية'));
     await _settle(tester);
 
     expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
@@ -178,9 +191,7 @@ void main() {
   ) async {
     final harness = await _Harness.create(tester);
 
-    await tester.tap(find.text('تجاهلها'));
-    await tester.pump();
-    await tester.tap(find.text('متابعة'));
+    await tester.tap(find.text('امسحها من الجوال'));
     await _settle(tester);
 
     // First confirmation was the choice; the second is asked.
@@ -194,7 +205,7 @@ void main() {
     expect(await harness.storage.loadGuestPlan(), isNotNull);
     expect(harness.finished, isEmpty);
 
-    await tester.tap(find.text('متابعة'));
+    await tester.tap(find.text('امسحها من الجوال'));
     await _settle(tester);
     await tester.tap(find.text('إيه، امسحها'));
     await _settle(tester);
@@ -249,6 +260,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('خطتك باقية على هذا الجوال'), findsOneWidget);
+    // RA-MO-327: «امسحها من الجوال» is offered under it, so it does not
+    // say the plan is never deleted until it is saved.
+    expect(find.textContaining('ما تنحذف إلا باختيارك'), findsOneWidget);
+    expect(find.textContaining('ما تنحذف لين'), findsNothing);
     expect(harness.plans.importCalls, 0);
     expect(await harness.storage.loadGuestPlan(), isNotNull);
 

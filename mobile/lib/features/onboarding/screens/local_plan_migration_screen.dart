@@ -280,15 +280,20 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       isDismissible: false,
       enableDrag: false,
       builder: (_) => _LocalPlanChoiceSheet(
-        local: _localTitle.isEmpty
-            ? _counts(
-                widget.snapshot.itemNames.length,
-                widget.snapshot.tasks.length,
-              )
-            : _localTitle,
-        account: account.title.isEmpty
-            ? _counts(account.items, account.tasks)
-            : account.title,
+        // RA-MO-327: both sides by the same facts, a name and the counts.
+        local: (
+          title: _localTitle,
+          counts: _counts(
+            widget.snapshot.itemNames.length,
+            widget.snapshot.tasks.length,
+          ),
+        ),
+        account: account.title == _noAccountPlan
+            ? (title: account.title, counts: null)
+            : (
+                title: account.title,
+                counts: _counts(account.items, account.tasks),
+              ),
         otherSide: _otherSide,
         accountHasPlan:
             account.items > 0 ||
@@ -540,7 +545,8 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   ? '${_error ?? ''}\n'
                         'اللي تغيّر بعدها باقي على هذا الجوال، ما ينحذف إلا باختيارك.'
                   : '${_error ?? context.say('تأكد من النت وجرّب مرة ثانية.', 'تأكدي من النت وجرّبي مرة ثانية.')}\n'
-                        'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
+                        // RA-MO-327: «امسحها من الجوال» is under it.
+                        'خطتك باقية على هذا الجوال، ما تنحذف إلا باختيارك.',
             )
           else
             _Outcome(
@@ -624,8 +630,6 @@ String _counts(int items, int tasks) {
   return '$itemsLine · $tasksLine';
 }
 
-enum _Choice { secondPlan, keepForOwner, drop }
-
 /// What the choice sheet closed with. [keptForOwner]: the plan stays on the
 /// phone for the other side, and the question is not asked again (D112,
 /// Q-13).
@@ -638,9 +642,10 @@ typedef _ChoiceOutcome = ({
 /// The account side of the sheet when the account holds no plan yet.
 const _noAccountPlan = 'ما فيه خطة بعد';
 
-/// The w09 sheet: both plans' counts, the two choices and «متابعة». It
-/// stays open while the plan saves, so a failure shows here and the choice
-/// can be made again.
+/// The w09 sheet: both plans by their name and counts, saving the phone's
+/// plan (or keeping it for the other side) as its action, and dropping it as
+/// the quiet way out. It stays open while the plan saves, so a failure shows
+/// here and the choice can be made again.
 class _LocalPlanChoiceSheet extends StatefulWidget {
   const _LocalPlanChoiceSheet({
     required this.local,
@@ -652,8 +657,8 @@ class _LocalPlanChoiceSheet extends StatefulWidget {
     required this.drop,
   });
 
-  final String local;
-  final String account;
+  final _PlanFacts local;
+  final _PlanFacts account;
 
   /// The phone's plan belongs to the other side: it is kept for its owner,
   /// not taken in as a second plan of this account.
@@ -668,37 +673,31 @@ class _LocalPlanChoiceSheet extends StatefulWidget {
 }
 
 class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
-  /// Nothing is chosen for the person: «متابعة» waits for a choice.
-  _Choice? _choice;
   bool _busy = false;
   String? _error;
 
-  Future<void> _continue() async {
+  void _close({String? planId, bool savedBefore = false, bool kept = false}) {
+    Navigator.of(context).pop<_ChoiceOutcome>((
+      planId: planId,
+      savedBefore: savedBefore,
+      keptForOwner: kept,
+    ));
+  }
+
+  /// The second confirmation is the drop's own sheet (C62).
+  Future<void> _drop() async {
+    if (_busy || !await widget.confirmDrop(context) || !mounted) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    await widget.drop();
+    if (!mounted) return;
+    _close();
+  }
+
+  Future<void> _save() async {
     if (_busy) return;
-    if (_choice == _Choice.drop) {
-      if (!await widget.confirmDrop(context) || !mounted) return;
-      setState(() {
-        _busy = true;
-        _error = null;
-      });
-      await widget.drop();
-      if (!mounted) return;
-      Navigator.of(context).pop<_ChoiceOutcome>((
-        planId: null,
-        savedBefore: false,
-        keptForOwner: false,
-      ));
-      return;
-    }
-    if (_choice == null) return;
-    if (_choice == _Choice.keepForOwner) {
-      Navigator.of(context).pop<_ChoiceOutcome>((
-        planId: null,
-        savedBefore: false,
-        keptForOwner: true,
-      ));
-      return;
-    }
     setState(() {
       _busy = true;
       _error = null;
@@ -706,20 +705,12 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
     try {
       final planId = await widget.save();
       if (!mounted) return;
-      Navigator.of(context).pop<_ChoiceOutcome>((
-        planId: planId,
-        savedBefore: false,
-        keptForOwner: false,
-      ));
+      _close(planId: planId);
     } on _SaveFailure catch (failure) {
       if (!mounted) return;
       // RA-BE-65: the choice it needs is the page's, not this sheet's.
       if (failure.savedBefore) {
-        Navigator.of(context).pop<_ChoiceOutcome>((
-          planId: null,
-          savedBefore: true,
-          keptForOwner: false,
-        ));
+        _close(savedBefore: true);
         return;
       }
       setState(() {
@@ -727,11 +718,6 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
         _error = failure.message;
       });
     }
-  }
-
-  void _pick(_Choice choice) {
-    if (_busy) return;
-    setState(() => _choice = choice);
   }
 
   @override
@@ -748,64 +734,71 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
             : context.say('سويتها قبل ما تدخل.', 'سويتيها قبل ما تدخلين.'),
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _CountCard(label: 'على هذا الجوال', value: widget.local),
+                child: _CountCard(label: 'على هذا الجوال', facts: widget.local),
               ),
               const SizedBox(width: AarastV3Space.x2),
               Expanded(
-                child: _CountCard(label: 'في حسابك', value: widget.account),
+                child: _CountCard(label: 'في حسابك', facts: widget.account),
               ),
             ],
           ),
-          const SizedBox(height: AarastV3Space.x3),
-          if (widget.otherSide)
-            JourneyOption(
-              key: const ValueKey('local-plan-keep-for-owner'),
-              title: context.say(
-                'خلّها على الجوال لصاحبتها',
-                'خلّيها على الجوال لصاحبها',
-              ),
-              subtitle: context.say(
-                'هذي خطة العروسة: تحفظها هي برقمها',
-                'هذي خطة العريس: يحفظها هو برقمه',
-              ),
-              selected: _choice == _Choice.keepForOwner,
-              onTap: () => _pick(_Choice.keepForOwner),
-            )
-          else
-            JourneyOption(
-              key: const ValueKey('local-plan-second'),
-              title: 'خلّها خطة ثانية',
-              subtitle: 'مثلًا لو هي لعرس أخوك',
-              selected: _choice == _Choice.secondPlan,
-              onTap: () => _pick(_Choice.secondPlan),
+          const SizedBox(height: AarastV3Space.x4),
+          // RA-MO-327: the sheet's action leads; dropping the plan is the
+          // quiet way out under it, not a choice of the same weight.
+          Text(
+            widget.otherSide
+                ? context.say(
+                    'هذي خطة العروسة: تحفظها هي برقمها',
+                    'هذي خطة العريس: يحفظها هو برقمه',
+                  )
+                : 'مثلًا لو هي لعرس أخوك',
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
             ),
-          const SizedBox(height: AarastV3Space.x2),
-          JourneyOption(
-            key: const ValueKey('local-plan-drop'),
-            title: context.say('تجاهلها', 'تجاهليها'),
-            subtitle: 'تنحذف من الجوال بس',
-            selected: _choice == _Choice.drop,
-            onTap: () => _pick(_Choice.drop),
           ),
+          const SizedBox(height: AarastV3Space.x2),
           if (_error case final error?) ...[
-            const SizedBox(height: AarastV3Space.x2),
             JourneyNote(
               text: error,
               icon: LucideIcons.alertCircle,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
             ),
+            const SizedBox(height: AarastV3Space.x2),
           ],
-          const SizedBox(height: AarastV3Space.x4),
-          JourneyButton(
-            key: const ValueKey('local-plan-continue'),
-            label: 'متابعة',
-            expand: true,
-            large: true,
-            loading: _busy,
-            onPressed: _choice == null ? null : _continue,
+          if (widget.otherSide)
+            JourneyButton(
+              key: const ValueKey('local-plan-keep-for-owner'),
+              label: context.say(
+                'خلّها على الجوال لصاحبتها',
+                'خلّيها على الجوال لصاحبها',
+              ),
+              expand: true,
+              large: true,
+              onPressed: _busy ? null : () => _close(kept: true),
+            )
+          else
+            JourneyButton(
+              key: const ValueKey('local-plan-second'),
+              label: context.say('احفظها خطة ثانية', 'احفظيها خطة ثانية'),
+              expand: true,
+              large: true,
+              loading: _busy,
+              onPressed: _save,
+            ),
+          const SizedBox(height: AarastV3Space.x1),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('local-plan-drop'),
+              label: context.say('امسحها من الجوال', 'امسحيها من الجوال'),
+              sub: 'تنحذف من الجوال بس',
+              onPressed: _busy ? null : _drop,
+            ),
           ),
         ],
       ),
@@ -813,14 +806,19 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
   }
 }
 
+/// One side of the sheet: the plan's name (when it has one) and its counts.
+typedef _PlanFacts = ({String title, String? counts});
+
 class _CountCard extends StatelessWidget {
-  const _CountCard({required this.label, required this.value});
+  const _CountCard({required this.label, required this.facts});
 
   final String label;
-  final String value;
+  final _PlanFacts facts;
 
   @override
   Widget build(BuildContext context) {
+    final title = facts.title.trim();
+    final counts = facts.counts;
     return JourneyBox(
       color: AarastV3Color.canvas,
       radius: AarastV3Radius.surface,
@@ -838,10 +836,21 @@ class _CountCard extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
-          Text(
-            value,
-            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
-          ),
+          if (title.isNotEmpty)
+            Text(
+              title,
+              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            ),
+          if (counts != null)
+            Text(
+              counts,
+              style: title.isEmpty
+                  ? JourneyType.of(JourneyType.body, weight: JourneyType.bold)
+                  : JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+            ),
         ],
       ),
     );

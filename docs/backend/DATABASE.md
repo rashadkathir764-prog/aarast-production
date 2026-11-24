@@ -538,7 +538,7 @@ rewrite as permission to restore a removed live model.
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
 | `ErasedAccount` | 2 | `userId`, `erasedAt` |
-| `User` | 62 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 64 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -550,16 +550,16 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `AssistantAnswerReport` | 10 | `id`, `answerId`, `reporterUserId`, `resolvedAt`, `createdAt` |
-| `WeddingPlan` | 37 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `deletionRequestedAt`, `createdAt`, `updatedAt` |
-| `PlanEvent` | 17 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 29 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |
+| `WeddingPlan` | 38 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `deletionRequestedAt`, `createdAt`, `updatedAt` |
+| `PlanEvent` | 18 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `BudgetCategory` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 30 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |
 | `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
-| `PaymentSchedule` | 15 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `remindAt`, `createdAt`, `updatedAt` |
+| `PaymentSchedule` | 16 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `remindAt`, `createdAt`, `updatedAt` |
 | `FundingSource` | 15 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
-| `WeddingTask` | 24 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
+| `WeddingTask` | 27 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `ContributorHistoryScope` | 11 | `id`, `weddingPlanId`, `historyCoverageStartsAt`, `archivedAt`, `deletedAt`, `createdAt`, `updatedAt` |
@@ -575,7 +575,7 @@ rewrite as permission to restore a removed live model.
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `GuestInvitationCard` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `GuestEventInvite` | 11 | `id`, `guestId`, `planEventId`, `respondedAt`, `createdAt`, `updatedAt` |
-| `GuestInvitationSend` | 12 | `id`, `weddingPlanId`, `guestId`, `planEventId`, `createdByUserId`, `createdAt`, `settledAt` |
+| `GuestInvitationSend` | 15 | `id`, `weddingPlanId`, `guestId`, `planEventId`, `createdByUserId`, `createdAt`, `settledAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `Governorate` | 11 | `id`, `createdAt`, `updatedAt` |
 | `District` | 13 | `id`, `governorateId`, `createdAt`, `updatedAt` |
@@ -593,7 +593,7 @@ rewrite as permission to restore a removed live model.
 | `QuoteRequest` | 39 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
 | `QuoteOffer` | 28 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `Booking` | 27 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
+| `Booking` | 28 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
 | `BookingChange` | 12 | `id`, `bookingId`, `requestedByUserId`, `decidedAt`, `createdAt`, `updatedAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
 | `ProviderProfileViewDay` | 4 | `providerId` |

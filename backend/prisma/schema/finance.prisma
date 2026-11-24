@@ -98,6 +98,7 @@ model BudgetCategory {
   updatedAt       DateTime              @updatedAt
   weddingPlan     WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   weddingCosts    WeddingCost[]
+  linkedTasks     WeddingTask[]
 
   @@unique([weddingPlanId, normalizedName])
   @@unique([id, weddingPlanId])
@@ -141,6 +142,7 @@ model WeddingCost {
   quoteOffer       QuoteOffer?       @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
   payments         CostPayment[]
   paymentSchedules PaymentSchedule[]
+  linkedTasks      WeddingTask[]
   receipts         CostReceipt[]
 
   @@index([weddingPlanId, status])
@@ -219,6 +221,7 @@ model PaymentSchedule {
   weddingCost             WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)
   payments                CostPayment[]         @relation("CostPaymentSchedule")
   partialPayments         CostPayment[]         @relation("CostPaymentLowersSchedule")
+  linkedTasks             WeddingTask[]
 
   @@unique([id, weddingCostId])
   @@index([weddingCostId, status, dueDate])

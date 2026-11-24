@@ -51,6 +51,7 @@ model WeddingPlan {
   quoteRequests           QuoteRequest[]
   notifications           Notification[]
   guests                  Guest[]
+  guestInvitationSends    GuestInvitationSend[]
   guestGroups             GuestGroup[]
   guestInvitationCard     GuestInvitationCard?
   providerLinks           PlanProviderLink[]
@@ -114,6 +115,7 @@ model PlanEvent {
   updatedAt       DateTime           @updatedAt
   weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   guestInvites    GuestEventInvite[]
+  invitationSends GuestInvitationSend[]
 
   @@index([weddingPlanId, date])
 }

@@ -189,6 +189,13 @@ model GuestInvitationSend {
   // When the person said it was sent, or that it was not.
   settledAt       DateTime?
   guest           Guest                      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  // RA-BE-180: real references. The plan stays while its sends do (its
+  // erasure removes the guests, and their sends with them, first); an
+  // occasion that is deleted takes the sends made for it; the person who
+  // prepared a send may leave and the record stays.
+  weddingPlan     WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  planEvent       PlanEvent?                 @relation(fields: [planEventId], references: [id], onDelete: Cascade)
+  createdByUser   User?                      @relation("GuestInvitationSendCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([weddingPlanId, status])
   @@index([guestId, createdAt])

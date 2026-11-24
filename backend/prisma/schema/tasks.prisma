@@ -46,6 +46,11 @@ model WeddingTask {
   updatedAt         DateTime                   @updatedAt
   weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   assignee          User?                      @relation("AssignedWeddingTasks", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  // RA-BE-180: the three links are real references; an item that is
+  // deleted unlinks the task (the money side also releases it first).
+  linkedBudgetCategory BudgetCategory?         @relation(fields: [linkedBudgetCategoryId], references: [id], onDelete: SetNull)
+  linkedCost        WeddingCost?               @relation(fields: [linkedCostId], references: [id], onDelete: SetNull)
+  linkedSchedule    PaymentSchedule?           @relation(fields: [linkedScheduleId], references: [id], onDelete: SetNull)
   checklistItems    WeddingTaskChecklistItem[]
 
   @@index([weddingPlanId, status])

@@ -392,7 +392,8 @@ model Booking {
   providerId        String
   eventDate         DateTime      @db.Date
   status            BookingStatus @default(REQUESTED)
-  requestedByUserId String
+  // RA-BE-180: a real reference; the person may leave and the booking stays.
+  requestedByUserId String?
   cancelledBy       BookingParty?
   note              String?       @db.Text
   confirmedAt       DateTime?
@@ -417,6 +418,7 @@ model Booking {
   quoteRequest      QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
   quoteOffer        QuoteOffer?   @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
   provider          Provider      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  requestedByUser   User?         @relation("BookingRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
 
   @@index([providerId, eventDate, status])
   @@index([quoteOfferId])

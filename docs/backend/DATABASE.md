@@ -52,7 +52,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 
 | Entity | Purpose |
 | --- | --- |
-| WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
+| WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. Q-45 (D124): `deletionRequestedAt` and `deletionScheduledFor` (migration `20261125080000_plan_deletion`, set and cleared together, a CHECK keeps the day after the request) mark a plan its owner deleted, live or archived (`POST /api/v1/wedding-plans/:id/deletion`): it is closed to its members and new invitations and read-only to him (`PLAN_DELETION_PENDING`), reminds no one, and he takes it back within 30 days (`DELETE /api/v1/wedding-plans/:id/deletion`); after them the hourly purge erases it with its guests, invitations, tasks, events, costs and receipts, conversations and requests, provider links, members and notifications, through the same purge as an erased account's plans. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. New provider-audience quote/chat alerts store generic text and explicit audience metadata instead of requester/sender contact identity. |
 | PushInstallation | One Firebase Installation ID bound to one authenticated account and platform. The globally unique FID is moved atomically when a shared device signs into another account; account deletion cascades installations. |
 | OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, FCM delivery requests, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime and push dispatch are processed only after their adapter action resolves; unavailable or rejected delivery remains retryable. |
@@ -536,7 +536,7 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `AssistantAnswerReport` | 10 | `id`, `answerId`, `reporterUserId`, `resolvedAt`, `createdAt` |
-| `WeddingPlan` | 35 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 37 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `deletionRequestedAt`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 17 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 29 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |

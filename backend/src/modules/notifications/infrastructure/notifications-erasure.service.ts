@@ -15,7 +15,7 @@ export class NotificationsErasureService implements NotificationsErasurePort {
     const notifications = await tx.notification.findMany({
       where: {
         OR: [
-          { userId: scope.userId },
+          ...(scope.userId !== null ? [{ userId: scope.userId }] : []),
           ...(scope.weddingPlanIds.length > 0
             ? [{ weddingPlanId: { in: [...scope.weddingPlanIds] } }]
             : []),

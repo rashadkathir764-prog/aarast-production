@@ -220,9 +220,19 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                       auth.user?.id == plan.ownerUserId
                   ? () => _confirmArchive(plan)
                   : null,
+              // Q-45 (D124): the owner's, on a live plan or a memory.
+              onDelete: _ownsServerPlan(auth, plan)
+                  ? () => _confirmDelete(plan)
+                  : null,
+              onRestore: _ownsServerPlan(auth, plan)
+                  ? () => _setDeletion(plan, restore: true)
+                  : null,
             ),
     );
   }
+
+  bool _ownsServerPlan(AuthController auth, WeddingPlan plan) =>
+      !_isLocalPlan && auth.user?.id == plan.ownerUserId;
 
   bool _canManagePlan(
     AuthController auth,

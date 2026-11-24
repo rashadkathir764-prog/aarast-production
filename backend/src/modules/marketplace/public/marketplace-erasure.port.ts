@@ -58,6 +58,8 @@ export interface MarketplaceErasurePort {
     scope: { userId: string | null; weddingPlanIds: readonly string[] },
     customerName: string | null,
     closedAt: Date,
+    /** Q-45 (D124): «حذف خطة العرس» when only the plans go; else «حذف حسابه». */
+    closed: 'ACCOUNT' | 'PLAN',
   ): Promise<CreateNotificationInput[]>;
   /** D63 (w05): the confirmed bookings of these plans from today on (the day in Sana'a at `now`). */
   countUpcomingPlanBookings(

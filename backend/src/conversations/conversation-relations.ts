@@ -63,6 +63,8 @@ export interface ConversationPlan {
   title: string;
   ownerUserId: string;
   status: WeddingPlanStatus;
+  /** Q-45 (D124): the owner asked to delete the plan; closed and read-only. */
+  deletionRequestedAt: Date | null;
   sharedMembers: ConversationPlanMember[];
 }
 
@@ -206,6 +208,7 @@ export class ConversationRelationsService {
               title: plan.title,
               ownerUserId: plan.ownerUserId,
               status: plan.status,
+              deletionRequestedAt: plan.deletionRequestedAt,
               sharedMembers: membersByPlan.get(plan.id) ?? [],
             }
           : null,

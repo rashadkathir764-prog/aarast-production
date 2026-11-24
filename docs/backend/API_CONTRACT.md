@@ -4101,6 +4101,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:id` | `wedding-plans.findOne` | 🔒 |
 | PATCH | `/api/v1/wedding-plans/:id` | `wedding-plans.update` | 🔒 |
 | PATCH | `/api/v1/wedding-plans/:id/archive` | `wedding-plans.archive` | 🔒 |
+| DELETE | `/api/v1/wedding-plans/:id/deletion` | `wedding-plans.cancelDeletion` | 🔒 |
+| POST | `/api/v1/wedding-plans/:id/deletion` | `wedding-plans.requestDeletion` | 🔒 |
 | POST | `/api/v1/wedding-plans/:id/set-active` | `wedding-plans.setActive` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/dashboard-summary` | `dashboard.getDashboardSummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.findForPlan` | 🔒 |

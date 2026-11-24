@@ -337,6 +337,23 @@ class WeddingPlansApi {
     return WeddingPlan.fromJson(json);
   }
 
+  /// Q-45 (D124): the plan is erased 30 days from now unless taken back.
+  Future<WeddingPlan> requestPlanDeletion(String id) =>
+      _savePlan(_apiClient.postJson('/api/v1/wedding-plans/$id/deletion', {}));
+
+  /// Q-45 (D124): the request is taken back; the plan is as it was.
+  Future<WeddingPlan> cancelPlanDeletion(String id) =>
+      _savePlan(_apiClient.deleteJson('/api/v1/wedding-plans/$id/deletion'));
+
+  Future<WeddingPlan> _savePlan(Future<Map<String, dynamic>> answer) async {
+    final json = await answer;
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: json,
+    );
+    return WeddingPlan.fromJson(json);
+  }
+
   Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {
     final list = await _apiClient.getJsonList(path);
     return list

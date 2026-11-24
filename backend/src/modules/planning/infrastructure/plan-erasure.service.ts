@@ -48,4 +48,34 @@ export class PlanErasureService implements PlanErasurePort {
       ownerUserId: plan.ownerUserId,
     }));
   }
+
+  async listDuePlanDeletions(
+    client: Prisma.TransactionClient,
+    now: Date,
+    take: number,
+  ): Promise<Array<{ id: string; ownerUserId: string }>> {
+    return client.weddingPlan.findMany({
+      where: { deletionScheduledFor: { lte: now } },
+      orderBy: [{ deletionScheduledFor: 'asc' }, { id: 'asc' }],
+      select: { id: true, ownerUserId: true },
+      take,
+    });
+  }
+
+  async lockDuePlanForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingPlan"
+        WHERE "id" = ${weddingPlanId}
+          AND "deletionScheduledFor" <= ${now}
+        FOR UPDATE
+      `,
+    );
+    return rows.length === 1;
+  }
 }

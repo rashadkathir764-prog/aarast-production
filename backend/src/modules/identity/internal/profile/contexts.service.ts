@@ -150,7 +150,10 @@ export class ContextsService {
       }))
       .filter(
         (entry): entry is { membership: SharedMember; plan: WeddingPlan } =>
-          entry.plan !== undefined && !waitingOwners.has(entry.plan.ownerUserId),
+          entry.plan !== undefined &&
+          !waitingOwners.has(entry.plan.ownerUserId) &&
+          // Q-45 (D124): nor a plan its owner asked to delete.
+          entry.plan.deletionRequestedAt === null,
       )
       .sort(
         (left, right) =>
@@ -208,6 +211,7 @@ export class ContextsService {
         membership &&
         plan &&
         plan.ownerUserId !== currentUser.id &&
+        plan.deletionRequestedAt === null &&
         (await findDeletionPendingUserIds(this.prisma, [plan.ownerUserId]))
           .size === 0
       ) {

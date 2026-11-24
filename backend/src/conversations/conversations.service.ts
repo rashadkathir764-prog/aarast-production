@@ -39,6 +39,7 @@ import { quoteOfferVersionView } from '../modules/marketplace/public/quote-offer
 import {
   assertWeddingPlanWritable,
   isPlanPartnerRole,
+  isPlanDeletionPending,
   isWeddingPlanWritable,
 } from '../modules/collaboration/public/collaboration-permission.port';
 import {
@@ -702,10 +703,17 @@ export class ConversationsService {
    * waits out the account's deletion is closed to everyone but the owner, its
    * conversations as every other section of it (`permission.service.ts`).
    */
-  private async plansOpenTo<T extends { id: string; ownerUserId: string }>(
+  private async plansOpenTo<
+    T extends { id: string; ownerUserId: string; deletionRequestedAt: Date | null },
+  >(
     currentUserId: string,
-    plans: readonly T[],
+    allPlans: readonly T[],
   ): Promise<T[]> {
+    // Q-45 (D124): a plan its owner asked to delete is closed to the others
+    // in the same way.
+    const plans = allPlans.filter(
+      (plan) => plan.ownerUserId === currentUserId || !isPlanDeletionPending(plan),
+    );
     const others = plans.filter((plan) => plan.ownerUserId !== currentUserId);
     if (others.length === 0) return [...plans];
     const waiting = await listDeletionPendingUserIds(

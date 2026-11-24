@@ -33,6 +33,8 @@ class PlanDetailsView extends StatefulWidget {
     this.onChangeDate,
     this.repickStoredDay = false,
     this.onArchive,
+    this.onDelete,
+    this.onRestore,
     this.budgetIncludesMahr,
     this.mahrTotal,
     super.key,
@@ -70,6 +72,12 @@ class PlanDetailsView extends StatefulWidget {
   /// saved with the rest. Without g03 or this, a stored day only reads.
   final bool repickStoredDay;
   final VoidCallback? onArchive;
+
+  /// Q-45 (D124): the owner asks to delete the plan (null for anyone else).
+  final VoidCallback? onDelete;
+
+  /// Q-45 (D124): the owner takes the deletion back, within its 30 days.
+  final VoidCallback? onRestore;
 
   @override
   State<PlanDetailsView> createState() => _PlanDetailsViewState();
@@ -323,7 +331,29 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                       'تنتقل معه، والدفعات تبقى على مواعيدها.',
                 ),
               ],
-              if (widget.onArchive != null) ...[
+              if (plan.deletionScheduledFor case final day?) ...[
+                const SizedBox(height: AarastV3Space.x4),
+                JourneyNote(
+                  key: const ValueKey('plan-details-deletion-pending'),
+                  icon: LucideIcons.trash2,
+                  tone: JourneyNoteTone.warn,
+                  text:
+                      'الخطة بتنحذف كلها يوم ${formatArabicDayMonth(day.toLocal())}. '
+                      'لين ذاك اليوم ${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} كما كانت.',
+                ),
+                if (widget.onRestore != null) ...[
+                  const SizedBox(height: AarastV3Space.x3),
+                  JourneyButton(
+                    key: const ValueKey('plan-details-restore'),
+                    label: context.say('رجّع الخطة', 'رجّعي الخطة'),
+                    icon: LucideIcons.rotateCcw,
+                    expand: true,
+                    onPressed: widget.onRestore,
+                  ),
+                ],
+              ],
+              if (widget.onArchive != null &&
+                  plan.deletionScheduledFor == null) ...[
                 const SizedBox(height: AarastV3Space.x4),
                 Center(
                   child: JourneyTextAction(
@@ -334,6 +364,18 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                     ),
                     color: AarastV3Color.textMuted,
                     onPressed: widget.onArchive,
+                  ),
+                ),
+              ],
+              if (widget.onDelete != null &&
+                  plan.deletionScheduledFor == null) ...[
+                const SizedBox(height: AarastV3Space.x2),
+                Center(
+                  child: JourneyTextAction(
+                    key: const ValueKey('plan-details-delete'),
+                    label: context.say('احذف الخطة', 'احذفي الخطة'),
+                    color: AarastV3Color.danger,
+                    onPressed: widget.onDelete,
                   ),
                 ),
               ],

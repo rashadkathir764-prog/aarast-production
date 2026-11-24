@@ -191,7 +191,7 @@ function allBuiltNotices(): Array<{ label: string; notice: CreateNotificationInp
     }),
     ...[new Date('2027-01-21T00:00:00.000Z'), null].map((confirmedDay) => ({
       label: `deletion/provider/${confirmedDay ? 'booked' : 'request'}`,
-      notice: customerClosedProviderNotification({ quoteRequestId: ids.quote, providerUserId: ids.provider, customerName: 'محمد علي', confirmedDay, at: new Date('2026-11-27T09:00:00.000Z') }),
+      notice: customerClosedProviderNotification({ quoteRequestId: ids.quote, providerUserId: ids.provider, customerName: 'محمد علي', confirmedDay, at: new Date('2026-11-27T09:00:00.000Z'), closed: 'ACCOUNT' }),
     })),
   ];
   return list;

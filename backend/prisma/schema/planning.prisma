@@ -33,6 +33,11 @@ model WeddingPlan {
   importMigrationId       String?
   importPayloadHash       String?
   status                  WeddingPlanStatus        @default(PLANNING)
+  // Q-45 (D124): the owner asked to delete the plan. It is closed to its
+  // members and read-only to him until deletionScheduledFor (30 days on),
+  // when the hourly purge erases it; until then he can take it back.
+  deletionRequestedAt     DateTime?
+  deletionScheduledFor    DateTime?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   owner                   User                     @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
@@ -55,6 +60,7 @@ model WeddingPlan {
 
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
+  @@index([deletionScheduledFor])
 }
 
 // D65: the wedding's events (b12, b13). WEDDING is the main event: its day

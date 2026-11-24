@@ -1148,6 +1148,9 @@ class ApiException implements Exception {
       'INVITE_ALREADY_PENDING' =>
         'الدعوة مرسلة لهذا الرقم من قبل. التذكير يكفي بدل دعوة ثانية',
       'PLAN_ARCHIVED_READ_ONLY' => 'الخطة في الذكريات، ما تنعدل',
+      // Q-45 (D124): the plan waits out its deletion.
+      'PLAN_DELETION_PENDING' =>
+        'الخطة بتنحذف، ما تنعدل. رجّعها من بيانات الخطة أول',
       'VIEWER_CANNOT_EDIT' =>
         '«يشوف بس» ما يعدّل شي. الدور الثاني هو اللي يعدّل',
       // J2-10: the rights changed between opening the sheet and leaving.

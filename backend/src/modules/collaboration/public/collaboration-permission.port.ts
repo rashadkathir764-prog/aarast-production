@@ -85,6 +85,8 @@ export type LivePlanPermission =
   | 'canEditPlan';
 
 export const PLAN_ARCHIVED_READ_ONLY = 'PLAN_ARCHIVED_READ_ONLY';
+/** Q-45 (D124): the plan waits out its deletion; nothing in it changes. */
+export const PLAN_DELETION_PENDING = 'PLAN_DELETION_PENDING';
 export const TASK_PERMISSION_REVOKED = 'TASK_PERMISSION_REVOKED';
 export const TASK_PERMISSION_REVOKED_MESSAGE =
   'لم تعد لديك صلاحية لتنفيذ هذه المهمة';
@@ -112,10 +114,22 @@ export function livePlanAuthorizationWhere(
   };
 }
 
-export function isWeddingPlanWritable(
-  plan: Pick<WeddingPlan, 'status'>,
+/** A plan as the writability rules read it; older reads may lack the deletion. */
+type WritablePlanFields = Pick<WeddingPlan, 'status'> &
+  Partial<Pick<WeddingPlan, 'deletionRequestedAt'>>;
+
+/**
+ * Q-45 (D124): the owner asked to delete the plan. It is closed to everyone
+ * else and read-only to him until it is erased or he takes it back.
+ */
+export function isPlanDeletionPending(
+  plan: Partial<Pick<WeddingPlan, 'deletionRequestedAt'>>,
 ): boolean {
-  return plan.status !== WeddingPlanStatus.ARCHIVED;
+  return Boolean(plan.deletionRequestedAt);
+}
+
+export function isWeddingPlanWritable(plan: WritablePlanFields): boolean {
+  return plan.status !== WeddingPlanStatus.ARCHIVED && !isPlanDeletionPending(plan);
 }
 
 /**
@@ -161,9 +175,13 @@ export function managesMoneyNow(
   return isWeddingPlanWritable(context.plan) && permissions.canManageMoney(context);
 }
 
-export function assertWeddingPlanWritable(
-  plan: Pick<WeddingPlan, 'status'>,
-): void {
+export function assertWeddingPlanWritable(plan: WritablePlanFields): void {
+  if (isPlanDeletionPending(plan)) {
+    throw new ConflictException({
+      code: PLAN_DELETION_PENDING,
+      message: 'الخطة بتنحذف، ما تنعدل. صاحبها يقدر يرجّعها من بيانات الخطة.',
+    });
+  }
   if (!isWeddingPlanWritable(plan)) {
     throw new ConflictException({
       code: PLAN_ARCHIVED_READ_ONLY,

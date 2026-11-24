@@ -3,7 +3,8 @@ import type { NotificationPreference, Prisma } from '@prisma/client';
 export const NOTIFICATIONS_ERASURE_PORT = Symbol('NOTIFICATIONS_ERASURE_PORT');
 
 export interface OwnedNotificationScope {
-  userId: string;
+  /** The account's own notifications; null when only plans are purged. */
+  userId: string | null;
   weddingPlanIds: readonly string[];
   quoteRequestIds: readonly string[];
 }

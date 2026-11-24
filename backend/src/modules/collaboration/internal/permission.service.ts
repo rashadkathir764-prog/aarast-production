@@ -17,6 +17,7 @@ import {
 import {
   assertWeddingPlanWritable,
   CollaborationPermissionPort,
+  isPlanDeletionPending,
   LiveAuthorizationFilter,
   LivePlanInviteLookup,
   LivePlanInviteSeed,
@@ -68,10 +69,11 @@ export class PermissionService implements CollaborationPermissionPort {
 
     const isOwner = plan.ownerUserId === currentUser.id;
     // D63 (w06): while its owner waits out the account's deletion, nobody
-    // else enters the plan.
+    // else enters the plan; Q-45 (D124): nor while the plan waits out its own.
     if (
       !isOwner &&
-      (await listDeletionPendingUserIds(client, [plan.ownerUserId])).size > 0
+      (isPlanDeletionPending(plan) ||
+        (await listDeletionPendingUserIds(client, [plan.ownerUserId])).size > 0)
     ) {
       throw new NotFoundException("Wedding plan not found");
     }
@@ -687,8 +689,9 @@ export class PermissionService implements CollaborationPermissionPort {
       actor.status !== UserStatus.ACTIVE ||
       !owner ||
       // D63 (w06): a plan whose owner waits out the account's deletion is
-      // closed to everyone else.
+      // closed to everyone else; Q-45 (D124): so is a plan waiting out its own.
       (owner.deletionPending && owner.id !== actor.id) ||
+      (isPlanDeletionPending(seed) && owner.id !== actor.id) ||
       !allAdditionalUsersExist
     ) {
       throw new NotFoundException("Wedding plan not found");

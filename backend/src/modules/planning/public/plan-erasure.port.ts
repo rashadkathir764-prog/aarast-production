@@ -24,4 +24,22 @@ export interface PlanErasurePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<Array<{ weddingPlanId: string; ownerUserId: string }>>;
+  /**
+   * Q-45 (D124): the plans whose owner asked to delete them and whose 30
+   * days are over at `now`, the oldest due first, at most `take`.
+   */
+  listDuePlanDeletions(
+    client: Prisma.TransactionClient,
+    now: Date,
+    take: number,
+  ): Promise<Array<{ id: string; ownerUserId: string }>>;
+  /**
+   * Q-45 (D124): locks (`FOR UPDATE`) a plan still due for deletion at
+   * `now`; false when it is gone or was taken back.
+   */
+  lockDuePlanForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    now: Date,
+  ): Promise<boolean>;
 }

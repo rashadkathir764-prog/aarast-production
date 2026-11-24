@@ -779,8 +779,10 @@ export class NotificationsService implements NotificationsPort {
           tx,
           (await this.plans.getPlans(tx, seedPlanIds)).filter(
             (plan) =>
-              plan.status === WeddingPlanStatus.PLANNING ||
-              plan.status === WeddingPlanStatus.ARCHIVED,
+              (plan.status === WeddingPlanStatus.PLANNING ||
+                plan.status === WeddingPlanStatus.ARCHIVED) &&
+              // Q-45 (D124): a plan waiting out its deletion reminds no one.
+              plan.deletionRequestedAt === null,
           ),
         );
         const lockedPlans = livePlans

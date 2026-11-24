@@ -379,17 +379,20 @@ void main() {
   Future<List<SingleChildWidget>> planProviders({
     List<AccountContext>? contexts,
     DateTime? weddingDate,
+    WeddingPlansProvider? weddingPlans,
   }) async {
     final a = await _auth();
-    final plans = _Plans([
-      _plan(date: weddingDate),
-      _plan(
-        id: 'plan-old',
-        title: 'خطة تجربة',
-        status: 'ARCHIVED',
-        date: DateTime(2026, 5, 2),
-      ),
-    ]);
+    final plans =
+        weddingPlans ??
+        _Plans([
+          _plan(date: weddingDate),
+          _plan(
+            id: 'plan-old',
+            title: 'خطة تجربة',
+            status: 'ARCHIVED',
+            date: DateTime(2026, 5, 2),
+          ),
+        ]);
     final accountContexts = AccountContextController(
       contextsApi: _Contexts(
         contexts ??
@@ -478,6 +481,68 @@ void main() {
     expect(find.text('تحط الخطة في الذكريات؟'), findsOneWidget);
     expect(find.textContaining('من «خططك»'), findsOneWidget);
     expect(find.textContaining('تفتحها'), findsNothing);
+  });
+
+  // Q-45 (D124): deleting a plan has no way back after 30 days, so it is
+  // asked twice in the reader's words, and the 30 days can be taken back
+  // from the same screen.
+  testWidgets('a15b plan deletion is asked twice and taken back', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 2, 1400 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final plans = _DeletingPlans([_plan()]);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: await planProviders(weddingPlans: plans),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          locale: const Locale('ar'),
+          supportedLocales: const [Locale('ar')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          home: const PlanCenterScreen(weddingPlanId: _planId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> tapKey(String key) async {
+      final target = find.byKey(ValueKey(key));
+      await tester.ensureVisible(target);
+      await tester.pumpAndSettle();
+      await tester.tap(target);
+      await tester.pumpAndSettle();
+    }
+
+    // The first answer is not the last: «لا، خلّها» keeps the plan.
+    await tapKey('plan-details-delete');
+    expect(find.text('تحذف الخطة؟'), findsOneWidget);
+    expect(find.textContaining('بعد 30 يوم'), findsOneWidget);
+    await tapKey('plan-delete-next');
+    expect(find.text('متأكد؟'), findsOneWidget);
+    await tapKey('plan-delete-keep');
+    expect(plans.asked, isEmpty);
+
+    await tapKey('plan-details-delete');
+    await tapKey('plan-delete-next');
+    await tapKey('plan-delete-confirm');
+    expect(plans.asked, ['delete']);
+    expect(
+      find.byKey(const ValueKey('plan-details-deletion-pending')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('plan-details-delete')), findsNothing);
+
+    await tapKey('plan-details-restore');
+    expect(plans.asked, ['delete', 'restore']);
+    expect(
+      find.byKey(const ValueKey('plan-details-deletion-pending')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('plan-details-delete')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
   });
 
   Future<List<SingleChildWidget>> sharingProviders(_SharingApi api) async {
@@ -678,6 +743,43 @@ class _Plans extends WeddingPlansProvider {
   Future<void> loadActiveWeddingPlan() async {}
   @override
   Future<void> loadWeddingPlan(String id) async {}
+}
+
+/// Q-45 (D124): what the plan screen asked of the server, and the plan as
+/// the server answers it.
+class _DeletingPlans extends _Plans {
+  _DeletingPlans(super.list);
+  final asked = <String>[];
+  WeddingPlan? _answered;
+
+  @override
+  WeddingPlan? get selectedPlan => _answered ?? super.selectedPlan;
+
+  @override
+  Future<WeddingPlan?> setPlanDeletion(
+    String id, {
+    required bool restore,
+  }) async {
+    asked.add(restore ? 'restore' : 'delete');
+    final plan = super.selectedPlan!;
+    _answered = WeddingPlan(
+      id: plan.id,
+      ownerUserId: plan.ownerUserId,
+      title: plan.title,
+      currency: plan.currency,
+      status: plan.status,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+      city: plan.city,
+      location: plan.location,
+      weddingDate: plan.weddingDate,
+      estimatedBudget: plan.estimatedBudget,
+      persona: plan.persona,
+      deletionScheduledFor: restore ? null : DateTime.utc(2026, 12, 24),
+    );
+    notifyListeners();
+    return _answered;
+  }
 }
 
 class _Finance extends FinanceProvider {

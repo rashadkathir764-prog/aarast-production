@@ -294,6 +294,40 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// Q-45 (D124): asks to delete the plan, or (`restore`) takes it back.
+  Future<WeddingPlan?> setPlanDeletion(
+    String id, {
+    required bool restore,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final plan = restore
+          ? await _api.cancelPlanDeletion(id)
+          : await _api.requestPlanDeletion(id);
+      _selectedPlan = plan;
+      _plans = [for (final item in _plans) item.id == id ? plan : item];
+      if (_activePlan?.id == id) {
+        _activePlan = ActiveWeddingPlan.fromWeddingPlan(plan);
+      }
+      return plan;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = restore
+          ? 'ما قدرنا نرجّع الخطة.'
+          : 'ما قدرنا نحذف الخطة.';
+      return null;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     _noticeMessage = null;

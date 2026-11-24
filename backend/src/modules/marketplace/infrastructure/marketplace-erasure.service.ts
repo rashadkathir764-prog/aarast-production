@@ -91,6 +91,7 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     scope: { userId: string; weddingPlanIds: readonly string[] },
     customerName: string | null,
     closedAt: Date,
+    closed: 'ACCOUNT' | 'PLAN',
   ): Promise<CreateNotificationInput[]> {
     const today = bookingToday(closedAt);
     const open = await tx.quoteRequest.findMany({
@@ -135,6 +136,7 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
             ? quote.booking.eventDate
             : null,
         at: closedAt,
+        closed,
       }),
     );
   }

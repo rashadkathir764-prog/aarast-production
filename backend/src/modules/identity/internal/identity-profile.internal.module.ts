@@ -4,6 +4,8 @@ import { UsersService } from "./profile/users.service";
 import { AccountDeletionService } from "./profile/account-deletion.service";
 import { AccountDeletionPurgeScheduler } from "./profile/account-deletion-purge.scheduler";
 import { DataExportService } from "./profile/data-export.service";
+import { PlanDeletionPurgeService } from "./profile/plan-deletion-purge.service";
+import { PlanDeletionPurgeScheduler } from "./profile/plan-deletion-purge.scheduler";
 import { PrismaModule } from "../../../platform/database/prisma.module";
 import { CollaborationErasurePublicModule } from "../../collaboration/public/collaboration-erasure-public.module";
 import { CollaborationPermissionPublicModule } from "../../collaboration/public/collaboration-permission-public.module";
@@ -52,6 +54,9 @@ export const ACCOUNT_DELETION_ADMIN_IMPLEMENTATION = Symbol(
     AccountDeletionService,
     AccountDeletionPurgeScheduler,
     DataExportService,
+    // Q-45 (D124): the plans deleted by their owners, erased after 30 days.
+    PlanDeletionPurgeService,
+    PlanDeletionPurgeScheduler,
     {
       provide: ACCOUNT_DELETION_ADMIN_IMPLEMENTATION,
       useExisting: AccountDeletionService,

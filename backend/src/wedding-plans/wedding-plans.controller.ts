@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -13,11 +14,15 @@ import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { CreateWeddingPlanDto } from "./dto/create-wedding-plan.dto";
 import { UpdateWeddingPlanDto } from "./dto/update-wedding-plan.dto";
 import { WeddingPlansService } from "./wedding-plans.service";
+import { PlanDeletionService } from "./plan-deletion.service";
 
 @Controller("api/v1/wedding-plans")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlansController {
-  constructor(private readonly weddingPlansService: WeddingPlansService) {}
+  constructor(
+    private readonly weddingPlansService: WeddingPlansService,
+    private readonly planDeletion: PlanDeletionService,
+  ) {}
 
   @Post()
   create(
@@ -73,5 +78,23 @@ export class WeddingPlansController {
     @Param("id") id: string,
   ) {
     return this.weddingPlansService.archive(currentUser, id);
+  }
+
+  /** Q-45 (D124): the owner deletes the plan; it is erased after 30 days. */
+  @Post(":id/deletion")
+  requestDeletion(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+  ) {
+    return this.planDeletion.request(currentUser, id);
+  }
+
+  /** Q-45 (D124): within the 30 days, the owner takes the deletion back. */
+  @Delete(":id/deletion")
+  cancelDeletion(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+  ) {
+    return this.planDeletion.cancel(currentUser, id);
   }
 }

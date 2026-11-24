@@ -115,6 +115,27 @@ export function findAccessiblePlanningWeddingPlan(
   });
 }
 
+/** Q-45 (D124): the owner asks to delete the plan, erased at `scheduledFor`. */
+export function markPlanDeletionRequested(
+  tx: Prisma.TransactionClient,
+  id: string,
+  requestedAt: Date,
+  scheduledFor: Date,
+) {
+  return tx.weddingPlan.update({
+    where: { id },
+    data: { deletionRequestedAt: requestedAt, deletionScheduledFor: scheduledFor },
+  });
+}
+
+/** Q-45 (D124): the request is taken back; the plan is as it was. */
+export function clearPlanDeletionRequest(tx: Prisma.TransactionClient, id: string) {
+  return tx.weddingPlan.update({
+    where: { id },
+    data: { deletionRequestedAt: null, deletionScheduledFor: null },
+  });
+}
+
 export function archiveWeddingPlan(tx: Prisma.TransactionClient, id: string) {
   return tx.weddingPlan.update({
     where: { id },

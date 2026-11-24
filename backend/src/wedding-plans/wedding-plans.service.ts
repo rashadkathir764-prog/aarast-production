@@ -125,6 +125,11 @@ export interface WeddingPlanResponse {
   persona: WeddingPersona | null;
   onboardingCompletedAt: Date | null;
   status: WeddingPlanStatus;
+  /**
+   * Q-45 (D124): the day the plan is erased, its owner having asked to
+   * delete it; null for a plan that stays. Only its owner reads such a plan.
+   */
+  deletionScheduledFor: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1432,6 +1437,7 @@ export class WeddingPlansService {
       persona: plan.persona,
       onboardingCompletedAt: plan.onboardingCompletedAt,
       status: plan.status,
+      deletionScheduledFor: plan.deletionScheduledFor,
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
     };

@@ -18,6 +18,7 @@ class WeddingPlan {
     this.onboardingPath,
     this.persona,
     this.budgetIncludesMahr = false,
+    this.deletionScheduledFor,
   });
 
   factory WeddingPlan.fromJson(Map<String, dynamic> json) {
@@ -38,6 +39,7 @@ class WeddingPlan {
       status: json['status']?.toString() ?? 'PLANNING',
       createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
       updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      deletionScheduledFor: _dateTimeOrNull(json['deletionScheduledFor']),
     );
   }
 
@@ -60,6 +62,10 @@ class WeddingPlan {
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Q-45 (D124): the owner asked to delete the plan; it is erased on this
+  /// day unless he takes it back. Null for a plan that stays.
+  final DateTime? deletionScheduledFor;
 
   bool get hasBudget =>
       estimatedBudget != null && estimatedBudget!.trim().isNotEmpty;

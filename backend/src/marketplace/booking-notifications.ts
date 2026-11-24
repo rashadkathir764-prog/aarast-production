@@ -241,6 +241,8 @@ export interface CustomerClosedArgs {
   /** The booked day when the request had a confirmed booking. */
   confirmedDay: Date | null;
   at: Date;
+  /** What went: the customer's account (D63), or only the plan (Q-45, D124). */
+  closed: "ACCOUNT" | "PLAN";
 }
 
 /**
@@ -258,13 +260,15 @@ export function customerClosedProviderNotification(
     weddingPlanId: null,
     type: NotificationType.BOOKING_UPDATED,
     priority: NotificationPriority.HIGH,
-    title: `${who} حذف حسابه`,
+    title: args.closed === "PLAN" ? `${who} حذف خطة العرس` : `${who} حذف حسابه`,
     body: args.confirmedDay
       ? gendered(
           `حجز ${weekdayDayMonthWords(args.confirmedDay)} انلغى، واليوم رجع لك فاضي.`,
           `حجز ${weekdayDayMonthWords(args.confirmedDay)} انلغى، واليوم رجع لكِ فاضي.`,
         )
-      : "طلبه انتهى مع حسابه.",
+      : args.closed === "PLAN"
+        ? "طلبه انتهى مع الخطة."
+        : "طلبه انتهى مع حسابه.",
     entityType: "customer_closed",
     entityId: null,
     routeTarget: noticeRoutes.providerRequests(),

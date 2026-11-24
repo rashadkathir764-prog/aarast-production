@@ -201,4 +201,91 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     await context.read<AccountContextController?>()?.refresh();
     router.go(AppRouter.home);
   }
+
+  /// Q-45 (D124): deleting a plan has no way back after its 30 days, so it
+  /// is asked twice: what goes and when, then the last word.
+  Future<void> _confirmDelete(WeddingPlan plan) async {
+    final goOn = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: context.say('تحذف الخطة؟', 'تحذفين الخطة؟'),
+        subtitle:
+            '«${plan.title}» تنقفل من الحين عندك وعند المشاركين، وبعد 30 يوم '
+            'تنحذف كلها: الضيوف والدعوات والمهام والمواعيد والمال والمحادثات '
+            'والتنبيهات. لين ذاك اليوم '
+            '${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} من هنا.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('plan-delete-next'),
+            label: context.say('كمّل', 'كمّلي'),
+            icon: LucideIcons.trash2,
+            background: AarastV3Color.danger,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton(
+            label: 'رجوع',
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.ink,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, false),
+          ),
+        ],
+      ),
+    );
+    if (goOn != true || !mounted) return;
+    final confirmed = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: context.say('متأكد؟', 'متأكدة؟'),
+        subtitle: 'بعد 30 يوم ما نقدر نرجّع منها شي أبدًا.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('plan-delete-confirm'),
+            label: context.say('إيوه، احذفها', 'إيوه، احذفيها'),
+            background: AarastV3Color.danger,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton(
+            key: const ValueKey('plan-delete-keep'),
+            label: context.say('لا، خلّها', 'لا، خلّيها'),
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.ink,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _setDeletion(plan, restore: false);
+  }
+
+  /// Q-45 (D124): asks for the deletion, or takes it back, then reads the
+  /// account's paths again (the plan closes to its members, or opens).
+  Future<void> _setDeletion(WeddingPlan plan, {required bool restore}) async {
+    final provider = context.read<WeddingPlansProvider>();
+    final updated = await provider.setPlanDeletion(plan.id, restore: restore);
+    if (!mounted) return;
+    if (updated == null) {
+      _showError(
+        provider.errorMessage ??
+            (restore ? 'ما قدرنا نرجّع الخطة.' : 'ما قدرنا نحذف الخطة.'),
+      );
+      return;
+    }
+    await context.read<AccountContextController?>()?.refresh();
+    if (!mounted) return;
+    _showSuccess(
+      restore
+          ? 'رجعت الخطة كما كانت.'
+          : 'الخطة بتنحذف بعد 30 يوم، و${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} قبلها.',
+    );
+    await _load();
+  }
 }

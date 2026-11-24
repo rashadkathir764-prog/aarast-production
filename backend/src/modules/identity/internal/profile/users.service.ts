@@ -28,7 +28,10 @@ import {
   MediaStoragePort,
 } from "../../../media/public/media-storage.port";
 import { enqueueUserSessionsRevoked } from "../../../../platform/outbox/realtime-revocation";
-import { purgeOutboxEventsForAggregatesInTransaction } from "../../../../platform/outbox/outbox-purge";
+import {
+  type ErasureGraphPorts,
+  purgeErasedGraphInTransaction,
+} from "./erasure-graph";
 import {
   deleteApplicationIdempotencyKeysForUser,
   deleteIdempotencyKeysForUser,
@@ -415,6 +418,7 @@ export class UsersService {
             { userId, weddingPlanIds: planIds },
             account.name,
             now,
+            "ACCOUNT",
           )),
           ...(await this.permissionService.listPlanMembers(tx, planIds)).map(
             (member) =>
@@ -548,98 +552,14 @@ export class UsersService {
           ),
         );
 
-        const attachmentIds =
-          await this.messagingErasure.listAttachmentIdsForConversations(
-            tx,
-            conversationIds,
-          );
-        await this.mediaStorage.scheduleChatAttachmentDeletion(
-          attachmentIds,
-          tx,
-        );
-        // Receipts (V1 checklist 4.4): those of the erased plans and of the
-        // account's private costs go with their files. RA-BE-178 (D112): one
-        // it uploaded on another person's cost stays, from «عضو سابق».
-        const receiptIds = await this.finance.listErasedReceiptIdsInTransaction(
-          tx,
-          planIds,
+        // The one purge of what goes, shared with the plan deletion (Q-45).
+        await purgeErasedGraphInTransaction(this.erasureGraphPorts(), tx, {
           userId,
-        );
-        await this.mediaStorage.scheduleCostReceiptDeletion(receiptIds, tx);
-        await this.finance.deleteReceiptsInTransaction(tx, receiptIds);
-        await this.finance.detachReceiptUploaderInTransaction(tx, userId);
-        await this.mediaStorage.scheduleInvitationCardDeletion(
-          await this.guests.listPlanInvitationCardIds(tx, planIds),
-          tx,
-        );
-
-        const notificationIds =
-          await this.notificationsErasure.listOwnedNotificationIds(tx, {
-            userId,
-            weddingPlanIds: planIds,
-            quoteRequestIds,
-          });
-        await purgeOutboxEventsForAggregatesInTransaction(tx, {
-          notificationIds,
+          weddingPlanIds: planIds,
           conversationIds,
-        });
-        await this.notificationsErasure.deleteNotificationsInTransaction(
-          tx,
-          notificationIds,
-        );
-
-        // QuoteRequest.conversationId is Restrict by design so ordinary quote
-        // removal can never erase a shared thread. Account purge is the one
-        // explicit path that removes all requests in owned contexts first,
-        // then removes only those contexts.
-        await this.marketplaceErasure.deleteQuoteRequestsInTransaction(
-          tx,
           quoteRequestIds,
-        );
-        await this.messagingErasure.deleteConversationsInTransaction(
-          tx,
-          conversationIds,
-        );
-        // V1 checklist 4.10: no one else ever saw the account's private costs
-        // and tasks; they leave with it (their receipts went above).
-        await this.finance.purgePrivateCostsInTransaction(tx, userId);
-        await this.tasks.deletePrivateTasksInTransaction(tx, userId);
-        const tenureEndedAt = now;
-        if (planIds.length > 0) {
-          // Contribution history is retained independently from the live plan.
-          // Close every active tenure before the plan/member graph disappears;
-          // the append-only events and detached history scope remain intact.
-          await this.collaborationErasure.markPlansDeletedInTransaction(
-            tx,
-            planIds,
-            tenureEndedAt,
-          );
-        }
-        // A contributor deleting the central account closes their tenures in
-        // plans owned by other users without deleting the plan's audit trail.
-        await this.collaborationErasure.closeActorTenuresInTransaction(
-          tx,
-          userId,
-          tenureEndedAt,
-        );
-        if (planIds.length > 0) {
-          await this.finance.purgePlanLedgerInTransaction(tx, planIds);
-          await this.tasks.deletePlanTasksInTransaction(tx, planIds); // cascades checklist items
-          await this.guests.deletePlanGuestsInTransaction(tx, planIds);
-          await this.marketplaceErasure.deletePlanProviderLinksInTransaction(
-            tx,
-            planIds,
-          );
-          await this.collaborationErasure.deletePlanMembersAndInvitesInTransaction(
-            tx,
-            planIds,
-          );
-          await this.finance.deletePlanBudgetCategoriesInTransaction(
-            tx,
-            planIds,
-          );
-          await this.planErasure.deletePlansInTransaction(tx, planIds);
-        }
+          erasedAt: now,
+        });
 
         // RA-BE-178: his listings stay as «مزود محذوف», emptied of their own
         // data, so their customers keep their conversations (closed),
@@ -703,6 +623,21 @@ export class UsersService {
     // must be severed immediately instead of surviving until token expiry.
     if (outcome === "ERASED") this.realtime?.disconnectUser(userId);
     return outcome;
+  }
+
+  /** The owners' erasure steps, for the shared purge of what goes. */
+  erasureGraphPorts(): ErasureGraphPorts {
+    return {
+      mediaStorage: this.mediaStorage,
+      planErasure: this.planErasure,
+      marketplaceErasure: this.marketplaceErasure,
+      messagingErasure: this.messagingErasure,
+      notificationsErasure: this.notificationsErasure,
+      collaborationErasure: this.collaborationErasure,
+      finance: this.finance,
+      tasks: this.tasks,
+      guests: this.guests,
+    };
   }
 
   private async eraseAdministratorApplicationIdentity(

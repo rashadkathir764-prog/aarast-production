@@ -138,6 +138,7 @@ class _StagePath extends StatelessWidget {
 class _TodayDue extends StatelessWidget {
   const _TodayDue({
     required this.payment,
+    required this.paymentDays,
     required this.tasks,
     required this.currency,
     required this.amountsHidden,
@@ -146,6 +147,9 @@ class _TodayDue extends StatelessWidget {
   });
 
   final DashboardNextPaymentSchedule? payment;
+
+  /// Days from today to [payment]'s day in Sana'a: 0 today, negative late.
+  final int? paymentDays;
   final int tasks;
   final String currency;
   final bool amountsHidden;
@@ -164,12 +168,17 @@ class _TodayDue extends StatelessWidget {
             icon: LucideIcons.wallet,
             color: AarastV3Color.brandAccentStrong,
             soft: AarastV3Color.brandAccentSoft,
-            title: 'دفعة اليوم',
+            title: _paymentWhen(paymentDays ?? 0),
             subtitle: [
               if (due.title.trim().isNotEmpty) due.title.trim(),
+              // One payment, written as the next step writes it: whole
+              // unless shortening loses nothing.
               amountsHidden
                   ? '••••'
-                  : _money(dashboardAmount(due.amount) ?? 0, currency),
+                  : sumSafeMoneyParts(
+                      dashboardAmount(due.amount) ?? 0,
+                      currencyCode: currency,
+                    ).plainText,
             ].join(' · '),
             onTap: onOpenPayment,
           ),
@@ -192,4 +201,17 @@ class _TodayDue extends StatelessWidget {
       ],
     );
   }
+}
+
+/// «دفعة اليوم», «دفعة بكرة», «دفعة بعد 3 أيام», «دفعة متأخرة 3 أيام».
+String _paymentWhen(int days) {
+  String count(int n) =>
+      arabicCount(n, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم');
+  if (days < 0) return 'دفعة متأخرة ${count(-days)}';
+  return switch (days) {
+    0 => 'دفعة اليوم',
+    1 => 'دفعة بكرة',
+    2 => 'دفعة بعد يومين',
+    _ => 'دفعة بعد ${count(days)}',
+  };
 }

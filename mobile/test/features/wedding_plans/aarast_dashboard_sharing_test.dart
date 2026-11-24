@@ -214,6 +214,100 @@ void main() {
     expect(find.byKey(const ValueKey('aarast-home-today')), findsNothing);
   });
 
+  // RA-MO-326: the last week hid the money. Only a payment whose day is
+  // today showed, so a payment already late, or one a day or two ahead with
+  // the wedding after it, was nowhere on the home (the next step was an item
+  // «قارن العروض» and the day's line asked for today's date).
+  testWidgets('RA-MO-326: on the wedding day a late payment shows, said late', (
+    tester,
+  ) async {
+    final day = DateTime(2026, 7, 7);
+    final taps = await _pumpWeddingDays(
+      tester,
+      now: DateTime(2026, 7, 7, 13),
+      summary: _summary(
+        weddingDate: day,
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 's1',
+          weddingCostId: 'c1',
+          title: 'قاعة سبأ',
+          amount: '1250000',
+          status: 'PENDING',
+          dueDate: DateTime(2026, 7, 4),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('aarast-home-today')), findsOneWidget);
+    expect(find.text('دفعة متأخرة 3 أيام'), findsOneWidget);
+    expect(find.text('دفعة اليوم'), findsNothing);
+    // One payment, written whole (RA-MO-334), and it opens its recording.
+    expect(find.textContaining('1,250,000'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('aarast-home-today-payment')));
+    expect(taps.payments(), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('RA-MO-326: in the week a payment due before the wedding shows '
+      'beside an item as the next step', (tester) async {
+    final taps = await _pumpWeddingDays(
+      tester,
+      now: DateTime(2026, 7, 4, 10),
+      summary: _summary(
+        weddingDate: DateTime(2026, 7, 7),
+        importantItems: const [
+          DashboardImportantItem(
+            id: 'i1',
+            type: 'QUOTE_RECEIVED',
+            title: 'قارن العروض',
+            subtitle: 'وصلك عرض',
+            icon: 'inbox',
+            tone: 'info',
+            actionLabel: 'شوف العروض',
+            data: {},
+          ),
+        ],
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 's1',
+          weddingCostId: 'c1',
+          title: 'قاعة سبأ',
+          amount: '500000',
+          status: 'PENDING',
+          dueDate: DateTime(2026, 7, 6),
+        ),
+      ),
+    );
+
+    expect(find.text('قارن العروض'), findsOneWidget);
+    expect(find.text('دفعة بعد يومين'), findsOneWidget);
+    expect(find.textContaining('قاعة سبأ'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('aarast-home-today-payment')));
+    expect(taps.payments(), 1);
+  });
+
+  testWidgets('RA-MO-326: a payment named as the next step is not said twice', (
+    tester,
+  ) async {
+    await _pumpWeddingDays(
+      tester,
+      now: DateTime(2026, 7, 4, 10),
+      summary: _summary(
+        weddingDate: DateTime(2026, 7, 7),
+        nextPayment: DashboardNextPaymentSchedule(
+          id: 's1',
+          weddingCostId: 'c1',
+          title: 'قاعة سبأ',
+          amount: '500000',
+          status: 'PENDING',
+          dueDate: DateTime(2026, 7, 6),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('aarast-home-today-payment')), findsNothing);
+    expect(find.textContaining('قاعة سبأ'), findsOneWidget);
+  });
+
   testWidgets('the wedding day home is the day\'s programme (b05, D65)', (
     tester,
   ) async {
@@ -345,6 +439,7 @@ DashboardSummary _summary({
   int pendingInvites = 2,
   int todayTasks = 0,
   DashboardNextPaymentSchedule? nextPayment,
+  List<DashboardImportantItem> importantItems = const [],
 }) {
   return DashboardSummary(
     planId: 'plan-1',
@@ -374,7 +469,7 @@ DashboardSummary _summary({
     pendingInvites: pendingInvites,
     currentUserRole: 'OWNER',
     unreadNotificationsCount: 0,
-    importantItems: const [],
+    importantItems: importantItems,
     planProviders: const [],
     importantNotifications: const [],
     permissions: const DashboardPermissionSummary(

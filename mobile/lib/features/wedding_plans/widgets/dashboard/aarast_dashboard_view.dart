@@ -178,15 +178,21 @@ class AarastDashboardView extends StatelessWidget {
         : null;
     // b07: after the day the home is the debt, the next repayment and the
     // providers to rate; the planning cards are done with.
-    // D112 (Q-20): in the wedding's week and on its day, what is due today.
+    // D112 (Q-20): in the wedding's week and on its day, what is due. RA-MO-326:
+    // not today's only. A payment already late, or one that falls before the
+    // wedding, is the money of the week: the line said none of it while the
+    // next step was an item. One due after the day is not this week's.
     // The payment is left out where the next step already names it.
     final dueSoon = window != null && summary.canViewMoney
         ? summary.nextPaymentScheduleDue
         : null;
-    final payToday =
+    final dueDays = dueSoon == null
+        ? null
+        : daysUntilPlanDay(dueSoon.dueDate, now: now ?? appNow());
+    final payDue =
         dueSoon != null &&
-            daysUntilPlanDay(dueSoon.dueDate, now: now ?? appNow()) == 0 &&
-            !(window! > 0 && identical(payment, dueSoon))
+            dueDays! <= window! &&
+            !(window > 0 && identical(payment, dueSoon))
         ? dueSoon
         : null;
     final tasksToday = window != null ? summary.todayTasks : 0;
@@ -261,16 +267,17 @@ class AarastDashboardView extends StatelessWidget {
                       showHijri: showHijri,
                     ),
                   if (window != null) ...[
-                    if (payToday != null || tasksToday > 0) ...[
+                    if (payDue != null || tasksToday > 0) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _TodayDue(
-                        payment: payToday,
+                        payment: payDue,
+                        paymentDays: dueDays,
                         tasks: tasksToday,
                         currency: summary.currency,
                         amountsHidden: amountsHidden,
-                        onOpenPayment: payToday == null || onOpenPayment == null
+                        onOpenPayment: payDue == null || onOpenPayment == null
                             ? null
-                            : () => onOpenPayment!(payToday),
+                            : () => onOpenPayment!(payDue),
                         onOpenTasks: onOpenTasks,
                       ),
                     ],

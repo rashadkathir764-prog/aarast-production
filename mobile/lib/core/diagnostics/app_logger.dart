@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/app_clock.dart';
 
 enum AppLogLevel {
   trace,
@@ -325,7 +326,7 @@ final class AppLogger {
     DateTime Function()? clock,
   }) : _redactor = redactor,
        _sinks = List.unmodifiable(sinks),
-       _clock = clock ?? DateTime.now;
+       _clock = clock ?? appNow;
 
   final LogRedactor _redactor;
   final List<AppLogSink> _sinks;
@@ -501,7 +502,7 @@ final class MemoryRingBufferSink implements AppLogSink {
     this.maxBytes = 256 * 1024,
     this.maxAge = const Duration(minutes: 15),
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now {
+  }) : _clock = clock ?? appNow {
     if (maxEvents <= 0) {
       throw ArgumentError.value(maxEvents, 'maxEvents', 'must be positive');
     }

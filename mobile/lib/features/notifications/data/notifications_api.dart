@@ -1,6 +1,7 @@
 ﻿import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/utils/app_clock.dart';
 import '../models/aarast_notification.dart';
 
 /// The account's notices.
@@ -64,7 +65,7 @@ class NotificationsApi {
       endpoint: '/api/v1/notifications/$id/read',
       payload: const {},
       metaKey: 'notification:$id',
-      localJson: {'id': id, 'readAt': DateTime.now().toIso8601String()},
+      localJson: {'id': id, 'readAt': appNow().toIso8601String()},
       localEntityId: id,
       replacePendingForEntity: true,
     );
@@ -108,7 +109,7 @@ class NotificationsApi {
       endpoint: '/api/v1/notifications/$id/archive',
       payload: const {},
       metaKey: 'notification:$id',
-      localJson: {'id': id, 'archivedAt': DateTime.now().toIso8601String()},
+      localJson: {'id': id, 'archivedAt': appNow().toIso8601String()},
       localEntityId: id,
       replacePendingForEntity: true,
     );

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import '../utils/app_clock.dart';
 
 enum DiagnosticReportSendResult { sent, empty, failed }
 
@@ -33,7 +34,7 @@ final class DiagnosticReportSender implements DiagnosticReportService {
   }) : _ringBuffer = ringBuffer,
        _redactor = redactor,
        _transport = transport,
-       _clock = clock ?? DateTime.now;
+       _clock = clock ?? appNow;
 
   static const int schemaVersion = 1;
   static const String attachmentFileName = 'aarast-diagnostic-report.json';

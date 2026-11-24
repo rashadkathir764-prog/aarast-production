@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import '../network/api_client.dart';
+import '../utils/app_clock.dart';
 import 'cache_policy.dart';
 import 'local_database_contract.dart' show keptListMetaKey;
 import 'offline_sync_service.dart';
@@ -318,7 +319,7 @@ class OfflineWrites {
 
   /// An id for a row made on the phone before the server named it.
   static String localId(String entity) =>
-      'queued-$entity-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(1 << 20)}';
+      'queued-$entity-${appNow().microsecondsSinceEpoch}-${_random.nextInt(1 << 20)}';
 
   static bool isLocalId(String id) => id.startsWith('queued-');
 

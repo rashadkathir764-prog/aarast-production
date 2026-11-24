@@ -1,4 +1,6 @@
-﻿class AarastNotification {
+﻿import '../../../core/utils/app_clock.dart';
+
+class AarastNotification {
   const AarastNotification({
     required this.id,
     required this.userId,
@@ -34,8 +36,8 @@
           : null,
       readAt: _dateTimeOrNull(json['readAt']),
       archivedAt: _dateTimeOrNull(json['archivedAt']),
-      createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      createdAt: _dateTimeOrNull(json['createdAt']) ?? appNow(),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? appNow(),
     );
   }
 

@@ -1,4 +1,5 @@
 ﻿import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/app_clock.dart';
 import 'task_checklist_item.dart';
 
 class WeddingTask {
@@ -248,5 +249,5 @@ DateTime? _dateTimeOrNull(Object? value) {
 }
 
 DateTime _dateTimeOrNow(Object? value) {
-  return _dateTimeOrNull(value) ?? DateTime.now();
+  return _dateTimeOrNull(value) ?? appNow();
 }

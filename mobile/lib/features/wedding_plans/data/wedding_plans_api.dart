@@ -8,6 +8,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/active_wedding_plan.dart';
 import '../models/dashboard_summary.dart';
@@ -216,7 +217,7 @@ class WeddingPlansApi {
       return WeddingPlan.fromJson(json);
     }
     final offline = _offline!;
-    final now = DateTime.now();
+    final now = appNow();
     final localId = 'local-plan-${now.microsecondsSinceEpoch}';
     final localJson = {
       'id': localId,
@@ -303,7 +304,7 @@ class WeddingPlansApi {
     final localJson = {
       ...cached,
       ...data,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }..remove('moveOpenTasks');
     await offline.database.saveCachedItem(
       table: OfflineTables.cachedWeddingPlans,

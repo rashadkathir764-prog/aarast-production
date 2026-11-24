@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/app_clock.dart';
 
 /// G38: a text message written with no network, kept on this phone until it
 /// reaches the server. Each keeps the request id it was first sent with, so
@@ -23,8 +24,7 @@ class ChatOutboxMessage {
         body: json['body'].toString(),
         clientRequestId: json['clientRequestId'].toString(),
         createdAt:
-            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
-            DateTime.now(),
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? appNow(),
         refusedReason: json['refusedReason']?.toString(),
       );
 

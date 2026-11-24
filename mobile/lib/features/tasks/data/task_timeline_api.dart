@@ -7,6 +7,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/text_limits.dart';
 import '../models/task_checklist_item.dart';
@@ -249,7 +250,7 @@ class TaskTimelineApi {
     );
     if (json == null) {
       final offline = _offline!;
-      final now = DateTime.now();
+      final now = appNow();
       final localId = _nextLocalTaskId(now);
       final localJson = {
         'id': localId,
@@ -440,7 +441,7 @@ class TaskTimelineApi {
     final localJson = {
       ...cached,
       ...data,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     };
     await offline.database.saveCachedItem(
       table: OfflineTables.cachedTasks,
@@ -627,7 +628,7 @@ class TaskTimelineApi {
     required String weddingPlanId,
     required Map<String, dynamic> payload,
   }) async {
-    final now = DateTime.now();
+    final now = appNow();
     final localId = _nextLocalTaskId(now);
     final localJson = {
       'id': localId,
@@ -801,7 +802,7 @@ class TaskTimelineApi {
       table: OfflineTables.cachedTasks,
       id: id,
     );
-    final now = DateTime.now();
+    final now = appNow();
     final localJson = {
       ...?cached,
       ...data,

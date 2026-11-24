@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/utils/app_clock.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteOfferLine;
 
 /// An offer he sent with no network (p43), kept on this phone until it
@@ -41,8 +42,7 @@ class ProviderQueuedOffer {
             ? (json['deliveryDays'] as num).toInt()
             : null,
         queuedAt:
-            DateTime.tryParse(json['queuedAt']?.toString() ?? '') ??
-            DateTime.now(),
+            DateTime.tryParse(json['queuedAt']?.toString() ?? '') ?? appNow(),
       );
 
   final String quoteRequestId;

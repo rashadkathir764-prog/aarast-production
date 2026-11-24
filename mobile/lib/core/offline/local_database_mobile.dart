@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../network/api_client.dart' show ApiException;
+import '../utils/app_clock.dart';
 import 'local_database_contract.dart';
 import 'local_database_json.dart';
 import 'local_mappers.dart';
@@ -123,7 +124,7 @@ class SqliteLocalDatabase implements LocalDatabase {
     await _db.insert(OfflineTables.localMeta, {
       'key': key,
       'value': value,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -190,7 +191,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         );
       }
 
-      final now = DateTime.now();
+      final now = appNow();
       for (final item in items) {
         final row = buildCacheRow(table: table, json: item, now: now);
         await txn.insert(
@@ -493,7 +494,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'retryCount': retryCount,
         'lastError': error,
         'lastErrorCode': null,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -504,10 +505,7 @@ class SqliteLocalDatabase implements LocalDatabase {
   Future<bool> markSyncItemSending(String id) async {
     final changed = await _db.update(
       OfflineTables.syncQueue,
-      {
-        'status': SyncQueueItem.sent,
-        'updatedAt': DateTime.now().toIso8601String(),
-      },
+      {'status': SyncQueueItem.sent, 'updatedAt': appNow().toIso8601String()},
       where: 'id = ? AND status IN (?, ?)',
       whereArgs: [id, SyncQueueItem.queued, SyncQueueItem.failed],
     );
@@ -541,7 +539,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'retryCount': 0,
         'lastError': null,
         'lastErrorCode': null,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       },
       where:
           'entityType = ? AND operation = ? AND localEntityId = ? AND '
@@ -597,7 +595,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'status': SyncQueueItem.blocked,
         'lastError': error,
         'lastErrorCode': code,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -621,7 +619,7 @@ class SqliteLocalDatabase implements LocalDatabase {
             'retryCount': 0,
             'lastError': null,
             'lastErrorCode': null,
-            'updatedAt': DateTime.now().toIso8601String(),
+            'updatedAt': appNow().toIso8601String(),
           },
           // RA-MO-344: a refusal as changed elsewhere is refused again.
           where:
@@ -671,7 +669,7 @@ class SqliteLocalDatabase implements LocalDatabase {
             if (row['localEntityId']?.toString() == localId)
               'localEntityId': remoteId,
             if (row['planId']?.toString() == localId) 'planId': remoteId,
-            'updatedAt': DateTime.now().toIso8601String(),
+            'updatedAt': appNow().toIso8601String(),
           },
           where: 'id = ?',
           whereArgs: [row['id']],
@@ -974,7 +972,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.syncQueue,
       columns: const ['id', 'entityType', 'payloadJson'],
     );
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     for (final row in rows) {
       final entityType = row['entityType']?.toString();
       if (!OfflineTables.planScopedQueueEntityTypes.contains(entityType)) {

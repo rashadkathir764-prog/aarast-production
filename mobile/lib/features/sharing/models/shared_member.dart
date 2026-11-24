@@ -227,7 +227,7 @@ class PlanInvite {
           ? _dateTimeOrNull(delivery['attemptedAt'])
           : null,
       deliveryRetryAvailableAt: retryAfterSeconds > 0
-          ? DateTime.now().add(Duration(seconds: retryAfterSeconds))
+          ? appNow().add(Duration(seconds: retryAfterSeconds))
           : null,
     );
   }
@@ -290,7 +290,7 @@ class PlanInvite {
   Duration get deliveryRetryRemaining {
     final availableAt = deliveryRetryAvailableAt;
     if (availableAt == null) return Duration.zero;
-    final remaining = availableAt.difference(DateTime.now());
+    final remaining = availableAt.difference(appNow());
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
@@ -457,7 +457,7 @@ DateTime? _dateTimeOrNull(Object? value) {
 }
 
 DateTime _dateTimeOrNow(Object? value) {
-  return _dateTimeOrNull(value) ?? DateTime.now();
+  return _dateTimeOrNull(value) ?? appNow();
 }
 
 String? _canonicalContributorContextKeyOrNull(

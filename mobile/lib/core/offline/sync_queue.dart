@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../network/api_client.dart' show ApiException;
+import '../utils/app_clock.dart';
 import 'offline_tables.dart';
 
 const unknownSyncQueuePlanOwnershipError = 'LOCAL_QUEUE_PLAN_OWNERSHIP_UNKNOWN';
@@ -16,7 +17,7 @@ int _lastSyncQueueMicros = 0;
 /// resolution is coarser than a microsecond. Queue ids and ordering must never
 /// collide when dependent offline writes are enqueued in the same clock tick.
 DateTime nextSyncQueueTimestamp() {
-  final now = DateTime.now();
+  final now = appNow();
   var micros = now.microsecondsSinceEpoch;
   if (micros <= _lastSyncQueueMicros) micros = _lastSyncQueueMicros + 1;
   _lastSyncQueueMicros = micros;
@@ -249,8 +250,8 @@ int _intOrZero(Object? value) {
 }
 
 DateTime _dateOrNow(Object? value) {
-  if (value == null) return DateTime.now();
-  return DateTime.tryParse(value.toString()) ?? DateTime.now();
+  if (value == null) return appNow();
+  return DateTime.tryParse(value.toString()) ?? appNow();
 }
 
 /// A device-local id that never repeats in this process, even when several

@@ -7,7 +7,8 @@ class _CategoryDraft {
     required this.name,
     required String? amount,
     this.confirmedCost = '0',
-  }) : key = id ?? 'draft-${DateTime.now().microsecondsSinceEpoch}',
+  }) : // wall-clock: a draft row's key must differ from the last one even when a test pins appNow.
+       key = id ?? 'draft-${DateTime.now().microsecondsSinceEpoch}',
        amount = TextEditingController(text: formatMoneyInputValue(amount));
 
   final String key;

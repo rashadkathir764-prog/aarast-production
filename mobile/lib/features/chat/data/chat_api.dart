@@ -2,6 +2,7 @@ import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/utils/app_clock.dart';
 import '../models/chat_models.dart';
 
 /// Conversations with providers and the plan's partners.
@@ -157,10 +158,7 @@ class ChatApi {
       endpoint: '/api/v1/conversations/$conversationId/read',
       payload: const {},
       metaKey: 'chat:read:$conversationId',
-      localJson: {
-        'id': conversationId,
-        'readAt': DateTime.now().toIso8601String(),
-      },
+      localJson: {'id': conversationId, 'readAt': appNow().toIso8601String()},
       localEntityId: conversationId,
       replacePendingForEntity: true,
     );

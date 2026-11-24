@@ -1,3 +1,4 @@
+import '../../../core/utils/app_clock.dart';
 import 'guest_invite_text.dart';
 
 /// D99 (RA-BE-62): how many guests one plan holds, the server's
@@ -70,7 +71,7 @@ class GuestToldOccasion {
     return GuestToldOccasion(
       planEventId: json['planEventId']?.toString() ?? '',
       version: int.tryParse(json['version']?.toString() ?? '') ?? 1,
-      at: Guest._dateTimeOrNull(json['at']) ?? DateTime.now(),
+      at: Guest._dateTimeOrNull(json['at']) ?? appNow(),
       remindedAt: Guest._dateTimeOrNull(json['remindedAt']),
     );
   }
@@ -109,7 +110,7 @@ class GuestLastSend {
       kind: json['kind']?.toString() ?? 'INVITATION',
       status: json['status']?.toString() ?? 'PREPARED',
       planEventId: json['planEventId']?.toString(),
-      createdAt: Guest._dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
+      createdAt: Guest._dateTimeOrNull(json['createdAt']) ?? appNow(),
     );
   }
 
@@ -175,8 +176,8 @@ class Guest {
       notes: json['notes']?.toString(),
       // An older server sends no flag and only the reader's own guests.
       editable: json['editable'] != false,
-      createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      createdAt: _dateTimeOrNull(json['createdAt']) ?? appNow(),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? appNow(),
       events: [
         if (events is List)
           for (final item in events)

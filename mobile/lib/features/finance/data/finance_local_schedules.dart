@@ -46,7 +46,7 @@ extension _LocalSchedules on FinanceLocalDataSource {
           schedule['id']?.toString() == exceptScheduleId) {
         continue;
       }
-      final now = DateTime.now().toIso8601String();
+      final now = appNow().toIso8601String();
       await _save(OfflineTables.cachedPaymentSchedules, {
         ...schedule,
         'status': 'CANCELLED',
@@ -83,7 +83,7 @@ extension _LocalSchedules on FinanceLocalDataSource {
         'paidAt': null,
         'cancelledByPaidInFullAt': null,
         'amount': FinanceMoneyRules.asMoney(amount > left ? left : amount),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       }, dirty: true);
     }
   }
@@ -98,7 +98,7 @@ extension _LocalSchedules on FinanceLocalDataSource {
       ...cached,
       'status': 'PENDING',
       'paidAt': null,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }, dirty: true);
   }
 }
@@ -127,7 +127,7 @@ extension _LocalMoneyWrites on FinanceLocalDataSource {
     await _save(OfflineTables.cachedPaymentSchedules, {
       ...cached,
       'amount': FinanceMoneyRules.asMoney(restored < left ? restored : left),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }, dirty: true);
     await _refreshScheduleDues(costId, costNow['remainingAmount'].toString());
   }

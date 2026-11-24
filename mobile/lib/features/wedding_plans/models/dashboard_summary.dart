@@ -792,7 +792,7 @@ class DashboardNotificationPreview {
       routeTarget: json['routeTarget']?.toString(),
       readAt: DashboardSummary._dateTimeOrNull(json['readAt']),
       createdAt:
-          DashboardSummary._dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
+          DashboardSummary._dateTimeOrNull(json['createdAt']) ?? appNow(),
       data: DashboardSummary._mapOrEmpty(json['data']),
     );
   }

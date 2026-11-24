@@ -9,6 +9,7 @@ import '../session/safe_user.dart';
 import '../diagnostics/app_logger.dart';
 import '../network/api_client.dart';
 import '../network/server_reachability.dart';
+import '../utils/app_clock.dart';
 import 'cache_policy.dart';
 import 'local_database.dart';
 import 'offline_tables.dart';
@@ -1133,7 +1134,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       jsonEncode({
         'totalBudget': budget['total']?.toString(),
         'currency': currency.toUpperCase(),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       }),
     );
     // D112 (Q-4): the reply is the server's picture after this save, with
@@ -1221,7 +1222,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _markSyncedNow() async {
-    final now = DateTime.now();
+    final now = appNow();
     _lastSyncedAt = now;
     await database.setMeta(_lastSyncedAtKey, now.toIso8601String());
   }

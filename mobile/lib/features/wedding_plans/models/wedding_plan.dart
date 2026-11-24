@@ -1,4 +1,5 @@
 ﻿import '../../../core/utils/plan_day.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class WeddingPlan {
@@ -37,8 +38,8 @@ class WeddingPlan {
       persona: json['persona']?.toString(),
       currency: json['currency']?.toString() ?? 'YER',
       status: json['status']?.toString() ?? 'PLANNING',
-      createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      createdAt: _dateTimeOrNull(json['createdAt']) ?? appNow(),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? appNow(),
       deletionScheduledFor: _dateTimeOrNull(json['deletionScheduledFor']),
     );
   }

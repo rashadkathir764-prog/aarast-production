@@ -604,7 +604,7 @@ class ProviderDashboardProvider extends ChangeNotifier
   /// What this read was: the server's answer, with its time, or copies.
   void _settleRead(int served) {
     _offline = OfflineReads.copiesServed > served;
-    if (!_offline) _lastUpdatedAt = DateTime.now();
+    if (!_offline) _lastUpdatedAt = appNow();
   }
 
   void _scheduleRetry() {
@@ -1410,7 +1410,7 @@ class ProviderDashboardProvider extends ChangeNotifier
               validUntil: validUntil,
               lines: lines,
               deliveryDays: deliveryDays,
-              queuedAt: DateTime.now(),
+              queuedAt: appNow(),
             ),
           )) {
         return ProviderOfferSend.queued;

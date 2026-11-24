@@ -208,6 +208,7 @@ class AarastImageDiskCache {
 
   Future<void> _touch(File file) async {
     try {
+      // wall-clock: a file's modified time is the disk's, not the app's day.
       await file.setLastModified(DateTime.now());
     } on FileSystemException catch (error, stackTrace) {
       appLogEvent(

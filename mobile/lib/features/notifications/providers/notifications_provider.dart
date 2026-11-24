@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
+import '../../../core/utils/app_clock.dart';
 import '../data/notifications_api.dart';
 import '../models/aarast_notification.dart';
 
@@ -146,7 +147,7 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
 
     try {
       await _api.markAllRead(weddingPlanId: weddingPlanId);
-      final now = DateTime.now();
+      final now = appNow();
       _notifications = [
         for (final item in _notifications)
           item.isUnread ? item.copyWith(readAt: now) : item,

@@ -88,6 +88,7 @@ class FundingApi {
     if (_onPhone(weddingPlanId)) {
       return FundingSource.fromJson(
         await _keep({
+          // wall-clock: a row id must differ from the last one even when a test pins appNow.
           'id': 'local-funding-${DateTime.now().microsecondsSinceEpoch}',
           'weddingPlanId': weddingPlanId,
           ...payload,

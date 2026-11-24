@@ -139,7 +139,7 @@ class CostPayment {
       id: json['id']?.toString() ?? '',
       costId: json['costId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
-      paidAt: dateTimeOrNull(json['paidAt']) ?? DateTime.now(),
+      paidAt: dateTimeOrNull(json['paidAt']) ?? appNow(),
       entryType: json['entryType']?.toString() ?? 'PAYMENT',
       paymentScheduleId: stringOrNull(json['paymentScheduleId']),
       lowersScheduleId: stringOrNull(json['lowersScheduleId']),

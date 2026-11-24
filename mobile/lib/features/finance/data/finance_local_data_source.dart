@@ -22,7 +22,7 @@ part 'finance_local_schedules.dart';
 int _lastLocalEntityMicros = 0;
 
 String _nextLocalEntityId(String prefix) {
-  var micros = DateTime.now().microsecondsSinceEpoch;
+  var micros = appNow().microsecondsSinceEpoch;
   if (micros <= _lastLocalEntityMicros) micros = _lastLocalEntityMicros + 1;
   _lastLocalEntityMicros = micros;
   return '$prefix-$micros';
@@ -107,7 +107,7 @@ class FinanceLocalDataSource {
         'totalBudget': totalBudget,
         'currency': currency,
         'budgetIncludesMahr': ?includesMahr,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       }),
     );
     await _offline?.refreshStatus();
@@ -140,7 +140,7 @@ class FinanceLocalDataSource {
     required String weddingPlanId,
     required Map<String, dynamic> payload,
   }) async {
-    final now = DateTime.now();
+    final now = appNow();
     final json = {
       'id': _nextLocalEntityId('local-budget-category'),
       'weddingPlanId': weddingPlanId,
@@ -165,7 +165,7 @@ class FinanceLocalDataSource {
       ...payload,
       'id': category.id,
       'weddingPlanId': category.weddingPlanId,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     };
     await _save(OfflineTables.cachedBudgetCategories, json, dirty: true);
     return BudgetCategory.fromJson(json);
@@ -190,7 +190,7 @@ class FinanceLocalDataSource {
       totalAmount: payload['totalAmount']?.toString() ?? '',
       initialPaymentAmount: payload['initialPaymentAmount']?.toString(),
     );
-    final now = DateTime.now();
+    final now = appNow();
     final total = FinanceMoneyRules.value(payload['totalAmount']);
     // D107: an expense is paid in full the day it is recorded.
     final isExpense = payload['entryKind'] == 'EXPENSE';
@@ -267,7 +267,7 @@ class FinanceLocalDataSource {
       'status': cost.isCancelled
           ? 'CANCELLED'
           : FinanceMoneyRules.costStatus(total, paid),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
     final remaining = json['remainingAmount'].toString();
@@ -305,7 +305,7 @@ class FinanceLocalDataSource {
       'id': cost.id,
       'weddingPlanId': cost.weddingPlanId,
       'status': 'CANCELLED',
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
     await _cancelPendingSchedules(current.id);
@@ -344,7 +344,7 @@ class FinanceLocalDataSource {
       throw const ApiException('هذي الدفعة ما تنعكس.');
     }
     final currentCost = await _currentCost(cost);
-    final now = DateTime.now();
+    final now = appNow();
     final reversalId = _nextLocalEntityId('local-cost-payment');
     final reversal = {
       'id': reversalId,
@@ -392,7 +392,7 @@ class FinanceLocalDataSource {
     if (payload['remindAt'] != null) {
       _assertRemindDay(payload['remindAt'], payload['dueDate']);
     }
-    final now = DateTime.now();
+    final now = appNow();
     final json = {
       'id': _nextLocalEntityId('local-payment-schedule'),
       'weddingPlanId': currentCost.weddingPlanId,
@@ -461,7 +461,7 @@ class FinanceLocalDataSource {
       'rescheduledFrom': moved
           ? (dueDay == _dayOf(firstDue) ? null : firstDue.toIso8601String())
           : cached?['rescheduledFrom'],
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     };
     await _save(OfflineTables.cachedPaymentSchedules, json, dirty: true);
     return PaymentSchedule.fromJson(json);
@@ -524,7 +524,7 @@ class FinanceLocalDataSource {
       await _save(OfflineTables.cachedPaymentSchedules, {
         ...after,
         'amount': FinanceMoneyRules.asMoney(due - paid),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': appNow().toIso8601String(),
       }, dirty: true);
       final costNow = await _currentCost(currentCost);
       await _refreshScheduleDues(costNow.id, costNow.remainingAmount);
@@ -545,7 +545,7 @@ class FinanceLocalDataSource {
       'amountDue': '0',
       'status': 'PAID',
       'paidAt': payment.paidAt.toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }, dirty: true);
     if (paid > due) {
       // More than it asks: the rest is a payment on the agreement.
@@ -567,7 +567,7 @@ class FinanceLocalDataSource {
       payload['amount'],
       'المبلغ',
     );
-    final now = DateTime.now();
+    final now = appNow();
     final json = {
       'id': _nextLocalEntityId('local-cost-payment'),
       'weddingPlanId': cost['weddingPlanId'],
@@ -618,7 +618,7 @@ class FinanceLocalDataSource {
               paid: paid,
             ),
       'paymentsCount': (cost.paymentsCount ?? 0) + 1,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
     if (json['status'] == 'PAID') {

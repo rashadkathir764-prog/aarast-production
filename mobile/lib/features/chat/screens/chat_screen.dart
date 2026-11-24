@@ -1391,7 +1391,7 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
 
   bool get _isExpired =>
       _expiresAt != null &&
-      !_expiresAt!.isAfter(DateTime.now().add(const Duration(seconds: 10)));
+      !_expiresAt!.isAfter(appNow().add(const Duration(seconds: 10)));
 
   void _scheduleRefresh() {
     if (_refreshing || _refreshAttempted) return;

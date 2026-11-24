@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../storage/auth_storage.dart';
 import '../storage/sensitive_value_vault.dart';
+import '../utils/app_clock.dart';
 
 /// Persists unfinished form values in the platform keystore/keychain.
 ///
@@ -58,7 +59,7 @@ class AarastFormDraftStore {
           'version': _version,
           'identity': identity,
           'scope': normalizedScope,
-          'savedAt': DateTime.now().toUtc().toIso8601String(),
+          'savedAt': appNow().toUtc().toIso8601String(),
           'data': data,
         }),
       );

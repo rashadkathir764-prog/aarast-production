@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_clock.dart';
 
 @immutable
 class PendingPlanCleanupRecord {
@@ -114,7 +115,7 @@ class PendingPlanCleanupStore {
           'expectedAuthorityVersion',
         ),
         clientRequestId: _requiredString(clientRequestId, 'clientRequestId'),
-        createdAt: (createdAt ?? DateTime.now()).toUtc(),
+        createdAt: (createdAt ?? appNow()).toUtc(),
       );
       for (final existing in state.records) {
         if (existing.identity == candidate.identity) return existing;

@@ -407,7 +407,7 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     String planId,
     Map<String, dynamic> payload,
   ) async {
-    final now = DateTime.now();
+    final now = appNow();
     final incoming = _listOfMaps(payload['categories']);
     final categories = <Map<String, dynamic>>[];
     for (final category in incoming) {

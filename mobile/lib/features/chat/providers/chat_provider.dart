@@ -10,6 +10,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/utils/app_clock.dart';
 import '../data/chat_api.dart';
 import '../data/chat_outbox.dart';
 import '../data/chat_realtime_client.dart';
@@ -24,7 +25,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     ChatOutbox? outbox,
     DateTime Function()? now,
   }) : _api = api,
-       _now = now ?? DateTime.now,
+       _now = now ?? appNow,
        _realtime = realtime,
        _outbox = outbox,
        _sessionUserId = sessionUserId ?? authStorage.readUser()?.id {
@@ -334,6 +335,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       notifyListeners();
       return false;
     }
+    // wall-clock: a pending id must differ from the last one even when a test pins appNow.
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     final clientRequestId = 'chat-$pendingId-${normalized.hashCode.abs()}';
     final pending = ChatMessage(
@@ -341,7 +343,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       conversationId: conversationId,
       senderUserId: currentUserId ?? '',
       body: normalized,
-      createdAt: DateTime.now(),
+      createdAt: appNow(),
       pending: true,
     );
     _timelines[conversationId] = [

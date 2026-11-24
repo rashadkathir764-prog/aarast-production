@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../utils/app_clock.dart';
 import 'offline_tables.dart';
 import 'sync_queue.dart';
 
@@ -17,7 +18,7 @@ LocalCacheRow buildCacheRow({
   bool dirty = false,
   bool deletedLocally = false,
 }) {
-  final timestamp = now ?? DateTime.now();
+  final timestamp = now ?? appNow();
   final updatedAt = _stringOrNow(json['updatedAt'], timestamp);
   final rawJson = jsonEncode(json);
   final base = <String, Object?>{

@@ -1,4 +1,6 @@
-﻿class UserSettings {
+﻿import '../../../core/utils/app_clock.dart';
+
+class UserSettings {
   const UserSettings({
     required this.id,
     required this.userId,
@@ -28,8 +30,8 @@
       channelCapabilities: NotificationChannelCapabilities.fromJson(
         json['channelCapabilities'],
       ),
-      createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? DateTime.now(),
+      createdAt: _dateTimeOrNull(json['createdAt']) ?? appNow(),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ?? appNow(),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/widgets.dart';
 
 import '../storage/sensitive_value_vault.dart';
+import '../utils/app_clock.dart';
 
 /// Optional app lock with a 4-digit code (V1 checklist 4.15). A phone in
 /// Yemen often passes between family members and the money in a plan is
@@ -23,7 +24,7 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     Duration Function()? elapsed,
     Random? random,
   }) : _vault = vault,
-       _clock = clock ?? DateTime.now,
+       _clock = clock ?? appNow,
        _elapsed = elapsed ?? _sinceStart,
        _random = random ?? Random.secure();
 

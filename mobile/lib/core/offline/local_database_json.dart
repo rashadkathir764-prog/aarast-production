@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/app_clock.dart';
 import 'local_database_contract.dart';
 import 'local_mappers.dart';
 import 'offline_tables.dart';
@@ -79,7 +80,7 @@ class JsonLocalDatabase implements LocalDatabase {
     meta[key] = {
       'key': key,
       'value': value,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     };
     await _writeMap(_metaKey, meta);
   }
@@ -137,7 +138,7 @@ class JsonLocalDatabase implements LocalDatabase {
       return row[parentColumn]?.toString() != parentId;
     }).toList();
 
-    final now = DateTime.now();
+    final now = appNow();
     for (final item in items) {
       final row = buildCacheRow(table: table, json: item, now: now);
       nextRows.removeWhere((existing) => existing['id'] == row.columns['id']);
@@ -400,7 +401,7 @@ class JsonLocalDatabase implements LocalDatabase {
     bool spendsAttempt = true,
   }) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     for (final row in rows) {
       if (row['id'] == id) {
         row['status'] = SyncQueueItem.failed;
@@ -424,7 +425,7 @@ class JsonLocalDatabase implements LocalDatabase {
         return false;
       }
       row['status'] = SyncQueueItem.sent;
-      row['updatedAt'] = DateTime.now().toIso8601String();
+      row['updatedAt'] = appNow().toIso8601String();
       await _writeList(_tableKey(OfflineTables.syncQueue), rows);
       return true;
     }
@@ -460,7 +461,7 @@ class JsonLocalDatabase implements LocalDatabase {
       row['retryCount'] = 0;
       row['lastError'] = null;
       row['lastErrorCode'] = null;
-      row['updatedAt'] = DateTime.now().toIso8601String();
+      row['updatedAt'] = appNow().toIso8601String();
       await _writeList(_tableKey(OfflineTables.syncQueue), rows);
       return true;
     }
@@ -498,7 +499,7 @@ class JsonLocalDatabase implements LocalDatabase {
     String? code,
   }) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     for (final row in rows) {
       if (row['id'] == id) {
         row['status'] = SyncQueueItem.blocked;
@@ -513,7 +514,7 @@ class JsonLocalDatabase implements LocalDatabase {
   @override
   Future<int> requeueBlockedSyncItems() async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     var count = 0;
     for (final row in rows) {
       if (row['status'] != SyncQueueItem.blocked) continue;
@@ -551,7 +552,7 @@ class JsonLocalDatabase implements LocalDatabase {
     if (localId.isEmpty || localId == remoteId) return;
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     var changed = false;
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     for (final row in rows) {
       if (row['status'] == SyncQueueItem.synced) continue;
       final payload = row['payloadJson']?.toString() ?? '';
@@ -630,7 +631,7 @@ class JsonLocalDatabase implements LocalDatabase {
     final queueKey = _tableKey(OfflineTables.syncQueue);
     final rows = _readList(queueKey);
     var changed = false;
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     for (final row in rows) {
       final entityType = row['entityType']?.toString();
       final isPlanScoped = OfflineTables.planScopedQueueEntityTypes.contains(

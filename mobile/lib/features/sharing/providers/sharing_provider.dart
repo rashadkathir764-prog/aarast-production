@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
+import '../../../core/utils/app_clock.dart';
 import '../data/sharing_api.dart';
 import '../models/plan_access_permissions.dart';
 import '../models/plan_role_permissions.dart';
@@ -376,9 +377,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       final retryAfterSeconds = error.retryAfterSeconds;
       if (error.serverCode == 'INVITE_REISSUE_COOLDOWN' &&
           retryAfterSeconds != null) {
-        final availableAt = DateTime.now().add(
-          Duration(seconds: retryAfterSeconds),
-        );
+        final availableAt = appNow().add(Duration(seconds: retryAfterSeconds));
         _invites = [
           for (final item in _invites)
             item.id == invite.id

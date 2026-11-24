@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/money_formatters.dart' show formatFullMoney;
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -271,8 +272,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       estimatedBudget: draft.estimatedBudget,
       currency: draft.currency ?? 'YER',
       status: 'PLANNING',
-      createdAt: draft.createdAt ?? DateTime.now(),
-      updatedAt: draft.createdAt ?? DateTime.now(),
+      createdAt: draft.createdAt ?? appNow(),
+      updatedAt: draft.createdAt ?? appNow(),
     );
   }
 

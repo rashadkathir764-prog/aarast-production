@@ -618,7 +618,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       _saving = true;
       _error = null;
     });
-    final now = _keptAt ?? DateTime.now();
+    final now = _keptAt ?? appNow();
     final planId = _keptPlanId ?? 'local-guest-${now.microsecondsSinceEpoch}';
     final draft = _draft().copyWith(
       guestPlanId: planId,

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/report_reason_sheet.dart';
@@ -186,7 +187,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       kind: kind,
       question: kind == PlanAssistantKind.question ? typed : kind.label,
       typed: kind == PlanAssistantKind.question ? typed : null,
-      askedAt: DateTime.now(),
+      askedAt: appNow(),
     );
     setState(() {
       _asking = true;

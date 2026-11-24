@@ -425,7 +425,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       responsibleSource: responsibleSource,
       status: status,
       priority: priority,
-      updatedAt: DateTime.now(),
+      updatedAt: appNow(),
     );
     final Map<String, dynamic> payload;
     if (task.id.startsWith('local-task-')) {

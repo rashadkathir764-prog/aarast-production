@@ -402,7 +402,7 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
       schedule,
       status: 'CANCELLED',
       paidAt: null,
-      updatedAt: DateTime.now(),
+      updatedAt: appNow(),
     );
     await _offline?.database.saveCachedItem(
       table: OfflineTables.cachedPaymentSchedules,

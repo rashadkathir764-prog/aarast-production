@@ -6,6 +6,7 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/text_limits.dart';
 import '../models/guest.dart';
 
@@ -268,7 +269,7 @@ class GuestsApi {
                   ? events
                   : _eventRowsWithReplies(events, replies),
             'id': id,
-            'updatedAt': DateTime.now().toIso8601String(),
+            'updatedAt': appNow().toIso8601String(),
           }
           ..remove('eventIds')
           ..remove('eventReplies');
@@ -380,7 +381,7 @@ class GuestsApi {
     required String name,
   }) async {
     final localId = OfflineWrites.localId('guest-group');
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     final json = await _writes.queued(
       entityType: 'guest_group',
       operation: 'create',
@@ -410,7 +411,7 @@ class GuestsApi {
     final localJson = {
       ...cached,
       'name': name.trim(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': appNow().toIso8601String(),
     };
     final json = await _writes.queued(
       entityType: 'guest_group',
@@ -467,7 +468,7 @@ class GuestsApi {
       for (final entry in changes.entries) entry.key: entry.value ?? '',
     };
     final cached = await _reads.cachedBlob(_cardKey(weddingPlanId)) ?? {};
-    final localJson = localInvitationCard(cached, changes, DateTime.now());
+    final localJson = localInvitationCard(cached, changes, appNow());
     final json = await _writes.queued(
       entityType: 'guest_invitation_card',
       operation: 'update',
@@ -490,7 +491,7 @@ class GuestsApi {
     Map<String, dynamic> payload,
   ) async {
     final localId = OfflineWrites.localId('guest');
-    final now = DateTime.now().toIso8601String();
+    final now = appNow().toIso8601String();
     final eventIds = payload['eventIds'];
     final localJson = {
       'id': localId,
@@ -642,7 +643,7 @@ class GuestsApi {
     required String weddingPlanId,
     required Map<String, dynamic> payload,
   }) async {
-    final now = DateTime.now();
+    final now = appNow();
     final localJson = {
       'id': nextLocalId('local-guest'),
       'weddingPlanId': weddingPlanId,
@@ -667,7 +668,7 @@ class GuestsApi {
       table: OfflineTables.cachedGuests,
       id: id,
     );
-    final now = DateTime.now();
+    final now = appNow();
     final localJson = {
       ...?cached,
       ...payload,

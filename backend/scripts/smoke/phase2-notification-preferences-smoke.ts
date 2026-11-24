@@ -327,7 +327,11 @@ async function assertContentPreferencesControlDurableWork(): Promise<void> {
           const expectedTypes: OutboxEventType[] = [
             OutboxEventTypes.notificationCreated,
           ];
-          if (notification.type === NotificationType.TASK_DUE_SOON) {
+          // RA-BE-187: a payment reminder reaches the phone like a task's.
+          if (
+            notification.type === NotificationType.TASK_DUE_SOON ||
+            notification.type === NotificationType.PAYMENT_SCHEDULE_DUE_SOON
+          ) {
             expectedTypes.push(OutboxEventTypes.pushNotificationRequested);
           }
           const actualTypes = deliveryEvents

@@ -220,7 +220,10 @@ async function main(): Promise<void> {
   assert.ok(planChat, "the plan's conversation is listed");
   // D75 (RA-BE-80): this expected the plan's title («عرس محمد») for the
   // provider, which D75 keeps from him; the label stays as a null field.
+  // RA-BE-168: the customer reads to the provider as first name and family
+  // initial («محمد ح.»); `firstName` stays for older phones.
   assert.deepEqual(planChat.counterpart, {
+    name: "محمد ح.",
     firstName: "محمد",
     weddingLabel: null,
     eventDate: planChat.latestQuoteRequest.eventDate,

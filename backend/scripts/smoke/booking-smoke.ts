@@ -145,8 +145,9 @@ async function main(): Promise<void> {
       listed.map((item) => item.id).sort(),
       [bookingA.id, bookingB.id].sort(),
     );
-    assert.equal(listed[0].customerName, "عريس تجربة");
-    console.log("PASS - the provider lists both requests with the customer's name");
+    // RA-BE-168: the provider reads a customer as first name and family initial.
+    assert.equal(listed[0].customerName, "عريس ت.");
+    console.log("PASS - the provider lists both requests with the customer's first name and family initial");
 
     const results = await Promise.allSettled([
       bookings.decideAsProvider(providerUser as any, bookingA.id, "CONFIRM", {}),

@@ -27,6 +27,10 @@ export function otpGlobalDailyLimit(
   return limit;
 }
 
+const MINIMUM_CONTRIBUTION_SECRET_LENGTH = 32;
+/** The words the deploy examples put where a secret goes. */
+const PLACEHOLDER_SECRET_WORDS = /replace[-_ ]?with|change[-_ ]?me|example/i;
+
 /** The share of the daily limit at which the readiness check warns. */
 export const OTP_CAPACITY_WARNING_SHARE = 0.8;
 
@@ -94,12 +98,23 @@ export function validateRuntimeEnvironment(
     throw new Error("AUTH_LOGIN_THROTTLE_PEPPER is required in production");
   }
 
-  // RA-BE-176: the key of the contribution history's actor references.
-  if (
-    environment.NODE_ENV === "production" &&
-    !environment.CONTRIBUTION_ACTOR_REF_SECRET?.trim()
-  ) {
-    throw new Error("CONTRIBUTION_ACTOR_REF_SECRET is required in production");
+  // RA-BE-176: the key of the contribution history's actor references. It
+  // never changes once used, so a placeholder or a short value left in
+  // production would key every reference with a guessable value for good.
+  if (environment.NODE_ENV === "production") {
+    const contributionSecret =
+      environment.CONTRIBUTION_ACTOR_REF_SECRET?.trim();
+    if (!contributionSecret) {
+      throw new Error("CONTRIBUTION_ACTOR_REF_SECRET is required in production");
+    }
+    if (
+      contributionSecret.length < MINIMUM_CONTRIBUTION_SECRET_LENGTH ||
+      PLACEHOLDER_SECRET_WORDS.test(contributionSecret)
+    ) {
+      throw new Error(
+        "CONTRIBUTION_ACTOR_REF_SECRET must be at least 32 random characters in production",
+      );
+    }
   }
 
   otpGlobalDailyLimit(environment);

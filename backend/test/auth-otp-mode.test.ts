@@ -921,6 +921,8 @@ test('production JWT secret rejects weak values without disclosing them', async 
     'a'.repeat(64),
     'replace-with-strong-jwt-access-secret',
     'replace-with-at-least-32-random-characters',
+    // RA-BE-176: the placeholder words the contribution key refuses.
+    'change-me-Q7mX2pL9vR4nK8tY1cF6hJ3wB5zD0sG7aE2u',
   ]) {
     await withEnv(
       {
@@ -980,7 +982,7 @@ test('a Staging deployment identity cannot boot against a Production database', 
     NODE_ENV: 'production',
     JWT_SECRET: strongRuntimeJwtSecret,
     AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
-    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gA',
+    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gAe',
     AUTH_OTP_MODE: 'disabled',
     PUSH_NOTIFICATIONS_ENABLED: 'false',
     AARAST_DEPLOYMENT_TIER: 'staging',
@@ -1004,7 +1006,7 @@ test('controlled cutover requires the unique Staging database alias and rejects 
   const base = {
     NODE_ENV: 'production', JWT_SECRET: strongRuntimeJwtSecret,
     AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
-    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gA',
+    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gAe',
     AARAST_DEPLOYMENT_TIER: 'staging',
     AARAST_STAGING_ROUTE_PROFILE: 'aarast-controlled-cutover',
     DATABASE_URL: 'postgresql://runtime:unused@aarast-staging-postgres:5432/aarast_staging',
@@ -1028,7 +1030,7 @@ test('Staging runtime rejects Production Firebase and the old shared OpenWA endp
     NODE_ENV: 'production',
     JWT_SECRET: strongRuntimeJwtSecret,
     AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
-    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gA',
+    CONTRIBUTION_ACTOR_REF_SECRET: 'P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gAe',
     AARAST_DEPLOYMENT_TIER: 'staging',
     DATABASE_URL: 'postgresql://runtime:unused@postgres:5432/aarast_staging',
     POSTGRES_DB: 'aarast_staging',

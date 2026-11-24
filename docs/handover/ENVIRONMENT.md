@@ -24,7 +24,7 @@
 | `AARAST_DB_RUNTIME_USER` / `AARAST_DB_RUNTIME_PASSWORD` / `AARAST_DB_RUNTIME_DATABASE_URL` | حساب التشغيل اليومي (صلاحيات أقل) | يُولَّد على الخادم |
 | `JWT_ACCESS_SECRET` | توقيع جلسات الدخول؛ تغييره يُخرج الجميع | يُولَّد على الخادم |
 | `AUTH_LOGIN_THROTTLE_PEPPER` | حماية عدّاد محاولات الدخول | يُولَّد على الخادم |
-| `CONTRIBUTION_ACTOR_REF_SECRET` | مفتاح مرجع المشارك في سجل المساهمات (RA-BE-176)؛ الخادم لا يقلع بدونه، وتغييره يفصل ما سجّله الشخص قبله عمّا بعده | يُولَّد على الخادم |
+| `CONTRIBUTION_ACTOR_REF_SECRET` | مفتاح مرجع المشارك في سجل المساهمات (RA-BE-176)؛ الخادم لا يقلع بدونه ولا بقيمة أقصر من 32 حرفًا أو فيها `replace-with` أو `change-me` أو `example`، وتغييره يفصل ما سجّله الشخص قبله عمّا بعده | يُولَّد على الخادم |
 | `METRICS_TOKEN` | رمز قراءة `/metrics` | يُولَّد على الخادم |
 | `SENTRY_DSN` | إرسال أعطال الخادم إلى Sentry (فارغ = متوقف) | حساب Sentry |
 | `PUSH_NOTIFICATIONS_ENABLED` / `FIREBASE_PROJECT_ID` | إشعارات الجوال؛ مفتاح الخدمة يُحفظ في AWS SSM لا في الملف | حساب Firebase |

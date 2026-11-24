@@ -29,7 +29,7 @@ function isKnownPlaceholder(secret: string): boolean {
     normalized === 'changeme' ||
     normalized === 'secret' ||
     normalized === 'jwt-secret' ||
-    /(?:password|changeme|development|example|test[-_ ]?secret|replace[-_ ]?with|your[-_ ]?jwt)/i.test(
+    /(?:password|change[-_ ]?me|development|example|test[-_ ]?secret|replace[-_ ]?with|your[-_ ]?jwt)/i.test(
       secret,
     )
   );

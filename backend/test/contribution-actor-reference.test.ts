@@ -64,7 +64,8 @@ const productionEnvironment = {
   AUTH_OTP_MODE: "disabled",
   AUTH_LOGIN_THROTTLE_PEPPER: "Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4",
   INVITE_PUBLIC_ORIGIN: "https://aarast.example.org",
-  CONTRIBUTION_ACTOR_REF_SECRET: "P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gA",
+  // Changed on purpose (RA-BE-176): 32 characters, the least production takes.
+  CONTRIBUTION_ACTOR_REF_SECRET: "P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gAe",
 };
 
 test("RA-BE-176: production does not start without CONTRIBUTION_ACTOR_REF_SECRET", () => {
@@ -86,6 +87,44 @@ test("RA-BE-176: production does not start without CONTRIBUTION_ACTOR_REF_SECRET
         contributorActorReference("user-1"),
       ),
     /CONTRIBUTION_ACTOR_REF_SECRET/,
+  );
+});
+
+// A placeholder or a short value left in production would key every actor
+// reference with a value anyone can guess, for good: the key never changes.
+test("RA-BE-176: production refuses a short or placeholder CONTRIBUTION_ACTOR_REF_SECRET", () => {
+  for (const weak of [
+    "P3kW8nB1xV6cR9tL2mF5hQ7jD0sZ4gA",
+    "replace-with-a-separate-random-contribution-history-secret",
+    "replace-with-at-least-32-random-characters",
+    "change-me-change-me-change-me-change-me",
+    "an-example-contribution-actor-reference-secret",
+  ]) {
+    assert.throws(
+      () =>
+        validateRuntimeEnvironment(
+          { ...productionEnvironment, CONTRIBUTION_ACTOR_REF_SECRET: weak },
+          getJwtSecret,
+        ),
+      (error: Error) => {
+        assert.match(error.message, /CONTRIBUTION_ACTOR_REF_SECRET must be at least 32 random characters in production/);
+        assert.doesNotMatch(error.message, new RegExp(weak));
+        return true;
+      },
+      weak,
+    );
+  }
+  // Outside production a short value is still taken (tests, a laptop).
+  assert.doesNotThrow(() =>
+    validateRuntimeEnvironment(
+      {
+        ...productionEnvironment,
+        NODE_ENV: "development",
+        AUTH_OTP_MODE: "dev",
+        CONTRIBUTION_ACTOR_REF_SECRET: "short",
+      },
+      getJwtSecret,
+    ),
   );
 });
 

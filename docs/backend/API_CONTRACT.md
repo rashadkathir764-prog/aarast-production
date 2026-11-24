@@ -222,7 +222,9 @@ inactive windows on one replica.
 
 Register, password login, and OTP login return an access token, opaque refresh
 token, and refresh expiry. Access JWTs default to 15 minutes; refresh sessions
-expire after 30 days and are stored as hashes.
+are stored as hashes. An application session expires 30 days after its last
+refresh; an administration session ends 12 hours after the sign-in that opened
+it, and its refreshes keep that end (RA-AD-26).
 
 - Application and administration refresh tokens are separately scoped in both
   their opaque prefix and the persisted `RefreshToken.scope` column.
@@ -3512,6 +3514,13 @@ Admin routes are JWT-protected and require admin authorization:
   access JWT and sets the rotating refresh token only as a path-scoped
   `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
 - `POST /api/v1/auth/admin/refresh` rotates that cookie and its server session.
+  The session ends 12 hours after its sign-in; a refresh never moves the end.
+- «Remember this device» (`rememberDevice` on login/complete) stores an
+  `AdminTrustedDevice` row (the digest of a random `aarast_admin_device`
+  cookie, 30 days, bound to the password hash). The next sign-in from that
+  browser needs the password only while the row is live: disabling the
+  account, provisioning (`prod:provision-admin`) and any password change end
+  it.
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 
 General password login, general OTP login, and general refresh never mint the

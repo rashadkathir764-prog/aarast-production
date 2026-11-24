@@ -92,6 +92,12 @@ export class IdentityAdminService implements IdentityAdminPort {
       where: { userId, revokedAt: null },
       data: { revokedAt },
     });
+    // RA-AD-26: and its remembered admin browsers, so no password-only
+    // sign-in outlives the revocation.
+    await tx.adminTrustedDevice.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt },
+    });
   }
 
   async listAccounts(

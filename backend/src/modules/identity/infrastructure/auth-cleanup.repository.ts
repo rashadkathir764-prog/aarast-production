@@ -72,11 +72,20 @@ export function removeExpiredAuthChallenges(
         ],
       },
     });
+    const trustedDevices = await tx.adminTrustedDevice.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: retainedAfter } },
+          { revokedAt: { not: null, lt: retainedAfter } },
+        ],
+      },
+    });
     return (
       loginChallenges.count +
       resetChallenges.count +
       otpCodes.count +
-      refreshTokens.count
+      refreshTokens.count +
+      trustedDevices.count
     );
   });
 }

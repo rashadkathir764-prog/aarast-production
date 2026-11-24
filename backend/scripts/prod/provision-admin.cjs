@@ -71,7 +71,8 @@ function parseAdminRole(value) {
  * name unless new ones are given, so a role change does not rotate the
  * password; any other account needs a password. The last active
  * SUPER_ADMIN is never demoted. Every run revokes the account's sessions,
- * challenges and administrator codes, so a new role takes effect at once.
+ * remembered devices, challenges and administrator codes, so a new role
+ * takes effect at once.
  */
 async function provisionAdminInTransaction(tx, input) {
   const [canonicalPhone, legacyLocalPhone] = phoneVariants(input.phone);
@@ -126,6 +127,10 @@ async function provisionAdminInTransaction(tx, input) {
       });
 
   await tx.refreshToken.updateMany({
+    where: { userId: user.id, revokedAt: null },
+    data: { revokedAt: input.now },
+  });
+  await tx.adminTrustedDevice.updateMany({
     where: { userId: user.id, revokedAt: null },
     data: { revokedAt: input.now },
   });

@@ -181,6 +181,11 @@ test('identity disables an account and revokes only its live refresh tokens', as
     'refreshToken.updateMany',
     { where: { userId: 'u1', revokedAt: null }, data: { revokedAt: now } },
   ]);
+  // RA-AD-26: a disabled admin's remembered browsers are forgotten too.
+  assert.deepEqual(calls[2], [
+    'adminTrustedDevice.updateMany',
+    { where: { userId: 'u1', revokedAt: null }, data: { revokedAt: now } },
+  ]);
 });
 
 test('catalog locks a category before reading it and never reads a missing one', async () => {

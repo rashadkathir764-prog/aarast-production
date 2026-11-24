@@ -123,6 +123,7 @@ test('production backend image includes the admin provisioning operation', () =>
 test('admin provisioning revokes every administrator recovery artifact', () => {
   const source = readFileSync('scripts/prod/provision-admin.cjs', 'utf8');
   assert.match(source, /adminLoginChallenge\.deleteMany/);
+  assert.match(source, /adminTrustedDevice\.updateMany/);
   assert.match(source, /adminPasswordResetChallenge\.deleteMany/);
   assert.match(
     source,
@@ -169,6 +170,7 @@ function fakeTransaction(users: FakeUser[]) {
       },
     },
     refreshToken: { updateMany: async () => ({ count: 0 }) },
+    adminTrustedDevice: { updateMany: async () => ({ count: 0 }) },
     adminLoginChallenge: { deleteMany: async () => ({ count: 0 }) },
     adminPasswordResetChallenge: { deleteMany: async () => ({ count: 0 }) },
     otpCode: { updateMany: async () => ({ count: 0 }) },

@@ -57,7 +57,8 @@ import { AdminPasswordResetRequestDto } from "../../api/auth-dto/admin-password-
 import { AdminPasswordResetConfirmDto } from "../../api/auth-dto/admin-password-reset-confirm.dto";
 import { AdminPasswordResetVerifyDto } from "../../api/auth-dto/admin-password-reset-verify.dto";
 import {
-  isAdminTrustedDevice,
+  adminTrustedDeviceTokenHash,
+  isAdminTrustedDeviceRecord,
   issueAdminTrustedDevice,
 } from "./admin-trusted-device";
 import { JwtPayload } from "../../public/jwt-payload.interface";
@@ -106,6 +107,7 @@ import { AuthUserRepository } from "../../infrastructure/auth-user.repository";
 import { AuthOtpRepository, type OtpClaimResult } from "../../infrastructure/auth-otp.repository";
 import { AuthChallengeRepository } from "../../infrastructure/auth-challenge.repository";
 import { AuthSessionRepository, type LockedRefreshTokenRow, type LockedRefreshTokenFamily } from "../../infrastructure/auth-session.repository";
+import { AdminTrustedDeviceRepository } from "../../infrastructure/admin-trusted-device.repository";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -246,6 +248,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   private readonly otps = new AuthOtpRepository();
   private readonly challenges = new AuthChallengeRepository();
   private readonly sessions = new AuthSessionRepository();
+  private readonly trustedDevices = new AdminTrustedDeviceRepository();
   private readonly logger = new Logger(AuthService.name);
   /** Deliveries still running after their request was answered. */
   private readonly lateOtpDeliveries = new Set<Promise<void>>();
@@ -526,11 +529,16 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN, {
       allowUnverifiedPhone: true,
     });
+    const deviceHash = adminTrustedDeviceTokenHash(trustedDeviceToken);
+    const device = deviceHash
+      ? await this.trustedDevices.findByTokenHash(this.prisma, deviceHash)
+      : null;
     if (
       user.phoneVerifiedAt &&
-      isAdminTrustedDevice(trustedDeviceToken, user, new Date())
+      device &&
+      isAdminTrustedDeviceRecord(device, user, new Date())
     ) {
-      return this.completeTrustedAdminLogin(user);
+      return this.completeTrustedAdminLogin(user, device.id);
     }
     const otp = await this.issueOtp(
       user.phone!,
@@ -582,6 +590,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   /** Password-only admin sign-in on a device remembered after a code-verified one. */
   private async completeTrustedAdminLogin(
     user: User,
+    deviceId: string,
   ): Promise<AdminLoginTrustedResponse> {
     const now = new Date();
     const auth = await runSerializableTransaction(this.prisma, async (tx) => {
@@ -595,6 +604,14 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
         currentUser.phone !== user.phone ||
         currentUser.passwordHash !== user.passwordHash
       ) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+      // Revoked or expired since it was read: the password alone is not enough.
+      if ((await this.trustedDevices.markUsed(tx, deviceId, now)) !== 1) {
         throw authError(
           HttpStatus.UNAUTHORIZED,
           AuthErrorCode.INVALID_CREDENTIALS,
@@ -676,12 +693,14 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
             throw new UnauthorizedException("Admin access is required");
           }
           const updatedUser = await this.users.requireById(tx, challenge.userId);
+          const auth = await this.createAuthResponse(updatedUser, true, tx);
+          if (!rememberDevice) return { auth };
+          const device = issueAdminTrustedDevice(updatedUser, now);
+          await this.trustedDevices.create(tx, device.record);
           return {
             auth: {
-              ...(await this.createAuthResponse(updatedUser, true, tx)),
-              ...(rememberDevice
-                ? { adminTrustedDevice: issueAdminTrustedDevice(updatedUser, now) }
-                : {}),
+              ...auth,
+              adminTrustedDevice: { token: device.token, expiresAt: device.expiresAt },
             },
           };
         },
@@ -885,7 +904,11 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       }
 
       const nextToken = createRefreshTokenValue(refreshScope);
-      const nextExpiresAt = refreshTokenExpiry(now);
+      // RA-AD-26: the admin session keeps the end its sign-in gave it.
+      const nextExpiresAt =
+        sessionScope === AuthSessionScope.ADMIN
+          ? existing.expiresAt
+          : refreshTokenExpiry(now);
       const replacementId = await this.sessions.rotate(tx, {
         id: existing.id, userId: existing.userId,
         tokenHash: hashRefreshToken(nextToken), scope: sessionScope,
@@ -2295,7 +2318,10 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const refreshToken = createRefreshTokenValue(
       adminMfa ? "admin" : "application",
     );
-    const refreshTokenExpiresAt = refreshTokenExpiry();
+    const refreshTokenExpiresAt = refreshTokenExpiry(
+      new Date(),
+      adminMfa ? "admin" : "application",
+    );
     const refreshSession = await this.sessions.create(
       client, user.id, hashRefreshToken(refreshToken),
       adminMfa ? AuthSessionScope.ADMIN : AuthSessionScope.APPLICATION,

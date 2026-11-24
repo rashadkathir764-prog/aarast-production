@@ -524,10 +524,11 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 61 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 62 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
+| `AdminTrustedDevice` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `lastUsedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 13 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `verifiedAt`, `createdAt` |
 | `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
@@ -596,5 +597,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 73
+Total models: 74
 <!-- DOCS-SYNC:END -->

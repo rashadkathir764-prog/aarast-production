@@ -89,7 +89,7 @@ export interface IdentityAdminPort {
     userId: string,
     status: UserStatus,
   ): Promise<AdminAccountRow>;
-  /** Revokes every refresh token of the account still live, at `revokedAt`. */
+  /** Revokes every refresh token and remembered admin device of the account still live, at `revokedAt`. */
   revokeRefreshTokensInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,

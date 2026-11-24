@@ -41,11 +41,40 @@ class PushNotificationsController extends ChangeNotifier
 
   bool get isAvailable => _initialized && _gateway.isAvailable;
   bool get hasPendingNotificationsOpen => _pendingNotificationsOpen;
-  Stream<PushForegroundNotification> get foregroundNotifications => isAvailable
-      ? _gateway.foregroundNotifications
-      : const Stream<PushForegroundNotification>.empty();
 
-  Future<void> initialize() async {
+  /// The gateway's foreground pushes once set up. The app's root listens
+  /// from its first build, which comes before [initialize] (it runs after
+  /// the first frame), so the stream is the controller's own.
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      _foreground.stream;
+  final _foreground = StreamController<PushForegroundNotification>.broadcast();
+
+  /// [requestPermissionOnFirstOpen] came before [initialize]: it is asked
+  /// once push is set up.
+  bool _permissionAskedEarly = false;
+
+  /// Push is set up after the first frame, not before it: Firebase's
+  /// messaging, its listeners and the first registration are not on the way
+  /// to the first screen. Whatever the app asked meanwhile (the account
+  /// bound, the permission asked, the foreground stream listened to) is
+  /// served here, and listeners are told it is available.
+  Future<void> initialize() {
+    final running = _initializing;
+    if (running != null) return running;
+    final setUp = _initialize();
+    _initializing = setUp;
+    return setUp.whenComplete(() {
+      // A failed set-up may be tried again.
+      if (!_initialized && identical(_initializing, setUp)) {
+        _initializing = null;
+      }
+    });
+  }
+
+  /// The set-up under way, so a question asked meanwhile waits for it.
+  Future<void>? _initializing;
+
+  Future<void> _initialize() async {
     if (_initialized) return;
     if (!_gateway.isAvailable) {
       appLogEvent(
@@ -79,7 +108,8 @@ class PushNotificationsController extends ChangeNotifier
           _gateway.notificationTaps.listen((_) {
             _markNotificationsOpenPending();
           }),
-        );
+        )
+        ..add(_gateway.foregroundNotifications.listen(_foreground.add));
       if (await _gateway.consumeInitialNotificationTap()) {
         _markNotificationsOpenPending();
       }
@@ -92,11 +122,22 @@ class PushNotificationsController extends ChangeNotifier
         reason: 'firebase_initialization_failed',
         source: 'PushNotificationsController.initialize',
       );
+      return;
+    }
+    notifyListeners();
+    if (_permissionAskedEarly) {
+      _permissionAskedEarly = false;
+      await requestPermissionOnFirstOpen();
+    } else {
+      await _queueCurrentRegistration();
     }
   }
 
   Future<void> requestPermissionOnFirstOpen() async {
-    if (!isAvailable) return;
+    if (!isAvailable) {
+      if (!_initialized && _gateway.isAvailable) _permissionAskedEarly = true;
+      return;
+    }
     final alreadyRequested =
         _preferences.getBool(pushPermissionRequestedPreferenceKey) == true;
     if (!alreadyRequested) {
@@ -115,6 +156,9 @@ class PushNotificationsController extends ChangeNotifier
 
   /// w39: the phone has this app's notifications turned off.
   Future<bool> isTurnedOff() async {
+    // The first screen asks right after its first frame, while push is
+    // being set up.
+    await _initializing;
     if (!isAvailable) return false;
     try {
       return await _gateway.authorizationStatus() ==
@@ -127,6 +171,7 @@ class PushNotificationsController extends ChangeNotifier
   /// w39 «افتح الإعدادات»: asks the phone again; true once they are on.
   /// A phone that will not ask again leaves them to its own settings.
   Future<bool> askAgain() async {
+    await _initializing;
     if (!isAvailable) return false;
     try {
       final status = await _gateway.requestPermission();
@@ -362,6 +407,7 @@ class PushNotificationsController extends ChangeNotifier
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
+    unawaited(_foreground.close());
     super.dispose();
   }
 }

@@ -80,10 +80,26 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
         .map((notification) => notification!);
   }
 
+  Future<FirebaseApp>? _firebase;
+
+  /// Starts Firebase without waiting for it, so the app's start runs it
+  /// beside the offline database's open; [initialize] waits for the same
+  /// start. A failure is not lost: [initialize] meets it and the controller
+  /// logs it.
+  void prepare() {
+    if (!isAvailable || _firebase != null) return;
+    final firebase = Firebase.initializeApp();
+    // Listened to here so a failure before [initialize] is not an uncaught
+    // error of the start; [initialize] awaits the same future.
+    firebase.ignore();
+    _firebase = firebase;
+  }
+
   @override
   Future<void> initialize() async {
     if (_initialized || !isAvailable) return;
-    await Firebase.initializeApp();
+    prepare();
+    await _firebase;
     FirebaseMessaging.onBackgroundMessage(
       aarastFirebaseMessagingBackgroundHandler,
     );

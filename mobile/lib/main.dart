@@ -199,6 +199,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     reachability: serverReachability,
   );
   final devicePreferences = DevicePreferences(preferences);
+  // Startup: Firebase starts beside the offline database's open instead of
+  // after it; push itself is set up after the first frame (below).
+  final pushGateway = FirebasePushMessagingGateway()..prepare();
   late final LocalDatabase localDatabase;
   try {
     localDatabase = await createLocalDatabase(preferences);
@@ -230,10 +233,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   final authRepository = AuthRepository(apiClient, authStorage);
   final pushNotificationsController = PushNotificationsController(
     preferences: preferences,
-    gateway: FirebasePushMessagingGateway(),
+    gateway: pushGateway,
     registrationApi: PushRegistrationApi(apiClient),
   );
-  await pushNotificationsController.initialize();
   // RA-MO-101: «الخروج» names these waiting writes with the rest.
   SideOutboxes.register(() => ChatOutbox.countAll(preferences));
   SideOutboxes.register(() => ProviderOfferQueue.countAll(preferences));
@@ -419,6 +421,11 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         settingsApi: settingsApi,
       ),
     ),
+  );
+  // Push is not on the way to the first screen: it is set up once that
+  // screen is drawn, and serves what the app asked of it meanwhile.
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) => unawaited(pushNotificationsController.initialize()),
   );
 }
 

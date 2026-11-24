@@ -85,6 +85,69 @@ void main() {
     },
   );
 
+  // Startup: push is set up after the first frame, so the app's root may
+  // listen, bind the account and ask for permission before it is ready.
+  test('what was asked before push was set up is served once it is', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final gateway = _FakePushGateway();
+    final registry = _FakePushRegistry();
+    final controller = PushNotificationsController(
+      preferences: preferences,
+      gateway: gateway,
+      registrationApi: registry,
+    );
+    addTearDown(controller.dispose);
+    var notified = 0;
+    controller.addListener(() => notified++);
+
+    final received = controller.foregroundNotifications.first;
+    await controller.bindAuthenticatedUser('user-1');
+    await controller.requestPermissionOnFirstOpen();
+    expect(gateway.permissionRequests, 0);
+    expect(registry.registeredFids, isEmpty);
+
+    await controller.initialize();
+    expect(controller.isAvailable, isTrue);
+    expect(notified, greaterThan(0), reason: 'the root reads it again');
+    expect(gateway.permissionRequests, 1);
+    expect(registry.registeredFids, ['fid-1']);
+
+    gateway.foreground.add(
+      const PushForegroundNotification(title: 'اعّرست', message: 'جديد'),
+    );
+    await expectLater(
+      received,
+      completion(
+        isA<PushForegroundNotification>().having(
+          (value) => value.message,
+          'message',
+          'جديد',
+        ),
+      ),
+    );
+  });
+
+  test(
+    '«are they off?» asked while push is being set up waits for it',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final gateway = _FakePushGateway()
+        ..status = PushAuthorizationStatus.denied;
+      final controller = PushNotificationsController(
+        preferences: preferences,
+        gateway: gateway,
+        registrationApi: _FakePushRegistry(),
+      );
+      addTearDown(controller.dispose);
+
+      final setUp = controller.initialize();
+      expect(await controller.isTurnedOff(), isTrue);
+      await setUp;
+    },
+  );
+
   test('lifecycle refresh revalidates the current device binding', () async {
     SharedPreferences.setMockInitialValues({
       pushPermissionRequestedPreferenceKey: true,
@@ -210,9 +273,10 @@ class _FakePushGateway implements PushMessagingGateway {
   @override
   Future<void> initialize() async {}
 
+  PushAuthorizationStatus status = PushAuthorizationStatus.authorized;
+
   @override
-  Future<PushAuthorizationStatus> authorizationStatus() async =>
-      PushAuthorizationStatus.authorized;
+  Future<PushAuthorizationStatus> authorizationStatus() async => status;
 
   @override
   Future<PushAuthorizationStatus> requestPermission() async {

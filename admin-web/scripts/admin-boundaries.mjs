@@ -26,7 +26,8 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-26: the a12 bookings page BookingsPage (B-40).
   // Re-pinned 2026-10-26: the n07 photos page PhotosPage (B-16).
   // Re-pinned 2026-10-28: the n06 data requests page DataRequestsPage (A-15, D63).
-  appScreenAllowlist: '75d1db9a67c93131d2d8a5c304b52a99ba709f93b31c7b8449c039fcc1dae64e',
+  // Re-pinned 2026-11-24: the profile changes page ProfileChangesPage (RA-BE-152, Q-39).
+  appScreenAllowlist: '0e54a19c4ad6d8bafb7bfc6803f06935001114d99d6a7207114552a6cc1ff770',
   publicSurfaceFirstTask: '84cf74e0a2242688515d08b8c9809596267b16b1d45acd9c8de382499254f2cf',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
@@ -50,7 +51,10 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-11-07: moderation gained the reported assistant answers
   // (AssistantAnswerReport, getAssistantReports, resolveAssistantReport;
   // RA-ST-04, D95); no other surface changed.
-  publicSurfaces: '09fd2e9ba0aa00fd692bf8beab87614ae6b14e1270b854e1d8b807f6b57bf4a9',
+  // Re-pinned 2026-11-24: providers gained the review of approved providers'
+  // profile changes (ProfileChange, getProfileChanges, decideProfileChange;
+  // RA-BE-152, Q-39); no other surface changed.
+  publicSurfaces: '6dabf8cb27387e5a01e126e2732e06a9c76766ec451199c2094aee76f969abc5',
   // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.
@@ -208,7 +212,8 @@ export function validateR10Manifest(value) {
     // 20 -> 21 (2026-10-26): the a12 bookings page (B-40).
     // 21 -> 22 (2026-10-26): the n07 photos page (B-16).
     // 22 -> 23 (2026-10-28): the n06 data requests page (A-15, D63).
-    || value.appScreenAllowlist.length !== 23
+    // 23 -> 24 (2026-11-24): the profile changes page (RA-BE-152, Q-39).
+    || value.appScreenAllowlist.length !== 24
     || JSON.stringify(value.appScreenAllowlist) !== JSON.stringify(uniqueSorted(value.appScreenAllowlist))
   ) throw new Error('screen allowlist invalid');
   for (const fate of value.sourceFates) {

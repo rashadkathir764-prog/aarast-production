@@ -70,6 +70,8 @@ const ACTIONS: Array<[string, RegExp, ActionWords]> = [
   ['PATCH', /^\/admin\/reviews\/:id\/reply-status$/, { label: 'غيّر حالة رد على تقييم', target: 'تقييم' }],
   ['PATCH', /^\/admin\/assistant-reports\/:id\/resolve$/, { label: 'قفل بلاغ إجابة المساعد', target: 'بلاغ' }],
   ['POST', /^\/admin\/data-requests\/:id\/restore$/, { label: 'رجّع حساب بطلبه', target: 'user' }],
+  // RA-BE-152 (Q-39): the team's answer to a provider's profile change.
+  ['PATCH', /^\/admin\/provider-profile-changes\/:id\/decision$/, { label: 'قرّر في تعديل ملف', target: 'تعديل ملف' }],
 ];
 
 export function auditActionWords(method: string, route: string): ActionWords {

@@ -186,18 +186,24 @@ class _PlanNavigationItem extends StatelessWidget {
             children: [
               icon,
               const SizedBox(height: AarastV3Space.x1),
-              // A tab name shrinks a little before it is ever cut.
+              // A tab name shrinks a little before it is ever cut, and keeps
+              // air to the tab's edge so two names never touch (RA-MO-328).
               Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: active ? JourneyType.bold : FontWeight.w500,
-                      color: foreground,
-                      height: AarastV3Line.tight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AarastV3Space.x1,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: active ? JourneyType.bold : FontWeight.w500,
+                        color: foreground,
+                        height: AarastV3Line.tight,
+                      ),
                     ),
                   ),
                 ),

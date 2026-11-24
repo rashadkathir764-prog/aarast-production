@@ -743,7 +743,7 @@ class _AskField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-        border: Border.all(color: AarastV3Color.line),
+        border: Border.all(color: AarastV3Color.lineStrong),
       ),
       child: Row(
         children: [
@@ -791,20 +791,27 @@ class _AskField extends StatelessWidget {
             key: const ValueKey('assistant-send'),
             onTap: enabled ? onSend : null,
             semanticLabel: context.say('اسأل', 'اسألي'),
-            borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-            child: Container(
-              width: AarastV3Size.mark,
-              height: AarastV3Size.mark,
-              decoration: BoxDecoration(
-                color: enabled
-                    ? context.accent.primary
-                    : AarastV3Color.lineStrong,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.send,
-                size: AarastV3Icon.md,
-                color: AarastV3Color.onPrimary,
+            borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+            // The circle is drawn 40; the finger gets the 48 of D74
+            // around it (RA-MO-367).
+            child: SizedBox.square(
+              dimension: AarastV3Size.touch,
+              child: Center(
+                child: Container(
+                  width: AarastV3Size.mark,
+                  height: AarastV3Size.mark,
+                  decoration: BoxDecoration(
+                    color: enabled
+                        ? context.accent.primary
+                        : AarastV3Color.lineStrong,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.send,
+                    size: AarastV3Icon.md,
+                    color: AarastV3Color.onPrimary,
+                  ),
+                ),
               ),
             ),
           ),

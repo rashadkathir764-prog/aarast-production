@@ -270,6 +270,23 @@ void main() {
     semantics.dispose();
   });
 
+  // RA-MO-367 (D74): the send was a 40 circle; a finger needs 48.
+  testWidgets('the send is a 48dp target', (tester) async {
+    await tester.pumpWidget(
+      app(
+        PlanAssistantScreen(
+          weddingPlanId: 'plan-1',
+          api: _FakeAssistantApi(consented: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final size = tester.getSize(find.byKey(const ValueKey('assistant-send')));
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
+  });
+
   // RA-ST-04 (D95): «بلّغ عن الإجابة».
   Future<_FakeAssistantApi> askedOnce(
     WidgetTester tester, {

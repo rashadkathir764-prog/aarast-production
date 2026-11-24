@@ -131,4 +131,46 @@ void main() {
     expect(find.text('لديك تحديث جديد في الخطة.'), findsOneWidget);
     expect(find.byKey(const Key('aarast-top-toast')), findsOneWidget);
   });
+
+  // RA-MO-367 (D74): the action was a 34dp pill; a finger needs 48.
+  testWidgets('the toast action is a 48dp target', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var calls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => AarastToast.showSuccess(
+                context,
+                'تمت إضافة المهمة.',
+                action: SnackBarAction(
+                  label: 'تراجع',
+                  onPressed: () => calls++,
+                ),
+              ),
+              child: const Text('نجاح'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('نجاح'));
+    await tester.pump(const Duration(milliseconds: 220));
+
+    final action = find.byKey(const Key('aarast-toast-action'));
+    final size = tester.getSize(action);
+    expect(size.height, greaterThanOrEqualTo(48));
+    expect(size.width, greaterThanOrEqualTo(48));
+
+    // A tap just below the pill's drawn edge still lands on it.
+    final rect = tester.getRect(action);
+    await tester.tapAt(Offset(rect.center.dx, rect.bottom - 2));
+    await tester.pump();
+    expect(calls, 1);
+    await tester.pump(const Duration(seconds: 6));
+  });
 }

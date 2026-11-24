@@ -328,7 +328,9 @@ class _ToastCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                         horizontal: AarastV3Space.x3,
                       ),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      // The pill is drawn 34 high; the finger gets the 48
+                      // of D74 around it (RA-MO-367).
+                      tapTargetSize: MaterialTapTargetSize.padded,
                       shape: const StadiumBorder(),
                     ),
                     child: Text(

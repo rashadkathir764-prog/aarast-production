@@ -71,8 +71,8 @@ Feature code uses `AarastV3Color` roles or `context.accent`, never a hex value.
 | `paperQuiet` | `#F7F8F8` | Quiet fills |
 | `ink` / `text` | `#13211F` | Main text |
 | `textMuted` | `#55625E` | Secondary text |
-| `textFaint` | `#8A9592` | Hints only |
-| `line` / `lineStrong` | `#E2E7E5` / `#C9D1CE` | Dividers and field edges |
+| `textFaint` | `#66726F` | Hints only (4.5:1 on the canvas, D124) |
+| `line` / `lineStrong` | `#E2E7E5` / `#838E8B` | Dividers / the edge of a field (3:1 on paper and canvas, D124) |
 | `primary` | `#0B6E69` | The identity, main actions |
 | `primaryDark` | `#064B47` | The countdown card's deep end |
 | `primarySoft` | `#DCEFEC` | Soft fills |
@@ -97,6 +97,8 @@ Tajawal is the app's text family (`JourneyType.family`). Sizes come from
 `JourneyType`; a screen never passes a number, and a test fails if one does.
 The app takes half of the phone's text size above normal, up to 1.15, and
 «خط كبير» a step more, up to 1.3 (`DevicePreferences.textScalerFor`, D119).
+Above a system size of 1.5 the system's own scaler passes through unchanged
+(D126).
 
 Numbers, dates and phone values keep their direction inside RTL text.
 

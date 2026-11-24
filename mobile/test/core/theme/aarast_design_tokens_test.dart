@@ -21,9 +21,9 @@ void main() {
       expect(AarastSemanticTokens.surfaceMuted, const Color(0xFFF7F8F8));
       expect(AarastSemanticTokens.textPrimary, const Color(0xFF13211F));
       expect(AarastSemanticTokens.textSecondary, const Color(0xFF55625E));
-      expect(AarastSemanticTokens.textDisabled, const Color(0xFF8A9592));
+      expect(AarastSemanticTokens.textDisabled, const Color(0xFF66726F));
       expect(AarastSemanticTokens.border, const Color(0xFFE2E7E5));
-      expect(AarastSemanticTokens.borderStrong, const Color(0xFFC9D1CE));
+      expect(AarastSemanticTokens.borderStrong, const Color(0xFF838E8B));
       expect(AarastSemanticTokens.brand, const Color(0xFF0B6E69));
       expect(AarastSemanticTokens.brandDeep, const Color(0xFF064B47));
       expect(AarastSemanticTokens.brandMuted, const Color(0xFFDCEFEC));

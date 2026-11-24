@@ -1257,7 +1257,7 @@ class _Composer extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(AarastV3Radius.card),
-        border: Border.all(color: AarastV3Color.line),
+        border: Border.all(color: AarastV3Color.lineStrong),
       ),
       child: Row(
         children: [

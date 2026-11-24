@@ -84,38 +84,74 @@ class _MoneyFigures extends StatelessWidget {
       );
     }
 
-    final rows = <Widget>[];
-    for (var index = 0; index < cells.length; index += 2) {
-      if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x1));
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // Two to a row while every figure keeps its words and amount on one
+    // line in half the width; once one would wrap (a 320 phone at text
+    // scale 1.3 gave four lines), each takes a row of its own (RA-MO-328).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scaler = MediaQuery.textScalerOf(context);
+        final half = (constraints.maxWidth - AarastV3Space.x3) / 2;
+        bool oneLine(String text, TextStyle style) {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          final fits = painter.width <= half;
+          painter.dispose();
+          return fits;
+        }
+
+        final boldStyle = JourneyType.of(
+          JourneyType.small,
+          weight: JourneyType.bold,
+        );
+        final paired = cells.every((data) {
+          final value = data.value;
+          final words = value == null
+              ? data.label
+              : '${data.label} ${figure(value)}';
+          return oneLine(words, boldStyle) &&
+              (data.note == null || oneLine(data.note!, muted));
+        });
+        final perRow = paired ? 2 : 1;
+        final rows = <Widget>[];
+        for (var index = 0; index < cells.length; index += perRow) {
+          if (index > 0) rows.add(const SizedBox(height: AarastV3Space.x1));
+          rows.add(
+            perRow == 1
+                ? cell(cells[index])
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: cell(cells[index])),
+                      const SizedBox(width: AarastV3Space.x3),
+                      Expanded(
+                        child: index + 1 < cells.length
+                            ? cell(cells[index + 1])
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+          );
+        }
+        return Column(
+          key: const ValueKey('dashboard-money-figures'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: cell(cells[index])),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: index + 1 < cells.length
-                  ? cell(cells[index + 1])
-                  : const SizedBox.shrink(),
-            ),
+            ...rows,
+            if (mahrLine case final line?) ...[
+              const SizedBox(height: AarastV3Space.x1),
+              Text(
+                line,
+                key: const ValueKey('dashboard-money-mahr-line'),
+                style: muted,
+              ),
+            ],
           ],
-        ),
-      );
-    }
-    return Column(
-      key: const ValueKey('dashboard-money-figures'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ...rows,
-        if (mahrLine case final line?) ...[
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            line,
-            key: const ValueKey('dashboard-money-mahr-line'),
-            style: muted,
-          ),
-        ],
-      ],
+        );
+      },
     );
   }
 }

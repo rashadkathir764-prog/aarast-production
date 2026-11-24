@@ -47,14 +47,22 @@ class DevicePreferences extends ChangeNotifier {
   /// The most the phone's own size grows the text without «خط كبير».
   static const maxPhoneScale = 1.15;
 
+  /// Past this the phone's own size is a need, not a taste (low vision,
+  /// WCAG 1.4.4 asks for 200%): the system's scaler goes through whole (Q-49,
+  /// D124, RA-MO-366). At or under it D119 holds.
+  static const passThroughScale = 1.5;
+
   /// The one text size of the app: half of the phone's step above normal
   /// (a smaller phone size is kept as it is), up to [maxPhoneScale]; a step
-  /// bigger with «خط كبير», never past [maxTextScale].
+  /// bigger with «خط كبير», never past [maxTextScale]. Above
+  /// [passThroughScale] the [system] scaler itself is returned, its
+  /// nonlinear steps (Android 14) and «خط كبير» left alone.
   static TextScaler textScalerFor(
     TextScaler system, {
     required bool largeText,
   }) {
     final phone = system.scale(1);
+    if (phone > passThroughScale) return system;
     final taken = phone <= 1
         ? phone
         : (1 + (phone - 1) * phoneScaleShare).clamp(1.0, maxPhoneScale);

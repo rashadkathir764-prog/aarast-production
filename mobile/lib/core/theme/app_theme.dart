@@ -301,13 +301,18 @@ class AppTheme {
         helperStyle: textTheme.bodySmall?.copyWith(color: textSecondary),
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
+        // A field's edge is 3:1 on paper and canvas (WCAG 1.4.11, RA-MO-367).
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          borderSide: const BorderSide(color: AarastSemanticTokens.border),
+          borderSide: const BorderSide(
+            color: AarastSemanticTokens.borderStrong,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          borderSide: const BorderSide(color: AarastSemanticTokens.border),
+          borderSide: const BorderSide(
+            color: AarastSemanticTokens.borderStrong,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),

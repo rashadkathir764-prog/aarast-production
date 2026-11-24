@@ -15,9 +15,13 @@ abstract final class AarastV3Color {
   static const inkSoft = Color(0xFF23332F);
   static const text = Color(0xFF13211F);
   static const textMuted = Color(0xFF55625E);
-  static const textFaint = Color(0xFF8A9592);
+  // The two neutrals WCAG fixes by arithmetic (RA-MO-367, D124), both on the
+  // line between the old value and [textMuted], same hue: faint text is 4.5:1
+  // on the canvas, the stroke of a field is 3:1 on the canvas and on paper.
+  // test/core/theme/accessibility_contrast_test.dart pins them.
+  static const textFaint = Color(0xFF66726F);
   static const line = Color(0xFFE2E7E5);
-  static const lineStrong = Color(0xFFC9D1CE);
+  static const lineStrong = Color(0xFF838E8B);
 
   // Aarast identity roles. Names stay semantic so feature code never grows a
   // second local palette.

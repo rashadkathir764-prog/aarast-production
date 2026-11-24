@@ -11,6 +11,7 @@ const { registerVerified } = require('./verified-registration');
  */
 
 const http = require('http');
+const { futureDay } = require('./smoke-utils');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
@@ -95,7 +96,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Task Timeline Smoke Plan',
       city: 'Sanaa',
-      weddingDate: '2030-12-25T00:00:00.000Z',
+      weddingDate: `${futureDay(365)}T00:00:00.000Z`,
     }, token);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created wedding plan has id', typeof res.body?.id === 'string');
@@ -108,7 +109,7 @@ async function run() {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Confirm wedding hall',
       description: 'Call the hall manager',
-      dueDate: '2026-12-05T00:00:00.000Z',
+      dueDate: `${futureDay(11)}T00:00:00.000Z`,
       status: 'TODO',
       priority: 'HIGH',
     }, token);
@@ -165,7 +166,7 @@ async function run() {
   {
     const res = await request('POST', `/api/v1/costs/${costId}/payment-schedules`, {
       amount: '100000.00',
-      dueDate: '2026-12-15T00:00:00.000Z',
+      dueDate: `${futureDay(21)}T00:00:00.000Z`,
     }, token);
     check('POST payment schedule for timeline - HTTP 201', res.status === 201);
     check('timeline payment schedule has id', typeof res.body?.id === 'string');

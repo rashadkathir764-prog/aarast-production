@@ -12,6 +12,7 @@ const { registerVerified } = require('./verified-registration');
  */
 
 const http = require('http');
+const { futureDay } = require('./smoke-utils');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
@@ -115,7 +116,7 @@ async function run() {
         city: 'Sanaa',
         district: 'Old City',
       },
-      weddingDate: '2030-12-20T00:00:00.000Z',
+      weddingDate: `${futureDay(365)}T00:00:00.000Z`,
       priorities: ['budget', 'tasks', 'providers'],
       estimatedBudget: '1500000',
       currency: 'YER',
@@ -226,7 +227,7 @@ async function importLocalPlanChecks(accessToken) {
         totalAmount: '1000000',
         categoryName: 'القاعة',
         payments: [{ amount: '800000', paidAt: '2026-11-01T09:00:00.000Z' }],
-        paymentSchedules: [{ amount: '500000', dueDate: '2026-12-01T00:00:00.000Z' }],
+        paymentSchedules: [{ amount: '500000', dueDate: `${futureDay(7)}T00:00:00.000Z` }],
       },
       {
         // Paid in full: the pending reminder does not survive it (R4).
@@ -234,7 +235,7 @@ async function importLocalPlanChecks(accessToken) {
         totalAmount: '300000',
         categoryName: 'التصوير',
         payments: [{ amount: '300000', paidAt: '2026-11-02T09:00:00.000Z' }],
-        paymentSchedules: [{ amount: '100000', dueDate: '2026-12-05T00:00:00.000Z' }],
+        paymentSchedules: [{ amount: '100000', dueDate: `${futureDay(11)}T00:00:00.000Z` }],
       },
     ],
     tasks: Array.from({ length: 350 }, (_, index) => ({ title: `مهمة ${index + 1}` })),

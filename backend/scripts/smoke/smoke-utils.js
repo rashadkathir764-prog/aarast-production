@@ -92,6 +92,12 @@ function riyadhDateOffsetIso(days, now = new Date()) {
   ).toISOString();
 }
 
+// The Sana'a calendar day `daysFromNow` days after `now` as YYYY-MM-DD.
+// Smoke fixtures use it instead of literal dates so they never fall into the past.
+function futureDay(daysFromNow, now = new Date()) {
+  return riyadhDateOffsetIso(daysFromNow, now).slice(0, 10);
+}
+
 function assertSafeSmokeDatabaseUrl(value, expectedDatabaseName) {
   const databaseName = databaseNameFromUrl(value);
   if (!/(?:smoke|test)/.test(databaseName)) {
@@ -213,5 +219,6 @@ module.exports = {
   databaseNameFromUrl,
   loadLocalEnvFile,
   requireResponseId,
+  futureDay,
   riyadhDateOffsetIso,
 };

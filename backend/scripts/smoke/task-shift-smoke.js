@@ -8,6 +8,11 @@ const { registerVerified } = require('./verified-registration');
 const { eraseFixtureAccount } = require('./account-grace');
 const { inviteAndAccept } = require('./invite-member');
 
+// Dates are counted from one clock reading, so every day keeps its spacing to the others.
+const smokeNow = new Date();
+const { futureDay } = require('./smoke-utils');
+const at = (offset) => futureDay(60 + offset, smokeNow);
+
 /**
  * Task date shift smoke (V1 checklist 4.13), through the HTTP stack on
  * PostgreSQL: when the wedding moves, the owner moves the plan's open dated
@@ -95,12 +100,12 @@ async function run() {
     const planId = plan.body?.id;
     const open = await createTask(planId, ownerToken, {
       title: 'Book the hall',
-      dueDate: '2027-03-01T09:00:00.000Z',
-      reminderAt: '2027-02-25T09:00:00.000Z',
+      dueDate: `${at(0)}T09:00:00.000Z`,
+      reminderAt: `${at(-4)}T09:00:00.000Z`,
     });
     const done = await createTask(planId, ownerToken, {
       title: 'Done task',
-      dueDate: '2027-03-01T09:00:00.000Z',
+      dueDate: `${at(0)}T09:00:00.000Z`,
       status: 'DONE',
     });
     const undated = await createTask(planId, ownerToken, { title: 'Undated task' });
@@ -118,16 +123,16 @@ async function run() {
     const openAfter = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
     check(
       'due date and reminder move by 30 days',
-      day(openAfter.body?.dueDate) === '2027-03-31' && day(openAfter.body?.reminderAt) === '2027-03-27',
+      day(openAfter.body?.dueDate) === at(30) && day(openAfter.body?.reminderAt) === at(26),
     );
     const doneAfter = await request('GET', `/api/v1/tasks/${done?.id}`, null, ownerToken);
-    check('a done task keeps its date', day(doneAfter.body?.dueDate) === '2027-03-01');
+    check('a done task keeps its date', day(doneAfter.body?.dueDate) === at(0));
     const undatedAfter = await request('GET', `/api/v1/tasks/${undated?.id}`, null, ownerToken);
     check('an undated task stays undated', undatedAfter.status === 200 && undatedAfter.body?.dueDate === null);
 
     const back = await request('POST', shiftPath, { days: -10 }, ownerToken);
     const openBack = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
-    check('an earlier wedding moves them back', back.status === 200 && day(openBack.body?.dueDate) === '2027-03-21');
+    check('an earlier wedding moves them back', back.status === 200 && day(openBack.body?.dueDate) === at(20));
 
     // RA-BE-69: an editor who may move the wedding's date moves its tasks
     // with it; only the owner and the partner could, in English.
@@ -141,7 +146,7 @@ async function run() {
     const byEditor = await request('POST', shiftPath, { days: 5 }, editorToken);
     const openByEditor = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
     check('an editor who may move the date moves the tasks',
-      byEditor.status === 200 && day(openByEditor.body?.dueDate) === '2027-03-26');
+      byEditor.status === 200 && day(openByEditor.body?.dueDate) === at(25));
 
     // RA-BE-119: a helper who manages the tasks without seeing the money gets
     // no link into the money back from saving a task, as from reading it.
@@ -161,15 +166,15 @@ async function run() {
     check('the task keeps its item for the owner', forOwner.body?.linkedBudgetCategoryId === item.body?.id);
 
     // RA-BE-72: the wedding moved, its dated events move with it.
-    await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: '2027-04-10T00:00:00.000Z' }, ownerToken);
-    const samra = await request('POST', `/api/v1/wedding-plans/${planId}/events`, { type: 'SAMRA', date: '2027-04-08' }, ownerToken);
+    await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: `${at(40)}T00:00:00.000Z` }, ownerToken);
+    const samra = await request('POST', `/api/v1/wedding-plans/${planId}/events`, { type: 'SAMRA', date: at(38) }, ownerToken);
     check('the plan has a dated samra', samra.status === 201);
-    const moved = await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: '2027-04-24T00:00:00.000Z' }, ownerToken);
+    const moved = await request('PATCH', `/api/v1/wedding-plans/${planId}`, { weddingDate: `${at(54)}T00:00:00.000Z` }, ownerToken);
     const events = await request('GET', `/api/v1/wedding-plans/${planId}/events`, null, ownerToken);
     const list = Array.isArray(events.body) ? events.body : events.body?.items ?? [];
     const samraAfter = list.find((event) => event.type === 'SAMRA');
     check('postponing the wedding two weeks moves the samra with it',
-      moved.status === 200 && day(samraAfter?.date) === '2027-04-22');
+      moved.status === 200 && day(samraAfter?.date) === at(52));
 
     // RA-BE-116: the open tasks move with the wedding's date, by its own
     // difference, in the same save; moving every task by any number of days
@@ -185,15 +190,15 @@ async function run() {
     check('an editor without the tasks right cannot shift every task on its own',
       loose.status === 403 && loose.body?.code !== undefined);
     const withDate = await request('PATCH', `/api/v1/wedding-plans/${planId}`,
-      { weddingDate: '2027-05-01T00:00:00.000Z', moveOpenTasks: true }, dateEditorToken);
+      { weddingDate: `${at(61)}T00:00:00.000Z`, moveOpenTasks: true }, dateEditorToken);
     const openWithDate = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
     check('postponing the wedding a week moves its open tasks a week, in the same save',
-      withDate.status === 200 && day(openWithDate.body?.dueDate) === '2027-04-02'
-        && day(openWithDate.body?.reminderAt) === '2027-03-29');
+      withDate.status === 200 && day(openWithDate.body?.dueDate) === at(32)
+        && day(openWithDate.body?.reminderAt) === at(28));
     const sameDay = await request('PATCH', `/api/v1/wedding-plans/${planId}`,
-      { weddingDate: '2027-05-01T00:00:00.000Z', moveOpenTasks: true }, dateEditorToken);
+      { weddingDate: `${at(61)}T00:00:00.000Z`, moveOpenTasks: true }, dateEditorToken);
     const openSameDay = await request('GET', `/api/v1/tasks/${open?.id}`, null, ownerToken);
-    check('the same day again moves nothing', sameDay.status === 200 && day(openSameDay.body?.dueDate) === '2027-04-02');
+    check('the same day again moves nothing', sameDay.status === 200 && day(openSameDay.body?.dueDate) === at(32));
   } finally {
     for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken], ['editor', editorToken], ['date editor', dateEditorToken]]) {
       if (!token) continue;

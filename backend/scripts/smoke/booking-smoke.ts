@@ -21,11 +21,25 @@ import { notificationsService, ownerPorts } from "./support/owner-ports";
 // the provider's decisions, the calendar, and the provider's daily number
 // (B-20): racing confirmations counted under his row lock never pass it.
 
-const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
+const { assertManagedSmokeEnvironment, futureDay } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
+  futureDay: (daysFromNow: number, now?: Date) => string;
 };
 
 assertManagedSmokeEnvironment(process.env);
+
+// Every day below is counted from one clock reading, so the scenarios keep
+// their spacing: the reminders are a week and thirteen days before the event.
+const smokeNow = new Date();
+const eventDay = futureDay(60, smokeNow);
+const dayAfterEvent = futureDay(61, smokeNow);
+const blockedDay = futureDay(71, smokeNow);
+const planDay = futureDay(100, smokeNow);
+const movingDay = futureDay(120, smokeNow);
+const raceDay = futureDay(121, smokeNow);
+const movedDay = futureDay(127, smokeNow);
+const askedAgainDay = futureDay(147, smokeNow);
+const openDay = futureDay(149, smokeNow);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const prisma = new PrismaClient();
 const label = `Booking smoke ${runId}`;
@@ -110,13 +124,13 @@ async function main(): Promise<void> {
 
   let planId: string | null = null;
   try {
-    const quoteA = await acceptedQuote(customerA.id, "2027-02-18");
-    const quoteB = await acceptedQuote(customerB.id, "2027-02-18");
+    const quoteA = await acceptedQuote(customerA.id, eventDay);
+    const quoteB = await acceptedQuote(customerB.id, eventDay);
 
     const bookingA = await bookings.requestBooking(customerA as any, quoteA.id, {});
     const bookingB = await bookings.requestBooking(customerB as any, quoteB.id, {});
     assert.equal(bookingA.status, "REQUESTED");
-    assert.equal(bookingA.eventDate, "2027-02-18");
+    assert.equal(bookingA.eventDate, eventDay);
     assert.equal(notifications.filter((item) => item.userId === providerUser.id).length, 2);
     console.log("PASS - two customers can ask for the same day");
 
@@ -161,24 +175,24 @@ async function main(): Promise<void> {
     );
     assert.equal(declined.status, "DECLINED");
     const reopened = await bookings.requestBooking(loserUser as any, loserQuote.id, {
-      eventDate: "2027-02-19",
+      eventDate: dayAfterEvent,
     });
     assert.equal(reopened.id, loserId);
     assert.equal(reopened.status, "REQUESTED");
     console.log("PASS - a declined customer asks again for another day");
 
-    await bookings.blockDate(providerUser as any, "2027-03-01");
-    assert.deepEqual(await bookings.listBlockedDates(providerUser as any), ["2027-03-01"]);
+    await bookings.blockDate(providerUser as any, blockedDay);
+    assert.deepEqual(await bookings.listBlockedDates(providerUser as any), [blockedDay]);
     await assert.rejects(
-      bookings.blockDate(providerUser as any, "2027-02-18"),
+      bookings.blockDate(providerUser as any, eventDay),
       (error: any) => code(error) === "BOOKING_DATE_HAS_BOOKING",
     );
-    const quoteC = await acceptedQuote(customerA.id, "2027-03-01");
+    const quoteC = await acceptedQuote(customerA.id, blockedDay);
     await assert.rejects(
       bookings.requestBooking(customerA as any, quoteC.id, {}),
       (error: any) => code(error) === "BOOKING_DATE_UNAVAILABLE",
     );
-    await bookings.unblockDate(providerUser as any, "2027-03-01");
+    await bookings.unblockDate(providerUser as any, blockedDay);
     assert.equal(
       (await bookings.requestBooking(customerA as any, quoteC.id, {})).status,
       "REQUESTED",
@@ -188,7 +202,7 @@ async function main(): Promise<void> {
     // A week before the confirmed day both sides are reminded; two days
     // before it is outside every window (V1 checklist 4.17).
     const remindedBefore = notifications.length;
-    await bookings.sendDueReminders(new Date("2027-02-11T09:00:00Z"));
+    await bookings.sendDueReminders(new Date(`${futureDay(53, smokeNow)}T09:00:00Z`));
     const reminders = notifications
       .slice(remindedBefore)
       .filter((item) => item.data?.bookingId === winner.id);
@@ -196,9 +210,9 @@ async function main(): Promise<void> {
       reminders.map((item) => item.data.recipientAudience).sort(),
       ["CUSTOMER", "PROVIDER"],
     );
-    assert.ok(reminders.every((item) => item.dedupeKey.endsWith(":REMINDER:7:2027-02-18")));
+    assert.ok(reminders.every((item) => item.dedupeKey.endsWith(`:REMINDER:7:${eventDay}`)));
     const outside = notifications.length;
-    await bookings.sendDueReminders(new Date("2027-02-05T09:00:00Z"));
+    await bookings.sendDueReminders(new Date(`${futureDay(47, smokeNow)}T09:00:00Z`));
     assert.equal(
       notifications.slice(outside).filter((item) => item.data?.bookingId === winner.id).length,
       0,
@@ -237,7 +251,7 @@ async function main(): Promise<void> {
     );
     assert.equal(cancelled.status, "CANCELLED");
     assert.equal(cancelled.cancelledBy, "CUSTOMER");
-    await bookings.blockDate(providerUser as any, "2027-02-18");
+    await bookings.blockDate(providerUser as any, eventDay);
     console.log("PASS - a cancelled booking frees the provider's day");
 
     // A plan's bookings (V1 checklist 4.13: when the wedding moves, the app
@@ -247,7 +261,7 @@ async function main(): Promise<void> {
       data: { ownerUserId: customerA.id, title: `${label} plan` },
     });
     planId = plan.id;
-    const planQuote = await acceptedQuote(customerA.id, "2027-04-10");
+    const planQuote = await acceptedQuote(customerA.id, planDay);
     await prisma.quoteRequest.update({
       where: { id: planQuote.id },
       data: { weddingPlanId: plan.id },
@@ -256,7 +270,7 @@ async function main(): Promise<void> {
     const planBookings = await bookings.listForPlan(customerA as any, plan.id);
     assert.deepEqual(planBookings.map((item) => item.id), [planBooking.id]);
     assert.equal(planBookings[0].providerName, `${label} provider`);
-    assert.equal(planBookings[0].eventDate, "2027-04-10");
+    assert.equal(planBookings[0].eventDate, planDay);
     await assert.rejects(bookings.listForPlan(customerB as any, plan.id));
     console.log("PASS - a plan lists its bookings with the provider's name, to its people only");
 
@@ -264,10 +278,10 @@ async function main(): Promise<void> {
     // waiting on the booking before was accepted onto the new one and moved
     // its day; and «تم» said on the day, while a cancel and a move were still
     // open, travelled with the booking to another day.
-    const moveQuote = await acceptedQuote(customerA.id, "2027-05-05");
+    const moveQuote = await acceptedQuote(customerA.id, movingDay);
     const moving = await bookings.requestBooking(customerA as any, moveQuote.id, {});
     await bookings.decideAsProvider(providerUser as any, moving.id, "CONFIRM", {});
-    await bookings.requestChangeAsCustomer(customerA as any, moving.id, { eventDate: "2027-05-12" });
+    await bookings.requestChangeAsCustomer(customerA as any, moving.id, { eventDate: movedDay });
     await bookings.cancelAsCustomer(customerA as any, moving.id, {});
     const askedAgain = await bookings.requestBooking(customerA as any, moveQuote.id, {});
     assert.equal(askedAgain.id, moving.id);
@@ -279,7 +293,7 @@ async function main(): Promise<void> {
       (error: any) => error?.response?.code === "BOOKING_CHANGE_DECIDED",
     );
     const kept = await prisma.booking.findUniqueOrThrow({ where: { id: askedAgain.id } });
-    assert.equal(kept.eventDate.toISOString().slice(0, 10), "2027-05-05");
+    assert.equal(kept.eventDate.toISOString().slice(0, 10), movingDay);
     console.log("PASS - a booking asked again carries no change left waiting from before");
 
     await prisma.booking.update({
@@ -292,7 +306,7 @@ async function main(): Promise<void> {
       (error: any) => error?.response?.code === "BOOKING_OUTCOME_ALREADY_DECIDED",
     );
     await assert.rejects(
-      bookings.requestChangeAsCustomer(customerA as any, askedAgain.id, { eventDate: "2027-06-01" }),
+      bookings.requestChangeAsCustomer(customerA as any, askedAgain.id, { eventDate: askedAgainDay }),
       (error: any) => error?.response?.code === "BOOKING_CHANGE_ALREADY_DECIDED",
     );
     console.log("PASS - once «تم» is said on the day, the booking is neither cancelled nor moved");
@@ -302,8 +316,7 @@ async function main(): Promise<void> {
       where: { id: provider.id },
       data: { dailyBookingCapacity: 2 },
     });
-    const raceDay = "2027-05-06";
-    const raceCustomers = [customerA, customerB, customerA];
+        const raceCustomers = [customerA, customerB, customerA];
     const raceBookings = [];
     for (const customer of raceCustomers) {
       const quote = await acceptedQuote(customer.id, raceDay);
@@ -349,7 +362,7 @@ async function main(): Promise<void> {
 
     // B-42: a suspension expires the open request and keeps the confirmed
     // bookings; every customer concerned is told which.
-    const openQuote = await acceptedQuote(customerB.id, "2027-06-03");
+    const openQuote = await acceptedQuote(customerB.id, openDay);
     const open = await bookings.requestBooking(customerB as any, openQuote.id, {});
     // RA-BE-100: B asked for A's plan and is not on it (left, or never
     // managed its providers): the plan's owner is told, not B.

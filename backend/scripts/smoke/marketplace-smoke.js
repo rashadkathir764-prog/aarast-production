@@ -9,7 +9,7 @@ const { registerVerified } = require('./verified-registration');
  * marketplace and authenticated user actions through HTTP only.
  */
 
-const { configureSmokeDatabaseUrl } = require('./smoke-utils');
+const { configureSmokeDatabaseUrl, futureDay } = require('./smoke-utils');
 configureSmokeDatabaseUrl();
 
 const http = require('http');
@@ -266,7 +266,7 @@ async function checkBudgetItemSearch(fixture) {
       path: 'USER',
       persona,
       location: { governorate: 'Sanaa', city: 'Sanaa', district: 'Old City' },
-      weddingDate: '2027-01-21T00:00:00.000Z',
+      weddingDate: `${futureDay(58)}T00:00:00.000Z`,
       priorities: ['providers'],
       estimatedBudget: '7000000',
       currency: 'YER',

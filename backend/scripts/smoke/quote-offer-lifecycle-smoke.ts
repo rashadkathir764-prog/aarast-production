@@ -28,11 +28,16 @@ import { notificationsService, ownerPorts } from "./support/owner-ports";
 // the hosting. Run it with `npm run smoke:quote-offer-lifecycle`: the managed
 // runner gives it an isolated database and its own API.
 
-const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
+const { assertManagedSmokeEnvironment, futureDay } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
+  futureDay: (daysFromNow: number, now?: Date) => string;
 };
 
 assertManagedSmokeEnvironment(process.env);
+
+// The wedding day and the requested event days, counted from one clock reading.
+const smokeNow = new Date();
+const weddingDay = futureDay(58, smokeNow);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const baseUrl = process.env.SMOKE_BASE_URL!;
 const prisma = new PrismaClient();
@@ -147,7 +152,7 @@ async function main(): Promise<void> {
       ownerUserId: customer.id,
       title: "عرس محمد",
       currency: "YER",
-      weddingDate: new Date("2027-01-21T00:00:00.000Z"),
+      weddingDate: new Date(`${weddingDay}T00:00:00.000Z`),
     },
   });
   for (const name of ["التصوير والفيديو", "الوليمة والضيافة", "أخرى"]) {
@@ -172,8 +177,8 @@ async function main(): Promise<void> {
     });
 
   // ---------------------------------------------------------------- B-08
-  const privateQuote = expect(await request("2027-01-21", false), 201, "a private request");
-  const sharedQuote = expect(await request("2027-01-22", true), 201, "a shared request");
+  const privateQuote = expect(await request(weddingDay, false), 201, "a private request");
+  const sharedQuote = expect(await request(futureDay(59, smokeNow), true), 201, "a shared request");
   const seenPrivate = expect(
     await call("GET", `/api/v1/provider/me/quote-requests/${privateQuote.id}`, providerToken),
     200,
@@ -550,12 +555,12 @@ async function main(): Promise<void> {
     "an offer on an ended request",
     "QUOTE_REQUEST_EXPIRED",
   );
-  expect(await request("2027-01-22", true), 201, "asking the same again after it ended");
+  expect(await request(futureDay(59, smokeNow), true), 201, "asking the same again after it ended");
   pass("past seven days the job ends the request once, the customer is told «ما رد … خلال 7 أيام», and may ask again");
 
   // A request whose deadline passed long before the job reached it (the
   // first run after B-04 shipped) ends without telling the customer.
-  const stale = expect(await request("2027-01-23", false), 201, "a request the job reaches late");
+  const stale = expect(await request(futureDay(60, smokeNow), false), 201, "a request the job reaches late");
   await prisma.quoteRequest.update({
     where: { id: stale.id },
     data: { expiresAt: new Date(Date.now() - 30 * DAY_MS) },

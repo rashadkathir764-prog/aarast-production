@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const { registerVerified } = require('./verified-registration');
 
 const http = require('http');
+const { futureDay } = require('./smoke-utils');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3124';
 const timestamp = Date.now();
@@ -89,7 +90,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Notifications Smoke Plan',
       city: 'Sanaa',
-      weddingDate: '2030-12-20T00:00:00.000Z',
+      weddingDate: `${futureDay(365)}T00:00:00.000Z`,
       estimatedBudget: '1000000',
     }, accessToken);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);

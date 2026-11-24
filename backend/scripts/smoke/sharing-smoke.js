@@ -12,6 +12,7 @@ const { inviteAndAccept } = require('./invite-member');
  */
 
 const http = require('http');
+const { futureDay } = require('./smoke-utils');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3144';
 const timestamp = Date.now();
@@ -137,7 +138,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Sharing Smoke Plan',
       city: 'Sanaa',
-      weddingDate: '2030-12-30T00:00:00.000Z',
+      weddingDate: `${futureDay(365)}T00:00:00.000Z`,
       estimatedBudget: '1500000.00',
     }, ownerToken);
     check('owner creates wedding plan - HTTP 201', res.status === 201);
@@ -308,7 +309,7 @@ async function run() {
   {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Shared user can manage task',
-      dueDate: '2026-12-10T00:00:00.000Z',
+      dueDate: `${futureDay(16)}T00:00:00.000Z`,
       priority: 'HIGH',
     }, sharedToken);
     check('shared user creates task with permission - HTTP 201', res.status === 201);

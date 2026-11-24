@@ -16,6 +16,7 @@ const {
 configureSmokeDatabaseUrl();
 
 const http = require('http');
+const { futureDay } = require('./smoke-utils');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -320,7 +321,7 @@ async function run() {
       title: 'Phase8 Offer',
       message: 'Offer details for Phase8',
       amount: '300000.00',
-      validUntil: '2026-12-31T00:00:00.000Z',
+      validUntil: `${futureDay(37)}T00:00:00.000Z`,
     }, providerUser.token);
     check('POST /api/v1 provider quote offer - HTTP 201', res.status === 201);
     check('offer has id', typeof res.body?.id === 'string');

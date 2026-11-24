@@ -12,11 +12,16 @@ import { contributionHistoryService, ownerPorts } from "./support/owner-ports";
 // owner issues a personal link, the guest reads and answers it without an
 // account, the guest list updates, and a new link retires the old one.
 
-const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
+const { assertManagedSmokeEnvironment, futureDay } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
+  futureDay: (daysFromNow: number, now?: Date) => string;
 };
 
 assertManagedSmokeEnvironment(process.env);
+
+// The wedding day is counted from the run's start, so the plan, its lunch and
+// the assertion agree on the same day.
+const weddingDay = futureDay(60, new Date());
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const prisma = new PrismaClient();
 const label = `RSVP smoke ${runId}`;
@@ -32,7 +37,7 @@ async function main(): Promise<void> {
     data: {
       ownerUserId: owner.id,
       title: "عرس أحمد",
-      weddingDate: new Date("2027-02-18T00:00:00Z"),
+      weddingDate: new Date(`${weddingDay}T00:00:00Z`),
       location: { governorate: "أمانة العاصمة", cityOrDistrict: "شعوب" },
     },
   });
@@ -82,7 +87,7 @@ async function main(): Promise<void> {
     data: {
       weddingPlanId: plan.id,
       type: "LUNCH",
-      date: new Date("2027-02-18T00:00:00Z"),
+      date: new Date(`${weddingDay}T00:00:00Z`),
       timeSlot: "DHUHR",
       placeLabel: "بيت العريس",
     },
@@ -109,7 +114,7 @@ async function main(): Promise<void> {
     const view = await rsvp.getInvitation(firstToken);
     assert.equal(view.guestName, "عمي صالح");
     assert.equal(view.planTitle, "عرس أحمد");
-    assert.equal(view.weddingDate, "2027-02-18");
+    assert.equal(view.weddingDate, weddingDay);
     console.log("PASS - the guest reads the invitation without an account");
 
     const answered = await rsvp.respond(firstToken, "CONFIRMED", 3);

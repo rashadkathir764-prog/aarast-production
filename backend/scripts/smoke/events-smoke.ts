@@ -13,11 +13,19 @@ import { ownerPorts } from "./support/owner-ports";
 // them (D52) and only the owner or a plan editor changes them, an archived
 // plan stays read-only, and erasing the plan takes its events.
 
-const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
+const { assertManagedSmokeEnvironment, futureDay } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
+  futureDay: (daysFromNow: number, now?: Date) => string;
 };
 
 assertManagedSmokeEnvironment(process.env);
+
+// The days are counted from one clock reading, so they keep their spacing:
+// the wedding is the day the plan names, the events sit around it.
+const smokeNow = new Date();
+const weddingDay = futureDay(58, smokeNow);
+const samraDay = futureDay(55, smokeNow);
+const weddingEveDay = futureDay(57, smokeNow);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const prisma = new PrismaClient();
 const label = `Events smoke ${runId}`;
@@ -50,7 +58,7 @@ async function main(): Promise<void> {
       title: "عرس محمد",
       persona: "GROOM",
       // The start of 21 January in Sanaa.
-      weddingDate: new Date("2027-01-20T21:00:00.000Z"),
+      weddingDate: new Date(`${weddingEveDay}T21:00:00.000Z`),
     },
   });
   await prisma.sharedMember.create({
@@ -75,7 +83,7 @@ async function main(): Promise<void> {
     assert.equal(view.items.length, 1);
     assert.equal(view.items[0].type, "WEDDING");
     assert.equal(view.items[0].id, null);
-    assert.equal(view.items[0].date, "2027-01-21");
+    assert.equal(view.items[0].date, weddingDay);
     assert.deepEqual(view.suggestions, ["SAMRA", "MAQEEL", "AQD", "LUNCH", "DINNER", "CUSTOM"]);
     console.log("PASS - a new plan reads its wedding on the plan's day, with the groom's nights to add");
 
@@ -85,7 +93,7 @@ async function main(): Promise<void> {
       placeLabel: "قاعة سبأ · حدة",
     });
     await rejectsWith(
-      events.update(owner as any, plan.id, wedding.id!, { date: "2027-01-22" }),
+      events.update(owner as any, plan.id, wedding.id!, { date: futureDay(59, smokeNow) }),
       /EVENT_WEDDING_DATE_IS_PLAN_DATE/,
     );
     await rejectsWith(
@@ -97,13 +105,13 @@ async function main(): Promise<void> {
 
     const samra = await events.create(owner as any, plan.id, {
       type: "SAMRA",
-      date: "2027-01-19",
+      date: futureDay(56, smokeNow),
       timeSlot: "AFTER_ISHA",
       placeLabel: "الديوان",
     });
     const maqeel = await events.create(editor as any, plan.id, {
       type: "MAQEEL",
-      date: "2027-01-20",
+      date: weddingEveDay,
       timeSlot: "AFTER_DHUHR",
       placeLabel: "بيت الوالد",
       responsibleName: "صالح أخوي",
@@ -111,12 +119,12 @@ async function main(): Promise<void> {
     });
     await events.create(owner as any, plan.id, {
       type: "LUNCH",
-      date: "2027-01-21",
+      date: weddingDay,
       timeSlot: "DHUHR",
       placeLabel: "بيت الوالد",
     });
     await rejectsWith(
-      events.create(owner as any, plan.id, { type: "SAMRA", date: "2027-01-18" }),
+      events.create(owner as any, plan.id, { type: "SAMRA", date: samraDay }),
       /EVENT_TYPE_EXISTS/,
     );
     await rejectsWith(
@@ -130,7 +138,7 @@ async function main(): Promise<void> {
     const henna = await events.create(owner as any, plan.id, {
       type: "CUSTOM",
       title: "الحناء",
-      date: "2027-01-18",
+      date: samraDay,
       timeSlot: "EXACT",
       exactTime: "20:30",
     });

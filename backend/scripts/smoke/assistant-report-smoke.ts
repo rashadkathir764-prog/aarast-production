@@ -13,6 +13,10 @@ import { ASSISTANT_OPEN_REPORTS_PER_ACCOUNT } from "../../src/modules/identity/p
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { adminService, notificationsService, ownerPorts } from "./support/owner-ports";
 
+const { futureDay } = require("./smoke-utils.js") as {
+  futureDay: (daysFromNow: number, now?: Date) => string;
+};
+
 // RA-ST-04 (D95) on a real database: a reported assistant answer reaches the
 // moderation team (what was asked, the answer, why; the reporter unnamed);
 // «تمت المراجعة» moves it to the reviewed list once and only with the
@@ -170,21 +174,22 @@ async function main(): Promise<void> {
     // reach: five pass and the rest are refused, whatever the interleaving;
     // another account goes on; a timeout keeps its reserved cost.
     const quota = new AssistantQuotaService(prisma as any);
-    const month = { dailyLimit: 100, monthStart: "2099-01-01", serviceMonthlyBudgetMicroUsd: 10_000_000n };
+    const quotaDay = futureDay(30);
+    const month = { dailyLimit: 100, monthStart: `${quotaDay.slice(0, 7)}-01`, serviceMonthlyBudgetMicroUsd: 10_000_000n };
     const reservations = await Promise.all(
       Array.from({ length: 20 }, () =>
-        quota.reserveQuestion(reader.id, "2099-01-15", { ...month, reserveMicroUsd: 100_000n, userMonthlyBudgetMicroUsd: 500_000n }),
+        quota.reserveQuestion(reader.id, quotaDay, { ...month, reserveMicroUsd: 100_000n, userMonthlyBudgetMicroUsd: 500_000n }),
       ),
     );
     assert.equal(reservations.filter((item) => item.outcome === "RESERVED").length, 5);
     assert.ok(reservations.every((item) => item.outcome === "RESERVED" || item.outcome === "USER_BUDGET_REACHED"));
-    const other = await quota.reserveQuestion(moderator.id, "2099-01-15", { ...month, reserveMicroUsd: 100_000n, userMonthlyBudgetMicroUsd: 500_000n });
+    const other = await quota.reserveQuestion(moderator.id, quotaDay, { ...month, reserveMicroUsd: 100_000n, userMonthlyBudgetMicroUsd: 500_000n });
     assert.equal(other.outcome, "RESERVED");
-    await quota.settleQuestion(reader.id, "2099-01-15", 100_000n, { inputTokens: 10, outputTokens: 5, costMicroUsd: 3_000n });
-    await quota.releaseQuestion(reader.id, "2099-01-15", 100_000n);
-    await quota.releaseQuestion(reader.id, "2099-01-15", 0n);
+    await quota.settleQuestion(reader.id, quotaDay, 100_000n, { inputTokens: 10, outputTokens: 5, costMicroUsd: 3_000n });
+    await quota.releaseQuestion(reader.id, quotaDay, 100_000n);
+    await quota.releaseQuestion(reader.id, quotaDay, 0n);
     const usage = await prisma.assistantUsageDay.findUniqueOrThrow({
-      where: { userId_day: { userId: reader.id, day: new Date("2099-01-15") } },
+      where: { userId_day: { userId: reader.id, day: new Date(quotaDay) } },
     });
     assert.equal(usage.requests, 3);
     assert.equal(usage.costMicroUsd, 303_000n);

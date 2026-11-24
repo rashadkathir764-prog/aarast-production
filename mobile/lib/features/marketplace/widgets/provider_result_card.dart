@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/theme/aarast_motion.dart';
@@ -418,7 +419,7 @@ class _Thumb extends StatelessWidget {
     if (logo != null) {
       return SizedBox.expand(
         key: const Key('provider-card-logo'),
-        child: Image.network(
+        child: AarastNetworkImage(
           logo,
           fit: BoxFit.cover,
           alignment: const Alignment(0, -0.4),
@@ -697,7 +698,7 @@ class _Photo extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.expand(
       key: const Key('provider-card-photo'),
-      child: Image.network(
+      child: AarastNetworkImage(
         imageUrl,
         fit: BoxFit.cover,
         // What is cut off a tall photo is its bottom, not the face.
@@ -754,7 +755,7 @@ class _LogoDisc extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: ClipOval(
-        child: Image.network(
+        child: AarastNetworkImage(
           logoUrl,
           fit: BoxFit.cover,
           // A face sits in the top half of a portrait.

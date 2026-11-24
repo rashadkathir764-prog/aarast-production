@@ -636,7 +636,7 @@ class _FavoriteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = providerKindName(context, provider.primaryCategory);
-    final cover = provider.coverUrl?.trim();
+    final cover = provider.cardCoverUrl;
     // Soft, as on the f02 card, so the picking box shows on it.
     final placeholder = ColoredBox(
       color: context.accent.primarySoft,
@@ -682,7 +682,7 @@ class _FavoriteCard extends StatelessWidget {
                             false))
                       placeholder
                     else
-                      Image.network(
+                      AarastNetworkImage(
                         cover,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => placeholder,

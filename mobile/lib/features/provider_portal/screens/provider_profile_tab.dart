@@ -128,7 +128,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           category: profile.primaryCategory?.nameAr,
           city: profile.city?.nameAr,
         ),
-        logoUrl: profile.logoUrl,
+        logoUrl: profile.markLogoUrl,
         trailing: canManage
             ? JourneyRoundButton(
                 key: const Key('provider-me-edit'),

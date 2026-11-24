@@ -11,6 +11,7 @@ import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_invite_screen.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_send_screen.dart';
+import 'package:aarast_mobile/features/guests/widgets/guest_invitation_card_image.dart';
 import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
@@ -207,8 +208,11 @@ Future<void> _seedPhoto(WidgetTester tester) async {
     );
     return recorder.endRecording().toImage(800, 600);
   });
+  // RA-MO-364: the saved photo is read through the app's own provider,
+  // decoded at the card's capture width; the drawn picture is put under it.
+  final key = await invitationPhoto(_photo).obtainKey(ImageConfiguration.empty);
   imageCache.putIfAbsent(
-    const NetworkImage(_photo),
+    key,
     () => OneFrameImageStreamCompleter(
       SynchronousFuture(ImageInfo(image: image!)),
     ),

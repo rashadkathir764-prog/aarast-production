@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -78,7 +79,7 @@ class ProviderIdentityRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
             child: logoUrl?.trim().isNotEmpty == true
-                ? Image.network(
+                ? AarastNetworkImage(
                     logoUrl!,
                     width: AarastV3Size.mark,
                     height: AarastV3Size.mark,

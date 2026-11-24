@@ -260,7 +260,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     final picture = _currentPicture;
     final photoImage = switch (_pickedPhoto) {
       final bytes? => MemoryImage(bytes) as ImageProvider,
-      null => _photoUrl == null ? null : NetworkImage(_photoUrl!),
+      null => _photoUrl == null ? null : invitationPhoto(_photoUrl!),
     };
     final message = invitationMessage(
       guestName: sampleName,

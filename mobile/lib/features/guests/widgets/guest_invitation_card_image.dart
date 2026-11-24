@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/guest_invitations.dart';
 
@@ -25,9 +26,12 @@ class GuestInvitationCardImage extends StatelessWidget {
     this.freeText,
     this.guestName,
     this.photo,
-    this.width = 360,
+    this.width = cardWidth,
     super.key,
   });
+
+  /// The width every phone sends the card at, in logical pixels.
+  static const cardWidth = 360.0;
 
   final String planTitle;
   final List<InvitationOccasionText> occasions;
@@ -163,6 +167,19 @@ class GuestInvitationCardImage extends StatelessWidget {
   }
 }
 
+/// The pixel ratio [captureCard] draws the card at.
+const invitationCaptureRatio = 3.0;
+
+/// RA-MO-364: a saved invitation photo, decoded at the widest it is drawn
+/// (the card's width at the ratio it is sent at) rather than whole. It is
+/// read through a signed link and never written to the phone.
+ImageProvider invitationPhoto(String url) => aarastNetworkImage(
+  url,
+  decodeWidth: (GuestInvitationCardImage.cardWidth * invitationCaptureRatio)
+      .ceil(),
+  keepOnDisk: false,
+);
+
 /// D116: the card under [key] (a [RepaintBoundary]) as a PNG, three times
 /// its size; null when it is not drawn yet.
 Future<Uint8List?> captureCard(GlobalKey key) async {
@@ -171,7 +188,7 @@ Future<Uint8List?> captureCard(GlobalKey key) async {
   if (boundary.debugNeedsPaint) {
     await WidgetsBinding.instance.endOfFrame;
   }
-  final image = await boundary.toImage(pixelRatio: 3);
+  final image = await boundary.toImage(pixelRatio: invitationCaptureRatio);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
   return data?.buffer.asUint8List();

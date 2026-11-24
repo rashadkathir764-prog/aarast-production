@@ -11,7 +11,6 @@ class AppTheme {
   static const textFontFamily = AarastV3Type.bodyFamily;
 
   /// وجه اعّرست الحديث للعناوين — IBM Plex Sans Arabic.
-  /// خط Amiri بقي مسجلًا في pubspec لهوية الشعار فقط، لا للعناوين.
   static const displayFontFamily = AarastV3Type.displayFamily;
 
   // Modern semantic roles for all new and migrated UI.

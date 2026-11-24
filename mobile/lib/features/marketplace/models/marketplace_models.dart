@@ -95,6 +95,10 @@ class MarketplaceProvider {
     this.address,
     this.logoUrl,
     this.coverUrl,
+    this.logoThumbUrl,
+    this.logoMediumUrl,
+    this.coverThumbUrl,
+    this.coverMediumUrl,
     this.latitude,
     this.longitude,
     this.verifiedAt,
@@ -123,6 +127,10 @@ class MarketplaceProvider {
       address: json['address']?.toString(),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
+      logoThumbUrl: json['logoThumbUrl']?.toString(),
+      logoMediumUrl: json['logoMediumUrl']?.toString(),
+      coverThumbUrl: json['coverThumbUrl']?.toString(),
+      coverMediumUrl: json['coverMediumUrl']?.toString(),
       latitude: _doubleOrNull(json['latitude']),
       longitude: _doubleOrNull(json['longitude']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
@@ -156,6 +164,26 @@ class MarketplaceProvider {
   final String? address;
   final String? logoUrl;
   final String? coverUrl;
+
+  /// RA-MO-364: the logo's and the cover's smaller copies the server made
+  /// (480px, 1080px); null for an image saved before them.
+  final String? logoThumbUrl;
+  final String? logoMediumUrl;
+  final String? coverThumbUrl;
+  final String? coverMediumUrl;
+
+  /// The cover for a card or a list: its 480px copy, or the image itself
+  /// when it has none.
+  String? get cardCoverUrl => _copyOrImage(coverThumbUrl, coverUrl);
+
+  /// The logo for a card or a list.
+  String? get cardLogoUrl => _copyOrImage(logoThumbUrl, logoUrl);
+
+  /// The cover for a screen-wide view: its 1080px copy, or itself.
+  String? get wideCoverUrl => _copyOrImage(coverMediumUrl, coverUrl);
+
+  /// The logo for a screen-wide view.
+  String? get wideLogoUrl => _copyOrImage(logoMediumUrl, logoUrl);
   final double? latitude;
   final double? longitude;
 
@@ -976,6 +1004,8 @@ class ProviderDashboardProfile {
     this.reopenedAt,
     this.logoUrl,
     this.coverUrl,
+    this.logoThumbUrl,
+    this.coverMediumUrl,
     this.address,
     this.createdAt,
     this.verifiedAt,
@@ -1029,6 +1059,8 @@ class ProviderDashboardProfile {
       reopenedAt: _dateOrNull(json['reopenedAt']),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
+      logoThumbUrl: json['logoThumbUrl']?.toString(),
+      coverMediumUrl: json['coverMediumUrl']?.toString(),
       address: json['address']?.toString(),
       createdAt: _dateOrNull(json['createdAt']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
@@ -1086,6 +1118,17 @@ class ProviderDashboardProfile {
   final DateTime? reopenedAt;
   final String? logoUrl;
   final String? coverUrl;
+
+  /// RA-MO-364: the logo's 480px copy and the cover's 1080px copy; null for
+  /// an image saved before the server made them.
+  final String? logoThumbUrl;
+  final String? coverMediumUrl;
+
+  /// The logo as a small mark: its copy, or itself.
+  String? get markLogoUrl => _copyOrImage(logoThumbUrl, logoUrl);
+
+  /// The cover across the screen: its copy, or itself.
+  String? get wideCoverUrl => _copyOrImage(coverMediumUrl, coverUrl);
 
   /// The shop's place, set after joining (p04 «مكان المحل»).
   final String? address;
@@ -1279,6 +1322,15 @@ List<T> _listFromJson<T>(
       .whereType<Map>()
       .map((item) => mapper(Map<String, dynamic>.from(item)))
       .toList();
+}
+
+/// RA-MO-364: a provider image's copy when the server made one, else the
+/// image itself (one saved before the copies has none); null when neither.
+String? _copyOrImage(String? copy, String? original) {
+  final made = copy?.trim();
+  if (made != null && made.isNotEmpty) return made;
+  final own = original?.trim();
+  return own == null || own.isEmpty ? null : own;
 }
 
 T? _mapOrNull<T>(Object? value, T Function(Map<String, dynamic>) mapper) {

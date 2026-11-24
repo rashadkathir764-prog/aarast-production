@@ -24,6 +24,7 @@ import 'core/offline/offline_sync_service.dart';
 import 'core/offline/pending_plan_cleanup.dart';
 import 'core/offline/side_outboxes.dart';
 import 'core/preferences/device_preferences.dart';
+import 'core/media/aarast_image_disk_cache.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
@@ -202,6 +203,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   // Startup: Firebase starts beside the offline database's open instead of
   // after it; push itself is set up after the first frame (below).
   final pushGateway = FirebasePushMessagingGateway()..prepare();
+  // RA-MO-364: the images kept on the phone are listed beside both; until
+  // then an image comes from the network.
+  unawaited(AarastImageDiskCache.instance.open());
   late final LocalDatabase localDatabase;
   try {
     localDatabase = await createLocalDatabase(preferences);

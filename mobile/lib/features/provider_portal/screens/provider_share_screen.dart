@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -133,7 +134,7 @@ class ProviderShareCard extends StatelessWidget {
       category: profile.primaryCategory?.nameAr,
       city: profile.city?.nameAr,
     );
-    final cover = profile.coverUrl?.trim() ?? '';
+    final cover = profile.wideCoverUrl ?? '';
     return Container(
       key: const Key('provider-share-card'),
       clipBehavior: Clip.antiAlias,
@@ -151,7 +152,7 @@ class ProviderShareCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 if (cover.isNotEmpty)
-                  Image.network(
+                  AarastNetworkImage(
                     cover,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => const SizedBox.shrink(),

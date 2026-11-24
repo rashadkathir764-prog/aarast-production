@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
@@ -298,7 +299,7 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
               aspectRatio: 1,
               child: photo.imageUrl == null
                   ? const ColoredBox(color: AarastV3Color.line)
-                  : Image.network(
+                  : AarastNetworkImage(
                       photo.imageUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) =>
@@ -634,7 +635,7 @@ class _Photo extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (photo.imageUrl != null)
-              Image.network(
+              AarastNetworkImage(
                 photo.imageUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => const SizedBox.expand(),

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
@@ -1349,8 +1350,10 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
     if (_failed || _url.isEmpty) return const _PrivateImageFailure();
     return ClipRRect(
       borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      child: Image.network(
+      child: AarastNetworkImage(
         _url,
+        // A chat photo is private: never written to the phone (RA-MO-364).
+        keepOnDisk: false,
         key: ValueKey(_url),
         width: _chatLoadingBubbleWidth,
         height: _chatImageHeight,

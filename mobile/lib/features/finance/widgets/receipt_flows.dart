@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
@@ -159,8 +160,18 @@ Future<ReceiptViewerAction?> showReceiptViewer(
       title: const Text('الإيصال'),
       scrollable: false,
       content: InteractiveViewer(
-        child: Image.network(
-          receipt.downloadUrl,
+        child: Image(
+          // RA-MO-364: decoded at the screen's width, the most a dialog
+          // spans (a dialog measures its content, so no layout is asked);
+          // a receipt is private: never written to the phone.
+          image: aarastNetworkImage(
+            receipt.downloadUrl,
+            decodeWidth: aarastDecodeWidth(
+              dialogContext,
+              MediaQuery.sizeOf(dialogContext).width,
+            ),
+            keepOnDisk: false,
+          ),
           errorBuilder: (_, _, _) => Padding(
             padding: const EdgeInsets.all(AarastV3Space.x4),
             child: Text(
@@ -239,8 +250,9 @@ class ReceiptThumb extends StatelessWidget {
         ? missing
         : ClipRRect(
             borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-            child: Image.network(
+            child: AarastNetworkImage(
               receipt.downloadUrl,
+              keepOnDisk: false,
               width: width,
               height: size,
               fit: BoxFit.cover,

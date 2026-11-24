@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/experience_v3/aarast_v3_foundations.dart';
 
@@ -78,7 +79,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                     child: Center(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                        child: Image.network(
+                        child: AarastNetworkImage(
                           widget.images[index],
                           key: ValueKey('provider-gallery-photo-$index'),
                           fit: BoxFit.contain,

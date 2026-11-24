@@ -435,7 +435,7 @@ class _GuestSendScreenState extends State<GuestSendScreen> {
     final card = _card;
     final ready = card?.isReadyCard == true ? card?.photoUrl : null;
     final photo = card?.isReadyCard == false && card?.photoUrl != null
-        ? NetworkImage(card!.photoUrl!)
+        ? invitationPhoto(card!.photoUrl!)
         : null;
     final host = invitationHostPhrase(card?.hostLine, bride: profile.isBride);
     await showJourneySheet<int>(

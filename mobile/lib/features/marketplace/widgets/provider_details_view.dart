@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
@@ -424,7 +425,7 @@ class _ProviderHero extends StatelessWidget {
               scale: 1,
               child: dataSaver
                   ? placeholder
-                  : Image.network(
+                  : AarastNetworkImage(
                       photos.first,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => placeholder,
@@ -732,11 +733,11 @@ List<String> _photoUrls(
   MarketplaceProvider provider,
   PublicPortfolio? portfolio,
 ) {
-  final cover = provider.coverUrl?.trim();
-  final logo = provider.logoUrl?.trim();
-  final face = cover != null && cover.isNotEmpty ? cover : logo;
+  // RA-MO-364: the 1080px copies the server made; the images themselves
+  // when saved before them.
+  final face = provider.wideCoverUrl ?? provider.wideLogoUrl;
   return <String>{
-    if (face != null && face.isNotEmpty) face,
+    ?face,
     for (final photo in portfolio?.items ?? const <PublicPortfolioPhoto>[])
       if (photo.imageUrl.trim().isNotEmpty) photo.imageUrl.trim(),
   }.toList();

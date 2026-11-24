@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/offline/offline_sync_service.dart';
@@ -505,7 +506,7 @@ class _ProfileCard extends StatelessWidget {
           ? const Center(child: AarastInlineSpinner())
           : url != null && url.isNotEmpty
           ? ClipOval(
-              child: Image.network(
+              child: AarastNetworkImage(
                 url,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => JourneyAvatar(

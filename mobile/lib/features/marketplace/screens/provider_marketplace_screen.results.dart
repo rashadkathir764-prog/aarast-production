@@ -310,15 +310,11 @@ String? _providerFromPriceLabel(MarketplaceProvider provider) {
 /// صورة الغلاف وحدها تملأ رأس الكرت. الشعار يظهر صغيرًا جنب الاسم: شعار
 /// مكبّر بعرض الكرت كان وجهًا مقصوصًا عند الفم (جوال رشاد 2026-11-18). صور
 /// الخدمات ما تنعرض للعرسان لأنها ما تتراجع (D62).
-String? _providerImageUrl(MarketplaceProvider provider) {
-  final cover = provider.coverUrl?.trim();
-  return cover == null || cover.isEmpty ? null : cover;
-}
+String? _providerImageUrl(MarketplaceProvider provider) =>
+    provider.cardCoverUrl;
 
-String? _providerLogoUrl(MarketplaceProvider provider) {
-  final logo = provider.logoUrl?.trim();
-  return logo == null || logo.isEmpty ? null : logo;
-}
+/// RA-MO-364: the logo's 480px copy when the server made one.
+String? _providerLogoUrl(MarketplaceProvider provider) => provider.cardLogoUrl;
 
 /// نطاق أسعار المزود المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
 String? _providerPriceRangeLabel(MarketplaceProvider provider) {

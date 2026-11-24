@@ -236,7 +236,7 @@ class _PhotoSlot extends StatelessWidget {
       // the server's signed read.
       image: switch (photo.picked) {
         final bytes? => MemoryImage(bytes),
-        null => NetworkImage(url),
+        null => invitationPhoto(url),
       },
       key: const ValueKey('invite-card-photo'),
       fit: whole ? BoxFit.contain : BoxFit.cover,

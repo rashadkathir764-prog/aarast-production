@@ -218,8 +218,16 @@ class _MoreScreenState extends State<MoreScreen> {
                   onTap: () => showChangePhoneSheet(
                     context,
                     currentPhone: PhoneNumberUtils.display(user.phone),
+                    hasPassword: user.hasPassword,
                     requestCode: auth.requestPhoneChange,
-                    confirmCode: auth.confirmPhoneChange,
+                    requestCurrentCode: auth.requestCurrentPhoneCode,
+                    confirmCode: (phone, code, proof) =>
+                        auth.confirmPhoneChange(
+                          phone,
+                          code,
+                          currentCode: proof.currentCode,
+                          currentPassword: proof.currentPassword,
+                        ),
                   ),
                 ),
               if (hasAccount)
@@ -234,9 +242,11 @@ class _MoreScreenState extends State<MoreScreen> {
                     hasPassword: user.hasPassword,
                     // RA-BE-133: this phone keeps its notices; the
                     // server drops the other phones' with their sessions.
-                    save: (newPassword, current) => auth.setPassword(
+                    requestCode: auth.requestCurrentPhoneCode,
+                    save: (newPassword, current, code) => auth.setPassword(
                       newPassword,
                       current,
+                      currentCode: code,
                       pushInstallationId: context
                           .read<PushNotificationsController?>()
                           ?.registeredFid,

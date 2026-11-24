@@ -471,7 +471,12 @@ class _ControlledAuthRepository extends AuthRepository {
   Future<SafeUser> me() async => _user;
 
   @override
-  Future<void> confirmPhoneChange(String newPhone, String code) async {}
+  Future<void> confirmPhoneChange(
+    String newPhone,
+    String code, {
+    String? currentCode,
+    String? currentPassword,
+  }) async {}
 
   @override
   Future<AuthResponse> login({

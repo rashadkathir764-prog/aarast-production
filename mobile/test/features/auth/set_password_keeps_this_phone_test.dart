@@ -38,6 +38,54 @@ void main() {
     final body = await sent();
     expect(body.containsKey('pushInstallationId'), isFalse);
   });
+
+  // RA-BE-141: the first password and the phone change carry their proof.
+  Future<(AuthRepository, _Adapter)> repository() async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final api = ApiClient(tokenProvider: () async => 'token');
+    final adapter = _Adapter();
+    api.dio.httpClientAdapter = adapter;
+    return (AuthRepository(api, storage), adapter);
+  }
+
+  test('a first password sends the code to the account\'s number', () async {
+    final (auth, adapter) = await repository();
+    await auth.setPassword(newPassword: 'first-pass', currentCode: '123456');
+    expect(adapter.body, {
+      'newPassword': 'first-pass',
+      'currentCode': '123456',
+    });
+  });
+
+  test(
+    'a phone change sends its proof beside the new number\'s code',
+    () async {
+      final (auth, adapter) = await repository();
+      await auth.confirmPhoneChange(
+        '771234567',
+        '111111',
+        currentPassword: 'my-password',
+      );
+      expect(adapter.path, '/api/v1/auth/phone-change/confirm');
+      expect(adapter.body, {
+        'phone': '+967771234567',
+        'code': '111111',
+        'currentPassword': 'my-password',
+      });
+
+      await auth.confirmPhoneChange(
+        '771234567',
+        '111111',
+        currentCode: '222222',
+      );
+      expect(adapter.body, {
+        'phone': '+967771234567',
+        'code': '111111',
+        'currentCode': '222222',
+      });
+    },
+  );
 }
 
 class _Adapter implements HttpClientAdapter {

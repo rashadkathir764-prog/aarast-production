@@ -262,8 +262,20 @@ it, and its refreshes keep that end (RA-AD-26).
   `POST /api/v1/auth/phone-change/request` `{ phone }` sends a `VERIFY_PHONE`
   OTP to the new number (same delivery, quota and response as
   `otp/request`; throttled to 5 per minute) whether or not an account uses it,
-  `400 PHONE_UNCHANGED` for the account's own number. `POST
-  /api/v1/auth/phone-change/confirm` `{ phone, code }` claims the OTP; only
+  `400 PHONE_UNCHANGED` for the account's own number. RA-BE-141: `POST
+  /api/v1/auth/current-phone-code` (no body) sends a `CURRENT_PHONE_PROOF`
+  OTP to the account's current number (same delivery, quota and response);
+  `POST /api/v1/auth/password` without a current password (the first one)
+  needs it as `currentCode` (`400 CURRENT_PHONE_CODE_REQUIRED` without it,
+  `400 CURRENT_PHONE_CODE_INVALID` when wrong). `POST
+  /api/v1/auth/phone-change/confirm` `{ phone,
+  code }` needs exactly one more proof that the account's holder asks:
+  `currentCode` (that OTP) or `currentPassword`; neither or both is `400
+  PHONE_CHANGE_PROOF_REQUIRED`, a wrong password `401 INVALID_CREDENTIALS`
+  (counted by the password lock), a wrong current code `400
+  CURRENT_PHONE_CODE_INVALID` before the new number's code is tried,
+  and a wrong new code leaves the current code usable for the retry. The
+  confirm claims the new number's OTP; only
   then `409 PHONE_IN_USE` when any account uses the number (any spelling), so
   the answer reaches whoever holds it (RA-BE-21); otherwise it moves the
   account (`phone`, `phoneVerifiedAt`) and revokes every application session
@@ -3897,6 +3909,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/admin/password-reset/request` | `auth.requestAdminPasswordReset` |  |
 | POST | `/api/v1/auth/admin/password-reset/verify` | `auth.verifyAdminPasswordReset` |  |
 | POST | `/api/v1/auth/admin/refresh` | `auth.refreshAdmin` |  |
+| POST | `/api/v1/auth/current-phone-code` | `auth.requestCurrentPhoneCode` | 🔒 |
 | POST | `/api/v1/auth/login` | `auth.login` |  |
 | POST | `/api/v1/auth/logout` | `auth.logout` | 🔒 |
 | POST | `/api/v1/auth/logout-all` | `auth.logoutAll` | 🔒 |

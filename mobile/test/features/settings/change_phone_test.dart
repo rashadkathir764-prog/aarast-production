@@ -15,6 +15,9 @@ Widget _app({
   requestCode,
   required Future<String?> Function(String newPhone, String code) confirmCode,
   String? currentPhone = '+967 777 123 456',
+  bool hasPassword = true,
+  Future<({String? error, String? notice})> Function()? requestCurrentCode,
+  void Function(PhoneChangeProof proof)? onProof,
 }) {
   return MaterialApp(
     theme: AppTheme.light(),
@@ -26,8 +29,13 @@ Widget _app({
             onPressed: () => showChangePhoneSheet(
               context,
               currentPhone: currentPhone,
+              hasPassword: hasPassword,
               requestCode: requestCode,
-              confirmCode: confirmCode,
+              requestCurrentCode: requestCurrentCode ?? () async => _sent,
+              confirmCode: (phone, code, proof) {
+                onProof?.call(proof);
+                return confirmCode(phone, code);
+              },
             ),
             child: const Text('افتح'),
           ),
@@ -110,6 +118,11 @@ void main() {
         findsOneWidget,
       );
 
+      // RA-BE-141: this account proves the change with its password.
+      await tester.enterText(
+        find.byKey(const Key('change-phone-password')),
+        'my-password',
+      );
       await tester.enterText(
         find.byKey(const Key('change-phone-code')),
         '000000',
@@ -179,5 +192,108 @@ void main() {
     expect(find.byKey(const Key('change-phone-code')), findsOneWidget);
     expect(find.textContaining('ما وصلنا رد'), findsOneWidget);
     expect(find.textContaining('أرسلنا لك رمز'), findsNothing);
+  });
+
+  // RA-BE-141: the new number's code alone no longer moves the account. An
+  // account with a password gives it; one without gets a code on its
+  // current number at the same time as the new one's.
+  testWidgets('an account with a password proves the change with it', (
+    tester,
+  ) async {
+    final proofs = <PhoneChangeProof>[];
+    var currentCodes = 0;
+    await tester.pumpWidget(
+      _app(
+        requestCode: (_) async => _sent,
+        requestCurrentCode: () async {
+          currentCodes += 1;
+          return _sent;
+        },
+        confirmCode: (_, _) async => null,
+        onProof: proofs.add,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('settings-change-phone')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('change-phone-number')),
+      '771234567',
+    );
+    await tester.tap(find.text('أرسل الرمز للرقم الجديد'));
+    await tester.pumpAndSettle();
+
+    expect(currentCodes, 0);
+    expect(find.byKey(const Key('change-phone-current-code')), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('change-phone-code')),
+      '123456',
+    );
+    await tester.tap(find.text('غيّر الرقم'));
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب كلمة المرور'), findsOneWidget);
+    expect(proofs, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const Key('change-phone-password')),
+      'my-password',
+    );
+    await tester.tap(find.text('غيّر الرقم'));
+    await tester.pumpAndSettle();
+    expect(proofs, [(currentCode: null, currentPassword: 'my-password')]);
+  });
+
+  testWidgets('an account without a password proves it with a code to its '
+      'current number', (tester) async {
+    final proofs = <PhoneChangeProof>[];
+    var currentCodes = 0;
+    await tester.pumpWidget(
+      _app(
+        hasPassword: false,
+        requestCode: (_) async => _sent,
+        requestCurrentCode: () async {
+          currentCodes += 1;
+          return _sent;
+        },
+        confirmCode: (_, _) async => null,
+        onProof: proofs.add,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('settings-change-phone')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('change-phone-number')),
+      '771234567',
+    );
+    await tester.tap(find.text('أرسل الرمز للرقم الجديد'));
+    await tester.pumpAndSettle();
+
+    expect(currentCodes, 1);
+    expect(find.byKey(const Key('change-phone-password')), findsNothing);
+    expect(find.text('رمز رقمك الحالي'), findsOneWidget);
+    expect(find.textContaining('على +967 777 123 456'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('change-phone-code')),
+      '123456',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-phone-current-code')),
+      '654321',
+    );
+    await tester.tap(find.text('غيّر الرقم'));
+    await tester.pumpAndSettle();
+    expect(proofs, [(currentCode: '654321', currentPassword: null)]);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('the proof refusals read as Arabic actions', () {
+    expect(
+      phoneChangeErrorMessage('CURRENT_PHONE_CODE_INVALID'),
+      'رمز رقمك الحالي غلط أو انتهى.',
+    );
+    expect(phoneChangeErrorMessage('INVALID_CREDENTIALS'), 'كلمة المرور غلط.');
+    expect(
+      phoneChangeErrorMessage('PHONE_CHANGE_PROOF_REQUIRED'),
+      contains('رمز رقمك الحالي'),
+    );
   });
 }

@@ -219,6 +219,22 @@ export class AuthController {
     return this.authService.logoutAll(user.id);
   }
 
+  // RA-BE-141: a code to the account's current number, the proof a phone
+  // change (or the password instead) and the first password need.
+  @Post("current-phone-code")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  requestCurrentPhoneCode(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.authService.requestCurrentPhoneCode(
+      user,
+      clientRateContext(request),
+    );
+  }
+
   // D75: add the app password, or change it with the current one.
   @Post("password")
   @HttpCode(HttpStatus.OK)
@@ -255,8 +271,15 @@ export class AuthController {
   confirmPhoneChange(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ConfirmPhoneChangeDto,
+    @Req() request: Request,
   ) {
-    return this.authService.confirmPhoneChange(user, dto.phone, dto.code);
+    return this.authService.confirmPhoneChange(
+      user,
+      dto.phone,
+      dto.code,
+      { currentCode: dto.currentCode, currentPassword: dto.currentPassword },
+      clientRateContext(request),
+    );
   }
 
   @Post("otp/request")

@@ -32,6 +32,11 @@ enum OtpPurpose {
   VERIFY_PHONE
   RESET_PASSWORD
   ADMIN_RESET_PASSWORD
+  // RA-BE-141: a code to the account's current number, the proof that its
+  // holder asks a phone change (or the password instead) or the first
+  // password. Issued only to the signed-in account; neither public code
+  // route takes it.
+  CURRENT_PHONE_PROOF
 }
 
 enum AuthSessionScope {

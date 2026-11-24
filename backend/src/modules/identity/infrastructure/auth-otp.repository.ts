@@ -32,6 +32,18 @@ export class AuthOtpRepository {
     });
   }
 
+  /**
+   * RA-BE-141: a code proven for a step that did not complete (the phone
+   * change whose new-number code was wrong) holds for that step's retry,
+   * within its own expiry and attempts. Only the claim made at [consumedAt]
+   * is given back.
+   */
+  releaseClaim(tx: Prisma.TransactionClient, otpId: string, consumedAt: Date) {
+    return tx.otpCode.updateMany({
+      where: { id: otpId, consumedAt }, data: { consumedAt: null },
+    });
+  }
+
   async replaceActive(tx: Prisma.TransactionClient, data: Pick<Prisma.OtpCodeUncheckedCreateInput,
     'phone' | 'purpose' | 'codeHash' | 'expiresAt' | 'maxAttempts' | 'planInviteId'
   >, now: Date): Promise<OtpCode> {

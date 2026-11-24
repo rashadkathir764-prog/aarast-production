@@ -548,6 +548,7 @@ class ApiClient {
     return request.method.toUpperCase() == 'POST' &&
         const {
           '/api/v1/auth/password',
+          '/api/v1/auth/current-phone-code',
           '/api/v1/auth/phone-change/request',
           '/api/v1/auth/phone-change/confirm',
         }.contains(request.path) &&

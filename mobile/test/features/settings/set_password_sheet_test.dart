@@ -5,12 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 // D75: a password is a second way in, added from «حسابي»; changing one
 // needs the current one.
 void main() {
-  Future<List<(String, String?)>> pump(
+  var codeRequests = 0;
+  Future<List<(String, String?, String?)>> pump(
     WidgetTester tester, {
     required bool hasPassword,
     String? error,
   }) async {
-    final saved = <(String, String?)>[];
+    codeRequests = 0;
+    final saved = <(String, String?, String?)>[];
     await tester.pumpWidget(
       MaterialApp(
         home: Directionality(
@@ -21,8 +23,12 @@ void main() {
                 onPressed: () => showSetPasswordSheet(
                   context,
                   hasPassword: hasPassword,
-                  save: (next, current) async {
-                    saved.add((next, current));
+                  requestCode: () async {
+                    codeRequests += 1;
+                    return (error: null, notice: null);
+                  },
+                  save: (next, current, code) async {
+                    saved.add((next, current, code));
                     return error;
                   },
                 ),
@@ -38,10 +44,13 @@ void main() {
     return saved;
   }
 
-  testWidgets('an account without one adds a password', (tester) async {
+  // RA-BE-141: the first password comes with a code sent to the number.
+  testWidgets('an account without one adds a password with a code to its '
+      'number', (tester) async {
     final saved = await pump(tester, hasPassword: false);
     expect(find.text('إضافة كلمة مرور'), findsOneWidget);
     expect(find.byKey(const ValueKey('set-password-current')), findsNothing);
+    expect(find.byKey(const ValueKey('set-password-code')), findsNothing);
 
     await tester.enterText(
       find.byKey(const ValueKey('set-password-new')),
@@ -50,15 +59,32 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
     expect(saved, isEmpty);
+    expect(codeRequests, 0);
     expect(find.text('6 أحرف أو أكثر'), findsWidgets);
 
     await tester.enterText(
       find.byKey(const ValueKey('set-password-new')),
       'abcdef',
     );
+    expect(find.text('أرسل رمز لرقمك'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
-    expect(saved, [('abcdef', null)]);
+    expect(codeRequests, 1);
+    expect(saved, isEmpty);
+    expect(find.byKey(const ValueKey('set-password-code')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('set-password-save')));
+    await tester.pumpAndSettle();
+    expect(saved, isEmpty, reason: 'no code typed yet');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('set-password-code')),
+      '123456',
+    );
+    await tester.tap(find.byKey(const ValueKey('set-password-save')));
+    await tester.pumpAndSettle();
+    expect(saved, [('abcdef', null, '123456')]);
+    expect(codeRequests, 1);
     expect(find.text('إضافة كلمة مرور'), findsNothing);
   });
 
@@ -85,7 +111,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
-    expect(saved, [('abcdef', 'old-one')]);
+    expect(saved, [('abcdef', 'old-one', null)]);
     expect(find.text('كلمة المرور الحالية غلط.'), findsOneWidget);
   });
 }

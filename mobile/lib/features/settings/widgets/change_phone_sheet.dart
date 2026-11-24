@@ -6,23 +6,39 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/forms/latin_digits_formatter.dart';
 
+/// The proof that the account's holder asks the change (RA-BE-141): the
+/// code sent to the current number, or the password.
+typedef PhoneChangeProof = ({String? currentCode, String? currentPassword});
+
 /// g09 «تغيير رقم الجوال», a journey sheet from «حسابي»: the number now, the
-/// new one, and a code on WhatsApp to the new number. Confirming moves the
-/// account and signs out every device, this one too, so the next sign-in is
-/// with the new number. The plan and its participants stay as they are.
-/// [currentPhone] is shown as given («+967 777 123 456»).
+/// new one, and a code on WhatsApp to the new number. RA-BE-141: with it,
+/// the password of an account that has one, or else a code sent to the
+/// current number at the same time. Confirming moves the account and signs
+/// out every device, this one too, so the next sign-in is with the new
+/// number. The plan and its participants stay as they are. [currentPhone]
+/// is shown as given («+967 777 123 456»).
 Future<void> showChangePhoneSheet(
   BuildContext context, {
   required String? currentPhone,
+  required bool hasPassword,
   required Future<({String? error, String? notice})> Function(String newPhone)
   requestCode,
-  required Future<String?> Function(String newPhone, String code) confirmCode,
+  required Future<({String? error, String? notice})> Function()
+  requestCurrentCode,
+  required Future<String?> Function(
+    String newPhone,
+    String code,
+    PhoneChangeProof proof,
+  )
+  confirmCode,
 }) {
   return showJourneySheet<void>(
     context: context,
     builder: (_) => _ChangePhoneSheet(
       currentPhone: currentPhone,
+      hasPassword: hasPassword,
       requestCode: requestCode,
+      requestCurrentCode: requestCurrentCode,
       confirmCode: confirmCode,
     ),
   );
@@ -31,11 +47,16 @@ Future<void> showChangePhoneSheet(
 class _ChangePhoneSheet extends StatefulWidget {
   const _ChangePhoneSheet({
     required this.currentPhone,
+    required this.hasPassword,
     required this.requestCode,
+    required this.requestCurrentCode,
     required this.confirmCode,
   });
 
   final String? currentPhone;
+
+  /// The password proves the change; without one, a code to [currentPhone].
+  final bool hasPassword;
 
   /// Sends the code. An Arabic `error` keeps the sheet on the number;
   /// without one the code step opens, saying `notice` when the code is not
@@ -43,8 +64,16 @@ class _ChangePhoneSheet extends StatefulWidget {
   final Future<({String? error, String? notice})> Function(String newPhone)
   requestCode;
 
+  /// Sends the code to the current number (an account without a password).
+  final Future<({String? error, String? notice})> Function() requestCurrentCode;
+
   /// Moves the account; returns an Arabic error or null (then signs out).
-  final Future<String?> Function(String newPhone, String code) confirmCode;
+  final Future<String?> Function(
+    String newPhone,
+    String code,
+    PhoneChangeProof proof,
+  )
+  confirmCode;
 
   @override
   State<_ChangePhoneSheet> createState() => _ChangePhoneSheetState();
@@ -53,7 +82,12 @@ class _ChangePhoneSheet extends StatefulWidget {
 class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
+  final _proof = TextEditingController();
   String? _sentTo;
+
+  /// What the current number's code request said, when it did not go well.
+  String? _proofNote;
+  String? _proofError;
 
   /// Said in place of «أرسلنا لك رمز» when the code is not known to have
   /// arrived (its answer was lost, or it is the one asked a moment ago).
@@ -65,6 +99,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
   void dispose() {
     _phone.dispose();
     _code.dispose();
+    _proof.dispose();
     super.dispose();
   }
 
@@ -85,13 +120,23 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
     });
     final asked = await widget.requestCode(input);
     if (!mounted) return;
+    if (asked.error != null) {
+      setState(() {
+        _busy = false;
+        _error = asked.error;
+      });
+      return;
+    }
+    // RA-BE-141: without a password, the current number gets its code now.
+    final current = widget.hasPassword
+        ? null
+        : await widget.requestCurrentCode();
+    if (!mounted) return;
     setState(() {
       _busy = false;
-      _error = asked.error;
-      if (asked.error == null) {
-        _sentTo = input;
-        _notice = asked.notice;
-      }
+      _sentTo = input;
+      _notice = asked.notice;
+      _proofNote = current?.error ?? current?.notice;
     });
   }
 
@@ -99,20 +144,42 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
     final sentTo = _sentTo;
     final code = _code.text.trim();
     if (sentTo == null) return;
-    if (!RegExp(r'^[0-9]{4,8}$').hasMatch(code)) {
-      setState(
-        () => _error = context.say(
-          'اكتب الرمز اللي وصلك على واتساب',
-          'اكتبي الرمز اللي وصلك على واتساب',
-        ),
-      );
+    final proof = _proof.text;
+    final codeError = RegExp(r'^[0-9]{4,8}$').hasMatch(code)
+        ? null
+        : context.say(
+            'اكتب الرمز اللي وصلك على واتساب',
+            'اكتبي الرمز اللي وصلك على واتساب',
+          );
+    final proofError = widget.hasPassword
+        ? (proof.isEmpty
+              ? context.say('اكتب كلمة المرور', 'اكتبي كلمة المرور')
+              : null)
+        : (RegExp(r'^[0-9]{4,8}$').hasMatch(proof.trim())
+              ? null
+              : context.say(
+                  'اكتب الرمز اللي وصل لرقمك الحالي',
+                  'اكتبي الرمز اللي وصل لرقمك الحالي',
+                ));
+    if (codeError != null || proofError != null) {
+      setState(() {
+        _error = codeError;
+        _proofError = proofError;
+      });
       return;
     }
     setState(() {
       _busy = true;
       _error = null;
+      _proofError = null;
     });
-    final error = await widget.confirmCode(sentTo, code);
+    final error = await widget.confirmCode(
+      sentTo,
+      code,
+      widget.hasPassword
+          ? (currentCode: null, currentPassword: proof)
+          : (currentCode: proof.trim(), currentPassword: null),
+    );
     if (!mounted) return;
     if (error == null) {
       Navigator.of(context).pop();
@@ -180,10 +247,10 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
               'خطتك ومشاركينك يبقون مثل ما هم. بنطلعك من كل الأجهزة وتدخلين من جديد بالرقم الجديد.',
             ),
           ),
-        ] else
+        ] else ...[
           JourneyTextField(
             key: const Key('change-phone-code'),
-            label: 'الرمز',
+            label: 'رمز الرقم الجديد',
             controller: _code,
             large: true,
             autofocus: true,
@@ -192,9 +259,38 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
             textAlign: TextAlign.right,
             inputFormatters: [LatinDigitsFormatter()],
             errorText: _error,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _busy ? null : _confirm(),
+            textInputAction: TextInputAction.next,
           ),
+          const SizedBox(height: AarastV3Field.gap),
+          // RA-BE-141: the proof that this is the account's holder.
+          if (widget.hasPassword)
+            JourneyTextField(
+              key: const Key('change-phone-password'),
+              label: 'كلمة المرور',
+              controller: _proof,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              errorText: _proofError,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _busy ? null : _confirm(),
+            )
+          else
+            JourneyTextField(
+              key: const Key('change-phone-current-code'),
+              label: 'رمز رقمك الحالي',
+              controller: _proof,
+              large: true,
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.right,
+              inputFormatters: [LatinDigitsFormatter()],
+              helper: _proofNote ?? 'أرسلناه على واتساب على $current',
+              helperColor: AarastV3Color.textMuted,
+              errorText: _proofError,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _busy ? null : _confirm(),
+            ),
+        ],
       ],
     );
   }

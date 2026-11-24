@@ -80,11 +80,14 @@ class AuthRepository implements SessionAuthTeardownPort {
   Future<void> setPassword({
     required String newPassword,
     String? currentPassword,
+    String? currentCode,
     String? pushInstallationId,
   }) async {
     await _apiClient.postJson('/api/v1/auth/password', {
       'newPassword': newPassword,
       'currentPassword': ?currentPassword,
+      // RA-BE-141: the first password comes with a code to this number.
+      'currentCode': ?currentCode,
       'pushInstallationId': ?pushInstallationId,
     });
   }
@@ -151,11 +154,32 @@ class AuthRepository implements SessionAuthTeardownPort {
     return OtpRequestResult.fromJson(json);
   }
 
-  /// Moves the account; the server ends every session of it.
-  Future<void> confirmPhoneChange(String newPhone, String code) async {
+  /// RA-BE-141: a code on WhatsApp to the account's current number, the
+  /// proof the phone change (without the password) and the first password
+  /// need.
+  Future<OtpRequestResult> requestCurrentPhoneCode() async {
+    final json = await _apiClient.postJsonWithReceiveTimeout(
+      '/api/v1/auth/current-phone-code',
+      const {},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
+    );
+    return OtpRequestResult.fromJson(json);
+  }
+
+  /// Moves the account; the server ends every session of it. RA-BE-141:
+  /// with one proof that the account's holder asks it, [currentCode] (the
+  /// current number's code) or [currentPassword].
+  Future<void> confirmPhoneChange(
+    String newPhone,
+    String code, {
+    String? currentCode,
+    String? currentPassword,
+  }) async {
     await _apiClient.postJson('/api/v1/auth/phone-change/confirm', {
       'phone': normalizeYemeniPhone(newPhone),
       'code': code.trim(),
+      'currentCode': ?currentCode?.trim(),
+      'currentPassword': ?currentPassword,
     });
   }
 

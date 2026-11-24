@@ -222,9 +222,11 @@ test("POST /auth/password sets a first password without the current one and keep
   const current = await h.addSession(user.id);
   const other = await h.addSession(user.id);
 
+  // RA-BE-141: with the code sent to the account's current number.
+  await h.addOtp(OtpPurpose.CURRENT_PHONE_PROOF);
   const result = await h.service.setApplicationPassword(
     await h.identity(user.id, current.id),
-    { newPassword: "first-pass" },
+    { newPassword: "first-pass", currentCode: "123456" },
   );
 
   assert.deepEqual(result, { passwordSet: true });
@@ -306,11 +308,55 @@ test("a first password signs no phone out and releases no push registration", as
   const current = await h.addSession(user.id);
   await h.addSession(user.id);
 
+  await h.addOtp(OtpPurpose.CURRENT_PHONE_PROOF);
   await h.service.setApplicationPassword(await h.identity(user.id, current.id), {
     newPassword: "first-pass",
+    currentCode: "123456",
   });
 
   assert.deepEqual(h.outbox, []);
+});
+
+// RA-BE-141: a session alone gave a password-less account a password of
+// whoever held the session, and that password then moved the account to
+// another number. The first password needs a code to the current number.
+test("a first password needs the code sent to the account's current number", async () => {
+  const h = createHarness();
+  const user = await h.addUser();
+  const current = await h.addSession(user.id);
+  const identity = await h.identity(user.id, current.id);
+
+  await assert.rejects(
+    () => h.service.setApplicationPassword(identity, { newPassword: "first-pass" }),
+    (error: any) =>
+      error.getStatus() === 400 &&
+      error.getResponse().code === "CURRENT_PHONE_CODE_REQUIRED",
+  );
+  await h.addOtp(OtpPurpose.CURRENT_PHONE_PROOF);
+  await assert.rejects(
+    () => h.service.setApplicationPassword(identity, {
+      newPassword: "first-pass", currentCode: "654321",
+    }),
+    (error: any) =>
+      error.getStatus() === 400 &&
+      error.getResponse().code === "CURRENT_PHONE_CODE_INVALID",
+  );
+  assert.equal(h.users[0].passwordHash, null);
+  assert.equal(h.otps[0].attempts, 1, "the wrong code's attempt is kept");
+
+  // A code for another purpose to the same number is no proof.
+  const other = createHarness();
+  const otherUser = await other.addUser();
+  const otherSession = await other.addSession(otherUser.id);
+  await other.addOtp(OtpPurpose.LOGIN);
+  const otherIdentity = await other.identity(otherUser.id, otherSession.id);
+  await assert.rejects(
+    () => other.service.setApplicationPassword(otherIdentity, {
+      newPassword: "first-pass", currentCode: "123456",
+    }),
+    (error: any) => error.getResponse().code === "CURRENT_PHONE_CODE_INVALID",
+  );
+  assert.equal(other.users[0].passwordHash, null);
 });
 
 test("an administrator's application password is its appPasswordHash, never the admin password", async () => {

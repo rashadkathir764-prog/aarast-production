@@ -10,7 +10,8 @@ const { eraseFixtureAccount } = require('./account-grace');
 /**
  * Phone change smoke (V1 checklist 4.14), through the HTTP stack: a code
  * goes to the new number, a number another account uses is refused, the
- * right code moves the account, every old session ends, and the account
+ * right code with the password (RA-BE-141) moves the account, every old
+ * session ends, and the account
  * signs in with the new number only.
  */
 
@@ -93,7 +94,7 @@ async function run() {
       taken.status === 200 && unknown.status === 200 && taken.body?.phone === takenPhone,
     );
     const takenCode = process.env.SMOKE_OTP_CODE ?? taken.body?.code;
-    const takenConfirm = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: takenPhone, code: takenCode }, movedToken);
+    const takenConfirm = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: takenPhone, code: takenCode, currentPassword: TEST_PASSWORD }, movedToken);
     check(
       'its code then says the number is taken, and moves nothing',
       takenConfirm.status === 409 && takenConfirm.body?.code === 'PHONE_IN_USE',
@@ -106,10 +107,16 @@ async function run() {
     check('a code goes to the new number', requested.status === 200 && requested.body?.phone === newPhone);
     const code = process.env.SMOKE_OTP_CODE ?? requested.body?.code;
 
-    const wrong = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code: '000000' === code ? '111111' : '000000' }, movedToken);
+    const wrong = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code: '000000' === code ? '111111' : '000000', currentPassword: TEST_PASSWORD }, movedToken);
     check('a wrong code changes nothing', wrong.status >= 400 && wrong.status < 500);
 
-    const confirmed = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code }, movedToken);
+    // RA-BE-141: the new number's code alone, or with a wrong password, moves nothing.
+    const unproven = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code }, movedToken);
+    check('the new number\'s code alone is refused', unproven.status === 400 && unproven.body?.code === 'PHONE_CHANGE_PROOF_REQUIRED');
+    const wrongPassword = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code, currentPassword: 'WrongPassword1!' }, movedToken);
+    check('a wrong password is refused', wrongPassword.status === 401 && wrongPassword.body?.code === 'INVALID_CREDENTIALS');
+
+    const confirmed = await request('POST', '/api/v1/auth/phone-change/confirm', { phone: newPhone, code, currentPassword: TEST_PASSWORD }, movedToken);
     check('the right code moves the account', confirmed.status === 200 && confirmed.body?.changed === true);
 
     const oldSession = await request('GET', '/api/v1/auth/me', null, movedToken);

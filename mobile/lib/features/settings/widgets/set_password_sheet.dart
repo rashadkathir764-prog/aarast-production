@@ -2,28 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/latin_digits_formatter.dart';
 import '../../auth/auth_api.dart' show isApplicationPasswordWithinByteLimit;
 
 /// D75 «كلمة المرور», a journey sheet from «حسابي»: an account made by
 /// number and WhatsApp code adds a password here, a second way in when a
-/// code does not arrive; one that has a password changes it with the
-/// current one (the account's other devices are signed out).
+/// code does not arrive, with a code sent to its number (RA-BE-141); one
+/// that has a password changes it with the current one (the account's
+/// other devices are signed out).
 Future<void> showSetPasswordSheet(
   BuildContext context, {
   required bool hasPassword,
-  required Future<String?> Function(String newPassword, String? current) save,
+  required Future<({String? error, String? notice})> Function() requestCode,
+  required Future<String?> Function(
+    String newPassword,
+    String? currentPassword,
+    String? currentCode,
+  )
+  save,
 }) {
   return showJourneySheet<void>(
     context: context,
-    builder: (_) => _SetPasswordSheet(hasPassword: hasPassword, save: save),
+    builder: (_) => _SetPasswordSheet(
+      hasPassword: hasPassword,
+      requestCode: requestCode,
+      save: save,
+    ),
   );
 }
 
 class _SetPasswordSheet extends StatefulWidget {
-  const _SetPasswordSheet({required this.hasPassword, required this.save});
+  const _SetPasswordSheet({
+    required this.hasPassword,
+    required this.requestCode,
+    required this.save,
+  });
 
   final bool hasPassword;
-  final Future<String?> Function(String newPassword, String? current) save;
+
+  /// RA-BE-141: the code to the account's number the first password needs.
+  final Future<({String? error, String? notice})> Function() requestCode;
+  final Future<String?> Function(
+    String newPassword,
+    String? currentPassword,
+    String? currentCode,
+  )
+  save;
 
   @override
   State<_SetPasswordSheet> createState() => _SetPasswordSheetState();
@@ -32,6 +56,12 @@ class _SetPasswordSheet extends StatefulWidget {
 class _SetPasswordSheetState extends State<_SetPasswordSheet> {
   final _current = TextEditingController();
   final _next = TextEditingController();
+  final _code = TextEditingController();
+
+  /// The first password's code was sent; [_codeNotice] says it when it is
+  /// not known to have arrived.
+  bool _codeSent = false;
+  String? _codeNotice;
   bool _busy = false;
   bool _attempted = false;
   String? _error;
@@ -40,6 +70,7 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
   void dispose() {
     _current.dispose();
     _next.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -58,16 +89,43 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
     return null;
   }
 
+  String? get _codeError {
+    if (!_attempted || !_codeSent) return null;
+    return RegExp(r'^[0-9]{4,8}$').hasMatch(_code.text.trim())
+        ? null
+        : context.say(
+            'اكتب الرمز اللي وصلك على واتساب',
+            'اكتبي الرمز اللي وصلك على واتساب',
+          );
+  }
+
   Future<void> _submit() async {
     setState(() {
       _attempted = true;
       _error = null;
     });
-    if (_currentError != null || _nextError != null) return;
+    if (_currentError != null || _nextError != null || _codeError != null) {
+      return;
+    }
     setState(() => _busy = true);
+    if (!widget.hasPassword && !_codeSent) {
+      final asked = await widget.requestCode();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = asked.error;
+        if (asked.error == null) {
+          _codeSent = true;
+          _codeNotice = asked.notice;
+          _attempted = false;
+        }
+      });
+      return;
+    }
     final error = await widget.save(
       _next.text,
       widget.hasPassword ? _current.text : null,
+      widget.hasPassword ? null : _code.text.trim(),
     );
     if (!mounted) return;
     if (error == null) {
@@ -87,6 +145,8 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
       title: widget.hasPassword ? 'تغيير كلمة المرور' : 'إضافة كلمة مرور',
       subtitle: widget.hasPassword
           ? 'أجهزتك الثانية تطلع من الحساب بعد التغيير.'
+          : _codeSent
+          ? _codeNotice ?? 'أرسلنا لك رمز على واتساب على رقمك.'
           : 'طريق ثاني للدخول، لو الرمز ما وصل على واتساب.',
       children: [
         if (widget.hasPassword) ...[
@@ -113,6 +173,23 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _submit(),
         ),
+        // RA-BE-141: the first password comes with a code to this number.
+        if (_codeSent) ...[
+          const SizedBox(height: AarastV3Field.gap),
+          JourneyTextField(
+            key: const ValueKey('set-password-code'),
+            label: 'الرمز',
+            controller: _code,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            inputFormatters: [LatinDigitsFormatter()],
+            errorText: _codeError,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
         if (error != null) ...[
           const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
@@ -125,7 +202,9 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('set-password-save'),
-          label: 'حفظ كلمة المرور',
+          label: widget.hasPassword || _codeSent
+              ? 'حفظ كلمة المرور'
+              : context.say('أرسل رمز لرقمك', 'أرسلي رمز لرقمك'),
           expand: true,
           large: true,
           loading: _busy,

@@ -1195,6 +1195,17 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const currentHash =
       user.role === UserRole.ADMIN ? user.appPasswordHash : user.passwordHash;
     const throttleSubject = user.phone ?? user.id;
+    // RA-BE-141: the first password needs a code to the current number; a
+    // session alone gave the account a password of whoever held it, and the
+    // password then moved the account to another number.
+    const currentCode = dto.currentCode?.trim() || null;
+    if (currentHash === null && currentCode === null) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "CURRENT_PHONE_CODE_REQUIRED",
+        message: "A code to the current phone is required",
+      });
+    }
     if (currentHash !== null) {
       await this.loginThrottle.reserveAttempt(throttleSubject, "application");
       const matches = await bcryptjs.compare(dto.currentPassword ?? "", currentHash);
@@ -1208,12 +1219,18 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     }
     const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
 
-    let revokedSessionIds: string[];
+    let outcome: string[] | "currentInvalid";
     try {
-      revokedSessionIds = await runSerializableTransaction(
+      outcome = await runSerializableTransaction(
         this.prisma,
         async (tx) => {
           await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+          if (currentHash === null) {
+            const proof = await this.claimCurrentPhoneCodeInTransaction(
+              tx, user.id, currentCode ?? "", new Date(),
+            );
+            if (proof.outcome === "invalid") return "currentInvalid" as const;
+          }
           const updated = await this.users.setApplicationPassword(
             tx, user, currentHash, passwordHash,
           );
@@ -1246,7 +1263,9 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       }
       throw error;
     }
-    for (const revoked of revokedSessionIds) {
+    // The wrong code's attempt is kept (the transaction committed it).
+    if (outcome === "currentInvalid") throw this.currentPhoneCodeInvalid();
+    for (const revoked of outcome) {
       this.realtime.disconnectSession(revoked);
     }
     if (currentHash !== null) {
@@ -1277,20 +1296,60 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   }
 
   /**
-   * Step 2: the code proves the new number; the account moves to it and
-   * every application session ends, so each device signs in again with the
-   * new number.
+   * RA-BE-141: a code to the account's current number, the proof that its
+   * holder asks a sensitive change from a signed-in session: the phone
+   * change (or the password instead) and the first password. A session
+   * alone used to do both, so whoever held a signed-in phone or a stolen
+   * token took the account to their number, or gave it a password of theirs.
+   */
+  async requestCurrentPhoneCode(
+    currentUser: AuthenticatedUser,
+    context: OtpDispatchContext = {},
+  ): Promise<OtpRequestResponse> {
+    const account = await this.users.findById(this.prisma, currentUser.id);
+    if (!account?.phone || account.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException("User not found");
+    }
+    const { otpId: _otpId, ...response } = await this.issueOtp(
+      account.phone,
+      OtpPurpose.CURRENT_PHONE_PROOF,
+      context,
+    );
+    return response;
+  }
+
+  /**
+   * Step 2: the code proves the new number and [proof] (RA-BE-141) that
+   * the account's holder asks; the account moves to it and every
+   * application session ends, so each device signs in again with the new
+   * number.
    */
   async confirmPhoneChange(
     currentUser: AuthenticatedUser,
     newPhoneInput: string,
     codeInput: string,
+    proof: { currentCode?: string; currentPassword?: string } = {},
+    context: OtpDispatchContext = {},
   ): Promise<{ changed: true; phone: string }> {
     await this.assertNotAdministratorPhone(currentUser);
     const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
     const code = this.requiredText(codeInput, "code");
+    const currentCode = proof.currentCode?.trim() || null;
+    const currentPassword = proof.currentPassword || null;
+    if ((currentCode === null) === (currentPassword === null)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "PHONE_CHANGE_PROOF_REQUIRED",
+        message: "A code to the current phone or the account password is required",
+      });
+    }
+    const device = context.device ?? null;
+    const passwordThrottleSubject =
+      currentPassword === null
+        ? null
+        : await this.assertPhoneChangePassword(currentUser.id, currentPassword, device);
     const now = new Date();
-    let outcome: "changed" | "invalid";
+    let outcome: "changed" | "invalid" | "currentInvalid";
     try {
       outcome = await runSerializableTransaction(this.prisma, async (tx) => {
         const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
@@ -1300,13 +1359,33 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
           throw new UnauthorizedException("User not found");
         }
         await this.assertNotOwnPhone(tx, currentUser.id, phone);
+        // The current number's code is claimed first, so a guess at it
+        // counts whatever the new number's code says.
+        let currentClaim: OtpClaimResult | null = null;
+        if (currentCode !== null) {
+          currentClaim = await this.claimCurrentPhoneCodeInTransaction(
+            tx,
+            currentUser.id,
+            currentCode,
+            now,
+          );
+          if (currentClaim.outcome === "invalid") {
+            return "currentInvalid" as const;
+          }
+        }
         const claim = await this.claimOtpCodeInTransaction(tx, {
           phone,
           purpose: OtpPurpose.VERIFY_PHONE,
           code,
           now,
         });
-        if (claim.outcome === "invalid") return "invalid" as const;
+        if (claim.outcome === "invalid") {
+          // The current number's proof holds for the new code's retry.
+          if (currentClaim?.outcome === "verified") {
+            await this.otps.releaseClaim(tx, currentClaim.otp.id, now);
+          }
+          return "invalid" as const;
+        }
         // RA-BE-21: only now, the number's code proven, may the answer say
         // the number has an account; it reaches whoever holds that number.
         await this.assertPhoneFree(tx, currentUser.id, phone);
@@ -1338,9 +1417,65 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       }
       throw error;
     }
+    if (outcome === "currentInvalid") throw this.currentPhoneCodeInvalid();
     if (outcome === "invalid") throw this.otpInvalid();
     this.realtime.disconnectUser(currentUser.id);
+    if (passwordThrottleSubject !== null) {
+      await this.loginThrottle.clear(passwordThrottleSubject, "application", device);
+    }
     return { changed: true, phone };
+  }
+
+  /** RA-BE-141: claims the code sent to the account's current number. */
+  private async claimCurrentPhoneCodeInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    code: string,
+    now: Date,
+  ): Promise<OtpClaimResult> {
+    const account = await this.users.findById(tx, userId);
+    if (!account?.phone) return { outcome: "invalid" };
+    return this.claimOtpCodeInTransaction(tx, {
+      phone: account.phone,
+      purpose: OtpPurpose.CURRENT_PHONE_PROOF,
+      code,
+      now,
+    });
+  }
+
+  private currentPhoneCodeInvalid() {
+    return new BadRequestException({
+      statusCode: 400,
+      code: "CURRENT_PHONE_CODE_INVALID",
+      message: "The current phone's code is invalid or expired",
+    });
+  }
+
+  /**
+   * RA-BE-141: the password as the change's proof, counted by the password
+   * lock as a sign-in is (RA-BE-148). Returns the lock's subject, cleared
+   * once the change is made.
+   */
+  private async assertPhoneChangePassword(
+    userId: string,
+    password: string,
+    device: string | null,
+  ): Promise<string> {
+    const account = await this.users.findById(this.prisma, userId);
+    const throttleSubject = account?.phone ?? userId;
+    await this.loginThrottle.reserveAttempt(throttleSubject, "application", device);
+    const matches = await bcryptjs.compare(
+      password,
+      account?.passwordHash ?? AuthService.dummyPasswordHash,
+    );
+    if (!account?.passwordHash || !matches) {
+      throw authError(
+        HttpStatus.UNAUTHORIZED,
+        AuthErrorCode.INVALID_CREDENTIALS,
+        "Invalid credentials",
+      );
+    }
+    return throttleSubject;
   }
 
   /**

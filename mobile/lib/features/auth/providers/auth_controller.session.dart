@@ -344,18 +344,22 @@ mixin _AuthSession on _AuthControllerCore {
   Future<String?> setPassword(
     String newPassword,
     String? currentPassword, {
+    String? currentCode,
     String? pushInstallationId,
   }) async {
     try {
       await _authRepository.setPassword(
         newPassword: newPassword,
         currentPassword: currentPassword,
+        currentCode: currentCode,
         pushInstallationId: pushInstallationId,
       );
     } on ApiException catch (error) {
       if (error.serverCode == 'INVALID_CREDENTIALS') {
         return 'كلمة المرور الحالية غلط.';
       }
+      final proof = phoneChangeErrorMessage(error.serverCode);
+      if (proof != null) return proof;
       // A failed connection is not proof the net is down: the server, or
       // its name, may be the one out of reach. Say what is known.
       return error.isNetworkFailure
@@ -402,12 +406,36 @@ mixin _AuthSession on _AuthControllerCore {
     }
   }
 
-  /// Step 2: the code moves the account to [newPhone]. The server has ended
-  /// every session, so this one ends locally too and sign-in opens, now with
-  /// the new number. Returns an Arabic error, or null on success.
-  Future<String?> confirmPhoneChange(String newPhone, String code) async {
+  /// RA-BE-141: a code to the account's current number, for the phone
+  /// change without the password and for the first password. [error] is
+  /// said in Arabic; [notice] when the code is not known to have arrived.
+  Future<({String? error, String? notice})> requestCurrentPhoneCode() async {
     try {
-      await _authRepository.confirmPhoneChange(newPhone, code);
+      final sent = await _authRepository.requestCurrentPhoneCode();
+      return (error: null, notice: sent.noticeMessage);
+    } on ApiException catch (error) {
+      return (error: error.message, notice: null);
+    }
+  }
+
+  /// Step 2: the code moves the account to [newPhone], with one proof that
+  /// its holder asks it (RA-BE-141): [currentCode] or [currentPassword].
+  /// The server has ended every session, so this one ends locally too and
+  /// sign-in opens, now with the new number. Returns an Arabic error, or
+  /// null on success.
+  Future<String?> confirmPhoneChange(
+    String newPhone,
+    String code, {
+    String? currentCode,
+    String? currentPassword,
+  }) async {
+    try {
+      await _authRepository.confirmPhoneChange(
+        newPhone,
+        code,
+        currentCode: currentCode,
+        currentPassword: currentPassword,
+      );
     } on ApiException catch (error) {
       return phoneChangeErrorMessage(error.serverCode) ?? error.message;
     }
@@ -506,5 +534,10 @@ mixin _AuthSession on _AuthControllerCore {
 String? phoneChangeErrorMessage(String? code) => switch (code) {
   'PHONE_IN_USE' => 'هذا الرقم مسجّل لحساب آخر. استخدم رقمًا آخر.',
   'PHONE_UNCHANGED' => 'هذا هو رقمك الحالي.',
+  // RA-BE-141: the proof that the account's holder asks the change.
+  'INVALID_CREDENTIALS' => 'كلمة المرور غلط.',
+  'CURRENT_PHONE_CODE_INVALID' => 'رمز رقمك الحالي غلط أو انتهى.',
+  'CURRENT_PHONE_CODE_REQUIRED' ||
+  'PHONE_CHANGE_PROOF_REQUIRED' => 'نحتاج رمز رقمك الحالي أو كلمة المرور.',
   _ => null,
 };

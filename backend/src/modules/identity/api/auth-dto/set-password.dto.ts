@@ -10,7 +10,8 @@ import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 
 /**
  * `POST /auth/password`: add the app password, or change it. Changing needs
- * the current one; an account without a password (D75) only sends the new.
+ * the current one; an account without a password (D75) sends the new one
+ * with a code to its current number (RA-BE-141).
  */
 export class SetPasswordDto {
   @IsString()
@@ -23,6 +24,16 @@ export class SetPasswordDto {
   @IsNotEmpty()
   @MaxUtf8Bytes(72)
   currentPassword?: string;
+
+  /**
+   * RA-BE-141: adding the first password needs a code to the account's
+   * current number (`POST /auth/current-phone-code`).
+   */
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  @Matches(/^\d{6}$/)
+  currentCode?: string;
 
   /**
    * RA-BE-133: this phone's push registration (its FID, as

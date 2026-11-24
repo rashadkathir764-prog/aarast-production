@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
+import { clientRateContext } from "../../../platform/http/client-device";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import { CurrentUser } from "../../identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../../identity/public/jwt-auth.guard";
@@ -36,7 +37,7 @@ export class ApiV1InviteAccessController {
     @Body() dto: RequestInviteOtpDto,
     @Req() request: Request,
   ) {
-    return this.inviteAccess.requestOtp(token, dto, { ip: request.ip });
+    return this.inviteAccess.requestOtp(token, dto, clientRateContext(request));
   }
 
   @Post(":token/verify-otp")

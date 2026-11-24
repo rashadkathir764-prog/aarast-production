@@ -7,6 +7,11 @@ export const IDENTITY_ACCESS_TOKEN_VERIFIER = Symbol(
 
 export interface OtpDispatchContext {
   ip?: string | null;
+  /**
+   * RA-BE-140, RA-BE-144: the id the phone sends for itself (`X-Aarast-Device`).
+   * The phone's own word: a key the limits count by, never trusted.
+   */
+  device?: string | null;
 }
 
 export interface InviteOtpRequestResponse {

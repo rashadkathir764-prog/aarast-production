@@ -16,11 +16,14 @@ export function isProductionEnvironment(
  * How many WhatsApp codes the whole app may send in a rolling day (J1-19).
  * One reading for the start-up check, the quota and the readiness signal
  * (RA-BE-02); the quota used to read the variable again on its own.
+ * RA-BE-140: a safety cap for the WhatsApp sender, far above what one
+ * number, phone or address may ask; at 150 a few networks spent the day's
+ * codes for everyone.
  */
 export function otpGlobalDailyLimit(
   environment: NodeJS.ProcessEnv = process.env,
 ): number {
-  const limit = Number(environment.OTP_GLOBAL_DAILY_LIMIT ?? 150);
+  const limit = Number(environment.OTP_GLOBAL_DAILY_LIMIT ?? 2000);
   if (!Number.isInteger(limit) || limit < 1 || limit > 10_000) {
     throw new Error("OTP_GLOBAL_DAILY_LIMIT must be an integer from 1 to 10000");
   }

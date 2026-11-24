@@ -14,6 +14,7 @@ import {
 import { Throttle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
 import { isProductionEnvironment } from "../../../platform/config/runtime-environment";
+import { clientRateContext } from "../../../platform/http/client-device";
 import { AuthService } from "../internal/auth/auth.service";
 import { RegisterDto } from "./auth-dto/register.dto";
 import { CompleteRegistrationDto } from "./auth-dto/complete-registration.dto";
@@ -45,7 +46,7 @@ export class AuthController {
   @Post("register")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   register(@Body() dto: RegisterDto, @Req() request: Request) {
-    return this.authService.startRegistration(dto, { ip: request.ip });
+    return this.authService.startRegistration(dto, clientRateContext(request));
   }
 
   @Post("register/complete")
@@ -130,7 +131,10 @@ export class AuthController {
     @Body() dto: AdminPasswordResetRequestDto,
     @Req() request: Request,
   ) {
-    return this.authService.requestAdminPasswordReset(dto, { ip: request.ip });
+    return this.authService.requestAdminPasswordReset(
+      dto,
+      clientRateContext(request),
+    );
   }
 
   @Post("admin/password-reset/verify")
@@ -237,7 +241,11 @@ export class AuthController {
     @Body() dto: RequestPhoneChangeDto,
     @Req() request: Request,
   ) {
-    return this.authService.requestPhoneChange(user, dto.phone, { ip: request.ip });
+    return this.authService.requestPhoneChange(
+      user,
+      dto.phone,
+      clientRateContext(request),
+    );
   }
 
   @Post("phone-change/confirm")
@@ -255,7 +263,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   requestOtp(@Body() dto: RequestOtpDto, @Req() request: Request) {
-    return this.authService.requestOtp(dto, { ip: request.ip });
+    return this.authService.requestOtp(dto, clientRateContext(request));
   }
 
   @Post("otp/verify")
@@ -272,7 +280,10 @@ export class AuthController {
     @Body() dto: PasswordResetRequestDto,
     @Req() request: Request,
   ) {
-    return this.authService.requestPasswordReset(dto, { ip: request.ip });
+    return this.authService.requestPasswordReset(
+      dto,
+      clientRateContext(request),
+    );
   }
 
   @Post("password-reset/confirm")

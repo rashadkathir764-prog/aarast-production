@@ -8,6 +8,7 @@ import {
   OTP_DISPATCH_NOW,
   OtpDispatchQuotaService,
 } from '../src/modules/identity/internal/auth/otp-dispatch-quota.service';
+import { otpGlobalDailyLimit } from '../src/platform/config/runtime-environment';
 
 @Module({
   providers: [
@@ -286,7 +287,9 @@ test('OTP quota hashes every phone and IP subject before persistence', async () 
       assert.equal(keys.includes('203.0.113.10'), false);
       // D112 (Q-5): two more rows, the number's allowance at this address
       // (an hour's and a day's) beside the number's own ceilings.
-      assert.equal(harness.rows.size, 8);
+      // RA-BE-144: two more, the address's own ceilings beside its
+      // allowance per phone (here the phone that sent no id).
+      assert.equal(harness.rows.size, 10);
     },
   );
 });
@@ -371,4 +374,103 @@ test('OTP quota rejects an invalid global ceiling instead of silently disabling 
       );
     },
   );
+});
+
+const refusedWith = (code: string) => (error: unknown) =>
+  error instanceof HttpException &&
+  error.getStatus() === 429 &&
+  (error.getResponse() as { code?: string }).code === code;
+
+// RA-BE-144: a mobile network shares one address among many people (CGNAT).
+// The address's allowance (10 in ten minutes, 50 a day) is counted per phone
+// that asks, by the phone's own id; the address keeps a ceiling across every
+// phone, since the id is the phone's word and only a counting key.
+test('RA-BE-144: phones behind one shared address each get the address allowance', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '2000',
+    },
+    async () => {
+      const harness = createHarness();
+      const ip = '198.51.100.7';
+      for (let index = 0; index < 10; index += 1) {
+        await harness.service.consume(`+96777714${String(index).padStart(4, '0')}`, {
+          ip,
+          device: 'phone-a-0000000000000001',
+        });
+      }
+      // Its own ten are spent (its id's hour, or its share of the address).
+      await assert.rejects(
+        harness.service.consume('+967777149999', { ip, device: 'phone-a-0000000000000001' }),
+        (error: unknown) => error instanceof HttpException && error.getStatus() === 429,
+      );
+      // Another phone on the same address is not closed out with it.
+      await harness.service.consume('+967777148888', { ip, device: 'phone-b-0000000000000002' });
+    },
+  );
+});
+
+test('RA-BE-144: the shared address keeps a ceiling across every phone id', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '2000',
+    },
+    async () => {
+      const harness = createHarness();
+      const ip = '198.51.100.8';
+      const ceiling = OtpDispatchQuotaService.addressTenMinuteCeiling;
+      for (let index = 0; index < ceiling; index += 1) {
+        await harness.service.consume(`+9677771${String(index).padStart(5, '0')}`, {
+          ip,
+          device: `rotated-device-${String(index).padStart(10, '0')}`,
+        });
+      }
+      await assert.rejects(
+        harness.service.consume('+967777199999', { ip, device: 'rotated-device-new-00001' }),
+        refusedWith('OTP_LIMIT_NETWORK'),
+      );
+    },
+  );
+});
+
+// RA-BE-140: the app's day of codes ran out for everyone when a few networks
+// spent it. A phone has its own allowance across numbers and addresses, and
+// the app-wide safety cap is much higher (and still configurable).
+test('RA-BE-140: one phone has its own allowance across numbers and addresses', async () => {
+  await withEnvironment(
+    {
+      NODE_ENV: 'production',
+      AUTH_LOGIN_THROTTLE_PEPPER: 'test-pepper-with-more-than-32-characters',
+      OTP_GLOBAL_DAILY_LIMIT: '2000',
+    },
+    async () => {
+      const harness = createHarness();
+      const device = 'one-phone-00000000000001';
+      for (let index = 0; index < OtpDispatchQuotaService.deviceHourlyLimit; index += 1) {
+        await harness.service.consume(`+96777715${String(index).padStart(4, '0')}`, {
+          ip: `198.51.${index}.1`,
+          device,
+        });
+      }
+      await assert.rejects(
+        harness.service.consume('+967777159999', { ip: '192.0.2.200', device }),
+        refusedWith('OTP_LIMIT_DEVICE'),
+      );
+      // Another phone at that address is not affected.
+      await harness.service.consume('+967777158888', {
+        ip: '192.0.2.200',
+        device: 'another-phone-0000000002',
+      });
+    },
+  );
+});
+
+test('RA-BE-140: the app-wide daily cap defaults much higher than any one sender reaches', () => {
+  assert.equal(otpGlobalDailyLimit({}), 2000);
+  assert.equal(otpGlobalDailyLimit({ OTP_GLOBAL_DAILY_LIMIT: '5000' }), 5000);
+  assert.ok(otpGlobalDailyLimit({}) >= 4 * OtpDispatchQuotaService.addressDailyCeiling);
 });

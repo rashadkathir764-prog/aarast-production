@@ -8,6 +8,7 @@ import '../config/api_config.dart';
 import '../diagnostics/app_logger.dart';
 import '../utils/app_clock.dart';
 import 'api_contract.dart';
+import 'client_device_id.dart';
 import 'server_reachability.dart';
 
 typedef TokenProvider = Future<String?> Function();
@@ -40,8 +41,10 @@ class ApiClient {
     required TokenProvider tokenProvider,
     Dio? uploadDio,
     ServerReachability? reachability,
+    String? deviceId,
   }) : _tokenProvider = tokenProvider,
        _reachability = reachability,
+       _deviceId = deviceId,
        _uploadDio =
            uploadDio ??
            Dio(
@@ -270,6 +273,9 @@ class ApiClient {
 
   SessionRefresher? refreshSession;
 
+  /// This phone's own id ([clientDeviceHeader]), for the server's limits.
+  final String? _deviceId;
+
   /// Wired by the auth layer after construction; invoked when any
   /// non-auth request returns 401 so the app can force a clean re-login.
   void Function()? onSessionExpired;
@@ -310,6 +316,10 @@ class ApiClient {
     options.headers[clientRequestIdHeader] = requestId;
     // D93: the contract this app was built for, on every request.
     options.headers[apiContractHeader] = '$apiContractVersion';
+    final deviceId = _deviceId;
+    if (deviceId != null && carriesClientDeviceId(options.path)) {
+      options.headers[clientDeviceHeader] = deviceId;
+    }
     options.extra[_requestClientIdKey] = requestId;
     options.extra[_requestAttemptKey] = attempt;
     options.extra[_requestAttemptTimerKey] = Stopwatch()..start();

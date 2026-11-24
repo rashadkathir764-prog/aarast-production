@@ -18,6 +18,7 @@ import 'core/diagnostics/sentry_log_sink.dart';
 import 'core/forms/aarast_form_draft_store.dart';
 import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
+import 'core/network/client_device_id.dart';
 import 'core/network/server_reachability.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
@@ -198,6 +199,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   final apiClient = ApiClient(
     tokenProvider: authStorage.readAccessToken,
     reachability: serverReachability,
+    deviceId: await readOrCreateClientDeviceId(preferences),
   );
   final devicePreferences = DevicePreferences(preferences);
   // Startup: Firebase starts beside the offline database's open instead of

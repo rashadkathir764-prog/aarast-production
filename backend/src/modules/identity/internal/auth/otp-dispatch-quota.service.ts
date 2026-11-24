@@ -115,7 +115,7 @@ export class OtpDispatchQuotaService {
   ) {}
 
   async consume(phone: string, context: OtpDispatchContext = {}): Promise<void> {
-    const policies = this.policies(phone, context.ip);
+    const policies = this.policies(phone, context.ip, context.device);
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -158,8 +158,32 @@ export class OtpDispatchQuotaService {
   static readonly phoneHourlyCeiling = 15;
   static readonly phoneDailyCeiling = 30;
 
-  private policies(phone: string, rawIp?: string | null): OtpQuotaPolicy[] {
+  /**
+   * RA-BE-140: a phone's own allowance, by the id it sends, across every
+   * number and address it asks from.
+   */
+  static readonly deviceHourlyLimit = 10;
+  static readonly deviceDailyLimit = 20;
+
+  /**
+   * RA-BE-144: a mobile network hands one address to many people (CGNAT).
+   * The address's allowance (10 in ten minutes, 50 a day, D92) is counted
+   * per phone at that address; a phone that sends no id shares one. The
+   * address keeps a ceiling across every phone, because the id is only the
+   * phone's word: rotating it buys no more than this.
+   */
+  static readonly addressTenMinuteLimit = 10;
+  static readonly addressDailyLimit = 50;
+  static readonly addressTenMinuteCeiling = 100;
+  static readonly addressDailyCeiling = 500;
+
+  private policies(
+    phone: string,
+    rawIp?: string | null,
+    rawDevice?: string | null,
+  ): OtpQuotaPolicy[] {
     const ip = otpIpSubject(rawIp);
+    const device = rawDevice?.trim() || null;
     // No address known (a caller behind nothing that reports one): one
     // shared allowance, the number's own as before.
     const atAddress = `${phone}|${ip ?? 'no-address'}`;
@@ -222,23 +246,60 @@ export class OtpDispatchQuotaService {
         ),
       },
     ];
+    if (device) {
+      const phoneDevice = otpLimitRefusal(
+        'OTP_LIMIT_DEVICE',
+        'طلبات رموز كثيرة من هذا الجوال.',
+      );
+      policies.push(
+        {
+          scope: 'DEVICE_HOUR',
+          subject: device,
+          limit: OtpDispatchQuotaService.deviceHourlyLimit,
+          windowMs: 60 * 60_000,
+          refusal: phoneDevice,
+        },
+        {
+          scope: 'DEVICE_DAY',
+          subject: device,
+          limit: OtpDispatchQuotaService.deviceDailyLimit,
+          windowMs: 24 * 60 * 60_000,
+          refusal: phoneDevice,
+        },
+      );
+    }
     if (ip) {
       const network = otpLimitRefusal(
         'OTP_LIMIT_NETWORK',
         'طلبات رموز كثيرة من هذي الشبكة.',
       );
+      const atAddressDevice = `${ip}|${device ?? 'no-device'}`;
       policies.push(
+        {
+          scope: 'IP_DEVICE_TEN_MIN',
+          subject: atAddressDevice,
+          limit: OtpDispatchQuotaService.addressTenMinuteLimit,
+          windowMs: 10 * 60_000,
+          refusal: network,
+        },
+        {
+          scope: 'IP_DEVICE_DAY',
+          subject: atAddressDevice,
+          limit: OtpDispatchQuotaService.addressDailyLimit,
+          windowMs: 24 * 60 * 60_000,
+          refusal: network,
+        },
         {
           scope: 'IP_TEN_MIN',
           subject: ip,
-          limit: 10,
+          limit: OtpDispatchQuotaService.addressTenMinuteCeiling,
           windowMs: 10 * 60_000,
           refusal: network,
         },
         {
           scope: 'IP_DAY',
           subject: ip,
-          limit: 50,
+          limit: OtpDispatchQuotaService.addressDailyCeiling,
           windowMs: 24 * 60 * 60_000,
           refusal: network,
         },

@@ -555,7 +555,11 @@ test("outbox uses transactional inserts and cross-replica skip-locked claims", (
   assert.match(schema, /model OutboxEvent/);
 });
 
-test("outbox cleanup removes only old processed delivery receipts", async () => {
+// RA-BE-179 (Q-45, D124): a failed event is no longer kept for ever; it goes
+// 30 days after its last attempt (retention-periods.test.ts pins the days).
+// Nothing else leaves: no pending or claimed event, and no event without an
+// age cutoff.
+test("outbox cleanup removes only old processed receipts and old failed events", async () => {
   let where: unknown;
   const scheduler = new OutboxCleanupScheduler({
     $transaction: async (operation: (client: unknown) => unknown) =>
@@ -571,9 +575,16 @@ test("outbox cleanup removes only old processed delivery receipts", async () => 
   } as never);
 
   assert.equal(await scheduler.removeProcessedReceipts(), 3);
-  assert.deepEqual((where as { status: string }).status, "PROCESSED");
-  assert.ok(
-    (where as { processedAt: { lt: unknown } }).processedAt.lt instanceof Date,
+  const branches = (where as { OR: Array<Record<string, any>> }).OR;
+  assert.deepEqual(
+    branches.map((branch) => branch.status).sort(),
+    ["FAILED", "PROCESSED"],
   );
-  assert.equal(JSON.stringify(where).includes("FAILED"), false);
+  const processed = branches.find((branch) => branch.status === "PROCESSED")!;
+  assert.deepEqual(Object.keys(processed).sort(), ["processedAt", "status"]);
+  assert.ok(processed.processedAt.lt instanceof Date);
+  const failed = branches.find((branch) => branch.status === "FAILED")!;
+  assert.deepEqual(Object.keys(failed).sort(), ["status", "updatedAt"]);
+  assert.ok(failed.updatedAt.lt instanceof Date);
+  assert.equal(JSON.stringify(where).includes("PENDING"), false);
 });

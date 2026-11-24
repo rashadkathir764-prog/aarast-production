@@ -308,4 +308,40 @@ void main() {
     expect(refused.changedElsewhere, isTrue);
     expect(refused.reason, contains('الضيف تغيّر من جهاز ثاني'));
   });
+
+  // RA-MO-344: while a change of the row waits refused as changed elsewhere,
+  // a new edit of it is made from the same old read: it carries the waiting
+  // change's `expected`, so it is refused too, not taken over the partner's.
+  test('a new edit of a row whose change was refused as changed elsewhere '
+      'carries that change\'s read', () async {
+    final (api, offline, server) = await _setUp({
+      'PATCH /api/v1/guests/g1': _conflict,
+    });
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: _guest('خلد', _read),
+    );
+    final guests = GuestsApi(api, offline: offline);
+    server.down = true;
+    await guests.updateGuest(id: 'g1', name: 'خالد');
+    server.down = false;
+    await offline.syncPendingChanges();
+    expect((await offline.database.blockedSyncItems()), hasLength(1));
+
+    await expectLater(
+      guests.updateGuest(id: 'g1', notes: 'من جهة العريس'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.isChangedElsewhere,
+          'isChangedElsewhere',
+          isTrue,
+        ),
+      ),
+    );
+
+    final sent = server.bodies['PATCH /api/v1/guests/g1']!;
+    expect(sent, hasLength(2));
+    expect(sent.last['expected'], {'name': 'خلد'});
+    expect(sent.last['notes'], 'من جهة العريس');
+  });
 }

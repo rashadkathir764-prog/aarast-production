@@ -463,6 +463,11 @@ class OfflineWrites {
   /// phone's values then, and the waiting change carries its own (an edit
   /// merged into it keeps them; one queued after it would be refused for the
   /// waiting change's own landing). None for a row the server has not named.
+  ///
+  /// RA-MO-344: while a change of the row waits refused as changed elsewhere,
+  /// the read it was made from is still the phone's last read of the row:
+  /// a new edit carries that change's `expected`, so it is refused too
+  /// instead of going over what changed elsewhere.
   Future<Map<String, Object?>?> lastRead({
     required String entityType,
     required String table,
@@ -473,10 +478,17 @@ class OfflineWrites {
     if (database == null || isLocalId(id) || id.startsWith('local-')) {
       return null;
     }
-    for (final change in [
-      ...await database.pendingSyncItems(),
-      ...await database.blockedSyncItems(),
-    ]) {
+    final blocked = await database.blockedSyncItems();
+    for (final change in blocked) {
+      if (change.entityType != entityType ||
+          change.localEntityId != id ||
+          !change.refusedAsChangedElsewhere) {
+        continue;
+      }
+      final expected = change.payload['expected'];
+      if (expected is Map) return Map<String, Object?>.from(expected);
+    }
+    for (final change in [...await database.pendingSyncItems(), ...blocked]) {
       if (change.entityType == entityType && change.localEntityId == id) {
         return null;
       }

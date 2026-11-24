@@ -70,6 +70,18 @@
     cachedBookings,
   ];
 
+  /// RA-MO-336: what a plan keeps of its money on the phone, apart from the
+  /// plan itself: its budget, agreements, payments, dates, funding sources,
+  /// and the home's summary (its figures are the money's).
+  static const planMoneyCacheTables = [
+    cachedBudgetCategories,
+    cachedCosts,
+    cachedCostPayments,
+    cachedPaymentSchedules,
+    cachedFundingSources,
+    cachedDashboardSummaries,
+  ];
+
   static const planScopedQueueEntityTypes = {
     'wedding_plan',
     'plan_member',

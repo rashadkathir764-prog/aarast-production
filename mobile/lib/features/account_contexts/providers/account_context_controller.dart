@@ -16,6 +16,10 @@ typedef AfterAccountContextsRefresh = Future<void> Function();
 /// Removes from the phone a plan the server says this participant no
 /// longer has, and says how many unsent changes went with it.
 typedef ForgetRemovedPlan = Future<int> Function(String planId);
+
+/// RA-MO-336: removes from the phone only the money of a plan this
+/// participant may no longer read; the plan itself stays.
+typedef ForgetPlanMoney = Future<void> Function(String planId);
 typedef ResetAccountContextState =
     FutureOr<void> Function(
       AccountContext? previousContext,
@@ -33,7 +37,9 @@ class AccountContextController extends ChangeNotifier {
     BeforeAccountContextsRefresh? beforeRefresh,
     AfterAccountContextsRefresh? afterRefresh,
     ForgetRemovedPlan? forgetRemovedPlan,
+    ForgetPlanMoney? forgetPlanMoney,
   }) : _forgetRemovedPlan = forgetRemovedPlan,
+       _forgetPlanMoney = forgetPlanMoney,
        _contextsApi = contextsApi,
        _authStorage = authStorage,
        _setActiveWeddingPlan = setActiveWeddingPlan,
@@ -63,6 +69,7 @@ class AccountContextController extends ChangeNotifier {
   final BeforeAccountContextsRefresh? _beforeRefresh;
   final AfterAccountContextsRefresh? _afterRefresh;
   final ForgetRemovedPlan? _forgetRemovedPlan;
+  final ForgetPlanMoney? _forgetPlanMoney;
 
   /// RA-MO-275: unsent changes that went with a plan the participant was
   /// taken off, by plan; the page that tells the removal says them.
@@ -85,6 +92,27 @@ class AccountContextController extends ChangeNotifier {
   List<AccountContext> get availableContexts =>
       _contexts.where((context) => context.isAvailable).toList(growable: false);
   AccountContext? get selectedContext => _selectedContext;
+
+  /// What no context is open is scoped as.
+  static const unselectedPlanScope = 'context:none';
+
+  /// The identity the plan-scoped providers hold their state under: a new
+  /// one starts them afresh, so nothing read with a right the reader no
+  /// longer has stays on a screen. D112 (Q-21): a plan put in the memories
+  /// keeps its key and loses every write right. RA-MO-336: a participant
+  /// whose right to the plan's money is withdrawn (or given) starts afresh
+  /// too; the money they read before must not stay in a provider.
+  String get planScope {
+    final selected = _selectedContext;
+    if (selected == null) return unselectedPlanScope;
+    final permissions = selected.permissions;
+    final readsMoney = permissions.canViewMoney || permissions.canManageMoney;
+    return [
+      'context:${selected.contextKey}',
+      if (selected.isOwnerMemory) 'memory',
+      if (selected.isPlan && !readsMoney) 'no-money',
+    ].join(':');
+  }
 
   /// q12: what changed in the open participant path since this phone last
   /// kept it; null when nothing changed. The home takes it once with
@@ -227,6 +255,9 @@ class AccountContextController extends ChangeNotifier {
           }
           await _saveActivePlanWithReconciliation(selectedPlanId);
         }
+        // RA-MO-336: before the screens are told of the new right.
+        await _forgetUnreadableMoney(freshContexts);
+        if (!_isCurrent(generation)) return false;
         permissionChange = AccountContextPermissionChange.between(
           _storedContext(),
           selected,
@@ -356,6 +387,8 @@ class AccountContextController extends ChangeNotifier {
           if (!_isCurrent(generation)) return false;
           await _authStorage.clearActivePlanId();
         }
+        if (!_isCurrent(generation)) return false;
+        await _forgetUnreadableMoney([validated]);
         if (!_isCurrent(generation)) return false;
         permissionChange = AccountContextPermissionChange.between(
           _storedContext(),
@@ -656,6 +689,32 @@ class AccountContextController extends ChangeNotifier {
         if (dropped > 0) _droppedOnRemoval[planId] = dropped;
       } on Object catch (error) {
         appDebugNote('Removed plan $planId not cleared: $error');
+      }
+    }
+  }
+
+  /// RA-MO-336: a participant's plan whose money the server does not let
+  /// them read keeps none on the phone. Asked of every plan the server just
+  /// listed, not only of a change seen on the one kept: a phone that was
+  /// closed, or on another plan, when the right was withdrawn, wipes it on
+  /// its next answer. It is idempotent; a failure is noted and tried again
+  /// on the next answer, and never closes the plan.
+  Future<void> _forgetUnreadableMoney(Iterable<AccountContext> contexts) async {
+    final forget = _forgetPlanMoney;
+    if (forget == null) return;
+    for (final context in contexts) {
+      final planId = context.weddingPlanId;
+      final permissions = context.permissions;
+      if (planId == null ||
+          context.role != AccountContextRole.contributor ||
+          permissions.canViewMoney ||
+          permissions.canManageMoney) {
+        continue;
+      }
+      try {
+        await forget(planId);
+      } on Object catch (error) {
+        appDebugNote('Money of plan $planId not cleared: $error');
       }
     }
   }

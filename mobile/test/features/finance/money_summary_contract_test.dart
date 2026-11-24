@@ -131,7 +131,11 @@ void main() {
       'currency': 'YER',
       'mahr': ?mahr,
     };
-    const figures = {'total': '3000000', 'settled': '0', 'remaining': '3000000'};
+    const figures = {
+      'total': '3000000',
+      'settled': '0',
+      'remaining': '3000000',
+    };
 
     test('PAYS is the groom\'s, RECEIVES the bride\'s', () {
       expect(
@@ -139,7 +143,9 @@ void main() {
         MahrSide.pays,
       );
       expect(
-        MoneySummary.fromJson(body({...figures, 'side': 'RECEIVES'})).mahr?.side,
+        MoneySummary.fromJson(
+          body({...figures, 'side': 'RECEIVES'}),
+        ).mahr?.side,
         MahrSide.receives,
       );
     });

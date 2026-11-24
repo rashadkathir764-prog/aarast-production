@@ -348,6 +348,19 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
+  /// RA-MO-336: the plan's money leaves the phone (the plan stays), as the
+  /// reader's right to it was withdrawn.
+  Future<void> clearPlanMoney(String planId) async {
+    final normalized = planId.trim();
+    if (normalized.isEmpty) return;
+    final generation = _sessionGeneration;
+    final owner = _cacheOwnerUserId;
+    await _enqueueCacheMutation(() async {
+      if (owner == null || !_isCurrentSession(generation, owner)) return;
+      await database.deletePlanMoney(normalized);
+    });
+  }
+
   /// Prevents queued writes for [planId] from starting and waits for a write
   /// that was already on the wire to settle before membership is revoked.
   Future<void> quiescePlan(String planId) async {

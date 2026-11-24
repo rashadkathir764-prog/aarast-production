@@ -23,6 +23,18 @@ bool isPhonePlanId(Object? planId) {
   return value.isNotEmpty && isLocalPlanId(value);
 }
 
+/// RA-MO-336: the meta keys of [planId]'s money on the phone: its budget,
+/// the money picture, the funding, and the «list kept» marker of each money
+/// table (left behind, a marker reads the wiped list as «kept empty»).
+List<String> planMoneyMetaKeys(String planId) => [
+  'money_budget:$planId',
+  'money-summary:$planId',
+  'money-funding:$planId',
+  'funding:$planId',
+  for (final table in OfflineTables.planMoneyCacheTables)
+    keptListMetaKey(table, planId),
+];
+
 /// The column that names a row's plan in a plan-scoped [table].
 String planColumnOf(String table) =>
     table == OfflineTables.cachedWeddingPlans ? 'id' : 'planId';
@@ -163,6 +175,14 @@ abstract class LocalDatabase {
   /// Deletes one guest/account plan graph while preserving user and other
   /// plan cache rows.
   Future<void> deletePlanGraph(String planId);
+
+  /// RA-MO-336: removes only [planId]'s money from the phone (its budget,
+  /// agreements, payments, dates, funding and the home's summary, with
+  /// their meta), keeping the plan and everything that is not money. For a
+  /// participant whose right to the money was withdrawn. The sync queue is
+  /// not touched: what waits in it is refused by the server and reaches the
+  /// person as a change that did not go through.
+  Future<void> deletePlanMoney(String planId);
 
   Future<void> markSyncItemSynced(String id);
 

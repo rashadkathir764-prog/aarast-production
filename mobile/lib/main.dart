@@ -860,6 +860,9 @@ class _AarastSessionProviders extends StatelessWidget {
         await offlineSyncService.clearPlanContext(planId);
         return unsent;
       },
+      // RA-MO-336: the right to a plan's money withdrawn, its money goes
+      // from the phone and the plan stays.
+      forgetPlanMoney: offlineSyncService.clearPlanMoney,
     );
     if (shouldRefresh) {
       unawaited(controller.refresh(allowInitialSingleContext: true));
@@ -868,19 +871,12 @@ class _AarastSessionProviders extends StatelessWidget {
   }
 }
 
-const _unselectedPlanScope = 'context:none';
+const _unselectedPlanScope = AccountContextController.unselectedPlanScope;
 
-String _planScope(AccountContextController accountContexts) {
-  final selected = accountContexts.selectedContext;
-  final contextKey = selected?.contextKey;
-  if (contextKey == null) return _unselectedPlanScope;
-  // D112 (Q-21): a plan put in the memories keeps its key and loses every
-  // write right. Its pages start afresh as a memory, so nothing read with
-  // the rights it had a moment ago (the money's «تقدر تسجّل») stays shown.
-  return selected!.isOwnerMemory
-      ? 'context:$contextKey:memory'
-      : 'context:$contextKey';
-}
+/// What the plan-scoped providers hold their state under (the controller
+/// says it: the memory scope of D112 Q-21 and the money right of RA-MO-336).
+String _planScope(AccountContextController accountContexts) =>
+    accountContexts.planScope;
 
 T _bindPlanScope<T extends ChangeNotifier>(T provider, Object identity) {
   (provider as SessionScopedState).bindSessionIdentity(identity);

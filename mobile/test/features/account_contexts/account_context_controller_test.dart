@@ -643,6 +643,191 @@ void main() {
       },
     );
   });
+
+  // RA-MO-336: withdrawing a participant's right to the plan's money left
+  // the money on the phone (the copy of its costs, payments and dates) and
+  // on the screens already open (every plan-scoped provider kept what it
+  // had read with the right). The model's `moneyChanged` was read by nothing
+  // but its own `isEmpty`.
+  group('a participant\'s money right', () {
+    AccountContext participant({required bool money, bool manage = false}) {
+      final json = accountContextJson(
+        role: AccountContextRole.contributor,
+        membershipId: 'membership-1',
+      );
+      (json['permissions'] as Map<String, dynamic>)
+        ..['canViewMoney'] = money
+        ..['canManageMoney'] = manage;
+      return AccountContext.fromJson(json);
+    }
+
+    Future<(AccountContextController, List<String>, _FakeContextsApi)> open(
+      AccountContext kept,
+      AccountContext returned, {
+      Future<void> Function(String planId)? onForget,
+    }) async {
+      final storage = await _signedInStorage(userId: 'user-1', opened: kept);
+      final api = _FakeContextsApi([returned]);
+      final forgotten = <String>[];
+      final controller = AccountContextController(
+        contextsApi: api,
+        authStorage: storage,
+        setActiveWeddingPlan: (_) async {},
+        forgetPlanMoney: (planId) async {
+          forgotten.add(planId);
+          await onForget?.call(planId);
+        },
+      );
+      addTearDown(controller.dispose);
+      return (controller, forgotten, api);
+    }
+
+    test(
+      'withdrawn: its money leaves the phone, before the screens read',
+      () async {
+        final (controller, forgotten, _) = await open(
+          participant(money: true),
+          participant(money: false),
+        );
+
+        await controller.refresh();
+
+        expect(forgotten, ['plan-1']);
+        expect(controller.selectedContext?.permissions.canViewMoney, isFalse);
+      },
+    );
+
+    test('the wipe is done before the withdrawn right is published', () async {
+      final (controller, forgotten, _) = await open(
+        participant(money: true),
+        participant(money: false),
+      );
+      var seenBeforeWipe = false;
+      controller.addListener(() {
+        // The first notice that carries the new right.
+        if (controller.selectedContext?.permissions.canViewMoney == false &&
+            forgotten.isEmpty) {
+          seenBeforeWipe = true;
+        }
+      });
+
+      await controller.refresh();
+
+      expect(seenBeforeWipe, isFalse);
+    });
+
+    test(
+      'kept: a participant who may view or manage money is not wiped',
+      () async {
+        for (final returned in [
+          participant(money: true),
+          participant(money: false, manage: true),
+        ]) {
+          final (controller, forgotten, _) = await open(
+            participant(money: true),
+            returned,
+          );
+          await controller.refresh();
+          expect(forgotten, isEmpty);
+        }
+      },
+    );
+
+    test('the owner\'s money is never wiped by this', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final (controller, forgotten, _) = await open(owner, owner);
+
+      await controller.refresh();
+
+      expect(forgotten, isEmpty);
+    });
+
+    test(
+      'a phone that missed the change wipes it on the next answer',
+      () async {
+        // The kept copy already says «no money» (or none was kept): the money
+        // of an earlier right is still wiped, whenever the server says so.
+        final (controller, forgotten, _) = await open(
+          participant(money: false),
+          participant(money: false),
+        );
+
+        await controller.refresh();
+
+        expect(forgotten, ['plan-1']);
+      },
+    );
+
+    test('a wipe that fails does not close the plan, the next answer tries '
+        'again', () async {
+      var fail = true;
+      final (controller, forgotten, _) = await open(
+        participant(money: true),
+        participant(money: false),
+        onForget: (_) async {
+          if (fail) throw StateError('disk');
+        },
+      );
+
+      await controller.refresh();
+      expect(controller.selectedContext, isNotNull);
+      fail = false;
+      await controller.refresh();
+
+      expect(forgotten, ['plan-1', 'plan-1']);
+    });
+
+    test(
+      'selecting a participant plan without the money right wipes it too',
+      () async {
+        final (controller, forgotten, _) = await open(
+          participant(money: true),
+          participant(money: false),
+        );
+        await controller.refresh();
+        forgotten.clear();
+
+        await controller.select(participant(money: false).contextKey);
+
+        expect(forgotten, ['plan-1']);
+      },
+    );
+
+    test('the screens start afresh when the right changes', () async {
+      final (controller, _, api) = await open(
+        participant(money: true),
+        participant(money: true),
+      );
+      await controller.refresh();
+      final withMoney = controller.planScope;
+
+      api.onList = () async => [participant(money: false)];
+      await controller.refresh();
+      final without = controller.planScope;
+
+      expect(without, isNot(withMoney));
+      expect(without, contains('no-money'));
+      expect(withMoney, isNot(contains('no-money')));
+      // Granted again, they start afresh again, on the first scope.
+      api.onList = () async => [participant(money: true)];
+      await controller.refresh();
+      expect(controller.planScope, withMoney);
+    });
+
+    test(
+      'the owner\'s scope does not carry the right, nor does none open',
+      () async {
+        final owner = accountContext(role: AccountContextRole.owner);
+        final (controller, _, _) = await open(owner, owner);
+        expect(
+          controller.planScope,
+          AccountContextController.unselectedPlanScope,
+        );
+        await controller.refresh();
+        expect(controller.planScope, 'context:${owner.contextKey}');
+      },
+    );
+  });
 }
 
 Future<void> _flush() async {

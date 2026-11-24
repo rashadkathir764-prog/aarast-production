@@ -650,10 +650,7 @@ void main() {
       final card = find.byKey(const ValueKey('aarast-dashboard-money-card'));
 
       expect(
-        find.descendant(
-          of: card,
-          matching: find.text('3,250,000$_nbspر.ي'),
-        ),
+        find.descendant(of: card, matching: find.text('3,250,000$_nbspر.ي')),
         findsOneWidget,
       );
       expect(find.text('معك 1,250,000$_nbspر.ي'), findsOneWidget);

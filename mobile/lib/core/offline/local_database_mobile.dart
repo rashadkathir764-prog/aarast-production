@@ -428,6 +428,28 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> deletePlanMoney(String planId) async {
+    final normalizedPlanId = planId.trim();
+    if (normalizedPlanId.isEmpty) return;
+    await _db.transaction((txn) async {
+      for (final table in OfflineTables.planMoneyCacheTables) {
+        await txn.delete(
+          table,
+          where: '${planColumnOf(table)} = ?',
+          whereArgs: [normalizedPlanId],
+        );
+      }
+      for (final key in planMoneyMetaKeys(normalizedPlanId)) {
+        await txn.delete(
+          OfflineTables.localMeta,
+          where: 'key = ?',
+          whereArgs: [key],
+        );
+      }
+    });
+  }
+
+  @override
   Future<List<SyncQueueItem>> pendingSyncItems() async {
     final rows = await _db.query(
       OfflineTables.syncQueue,

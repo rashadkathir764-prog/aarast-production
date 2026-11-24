@@ -348,6 +348,24 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> deletePlanMoney(String planId) async {
+    final normalizedPlanId = planId.trim();
+    if (normalizedPlanId.isEmpty) return;
+    for (final table in OfflineTables.planMoneyCacheTables) {
+      final rows = _readList(_tableKey(table));
+      rows.removeWhere(
+        (row) => row[planColumnOf(table)]?.toString() == normalizedPlanId,
+      );
+      await _writeList(_tableKey(table), rows);
+    }
+    final meta = _readMap(_metaKey);
+    for (final key in planMoneyMetaKeys(normalizedPlanId)) {
+      meta.remove(key);
+    }
+    await _writeMap(_metaKey, meta);
+  }
+
+  @override
   Future<List<SyncQueueItem>> pendingSyncItems() async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     final pending =

@@ -932,7 +932,9 @@ void main() {
 
       final sheet = find.byType(JourneySheetBody);
       String textOf(Finder under) => tester
-          .widgetList<Text>(find.descendant(of: under, matching: find.byType(Text)))
+          .widgetList<Text>(
+            find.descendant(of: under, matching: find.byType(Text)),
+          )
           .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
           .join('\n');
       final step = find.byKey(const ValueKey('money-counted-step-0'));

@@ -304,7 +304,10 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('aarast-home-today-payment')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('aarast-home-today-payment')),
+      findsNothing,
+    );
     expect(find.textContaining('قاعة سبأ'), findsOneWidget);
   });
 

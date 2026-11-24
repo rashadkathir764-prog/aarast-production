@@ -150,7 +150,9 @@ export async function decideProfileChange(
   return tx.providerProfileChange.findUnique({ where: { id }, include: adminInclude });
 }
 
-function listingValues(change: ProfileChangeFields): Prisma.ProviderUncheckedUpdateInput {
+// The return type is inferred, not Prisma's update input: the ownership scan
+// reads the written keys from it (only the provider's own listing columns).
+function listingValues(change: ProfileChangeFields) {
   const logo = change.logoUrl ? imageVariantUrls(change.logoUrl) : null;
   const cover = change.coverUrl ? imageVariantUrls(change.coverUrl) : null;
   return {
@@ -165,5 +167,5 @@ function listingValues(change: ProfileChangeFields): Prisma.ProviderUncheckedUpd
     ...(change.coverUrl && cover
       ? { coverUrl: change.coverUrl, coverThumbUrl: cover.thumbUrl, coverMediumUrl: cover.mediumUrl }
       : {}),
-  };
+  } satisfies Prisma.ProviderUncheckedUpdateInput;
 }

@@ -28,6 +28,7 @@ import type {
   AdminProviderRow,
   AdminReviewFilter,
   AdminReviewRow,
+  LockedReviewState,
   AdminServiceChanges,
   AdminServiceFields,
   AdminServiceFilter,
@@ -317,7 +318,7 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     reviewId: string,
     providerId: string,
-  ): Promise<boolean> {
+  ): Promise<LockedReviewState | null> {
     return this.repository.lockReviewForUpdateInTransaction(tx, reviewId, providerId);
   }
 

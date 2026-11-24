@@ -8,6 +8,13 @@ import type {
 
 const reportOrder = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
 
+/** RA-AD-22: the conversation's provider and its customer side, with each report. */
+const reportConversation = {
+  conversation: {
+    select: { providerId: true, accountRequesterUserId: true, createdByUserId: true },
+  },
+} as const;
+
 @Injectable()
 export class MessagingAdminService implements MessagingAdminPort {
   async listConversationReports(
@@ -19,7 +26,7 @@ export class MessagingAdminService implements MessagingAdminPort {
     const total = await client.conversationReport.count({ where });
     const items = await client.conversationReport.findMany({
       where,
-      include: { conversation: { select: { providerId: true } } },
+      include: reportConversation,
       orderBy: [...reportOrder],
       skip: page.skip,
       take: page.take,
@@ -27,19 +34,39 @@ export class MessagingAdminService implements MessagingAdminPort {
     return { total, items };
   }
 
+  listAccountConversationReports(
+    client: Prisma.TransactionClient,
+    account: { userId: string; providerId: string | null },
+    take: number,
+  ): Promise<AdminConversationReportRow[]> {
+    return client.conversationReport.findMany({
+      where: {
+        OR: [
+          { reporterUserId: account.userId },
+          { conversation: { accountRequesterUserId: account.userId } },
+          { conversation: { createdByUserId: account.userId } },
+          ...(account.providerId ? [{ conversation: { providerId: account.providerId } }] : []),
+        ],
+      },
+      include: reportConversation,
+      orderBy: [...reportOrder],
+      take,
+    });
+  }
+
   async lockConversationReportForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-  ): Promise<boolean> {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+  ): Promise<{ status: ConversationReportStatus } | null> {
+    const rows = await tx.$queryRaw<Array<{ status: ConversationReportStatus }>>(
       Prisma.sql`
-        SELECT "id"
+        SELECT "status"
         FROM "ConversationReport"
         WHERE "id" = ${reportId}
         FOR UPDATE
       `,
     );
-    return rows.length === 1;
+    return rows.length === 1 ? rows[0]! : null;
   }
 
   async setConversationReportStatusInTransaction(

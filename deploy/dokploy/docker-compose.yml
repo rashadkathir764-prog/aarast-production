@@ -298,6 +298,7 @@ services:
       API_ORIGIN: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
       ADMIN_PUBLIC_ORIGIN: ${ADMIN_PUBLIC_ORIGIN:?ADMIN_PUBLIC_ORIGIN is required}
       CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      MEDIA_ORIGIN: ${AARAST_MEDIA_ORIGIN:?AARAST_MEDIA_ORIGIN is required}
     depends_on:
       backend:
         condition: service_healthy

@@ -54,14 +54,25 @@ const report: InboxReport = {
   createdAt: '2026-10-24T06:00:00.000Z',
   reporter: { id: 'user-9', name: 'محمد' },
   conversation: { provider: { id: 'provider-9', businessName: 'مصور مجهول' } },
+  reported: { kind: 'PROVIDER' },
 };
 
 const getOpenReports = vi.fn();
+const getOpenAssistantReports = vi.fn();
+const getPendingPhotos = vi.fn();
+const getReportedReviews = vi.fn();
+const getDeletions = vi.fn();
 
 function renderInbox() {
   render(
     <MemoryRouter>
-      <DashboardPage getOpenReports={getOpenReports} />
+      <DashboardPage
+        getOpenReports={getOpenReports}
+        getOpenAssistantReports={getOpenAssistantReports}
+        getPendingPhotos={getPendingPhotos}
+        getReportedReviews={getReportedReviews}
+        getDeletions={getDeletions}
+      />
     </MemoryRouter>,
   );
 }
@@ -81,6 +92,12 @@ describe('DashboardPage (n01 الصندوق)', () => {
     });
     vi.mocked(getProvider).mockReset();
     getOpenReports.mockReset();
+    for (const loader of [getOpenAssistantReports, getPendingPhotos, getReportedReviews]) {
+      loader.mockReset();
+      loader.mockResolvedValue({ items: [], total: 0 });
+    }
+    getDeletions.mockReset();
+    getDeletions.mockResolvedValue({ deletions: [] });
     vi.mocked(getProvider).mockResolvedValue({ userId: 'owner-9' } as ProviderApplication);
   });
 
@@ -226,14 +243,19 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(getProviderClaims).not.toHaveBeenCalled();
   });
 
-  it('names the customer side when the provider filed the report', async () => {
+  // RA-AD-22: the server names the customer the provider reported; the
+  // inbox said «عميل» and guessed the side from the provider's owner.
+  it('names the customer when the provider filed the report', async () => {
     authState.adminPermissions = [AdminPermission.CONVERSATION_REPORTS_WRITE];
-    vi.mocked(getProvider).mockResolvedValue({ userId: 'user-9' } as ProviderApplication);
-    getOpenReports.mockResolvedValue({ items: [report], total: 1 });
+    getOpenReports.mockResolvedValue({
+      items: [{ ...report, reported: { kind: 'CUSTOMER', user: { name: 'نبيل' } } }],
+      total: 1,
+    });
 
     renderInbox();
 
-    expect(await screen.findByText('«مصور مجهول» بلّغ عن عميل')).toBeVisible();
+    expect(await screen.findByText('«مصور مجهول» بلّغ عن نبيل')).toBeVisible();
+    expect(getProvider).not.toHaveBeenCalled();
   });
 
   it('says so when nothing waits', async () => {
@@ -259,5 +281,90 @@ describe('DashboardPage (n01 الصندوق)', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('تعذر الاتصال'));
     expect(screen.getByRole('heading', { name: 'الصندوق' })).toBeVisible();
+  });
+
+  // RA-AD-27: the photos waiting for review, the reported assistant answers
+  // and reviews, and the deletions that failed sat outside the inbox, so the
+  // desk's one place to look missed them.
+  it('holds the photos, the reported answers and reviews and the failed deletions, for whom acts on each', async () => {
+    authState.adminPermissions = [
+      AdminPermission.REVIEWS_WRITE,
+      AdminPermission.CONVERSATION_REPORTS_WRITE,
+      AdminPermission.USERS_WRITE,
+    ];
+    getOpenReports.mockResolvedValue({ items: [], total: 0 });
+    getPendingPhotos.mockResolvedValue({
+      items: [{ id: 'photo-1', createdAt: '2026-10-24T08:30:00.000Z', provider: { id: 'p1', businessName: 'استوديو ضوء' } }],
+      total: 1,
+    });
+    getOpenAssistantReports.mockResolvedValue({
+      items: [{ id: 'answer-1', reason: 'الإجابة غلط في المهر', createdAt: '2026-10-24T07:00:00.000Z' }],
+      total: 1,
+    });
+    getReportedReviews.mockResolvedValue({
+      items: [
+        {
+          id: 'review-1',
+          provider: { id: 'p2', businessName: 'قاعة الريان' },
+          openReportCount: 2,
+          openReports: [
+            { reason: 'كلام مسيء', createdAt: '2026-10-24T06:00:00.000Z' },
+            { reason: 'تقييم كاذب', createdAt: '2026-10-24T04:00:00.000Z' },
+          ],
+        },
+      ],
+      total: 1,
+    });
+    getDeletions.mockResolvedValue({
+      deletions: [
+        { userId: 'u-1', name: 'سالم', scheduledFor: '2026-10-23T09:00:00.000Z', purgeFailedAt: '2026-10-23T10:00:00.000Z' },
+        { userId: 'u-2', name: 'علي', scheduledFor: '2026-11-10T09:00:00.000Z', purgeFailedAt: null },
+      ],
+    });
+
+    renderInbox();
+
+    const table = await screen.findByRole('table', { name: 'بنود الصندوق' });
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(4);
+    // The failed deletion was due when it failed: it leads, overdue.
+    expect(rows[0]).toHaveTextContent('سالم');
+    expect(rows[0]).toHaveTextContent('الحذف ما كمل في موعده');
+    expect(rows[0]).toHaveClass('is-hi');
+    const photo = screen.getByText('صورة جديدة في معرض «استوديو ضوء»').closest('tr');
+    expect(photo).toHaveTextContent('صورة');
+    expect(photo).toHaveTextContent('باقي ساعة');
+    const answer = screen.getByText('الإجابة غلط في المهر').closest('tr');
+    expect(answer).toHaveTextContent('بلاغ على إجابة المساعد');
+    const review = screen.getByText('تقييم على «قاعة الريان»').closest('tr');
+    expect(review).toHaveTextContent('2 بلاغ · كلام مسيء');
+    expect(review).toHaveTextContent('تعدّى');
+    expect(screen.queryByText('علي')).not.toBeInTheDocument();
+    expect(screen.getByText('كل شغل اللوحة في مكان واحد · 4 مفتوح · 2 تعدّت الوقت')).toBeVisible();
+    expect(getPendingPhotos).toHaveBeenCalledWith({ status: 'PENDING', page: 1, limit: 100 });
+    expect(getOpenAssistantReports).toHaveBeenCalledWith({ status: 'OPEN', page: 1, limit: 100 });
+    expect(getReportedReviews).toHaveBeenCalledWith({ reported: 'true', page: 1, limit: 100 });
+    const promises = screen.getByText('الوعد لكل نوع').parentElement;
+    expect(promises).toHaveTextContent('صورة معرضساعتين');
+    expect(promises).toHaveTextContent('حذف ما كملفورًا');
+  });
+
+  it('asks for none of those queues from an admin who cannot act on them', async () => {
+    authState.adminPermissions = [AdminPermission.PROVIDERS_WRITE];
+    vi.mocked(getProviderApplications).mockResolvedValue({
+      items: [],
+      page: 1,
+      limit: 100,
+      total: 0,
+      totalPages: 1,
+    });
+
+    renderInbox();
+
+    expect(await screen.findByText('ما فيه شي ينتظر الآن.')).toBeVisible();
+    expect(getPendingPhotos).not.toHaveBeenCalled();
+    expect(getOpenAssistantReports).not.toHaveBeenCalled();
+    expect(getReportedReviews).not.toHaveBeenCalled();
+    expect(getDeletions).not.toHaveBeenCalled();
   });
 });

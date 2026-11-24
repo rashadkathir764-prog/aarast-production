@@ -16,8 +16,15 @@ export type AdminAuditLog = {
   statusCode: number | null;
   errorType: string | null;
   requestId: string | null;
+  /** RA-AD-23: the reason or note the admin gave, when the action takes one. */
+  reason: string | null;
+  /** RA-AD-23: what the action changed on its target, before and after. */
+  before: AdminAuditState | null;
+  after: AdminAuditState | null;
   createdAt: string;
 };
+
+type AdminAuditState = Record<string, string | number | boolean | null>;
 
 type QueryParams = {
   page?: number;

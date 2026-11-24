@@ -7,6 +7,7 @@ import { AuthChallengeCleanupScheduler } from "../src/modules/identity/internal/
 test("one replica removes only security state older than the retention window", async () => {
   const whereClauses: unknown[] = [];
   let refreshWhere: unknown;
+  let deviceWhere: unknown;
   const scheduler = new AuthChallengeCleanupScheduler({
     $transaction: async (operation: any) =>
       operation({
@@ -35,10 +36,24 @@ test("one replica removes only security state older than the retention window", 
             return { count: 7 };
           },
         },
+        adminTrustedDevice: {
+          deleteMany: async ({ where }: any) => {
+            deviceWhere = where;
+            return { count: 1 };
+          },
+        },
       }),
   } as any);
 
-  assert.equal(await scheduler.removeExpiredSecurityState(), 17);
+  // RA-AD-26: the remembered admin devices past the window go with them.
+  assert.equal(await scheduler.removeExpiredSecurityState(), 18);
+  const device = deviceWhere as { OR: Array<{ expiresAt?: { lt: Date }; revokedAt?: { not: null; lt: Date } }> };
+  assert.ok(device.OR[0].expiresAt?.lt instanceof Date);
+  assert.deepEqual(device.OR[1].revokedAt?.not, null);
+  assert.equal(
+    device.OR[0].expiresAt!.lt.getTime(),
+    (whereClauses[0] as any).expiresAt.lt.getTime(),
+  );
   assert.equal(whereClauses.length, 3);
   for (const where of whereClauses) {
     assert.ok((where as any).expiresAt.lt instanceof Date);
@@ -72,6 +87,7 @@ test("challenge cleanup skips when another replica owns the lock", async () => {
         adminPasswordResetChallenge: { deleteMany: async () => deletes++ },
         otpCode: { deleteMany: async () => deletes++ },
         refreshToken: { deleteMany: async () => deletes++ },
+        adminTrustedDevice: { deleteMany: async () => deletes++ },
       }),
   } as any);
 

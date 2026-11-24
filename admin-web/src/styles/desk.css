@@ -780,6 +780,17 @@
   flex: 1;
 }
 
+/* A panel's plain list of two-line rows (a13's plans and reports). */
+.desk-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desk-list li {
+  padding: 5px 0;
+}
+
 .desk-timeline {
   margin: 6px 0 0;
   padding: 0;

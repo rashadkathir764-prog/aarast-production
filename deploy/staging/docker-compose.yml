@@ -227,6 +227,7 @@ services:
       API_ORIGIN: ${STAGING_API_ORIGIN:?staging API origin required}
       ADMIN_PUBLIC_ORIGIN: ${STAGING_ADMIN_ORIGIN:?staging Admin origin required}
       CORS_ORIGINS: ${STAGING_ADMIN_ORIGIN:?staging Admin origin required}
+      MEDIA_ORIGIN: ${STAGING_MEDIA_ORIGIN:?staging media origin required}
     ports:
       - "127.0.0.1:${STAGING_ADMIN_PORT:?staging Admin loopback port required}:80"
     healthcheck:

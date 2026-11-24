@@ -14,7 +14,7 @@ import {
   type ConversationReport,
   type ProviderReview,
 } from './api';
-import { getProvider, type ProviderApplication } from '../providers/api';
+import { getProvider, suspendProvider, type ProviderApplication } from '../providers/api';
 import { ConversationReportsPage } from './ConversationReportsPage';
 import { ReviewsPage } from './ReviewsPage';
 
@@ -28,13 +28,21 @@ vi.mock('./api', () => ({
   updateReviewReplyStatus: vi.fn(),
   updateReviewStatus: vi.fn(),
 }));
-vi.mock('../providers/api', () => ({ getProvider: vi.fn(), getProviders: vi.fn() }));
+vi.mock('../providers/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../providers/api')>()),
+  getProvider: vi.fn(),
+  getProviders: vi.fn(),
+  suspendProvider: vi.fn(),
+}));
+const permissions = vi.hoisted(() => ({
+  list: ['USERS_READ', 'REVIEWS_WRITE', 'CONVERSATION_REPORTS_WRITE'] as string[],
+}));
 vi.mock('../auth/AuthProvider', () => ({
   useAuth: () => ({
     user: {
       id: 'admin-1',
       name: 'سارة',
-      adminPermissions: ['USERS_READ', 'REVIEWS_WRITE', 'CONVERSATION_REPORTS_WRITE'],
+      adminPermissions: permissions.list,
     },
   }),
 }));
@@ -43,6 +51,15 @@ const NOW = new Date('2026-10-24T08:00:00.000Z');
 
 const page = <T,>(items: T[]) => ({ items, page: 1, limit: 20, total: items.length, totalPages: 1 });
 
+/** RA-AD-22: the server names the reported party; the provider's owner reporting means the customer. */
+const reportedParty = (reporterId: string): ConversationReport['reported'] =>
+  reporterId === 'provider-owner-1'
+    ? {
+        kind: 'CUSTOMER',
+        user: { id: 'customer-9', name: 'نبيل الوصابي', phone: '+967777000999' },
+      }
+    : { kind: 'PROVIDER', provider: { id: 'provider-1', businessName: 'استديو الفن', status: 'ACTIVE' } };
+
 const report = (
   id: string,
   reporterId: string,
@@ -50,6 +67,7 @@ const report = (
   reason = 'احتيال',
   createdAt = '2026-10-23T10:00:00.000Z',
 ): ConversationReport => ({
+  reported: reportedParty(reporterId),
   id,
   conversationId: `conversation-${id}`,
   reason,
@@ -97,7 +115,11 @@ describe('ConversationReportsPage (a11)', () => {
     vi.mocked(getProvider).mockResolvedValue({
       id: 'provider-1',
       userId: 'provider-owner-1',
+      businessName: 'استديو الفن',
+      status: 'ACTIVE',
+      verifiedAt: null,
     } as ProviderApplication);
+    permissions.list = ['USERS_READ', 'REVIEWS_WRITE', 'CONVERSATION_REPORTS_WRITE'];
   });
 
   function renderReports() {
@@ -124,15 +146,42 @@ describe('ConversationReportsPage (a11)', () => {
     expect(screen.queryByRole('button', { name: 'اطلب إيقافه' })).not.toBeInTheDocument();
   });
 
-  it('names the customer when the provider reports', async () => {
+  // RA-AD-22: when the provider reported, the page said «العميل في
+  // المحادثة» and never who he was, so nothing could be done about him.
+  it('names the customer when the provider reports, with his number and his account', async () => {
     renderReports();
 
     const second = await screen.findByRole('row', { name: 'اقرأ بلاغ إزعاج' });
-    expect(second).toHaveTextContent('استديو الفن بلّغ عن العميل · قبل 3 أيام');
+    expect(second).toHaveTextContent('استديو الفن بلّغ عن نبيل الوصابي · قبل 3 أيام');
     fireEvent.click(second);
 
     expect(screen.getByRole('heading', { name: 'إزعاج' })).toBeVisible();
-    expect(screen.getByText(/المزود نفسه/)).toHaveTextContent('العميل في المحادثة');
+    const who = screen.getByText(/المزود نفسه/);
+    expect(within(who).getByRole('link', { name: 'نبيل الوصابي' })).toHaveAttribute('href', '/users/customer-9');
+    expect(who).toHaveTextContent('777 000 999');
+    expect(screen.getByRole('link', { name: 'افتح حسابه' })).toHaveAttribute('href', '/users/customer-9');
+  });
+
+  it('offers to suspend the reported provider to whom can, and asks the reason first', async () => {
+    permissions.list = ['USERS_READ', 'CONVERSATION_REPORTS_WRITE', 'PROVIDERS_WRITE'];
+    vi.mocked(suspendProvider).mockResolvedValue({} as ProviderApplication);
+    renderReports();
+
+    await screen.findByRole('heading', { name: 'كلام غير لائق' });
+    fireEvent.click(await screen.findByRole('button', { name: 'إيقاف' }));
+    const dialog = screen.getByRole('dialog', { name: 'إيقاف استديو الفن' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'كلام غير لائق مع العرسان' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'أوقف' }));
+    await waitFor(() =>
+      expect(suspendProvider).toHaveBeenCalledWith('provider-1', 'كلام غير لائق مع العرسان'),
+    );
+  });
+
+  it('offers no suspension to a reader without PROVIDERS_WRITE', async () => {
+    renderReports();
+
+    await screen.findByRole('heading', { name: 'كلام غير لائق' });
+    expect(screen.queryByRole('button', { name: 'إيقاف' })).not.toBeInTheDocument();
   });
 
   it('closes a report as handled or as nothing, and says why when it fails', async () => {

@@ -83,12 +83,35 @@ export class IdentityAdminService implements IdentityAdminPort {
     });
   }
 
+  async getAccountSessions(
+    client: Prisma.TransactionClient,
+    userId: string,
+    now: Date,
+  ): Promise<{ application: number; admin: number; lastLoginAt: Date | null }> {
+    const live = (scope: AuthSessionScope) =>
+      client.refreshToken.count({
+        where: { userId, scope, revokedAt: null, replacedById: null, expiresAt: { gt: now } },
+      });
+    const [application, admin, user] = await Promise.all([
+      live(AuthSessionScope.APPLICATION),
+      live(AuthSessionScope.ADMIN),
+      client.user.findUnique({ where: { id: userId }, select: { lastLoginAt: true } }),
+    ]);
+    return { application, admin, lastLoginAt: user?.lastLoginAt ?? null };
+  }
+
   async revokeRefreshTokensInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
     revokedAt: Date,
   ): Promise<void> {
     await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt },
+    });
+    // RA-AD-26: and its remembered admin browsers, so no password-only
+    // sign-in outlives the revocation.
+    await tx.adminTrustedDevice.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt },
     });

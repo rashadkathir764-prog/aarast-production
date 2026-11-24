@@ -222,7 +222,9 @@ inactive windows on one replica.
 
 Register, password login, and OTP login return an access token, opaque refresh
 token, and refresh expiry. Access JWTs default to 15 minutes; refresh sessions
-expire after 30 days and are stored as hashes.
+are stored as hashes. An application session expires 30 days after its last
+refresh; an administration session ends 12 hours after the sign-in that opened
+it, and its refreshes keep that end (RA-AD-26).
 
 - Application and administration refresh tokens are separately scoped in both
   their opaque prefix and the persisted `RefreshToken.scope` column.
@@ -3563,6 +3565,13 @@ Admin routes are JWT-protected and require admin authorization:
   access JWT and sets the rotating refresh token only as a path-scoped
   `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
 - `POST /api/v1/auth/admin/refresh` rotates that cookie and its server session.
+  The session ends 12 hours after its sign-in; a refresh never moves the end.
+- «Remember this device» (`rememberDevice` on login/complete) stores an
+  `AdminTrustedDevice` row (the digest of a random `aarast_admin_device`
+  cookie, 30 days, bound to the password hash). The next sign-in from that
+  browser needs the password only while the row is live: disabling the
+  account, provisioning (`prod:provision-admin`) and any password change end
+  it.
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 
 General password login, general OTP login, and general refresh never mint the
@@ -3646,8 +3655,25 @@ returns the admin refresh token.
 - `DELETE /admin/cities/:id`
 - `GET /admin/users`
 - `PATCH /admin/users/:id/activate`
-- `PATCH /admin/users/:id/disable`
-- `GET /admin/users/:id`
+- `PATCH /admin/users/:id/disable` takes `{ reason }` (required, at most 500
+  characters; RA-AD-23), which the audit log keeps.
+- `GET /admin/users/:id` (RA-AD-25) returns the account and its `provider`
+  with `plans` (owned and shared: `id`, `title`, `status`, `weddingDate`,
+  `role` `OWNER` or `MEMBER`; no money, no guests), `reports` (the latest 20
+  chat reports he filed or filed on him or his business: `direction`
+  `FILED` or `AGAINST` and the `counterpart`'s name) and `sessions`
+  (`application` and `admin` live sessions, `lastLoginAt`).
+
+`GET /admin/conversation-reports` names each report's `reported` party
+(RA-AD-22): `{ kind: 'PROVIDER', provider }`, or, when the provider's owner
+filed it, `{ kind: 'CUSTOMER', user: { id, name, phone } | null }` (the
+customer who opened the conversation).
+
+The audit log (`GET /admin/audit-logs`) keeps the decision as well as the
+route (RA-AD-23): `reason` is the body's `reason`, else its `note`, on every
+row of the action, and the SUCCEEDED row carries `before` and `after`, the
+small state the action changed (a status, `verified`, `resolved`,
+`deletion`), recorded by the mutation itself.
 
 Every provider category the four `/admin/provider-categories` routes return
 carries `budgetItems: { groom, bride, shared }`: the money item an accepted

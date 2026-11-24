@@ -298,13 +298,13 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
   // D63: + DataExport. D65: + PlanEvent and its two enums.
   // D83: + GuestInvitationCard and GuestEventInvite.
   // RA-ST-05: + ReviewReport. RA-ST-04: + AssistantAnswerReport.
-  // D116: + GuestInvitationSend.
-  assert.equal(saved.modelCount, 73);
+  // D116: + GuestInvitationSend. RA-AD-26: + AdminTrustedDevice.
+  assert.equal(saved.modelCount, 74);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1). D72: + BudgetItemSuggestion.
   // D105: + EstimateCover. D107: + CostEntryKind. D116: + the card's photo
   // kind, and the send's kind, status and channel.
   assert.equal(saved.enumCount, 62);
-  assert.equal(saved.dmmf.models.length, 73);
+  assert.equal(saved.dmmf.models.length, 74);
   assert.equal(saved.dmmf.enums.length, 62);
 });
 

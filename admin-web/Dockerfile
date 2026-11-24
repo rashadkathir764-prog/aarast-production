@@ -45,7 +45,9 @@ RUN apk upgrade --no-cache
 LABEL org.opencontainers.image.revision="${AARAST_GIT_REVISION}"
 
 # Placed under templates/ so the image entrypoint runs envsubst on it,
-# injecting ${API_ORIGIN} into the CSP connect-src at container start.
+# injecting ${API_ORIGIN} into the CSP connect-src and ${MEDIA_ORIGIN} into
+# img-src at container start. MEDIA_ORIGIN has no default: the guard refuses
+# to start without the deployment's own media origin.
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY scripts/runtime-config-guard.sh /usr/local/bin/aarast-runtime-config-guard
 RUN chmod 0555 /usr/local/bin/aarast-runtime-config-guard

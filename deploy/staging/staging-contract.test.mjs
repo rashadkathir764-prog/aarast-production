@@ -277,6 +277,8 @@ test('preflight rejects foreign resource and production fallback mutations', () 
   const cases = [
     (x) => { x.services.backend.environment.CORS_ORIGINS = 'https://aarast.shadowgardn.com'; },
     (x) => { x.services['admin-web'].environment.API_ORIGIN = x.services.backend.environment.INVITE_PUBLIC_ORIGIN; },
+    (x) => { x.services['admin-web'].environment.MEDIA_ORIGIN = 'https://images.staging.example.invalid'; },
+    (x) => { delete x.services['admin-web'].environment.MEDIA_ORIGIN; },
     (x) => { x.services.backend.environment.READINESS_REQUIRE_MEDIA = 'false'; },
     (x) => { x.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED = 'true'; },
     (x) => { x.services.backend.environment.AUTH_OTP_MODE = 'openwa'; },

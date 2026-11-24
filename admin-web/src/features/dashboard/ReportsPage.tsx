@@ -27,9 +27,17 @@ function amount(value: string, currency: string): string {
   return currency === 'YER' ? number : `${number} ${currency}`;
 }
 
+/**
+ * RA-AD-28: names in the report are typed by people (a plan's item, a
+ * city), and a sheet runs a cell that starts with `= + - @` (or a tab or
+ * carriage return) as a formula. Such a cell is written as text: a leading
+ * apostrophe, quoted (OWASP CSV injection).
+ */
 function csvCell(value: string | number | null): string {
   const text = value === null ? '' : String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const formula = typeof value === 'string' && /^[=+\-@\t\r]/.test(text);
+  const cell = formula ? `'${text}` : text;
+  return formula || /[",\n\r]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
 }
 
 /** The page's numbers as a CSV the admin can open in a sheet. */

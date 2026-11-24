@@ -91,6 +91,9 @@ export interface AdminOpenReviewReport {
   createdAt: Date;
 }
 
+/** RA-AD-23: a locked review's statuses, read before a moderation changes them. */
+export type LockedReviewState = Pick<ProviderReview, 'status' | 'replyStatus'>;
+
 export type AdminReviewRow = ProviderReview & {
   provider: Provider;
   /** The latest five open reports; `_count.reports` counts them all. */
@@ -499,7 +502,8 @@ export interface MarketplaceAdminPort {
     reviewId: string,
   ): Promise<string | null>;
   /**
-   * Locks the review FOR UPDATE; false unless it exists under the provider.
+   * Locks the review FOR UPDATE and returns its statuses (the audit log's
+   * «before», RA-AD-23); null unless it exists under the provider.
    * The moderator takes the provider's rating lock
    * (`provider-review-rating.ts`) first and refreshes the rating after the
    * status change.
@@ -508,7 +512,7 @@ export interface MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     reviewId: string,
     providerId: string,
-  ): Promise<boolean>;
+  ): Promise<LockedReviewState | null>;
   setReviewStatusInTransaction(
     tx: Prisma.TransactionClient,
     reviewId: string,

@@ -26,9 +26,17 @@ import {
   ADMIN_AUDIT_LOG_PORT,
   type AdminAuditLogPort,
 } from '../modules/backoffice/public/admin-audit-log.port';
+import {
+  type AdminAuditChange,
+  runAuditedAdminRequest,
+} from '../modules/backoffice/public/admin-audit-change';
+
+/** The longest reason the log keeps; the decision DTOs stop at 2000. */
+const MAX_AUDIT_REASON_LENGTH = 2000;
 
 interface AdminAuditRequest {
   baseUrl?: string;
+  body?: unknown;
   method?: string;
   params?: Record<string, unknown>;
   requestId?: string;
@@ -73,7 +81,10 @@ export class AdminAuditInterceptor implements NestInterceptor {
       route,
       targetId,
       requestId,
+      // RA-AD-23: the reason the admin gave, on every row of the action.
+      reason: this.decisionReason(request.body),
     };
+    const change: AdminAuditChange = { before: null, after: null };
 
     // Fail closed before the mutation: if the ATTEMPT cannot be persisted,
     // no privileged write is allowed to proceed without audit evidence.
@@ -81,13 +92,17 @@ export class AdminAuditInterceptor implements NestInterceptor {
       this.auditLog.append({ ...base, phase: AdminAuditPhase.ATTEMPT }),
     ).pipe(
       switchMap(() =>
-        next.handle().pipe(
+        // The handler runs in this request's audit scope, so what its
+        // mutation records (`recordAdminAuditChange`) lands in `change`.
+        runAuditedAdminRequest(change, () => next.handle()).pipe(
           switchMap((response) =>
             from(
               this.auditLog.append({
                 ...base,
                 phase: AdminAuditPhase.SUCCEEDED,
                 statusCode: this.responseStatus(context, 200),
+                before: change.before,
+                after: change.after,
               }),
             ).pipe(
               map(() => response),
@@ -118,6 +133,19 @@ export class AdminAuditInterceptor implements NestInterceptor {
         ),
       ),
     );
+  }
+
+  /**
+   * The admin's own words for the decision: the body's `reason`, else its
+   * `note` (the names every decision DTO uses). Nothing else of the body is
+   * kept.
+   */
+  private decisionReason(body: unknown): string | null {
+    if (!body || typeof body !== 'object') return null;
+    const { reason, note } = body as { reason?: unknown; note?: unknown };
+    const text = typeof reason === 'string' ? reason : typeof note === 'string' ? note : null;
+    const trimmed = text?.trim();
+    return trimmed ? trimmed.slice(0, MAX_AUDIT_REASON_LENGTH) : null;
   }
 
   private safeTargetId(value: unknown): string | null {

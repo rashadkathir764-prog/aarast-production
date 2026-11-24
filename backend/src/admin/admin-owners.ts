@@ -106,6 +106,14 @@ export interface AdminConversationReportView {
     provider: { id: string; businessName: string };
     quoteRequests: Array<{ id: string }>;
   };
+  /**
+   * RA-AD-22: who the report is about. The provider, unless its owner filed
+   * it: then the customer who opened the conversation (null when that
+   * account is gone).
+   */
+  reported:
+    | { kind: 'PROVIDER'; provider: { id: string; businessName: string; status: string } }
+    | { kind: 'CUSTOMER'; user: { id: string; name: string; phone: string | null } | null };
 }
 
 /**
@@ -394,10 +402,12 @@ export class AdminOwners {
     client: Client,
     rows: readonly AdminConversationReportRow[],
   ): Promise<AdminConversationReportView[]> {
-    const [reporters, providers, latestQuotes] = await Promise.all([
+    const customerOf = (row: AdminConversationReportRow) =>
+      row.conversation.accountRequesterUserId ?? row.conversation.createdByUserId;
+    const [people, providers, latestQuotes] = await Promise.all([
       this.users.getAppIdentities(
         client,
-        unique(rows.map((row) => row.reporterUserId)),
+        unique(rows.flatMap((row) => [row.reporterUserId, customerOf(row)])),
       ),
       this.providerRead.getProviders(
         client,
@@ -408,15 +418,17 @@ export class AdminOwners {
         unique(rows.map((row) => row.conversationId)),
       ),
     ]);
-    const reporterById = new Map(reporters.map((user) => [user.id, user]));
+    const personById = new Map(people.map((user) => [user.id, user]));
     const providerById = new Map(providers.map((provider) => [provider.id, provider]));
     const latestQuoteByConversation = new Map(
       latestQuotes.map((quote) => [quote.conversationId, quote.id]),
     );
     return rows.map((row) => {
-      const reporter = required(reporterById, row.reporterUserId, 'Reporter');
+      const reporter = required(personById, row.reporterUserId, 'Reporter');
       const provider = required(providerById, row.conversation.providerId, 'Provider');
       const latestQuoteId = latestQuoteByConversation.get(row.conversationId);
+      const customerId = customerOf(row);
+      const customer = customerId ? personById.get(customerId) : undefined;
       return {
         id: row.id,
         conversationId: row.conversationId,
@@ -434,6 +446,22 @@ export class AdminOwners {
           provider: { id: provider.id, businessName: provider.businessName },
           quoteRequests: latestQuoteId ? [{ id: latestQuoteId }] : [],
         },
+        reported:
+          provider.userId !== null && provider.userId === row.reporterUserId
+            ? {
+                kind: 'CUSTOMER' as const,
+                user: customer
+                  ? { id: customer.id, name: customer.name, phone: customer.phone }
+                  : null,
+              }
+            : {
+                kind: 'PROVIDER' as const,
+                provider: {
+                  id: provider.id,
+                  businessName: provider.businessName,
+                  status: provider.status,
+                },
+              },
       };
     });
   }

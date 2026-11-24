@@ -7,9 +7,14 @@ import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { getStats } from './features/dashboard/api';
 import { getCategories, getCities } from './features/catalog/api';
-import { getConversationReports } from './features/moderation/api';
+import {
+  getAssistantReports,
+  getConversationReports,
+  getPortfolioPhotos,
+  getReviews,
+} from './features/moderation/api';
 import { getProvider } from './features/providers/api';
-import { getUser } from './features/users/api';
+import { getDataRequests, getUser } from './features/users/api';
 import { ProviderApplicationsPage } from './features/providers/ProviderApplicationsPage';
 import { ProviderApplicationDetailsPage } from './features/providers/ProviderApplicationDetailsPage';
 import { ProvidersPage } from './features/providers/ProvidersPage';
@@ -54,7 +59,13 @@ export default function App() {
           index
           element={
             <RequireAdminPermission permission={AdminPermission.DASHBOARD_READ}>
-              <DashboardPage getOpenReports={getConversationReports} />
+              <DashboardPage
+                getOpenReports={getConversationReports}
+                getOpenAssistantReports={getAssistantReports}
+                getPendingPhotos={getPortfolioPhotos}
+                getReportedReviews={getReviews}
+                getDeletions={getDataRequests}
+              />
             </RequireAdminPermission>
           }
         />

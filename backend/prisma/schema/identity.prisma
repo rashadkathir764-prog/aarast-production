@@ -105,6 +105,7 @@ model User {
   refreshTokens                RefreshToken[]
   adminLoginChallenges         AdminLoginChallenge[]
   adminPasswordResetChallenges AdminPasswordResetChallenge[]
+  adminTrustedDevices          AdminTrustedDevice[]
   conversationParticipants     ConversationParticipant[]
   chatMessages                 ChatMessage[]                 @relation("ChatMessageSender")
   conversationReports          ConversationReport[]          @relation("ConversationReporter")
@@ -145,6 +146,25 @@ model AdminLoginChallenge {
   otp        OtpCode   @relation(fields: [otpId], references: [id], onDelete: Cascade)
 
   @@index([userId, consumedAt])
+  @@index([expiresAt])
+}
+
+/// RA-AD-26: an admin browser remembered after a password + code sign-in.
+/// The cookie holds a random token; only its digest is kept, with the
+/// fingerprint of the password hash it was issued under, so a password
+/// change voids it and revoking it ends the password-only sign-in.
+model AdminTrustedDevice {
+  id                  String    @id @default(cuid())
+  userId              String
+  tokenHash           String    @unique @db.Char(64)
+  passwordFingerprint String
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  lastUsedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
   @@index([expiresAt])
 }
 

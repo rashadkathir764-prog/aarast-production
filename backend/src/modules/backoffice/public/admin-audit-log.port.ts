@@ -1,4 +1,5 @@
 import type { AdminAuditPhase, AdminRole } from '@prisma/client';
+import type { AdminAuditState } from './admin-audit-change';
 
 export interface AdminAuditListQuery {
   action?: string;
@@ -22,6 +23,11 @@ export interface AdminAuditAppendInput {
   phase: AdminAuditPhase;
   statusCode?: number;
   errorType?: string;
+  /** RA-AD-23: the reason or note the admin gave. */
+  reason: string | null;
+  /** RA-AD-23: what the action changed, on its SUCCEEDED row. */
+  before?: AdminAuditState | null;
+  after?: AdminAuditState | null;
 }
 
 export interface AdminAuditLogPort {
@@ -41,6 +47,9 @@ export interface AdminAuditLogPort {
       statusCode: number | null;
       errorType: string | null;
       requestId: string | null;
+      reason: string | null;
+      before: AdminAuditState | null;
+      after: AdminAuditState | null;
       createdAt: Date;
     }>;
   }>;

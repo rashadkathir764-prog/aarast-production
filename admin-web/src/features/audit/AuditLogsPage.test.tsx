@@ -17,6 +17,9 @@ function log(input: Partial<AdminAuditLog> & { id: string; eventId: string }): A
     statusCode: 200,
     errorType: null,
     requestId: null,
+    reason: null,
+    before: null,
+    after: null,
     createdAt: '2026-10-24T07:41:00.000Z',
     ...input,
   };
@@ -108,8 +111,51 @@ describe('AuditLogsPage (a15)', () => {
     expect(rows[1]).toHaveTextContent('أوقف');
     expect(rows[1]).toHaveTextContent('فرقة الأفراح');
     expect(within(rows[1]).getByRole('img', { name: 'فشل' })).toBeInTheDocument();
-    expect(screen.queryByText('السبب')).not.toBeInTheDocument();
+    // RA-AD-23: the server keeps the reason now; a line without one says so.
+    expect(rows[0]).toHaveTextContent('—');
     expect(getAdminAuditLogs).toHaveBeenCalledWith({ page: 1, limit: 40 });
+  });
+
+  // RA-AD-23: the log recorded the route, not the decision: no reason and
+  // nothing of what changed.
+  it('shows the reason given and what the action changed', async () => {
+    vi.mocked(getAdminAuditLogs).mockResolvedValue({
+      items: [
+        log({
+          id: '1',
+          eventId: 'e1',
+          route: '/admin/users/:id/disable',
+          targetId: 'user-1',
+          reason: 'يحتال على المزودين',
+          before: { status: 'ACTIVE' },
+          after: { status: 'DISABLED' },
+        }),
+        log({
+          id: '2',
+          eventId: 'e2',
+          route: '/admin/providers/:id/verify',
+          before: { verified: false },
+          after: { verified: true },
+        }),
+      ],
+      page: 1,
+      limit: 40,
+      total: 2,
+      totalPages: 1,
+    });
+    render(
+      <AuditLogsPage
+        getUserName={(id) => Promise.resolve(id === 'user-1' ? 'محمد' : 'رشاد')}
+        getProviderName={() => Promise.resolve('استوديو ضوء صنعاء')}
+      />,
+    );
+    const table = await screen.findByRole('table', { name: 'سجل التدقيق' });
+    expect(within(table).getByText('السبب')).toBeInTheDocument();
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('عطّل حساب');
+    expect(rows[0]).toHaveTextContent('من نشط إلى معطّل');
+    expect(rows[0]).toHaveTextContent('يحتال على المزودين');
+    expect(rows[1]).toHaveTextContent('من غير موثّق إلى موثّق');
   });
 
   it('shows the kind of target when it cannot read a name', async () => {

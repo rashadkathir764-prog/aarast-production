@@ -31,6 +31,7 @@ function cutover() {
   backend.AARAST_MEDIA_PUBLIC_BASE_URL = `${backend.AARAST_MEDIA_SIGNED_ENDPOINT}/${backend.AARAST_MEDIA_BUCKET}`;
   Object.assign(x.services['admin-web'].environment, {
     API_ORIGIN: api, ADMIN_PUBLIC_ORIGIN: backend.CORS_ORIGINS, CORS_ORIGINS: backend.CORS_ORIGINS,
+    MEDIA_ORIGIN: backend.AARAST_MEDIA_SIGNED_ENDPOINT,
   });
   x.networks.edge = { name: 'aarast-production-ytxoik_aarast_internal', external: true };
   for (const [name, alias, port] of [

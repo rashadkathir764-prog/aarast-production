@@ -14,6 +14,40 @@ export type AdminUserRecord = AdminUser & {
   provider?: UserProviderSummary | null;
 };
 
+/** RA-AD-25: a plan the account owns or shares; no money, no guests. */
+type AdminUserPlan = {
+  id: string;
+  title: string;
+  role: 'OWNER' | 'MEMBER';
+  status: string;
+  weddingDate: string | null;
+};
+
+/** RA-AD-25: a chat report the account filed, or one filed on it. */
+type AdminUserReport = {
+  id: string;
+  reason: string;
+  status: 'OPEN' | 'REVIEWED' | 'DISMISSED';
+  createdAt: string;
+  direction: 'FILED' | 'AGAINST';
+  /** The other party: a business, or the customer's name. */
+  counterpart: string;
+};
+
+/** RA-AD-25: the live sessions, by realm, and the last sign-in. */
+type AdminUserSessions = {
+  application: number;
+  admin: number;
+  lastLoginAt: string | null;
+};
+
+/** a13: the account as its page reads it. */
+type AdminUserDetail = AdminUserRecord & {
+  plans: AdminUserPlan[];
+  reports: AdminUserReport[];
+  sessions: AdminUserSessions;
+};
+
 type UserQueryParams = {
   status?: string;
   search?: string;
@@ -27,8 +61,8 @@ export function getUsers(
   return apiRequest<Paginated<AdminUserRecord>>(`/admin/users${toQuery(params ?? {})}`);
 }
 
-export function getUser(id: string): Promise<AdminUserRecord> {
-  return apiRequest<AdminUserRecord>(`/admin/users/${id}`);
+export function getUser(id: string): Promise<AdminUserDetail> {
+  return apiRequest<AdminUserDetail>(`/admin/users/${id}`);
 }
 
 export function activateUser(id: string): Promise<AdminUserRecord> {
@@ -80,9 +114,10 @@ export function restoreAccountDeletion(userId: string): Promise<{ userId: string
   );
 }
 
-export function disableUser(id: string): Promise<AdminUserRecord> {
+/** RA-AD-23: the reason is required; the audit log keeps it. */
+export function disableUser(id: string, reason: string): Promise<AdminUserRecord> {
   return apiRequest<AdminUserRecord>(`/admin/users/${id}/disable`, {
     method: 'PATCH',
-    body: {},
+    body: { reason },
   });
 }

@@ -202,6 +202,7 @@ services:
       API_ORIGIN: https://${AARAST_API_HOST:?AARAST_API_HOST is required}
       ADMIN_PUBLIC_ORIGIN: https://${AARAST_ADMIN_HOST}
       CORS_ORIGINS: https://${AARAST_ADMIN_HOST}
+      MEDIA_ORIGIN: https://${AARAST_MEDIA_BUCKET}.s3.${AWS_REGION}.amazonaws.com
     mem_limit: 64m
     logging: *logging
     networks: [internal]

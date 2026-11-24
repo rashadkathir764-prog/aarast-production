@@ -34,7 +34,7 @@ The live system runs on one AWS host in Frankfurt with Docker Compose (`deploy/a
 
 ## Admin accounts
 
-`npm run prod:provision-admin` from the backend runtime creates an administrator or rotates a password. It takes `PROVISION_ADMIN_PHONE`, `PROVISION_ADMIN_PASSWORD`, `PROVISION_ADMIN_NAME` and `PROVISION_ADMIN_CONFIRM=PROVISION_AARAST_ADMIN` as one-time inputs, which never stay in the persistent environment.
+`npm run prod:provision-admin` from the backend runtime (a shell on the server, with the database's own credentials; there is no HTTP path) creates an administrator, sets an administrator's role, or rotates a password. It takes `PROVISION_ADMIN_PHONE`, `PROVISION_ADMIN_ROLE` (`SUPER_ADMIN`, `OPERATIONS`, `MODERATOR` or `SUPPORT`, always named), `PROVISION_ADMIN_PASSWORD`, `PROVISION_ADMIN_NAME` and `PROVISION_ADMIN_CONFIRM=PROVISION_AARAST_ADMIN` as one-time inputs, which never stay in the persistent environment. A new account needs a password; an existing administrator keeps the password and name when they are left out, so a role change does not rotate them. The last active `SUPER_ADMIN` is never demoted. Every run ends the account's sessions, so the new role applies at its next sign-in.
 
 ## Media
 

@@ -58,6 +58,17 @@ export type ConversationReport = {
     provider: { id: string; businessName: string };
     quoteRequests: Array<{ id: string }>;
   };
+  /**
+   * RA-AD-22: who the report is about, as the server reads it: the
+   * conversation's provider, or (when its owner reported) the customer who
+   * opened it, null when that account is gone.
+   */
+  reported:
+    | { kind: 'PROVIDER'; provider: { id: string; businessName: string; status: string } }
+    | {
+        kind: 'CUSTOMER';
+        user: { id: string; name: string; phone: string | null } | null;
+      };
 };
 
 /** a12 (B-40): a booking as the back office reads it; no amount, offer or payment. */

@@ -458,8 +458,8 @@ The three writable content preferences have direct effects:
 - `taskRemindersEnabled` controls immediate and scheduled task reminders and
   the `WEDDING_COUNTDOWN` reminder.
 - `paymentRemindersEnabled` controls scheduled payment reminders,
-  `BUDGET_CATEGORY_EXCEEDED`, and `LOAN_REPAYMENT_DUE_SOON` /
-  `LOAN_REPAYMENT_OVERDUE`.
+  `BUDGET_CATEGORY_EXCEEDED`, `LOAN_REPAYMENT_DUE_SOON` /
+  `LOAN_REPAYMENT_OVERDUE`, and `FUNDING_EXPECTED`.
 - `providerMessagesEnabled` controls quote-request, quote-offer, quote-decision,
   and conversation-message notifications.
 
@@ -473,16 +473,22 @@ reminders, each idempotent through its dedupe key:
 - `LOAN_REPAYMENT_DUE_SOON` / `LOAN_REPAYMENT_OVERDUE` (entity
   `loan_repayment`; opens the plan's funding screen) for a planned loan
   repayment due within 7 days or overdue.
+- `FUNDING_EXPECTED` (entity `funding_source`; opens the plan's funding
+  screen) for promised money (a `PLEDGED` source with an expected day: the
+  bride's mahr rest and every «موعود» source), the day before that day and
+  on the day, once each (`data.reminder` is `DAY_BEFORE` or `ON_THE_DAY`);
+  a moved day reminds again (RA-BE-188).
 - `WEDDING_COUNTDOWN` (entity `wedding_plan`; opens the plan dashboard) once
   in each window: 30, 7 and 1 day(s) before the wedding date; a changed date
   starts the countdown again.
 
-The two money reminders go to the plan owner only: a contributor's money view
-covers only the categories they created, and funding is the owner's private
-picture. They are money notifications (`budget_category` and `loan_repayment`
-join `payment_schedule`): hidden without money access and purged when it is
-lost. Only `WEDDING_COUNTDOWN` is pushed; like payment reminders, the money
-reminders stay in the in-app inbox.
+The three money reminders go to the plan owner only: a contributor's money
+view covers only the categories they created, and funding is the owner's
+private picture. They are money notifications (`budget_category`,
+`loan_repayment` and `funding_source` join `payment_schedule`): hidden without
+money access and purged when it is lost. All of them are pushed, as are the
+payment reminders and `WEDDING_COUNTDOWN` (RA-BE-187); the lock screen says
+only that one is due, never a name or an amount.
 
 Missing preference rows keep the three content categories enabled by default.
 General account/sharing notifications and the in-app inbox itself remain

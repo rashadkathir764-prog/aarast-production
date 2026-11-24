@@ -78,6 +78,7 @@ export const MONEY_NOTIFICATION_ENTITY_TYPES = [
   'payment_schedule',
   'budget_category',
   'loan_repayment',
+  'funding_source',
 ] as const;
 export interface MoneyVisibilityWhere {
   OR: [

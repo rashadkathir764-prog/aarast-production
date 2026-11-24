@@ -1,8 +1,10 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import {
+  type DueExpectedFunding,
   type DueLoanRepayment,
   type DuePaymentSchedule,
   type ExceededBudgetCategory,
+  expectedFundingReminder,
   riyadhDay,
 } from "../modules/finance/public/finance.port";
 import type { DueNotificationRow } from "../modules/notifications/infrastructure/notifications.repository";
@@ -22,8 +24,8 @@ import {
 
 // The hourly reminder scan's reminders (V1 checklist 4.8, 4.17): a task or a
 // payment coming due, a budget item over its allocation, a loan repayment
-// coming due, and the wedding countdown. Each row's dedupe key makes the
-// scan idempotent.
+// coming due, promised money expected (RA-BE-188), and the wedding countdown.
+// Each row's dedupe key makes the scan idempotent.
 //
 // B-38: the words are the app's: a day reads «الجمعة 30 أكتوبر», a distance
 // «بكرة» or «بعد 5 أيام», and no notice text carries an amount. A money
@@ -279,6 +281,45 @@ export function loanRepaymentRow(
     entityId: repayment.id,
     routeTarget: noticeRoutes.funding(repayment.weddingPlanId),
     dedupeKey: `${ownerUserId}:${type}:loan-repayment:${repayment.id}`,
+  };
+}
+
+/**
+ * RA-BE-188 (Q-40, D59): promised money (the bride's mahr rest, every
+ * «موعود» source) the day before it is expected and on the day, for the
+ * owner only: funding is the owner's private picture. Any other day reminds
+ * nothing (a past day reads «متأخر» in the app). One key per source, per
+ * expected day and per reminder: a moved day reminds again.
+ */
+export function expectedFundingRow(
+  ownerUserId: string,
+  source: DueExpectedFunding,
+  today: Date,
+  currency: string,
+): DueNotice | null {
+  const reminder = expectedFundingReminder(source.expectedAt, today);
+  if (!reminder) return null;
+  const expectedDay = riyadhDay(source.expectedAt);
+  return {
+    userId: ownerUserId,
+    weddingPlanId: source.weddingPlanId,
+    type: NotificationType.FUNDING_EXPECTED,
+    priority: NotificationPriority.NORMAL,
+    title: `موعد ${source.sourceName} ${reminder === "ON_THE_DAY" ? "اليوم" : "بكرة"}`,
+    body: weekdayDayMonthWords(source.expectedAt),
+    data: {
+      fundingSourceId: source.id,
+      weddingPlanId: source.weddingPlanId,
+      kind: source.kind,
+      expectedAt: source.expectedAt.toISOString(),
+      reminder,
+      amount: source.amount.toString(),
+      currency,
+    },
+    entityType: "funding_source",
+    entityId: source.id,
+    routeTarget: noticeRoutes.funding(source.weddingPlanId),
+    dedupeKey: `${ownerUserId}:${NotificationType.FUNDING_EXPECTED}:funding-source:${source.id}:${expectedDay}:${reminder}`,
   };
 }
 

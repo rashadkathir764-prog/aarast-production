@@ -209,7 +209,9 @@ test("postponing the wedding restarts the countdown", () => {
   assert.notEqual(before.dedupeKey, after.dedupeKey);
 });
 
-test("only the countdown is pushed; money reminders stay in the app", () => {
+// RA-BE-187 (Q-40): the rule changed. The money reminders the app promises
+// reach the phone too, with generic words (`money-funding-reminders-push.test.ts`).
+test("the countdown and the plan's money reminders are pushed", () => {
   assert.equal(isPushNotificationType(NotificationType.WEDDING_COUNTDOWN), true);
   assert.equal(pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN).title, "العرس يقرب");
   for (const type of [
@@ -217,7 +219,7 @@ test("only the countdown is pushed; money reminders stay in the app", () => {
     NotificationType.LOAN_REPAYMENT_DUE_SOON,
     NotificationType.LOAN_REPAYMENT_OVERDUE,
   ]) {
-    assert.equal(isPushNotificationType(type), false, type);
+    assert.equal(isPushNotificationType(type), true, type);
   }
 });
 
@@ -289,6 +291,8 @@ test("the hourly scan sends money reminders to the owner only and honours prefer
         },
       ],
     },
+    // RA-BE-188: the scan reads promised money too; none here.
+    fundingSource: { findMany: async () => [] },
     notificationPreference: {
       findMany: async () => [
         {

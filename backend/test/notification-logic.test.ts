@@ -441,6 +441,8 @@ test("scheduled reminders respect notification and financial permissions", async
     },
     budgetCategory: { findMany: async () => [] },
     loanRepayment: { findMany: async () => [] },
+    // RA-BE-188: the scan reads promised money too; none here.
+    fundingSource: { findMany: async () => [] },
     paymentSchedule: {
       findMany: async () => [
         {
@@ -518,11 +520,13 @@ test("scheduled reminders respect notification and financial permissions", async
       .length,
     2,
   );
+  // RA-BE-187 (Q-40): the payment reminder reaches the phone too, as the
+  // task reminder does.
   assert.equal(
     outboxTypes.filter(
       (type) => type === OutboxEventTypes.pushNotificationRequested,
     ).length,
-    1,
+    2,
   );
   assert.equal(captured.filter((row) => row.entityType === "task").length, 1);
   assert.equal(

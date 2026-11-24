@@ -103,6 +103,7 @@ import {
   addressDueNotice,
   budgetCategoryExceededRow,
   type DueNotice,
+  expectedFundingRow,
   loanRepaymentRow,
   paymentDueNotice,
   paymentReminderDue,
@@ -1008,15 +1009,27 @@ export class NotificationsService implements NotificationsPort {
           }
         }
 
-        // Plan-level reminders: over-budget categories and loan repayments
-        // (finance's rows, owner only), and the wedding countdown.
-        const [exceededCategories, dueLoanRepayments] = await Promise.all([
-          this.finance.listExceededBudgetCategories(tx, planningPlanIds),
-          this.finance.listDueLoanRepayments(tx, {
-            weddingPlanIds: planIds,
-            dueBefore: dueWindowEndOfDay,
-          }),
-        ]);
+        // Plan-level reminders: over-budget categories, loan repayments and
+        // promised money (finance's rows, owner only), and the wedding
+        // countdown. RA-BE-188: promised money is reminded the day before
+        // and on the day, so it is read up to the end of tomorrow; like the
+        // money left to pay (G15), the money left to arrive outlives the
+        // wedding.
+        const endOfTomorrow = endOfRiyadhDay(
+          new Date(today.getTime() + 24 * 60 * 60 * 1000),
+        );
+        const [exceededCategories, dueLoanRepayments, dueExpectedFunding] =
+          await Promise.all([
+            this.finance.listExceededBudgetCategories(tx, planningPlanIds),
+            this.finance.listDueLoanRepayments(tx, {
+              weddingPlanIds: planIds,
+              dueBefore: dueWindowEndOfDay,
+            }),
+            this.finance.listDueExpectedFunding(tx, {
+              weddingPlanIds: planIds,
+              dueBefore: endOfTomorrow,
+            }),
+          ]);
         const ownerWants = (planId: string, key: keyof NotificationContentPreference) => {
           const plan = plansById.get(planId);
           return plan && this.preferenceEnabled(key, preferencesByUserId.get(plan.ownerUserId))
@@ -1036,6 +1049,13 @@ export class NotificationsService implements NotificationsPort {
           if (ownerUserId && plan) {
             rows.push(loanRepaymentRow(ownerUserId, repayment, today, plan.currency));
           }
+        }
+        for (const source of dueExpectedFunding) {
+          const ownerUserId = ownerWants(source.weddingPlanId, "paymentRemindersEnabled");
+          const plan = plansById.get(source.weddingPlanId);
+          if (!ownerUserId || !plan) continue;
+          const row = expectedFundingRow(ownerUserId, source, today, plan.currency);
+          if (row) rows.push(row);
         }
         for (const plan of planningPlans) {
           const recipients = new Set([
@@ -1088,6 +1108,7 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.BUDGET_CATEGORY_EXCEEDED:
       case NotificationType.LOAN_REPAYMENT_DUE_SOON:
       case NotificationType.LOAN_REPAYMENT_OVERDUE:
+      case NotificationType.FUNDING_EXPECTED:
         return "paymentRemindersEnabled";
       case NotificationType.WEDDING_COUNTDOWN:
         return "taskRemindersEnabled";
@@ -1262,6 +1283,7 @@ export class NotificationsService implements NotificationsPort {
       NotificationType.BUDGET_CATEGORY_EXCEEDED,
       NotificationType.LOAN_REPAYMENT_DUE_SOON,
       NotificationType.LOAN_REPAYMENT_OVERDUE,
+      NotificationType.FUNDING_EXPECTED,
     ];
     return {
       OR: [

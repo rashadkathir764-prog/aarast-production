@@ -50,6 +50,7 @@ export const NOTIFICATION_ROUTES = {
   PROVIDER_CLAIM_DECIDED: ['/provider/dashboard', '/provider/apply'],
   LISTING_PLAN_CHANGED: ['/provider/dashboard?tab=:tab'],
   PORTFOLIO_REVIEWED: ['/provider/gallery'],
+  FUNDING_EXPECTED: ['/wedding-plans/:planId/money/funding'],
 } as const satisfies Record<NotificationType, readonly string[]>;
 
 const part = (value: string) => encodeURIComponent(value);

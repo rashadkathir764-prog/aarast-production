@@ -363,6 +363,8 @@ test("scheduler re-reads recipients after member revocation", async () => {
     paymentSchedule: { findMany: async () => [] },
     budgetCategory: { findMany: async () => [] },
     loanRepayment: { findMany: async () => [] },
+    // RA-BE-188: the scan reads promised money too; none here.
+    fundingSource: { findMany: async () => [] },
     contributionEvent: { findMany: async () => [] },
     notificationPreference: { findMany: async () => [] },
     notification: {
@@ -609,6 +611,8 @@ test("scheduler re-reads task and schedule lifecycle rows after locking", async 
     },
     budgetCategory: { findMany: async () => [] },
     loanRepayment: { findMany: async () => [] },
+    // RA-BE-188: the scan reads promised money too; none here.
+    fundingSource: { findMany: async () => [] },
     paymentSchedule: {
       findMany: async () => {
         scheduleReads += 1;

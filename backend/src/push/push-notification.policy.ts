@@ -14,6 +14,14 @@ const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   NotificationType.BOOKING_REQUESTED,
   // B-04: a request the provider has not answered ends tomorrow.
   NotificationType.QUOTE_REQUEST_EXPIRING,
+  // RA-BE-187, RA-BE-188 (Q-40): the money reminders the app promises
+  // («نذكّرك» on a payment date, a loan's repayments and promised money).
+  NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
+  NotificationType.PAYMENT_SCHEDULE_OVERDUE,
+  NotificationType.LOAN_REPAYMENT_DUE_SOON,
+  NotificationType.LOAN_REPAYMENT_OVERDUE,
+  NotificationType.BUDGET_CATEGORY_EXCEEDED,
+  NotificationType.FUNDING_EXPECTED,
 ]);
 
 export function isPushNotificationType(type: NotificationType): boolean {
@@ -34,6 +42,12 @@ function isRevisedOfferNotice(data: unknown): boolean {
 function isWeddingDayNotice(data: unknown): boolean {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   return (data as Record<string, unknown>).daysUntil === 0;
+}
+
+/** A FUNDING_EXPECTED notice for the expected day itself, not the day before. */
+function isExpectedTodayNotice(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  return (data as Record<string, unknown>).reminder === "ON_THE_DAY";
 }
 
 /**
@@ -98,6 +112,43 @@ export function pushNotificationCopy(
         title: "طلب حجز جديد",
         body: "وصلك طلب حجز، وتفاصيله في اعّرست.",
       };
+    // RA-BE-187: a money reminder tells there is one, never which or how much.
+    case NotificationType.PAYMENT_SCHEDULE_DUE_SOON:
+      return {
+        title: "موعد دفعة يقرب",
+        body: "عندك دفعة موعدها قريب، وتفاصيلها في اعّرست.",
+      };
+    case NotificationType.PAYMENT_SCHEDULE_OVERDUE:
+      return {
+        title: "دفعة متأخرة",
+        body: "عندك دفعة فات موعدها، وتفاصيلها في اعّرست.",
+      };
+    case NotificationType.LOAN_REPAYMENT_DUE_SOON:
+      return {
+        title: "موعد سداد يقرب",
+        body: "عندك سداد موعده قريب، وتفاصيله في اعّرست.",
+      };
+    case NotificationType.LOAN_REPAYMENT_OVERDUE:
+      return {
+        title: "سداد متأخر",
+        body: "عندك سداد فات موعده، وتفاصيله في اعّرست.",
+      };
+    case NotificationType.BUDGET_CATEGORY_EXCEEDED:
+      return {
+        title: "بند فات المخطط له",
+        body: "فيه بند في الميزانية صار أكثر من المخطط، وتفاصيله في اعّرست.",
+      };
+    // RA-BE-188: promised money, the day before and on the day.
+    case NotificationType.FUNDING_EXPECTED:
+      return isExpectedTodayNotice(data)
+        ? {
+            title: "فلوس موعودة اليوم",
+            body: "اليوم موعد فلوس موعودة، وتفاصيلها في اعّرست.",
+          }
+        : {
+            title: "فلوس موعودة بكرة",
+            body: "بكرة موعد فلوس موعودة، وتفاصيلها في اعّرست.",
+          };
     case NotificationType.BOOKING_UPDATED:
       return {
         title: "تحديث على حجز",

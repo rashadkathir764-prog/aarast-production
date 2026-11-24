@@ -10,6 +10,11 @@ import type { MoneyPicture, MoneyPictureQuery } from './money-picture';
 
 /** D11: the day in Riyadh a moment falls on, as the money's dates read it. */
 export { riyadhDay } from '../domain/money-timeline-policy';
+/** D59: on which day promised money is reminded (the day before, the day). */
+export {
+  expectedFundingReminder,
+  type ExpectedFundingReminder,
+} from '../domain/funding-policy';
 export const FINANCE_PORT = Symbol('FINANCE_PORT');
 
 export interface ImportedCostPaymentInput {

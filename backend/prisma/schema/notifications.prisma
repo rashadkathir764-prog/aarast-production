@@ -42,6 +42,9 @@ enum NotificationType {
   LISTING_PLAN_CHANGED
   // B-16: a portfolio photo approved or refused (opens p37).
   PORTFOLIO_REVIEWED
+  // RA-BE-188 (Q-40): promised money (the bride's mahr rest, every «موعود»
+  // source) is expected tomorrow or today.
+  FUNDING_EXPECTED
 }
 
 enum NotificationPriority {

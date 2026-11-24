@@ -82,12 +82,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('الخروج'));
     await tester.pumpAndSettle();
-    // g11 (D26): out of this phone, the account's deletion after its 30
-    // days (C4, D63), and «رجوع».
+    // g11 (D26): out of this phone, and «رجوع». The account's deletion is not
+    // here (RA-MO-329): leaving a phone and erasing an account sat in one
+    // sheet, «نهائيًا» beside «تقدر تتراجع»; it lives under «الخصوصية».
     expect(find.text('اخرج من هذا الجوال'), findsOneWidget);
     expect(find.text('خطتك تبقى، وترجع لها برقمك'), findsOneWidget);
-    expect(find.text('احذف حسابي نهائيًا'), findsOneWidget);
-    expect(find.text('تنحذف بعد 30 يوم، وتقدر تتراجع'), findsOneWidget);
+    expect(find.text('احذف حسابي نهائيًا'), findsNothing);
+    expect(find.byKey(const ValueKey('account-delete-account')), findsNothing);
     expect(find.byKey(const ValueKey('account-logout-unsent')), findsNothing);
     expect(find.text('تسجيل الدخول'), findsNothing);
   });

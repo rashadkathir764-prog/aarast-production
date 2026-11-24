@@ -328,9 +328,9 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  /// g11 «الخروج»: out of this phone, or w05 to delete the account after
-  /// its 30 days (C4, D63); changes not yet sent are named first, because
-  /// signing out wipes them from this phone (C59).
+  /// g11 «الخروج»: out of this phone; changes not yet sent are named first,
+  /// because signing out wipes them from this phone (C59). Deleting the
+  /// account (w05, D63) is under «الخصوصية».
   static Future<void> _logout(BuildContext context) async {
     OfflineSyncService? sync;
     try {
@@ -338,19 +338,12 @@ class _MoreScreenState extends State<MoreScreen> {
     } on ProviderNotFoundException {
       sync = null;
     }
-    final choice = await showJourneySheet<LogoutChoice>(
+    final signOut = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => LogoutSheet(sync: sync),
     );
-    if (!context.mounted) return;
-    switch (choice) {
-      case LogoutChoice.signOut:
-        await context.read<AuthController>().logout();
-      case LogoutChoice.deleteAccount:
-        await context.push(AppRouter.deleteAccount);
-      case null:
-        break;
-    }
+    if (!context.mounted || signOut != true) return;
+    await context.read<AuthController>().logout();
   }
 
   Future<void> _changeAvatar(BuildContext context) async {

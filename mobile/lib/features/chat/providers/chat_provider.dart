@@ -20,7 +20,9 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     required AuthStorage authStorage,
     String? sessionUserId,
     ChatOutbox? outbox,
+    DateTime Function()? now,
   }) : _api = api,
+       _now = now ?? DateTime.now,
        _realtime = realtime,
        _outbox = outbox,
        _sessionUserId = sessionUserId ?? authStorage.readUser()?.id {
@@ -30,7 +32,15 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   final ChatApi _api;
   final ChatRealtimeClient _realtime;
   final ChatOutbox? _outbox;
+  final DateTime Function() _now;
   bool _flushing = false;
+
+  /// RA-MO-347 (G38): a conversation whose waiting messages met a transient
+  /// failure is left alone until [notBefore]; the step doubles with each
+  /// failure in a row. The others keep flowing.
+  final Map<String, ({int failures, DateTime notBefore})> _outboxRetries = {};
+  static const _outboxRetryBase = Duration(seconds: 2);
+  static const _outboxRetryCap = Duration(seconds: 60);
 
   bool _isLoading = false;
   bool _isSending = false;
@@ -88,6 +98,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _nextTimelineCursors.clear();
     _counterpartReadAt.clear();
     _activityRefreshes.clear();
+    _outboxRetries.clear();
     _loadingOlder.clear();
     _conversationLoadErrors.clear();
     _nextConversationCursor = null;
@@ -221,7 +232,15 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _startRealtime();
     _conversationLoadErrors.remove(conversationId);
     await readCachedFirst<ChatTimelinePage>(
-      cached: () => _api.cachedTimeline(conversationId),
+      cached: () async {
+        // RA-MO-347: the offers beside the cached timeline, so an offer
+        // card is not drawn without its offer while the server answers.
+        final quotes = await _api.cachedQuoteRequests(conversationId);
+        if (quotes != null && !_quoteRequests.containsKey(conversationId)) {
+          _quoteRequests[conversationId] = quotes.items;
+        }
+        return _api.cachedTimeline(conversationId);
+      },
       remote: () async {
         if (!_conversations.any((item) => item.id == conversationId)) {
           _upsertConversation(await _api.getConversation(conversationId));
@@ -444,18 +463,27 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     ];
   }
 
-  /// G38: sends the waiting messages in order; stops at the first one that
-  /// still finds no network. A message the server refuses is not sent again
-  /// and leaves the timeline, but its words are kept (RA-BE-95): they go back
-  /// to the chat's box with the reason ([takeRefused]).
+  /// G38: sends the waiting messages in order. A conversation whose message
+  /// still finds no network (or is told to wait) is left until its backoff
+  /// ends, with the messages behind it, so the order inside it holds; the
+  /// other conversations go on (RA-MO-347). A message the server refuses is
+  /// not sent again and leaves the timeline, but its words are kept
+  /// (RA-BE-95): they go back to the chat's box with the reason
+  /// ([takeRefused]).
   Future<void> flushOutbox() async {
     final userId = currentUserId;
     final outbox = _outbox;
     if (userId == null || outbox == null || _flushing) return;
     _flushing = true;
     try {
+      final waiting = <String>{};
       for (final item in outbox.read(userId)) {
-        if (item.isRefused) continue;
+        if (item.isRefused || waiting.contains(item.conversationId)) continue;
+        final retry = _outboxRetries[item.conversationId];
+        if (retry != null && _now().isBefore(retry.notBefore)) {
+          waiting.add(item.conversationId);
+          continue;
+        }
         try {
           final sent = await _api.send(
             item.conversationId,
@@ -466,8 +494,20 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
             _replacePending(item.conversationId, item.localId, sent);
           }
           _applyMessageToConversation(sent);
+          _outboxRetries.remove(item.conversationId);
         } on ApiException catch (error) {
-          if (error.isAmbiguousMutationFailure || error.isNotNow) break;
+          if (error.isAmbiguousMutationFailure || error.isNotNow) {
+            waiting.add(item.conversationId);
+            final failures = (retry?.failures ?? 0) + 1;
+            final step = _outboxRetryBase * (1 << (failures - 1).clamp(0, 10));
+            _outboxRetries[item.conversationId] = (
+              failures: failures,
+              notBefore: _now().add(
+                step > _outboxRetryCap ? _outboxRetryCap : step,
+              ),
+            );
+            continue;
+          }
           _removeTimelineMessage(item.conversationId, item.localId);
           _errorMessage = 'رسالة ما وصلت: ${error.message}';
           await outbox.write(userId, [
@@ -561,16 +601,40 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   void _receive(ChatMessage message) {
     final current = timelineFor(message.conversationId);
     if (current.any((item) => item.message?.id == message.id)) return;
-    _timelines[message.conversationId] = [
-      ...current,
+    _timelines[message.conversationId] = _insertInServerOrder(
+      current,
       ChatTimelineItem.pending(message),
-    ];
+    );
     _applyMessageToConversation(message);
     if (_activeConversationId == message.conversationId &&
         message.senderUserId != currentUserId) {
       unawaited(_markReadAfterReceive(message.conversationId));
     }
     notifyListeners();
+  }
+
+  /// RA-MO-350: the server's order is the time, then the id. A message that
+  /// comes late takes its place among the settled ones, ahead of what is
+  /// still on its way from this phone.
+  List<ChatTimelineItem> _insertInServerOrder(
+    List<ChatTimelineItem> current,
+    ChatTimelineItem incoming,
+  ) {
+    var at = current.length;
+    while (at > 0) {
+      final before = current[at - 1];
+      if (before.message?.pending == true) {
+        at--;
+        continue;
+      }
+      final byTime = before.occurredAt.compareTo(incoming.occurredAt);
+      if (byTime < 0 ||
+          (byTime == 0 && before.serverId.compareTo(incoming.serverId) <= 0)) {
+        break;
+      }
+      at--;
+    }
+    return [...current.sublist(0, at), incoming, ...current.sublist(at)];
   }
 
   Future<void> _recoverAvailableMessage(
@@ -611,13 +675,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       if (isSessionDisposed) return;
       _upsertConversation(results[0] as ChatConversation, notify: false);
       final page = results[1] as ChatTimelinePage;
-      // The texts still waiting to go stay under the server's page, as on
-      // opening the conversation (RA-MO-249).
-      _timelines[conversationId] = [
-        ...page.items,
-        ..._queuedItems(conversationId),
-      ];
-      _nextTimelineCursors[conversationId] = page.nextCursor;
+      _mergeFirstPage(conversationId, page);
       _quoteRequests[conversationId] =
           (results[2] as ChatQuoteRequestPage).items;
       if (_activeConversationId == conversationId) {
@@ -758,6 +816,54 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     unawaited(loadConversations());
     final active = _activeConversationId;
     if (active != null) unawaited(_recoverActivity(active));
+    // RA-MO-346: every other conversation this phone holds a timeline of
+    // missed what came while the socket was down, not only the open one.
+    for (final conversationId in _timelines.keys.toList()) {
+      if (conversationId != active) unawaited(_refreshTimeline(conversationId));
+    }
+  }
+
+  Future<void> _refreshTimeline(String conversationId) async {
+    if (_activityRefreshes.containsKey(conversationId)) return;
+    try {
+      final page = await _api.timeline(conversationId);
+      if (isSessionDisposed || !_timelines.containsKey(conversationId)) return;
+      _mergeFirstPage(conversationId, page);
+      notifyListeners();
+    } on Object {
+      // The next reconnect, or opening the conversation, reads again.
+    }
+  }
+
+  /// RA-MO-346: the server's newest page, joined to what is already held.
+  /// What was held before the page stays (older pages already loaded) when
+  /// the page reaches back to it; when more came in the gap than a page
+  /// holds, the page replaces it and the older ones load by their cursor.
+  /// The texts still waiting to go stay last (RA-MO-249).
+  void _mergeFirstPage(String conversationId, ChatTimelinePage page) {
+    final held = [
+      for (final item in timelineFor(conversationId))
+        if (item.message?.pending != true) item,
+    ];
+    final pageIds = page.items.map((item) => item.identity).toSet();
+    final oldest = page.items.isEmpty ? null : page.items.first.occurredAt;
+    final reaches =
+        oldest == null ||
+        held.isEmpty ||
+        held.any((item) => pageIds.contains(item.identity)) ||
+        !held.last.occurredAt.isBefore(oldest);
+    final kept = oldest == null || !reaches
+        ? const <ChatTimelineItem>[]
+        : [
+            for (final item in held)
+              if (item.occurredAt.isBefore(oldest)) item,
+          ];
+    _timelines[conversationId] = [
+      ...kept,
+      ...page.items,
+      ..._queuedItems(conversationId),
+    ];
+    if (kept.isEmpty) _nextTimelineCursors[conversationId] = page.nextCursor;
   }
 
   @override

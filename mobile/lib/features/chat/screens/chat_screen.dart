@@ -253,10 +253,16 @@ class _ChatScreenState extends State<ChatScreen> {
           final item = timeline[index - (hasOlder ? 1 : 0)];
           final message = item.message;
           if (message != null) {
+            // The server wants a word with a picture, so a picture alone is
+            // sent with «صورة»; it is read aloud, never shown (RA-MO-350).
+            final imageOnly =
+                message.attachments.isNotEmpty &&
+                message.body.trim() == _imageOnlyBody;
             return _Bubble(
               mine: message.senderUserId == chat.currentUserId,
               providerSide: !customerSide,
-              text: message.body,
+              text: imageOnly ? '' : message.body,
+              imageLabel: imageOnly ? _imageOnlyBody : null,
               time: message.queued
                   ? 'ينتظر النت'
                   : message.pending
@@ -281,6 +287,15 @@ class _ChatScreenState extends State<ChatScreen> {
             onOpenQuote: event.quoteRequestId == null
                 ? null
                 : () => _openQuoteEvent(conversation, event.quoteRequestId!),
+            // The offer's own page is where it is accepted and where it is
+            // set beside the others, so both go there; each is its own
+            // handler (RA-MO-347).
+            onAccept: event.quoteRequestId == null
+                ? null
+                : () => _acceptOffer(conversation, event.quoteRequestId!),
+            onCompare: event.quoteRequestId == null
+                ? null
+                : () => _compareOffers(conversation, event.quoteRequestId!),
           );
         },
       );
@@ -384,6 +399,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     return null;
   }
+
+  Future<void> _acceptOffer(ChatConversation? conversation, String quoteId) =>
+      _openQuoteEvent(conversation, quoteId);
+
+  Future<void> _compareOffers(ChatConversation? conversation, String quoteId) =>
+      _openQuoteEvent(conversation, quoteId);
 
   Future<void> _openQuoteEvent(
     ChatConversation? conversation,
@@ -490,7 +511,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (body.isEmpty && attachment == null) return;
     final ok = await context.read<ChatProvider>().send(
       widget.conversationId,
-      body.isEmpty ? 'صورة' : body,
+      body.isEmpty ? _imageOnlyBody : body,
       attachments: attachment == null ? const [] : [attachment],
     );
     if (!mounted) return;
@@ -565,6 +586,7 @@ class _Bubble extends StatelessWidget {
     required this.mine,
     required this.text,
     required this.time,
+    this.imageLabel,
     this.providerSide = false,
     this.attachments = const [],
     super.key,
@@ -575,6 +597,9 @@ class _Bubble extends StatelessWidget {
   final String text;
   final String time;
   final List<Widget> attachments;
+
+  /// What a screen reader says of a picture sent with no words.
+  final String? imageLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -603,10 +628,17 @@ class _Bubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final attachment in attachments) ...[
-              attachment,
-              const SizedBox(height: AarastV3Space.x2),
+              imageLabel == null
+                  ? attachment
+                  : Semantics(
+                      label: imageLabel,
+                      image: true,
+                      child: attachment,
+                    ),
+              if (text.isNotEmpty) const SizedBox(height: AarastV3Space.x2),
             ],
-            Text(text, style: JourneyType.of(JourneyType.body, color: ink)),
+            if (text.isNotEmpty)
+              Text(text, style: JourneyType.of(JourneyType.body, color: ink)),
             Text(
               time,
               style: JourneyType.of(
@@ -623,6 +655,10 @@ class _Bubble extends StatelessWidget {
   }
 }
 
+/// A picture sent with no words goes with this word (the server wants one);
+/// the screen reads it aloud and does not show it.
+const _imageOnlyBody = 'صورة';
+
 /// A quote event in the conversation: the request as the customer's message,
 /// an offer as its card, anything else as one quiet line.
 class _EventView extends StatelessWidget {
@@ -632,6 +668,8 @@ class _EventView extends StatelessWidget {
     required this.customerSide,
     required this.now,
     required this.onOpenQuote,
+    required this.onAccept,
+    required this.onCompare,
   });
 
   final ChatConversationEvent event;
@@ -639,6 +677,8 @@ class _EventView extends StatelessWidget {
   final bool customerSide;
   final DateTime now;
   final VoidCallback? onOpenQuote;
+  final VoidCallback? onAccept;
+  final VoidCallback? onCompare;
 
   @override
   Widget build(BuildContext context) {
@@ -665,10 +705,14 @@ class _EventView extends StatelessWidget {
         return _OfferCard(
           key: key,
           offer: _offer,
+          payload: event.data,
+          requestLoaded: request != null,
           serviceTitle: request?.service?.title,
           customerSide: customerSide,
           now: now,
           onOpen: onOpenQuote,
+          onAccept: onAccept,
+          onCompare: onCompare,
         );
     }
     final label = switch (event.type) {
@@ -725,31 +769,52 @@ class _EventView extends StatelessWidget {
 class _OfferCard extends StatelessWidget {
   const _OfferCard({
     required this.offer,
+    required this.payload,
+    required this.requestLoaded,
     required this.serviceTitle,
     required this.customerSide,
     required this.now,
     required this.onOpen,
+    required this.onAccept,
+    required this.onCompare,
     super.key,
   });
 
   final ChatQuoteOffer? offer;
+
+  /// What the event itself carries of the offer; read when the offer holds
+  /// no price or no title.
+  final Map<String, dynamic>? payload;
+
+  /// The request's offers were read; an offer not among them is gone from it.
+  final bool requestLoaded;
   final String? serviceTitle;
   final bool customerSide;
   final DateTime now;
   final VoidCallback? onOpen;
+  final VoidCallback? onAccept;
+  final VoidCallback? onCompare;
 
   @override
   Widget build(BuildContext context) {
     final offer = this.offer;
     final validUntil = offer?.validUntil;
     final ends = validUntil == null ? null : offerEndsLabel(validUntil, now);
-    final status = offer?.status ?? 'PENDING';
+    // RA-MO-347: an offer not read is not a pending one. Its state is
+    // unknown, so the card offers nothing to accept.
+    final known = offer != null;
+    final status = offer?.status ?? '';
     final expired = validUntil != null && ends == null;
-    final open = status == 'PENDING' && !expired;
+    final open = known && status == 'PENDING' && !expired;
     final (tag, tagColor, tagSoft) = switch (status) {
       'ACCEPTED' => ('انقبل', AarastV3Color.mint, AarastV3Color.mintSoft),
       'REJECTED' => ('انرفض', AarastV3Color.textMuted, AarastV3Color.line),
       'WITHDRAWN' => ('سحبوه', AarastV3Color.textMuted, AarastV3Color.line),
+      _ when !known => (
+        requestLoaded ? 'العرض ما ظهر' : 'يتحمّل العرض…',
+        AarastV3Color.textMuted,
+        AarastV3Color.line,
+      ),
       _ when expired => (
         'انتهت مدته',
         AarastV3Color.textMuted,
@@ -762,10 +827,16 @@ class _OfferCard extends StatelessWidget {
       ),
       _ => ('عرضك', context.accent.primary, context.accent.primarySoft),
     };
+    final payloadTitle = payload?['title']?.toString().trim();
     final title = offer?.title?.trim().isNotEmpty == true
         ? offer!.title!.trim()
-        : serviceTitle;
-    final price = _money(offer?.amount, offer?.currency);
+        : (payloadTitle?.isNotEmpty == true ? payloadTitle : serviceTitle);
+    final price =
+        _money(offer?.amount, offer?.currency) ??
+        _money(
+          payload?['amount']?.toString(),
+          payload?['currency']?.toString() ?? offer?.currency,
+        );
     final headline = [?title, ?price].join(' · ');
     final details = offer?.message?.trim() ?? '';
     // f06 «نسخة 2 · …» (B-06): the version and what changed in it.
@@ -833,7 +904,10 @@ class _OfferCard extends StatelessWidget {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-              if (open && customerSide && onOpen != null) ...[
+              if (open &&
+                  customerSide &&
+                  onAccept != null &&
+                  onCompare != null) ...[
                 const SizedBox(height: AarastV3Space.x3),
                 Row(
                   children: [
@@ -843,7 +917,7 @@ class _OfferCard extends StatelessWidget {
                         label: context.say('اقبل العرض', 'اقبلي العرض'),
                         background: context.accent.primary,
                         expand: true,
-                        onPressed: onOpen,
+                        onPressed: onAccept,
                       ),
                     ),
                     const SizedBox(width: AarastV3Space.x2),
@@ -854,7 +928,7 @@ class _OfferCard extends StatelessWidget {
                         background: context.accent.primarySoft,
                         foreground: context.accent.primary,
                         expand: true,
-                        onPressed: onOpen,
+                        onPressed: onCompare,
                       ),
                     ),
                   ],

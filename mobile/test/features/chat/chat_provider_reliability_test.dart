@@ -57,6 +57,7 @@ void main() {
     'RA-BE-81: a text the server asks to wait (429) waits, then goes with the same request id',
     () async {
       final preferences = await SharedPreferences.getInstance();
+      final clock = _Clock(DateTime.utc(2026, 7, 7, 13));
       final api = _OfflineChatApi()
         ..online = true
         ..rateLimited = true;
@@ -65,6 +66,7 @@ void main() {
         realtime: _FakeRealtimeClient(storage),
         authStorage: storage,
         outbox: ChatOutbox(preferences),
+        now: clock.call,
       );
       await chat.openConversation('conversation-1');
 
@@ -76,6 +78,8 @@ void main() {
       expect(chat.queuedMessages, hasLength(1));
 
       api.rateLimited = false;
+      // RA-MO-347: the conversation waits out its backoff first.
+      clock.advance(const Duration(minutes: 2));
       await chat.flushOutbox();
       expect(chat.queuedMessages, isEmpty);
       expect(api.sentRequestIds.toSet(), hasLength(1));
@@ -989,6 +993,400 @@ void main() {
     current.dispose();
   });
 
+  group('Task 4: outbox, missed messages, offer card', () {
+    ChatOutboxMessage waiting(String conversationId, String text) =>
+        ChatOutboxMessage(
+          localId: 'local-$conversationId-$text',
+          conversationId: conversationId,
+          body: text,
+          clientRequestId: 'req-$conversationId-$text',
+          createdAt: DateTime.utc(2026, 7, 7, 12),
+        );
+
+    Future<(ChatProvider, _RoutedSendApi, ChatOutbox, _Clock)> outboxOf(
+      List<ChatOutboxMessage> messages,
+    ) async {
+      final preferences = await SharedPreferences.getInstance();
+      final outbox = ChatOutbox(preferences);
+      await outbox.write('user-1', messages);
+      final api = _RoutedSendApi();
+      final clock = _Clock(DateTime.utc(2026, 7, 7, 13));
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+        outbox: outbox,
+        now: clock.call,
+      );
+      return (chat, api, outbox, clock);
+    }
+
+    test(
+      'RA-MO-347: a conversation that is down does not stop the others',
+      () async {
+        final (chat, api, outbox, _) = await outboxOf([
+          waiting('conversation-a', 'أول'),
+          waiting('conversation-b', 'ثاني'),
+          waiting('conversation-a', 'ثالث'),
+        ]);
+        api.down['conversation-a'] = const ApiException(
+          aarastBackendConnectionErrorMessage,
+          isNetworkFailure: true,
+        );
+
+        await chat.flushOutbox();
+
+        expect(api.sent, ['conversation-a:أول', 'conversation-b:ثاني']);
+        // Still queued, and in the order written.
+        expect(outbox.read('user-1').map((item) => item.body), ['أول', 'ثالث']);
+        chat.dispose();
+      },
+    );
+
+    test(
+      'RA-MO-347: a refused message fails with its words kept, the rest go',
+      () async {
+        final (chat, api, outbox, _) = await outboxOf([
+          waiting('conversation-a', 'أول'),
+          waiting('conversation-b', 'ثاني'),
+          waiting('conversation-a', 'ثالث'),
+        ]);
+        api.down['conversation-a'] = const ApiException(
+          'ما تقدر ترسل',
+          statusCode: 403,
+        );
+
+        await chat.flushOutbox();
+
+        expect(api.sent, [
+          'conversation-a:أول',
+          'conversation-b:ثاني',
+          'conversation-a:ثالث',
+        ]);
+        expect(outbox.read('user-1').every((item) => item.isRefused), isTrue);
+        final refused = await chat.takeRefused('conversation-a');
+        expect(refused?.text, 'أول\nثالث');
+        chat.dispose();
+      },
+    );
+
+    test(
+      'RA-MO-347: a transient failure waits, with a longer wait each time',
+      () async {
+        final (chat, api, outbox, clock) = await outboxOf([
+          waiting('conversation-a', 'أول'),
+        ]);
+        api.down['conversation-a'] = const ApiException(
+          'ازدحام',
+          statusCode: 503,
+        );
+
+        await chat.flushOutbox();
+        await chat.flushOutbox();
+        expect(api.sent, hasLength(1), reason: 'still inside the first wait');
+
+        clock.advance(const Duration(seconds: 3));
+        await chat.flushOutbox();
+        expect(api.sent, hasLength(2));
+
+        clock.advance(const Duration(seconds: 3));
+        await chat.flushOutbox();
+        expect(api.sent, hasLength(2), reason: 'the second wait is longer');
+
+        api.down.clear();
+        clock.advance(const Duration(seconds: 60));
+        await chat.flushOutbox();
+        expect(outbox.read('user-1'), isEmpty);
+        chat.dispose();
+      },
+    );
+
+    test('RA-MO-346: a socket back reads every held conversation, not only '
+        'the open one', () async {
+      final api = _FakeChatApi(
+        conversations: [
+          _conversation(id: 'conversation-1'),
+          _conversation(id: 'conversation-2'),
+        ],
+        initialTimeline: ChatTimelinePage(items: [_messageItem()]),
+      );
+      final realtime = _FakeRealtimeClient(storage);
+      final chat = ChatProvider(
+        api: api,
+        realtime: realtime,
+        authStorage: storage,
+      );
+      await chat.openConversation('conversation-1');
+      await chat.openConversation('conversation-2');
+      expect(chat.timelineFor('conversation-1'), hasLength(1));
+
+      api.timelinePage = ChatTimelinePage(
+        items: [
+          _messageItem(),
+          ChatTimelineItem.fromJson({
+            'kind': 'MESSAGE',
+            'occurredAt': '2026-07-07T12:05:00.000Z',
+            'message': {
+              'id': 'message-2',
+              'conversationId': 'conversation-1',
+              'senderUserId': 'provider-user-1',
+              'body': 'وصلت وانت برا',
+              'createdAt': '2026-07-07T12:05:00.000Z',
+            },
+          }),
+        ],
+      );
+      realtime.onReconnected!();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(chat.timelineFor('conversation-1').map((item) => item.serverId), [
+        'message-1',
+        'message-2',
+      ]);
+      chat.dispose();
+    });
+
+    test(
+      'RA-MO-346: the refresh keeps the older pages already loaded',
+      () async {
+        final api = _FakeChatApi(
+          conversations: [_conversation()],
+          initialTimeline: ChatTimelinePage(
+            items: [_messageItem()],
+            nextCursor: 'older',
+          ),
+          olderTimeline: ChatTimelinePage(
+            items: [_eventItem(type: 'QUOTE_REQUEST_CREATED')],
+          ),
+        );
+        final realtime = _FakeRealtimeClient(storage);
+        final chat = ChatProvider(
+          api: api,
+          realtime: realtime,
+          authStorage: storage,
+        );
+        await chat.openConversation('conversation-1');
+        await chat.loadOlder('conversation-1');
+        expect(chat.timelineFor('conversation-1'), hasLength(2));
+
+        realtime.onReconnected!();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(chat.timelineFor('conversation-1'), hasLength(2));
+        expect(
+          chat.timelineFor('conversation-1').first.event?.type,
+          'QUOTE_REQUEST_CREATED',
+        );
+        chat.dispose();
+      },
+    );
+
+    test('RA-MO-350: a message that comes late takes its place in the '
+        'server order', () async {
+      final realtime = _FakeRealtimeClient(storage);
+      final chat = ChatProvider(
+        api: _FakeChatApi(
+          conversations: [_conversation()],
+          initialTimeline: ChatTimelinePage(items: [_messageItem()]),
+        ),
+        realtime: realtime,
+        authStorage: storage,
+      );
+      await chat.openConversation('conversation-1');
+
+      realtime.emitMessage(
+        _message(id: 'message-3', createdAt: DateTime.utc(2026, 7, 7, 12, 10)),
+      );
+      realtime.emitMessage(
+        _message(id: 'message-2', createdAt: DateTime.utc(2026, 7, 7, 12, 5)),
+      );
+      // Same time as message-2: the id breaks the tie.
+      realtime.emitMessage(
+        _message(id: 'message-2b', createdAt: DateTime.utc(2026, 7, 7, 12, 5)),
+      );
+
+      expect(chat.timelineFor('conversation-1').map((item) => item.serverId), [
+        'message-1',
+        'message-2',
+        'message-2b',
+        'message-3',
+      ]);
+      chat.dispose();
+    });
+
+    test(
+      'RA-MO-347: the cached offers are applied while the server answers',
+      () async {
+        final api = _CachedQuotesApi();
+        final chat = ChatProvider(
+          api: api,
+          realtime: _FakeRealtimeClient(storage),
+          authStorage: storage,
+        );
+        final opening = chat.openConversation('conversation-1');
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          chat.quoteRequestsFor('conversation-1').single.offers,
+          hasLength(1),
+        );
+        api.release.complete();
+        await opening;
+        chat.dispose();
+      },
+    );
+
+    group('offer card', () {
+      ChatProvider chatWith({List<ChatQuoteRequestSummary>? requests}) =>
+          ChatProvider(
+            api: _FakeChatApi(
+              conversations: [_conversation()],
+              initialTimeline: ChatTimelinePage(
+                items: [
+                  ChatTimelineItem.fromJson({
+                    'kind': 'EVENT',
+                    'occurredAt': '2026-07-07T13:00:00.000Z',
+                    'event': {
+                      'id': 'event-offer',
+                      'conversationId': 'conversation-1',
+                      'quoteRequestId': 'quote-1',
+                      'quoteOfferId': 'offer-1',
+                      'type': 'QUOTE_OFFER_RECEIVED',
+                      'occurredAt': '2026-07-07T13:00:00.000Z',
+                      'data': {
+                        'title': 'عرض التصوير',
+                        'amount': '300000',
+                        'currency': 'YER',
+                      },
+                    },
+                  }),
+                ],
+              ),
+              quoteRequestItems: requests,
+            ),
+            realtime: _FakeRealtimeClient(storage),
+            authStorage: storage,
+          );
+
+      testWidgets('RA-MO-347: an offer not loaded never offers «اقبل العرض»', (
+        tester,
+      ) async {
+        final chat = chatWith();
+        await tester.pumpWidget(_chatApp(chat));
+        await tester.pumpAndSettle();
+
+        expect(find.text('اقبل العرض'), findsNothing);
+        expect(find.text('قارن'), findsNothing);
+        expect(find.text('العرض ما ظهر'), findsOneWidget);
+        chat.dispose();
+      });
+
+      testWidgets('RA-MO-330: an offer with no price shows the one the event '
+          'carries', (tester) async {
+        final chat = chatWith(
+          requests: [
+            ChatQuoteRequestSummary(
+              id: 'quote-1',
+              status: 'RESPONDED',
+              createdAt: DateTime.utc(2026, 7, 7),
+              offers: const [ChatQuoteOffer(id: 'offer-1', status: 'PENDING')],
+            ),
+          ],
+        );
+        await tester.pumpWidget(_chatApp(chat));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('عرض التصوير'), findsOneWidget);
+        expect(find.textContaining('300,000'), findsOneWidget);
+        // A pending offer that is read does offer both ways forward.
+        expect(find.text('اقبل العرض'), findsOneWidget);
+        expect(find.text('قارن'), findsOneWidget);
+        chat.dispose();
+      });
+
+      testWidgets('RA-MO-347: an accepted offer offers nothing to accept', (
+        tester,
+      ) async {
+        final chat = chatWith(
+          requests: [
+            ChatQuoteRequestSummary(
+              id: 'quote-1',
+              status: 'ACCEPTED',
+              createdAt: DateTime.utc(2026, 7, 7),
+              offers: const [
+                ChatQuoteOffer(
+                  id: 'offer-1',
+                  status: 'ACCEPTED',
+                  amount: '300000',
+                  currency: 'YER',
+                ),
+              ],
+            ),
+          ],
+        );
+        await tester.pumpWidget(_chatApp(chat));
+        await tester.pumpAndSettle();
+
+        expect(find.text('انقبل'), findsOneWidget);
+        expect(find.text('اقبل العرض'), findsNothing);
+        chat.dispose();
+      });
+    });
+
+    testWidgets('RA-MO-350: a picture alone is not captioned «صورة» on '
+        'screen, only for a screen reader', (tester) async {
+      final handle = tester.ensureSemantics();
+      final chat = ChatProvider(
+        api: _FakeChatApi(
+          conversations: [_conversation()],
+          initialTimeline: ChatTimelinePage(
+            items: [
+              ChatTimelineItem.pending(
+                ChatMessage(
+                  id: 'message-img',
+                  conversationId: 'conversation-1',
+                  senderUserId: 'provider-user-1',
+                  body: 'صورة',
+                  createdAt: DateTime.utc(2026, 7, 7, 12),
+                  attachments: [
+                    ChatAttachment(
+                      id: 'att-1',
+                      url: 'https://example.invalid/a.png',
+                      contentType: 'image/png',
+                      byteSize: 10,
+                      expiresAt: DateTime.now().add(const Duration(days: 1)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+      );
+      await tester.pumpWidget(_chatApp(chat));
+      await tester.pumpAndSettle();
+
+      expect(find.text('صورة'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(IndexedSemantics),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics && widget.properties.label == 'صورة',
+          ),
+        ),
+        findsOneWidget,
+      );
+      handle.dispose();
+      chat.dispose();
+    });
+  });
+
   group('f06 conversation', () {
     final now = DateTime(2026, 10, 20, 9);
 
@@ -1548,5 +1946,72 @@ class _GatedTimelineApi extends _FakeChatApi {
   }) async {
     await gate.future;
     return super.timeline(conversationId, cursor: cursor);
+  }
+}
+
+class _Clock {
+  _Clock(this._at);
+  DateTime _at;
+  DateTime call() => _at;
+  void advance(Duration by) => _at = _at.add(by);
+}
+
+/// A chat API whose sends go by conversation: those in [down] fail with
+/// their error, the others are answered.
+class _RoutedSendApi extends _FakeChatApi {
+  _RoutedSendApi() : super();
+
+  final Map<String, ApiException> down = {};
+  final List<String> sent = [];
+
+  @override
+  Future<ChatMessage> send(
+    String conversationId, {
+    required String body,
+    List<MediaUploadTicket> attachments = const [],
+    String? clientRequestId,
+  }) async {
+    sent.add('$conversationId:$body');
+    final error = down[conversationId];
+    if (error != null) throw error;
+    return _message(
+      id: 'sent-${sent.length}',
+      senderUserId: 'user-1',
+      body: body,
+    );
+  }
+}
+
+/// The phone holds the conversation's requests; the server has not answered.
+class _CachedQuotesApi extends _FakeChatApi {
+  _CachedQuotesApi() : super(conversations: [_conversation()]);
+
+  final release = Completer<void>();
+
+  @override
+  Future<ChatQuoteRequestPage?> cachedQuoteRequests(
+    String conversationId,
+  ) async => ChatQuoteRequestPage(
+    items: [
+      ChatQuoteRequestSummary(
+        id: 'quote-1',
+        status: 'RESPONDED',
+        createdAt: DateTime.utc(2026, 7, 7),
+        offers: const [ChatQuoteOffer(id: 'offer-1', status: 'ACCEPTED')],
+      ),
+    ],
+  );
+
+  @override
+  Future<ChatTimelinePage?> cachedTimeline(String conversationId) async =>
+      const ChatTimelinePage(items: []);
+
+  @override
+  Future<ChatTimelinePage> timeline(
+    String conversationId, {
+    String? cursor,
+  }) async {
+    await release.future;
+    return const ChatTimelinePage(items: []);
   }
 }

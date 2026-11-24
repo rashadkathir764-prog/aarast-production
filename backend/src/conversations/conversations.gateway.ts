@@ -31,7 +31,6 @@ import {
   REALTIME_JOINS_PER_MINUTE,
   REALTIME_READS_PER_MINUTE,
 } from './conversation-policy';
-import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
 
@@ -39,7 +38,6 @@ type AuthenticatedSocket = Socket & {
   data: {
     user?: AuthenticatedUser;
     sessionId?: string;
-    messageTimestamps?: number[];
     joinTimestamps?: number[];
     readTimestamps?: number[];
   };
@@ -49,14 +47,7 @@ interface ConversationEvent {
   conversationId: string;
 }
 
-interface SendConversationMessageEvent extends ConversationEvent {
-  body: string;
-  attachments?: SendMessageDto['attachments'];
-}
-
 export { conversationRoom, sessionRoom, userRoom };
-
-const SOCKET_MESSAGES_PER_MINUTE = 20;
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -201,25 +192,6 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     return { conversationId: event.conversationId, joined: true };
   }
 
-  @SubscribeMessage('conversation:message')
-  async message(
-    @ConnectedSocket() socket: AuthenticatedSocket,
-    @MessageBody() event: SendConversationMessageEvent,
-  ) {
-    const user = await this.liveSocketUser(socket);
-    this.assertSocketRate(
-      socket,
-      'messageTimestamps',
-      SOCKET_MESSAGES_PER_MINUTE,
-      'Message rate limit exceeded',
-    );
-    const message = await this.conversations.send(user, event.conversationId, {
-      body: event.body,
-      attachments: event.attachments,
-    });
-    return message;
-  }
-
   @SubscribeMessage('conversation:read')
   async read(
     @ConnectedSocket() socket: AuthenticatedSocket,
@@ -269,7 +241,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   /** A sliding minute of one event's timestamps, kept on the socket. */
   private assertSocketRate(
     socket: AuthenticatedSocket,
-    key: 'messageTimestamps' | 'joinTimestamps' | 'readTimestamps',
+    key: 'joinTimestamps' | 'readTimestamps',
     perMinute: number,
     refusal: string,
   ) {

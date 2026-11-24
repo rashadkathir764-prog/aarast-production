@@ -89,6 +89,14 @@ class ChatApi {
     return json == null ? null : ChatTimelinePage.fromJson(json);
   }
 
+  /// The phone's copy of the conversation's requests (and their offers).
+  Future<ChatQuoteRequestPage?> cachedQuoteRequests(
+    String conversationId,
+  ) async {
+    final json = await _reads.cachedBlob('chat:quotes:$conversationId');
+    return json == null ? null : ChatQuoteRequestPage.fromJson(json);
+  }
+
   Future<ChatQuoteRequestPage> quoteRequests(String conversationId) async {
     return ChatQuoteRequestPage.fromJson(
       await _reads.blob(

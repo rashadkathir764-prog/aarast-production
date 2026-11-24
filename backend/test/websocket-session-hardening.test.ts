@@ -282,14 +282,6 @@ test('every chat event revalidates the live application session', async () => {
         gateway.join(socket as any, { conversationId: 'conversation-1' }),
     },
     {
-      name: 'message',
-      invoke: (gateway: ConversationsGateway, socket: FakeSocket) =>
-        gateway.message(socket as any, {
-          conversationId: 'conversation-1',
-          body: 'message',
-        }),
-    },
-    {
       name: 'read',
       invoke: (gateway: ConversationsGateway, socket: FakeSocket) =>
         gateway.read(socket as any, { conversationId: 'conversation-1' }),
@@ -305,10 +297,6 @@ test('every chat event revalidates the live application session', async () => {
       session: () => (sessionActive ? { id: 'app-session' } : null),
       conversations: {
         authorize: async () => {
-          protectedCalls += 1;
-          return {};
-        },
-        send: async () => {
           protectedCalls += 1;
           return {};
         },

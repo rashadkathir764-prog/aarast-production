@@ -325,6 +325,9 @@ class ChatTimelineItem {
   final ChatMessage? message;
   final ChatConversationEvent? event;
 
+  /// The server's own id of the message or event, for ordering ties.
+  String get serverId => message?.id ?? event?.id ?? '';
+
   String get identity => switch (kind) {
     ChatTimelineItemKind.message => 'M:${message?.id ?? ''}',
     ChatTimelineItemKind.event => 'E:${event?.id ?? ''}',

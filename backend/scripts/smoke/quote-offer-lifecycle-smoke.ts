@@ -316,13 +316,16 @@ async function main(): Promise<void> {
   assert.equal(customerOffer.changes[0].field, "amount");
   pass("an edit before acceptance is version 2 with «ايش تغيّر», one event and one notice; repeating it changes nothing");
 
-  // A member who manages the providers but sees no money reads the
+  // A partner who manages the providers but sees no money reads the
   // conversation's timeline: the revision is there, its amounts are not.
-  const member = await account("member", `${label} مساعد`);
+  // (RA-BE-139: a helper reads only his own requests' conversations, and the
+  // owner asked here, so the reader is the partner.)
+  const member = await account("member", `${label} شريكة`);
   await prisma.sharedMember.create({
     data: {
       weddingPlanId: plan.id,
       userId: member.id,
+      role: "BRIDE",
       canManageProviders: true,
       canViewMoney: false,
     },

@@ -122,15 +122,19 @@ test('Task 6 internal leaves own each non-public implementation exactly once', (
   const expected = new Map<string, string[]>([
     ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', [
       // D63: the deletion grace, its hourly purge and the data download.
+      // Q-45 (D124, RA-BE-179): a plan's own deletion purge and its hourly run.
       'AccountDeletionPurgeScheduler', 'AccountDeletionService', 'ContextsService',
-      'DataExportService', 'UsersService',
+      'DataExportService', 'PlanDeletionPurgeScheduler', 'PlanDeletionPurgeService',
+      'UsersService',
     ]],
-    ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'WeddingPlansService']],
+    // Q-45 (D124, RA-BE-179): the owner deletes a plan and takes it back.
+    ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'PlanDeletionService', 'WeddingPlansService']],
     ['modules/planning/internal/planning-budget-write.internal.module.ts#PlanningBudgetWriteInternalModule', ['WeddingPlanBudgetWriter']],
     ['modules/planning/internal/plan-events.internal.module.ts#PlanEventsInternalModule', ['PlanEventsService']],
     // Receipts (V1 checklist 4.4) add CostReceiptsService.
     ['modules/finance/internal/finance-services.internal.module.ts#FinanceServicesInternalModule', ['BudgetCategoriesService', 'CostReceiptsService', 'FundingSourcesService', 'MoneyBudgetService', 'MoneySummaryService', 'WeddingCostsService']],
-    ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'SharingService']],
+    // RA-BE-179 (Q-45, D124): ended invitations have an end.
+    ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'PlanInviteRetentionScheduler', 'SharingService']],
     ['modules/tasks/internal/tasks-service.internal.module.ts#TasksServiceInternalModule', ['TasksService']],
     ['modules/guests/internal/guests-service.internal.module.ts#GuestsServiceInternalModule', ['GuestsService']],
     ['modules/guests/internal/guests-rsvp.internal.module.ts#GuestsRsvpInternalModule', ['GuestRsvpService']],

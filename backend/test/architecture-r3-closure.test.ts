@@ -98,9 +98,10 @@ test('Task 8 Notifications metadata owns both controllers and private lifecycle 
     metadataNames(full, MODULE_METADATA.CONTROLLERS),
     ['NotificationsController', 'PushController'],
   );
+  // RA-BE-179 (Q-45, D124): read notifications have an end.
   assert.deepEqual(
     metadataNames(lifecycle, MODULE_METADATA.PROVIDERS),
-    ['NotificationRemindersScheduler'],
+    ['NotificationRemindersScheduler', 'NotificationsRetentionScheduler'],
   );
   assert.deepEqual(
     metadataNames(installations, MODULE_METADATA.PROVIDERS),

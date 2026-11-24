@@ -65,7 +65,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. Its stored booleans are the final non-owner authority; role defaults seed invitations only and never act as a runtime fallback. Direct member creation stores omitted authorization flags as `false`. `canViewMoney` controls money reads, `canManageMoney` controls money writes, and task, guest, provider, plan-edit, and member-management permissions remain separate. `authorityVersion` advances when role or authorization flags change and is captured with history events. |
 | ContributorHistoryScope | One durable history boundary per WeddingPlan. `historyCoverageStartsAt` makes the cutover explicit, lifecycle fields preserve an archived/deleted plan's audit boundary, and deleting the live plan reference sets `weddingPlanId` null rather than cascading history. |
-| ContributorTenure | One period of contributor membership inside a history scope. It binds the current `SharedMember` while active, retains a SHA-256 `actorReference` across re-invitations, records join/tracking/end state and roles, and permits only one active tenure per scope and actor reference. The direct user/member links may be nulled without deleting the historical events. |
+| ContributorTenure | One period of contributor membership inside a history scope. It binds the current `SharedMember` while active, retains an `actorReference` across re-invitations (HMAC-SHA256 of the user id under `CONTRIBUTION_ACTOR_REF_SECRET` since RA-BE-176; tenures written before keep their unkeyed SHA-256, which the trigger never lets change), records join/tracking/end state and roles, and permits only one active tenure per scope and actor reference. The direct user/member links may be nulled without deleting the historical events. A living actor's tenures are found by `actorUserId`; the reference names only one whose account is gone. |
 | ContributionEvent | Append-only, privacy-allowlisted snapshot of a contributor action or revocation boundary. It records section, entity type, optional source id, action, frozen JSON, snapshot/fingerprint hashes, provenance, required permission, policy/authority versions, occurrence time, and capture time. It is not a live relation to the source row: later source changes cannot rewrite the snapshot. |
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. Invite-access OTP rows reference the exact invitation through `OtpCode.planInviteId` and cascade when it is deleted. Pending grants above a delegated inviter's newly narrowed stored ceiling are revoked in the same member-update transaction; acceptance also requires an active owner and active delegated inviter. |
 | Guest | Implemented for WeddingPlan guest management. A database unique constraint permits at most one non-null `normalizedPhone` per WeddingPlan regardless of display name; null phones remain repeatable. Stored `phone` and `normalizedPhone` are the same canonical value, enforced by a database CHECK. Migration `20260726030000_enforce_unique_guest_phone` fails closed for historical conflicts instead of merging or deleting private guest data. `rsvpTokenHash` (unique) is the SHA-256 of the guest's personal RSVP link token (V1 checklist 4.7; the token is never stored) and `respondedAt` the time of the guest's last answer through it. |
@@ -270,6 +270,15 @@ and the index on `deletionScheduledFor` the hourly purge reads. The new model
 stored), `createdAt`, `expiresAt` (after `createdAt`), `downloadedAt`. Rows
 older than a week are removed by the purge job. The receipt below is written by
 the purge (request id `grace:<requestedAt>`), no longer by an HTTP command.
+
+RA-BE-177: migration `20261124110000_account_purge_attempts` adds
+`deletionPurgeAttempts` (default 0; 1 for a request that already carried a
+failure). Each failed purge increments it beside the last failure's time and
+code. The purge takes its 25 due accounts with the fewest failures first, then
+the oldest due, and skips one that failed less than an hour ago, so accounts
+that keep failing cannot hold back the rest; from the fifth failure on, each
+failure is logged as an error for a person to settle. A new request, taking it
+back, or keeping an administrator's identity resets the count.
 
 ## Durable Account Deletion Receipt
 
@@ -515,7 +524,7 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 60 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 61 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |

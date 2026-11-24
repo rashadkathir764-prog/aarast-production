@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import {
   ConflictException,
   Inject,
@@ -41,7 +41,10 @@ import {
   ContributionHistoryPageResponse,
 } from "./contribution-history.contracts";
 import { ListContributionsDto } from "../api/dto/list-contributions.dto";
-import { ContributionHistoryRepository } from "../infrastructure/contribution-history.repository";
+import {
+  ContributionHistoryRepository,
+  type HistoryContributor,
+} from "../infrastructure/contribution-history.repository";
 
 const PERMISSION_POLICY_VERSION = 1;
 
@@ -63,8 +66,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     const scope = await this.repository.getHistoryScopeId(tx, input.weddingPlanId);
     if (!scope) throw new NotFoundException("Contribution history scope not found");
 
-    const actorReference = contributorActorReference(input.actorUserId);
-    const tenure = await this.repository.findActiveTenureId(tx, scope.id, actorReference);
+    const tenure = await this.repository.findActiveTenureId(tx, scope.id, input.actorUserId);
     if (!tenure) throw new NotFoundException("Active contributor tenure not found");
 
     const fingerprint = contributionFingerprint(
@@ -122,10 +124,11 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     member: SharedMember,
   ): Promise<ContributorTenure> {
     const scope = await this.repository.ensureHistoryScope(tx, member.weddingPlanId);
-    const actorReference = contributorActorReference(member.userId);
-    const existing = await this.repository.findOpenTenure(tx, scope.id, actorReference);
+    const existing = await this.repository.findOpenTenure(tx, scope.id, member.userId);
     if (existing) return existing;
-    return this.repository.createTenure(tx, scope.id, actorReference, member);
+    return this.repository.createTenure(
+      tx, scope.id, contributorActorReference(member.userId), member,
+    );
   }
 
   async closeTenureInTransaction(
@@ -141,7 +144,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     const scope = await this.repository.getHistoryScopeId(tx, input.weddingPlanId);
     if (!scope) return null;
     const tenure = await this.repository.findOpenTenure(
-      tx, scope.id, contributorActorReference(input.actorUserId),
+      tx, scope.id, input.actorUserId,
     );
     if (!tenure) return null;
     return this.repository.closeTenure(
@@ -159,9 +162,8 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
       ContributionAction.PAYMENT_RECORDED,
     ],
   ): Promise<string[]> {
-    const actorReference = contributorActorReference(actorUserId);
     const events = await this.repository.qualifyingEntityIds(
-      this.prisma, weddingPlanId, actorReference, entityTypes, actions,
+      this.prisma, weddingPlanId, actorUserId, entityTypes, actions,
     );
     return events.flatMap((event) => (event.entityId ? [event.entityId] : []));
   }
@@ -179,11 +181,9 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
           weddingPlanId,
           tx,
         );
-        const contributorReference = access.isOwner
-          ? query.contributorUserId
-            ? contributorActorReference(query.contributorUserId)
-            : undefined
-          : contributorActorReference(currentUser.id);
+        const contributor = historyContributor(
+          access.isOwner ? query.contributorUserId : currentUser.id,
+        );
         // The final reads re-check current ownership/membership through
         // the owners and apply the result to the history tables themselves.
         const liveFilter = await this.permissions.liveAuthorizationFilter(
@@ -199,7 +199,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
         }
 
         const [events, total] = await this.repository.listPageEvents(
-          tx, scope.id, contributorReference, query, liveFilter,
+          tx, scope.id, contributor, query, liveFilter,
           this.hiddenSections(access),
         );
 
@@ -231,11 +231,9 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     contributorUserId?: string,
   ): Promise<ContributionHistorySummaryResponse> {
     const access = await this.historyAccess(currentUser, weddingPlanId);
-    const contributorReference = access.isOwner
-      ? contributorUserId
-        ? contributorActorReference(contributorUserId)
-        : undefined
-      : contributorActorReference(currentUser.id);
+    const contributor = historyContributor(
+      access.isOwner ? contributorUserId : currentUser.id,
+    );
     // The live re-check and the history read share one snapshot.
     const events = await runRetryableTransaction(
       this.prisma,
@@ -246,7 +244,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
           currentUser.id,
         );
         return this.repository.summaryEvents(
-          tx, weddingPlanId, contributorReference, liveFilter,
+          tx, weddingPlanId, contributor, liveFilter,
           this.hiddenSections(access),
         );
       },
@@ -289,8 +287,30 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
 
 }
 
+/** Outside production only: the key the tests and a developer's machine use. */
+const LOCAL_ACTOR_REFERENCE_SECRET = "aarast-local-contribution-actor-reference-v1";
+
+/**
+ * RA-BE-176: the history's durable name for an actor, which outlives the
+ * account. An HMAC-SHA256 under the server's `CONTRIBUTION_ACTOR_REF_SECRET`,
+ * so an erased account's id alone no longer finds what it did. Tenures
+ * written before keep their SHA-256 reference (the database never lets it
+ * change); a living actor is therefore found by the tenure's link to the
+ * account (`actorUserId`), and the reference only names one whose account
+ * is gone.
+ */
 export function contributorActorReference(actorUserId: string): string {
-  return createHash("sha256").update(actorUserId).digest("hex");
+  const configured = process.env.CONTRIBUTION_ACTOR_REF_SECRET?.trim();
+  if (!configured && process.env.NODE_ENV === "production") {
+    throw new Error("CONTRIBUTION_ACTOR_REF_SECRET is required in production");
+  }
+  return createHmac("sha256", configured || LOCAL_ACTOR_REFERENCE_SECRET)
+    .update(actorUserId, "utf8")
+    .digest("hex");
+}
+
+function historyContributor(userId: string | undefined): HistoryContributor | undefined {
+  return userId ? { userId, reference: contributorActorReference(userId) } : undefined;
 }
 
 function contributionFingerprint(

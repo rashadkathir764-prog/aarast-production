@@ -143,8 +143,13 @@ test("history page and total are read from one repeatable-read authorization sna
   // recorded amounts.
   assert.deepEqual(observedWhere[0], {
     historyScope: { id: "scope-1" },
+    // RA-BE-176: the member's tenures by their link to her account, and by
+    // her keyed reference (the tenures of an erased account keep only that).
     contributorTenure: {
-      actorReference: contributorActorReference("contributor-1"),
+      OR: [
+        { actorUserId: "contributor-1" },
+        { actorReference: contributorActorReference("contributor-1") },
+      ],
     },
     section: { notIn: [ContributionSection.MONEY] },
   });

@@ -100,6 +100,7 @@ services:
       DATABASE_URL: postgresql://aarast:aarast_dev_password@db:5432/aarast?schema=public
       JWT_SECRET: aarast-local-dev-secret-change-me
       AUTH_LOGIN_THROTTLE_PEPPER: aarast-local-login-throttle-pepper-change-me
+      CONTRIBUTION_ACTOR_REF_SECRET: aarast-local-contribution-actor-ref-change-me
       REDIS_URL: redis://redis:6379
       READINESS_REQUIRE_REDIS: "true"
       READINESS_REQUIRE_MEDIA: "true"

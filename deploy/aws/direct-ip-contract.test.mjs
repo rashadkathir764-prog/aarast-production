@@ -19,6 +19,7 @@ const env = {
   AARAST_DB_MIGRATOR_DATABASE_URL: 'postgresql://migrator:proof-only@postgres/proof',
   AARAST_DB_RUNTIME_DATABASE_URL: 'postgresql://runtime:proof-only@postgres/proof',
   JWT_ACCESS_SECRET: 'a'.repeat(64), AUTH_LOGIN_THROTTLE_PEPPER: 'b'.repeat(64),
+  CONTRIBUTION_ACTOR_REF_SECRET: 'c'.repeat(64),
 };
 
 function allNodes(value) {
@@ -125,6 +126,8 @@ test('existing protected env is extended once; invalid or changed IP never alter
     const extended = readFileSync(file, 'utf8');
     assert.ok(extended.startsWith(original));
     assert.equal(extended.match(/^AARAST_DIRECT_API_IP=/gm).length, 1);
+    // RA-BE-176: a host prepared before the key gets it once, made on the host.
+    assert.equal(extended.match(/^CONTRIBUTION_ACTOR_REF_SECRET=[0-9a-f]{64}$/gm).length, 1);
     assert.equal(invoke(ip).status, 0);
     assert.equal(readFileSync(file, 'utf8'), extended);
     assert.notEqual(invoke('1.1.1.1').status, 0);

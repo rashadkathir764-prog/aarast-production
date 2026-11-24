@@ -180,6 +180,7 @@ services:
       POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
       JWT_SECRET: ${STAGING_JWT_SECRET:?staging JWT secret required}
       AUTH_LOGIN_THROTTLE_PEPPER: ${STAGING_AUTH_LOGIN_THROTTLE_PEPPER:?staging login pepper required}
+      CONTRIBUTION_ACTOR_REF_SECRET: ${STAGING_CONTRIBUTION_ACTOR_REF_SECRET:?staging contribution actor reference secret required}
       CORS_ORIGINS: ${STAGING_ADMIN_ORIGIN:?staging admin origin required}
       INVITE_PUBLIC_ORIGIN: ${STAGING_INVITE_ORIGIN:?staging invite origin required}
       REDIS_URL: redis://redis:6379

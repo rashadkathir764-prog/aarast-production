@@ -29,6 +29,16 @@ function sectionFilter(
   return hidden.length > 0 ? { notIn: [...hidden] } : undefined;
 }
 
+/**
+ * RA-BE-176: one contributor's history: the tenures still linked to the
+ * account, and those of an erased account, which keep only its keyed
+ * reference.
+ */
+export interface HistoryContributor {
+  userId: string;
+  reference: string;
+}
+
 export class ContributionHistoryRepository {
   getHistoryScopeId(tx: Client, weddingPlanId: string) {
     return tx.contributorHistoryScope.findUnique({
@@ -37,9 +47,11 @@ export class ContributionHistoryRepository {
     });
   }
 
-  findActiveTenureId(tx: Client, historyScopeId: string, actorReference: string) {
+  // RA-BE-176: a living actor's tenure is found by its link to the account;
+  // tenures written before the keyed reference keep their old reference.
+  findActiveTenureId(tx: Client, historyScopeId: string, actorUserId: string) {
     return tx.contributorTenure.findFirst({
-      where: { historyScopeId, actorReference, endedAt: null },
+      where: { historyScopeId, actorUserId, endedAt: null },
       select: { id: true, actorReference: true },
     });
   }
@@ -116,9 +128,9 @@ export class ContributionHistoryRepository {
     });
   }
 
-  findOpenTenure(tx: Client, historyScopeId: string, actorReference: string) {
+  findOpenTenure(tx: Client, historyScopeId: string, actorUserId: string) {
     return tx.contributorTenure.findFirst({
-      where: { historyScopeId, actorReference, endedAt: null },
+      where: { historyScopeId, actorUserId, endedAt: null },
     });
   }
 
@@ -152,14 +164,14 @@ export class ContributionHistoryRepository {
   qualifyingEntityIds(
     client: PrismaService,
     weddingPlanId: string,
-    actorReference: string,
+    actorUserId: string,
     entityTypes: readonly ContributionEntityType[],
     actions: readonly ContributionAction[],
   ) {
     return client.contributionEvent.findMany({
       where: {
         historyScope: { weddingPlanId },
-        contributorTenure: { actorReference },
+        contributorTenure: { actorUserId },
         entityType: { in: [...entityTypes] },
         action: { in: [...actions] },
         entityId: { not: null },
@@ -181,7 +193,7 @@ export class ContributionHistoryRepository {
   listPageEvents(
     tx: Client,
     historyScopeId: string,
-    contributorReference: string | undefined,
+    contributor: HistoryContributor | undefined,
     query: Partial<ListContributionsDto>,
     liveFilter: LiveAuthorizationFilter,
     hiddenSections: readonly ContributionSection[] = [],
@@ -189,8 +201,15 @@ export class ContributionHistoryRepository {
     const section = sectionFilter(query.section, hiddenSections);
     const where = {
       historyScope: { id: historyScopeId },
-      ...(contributorReference
-        ? { contributorTenure: { actorReference: contributorReference } }
+      ...(contributor
+        ? {
+            contributorTenure: {
+              OR: [
+                { actorUserId: contributor.userId },
+                { actorReference: contributor.reference },
+              ],
+            },
+          }
         : {}),
       ...(section !== undefined ? { section } : {}),
       ...(liveFilter.id ? { id: { in: liveFilter.id.in } } : {}),
@@ -210,7 +229,7 @@ export class ContributionHistoryRepository {
   summaryEvents(
     tx: Client,
     weddingPlanId: string,
-    contributorReference: string | undefined,
+    contributor: HistoryContributor | undefined,
     liveFilter: LiveAuthorizationFilter,
     hiddenSections: readonly ContributionSection[] = [],
   ) {
@@ -218,8 +237,15 @@ export class ContributionHistoryRepository {
     return tx.contributionEvent.findMany({
       where: {
         historyScope: { weddingPlanId },
-        ...(contributorReference
-          ? { contributorTenure: { actorReference: contributorReference } }
+        ...(contributor
+          ? {
+              contributorTenure: {
+                OR: [
+                  { actorUserId: contributor.userId },
+                  { actorReference: contributor.reference },
+                ],
+              },
+            }
           : {}),
         ...(section !== undefined ? { section } : {}),
         entityId: { not: null },

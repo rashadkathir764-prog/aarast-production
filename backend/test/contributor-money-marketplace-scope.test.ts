@@ -21,7 +21,6 @@ import {
 } from "@prisma/client";
 import { BudgetCategoriesService } from "../src/budget-categories/budget-categories.service";
 import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
-import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 import { buildMoneySummaryInTransaction } from "../src/money/money-summary.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
 import { ProviderReadService } from "../src/modules/marketplace/infrastructure/provider-read.service";
@@ -230,9 +229,9 @@ test("plan quote list restricts a contributor to requests they submitted", async
   });
   assert.deepEqual(capturedContributionWhere, {
     historyScope: { weddingPlanId: "plan-1" },
-    contributorTenure: {
-      actorReference: contributorActorReference("contributor-1"),
-    },
+    // RA-BE-176: by the tenures' link to the account, which tenures written
+    // before the keyed reference share with those after.
+    contributorTenure: { actorUserId: "contributor-1" },
     entityType: { in: [ContributionEntityType.QUOTE_REQUEST] },
     action: {
       in: [ContributionAction.CREATED, ContributionAction.LEGACY_CAPTURED],

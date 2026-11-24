@@ -41,7 +41,8 @@ import type {
   PlanSpec,
   TaskSpec,
 } from './plan-data';
-import { inDays, normalizeCategoryName, normalizeGuestName, actorReference, demoId, today } from './support';
+import { inDays, normalizeCategoryName, normalizeGuestName, demoId, today } from './support';
+import { contributorActorReference } from '../../src/modules/collaboration/internal/contribution-history.service';
 
 export const planId = (key: PlanSpec['key']): string => demoId('plan', key);
 
@@ -359,16 +360,16 @@ async function seedMembers(prisma: PrismaClient, planKey: string, spec: PlanSpec
     if (member.account !== 'groom' && member.account !== 'bride') {
       await prisma.user.update({ where: { id: memberUserId }, data: { activeWeddingPlanId: planKey } });
     }
-    const reference = actorReference(memberUserId);
+    // RA-BE-176: found by its link to the account, as the history finds it.
     const tenure =
       (await prisma.contributorTenure.findFirst({
-        where: { historyScopeId: scope.id, actorReference: reference, endedAt: null },
+        where: { historyScopeId: scope.id, actorUserId: memberUserId, endedAt: null },
       })) ??
       (await prisma.contributorTenure.create({
         data: {
           historyScopeId: scope.id,
           actorUserId: memberUserId,
-          actorReference: reference,
+          actorReference: contributorActorReference(memberUserId),
           sharedMemberId: sharedMember.id,
           joinedAt: sharedMember.createdAt,
           trackingStartedAt: inDays(-60),

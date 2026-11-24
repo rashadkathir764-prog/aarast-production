@@ -43,7 +43,7 @@ import {
 } from "../../../planning/public/plan-read.port";
 import {
   clearAccountDeletionRequest,
-  findDueAccountDeletionIds,
+  findDueAccountDeletions,
   lockUserForAccountDeletion,
   markAccountDeletionRequested,
   recordAccountPurgeFailure,
@@ -66,6 +66,10 @@ export const ACCOUNT_DELETION_CONFIRM_WORD = "حذف";
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** The purge takes this many due accounts a run; the rest wait an hour. */
 const PURGE_BATCH = 25;
+/** RA-BE-177: an account whose purge failed is tried again an hour later. */
+const PURGE_RETRY_AFTER_MS = 60 * 60 * 1000;
+/** RA-BE-177: from this many failed purges on, every failure is raised. */
+const PURGE_ATTEMPTS_ALERT = 5;
 /** n06 lists the downloads of the last week. */
 const EXPORT_LIST_DAYS = 7;
 
@@ -373,14 +377,22 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
 
   /**
    * The hourly purge: every account whose day has come is erased through the
-   * one saga. A failure (B-33 at the purge, a database error) is recorded on
-   * the account for n06, returned and logged by the job; the account stays
-   * pending and the next run tries again.
+   * one saga. A failure (B-33 at the purge, a database error) is counted and
+   * recorded on the account for n06, returned and logged by the job; the
+   * account stays pending and is tried again an hour later. RA-BE-177: the
+   * accounts that failed fewest times go first, so the ones that keep failing
+   * cannot hold back the rest, and from the fifth failure on each failure is
+   * raised as an error for a person to settle.
    */
   async purgeDueAccounts(now: Date): Promise<AccountPurgeSummary> {
-    const due = await findDueAccountDeletionIds(this.prisma, now, PURGE_BATCH);
+    const due = await findDueAccountDeletions(
+      this.prisma,
+      now,
+      new Date(now.getTime() - PURGE_RETRY_AFTER_MS),
+      PURGE_BATCH,
+    );
     const summary: AccountPurgeSummary = { erased: 0, failures: [] };
-    for (const { id } of due) {
+    for (const { id, deletionPurgeAttempts } of due) {
       try {
         const outcome = await this.users.eraseDueAccount(id, now);
         if (outcome === "ERASED") summary.erased += 1;
@@ -389,6 +401,12 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
         summary.failures.push({ userId: id, code, error });
         try {
           await recordAccountPurgeFailure(this.prisma, id, now, code);
+          const attempts = deletionPurgeAttempts + 1;
+          if (attempts >= PURGE_ATTEMPTS_ALERT) {
+            this.logger.error(
+              `The erasure of account ${id} has failed ${attempts} times (last: ${code}); it needs a person (n06)`,
+            );
+          }
         } catch (recordError) {
           // The purge failure itself is already in the summary; losing its
           // trace on the account is a second failure, reported on its own.

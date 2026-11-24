@@ -104,11 +104,6 @@ export function resolveDemoPassword(): { password: string; generated: boolean } 
   return { password: `${value}9a`, generated: true };
 }
 
-/** Same hash the contribution history uses to refer to an actor. */
-export function actorReference(userId: string): string {
-  return createHash('sha256').update(userId).digest('hex');
-}
-
 /** Normalised form of a guest name, as the guests API stores it. */
 export function normalizeGuestName(name: string): string {
   return name.trim().replace(/\s+/g, ' ');

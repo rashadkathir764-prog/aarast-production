@@ -94,6 +94,14 @@ export function validateRuntimeEnvironment(
     throw new Error("AUTH_LOGIN_THROTTLE_PEPPER is required in production");
   }
 
+  // RA-BE-176: the key of the contribution history's actor references.
+  if (
+    environment.NODE_ENV === "production" &&
+    !environment.CONTRIBUTION_ACTOR_REF_SECRET?.trim()
+  ) {
+    throw new Error("CONTRIBUTION_ACTOR_REF_SECRET is required in production");
+  }
+
   otpGlobalDailyLimit(environment);
 
   const pushNotificationsEnabled =

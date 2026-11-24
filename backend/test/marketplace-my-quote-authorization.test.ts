@@ -23,7 +23,6 @@ import {
 } from "@prisma/client";
 import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
-import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 import {
   findMoneyHiddenPlanIds,
   myQuoteVisibility,
@@ -65,7 +64,8 @@ const expectedMyQuoteScope = (
 });
 
 const expectedContributionScope = (userId: string) => ({
-  contributorTenure: { actorReference: contributorActorReference(userId) },
+  // RA-BE-176: by the tenures' link to the account, not a recomputed reference.
+  contributorTenure: { actorUserId: userId },
   entityType: { in: ["QUOTE_REQUEST"] },
   action: { in: ["CREATED", "LEGACY_CAPTURED"] },
   entityId: { not: null },
@@ -439,10 +439,11 @@ test("my quote cancellation restores the contributor's qualified previous-tenure
   assert.equal(result.status, QuoteRequestStatus.CANCELLED);
   assert.equal(harness.planAuthorizationChecks(), 1);
   assert.equal(harness.quoteWrites(), 1);
-  // The tenure is matched by the actor's reference (collaboration's scope)
-  // and never by an end date, so a previous tenure's contribution qualifies.
+  // The tenure is matched by its link to the actor's account (collaboration's
+  // scope; RA-BE-176) and never by an end date, so a previous tenure's
+  // contribution qualifies.
   assert.deepEqual(harness.contributionWhere().contributorTenure, {
-    actorReference: contributorActorReference(contributorAId),
+    actorUserId: contributorAId,
   });
   assert.equal(
     Object.prototype.hasOwnProperty.call(

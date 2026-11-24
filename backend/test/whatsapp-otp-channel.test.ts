@@ -176,6 +176,7 @@ test('WhatsApp mode fails configuration validation before boot when incomplete',
         DATABASE_URL: 'postgresql://example',
         JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
+        CONTRIBUTION_ACTOR_REF_SECRET: 'a-separate-contribution-actor-ref-test-secret',
         AUTH_OTP_MODE: 'whatsapp',
       }, getJwtSecret),
     /WhatsApp OTP is missing required environment variables/,
@@ -210,6 +211,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
       DATABASE_URL: 'postgresql://example',
       JWT_SECRET: strongRuntimeJwtSecret,
       AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
+      CONTRIBUTION_ACTOR_REF_SECRET: 'a-separate-contribution-actor-ref-test-secret',
       AUTH_OTP_MODE: 'whatsapp',
       WHATSAPP_GRAPH_API_VERSION: config.apiVersion,
       WHATSAPP_PHONE_NUMBER_ID: config.phoneNumberId,
@@ -228,6 +230,7 @@ test('production requires a public HTTPS invite origin', () => {
     DATABASE_URL: 'postgresql://example',
     JWT_SECRET: strongRuntimeJwtSecret,
     AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
+    CONTRIBUTION_ACTOR_REF_SECRET: 'a-separate-contribution-actor-ref-test-secret',
     AUTH_OTP_MODE: 'disabled',
   };
   assert.throws(

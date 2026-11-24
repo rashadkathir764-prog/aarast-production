@@ -1,7 +1,6 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { test } from "node:test";
 import {
   ContributionAction,
@@ -347,9 +346,9 @@ test("live scope accepts qualifying events from current and previous tenures aft
 
   assert.equal(observed.length, 4);
   for (const where of observed) {
-    assert.deepEqual(where.contributorTenure, {
-      actorReference: createHash("sha256").update("contributor-a").digest("hex"),
-    });
+    // RA-BE-176: by the tenures' link to the account, so the tenures written
+    // before the keyed reference count as well as those after.
+    assert.deepEqual(where.contributorTenure, { actorUserId: "contributor-a" });
   }
   // The actor-wide scope spans plans: no history-scope predicate, the
   // requested entity types and actions, and an exact entity id when asked.

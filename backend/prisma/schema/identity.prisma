@@ -72,6 +72,9 @@ model User {
   // D63: the last purge attempt that failed, and its error code.
   deletionPurgeFailedAt        DateTime?
   deletionPurgeFailure         String?
+  // RA-BE-177: how many purges of this request failed. The purge takes the
+  // fewest first, so accounts that keep failing never hold the others back.
+  deletionPurgeAttempts        Int                           @default(0)
   // D63 (w40): reviews show only the first name while this is on.
   reviewFirstNameOnly          Boolean                       @default(true)
   // RA-BE-161 (Q-41, D124): when the account agreed that the planning

@@ -354,7 +354,9 @@ test("owner history filters deleted contributors by durable reference and allows
       findMany: async ({ where }: any) => {
         observed.push(where);
         const actorReference =
-          where.contributorTenure?.actorReference ?? "b".repeat(64);
+          where.contributorTenure?.OR?.find(
+            (branch: { actorReference?: string }) => branch.actorReference,
+          )?.actorReference ?? "b".repeat(64);
         return [{ ...event, contributorTenure: { actorReference } }];
       },
       count: async ({ where }: any) => {
@@ -371,19 +373,19 @@ test("owner history filters deleted contributors by durable reference and allows
     contributorUserId: "deleted-user-1",
   });
   assert.match(filtered.events[0].contributorReference, /^[a-f0-9]{64}$/);
-  assert.equal(
-    observed[0].contributorTenure.actorReference,
-    filtered.events[0].contributorReference,
-  );
+  // RA-BE-176: an erased contributor's tenures keep only the keyed reference.
+  assert.deepEqual(observed[0].contributorTenure, {
+    OR: [
+      { actorUserId: "deleted-user-1" },
+      { actorReference: filtered.events[0].contributorReference },
+    ],
+  });
 
   await service.list({ id: "owner-1" } as any, "plan-1", {});
   assert.equal("contributorTenure" in observed[2], false);
 
   await service.summary({ id: "owner-1" } as any, "plan-1", "deleted-user-1");
-  assert.equal(
-    observed[4].contributorTenure.actorReference,
-    filtered.events[0].contributorReference,
-  );
+  assert.deepEqual(observed[4].contributorTenure, observed[0].contributorTenure);
 
   await service.summary({ id: "owner-1" } as any, "plan-1");
   assert.equal("contributorTenure" in observed[5], false);

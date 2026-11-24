@@ -61,6 +61,7 @@ export function markAccountDeletionRequested(
       deletionScheduledFor: scheduledFor,
       deletionPurgeFailedAt: null,
       deletionPurgeFailure: null,
+      deletionPurgeAttempts: 0,
     },
   });
 }
@@ -77,25 +78,42 @@ export function clearAccountDeletionRequest(
       deletionScheduledFor: null,
       deletionPurgeFailedAt: null,
       deletionPurgeFailure: null,
+      deletionPurgeAttempts: 0,
     },
   });
 }
 
-/** D63: the accounts whose day of erasure has come, oldest first. */
-export function findDueAccountDeletionIds(
+/**
+ * D63, RA-BE-177: the accounts whose day of erasure has come. Those that
+ * failed fewest times come first, then the oldest due, so accounts that keep
+ * failing never take every run; one that failed less than `retryAfter` ago
+ * waits.
+ */
+export function findDueAccountDeletions(
   client: Prisma.TransactionClient,
   now: Date,
+  retryAfter: Date,
   take: number,
 ) {
   return client.user.findMany({
-    where: { deletionScheduledFor: { lte: now } },
-    orderBy: [{ deletionScheduledFor: 'asc' }, { id: 'asc' }],
-    select: { id: true },
+    where: {
+      deletionScheduledFor: { lte: now },
+      OR: [
+        { deletionPurgeFailedAt: null },
+        { deletionPurgeFailedAt: { lte: retryAfter } },
+      ],
+    },
+    orderBy: [
+      { deletionPurgeAttempts: 'asc' },
+      { deletionScheduledFor: 'asc' },
+      { id: 'asc' },
+    ],
+    select: { id: true, deletionPurgeAttempts: true },
     take,
   });
 }
 
-/** D63: the purge of a still pending account failed; n06 shows it. */
+/** D63, RA-BE-177: the purge of a still pending account failed once more; n06 shows it. */
 export function recordAccountPurgeFailure(
   client: Prisma.TransactionClient,
   userId: string,
@@ -104,7 +122,11 @@ export function recordAccountPurgeFailure(
 ) {
   return client.user.updateMany({
     where: { id: userId, deletionScheduledFor: { not: null } },
-    data: { deletionPurgeFailedAt: failedAt, deletionPurgeFailure: code },
+    data: {
+      deletionPurgeFailedAt: failedAt,
+      deletionPurgeFailure: code,
+      deletionPurgeAttempts: { increment: 1 },
+    },
   });
 }
 
@@ -180,6 +202,7 @@ export function clearAdministratorApplicationIdentity(
       deletionScheduledFor: null,
       deletionPurgeFailedAt: null,
       deletionPurgeFailure: null,
+      deletionPurgeAttempts: 0,
     },
   });
 }

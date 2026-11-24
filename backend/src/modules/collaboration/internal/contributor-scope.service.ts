@@ -9,10 +9,7 @@ import {
   type QualifyingContribution,
   type QualifyingContributionRule,
 } from "../public/collaboration-scope.port";
-import {
-  ContributionHistoryService,
-  contributorActorReference,
-} from "./contribution-history.service";
+import { ContributionHistoryService } from "./contribution-history.service";
 import {
   findActorContributorEvents,
   findPlanContributorEvents,
@@ -51,7 +48,7 @@ export class ContributorScopeService implements CollaborationScopePort {
     const events = await findPlanContributorEvents(
       tx,
       weddingPlanId,
-      contributorActorReference(actorUserId),
+      actorUserId,
       entityTypes,
       actions,
     );
@@ -100,7 +97,7 @@ export class ContributorScopeService implements CollaborationScopePort {
   ): Promise<string[]> {
     const events = await findActorContributorEvents(
       tx,
-      contributorActorReference(actorUserId),
+      actorUserId,
       entityTypes,
       actions,
       entityId,

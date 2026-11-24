@@ -1,6 +1,7 @@
 #!/bin/bash
 # Creates /opt/aarast/app/.env once, with random secrets generated on the host
-# (they never leave it). Re-running preserves secrets and adds the public IP once.
+# (they never leave it). Re-running preserves secrets and adds the public IP once,
+# and the contribution history's reference key (RA-BE-176) once.
 # Usage: prepare-env.sh <base-host> <media-bucket> <aws-region> <openwa-link-target> <public-ip>
 #   base-host e.g. 3-121-198-183.sslip.io -> api.<base>, admin.<base>, <base>
 set -euo pipefail
@@ -28,6 +29,11 @@ if [ -f "$env_file" ]; then
   elif [ "$count" != 1 ] || [ "$(sed -n 's/^AARAST_DIRECT_API_IP=//p' "$env_file")" != "$direct_api_ip" ]; then
     echo "FAIL: existing direct API IP differs; inspect before changing it" >&2
     exit 1
+  fi
+  # RA-BE-176: generated once; changing it later only splits a person's
+  # references in the contribution history.
+  if ! grep -q '^CONTRIBUTION_ACTOR_REF_SECRET=' "$env_file"; then
+    printf 'CONTRIBUTION_ACTOR_REF_SECRET=%s\n' "$(openssl rand -hex 32)" >>"$env_file"
   fi
   echo "kept existing $env_file"
   exit 0
@@ -58,6 +64,7 @@ AARAST_DB_MIGRATOR_DATABASE_URL=postgresql://aarast_migrator:$migrator_pw@postgr
 AARAST_DB_RUNTIME_DATABASE_URL=postgresql://aarast_runtime:$runtime_pw@postgres:5432/aarast?schema=public
 JWT_ACCESS_SECRET=$(secret 48)
 AUTH_LOGIN_THROTTLE_PEPPER=$(secret 32)
+CONTRIBUTION_ACTOR_REF_SECRET=$(secret 32)
 METRICS_TOKEN=$(secret 24)
 EOF
 chmod 0600 "$env_file"

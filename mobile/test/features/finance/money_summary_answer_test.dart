@@ -632,7 +632,7 @@ void main() {
       // «من وين» keeps the «if» on its card only as a shortfall; the
       // sentence itself is always in «كيف حسبناها؟» (Rashad 2026-11-17).
       Future<String> ifLine() async {
-        await tester.tap(find.text('من وين'));
+        await tester.tap(find.text('من فين'));
         await tester.pumpAndSettle();
         final link = find.byKey(const ValueKey('money-sources-how-counted'));
         await _scrollTo(tester, link);

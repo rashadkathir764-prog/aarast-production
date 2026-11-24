@@ -115,7 +115,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             key: const ValueKey('task-other-phone'),
             phoneController: otherPhoneController,
             nameController: otherNameController,
-            label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
+            label: context.say('رقمه (لو تشتي)', 'رقمه (لو تشتين)'),
             hintText: '77xxxxxxx',
             onDraftChanged: onDraftChanged,
           ),

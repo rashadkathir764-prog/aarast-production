@@ -39,7 +39,7 @@ class _Server extends ApiClient {
     Map<String, dynamic> body,
   ) async {
     if (refuse) {
-      throw const ApiException('هذا العضو مو في الخطة.', statusCode: 404);
+      throw const ApiException('هذا العضو مش في الخطة.', statusCode: 404);
     }
     throw const ApiException('ما وصلنا للخادم.', isNetworkFailure: true);
   }
@@ -129,7 +129,7 @@ void main() {
     expect(provider.tasks.single.assigneeUserId, isNull);
     expect(provider.errorMessage, isNull);
     expect(provider.noticeMessage, contains('ما انعطت لليلى'));
-    expect(provider.noticeMessage, contains('هذا العضو مو في الخطة.'));
+    expect(provider.noticeMessage, contains('هذا العضو مش في الخطة.'));
     final queued = await offline.database.pendingSyncItems();
     expect(queued, isEmpty, reason: 'nothing waits: the server said no');
   });

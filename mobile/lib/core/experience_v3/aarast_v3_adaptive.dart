@@ -120,7 +120,7 @@ abstract final class AarastV3ScreenCatalog {
   static const home = AarastV3ScreenContract(
     id: 'home',
     location: 'الرئيسية',
-    purpose: 'عرض أهم قرار حقيقي في الخطة الآن',
+    purpose: 'عرض أهم قرار حقيقي في الخطة الحين',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,

@@ -1122,7 +1122,7 @@ class ApiException implements Exception {
         'المساعد واقف هذا الشهر. جرّب الشهر الجاي.',
       'ASSISTANT_BUSY' => 'المساعد مشغول الحين. جرّب بعد شوي.',
       'ASSISTANT_UNAVAILABLE' =>
-        'المساعد مو متاح الحين. جرّب بعدين، ولو تكرر كلّم الدعم.',
+        'المساعد مش متاح الحين. جرّب بعدين، ولو تكرر كلّم الدعم.',
       // RA-MO-116, 117: the app's dialect, no technical word.
       'INVALID_CREDENTIALS' => 'الرقم أو كلمة المرور غلط.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,

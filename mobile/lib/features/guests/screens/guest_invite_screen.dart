@@ -419,8 +419,8 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                       JourneyTextField(
                         key: const ValueKey('invite-host'),
                         label: context.say(
-                          'باسم مين الدعوة؟ (لو تبي)',
-                          'باسم مين الدعوة؟ (لو تبين)',
+                          'باسم مين الدعوة؟ (لو تشتي)',
+                          'باسم مين الدعوة؟ (لو تشتين)',
                         ),
                         hint: context.planWord(
                           'مثلًا: عبدالرحمن الحمدي',
@@ -438,8 +438,8 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                       JourneyTextField(
                         key: const ValueKey('invite-free-text'),
                         label: context.say(
-                          'كلمة أو بيت شعر (لو تبي)',
-                          'كلمة أو بيت شعر (لو تبين)',
+                          'كلمة أو بيت شعر (لو تشتي)',
+                          'كلمة أو بيت شعر (لو تشتين)',
                         ),
                         hint: 'مثلًا: يا مرحبا بالحاضرين',
                         controller: _freeText,

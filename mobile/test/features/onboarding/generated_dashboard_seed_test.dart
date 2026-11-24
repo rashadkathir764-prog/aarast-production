@@ -33,7 +33,7 @@ void main() {
         ),
       );
 
-      expect(seed.weddingDateLabel, 'التاريخ غير معروف الآن');
+      expect(seed.weddingDateLabel, 'التاريخ غير معروف الحين');
       expect(seed.nextBestAction, 'حدد تاريخ العرس');
     });
 

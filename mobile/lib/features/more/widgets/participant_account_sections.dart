@@ -147,7 +147,7 @@ class _ParticipantAccountSectionsState
         navigator.context,
         answered
             ? reader.say('طلعت من $planTitle', 'طلعتِ من $planTitle')
-            : 'ما في نت الآن. خروجك من $planTitle يكتمل أول ما يرجع.',
+            : 'ما في نت الحين. خروجك من $planTitle يكتمل أول ما يرجع.',
         overlay: navigator.overlay,
       );
     }
@@ -446,7 +446,7 @@ class _LeaveSheetState extends State<_LeaveSheet> {
             text:
                 'باقي على جوالك ${arabicCount(widget.unsent, one: 'تغيير واحد', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} '
                 'لهذي الخطة ما انرسل بعد. '
-                '${say('لو طلعت الآن', 'لو طلعتِ الآن')} ينحذف وما يوصل.',
+                '${say('لو طلعت الحين', 'لو طلعتِ الحين')} ينحذف وما يوصل.',
             icon: LucideIcons.cloudOff,
             color: AarastV3Color.danger,
             soft: AarastV3Color.dangerSoft,

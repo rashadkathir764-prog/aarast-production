@@ -657,8 +657,8 @@ class _Sent extends StatelessWidget {
           ),
           child: Column(
             children: [
-              step('انرسل', when: 'الآن'),
-              step('انشر الآن'),
+              step('انرسل', when: 'الحين'),
+              step('انشر الحين'),
             ],
           ),
         ),

@@ -55,7 +55,7 @@ void main() {
             AarastV3ListRow(
               title: 'عنصر طويل لاختبار التخطيط العربي',
               subtitle: 'تفصيل واضح يمكن أن يمتد إلى سطرين دون قص الإجراء.',
-              meta: 'يحتاج انتباهك الآن',
+              meta: 'يحتاج انتباهك الحين',
               leading: const Icon(LucideIcons.user),
               action: IconButton(
                 tooltip: 'المزيد',
@@ -137,7 +137,7 @@ void main() {
                 child: const Column(
                   children: [
                     AarastV3FocusPrompt(
-                      question: 'ما القرار الذي تريد حسمه الآن؟',
+                      question: 'ما القرار الذي تريد حسمه الحين؟',
                       supportingText:
                           'ابدأ بالمعلومة الأساسية، ويمكنك إضافة التفاصيل لاحقًا.',
                     ),
@@ -162,7 +162,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ما القرار الذي تريد حسمه الآن؟'), findsOneWidget);
+    expect(find.text('ما القرار الذي تريد حسمه الحين؟'), findsOneWidget);
     expect(find.text('حفظ القرار والمتابعة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

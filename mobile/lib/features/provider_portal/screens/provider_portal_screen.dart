@@ -405,7 +405,7 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const copy = ('حسابك كمزود مو متاح الحين', 'السحب لتحت يحدّث حالة حسابك.');
+    const copy = ('حسابك كمزود مش متاح الحين', 'السحب لتحت يحدّث حالة حسابك.');
     return RefreshIndicator(
       color: AarastV3Color.primary,
       onRefresh: context.read<ProviderDashboardProvider>().loadDashboard,

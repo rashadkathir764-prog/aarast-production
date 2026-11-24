@@ -87,7 +87,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
           color: context.accent.primary,
           eyebrow: failed == null ? 'الحجز' : 'ما وصلنا',
           title: failed == null ? 'ما لقينا هذا الحجز' : 'ما قدرنا نقرأ الحجز',
-          subtitle: failed ?? 'يمكن انلغى، أو هو لخطة ثانية غير المفتوحة الآن.',
+          subtitle: failed ?? 'يمكن انلغى، أو هو لخطة ثانية غير المفتوحة الحين.',
           body: const SizedBox.shrink(),
           action: failed == null
               ? 'تمام'

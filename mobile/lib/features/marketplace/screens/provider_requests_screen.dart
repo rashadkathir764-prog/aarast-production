@@ -266,7 +266,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                       JourneyBox(
                         key: const ValueKey('requests-empty'),
                         child: Text(
-                          'ما في طلبات لهذي الخدمة الآن.',
+                          'ما في طلبات لهذي الخدمة الحين.',
                           style: JourneyType.of(
                             JourneyType.body,
                             color: AarastV3Color.textMuted,

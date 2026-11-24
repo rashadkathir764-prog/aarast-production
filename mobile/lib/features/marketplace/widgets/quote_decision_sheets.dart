@@ -174,7 +174,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
           ),
         ),
         const SizedBox(height: AarastV3Space.x3),
-        step('1', 'يوصلهم طلب الحجز الآن'),
+        step('1', 'يوصلهم طلب الحجز الحين'),
         step('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
         step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
         const SizedBox(height: AarastV3Space.x1),

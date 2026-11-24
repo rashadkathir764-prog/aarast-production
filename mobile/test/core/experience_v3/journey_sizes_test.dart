@@ -57,7 +57,7 @@ void main() {
           child: JourneyQuestionPage(
             step: 0,
             total: 4,
-            question: 'وين العرس؟',
+            question: 'فين العرس؟',
             primaryLabel: 'التالي',
             onPrimary: () {},
             onBack: () {},
@@ -66,7 +66,7 @@ void main() {
         ),
       ),
     );
-    expect(_size(tester, 'وين العرس؟'), JourneyType.hero);
+    expect(_size(tester, 'فين العرس؟'), JourneyType.hero);
     // D75: the count is the progress track's spoken label, not drawn text.
     expect(find.text('1 من 4'), findsNothing);
     expect(

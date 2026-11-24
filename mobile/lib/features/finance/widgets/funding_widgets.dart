@@ -293,8 +293,8 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     return JourneySheetBody(
       title: _editing ? 'تعديل المصدر' : 'مصدر فلوس',
       subtitle: context.say(
-        'من وين بتجيب فلوس عرسك',
-        'من وين بتجيبين فلوس عرسك',
+        'من فين بتجيب فلوس عرسك',
+        'من فين بتجيبين فلوس عرسك',
       ),
       children: [
         Wrap(
@@ -470,7 +470,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
         ),
         if (_showMore) ...[
           JourneyTextField(
-            label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
+            label: context.say('رقمه (لو تشتي)', 'رقمه (لو تشتين)'),
             controller: _phone,
             icon: LucideIcons.phone,
             keyboardType: TextInputType.phone,

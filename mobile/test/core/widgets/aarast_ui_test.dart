@@ -114,7 +114,7 @@ void main() {
             padding: const EdgeInsets.all(16),
             children: [
               const AarastEmptyState(
-                title: 'خطتك هادئة الآن',
+                title: 'خطتك هادئة الحين',
                 message: 'لا يوجد ما يحتاج انتباهك في هذه اللحظة.',
                 tone: AarastEmptyStateTone.positive,
               ),
@@ -130,7 +130,7 @@ void main() {
       ),
     );
 
-    expect(find.text('خطتك هادئة الآن'), findsOneWidget);
+    expect(find.text('خطتك هادئة الحين'), findsOneWidget);
     expect(find.text('تعذر تحميل البيانات'), findsOneWidget);
     expect(
       find.descendant(

@@ -143,8 +143,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         section: JourneySection.money,
         emptyIcon: LucideIcons.piggyBank,
         emptyTitle: context.say(
-          'ما سجلت من وين بتجيب الفلوس',
-          'ما سجلتِ من وين بتجيبين الفلوس',
+          'ما سجلت من فين بتجيب الفلوس',
+          'ما سجلتِ من فين بتجيبين الفلوس',
         ),
         // Why, before the add button under it (as «من وين»'s empty tab).
         emptyMessage:
@@ -205,10 +205,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
               0,
             ),
             child: JourneySubHeader(
-              title: 'من وين',
+              title: 'من فين',
               subtitle: context.say(
-                'من وين بتجيب فلوس عرسك',
-                'من وين بتجيبين فلوس عرسك',
+                'من فين بتجيب فلوس عرسك',
+                'من فين بتجيبين فلوس عرسك',
               ),
               onBack: () => context.canPop()
                   ? context.pop()
@@ -312,7 +312,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         content: Text(
           planned > 0
               ? 'المصدر ينشال ومعه $planned من مواعيد السداد.'
-              : 'المصدر ينشال من «من وين».',
+              : 'المصدر ينشال من «من فين».',
         ),
         actions: [
           TextButton(

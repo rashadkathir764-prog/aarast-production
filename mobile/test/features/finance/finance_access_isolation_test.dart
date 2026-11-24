@@ -168,7 +168,7 @@ void main() {
       expect(api.summaryCalls, readsBefore + 1);
       expect(
         provider.errorMessage,
-        'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. هذي هي الآن، عدّل عليها.',
+        'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. هذي هي الحين، عدّل عليها.',
       );
       // The next save is made from the budget just read.
       await provider.setTotalBudget(planId: 'plan-owner', totalBudget: '20000');

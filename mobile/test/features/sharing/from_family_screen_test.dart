@@ -74,7 +74,7 @@ void main() {
     // J2-20: said to a man or a woman alike, no imperative.
     expect(
       find.text(
-        'هذا مو رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
+        'هذا مش رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
       ),
       findsOneWidget,
     );

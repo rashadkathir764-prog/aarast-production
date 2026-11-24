@@ -111,7 +111,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
         children: [
           JourneySubHeader(
             title: 'فحص الاتصال',
-            subtitle: 'اللي قسناه، مو اللي خمّناه',
+            subtitle: 'اللي قسناه، مش اللي خمّناه',
             onBack: () => context.popOrGo(AppRouter.more),
           ),
           JourneyBox(

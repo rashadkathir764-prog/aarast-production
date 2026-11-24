@@ -85,7 +85,7 @@ void main() {
     expect(router.state.uri.path, AppRouter.welcome);
     expect(find.byType(SmartWelcomeScreen), findsOneWidget);
     // D75: the door that opens for anyone.
-    expect(find.text('أهلًا فيك، من وين نبدأ؟'), findsOneWidget);
+    expect(find.text('أهلًا فيك، من فين نبدأ؟'), findsOneWidget);
     expect(find.byKey(const ValueKey('door-plan')), findsOneWidget);
   });
 

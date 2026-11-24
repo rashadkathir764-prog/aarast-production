@@ -56,7 +56,7 @@ AarastDashboardFocus resolveDashboardFocus(
   final backendItem = summary.importantItems.firstOrNull;
   if (backendItem != null) {
     return AarastDashboardFocus(
-      eyebrow: _isUrgent(backendItem) ? 'يحتاج انتباهك' : 'الأولوية الآن',
+      eyebrow: _isUrgent(backendItem) ? 'يحتاج انتباهك' : 'الأولوية الحين',
       title: _safeText(
         backendItem.title,
         fallback: say('راجع الخطوة التالية', 'راجعي الخطوة التالية'),

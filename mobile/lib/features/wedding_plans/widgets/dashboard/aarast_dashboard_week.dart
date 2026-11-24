@@ -600,7 +600,7 @@ class _DayRow extends StatelessWidget {
           ),
           if (now)
             const JourneyTag(
-              label: 'الآن',
+              label: 'الحين',
               color: AarastV3Color.brandAccentStrong,
               soft: AarastV3Color.brandAccentSoft,
             ),

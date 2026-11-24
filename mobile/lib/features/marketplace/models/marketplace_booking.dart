@@ -373,7 +373,7 @@ String? bookingErrorMessage(String? code) {
   return switch (code) {
     // RA-MO-262: no fixed «اختر» to a reader who may be the bride; what
     // the day is, and the picker stays open for another.
-    'BOOKING_DATE_UNAVAILABLE' => 'المزوّد مو متاح في هذا اليوم.',
+    'BOOKING_DATE_UNAVAILABLE' => 'المزوّد مش متاح في هذا اليوم.',
     'BOOKING_DAY_FULL' => 'المزوّد محجوز كامل في هذا اليوم.',
     'BOOKING_DATE_HAS_BOOKING' => 'عندك حجز مؤكد في هذا اليوم.',
     'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى، الحجز ليوم جاي.',

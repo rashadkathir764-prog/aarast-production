@@ -54,8 +54,8 @@ class _PlanTasks extends StatelessWidget {
             text:
                 memoryNote ??
                 context.say(
-                  'تتابع المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
-                  'تتابعين المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
+                  'تتابع المهام فين وصلت. الإضافة والتعديل عند $ownerWord.',
+                  'تتابعين المهام فين وصلت. الإضافة والتعديل عند $ownerWord.',
                 ),
             icon: LucideIcons.eye,
             color: AarastV3Color.textMuted,

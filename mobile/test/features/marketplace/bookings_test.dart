@@ -72,7 +72,7 @@ void main() {
     expect(
       bookingErrorMessage('BOOKING_DATE_UNAVAILABLE'),
       // RA-MO-262 (2026-11-13): no fixed «اختر» to the bride.
-      'المزوّد مو متاح في هذا اليوم.',
+      'المزوّد مش متاح في هذا اليوم.',
     );
     expect(bookingErrorMessage('SOMETHING_ELSE'), isNull);
   });

@@ -817,7 +817,7 @@ void main() {
       // leave is owed and the person is told when it completes.
       expect(find.text('طلعت من عرس المشارك'), findsNothing);
       expect(
-        find.text('ما في نت الآن. خروجك من عرس المشارك يكتمل أول ما يرجع.'),
+        find.text('ما في نت الحين. خروجك من عرس المشارك يكتمل أول ما يرجع.'),
         findsOneWidget,
       );
       await tester.pump(const Duration(seconds: 6));

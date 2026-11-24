@@ -91,7 +91,7 @@ void main() {
 
   // 13:00 UTC is 16:00 in Sana'a: the wedding (after the asr) is under
   // way, not the lunch the phone's own hour pointed at.
-  testWidgets('the day\'s «الآن» is the hour in Sana\'a', (tester) async {
+  testWidgets('the day\'s «الحين» is the hour in Sana\'a', (tester) async {
     await _pump(
       tester,
       now: DateTime.utc(2027, 1, 21, 13),
@@ -111,7 +111,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: _rowOf('الزفاف'), matching: find.text('الآن')),
+      find.descendant(of: _rowOf('الزفاف'), matching: find.text('الحين')),
       findsOneWidget,
     );
   });

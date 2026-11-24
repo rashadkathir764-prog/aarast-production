@@ -131,8 +131,8 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
               section: JourneySection.money,
               emptyIcon: LucideIcons.piggyBank,
               emptyTitle: context.say(
-                'من وين بتجيب فلوس العرس؟',
-                'من وين بتجيبين فلوس العرس؟',
+                'من فين بتجيب فلوس العرس؟',
+                'من فين بتجيبين فلوس العرس؟',
               ),
               // Why record it, said before asking (Rashad 2026-11-17).
               emptyMessage:

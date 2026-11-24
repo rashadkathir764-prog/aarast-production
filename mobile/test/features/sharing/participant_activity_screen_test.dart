@@ -135,8 +135,8 @@ void main() {
       action: 'SECTION_REVOKED',
       snapshot: {'status': 'REVOKED'},
     );
-    expect(activityLine(revoked, self: true), 'بدون صلاحية المال من الآن');
-    expect(activityLine(revoked, self: false), 'بدون صلاحية المال من الآن');
+    expect(activityLine(revoked, self: true), 'بدون صلاحية المال من الحين');
+    expect(activityLine(revoked, self: false), 'بدون صلاحية المال من الحين');
   });
 
   test('merged lists hold back rows older than a list still paging', () async {

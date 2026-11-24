@@ -113,7 +113,7 @@ Future<PlanQuickAddKind?> showPlanQuickAddSheet(
                 ),
                 trailing: action.recommended
                     ? JourneyTag(
-                        label: 'الأنسب الآن',
+                        label: 'الأنسب الحين',
                         color: action.kind.section.colorOf(context),
                         soft: action.kind.section.softOf(context),
                       )

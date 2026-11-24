@@ -39,7 +39,7 @@ class _TaskLinkSheet extends StatelessWidget {
     // RA-MO-200: with nothing to link to, the sheet was an empty box.
     if (items.isEmpty && payments.isEmpty && !linked) {
       return JourneySheetBody(
-        title: 'وين تنتهي المهمة؟',
+        title: 'فين تنتهي المهمة؟',
         children: [
           JourneyNote(
             key: const ValueKey('task-link-nothing'),
@@ -53,7 +53,7 @@ class _TaskLinkSheet extends StatelessWidget {
       );
     }
     return JourneySheetBody(
-      title: 'وين تنتهي المهمة؟',
+      title: 'فين تنتهي المهمة؟',
       subtitle: 'تنتهي لحالها لما ينحجز البند أو تنسجّل الدفعة',
       children: [
         JourneyBox(

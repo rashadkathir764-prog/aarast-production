@@ -1039,7 +1039,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
               ? error.message
               : budget
               ? 'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
-                    'هذي هي الآن، عدّل عليها.'
+                    'هذي هي الحين، عدّل عليها.'
               // Said to either reader, with no verb to a man or a woman.
               : 'فيه تعديل من جهاز ثاني سبق تعديلك، فما انحفظ. '
                     'اللي قدامك الحين هو الجديد.';

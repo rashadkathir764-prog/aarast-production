@@ -170,8 +170,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   sub: keptPlan == null
                       ? null
                       : context.say(
-                          'ولو حسابك فيه خطة، تختار وين تكون هذي',
-                          'ولو حسابك فيه خطة، تختارين وين تكون هذي',
+                          'ولو حسابك فيه خطة، تختار فين تكون هذي',
+                          'ولو حسابك فيه خطة، تختارين فين تكون هذي',
                         ),
                   onPressed: auth.isSubmitting ? null : _login,
                   color: context.accent.primaryDark,

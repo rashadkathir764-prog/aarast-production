@@ -309,7 +309,7 @@ void main() {
         find.byKey(const ValueKey('money-mahr-and-wedding')),
         findsNothing,
       );
-      expect(find.text('وين تروح الفلوس'), findsNothing);
+      expect(find.text('فين تروح الفلوس'), findsNothing);
     });
   });
 
@@ -407,7 +407,7 @@ void main() {
         ),
       ],
     );
-    await tester.tap(find.text('من وين'));
+    await tester.tap(find.text('من فين'));
     await tester.pumpAndSettle();
 
     expect(find.text('المهر من العريس'), findsOneWidget);
@@ -461,7 +461,7 @@ void main() {
         source('mahr-rest', 'MAHR', 'باقي المهر', received: false),
       ],
     );
-    await tester.tap(find.text('من وين'));
+    await tester.tap(find.text('من فين'));
     await tester.pumpAndSettle();
 
     // Her voice: what she spent of what reached her.

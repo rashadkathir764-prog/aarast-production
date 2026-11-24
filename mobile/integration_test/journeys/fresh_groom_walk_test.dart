@@ -68,7 +68,7 @@ void main() {
           why: 'اليوم المختار يظهر قبل «التالي»',
         );
         await walk.tapText('التالي');
-        walk.expectSee('وين العرس', why: 'الاسم والموعد وصّلا للسؤال الثاني');
+        walk.expectSee('فين العرس', why: 'الاسم والموعد وصّلا للسؤال الثاني');
       });
 
       await walk.step('a05_place_budget', 'المدينة والميزانية', () async {

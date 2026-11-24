@@ -348,7 +348,7 @@ void main() {
 
       expect(find.byType(JourneySheetBody), findsOneWidget);
       expect(find.text('ايش تضيف؟'), findsOneWidget);
-      expect(find.text('الأنسب الآن'), findsOneWidget);
+      expect(find.text('الأنسب الحين'), findsOneWidget);
       final last = find.text('إضافة بند');
       expect(last.hitTestable(), findsNothing);
 

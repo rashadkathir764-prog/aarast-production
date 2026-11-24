@@ -680,7 +680,7 @@ class JourneyWalk {
       await signInOnly(phone);
       if (pickContext != null) {
         if (await waitFor(text(pickContext), seconds: 8)) {
-          if (sees('وين تدخل؟') || sees('خطة مين')) {
+          if (sees('فين تدخل؟') || sees('خطة مين')) {
             await tapText(pickContext, wait: 4);
           }
         }

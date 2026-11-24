@@ -154,7 +154,7 @@ void main() {
 
       expect(find.byType(ProviderApprovedScreen), findsOneWidget);
       expect(find.text('مبروك، صرت في اعّرست'), findsOneWidget);
-      expect(find.text('العرسان في صنعاء يشوفونك من الآن.'), findsOneWidget);
+      expect(find.text('العرسان في صنعاء يشوفونك من الحين.'), findsOneWidget);
       expect(find.text('تحديث تقويمك'), findsOneWidget);
       expect(find.text('خدماتك وأسعارك'), findsOneWidget);
       expect(find.text('شغّل التنبيهات'), findsOneWidget);
@@ -313,10 +313,10 @@ void main() {
     ) async {
       final api = _Api(
         status: 'NEEDS_CHANGES',
-        fieldNotes: const {'CATEGORY': 'نشاطك مزمار مو تصوير.'},
+        fieldNotes: const {'CATEGORY': 'نشاطك مزمار مش تصوير.'},
       );
       await _pumpPortal(tester, api);
-      expect(find.text('نشاطك مزمار مو تصوير.'), findsOneWidget);
+      expect(find.text('نشاطك مزمار مش تصوير.'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-changes-category')));
       await tester.pumpAndSettle();
       await tester.tap(
@@ -463,9 +463,9 @@ void main() {
       await _pumpPortal(tester, api);
 
       expect(find.byType(ProviderRejectedScreen), findsOneWidget);
-      expect(find.text('ما قدرنا نوافق الآن'), findsOneWidget);
+      expect(find.text('ما قدرنا نوافق الحين'), findsOneWidget);
       expect(
-        find.text('مو نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.'),
+        find.text('مش نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.'),
         findsOneWidget,
       );
       // No gender is kept for a provider, so these never address one.

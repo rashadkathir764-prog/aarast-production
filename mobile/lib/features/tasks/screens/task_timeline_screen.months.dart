@@ -33,7 +33,7 @@ class _MonthsTimeline extends StatelessWidget {
           _MonthBlock(
             key: ValueKey('task-month-${month.year}-${month.month}'),
             title: month.year == now.year && month.month == now.month
-                ? '${arabicMonthName(month.month)} · الآن'
+                ? '${arabicMonthName(month.month)} · الحين'
                 : month.year == now.year
                 ? arabicMonthName(month.month)
                 : '${arabicMonthName(month.month)} ${month.year}',

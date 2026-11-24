@@ -458,7 +458,7 @@ void main() {
       await _pumpPortal(tester, api, initialTab: 'requests');
 
       // Changed on purpose (critique ب6): people's words.
-      expect(find.text('حسابك كمزود مو متاح الحين'), findsOneWidget);
+      expect(find.text('حسابك كمزود مش متاح الحين'), findsOneWidget);
       expect(find.text('السحب لتحت يحدّث حالة حسابك.'), findsOneWidget);
       expect(
         find.byKey(const Key('provider-operations-support')),

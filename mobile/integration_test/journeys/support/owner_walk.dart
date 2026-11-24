@@ -160,7 +160,7 @@ const groomPersona = OwnerPersona(
   mahr: MahrWalkWords(
     homeCard: 'الاتفاق مع أهل العروسة',
     homeLine: 'سلّمت 2 من 3 مليون · الباقي',
-    moneyTitle: 'وين تروح الفلوس',
+    moneyTitle: 'فين تروح الفلوس',
     moneyCard: 'الاتفاق مع أهل العروسة',
     itemsSection: 'الاتفاق مع أهل العروسة',
   ),
@@ -227,11 +227,11 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   final walk = JourneyWalk(tester, p.journey);
   await walk.boot();
 
-  await walk.step('a02b_whose', 'وين تدخل: خطتين', () async {
+  await walk.step('a02b_whose', 'فين تدخل: خطتين', () async {
     // Signs in and stops on the chooser to judge it before picking.
     await walk.signInOnly(p.phone);
-    if (!await walk.waitFor(walk.text('وين تدخل؟'), seconds: 10)) {
-      walk.fail('ما ظهرت شاشة «وين تدخل؟» والحساب له خطتين');
+    if (!await walk.waitFor(walk.text('فين تدخل؟'), seconds: 10)) {
+      walk.fail('ما ظهرت شاشة «فين تدخل؟» والحساب له خطتين');
       return;
     }
     walk.expectSee(p.planName);
@@ -362,7 +362,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.back();
     // His mahr's rest is a due on him; hers is money coming to her.
     if (p.bride) {
-      walk.expectNotSee('الباقي يوم العقد', why: 'مهرها يوصلها، مو دفعة عليها');
+      walk.expectNotSee('الباقي يوم العقد', why: 'مهرها يوصلها، مش دفعة عليها');
     } else {
       walk.expectSee('الباقي يوم العقد', why: 'باقي المهر من دفعاته الجاية');
     }
@@ -433,7 +433,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // D104: the loan is paid back apart from the wedding's dues.
     if (!walk.sees('سداد ${p.loanSource}')) await walk.scroll(pixels: 1500);
     walk.expectSee('سداد ${p.loanSource}');
-    walk.expectSee('مو من تكاليف العرس', why: 'السلفة مو من دفعات العرس');
+    walk.expectSee('مش من تكاليف العرس', why: 'السلفة مش من دفعات العرس');
     await walk.scroll(pixels: -3000);
   });
 
@@ -459,9 +459,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   });
   await walk.back();
 
-  await walk.step('c05_money_funding', 'المال: من وين (المصادر)', () async {
+  await walk.step('c05_money_funding', 'المال: من فين (المصادر)', () async {
     await walk.tab('المال');
-    await walk.tapText('من وين', wait: 2.5);
+    await walk.tapText('من فين', wait: 2.5);
     // D104: «معك» is what reached the owner less what the owner paid.
     walk.expectSee('معك الحين');
     walk.expectSee(
@@ -484,7 +484,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       walk.expectSee('باقي المهر');
       walk.expectSee('موعدها $mahrRestDay', why: 'موعد باقي المهر');
     } else {
-      walk.expectNotSee('المهر من العريس', why: 'مهر العريس اتفاق، مو مصدر');
+      walk.expectNotSee('المهر من العريس', why: 'مهر العريس اتفاق، مش مصدر');
     }
     // D108: the family by person: what reached the owner and what the
     // family paid the shops, each under the person who gave it.
@@ -587,7 +587,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       // D116: each occasion is a card on the guest's page with where the
       // guest stands; a new guest was told of nothing yet.
       walk.expectSee('الغداء', why: 'مناسبة الضيف في تفاصيله');
-      walk.expectSee('ما وصلته بعد', why: 'وين الضيف من الغداء');
+      walk.expectSee('ما وصلته بعد', why: 'فين الضيف من الغداء');
       // The seed goes back as it was (124 guests) for the walks after this
       // one and for a rerun, the way a person takes a guest off the list.
       if (!await walk.tapKey('guest-menu', wait: 1)) return;

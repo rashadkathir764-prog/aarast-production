@@ -187,7 +187,7 @@ class _PartySection extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const ValueKey('cost-party-phone'),
-            label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
+            label: context.say('رقمه (لو تشتي)', 'رقمه (لو تشتين)'),
             controller: phoneController,
             icon: LucideIcons.phone,
             keyboardType: TextInputType.phone,

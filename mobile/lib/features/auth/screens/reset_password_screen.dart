@@ -348,7 +348,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       const SizedBox(height: AarastV3Space.x1),
       Text(
         _signingIn
-            ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الآن بكلمة المرور الجديدة.'
+            ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الحين بكلمة المرور الجديدة.'
             : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
         textAlign: TextAlign.center,
         style: JourneyType.of(JourneyType.body, color: AarastV3Color.textMuted),

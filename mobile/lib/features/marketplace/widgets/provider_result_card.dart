@@ -58,7 +58,7 @@ Future<void> showProviderFeaturedSheet(BuildContext context) {
       ),
       children: [
         Text(
-          'هذا المزود دفع عشان يطلع أول. مو ترشيح من اعّرست.',
+          'هذا المزود دفع عشان يطلع أول. مش ترشيح من اعّرست.',
           style: JourneyType.of(JourneyType.lead),
         ),
       ],

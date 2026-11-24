@@ -542,8 +542,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             JourneyNote(
               key: const Key('marketplace-login-note'),
               text: context.say(
-                'تقدر تتصفح الآن. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
-                'تقدرين تتصفحين الآن. تطلبين عروض وتتابعينها بعد ما تحفظين خطتك برقم جوالك.',
+                'تقدر تتصفح الحين. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
+                'تقدرين تتصفحين الحين. تطلبين عروض وتتابعينها بعد ما تحفظين خطتك برقم جوالك.',
               ),
               icon: LucideIcons.logIn,
               color: context.accent.primary,

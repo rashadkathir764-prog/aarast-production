@@ -303,7 +303,7 @@ void main() {
 
         expect(find.byType(JourneySheetBody), findsOneWidget);
         expect(find.text('ايش تضيف؟'), findsOneWidget);
-        expect(find.text('الأنسب الآن'), findsOneWidget);
+        expect(find.text('الأنسب الحين'), findsOneWidget);
         expect(find.text('إضافة مهمة'), findsOneWidget);
         expect(find.text('إضافة ضيف'), findsOneWidget);
         expect(find.text('طلب عرض سعر'), findsOneWidget);

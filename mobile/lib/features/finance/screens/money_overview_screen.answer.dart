@@ -239,8 +239,8 @@ class _ShareHero extends StatelessWidget {
         label: onSources == null ? 'ما نعرف إذا تكفي' : 'تكفي فلوسك؟',
         icon: onSources == null ? null : LucideIcons.piggyBank,
         semanticLabel: context.say(
-          'سجّل من وين فلوسك ونقول لك إذا تكفي',
-          'سجّلي من وين فلوسك ونقول لك إذا تكفي',
+          'سجّل من فين فلوسك ونقول لك إذا تكفي',
+          'سجّلي من فين فلوسك ونقول لك إذا تكفي',
         ),
         onTap: onSources,
       );
@@ -888,7 +888,7 @@ class _WholePicture extends StatelessWidget {
                       ? end(money(summary.costs.total))
                       : end(
                           money(expected.total),
-                          unknown > 0 ? 'مو نهائية' : 'لين الحين',
+                          unknown > 0 ? 'مش نهائية' : 'لين الحين',
                         ),
                   onTap: onItems,
                 ),
@@ -1028,11 +1028,11 @@ class _HowWeCountedSheet extends StatelessWidget {
         ),
         const SizedBox(height: AarastV3Space.x1),
         for (final line in [
-          if (others.isNotEmpty) 'اللي على ${others.join(' و')}، لأنه مو عليك.',
+          if (others.isNotEmpty) 'اللي على ${others.join(' و')}، لأنه مش عليك.',
           for (final pledge in coverage.pledgesIgnored)
             'وعد ${pledge.sourceName} (${record(pledge.amount)})، لأنه ${pledge.leftOut == MoneyPledgeLeftOut.late ? 'تأخر عن موعده' : 'ما له موعد'}.',
           if (estimates > 0)
-            'التقديرات، لأنها مو اتفاقات. ${moneyIfEstimatesWords(context, coverage, money)}',
+            'التقديرات، لأنها مش اتفاقات. ${moneyIfEstimatesWords(context, coverage, money)}',
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: AarastV3Space.x1),

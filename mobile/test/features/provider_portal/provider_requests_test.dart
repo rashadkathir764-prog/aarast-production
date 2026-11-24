@@ -107,7 +107,7 @@ Map<String, dynamic> bookingJson({
 
 void main() {
   group('p13 home', () {
-    testWidgets('who waits, since when, and «ردّ الآن» opens the requests', (
+    testWidgets('who waits, since when, and «ردّ الحين» opens the requests', (
       tester,
     ) async {
       final opened = <int>[];
@@ -457,7 +457,7 @@ void main() {
       expect(find.text('550,000'), findsOneWidget);
       await tester.enterText(
         find.byKey(const Key('provider-offer-message')),
-        '300 صورة معدّلة وفيلم 10 دقايق. الدرون مو داخل.',
+        '300 صورة معدّلة وفيلم 10 دقايق. الدرون مش داخل.',
       );
       await tester.tap(find.byKey(const Key('provider-offer-preview')));
       await tester.pumpAndSettle();

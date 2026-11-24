@@ -18,7 +18,7 @@ class _LocationContextCard extends StatelessWidget {
         icon: LucideIcons.mapPin,
         color: context.accent.primary,
         soft: context.accent.primarySoft,
-        title: 'وين عرسك؟',
+        title: 'فين عرسك؟',
         subtitle: context.say(
           'كمّل مكان العرس ونرتب لك مزودين مدينتك أول',
           'كمّلي مكان العرس ونرتب لك مزودين مدينتك أول',

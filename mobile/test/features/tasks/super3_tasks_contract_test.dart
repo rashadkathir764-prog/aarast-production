@@ -398,7 +398,7 @@ void main() {
       find.byKey(ValueKey('task-month-${now.year}-${now.month}')),
       findsOneWidget,
     );
-    expect(find.textContaining('· الآن'), findsOneWidget);
+    expect(find.textContaining('· الحين'), findsOneWidget);
     expect(find.byKey(const ValueKey('task-month-undated')), findsOneWidget);
     expect(find.text('أرسل الدعوات'), findsOneWidget);
     expect(tester.takeException(), isNull);

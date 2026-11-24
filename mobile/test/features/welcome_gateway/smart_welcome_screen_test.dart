@@ -228,7 +228,7 @@ void main() {
     tester,
   ) async {
     await _pump(tester);
-    expect(find.text('أهلًا فيك، من وين نبدأ؟'), findsOneWidget);
+    expect(find.text('أهلًا فيك، من فين نبدأ؟'), findsOneWidget);
     expect(find.text('أسوّي خطة عرسي'), findsOneWidget);
     expect(find.text('معي رابط دعوة'), findsOneWidget);
     expect(find.text('أقدّم خدمة للأعراس'), findsOneWidget);
@@ -347,7 +347,7 @@ void main() {
     expect(_link(tester, 'ما حددنا الموعد بعد').onPressed, isNotNull);
 
     await _tap(tester, 'ما حددنا الموعد بعد');
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
     expect(_progress('السؤال 2 من 3'), findsOneWidget);
   });
 
@@ -372,7 +372,7 @@ void main() {
     expect(_button(tester, 'التالي').onPressed, isNull);
     await _tap(tester, 'أكمل بدون ميزانية');
     expect(find.text('اختر المدينة أول'), findsOneWidget);
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
 
     await _tap(tester, 'صنعاء');
     await _tap(tester, 'التالي');
@@ -789,7 +789,7 @@ void main() {
 
     _expectDayField(tester, day);
     await _tap(tester, 'التالي');
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
   });
 
   testWidgets('a03 «موعدنا بعد» opens the eighteen later months', (
@@ -1030,7 +1030,7 @@ void main() {
       signedInPlans: plans,
       initialLocation: '/wedding-plans/create',
     );
-    expect(find.text('أهلًا فيك، من وين نبدأ؟'), findsNothing);
+    expect(find.text('أهلًا فيك، من فين نبدأ؟'), findsNothing);
     expect(find.byKey(const ValueKey('door-login')), findsNothing);
     expect(find.text('أنت العريس ولا العروسة؟'), findsOneWidget);
 
@@ -1076,7 +1076,7 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
     }
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
@@ -1137,7 +1137,7 @@ void main() {
     final day = DateTime(month.year, month.month, 15);
     await _pickDay(tester, day);
     await _tap(tester, 'التالي');
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
 
     // The app closes and opens again on the same phone.
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1146,7 +1146,7 @@ void main() {
     expect(find.text('كمّل خطتي'), findsOneWidget);
     expect(find.text('عرس سلمى، من حيث وقفتي'), findsOneWidget);
     await _tapKey(tester, 'door-plan');
-    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
     // Still her plan, in her words.
     expect(find.text('أكملي بدون ميزانية'), findsOneWidget);
 

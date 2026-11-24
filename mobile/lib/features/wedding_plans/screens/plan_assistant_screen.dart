@@ -352,7 +352,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       return const [
         JourneyNote(
           key: ValueKey('assistant-off'),
-          text: 'المساعد مو شغّال في هذي النسخة بعد.',
+          text: 'المساعد مش شغّال في هذي النسخة بعد.',
           icon: LucideIcons.info,
         ),
       ];
@@ -887,7 +887,7 @@ class _ConsentSheet extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x1),
         Center(
           child: JourneyTextAction(
-            label: 'مو الآن',
+            label: 'مش الحين',
             onPressed: () => Navigator.of(context).pop(false),
           ),
         ),

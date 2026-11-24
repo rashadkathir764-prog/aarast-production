@@ -35,7 +35,7 @@ abstract final class AarastV3Copy {
 
   static const firstTaskTitle = 'حوّل قرارك إلى خطوة';
   static const firstTaskMessage =
-      'ابدأ بالقرار الأقرب لك الآن؛ يكفي عنوان واضح ويمكنك إضافة التفاصيل لاحقًا.';
+      'ابدأ بالقرار الأقرب لك الحين؛ يكفي عنوان واضح ويمكنك إضافة التفاصيل لاحقًا.';
 
   static const firstGuestTitle = 'مين بتعزم؟';
   static const firstGuestMessage =

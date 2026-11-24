@@ -149,7 +149,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               child: JourneyListState(
                 phase: JourneyListPhase.empty,
                 section: JourneySection.providers,
-                emptyTitle: 'المزود هذا مو موجود',
+                emptyTitle: 'المزود هذا مش موجود',
                 emptyMessage: 'ما لقينا صفحته، يمكن انشالت من الدليل.',
               ),
             );

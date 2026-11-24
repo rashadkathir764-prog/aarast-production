@@ -130,7 +130,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('provider-featured-sheet')), findsOneWidget);
       expect(
-        find.text('هذا المزود دفع عشان يطلع أول. مو ترشيح من اعّرست.'),
+        find.text('هذا المزود دفع عشان يطلع أول. مش ترشيح من اعّرست.'),
         findsOneWidget,
       );
       await tester.tap(find.text('فهمت'));

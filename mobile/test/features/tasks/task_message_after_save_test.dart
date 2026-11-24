@@ -87,7 +87,7 @@ void main() {
     expect(uri.queryParameters['body'], contains('حجز القاعة'));
   });
 
-  testWidgets('«مو الحين» sends nothing', (tester) async {
+  testWidgets('«مش الحين» sends nothing', (tester) async {
     await _pumpNew(tester);
     await _fillAndSave(tester, name: 'محمد', phone: '777123456');
 

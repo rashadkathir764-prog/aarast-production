@@ -65,7 +65,7 @@ class _StartStep extends StatelessWidget {
                       Semantics(
                         header: true,
                         child: Text(
-                          'أهلًا فيك، من وين نبدأ؟',
+                          'أهلًا فيك، من فين نبدأ؟',
                           style: JourneyType.of(
                             JourneyType.pageTitle,
                             weight: JourneyType.bold,
@@ -91,7 +91,7 @@ class _StartStep extends StatelessWidget {
                           alignment: AlignmentDirectional.centerStart,
                           child: JourneyTextAction(
                             key: const ValueKey('door-replace-plan'),
-                            label: 'مو خطتك؟ ابدأ خطة جديدة بدلها',
+                            label: 'مش خطتك؟ ابدأ خطة جديدة بدلها',
                             onPressed: onReplacePlan,
                           ),
                         ),

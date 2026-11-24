@@ -5,7 +5,7 @@ enum AarastTemporalSection { now, today, week, later, completed }
 
 extension AarastTemporalSectionLabel on AarastTemporalSection {
   String get label => switch (this) {
-    AarastTemporalSection.now => 'الآن',
+    AarastTemporalSection.now => 'الحين',
     AarastTemporalSection.today => 'اليوم',
     AarastTemporalSection.week => 'هذا الأسبوع',
     AarastTemporalSection.later => 'لاحقًا',

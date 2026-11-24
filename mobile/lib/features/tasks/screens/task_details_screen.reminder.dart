@@ -53,7 +53,7 @@ extension _TaskReminder on _TaskDetailsScreenState {
     if (!at.isAfter(appNow())) {
       AarastToast.showError(
         context,
-        context.say('اختر وقت جاي، مو فات', 'اختاري وقت جاي، مو فات'),
+        context.say('اختر وقت جاي، مش فات', 'اختاري وقت جاي، مش فات'),
       );
       return;
     }

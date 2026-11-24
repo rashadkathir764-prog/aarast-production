@@ -264,7 +264,7 @@ void main() {
       expect(find.text('عرس محمد'), findsOneWidget);
       expect(find.text('خلصت 1 من 4 مهام'), findsOneWidget);
       expect(
-        find.text('تتابع المهام وين وصلت. الإضافة والتعديل عند العريس.'),
+        find.text('تتابع المهام فين وصلت. الإضافة والتعديل عند العريس.'),
         findsOneWidget,
       );
       expect(find.text('رتّب الغداء'), findsOneWidget);
@@ -382,7 +382,7 @@ void main() {
 
     await _openTab(tester, 'المهام');
     expect(
-      find.text('تتابعين المهام وين وصلت. الإضافة والتعديل عند العروسة.'),
+      find.text('تتابعين المهام فين وصلت. الإضافة والتعديل عند العروسة.'),
       findsOneWidget,
     );
 
@@ -636,7 +636,7 @@ void main() {
 
       expect(find.text('العريس فتح لك المال'), findsOneWidget);
       expect(
-        find.text('تقدر الآن تشوف المال. المصادر والسلف تبقى خاصة فيه.'),
+        find.text('تقدر الحين تشوف المال. المصادر والسلف تبقى خاصة فيه.'),
         findsOneWidget,
       );
       // Taken by the home: it is told once.
@@ -694,10 +694,10 @@ void main() {
     await harness.pump(tester);
 
     expect(
-      find.text('تقدرين الآن تشوفين المال. المصادر والسلف تبقى خاصة فيه.'),
+      find.text('تقدرين الحين تشوفين المال. المصادر والسلف تبقى خاصة فيه.'),
       findsOneWidget,
     );
-    expect(find.textContaining('تقدر الآن'), findsNothing);
+    expect(find.textContaining('تقدر الحين'), findsNothing);
   });
 
   testWidgets('q12: the same rights tell nothing', (tester) async {

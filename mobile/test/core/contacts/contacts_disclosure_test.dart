@@ -85,7 +85,7 @@ void main() {
     expect(calls, ['permissions.check']);
   });
 
-  testWidgets('«مو الآن» reads nothing', (tester) async {
+  testWidgets('«مش الحين» reads nothing', (tester) async {
     final answer = await ask(tester);
 
     await tester.tap(find.byKey(const Key('contacts-disclosure-decline')));

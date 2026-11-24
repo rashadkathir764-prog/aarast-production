@@ -124,7 +124,7 @@ class WeddingPlanContextGate extends StatelessWidget {
           : 'selected_context_mismatch',
     );
     return _MismatchedPlanContext(
-      title: samePlan ? 'هذا القسم مو مفتوح لك' : 'هذي الخطة ما عادت لك',
+      title: samePlan ? 'هذا القسم مش مفتوح لك' : 'هذي الخطة ما عادت لك',
       message: samePlan
           ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
           : 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',

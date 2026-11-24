@@ -140,7 +140,7 @@ Future<void> runParticipantWalk(
       // Rashad 2026-11-18: the owner's tasks hero says what is left to him
       // («مهمة وحدة باقية»), not «معك» in the header.
       walk.expectSee('باقية', why: 'ما بقي عليه من مهامه');
-      walk.expectNotSee('حدد موعد عقد القران', why: 'مهمة العريس مو عليه');
+      walk.expectNotSee('حدد موعد عقد القران', why: 'مهمة العريس مش عليه');
     } else {
       walk.expectNotSee(
         'ما عندك صلاحية على المهام',

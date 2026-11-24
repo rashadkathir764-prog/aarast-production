@@ -73,7 +73,7 @@ void main() {
     // b11: the header and the three drawn questions.
     expect(find.text('اسأل اعّرست'), findsOneWidget);
     expect(find.text('ايش نسيت؟'), findsOneWidget);
-    expect(find.text('وين أوفر؟'), findsOneWidget);
+    expect(find.text('فين أوفر؟'), findsOneWidget);
     expect(find.text('اكتب رسالة تفاوض'), findsOneWidget);
     expect(find.text('باقي لك اليوم سؤالين'), findsOneWidget);
 
@@ -144,7 +144,7 @@ void main() {
     expect(api.consentsRecorded, ['plan-1'], reason: 'recorded once');
   });
 
-  testWidgets('«مو الآن» sends nothing', (tester) async {
+  testWidgets('«مش الحين» sends nothing', (tester) async {
     final api = _FakeAssistantApi();
     await tester.pumpWidget(
       app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
@@ -152,7 +152,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('مو الآن'));
+    await tester.tap(find.text('مش الحين'));
     await tester.pumpAndSettle();
     expect(api.asked, isEmpty);
     expect(api.consentsRecorded, isEmpty);
@@ -577,7 +577,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('مو الآن'));
+    await tester.tap(find.text('مش الحين'));
     await tester.pumpAndSettle();
     expect(api.asked, isEmpty);
     expect(api.consentsRecorded, isEmpty);

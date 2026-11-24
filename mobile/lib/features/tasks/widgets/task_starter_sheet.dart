@@ -88,7 +88,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
       longestDaysBefore: longest,
     );
     if (date == null) return null;
-    return date.isAtSameMomentAs(today) ? 'الآن' : formatArabicDayMonth(date);
+    return date.isAtSameMomentAs(today) ? 'الحين' : formatArabicDayMonth(date);
   }
 
   @override

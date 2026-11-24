@@ -45,7 +45,7 @@ class ProviderApplyScreen extends StatefulWidget {
 }
 
 class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
-  static const _steps = ['نشاطك', 'وين', 'خدمتك', 'أرسل'];
+  static const _steps = ['نشاطك', 'فين', 'خدمتك', 'أرسل'];
 
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
@@ -267,7 +267,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
 
   List<Widget> _whereStep(ProviderMarketplaceProvider marketplace) {
     return [
-      const _StepTitle('وين تشتغل؟'),
+      const _StepTitle('فين تشتغل؟'),
       const SizedBox(height: AarastV3Space.x3),
       JourneyPickerField(
         key: const Key('provider-apply-city'),

@@ -458,7 +458,7 @@ class _FakeChatProvider extends ChatProvider {
   bool get isSending => false;
 
   @override
-  String? get errorMessage => 'تعذر فتح المحادثة الآن.';
+  String? get errorMessage => 'تعذر فتح المحادثة الحين.';
 }
 
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {

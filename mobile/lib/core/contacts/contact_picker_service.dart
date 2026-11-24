@@ -68,7 +68,7 @@ class ContactPickerService {
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton(
             key: const Key('contacts-disclosure-decline'),
-            label: 'مو الآن',
+            label: 'مش الحين',
             background: AarastV3Color.paper,
             foreground: AarastV3Color.ink,
             expand: true,

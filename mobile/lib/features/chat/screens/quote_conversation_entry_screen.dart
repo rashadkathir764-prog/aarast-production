@@ -91,7 +91,7 @@ class _QuoteConversationEntryScreenState
               section: JourneySection.providers,
               emptyIcon: LucideIcons.messageCircle,
               emptyTitle: 'هذي المحادثة ما عادت مفتوحة',
-              emptyMessage: 'الطلب انشال، أو هو لخطة ثانية غير المفتوحة الآن.',
+              emptyMessage: 'الطلب انشال، أو هو لخطة ثانية غير المفتوحة الحين.',
             )
           else
             JourneyListState(

@@ -488,7 +488,7 @@ class _AlbumSheetState extends State<_AlbumSheet> {
     final forWomen = chosen == widget.womenAlbum;
     final ready = chosen != null && (!forWomen || _noFaces);
     return JourneySheetBody(
-      title: 'وين تحط الصور؟',
+      title: 'فين تحط الصور؟',
       children: [
         if (widget.albums.isNotEmpty) ...[
           Wrap(

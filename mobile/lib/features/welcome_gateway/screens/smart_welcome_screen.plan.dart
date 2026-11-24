@@ -489,7 +489,7 @@ class _PlaceBudgetStep extends StatelessWidget {
     return JourneyQuestionPage(
       step: 1,
       total: _questionCount,
-      question: 'وين العرس، وكم ميزانيتك تقريبًا؟',
+      question: 'فين العرس، وكم ميزانيتك تقريبًا؟',
       help: 'نعرض لك مزودين مدينتك، ونقول لك كم باقي من الميزانية.',
       primaryLabel: 'التالي',
       onPrimary: onNext,

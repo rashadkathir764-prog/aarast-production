@@ -240,7 +240,7 @@ void main() {
     expect(view.dayOf(wedding).single.isMain, isTrue);
   });
 
-  test('on the day, the item that started last is «الآن» (b05)', () {
+  test('on the day, the item that started last is «الحين» (b05)', () {
     final program = [
       const PlanEvent(
         id: 'a',

@@ -49,8 +49,8 @@ class ProviderApprovedScreen extends StatelessWidget {
                   soft: AarastV3Color.mintSoft,
                   title: 'مبروك، صرت في اعّرست',
                   message: city.isEmpty
-                      ? 'العرسان يشوفونك من الآن.'
-                      : 'العرسان في $city يشوفونك من الآن.',
+                      ? 'العرسان يشوفونك من الحين.'
+                      : 'العرسان في $city يشوفونك من الحين.',
                 ),
                 const JourneySectionTitle('ثلاث خطوات أولى'),
                 JourneyList(

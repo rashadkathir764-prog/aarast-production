@@ -86,7 +86,7 @@ class _MoveDueDateSheetState extends State<MoveDueDateSheet> {
           '${context.say('غيّره', 'غيّريه')} بس لما ${context.say('تتفق', 'تتفقين')}'
           '${party == null || party.isEmpty ? '' : ' مع «$party»'} على يوم ثاني: '
           'الدفعة ما تعتبر متأخرة لين الموعد الجديد. '
-          '${context.say('ولو تبغى', 'ولو تبغين')} بس نذكّرك في يوم ثاني، غيّر التذكير.',
+          '${context.say('ولو تشتي', 'ولو تشتين')} بس نذكّرك في يوم ثاني، غيّر التذكير.',
       children: [
         Wrap(
           spacing: AarastV3Space.x2,

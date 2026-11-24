@@ -479,10 +479,10 @@ String activityLine(
     // participant, who did nothing, and it read as a bare «أنت سجّلت». The
     // line says what changed, in words that fit a man or a woman.
     'SECTION_REVOKED' => switch (event.section) {
-      'TASKS' => 'بدون صلاحية المهام من الآن',
-      'GUESTS' => 'بدون صلاحية الضيوف من الآن',
-      'PROVIDERS' => 'بدون صلاحية المزودين من الآن',
-      'MONEY' => 'بدون صلاحية المال من الآن',
+      'TASKS' => 'بدون صلاحية المهام من الحين',
+      'GUESTS' => 'بدون صلاحية الضيوف من الحين',
+      'PROVIDERS' => 'بدون صلاحية المزودين من الحين',
+      'MONEY' => 'بدون صلاحية المال من الحين',
       _ => 'تغيّرت الصلاحيات',
     },
     _ => withTitle(verb('سجّل', 'سجّلت')),

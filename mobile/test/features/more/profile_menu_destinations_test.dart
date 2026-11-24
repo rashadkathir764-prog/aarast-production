@@ -54,7 +54,7 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
 
-    expect(find.text('مزامنة الآن'), findsNothing);
+    expect(find.text('مزامنة الحين'), findsNothing);
     expect(find.text('تمت المزامنة بنجاح'), findsNothing);
   });
 

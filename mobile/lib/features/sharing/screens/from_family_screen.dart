@@ -86,7 +86,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     if (found == null) {
       setState(
         () => _error =
-            'هذا مو رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
+            'هذا مش رابط دعوة. الرابط الكامل موجود في رسالة الدعوة على واتساب.',
       );
       return;
     }

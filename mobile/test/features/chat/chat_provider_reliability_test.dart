@@ -1600,7 +1600,7 @@ void main() {
     final chat = ChatProvider(
       api: _FakeChatApi(
         conversations: [_conversation()],
-        sendError: const ApiException('تعذر إرسال الرسالة الآن.'),
+        sendError: const ApiException('تعذر إرسال الرسالة الحين.'),
       ),
       realtime: _FakeRealtimeClient(storage),
       authStorage: storage,
@@ -1612,7 +1612,7 @@ void main() {
     await tester.tap(find.byIcon(LucideIcons.send));
     await tester.pumpAndSettle();
 
-    expect(find.text('تعذر إرسال الرسالة الآن.'), findsOneWidget);
+    expect(find.text('تعذر إرسال الرسالة الحين.'), findsOneWidget);
     expect(chat.timelineFor('conversation-1'), isEmpty);
     chat.dispose();
   });

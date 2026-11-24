@@ -596,7 +596,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       return AarastDashboardState(
         bottomPadding: bottomPadding,
         icon: LucideIcons.shieldAlert,
-        title: 'هذي مو الخطة المفتوحة',
+        title: 'هذي مش الخطة المفتوحة',
         message:
             'البيانات وصلت لخطة غير اللي فاتحها. ارجع واختر الخطة من جديد.',
         actionLabel: 'ارجع للرئيسية',

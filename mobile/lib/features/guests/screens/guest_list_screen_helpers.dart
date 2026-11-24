@@ -126,7 +126,7 @@ String _emptyPlanLine(BuildContext context) =>
 /// «آخر تحديث قبل 20 دقيقة».
 String _lastUpdate(DateTime at) {
   final minutes = appNow().difference(at).inMinutes;
-  if (minutes < 1) return 'آخر تحديث الآن';
+  if (minutes < 1) return 'آخر تحديث الحين';
   if (minutes < 60) {
     return 'آخر تحديث قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
   }

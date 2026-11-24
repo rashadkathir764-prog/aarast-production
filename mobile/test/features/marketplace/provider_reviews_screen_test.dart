@@ -116,7 +116,7 @@ void main() {
     ]);
     expect(find.text('تقييمك'), findsOneWidget);
     expect(find.text('وصل تقييمك عن استوديو ضوء صنعاء'), findsOneWidget);
-    expect(find.text('انشر الآن'), findsOneWidget);
+    expect(find.text('انشر الحين'), findsOneWidget);
     expect(find.text('باقي تقيّم'), findsOneWidget);
 
     await tester.tap(find.text('قيّم قاعة سبأ'));

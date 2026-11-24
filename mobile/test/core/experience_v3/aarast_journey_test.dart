@@ -231,7 +231,7 @@ void main() {
           child: JourneyQuestionPage(
             step: 1,
             total: 4,
-            question: 'وين العرس؟',
+            question: 'فين العرس؟',
             primaryLabel: 'التالي',
             onPrimary: null,
             onBack: () {},

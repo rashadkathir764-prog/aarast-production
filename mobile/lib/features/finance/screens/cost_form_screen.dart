@@ -486,8 +486,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   label: _expense
                       ? 'ايش هو؟'
                       : context.say(
-                          'اسم الاتفاق (لو تبي)',
-                          'اسم الاتفاق (لو تبين)',
+                          'اسم الاتفاق (لو تشتي)',
+                          'اسم الاتفاق (لو تشتين)',
                         ),
                   hint:
                       _titleFallback(
@@ -828,8 +828,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
         _GuardNote(
           key: const ValueKey('cost-guard-same-today'),
           text: context.say(
-            'سجّلت اليوم نفس المبلغ في نفس البند. متأكد إنه مو نفس الشي؟',
-            'سجّلتِ اليوم نفس المبلغ في نفس البند. متأكدة إنه مو نفس الشي؟',
+            'سجّلت اليوم نفس المبلغ في نفس البند. متأكد إنه مش نفس الشي؟',
+            'سجّلتِ اليوم نفس المبلغ في نفس البند. متأكدة إنه مش نفس الشي؟',
           ),
           actions: [
             (

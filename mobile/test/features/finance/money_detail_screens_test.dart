@@ -1070,7 +1070,7 @@ class _FailingMoneyDetailsApi extends _MoneyDetailsApi {
   @override
   Future<MoneySummary> getMoneySummary(String planId) async {
     throw const ApiException(
-      'تعذر الاتصال بالخادم الآن. تحقق من الاتصال وحاول مرة أخرى.',
+      'تعذر الاتصال بالخادم الحين. تحقق من الاتصال وحاول مرة أخرى.',
       isNetworkFailure: true,
     );
   }

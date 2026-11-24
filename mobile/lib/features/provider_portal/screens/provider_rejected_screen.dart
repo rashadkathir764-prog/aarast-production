@@ -58,9 +58,9 @@ class ProviderRejectedScreen extends StatelessWidget {
                     icon: LucideIcons.fileX,
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
-                    title: 'ما قدرنا نوافق الآن',
+                    title: 'ما قدرنا نوافق الحين',
                     message:
-                        'مو نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.',
+                        'مش نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.',
                     trailing: ProviderAccountButton(onPressed: onAccount),
                   ),
                   if (reason.isNotEmpty) ...[

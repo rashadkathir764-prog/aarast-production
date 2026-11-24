@@ -403,7 +403,7 @@ class _MoneyItemsTabState extends State<_MoneyItemsTab> {
               Text(
                 key: const ValueKey('money-items-cost-note'),
                 '${arabicCount(unknown, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} بدون تقدير، '
-                '${context.say('قدّرها ونقول لك وين أنت من الميزانية', 'قدّريها ونقول لك وين أنتِ من الميزانية')}',
+                '${context.say('قدّرها ونقول لك فين أنت من الميزانية', 'قدّريها ونقول لك فين أنتِ من الميزانية')}',
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.textMuted,

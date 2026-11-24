@@ -68,7 +68,7 @@ void main() {
         isA<ApiException>().having(
           (error) => error.message,
           'message',
-          'رفع الصور مو متاح الحين. جرّب بعد شوي.',
+          'رفع الصور مش متاح الحين. جرّب بعد شوي.',
         ),
       ),
     );

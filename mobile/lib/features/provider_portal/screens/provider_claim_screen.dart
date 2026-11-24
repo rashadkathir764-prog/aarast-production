@@ -114,7 +114,7 @@ class ProviderClaimScreen extends StatelessWidget {
                 const SizedBox(height: AarastV3Space.x3),
                 JourneyButton(
                   key: const Key('provider-claim-support'),
-                  label: 'مو أنا؟ تواصل مع الدعم',
+                  label: 'مش أنا؟ تواصل مع الدعم',
                   background: AarastV3Color.paper,
                   foreground: AarastV3Color.textMuted,
                   expand: true,

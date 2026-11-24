@@ -140,7 +140,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
       key: const Key('provider-account-required-gate'),
       embedded: embedded,
       icon: LucideIcons.store,
-      title: hasProviderContext ? 'هذا مو متاح الآن' : 'هذا للمزودين بس',
+      title: hasProviderContext ? 'هذا مش متاح الحين' : 'هذا للمزودين بس',
       message: hasProviderContext
           ? 'حالة حساب المزود ما تسمح بهذا. راجع الحالة أو جرّب بعدين.'
           : 'حسابك حساب تخطيط عرس. ارجع لخطتك، أو قدّم طلب انضمام كمزود.',

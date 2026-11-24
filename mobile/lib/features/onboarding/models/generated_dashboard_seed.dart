@@ -76,7 +76,7 @@ class GeneratedDashboardSeed {
   }
 
   static String _weddingDateLabel(GuestOnboardingDraft draft) {
-    if (draft.weddingDateUnknown) return 'التاريخ غير معروف الآن';
+    if (draft.weddingDateUnknown) return 'التاريخ غير معروف الحين';
     final weddingDate = draft.weddingDate;
     if (weddingDate == null) return 'لم يحدد التاريخ بعد';
     return formatArabicCompactDate(weddingDate);

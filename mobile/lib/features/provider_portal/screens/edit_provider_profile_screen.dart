@@ -129,7 +129,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             _ProfileEditNotice(profile: profile),
             const SizedBox(height: AarastV3Space.x3),
             const AarastV3FocusPrompt(
-              question: 'ما البيانات التي يجب أن يراها العميل الآن؟',
+              question: 'ما البيانات التي يجب أن يراها العميل الحين؟',
               supportingText:
                   'ثبّت اسم النشاط ورقم التواصل والمدينة؛ ويمكن إضافة النبذة لاحقًا.',
               icon: LucideIcons.store,

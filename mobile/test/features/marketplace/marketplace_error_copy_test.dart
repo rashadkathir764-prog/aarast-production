@@ -10,7 +10,7 @@ void main() {
         aarastServerOlderMessage,
       );
       expect(
-        marketplaceErrorMessage('هذه الخدمة غير متاحة الآن.'),
+        marketplaceErrorMessage('هذه الخدمة غير متاحة الحين.'),
         aarastBackendConnectionErrorMessage,
       );
     });

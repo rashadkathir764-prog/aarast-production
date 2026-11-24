@@ -276,7 +276,7 @@ class OfflineSyncNowTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        service.blockedCount > 0 ? 'تغييرات ما وصلت' : 'أرسل التغييرات الآن',
+        service.blockedCount > 0 ? 'تغييرات ما وصلت' : 'أرسل التغييرات الحين',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
@@ -345,7 +345,7 @@ class _PendingChangesSheet extends StatelessWidget {
               ? null
               : JourneyButton(
                   key: const Key('sync-issues-retry'),
-                  label: 'حاول الآن',
+                  label: 'حاول الحين',
                   icon: LucideIcons.refreshCw,
                   expand: true,
                   large: true,
@@ -422,7 +422,7 @@ class _PendingChangeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final minutes = now.difference(change.createdAt.toLocal()).inMinutes;
     final when = minutes < 1
-        ? 'الآن'
+        ? 'الحين'
         : minutes < 60
         ? 'قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}'
         : minutes < 60 * 24

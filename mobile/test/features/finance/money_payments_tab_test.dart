@@ -409,7 +409,7 @@ void main() {
     // The loan: its own block, said to be a debt and not a wedding cost.
     final loan = find.byKey(const ValueKey('money-loan-f-loan'));
     await _show(tester, loan);
-    expect(find.textContaining('مو من تكاليف العرس'), findsOneWidget);
+    expect(find.textContaining('مش من تكاليف العرس'), findsOneWidget);
     expect(
       find.descendant(of: total, matching: find.textContaining('400,000')),
       findsNothing,

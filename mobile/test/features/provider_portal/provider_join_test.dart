@@ -55,7 +55,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('اكتب اسم نشاطك'), findsOneWidget);
     expect(find.text('اختر قسمك'), findsOneWidget);
-    expect(find.text('وين تشتغل؟'), findsNothing);
+    expect(find.text('فين تشتغل؟'), findsNothing);
   });
 
   testWidgets('the steps are sent together from p07 as one application', (
@@ -64,7 +64,7 @@ void main() {
     final harness = await _Harness.pump(tester);
 
     await _business(tester);
-    expect(find.text('وين تشتغل؟'), findsOneWidget);
+    expect(find.text('فين تشتغل؟'), findsOneWidget);
     // p04 keeps the city and the shop; districts and travel are dropped.
     expect(find.text('المناطق اللي تغطيها'), findsNothing);
     expect(find.text('تسافر لمحافظة ثانية؟'), findsNothing);
@@ -204,7 +204,7 @@ void main() {
     // The lookup gives the name only: no requests, views or new profile.
     expect(find.textContaining('طلبين'), findsNothing);
     expect(find.textContaining('شافوا ملفك'), findsNothing);
-    expect(find.text('مو أنا، أشتي ملف جديد'), findsNothing);
+    expect(find.text('مش أنا، أشتي ملف جديد'), findsNothing);
 
     await tester.tap(find.byKey(const Key('provider-claim-support')));
     await tester.pumpAndSettle();
@@ -636,7 +636,7 @@ class _JoinApi extends ProviderDashboardApi {
         serverCode: 'PROVIDER_LISTING_CLAIMABLE',
       );
     }
-    if (failApply) throw const ApiException('المدينة غير متاحة الآن.');
+    if (failApply) throw const ApiException('المدينة غير متاحة الحين.');
     applications.add((businessName, phone, cityId, categoryIds.join(',')));
     services.add((
       serviceTitle,

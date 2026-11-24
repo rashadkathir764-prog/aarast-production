@@ -385,7 +385,7 @@ void main() {
     expect(find.text('الغداء'), findsOneWidget);
     expect(find.text('الزفاف'), findsOneWidget);
     expect(find.text('السمرة'), findsNothing);
-    expect(find.text('الآن'), findsOneWidget);
+    expect(find.text('الحين'), findsOneWidget);
     await tester.tap(find.text('تعديل'));
     expect(opens, 1);
     expect(tester.takeException(), isNull);

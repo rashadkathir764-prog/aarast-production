@@ -46,7 +46,7 @@ void main() {
       });
       await walk.step('n02_offer', 'افتح تنبيه العرض', () async {
         await walk.tapText('وصلك عرض', wait: 4);
-        walk.expectNotSee('ما في طلبات لهذي الخدمة الآن.');
+        walk.expectNotSee('ما في طلبات لهذي الخدمة الحين.');
         walk.expectSee('عدسة سبأ');
       });
       await walk.finish();

@@ -365,7 +365,7 @@ void main() {
         ),
         findsNothing,
       );
-      expect(find.text('المستحق عليك الآن'), findsNothing);
+      expect(find.text('المستحق عليك الحين'), findsNothing);
 
       await openPayments([schedule('late', -5)]);
       expect(
@@ -448,7 +448,7 @@ void main() {
 
     // c05: the owner's «من وين» shows what reached them and what is
     // promised, then each source with its state.
-    testWidgets('«من وين» shows the sources and their state at 320px', (
+    testWidgets('«من فين» shows the sources and their state at 320px', (
       tester,
     ) async {
       _setPhoneView(tester);

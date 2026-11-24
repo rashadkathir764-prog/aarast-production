@@ -140,7 +140,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         'البنود',
         'الدفعات',
         // «من وين» is the owner's: only the owner receives funding.
-        if (hasFunding) 'من وين',
+        if (hasFunding) 'من فين',
       ];
       _settleOpeningTab(provider);
       final tab = (_tab ?? _opening ?? 0).clamp(0, tabs.length - 1);
@@ -566,7 +566,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           soft: AarastV3Color.amberSoft,
           title:
               '${arabicCount(expected!.wedding.unknownCount, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} بدون تقدير',
-          sub: 'فالتكلفة المسجّلة مو نهائية',
+          sub: 'فالتكلفة المسجّلة مش نهائية',
           onTap: () => _openTab(1),
         ),
     ];

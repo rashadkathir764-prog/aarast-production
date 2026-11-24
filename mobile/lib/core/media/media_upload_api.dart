@@ -91,7 +91,7 @@ class MediaUploadApi {
       if (error.statusCode == 503 ||
           error.message.toLowerCase().contains('media storage')) {
         throw const ApiException(
-          'رفع الصور مو متاح الحين. جرّب بعد شوي.',
+          'رفع الصور مش متاح الحين. جرّب بعد شوي.',
           statusCode: 503,
         );
       }

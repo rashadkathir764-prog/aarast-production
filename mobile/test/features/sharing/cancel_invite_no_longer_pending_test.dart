@@ -38,7 +38,7 @@ void main() {
   test('a server out of reach keeps the invite and says the reason', () async {
     final api = _Api(
       cancelFailure: const ApiException(
-        'ما في نت الآن. تأكد من الاتصال.',
+        'ما في نت الحين. تأكد من الاتصال.',
         isNetworkFailure: true,
       ),
     );
@@ -48,7 +48,7 @@ void main() {
     final cancelled = await provider.cancelInvite(provider.invites.single);
 
     expect(cancelled, isFalse);
-    expect(provider.errorMessage, 'ما في نت الآن. تأكد من الاتصال.');
+    expect(provider.errorMessage, 'ما في نت الحين. تأكد من الاتصال.');
     expect(provider.invites, hasLength(1));
   });
 }

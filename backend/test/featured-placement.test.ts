@@ -57,6 +57,7 @@ test('a period is active, booked, over or ended by an administrator', () => {
 function rankedListClient(
   candidates: Array<{ id: string; userId: string | null; featuredPeriods: unknown[] }>,
   reads: { wholeRowIds: string[][] },
+  now: Date,
 ) {
   const signals = (c: { id: string; userId: string | null; featuredPeriods: unknown[] }) => ({
     ...c,
@@ -74,6 +75,13 @@ function rankedListClient(
     $queryRaw: async () => [],
     provider: {
       findMany: async (args: any) => {
+        // Both reads, the signals and the page's rows, ask only for the
+        // period running now: it started, has not ended, was not ended early.
+        assert.deepEqual((args.select ?? args.include).featuredPeriods.where, {
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+          endedAt: null,
+        });
         if (args.where.id) {
           reads.wholeRowIds.push(args.where.id.in);
           return args.where.id.in.map((id: string) => candidates.find((c) => c.id === id));
@@ -91,7 +99,7 @@ test('the customers\' list puts the featured first and cuts pages across both gr
   const featured = ['f1', 'f2', 'f3'].map((id) => ({ id, userId: `u-${id}`, featuredPeriods: [window] }));
   const reads = { wholeRowIds: [] as string[][] };
   // The regular rows come first from the database; the featured still lead.
-  const client = rankedListClient([...regular, ...featured], reads);
+  const client = rankedListClient([...regular, ...featured], reads, now);
   const where = { AND: [{ status: ProviderStatus.ACTIVE }] } as any;
   const page = async (pageNo: number, limit: number) => {
     const { rows } = await searchActiveProviders(client, where, { page: pageNo, limit, skip: (pageNo - 1) * limit }, now);
@@ -527,6 +535,7 @@ test('the list never badges a row of the regular group (an unclaimed listing wit
   const client = rankedListClient(
     [{ id: 'unclaimed', userId: null, featuredPeriods: [window] }],
     { wholeRowIds: [] },
+    now,
   );
   const { rows } = await searchActiveProviders(
     client,

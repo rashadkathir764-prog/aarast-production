@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -39,5 +39,27 @@ test('staging invite build rejects Production host and identity', () => {
       fingerprint: 'fake' }), /fingerprint/);
     assert.throws(() => buildStagingInvite({ source, out, ...qa,
       inviteHost: 'aarast.shadowgardn.com' }), /must match/);
+  } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+// RA-OP-27: the staging site is the production site with the QA origin, so
+// every file the production image serves (its Dockerfile's COPY line) is in the
+// staging artifact too. A guest's RSVP link, the terms and the download page
+// were 404 on staging while every test was green.
+test('RA-OP-27: staging serves every page and asset the production image does', () => {
+  const dockerfile = readFileSync(join(source, 'Dockerfile'), 'utf8');
+  const copy = /^COPY ((?:[\w.-]+ )+)\/usr\/share\/nginx\/html\/$/m.exec(dockerfile);
+  assert.ok(copy, 'the production Dockerfile has one COPY of the site files');
+  const served = copy[1].trim().split(/\s+/);
+  const out = mkdtempSync(join(tmpdir(), 'aarast-invite-'));
+  try {
+    buildStagingInvite({ source, out, ...qa });
+    for (const name of served) {
+      assert.ok(existsSync(join(out, name)), `${name} is served by production but missing from staging`);
+    }
+    for (const page of ['rsvp.html', 'terms.html', 'download.html']) {
+      assert.doesNotMatch(readFileSync(join(out, page), 'utf8'), /aarast\.shadowgardn\.com/, page);
+    }
+    assert.match(readFileSync(join(out, 'terms.html'), 'utf8'), /https:\/\/invite\.qa\.example\.com\/terms/);
   } finally { rmSync(out, { recursive: true, force: true }); }
 });

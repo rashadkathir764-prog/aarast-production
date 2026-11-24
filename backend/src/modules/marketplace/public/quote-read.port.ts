@@ -109,6 +109,21 @@ export interface QuoteReadPort {
     client: Prisma.TransactionClient,
     conversationIds: readonly string[],
   ): Promise<ConversationQuoteCount[]>;
+  /**
+   * RA-BE-139 (Q-33): who asked in each conversation, one row per
+   * conversation and requester; a member who does not read the whole plan
+   * reads only the conversations of his own requests.
+   */
+  listConversationRequesters(
+    client: Prisma.TransactionClient,
+    conversationIds: readonly string[],
+  ): Promise<Array<{ conversationId: string; userId: string }>>;
+  /** RA-BE-139: the conversations of [userId]'s own requests in these plans. */
+  listRequesterConversationIds(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanIds: readonly string[],
+  ): Promise<string[]>;
   /** The user's quote requests (the home dashboard counter). */
   countUserQuoteRequests(
     client: Prisma.TransactionClient,

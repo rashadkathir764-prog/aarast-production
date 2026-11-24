@@ -7,19 +7,27 @@ type Client = PrismaService | Prisma.TransactionClient;
 export interface ConversationAccessFilter {
   providerIds: string[];
   accountRequesterUserId: string;
+  /** Plans whose every conversation the reader reads (owner, partner). */
   planIds: string[];
+  /** RA-BE-139: the plan conversations of the reader's own requests. */
+  conversationIds: string[];
+}
+
+function accessibleWhere(filter: ConversationAccessFilter) {
+  return {
+    OR: [
+      { providerId: { in: filter.providerIds } },
+      { scope: ConversationScope.ACCOUNT, accountRequesterUserId: filter.accountRequesterUserId },
+      { scope: ConversationScope.PLAN, weddingPlanId: { in: filter.planIds } },
+      { scope: ConversationScope.PLAN, id: { in: filter.conversationIds } },
+    ],
+  } satisfies Prisma.ConversationWhereInput;
 }
 
 export class ConversationsRepository {
   listPage(client: Client, filter: ConversationAccessFilter, cursor: string | undefined, limit: number) {
     return client.conversation.findMany({
-      where: {
-        OR: [
-          { providerId: { in: filter.providerIds } },
-          { scope: ConversationScope.ACCOUNT, accountRequesterUserId: filter.accountRequesterUserId },
-          { scope: ConversationScope.PLAN, weddingPlanId: { in: filter.planIds } },
-        ],
-      },
+      where: accessibleWhere(filter),
       orderBy: [{ lastActivityAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -184,16 +192,7 @@ export class ConversationsRepository {
 
   findAccessibleCursor(client: Client, filter: ConversationAccessFilter, cursor: string) {
     return client.conversation.findFirst({
-      where: {
-        AND: [
-          { id: cursor },
-          { OR: [
-            { providerId: { in: filter.providerIds } },
-            { scope: ConversationScope.ACCOUNT, accountRequesterUserId: filter.accountRequesterUserId },
-            { scope: ConversationScope.PLAN, weddingPlanId: { in: filter.planIds } },
-          ] },
-        ],
-      },
+      where: { AND: [{ id: cursor }, accessibleWhere(filter)] },
       select: { id: true },
     });
   }

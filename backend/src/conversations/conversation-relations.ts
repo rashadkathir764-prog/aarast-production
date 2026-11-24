@@ -96,6 +96,8 @@ export type ConversationRecord = Conversation & {
   accountRequester: AppIdentity | null;
   participants: Array<ConversationParticipant & { user: AppIdentity }>;
   quoteRequests: QuoteRequestWithRequester[];
+  /** RA-BE-139: everyone who asked in this conversation. */
+  requesterUserIds: string[];
   messages: MessageWithSender[];
   _count: { quoteRequests: number };
 };
@@ -162,6 +164,13 @@ export class ConversationRelationsService {
         (quote) => [quote.conversationId, quote],
       ),
     );
+    const requestersByConversation = new Map<string, string[]>();
+    for (const row of await this.quotes.listConversationRequesters(client, conversationIds)) {
+      requestersByConversation.set(row.conversationId, [
+        ...(requestersByConversation.get(row.conversationId) ?? []),
+        row.userId,
+      ]);
+    }
     const quoteCounts = new Map(
       (await this.quotes.countConversationQuoteRequests(client, conversationIds)).map(
         (count) => [count.conversationId, count.count],
@@ -207,6 +216,7 @@ export class ConversationRelationsService {
         quoteRequests: latestQuote
           ? [{ ...latestQuote, user: required(users.get(latestQuote.userId), 'Quote requester') }]
           : [],
+        requesterUserIds: requestersByConversation.get(row.id) ?? [],
         messages: row.messages.map((message) => ({
           ...message,
           sender: required(users.get(message.senderUserId), 'Message sender'),

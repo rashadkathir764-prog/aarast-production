@@ -9,6 +9,7 @@ import {
   ConversationScope,
   Prisma,
   ProviderStatus,
+  type SharedMemberRole,
 } from '@prisma/client';
 import {
   type ConversationRecord,
@@ -37,6 +38,7 @@ import { chatMessageNotification } from './chat-notifications';
 import { quoteOfferVersionView } from '../modules/marketplace/public/quote-offer-versions';
 import {
   assertWeddingPlanWritable,
+  isPlanPartnerRole,
   isWeddingPlanWritable,
 } from '../modules/collaboration/public/collaboration-permission.port';
 import {
@@ -972,6 +974,7 @@ export class ConversationsService {
       (candidate) => candidate.userId === currentUserId,
     );
     if (!member?.canManageProviders) return null;
+    if (!memberReadsConversation(conversation, member)) return null;
     const canManageMoney = member.canManageMoney;
     return {
       side: 'CUSTOMER',
@@ -993,23 +996,41 @@ export class ConversationsService {
       this.prisma,
       currentUserId,
     );
-    const managedPlanIds = (
+    const managing = (
       await this.relations.permissions.listMemberships(this.prisma, currentUserId)
-    )
-      .filter((membership) => membership.canManageProviders)
-      .map((membership) => membership.weddingPlanId);
-    const managingPlanIds = (
-      await this.plansOpenTo(
-        currentUserId,
-        managedPlanIds.length > 0
-          ? await this.relations.plans.getPlans(this.prisma, managedPlanIds)
-          : [],
-      )
-    ).map((plan) => plan.id);
+    ).filter((membership) => membership.canManageProviders);
+    const openPlanIds = new Set(
+      (
+        await this.plansOpenTo(
+          currentUserId,
+          managing.length > 0
+            ? await this.relations.plans.getPlans(
+                this.prisma,
+                managing.map((membership) => membership.weddingPlanId),
+              )
+            : [],
+        )
+      ).map((plan) => plan.id),
+    );
+    // RA-BE-139 (Q-33 (أ)): a partner reads every conversation of the plan;
+    // any other member who manages providers, those of his own requests.
+    const wholePlanIds: string[] = [];
+    const ownRequestPlanIds: string[] = [];
+    for (const membership of managing) {
+      if (!openPlanIds.has(membership.weddingPlanId)) continue;
+      (isPlanPartnerRole(membership.role) ? wholePlanIds : ownRequestPlanIds).push(
+        membership.weddingPlanId,
+      );
+    }
     return {
       providerIds: provider && provider.status === ProviderStatus.ACTIVE ? [provider.id] : [],
       accountRequesterUserId: currentUserId,
-      planIds: [...new Set([...ownedPlanIds, ...managingPlanIds])],
+      planIds: [...new Set([...ownedPlanIds, ...wholePlanIds])],
+      conversationIds: await this.relations.quotes.listRequesterConversationIds(
+        this.prisma,
+        currentUserId,
+        ownRequestPlanIds,
+      ),
     };
   }
 
@@ -1230,7 +1251,9 @@ export class ConversationsService {
     } else if (conversation.weddingPlan) {
       recipients.add(conversation.weddingPlan.ownerUserId);
       for (const member of conversation.weddingPlan.sharedMembers) {
-        if (member.canManageProviders) recipients.add(member.userId);
+        if (member.canManageProviders && memberReadsConversation(conversation, member)) {
+          recipients.add(member.userId);
+        }
       }
     }
     recipients.delete(senderUserId);
@@ -1337,4 +1360,20 @@ export class ConversationsService {
       attachments,
     };
   }
+}
+
+/**
+ * RA-BE-139 (Q-33 (أ)): a partner reads the whole plan's conversations with
+ * its providers; any other member who manages providers reads, and is told
+ * of, only the conversations of his own requests, as with the requests and
+ * the bookings themselves.
+ */
+function memberReadsConversation(
+  conversation: Pick<ConversationRecord, 'requesterUserIds'>,
+  member: { userId: string; role: SharedMemberRole },
+): boolean {
+  return (
+    isPlanPartnerRole(member.role) ||
+    conversation.requesterUserIds.includes(member.userId)
+  );
 }

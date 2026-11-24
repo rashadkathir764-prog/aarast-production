@@ -116,6 +116,32 @@ export class QuoteReadService implements QuoteReadPort {
     }));
   }
 
+  async listConversationRequesters(
+    client: Prisma.TransactionClient,
+    conversationIds: readonly string[],
+  ): Promise<Array<{ conversationId: string; userId: string }>> {
+    if (conversationIds.length === 0) return [];
+    return client.quoteRequest.findMany({
+      where: { conversationId: { in: [...conversationIds] } },
+      select: { conversationId: true, userId: true },
+      distinct: ['conversationId', 'userId'],
+    });
+  }
+
+  async listRequesterConversationIds(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanIds: readonly string[],
+  ): Promise<string[]> {
+    if (weddingPlanIds.length === 0) return [];
+    const rows = await client.quoteRequest.findMany({
+      where: { userId, weddingPlanId: { in: [...weddingPlanIds] } },
+      select: { conversationId: true },
+      distinct: ['conversationId'],
+    });
+    return rows.map((row) => row.conversationId);
+  }
+
   async countUserQuoteRequests(
     client: Prisma.TransactionClient,
     userId: string,

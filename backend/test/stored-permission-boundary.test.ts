@@ -18,6 +18,8 @@ test("finance role cannot restore a stored money permission in conversations", (
       scope: ConversationScope.PLAN,
       accountRequesterUserId: null,
       provider: { userId: "provider", status: "ACTIVE" },
+      // RA-BE-139: the conversation of the contributor's own request.
+      requesterUserIds: ["contributor"],
       weddingPlan: {
         ownerUserId: "owner",
         sharedMembers: [
@@ -138,4 +140,84 @@ test("finance role is not a money-notification permission fallback", async () =>
   assert.equal(serialized.includes("FINANCE_MANAGER"), false);
   const money = where?.AND[1] as { OR: [unknown, { weddingPlanId: { in: string[] } }] };
   assert.deepEqual(money.OR[1], { weddingPlanId: { in: ["plan-money"] } });
+});
+
+// RA-BE-139 (Q-33 (أ)): a member who manages providers reads, and is told
+// of, only the conversations of his own requests, as with the requests and
+// the bookings; the owner and a partner read them all.
+test("RA-BE-139: a helper reads and hears only the conversations of his own requests", () => {
+  const service = conversationsService({} as any, {} as any, {} as any, {} as any, {} as any);
+  const member = (userId: string, role: SharedMemberRole) => ({
+    userId,
+    role,
+    canManageProviders: true,
+    canViewMoney: false,
+    canManageMoney: false,
+  });
+  const conversation = (requesterUserIds: string[]) => ({
+    scope: ConversationScope.PLAN,
+    accountRequesterUserId: null,
+    provider: { userId: "provider", status: "ACTIVE" },
+    requesterUserIds,
+    weddingPlan: {
+      ownerUserId: "owner",
+      sharedMembers: [
+        member("helper", SharedMemberRole.HELPER),
+        member("manager", SharedMemberRole.MANAGER),
+        member("bride", SharedMemberRole.BRIDE),
+      ],
+    },
+  });
+  const reads = (record: unknown, userId: string) =>
+    (service as any).accessFor(record, userId) !== null;
+
+  const owners = conversation(["owner"]);
+  assert.equal(reads(owners, "owner"), true);
+  assert.equal(reads(owners, "bride"), true, "a partner reads the whole plan");
+  assert.equal(reads(owners, "helper"), false);
+  assert.equal(reads(owners, "manager"), false);
+
+  const helpers = conversation(["owner", "helper"]);
+  assert.equal(reads(helpers, "helper"), true);
+  assert.equal(reads(helpers, "manager"), false);
+
+  // The provider's message reaches the owner, the partner and the helper
+  // whose request it is; not a member with no request there.
+  assert.deepEqual(
+    (service as any).messageRecipientIds(helpers, "PROVIDER", "provider").sort(),
+    ["bride", "helper", "owner"],
+  );
+  assert.deepEqual(
+    (service as any).messageRecipientIds(owners, "PROVIDER", "provider").sort(),
+    ["bride", "owner"],
+  );
+});
+
+test("RA-BE-139: the inbox lists a helper's own-request conversations, not the plan's", async () => {
+  const { ConversationsRepository } = require("../src/modules/messaging/infrastructure/conversations.repository");
+  const wheres: unknown[] = [];
+  const client = {
+    conversation: {
+      findMany: async (args: any) => { wheres.push(args.where); return []; },
+      findFirst: async (args: any) => { wheres.push(args.where); return null; },
+    },
+  };
+  const filter = {
+    providerIds: [],
+    accountRequesterUserId: "helper",
+    planIds: ["plan-whole"],
+    conversationIds: ["conversation-own"],
+  };
+  const repository = new ConversationsRepository();
+  await repository.listPage(client, filter, undefined, 20);
+  await repository.findAccessibleCursor(client, filter, "conversation-own");
+  const access = {
+    OR: [
+      { providerId: { in: [] } },
+      { scope: ConversationScope.ACCOUNT, accountRequesterUserId: "helper" },
+      { scope: ConversationScope.PLAN, weddingPlanId: { in: ["plan-whole"] } },
+      { scope: ConversationScope.PLAN, id: { in: ["conversation-own"] } },
+    ],
+  };
+  assert.deepEqual(wheres, [access, { AND: [{ id: "conversation-own" }, access] }]);
 });

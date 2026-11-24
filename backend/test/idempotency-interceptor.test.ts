@@ -1351,9 +1351,10 @@ test("C-1: a committed 5xx resent after the in-flight window is a coded 409 the 
   );
   const row = store.row("u1", "req-committed-5xx-stuck");
   assert.ok(row);
-  // The phone resends long after the first try: the reservation is no
-  // longer a request in flight, its outcome is unknown.
-  row.createdAt = new Date(Date.now() - 60 * 60 * 1_000);
+  // The phone resends more than two minutes after the first try: no request
+  // the server runs lasts that long, so the reservation is no request in
+  // flight and its outcome is unknown.
+  row.createdAt = new Date(Date.now() - (2 * 60 + 1) * 1_000);
 
   let refusal: unknown;
   await assert.rejects(
@@ -1419,4 +1420,45 @@ test("C-1: a committed 5xx resent within the in-flight window is still the retry
     (error: unknown) => error instanceof ServiceUnavailableException,
   );
   assert.equal(executions.count, 1);
+});
+
+test("C-1: a resend 10 s after a first try still unanswered is the retryable 503, not a refusal", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  (interceptor as any).delay = async () => {};
+
+  // The first try is still running on the server (a slow transaction) when
+  // the phone gives up after its 12 s receive timeout and sends again; the
+  // first try may still land, so the resend must wait, not be refused.
+  await store.idempotencyKey.create({
+    data: {
+      userId: "u1",
+      key: "req-slow-in-flight",
+      method: "POST",
+      path: "/api/v1/wedding-plans/:weddingPlanId/costs",
+      requestHash: requestFingerprint({
+        method: "POST",
+        route: { path: "/api/v1/wedding-plans/:weddingPlanId/costs" },
+      }),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+      response: Prisma.DbNull,
+    },
+  });
+  store.row("u1", "req-slow-in-flight")!.createdAt = new Date(Date.now() - 10_000);
+  let executions = 0;
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-slow-in-flight"),
+          handler(() => {
+            executions += 1;
+            return of({ duplicated: true });
+          }),
+        ),
+      ),
+    (error: unknown) => error instanceof ServiceUnavailableException,
+  );
+  assert.equal(executions, 0);
 });

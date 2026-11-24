@@ -74,12 +74,20 @@ const SAFE_REPLAY_HEADERS = [
 // normal mutation's duration; a slower winner falls through to a RETRYABLE 503.
 const REPLAY_POLL_INTERVAL_MS = 100;
 const REPLAY_MAX_ATTEMPTS = 30;
-// C-1: a reservation still open after the poll window is no request in
-// flight: its request ended with a server failure after a commit (or its
-// process died). Its outcome is unknown until reconciliation, so a resend
-// is refused for good with a coded 409 the phone shows (and lets the person
-// discard), instead of a 503 that kept the phone's queue waiting forever.
-const IN_FLIGHT_WINDOW_MS = REPLAY_POLL_INTERVAL_MS * REPLAY_MAX_ATTEMPTS;
+// C-1: how long a reservation still open may be a request in flight. It is
+// not the replay poll budget above: the phone gives up after its 12 s
+// receive timeout and resends while a slow write may still land, and a
+// refusal then would have the person drop a change that lands and make it
+// again. The longest request-path transaction is the account erasure's
+// (`timeout: 15_000`), run up to 4 times on a serialization failure: about
+// 60 s. Two minutes is twice that. (The due-notice scan's 120 s transaction
+// runs from a scheduler and never holds a reservation.) Within the window a
+// resend gets the retryable 503 («not now»). After it, the request ended
+// with a server failure after a commit (or its process died) and the
+// outcome is unknown until reconciliation, so a resend is refused for good
+// with a coded 409 the phone shows and lets the person discard, instead of
+// a 503 that kept the phone's queue waiting forever.
+const IN_FLIGHT_WINDOW_MS = 120_000;
 const IDEMPOTENCY_OUTCOME_UNKNOWN = 'IDEMPOTENCY_OUTCOME_UNKNOWN';
 const RESERVATION_TTL_HOURS = boundedHours(
   'IDEMPOTENCY_RESERVATION_TTL_HOURS',

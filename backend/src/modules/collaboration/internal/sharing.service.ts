@@ -283,7 +283,8 @@ const alreadyAMemberMessage = "هذا الشخص معك في الخطة من ق�
 const inviteAlreadyPendingCode = "INVITE_ALREADY_PENDING";
 const inviteAlreadyPendingMessage =
   "فيه دعوة لهذا الرقم من قبل، لسّا ما انردّ عليها.";
-// J2-05, D52: «يشوف بس» reads the plan and edits nothing in it.
+// J2-05, D52: «يشوف بس» reads the plan and edits nothing in it. RA-BE-157
+// (Q-38): inviting someone into the plan is a write, so it is not theirs.
 const viewerCannotEditCode = "VIEWER_CANNOT_EDIT";
 const viewerCannotEditMessage =
   "«يشوف بس» ما يعدّل شي في الخطة، والتعديل يحتاج دور ثاني.";
@@ -293,6 +294,7 @@ const viewerEditingRights = [
   "canManageGuests",
   "canManageProviders",
   "canManageMoney",
+  "canInviteMembers",
 ] as const satisfies ReadonlyArray<keyof PlanPermissionFlags>;
 
 const revocationDescriptors: readonly RevocationDescriptor[] = [
@@ -2350,8 +2352,8 @@ export class SharingService {
    * J2-05, D52: «يشوف بس» edits nothing. A client that asks a VIEWER to edit
    * is refused with a code the owner's app can say; otherwise the VIEWER is
    * stored without any editing right it would carry over (from a former role
-   * or an older row). Reading the money stays as given; delegated inviting is
-   * not editing the plan and stays as given too.
+   * or an older row). Reading the money stays as given. RA-BE-157 (Q-38):
+   * inviting members is a write and goes with the other rights.
    */
   private viewerBoundPermissions(
     role: SharedMemberRole,
@@ -2376,6 +2378,7 @@ export class SharingService {
       canManageGuests: false,
       canManageProviders: false,
       canManageMoney: false,
+      canInviteMembers: false,
     };
   }
 

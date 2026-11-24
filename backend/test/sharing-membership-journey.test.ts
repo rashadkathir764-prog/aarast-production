@@ -232,6 +232,27 @@ test("J2-05: making a member «يشوف بس» while asking for a manage right i
   }
 });
 
+test("RA-BE-157 (Q-38): «يشوف بس» is never given the right to invite members", async () => {
+  const { service, owner, members } = journey();
+  await assert.rejects(
+    () =>
+      service.updateMemberForPlan(owner, plan.id, "member-1", {
+        role: SharedMemberRole.VIEWER,
+        canInviteMembers: true,
+      }),
+    assertViewerCannotEdit,
+  );
+  assert.equal(members.get("member-1")!.role, SharedMemberRole.HELPER);
+
+  // A member already holding it (an older row) loses it on becoming a viewer.
+  members.get("member-1")!.canInviteMembers = true;
+  const updated = await service.updateMemberForPlan(owner, plan.id, "member-1", {
+    role: SharedMemberRole.VIEWER,
+  });
+  assert.equal(updated.canInviteMembers, false);
+  assert.equal(members.get("member-1")!.canInviteMembers, false);
+});
+
 test("J2-05: a member made «يشوف بس» keeps no editing right, and may keep reading the money", async () => {
   const { service, owner, members } = journey();
   members.get("member-1")!.canViewMoney = true;

@@ -46,6 +46,8 @@ async function main(): Promise<void> {
       weddingPlanId: plan.id,
       name: "عمي صالح",
       normalizedName: "عمي صالح",
+      // Q-43 (أ): the owner sets the seats; four seats let him bring three.
+      seatsCount: 4,
     },
   });
 
@@ -117,6 +119,11 @@ async function main(): Promise<void> {
     assert.equal(view.weddingDate, weddingDay);
     console.log("PASS - the guest reads the invitation without an account");
 
+    await assert.rejects(
+      rsvp.respond(firstToken, "CONFIRMED", 4),
+      (error: any) => error?.response?.code === "RSVP_INVALID_COMPANIONS",
+    );
+    console.log("PASS - a guest brings no more companions than the seats the owner set (Q-43)");
     const answered = await rsvp.respond(firstToken, "CONFIRMED", 3);
     assert.equal(answered.attendanceStatus, "CONFIRMED");
     row = await prisma.guest.findUniqueOrThrow({ where: { id: guest.id } });

@@ -167,16 +167,17 @@ export class OtpDispatchQuotaService {
 
   /**
    * RA-BE-144: a mobile network hands one address to many people (CGNAT).
-   * The address's allowance (10 in ten minutes, 50 a day, D92) is counted
-   * per phone at that address; a phone that sends no id shares one. The
-   * address keeps a ceiling across every phone, because the id is only the
-   * phone's word: rotating it buys no more than this, half of the app's day
-   * (D92, 150), so one address never spends the day alone.
+   * The address's limit (10 in ten minutes, 50 a day) stays as D92 pins it
+   * while the app's day is 150, across every phone. Inside it, a phone that
+   * sends its id has a share of its own (half), so one phone on a shared
+   * address cannot spend the address for the others. The id is only the
+   * phone's word: rotating it never passes the address's limit. A phone
+   * without an id counts against the address alone, as before.
    */
-  static readonly addressTenMinuteLimit = 10;
-  static readonly addressDailyLimit = 50;
-  static readonly addressTenMinuteCeiling = 30;
-  static readonly addressDailyCeiling = 75;
+  static readonly addressTenMinuteShare = 5;
+  static readonly addressDailyShare = 25;
+  static readonly addressTenMinuteCeiling = 10;
+  static readonly addressDailyCeiling = 50;
 
   private policies(
     phone: string,
@@ -274,22 +275,26 @@ export class OtpDispatchQuotaService {
         'OTP_LIMIT_NETWORK',
         'طلبات رموز كثيرة من هذي الشبكة.',
       );
-      const atAddressDevice = `${ip}|${device ?? 'no-device'}`;
+      if (device) {
+        const atAddressDevice = `${ip}|${device}`;
+        policies.push(
+          {
+            scope: 'IP_DEVICE_TEN_MIN',
+            subject: atAddressDevice,
+            limit: OtpDispatchQuotaService.addressTenMinuteShare,
+            windowMs: 10 * 60_000,
+            refusal: network,
+          },
+          {
+            scope: 'IP_DEVICE_DAY',
+            subject: atAddressDevice,
+            limit: OtpDispatchQuotaService.addressDailyShare,
+            windowMs: 24 * 60 * 60_000,
+            refusal: network,
+          },
+        );
+      }
       policies.push(
-        {
-          scope: 'IP_DEVICE_TEN_MIN',
-          subject: atAddressDevice,
-          limit: OtpDispatchQuotaService.addressTenMinuteLimit,
-          windowMs: 10 * 60_000,
-          refusal: network,
-        },
-        {
-          scope: 'IP_DEVICE_DAY',
-          subject: atAddressDevice,
-          limit: OtpDispatchQuotaService.addressDailyLimit,
-          windowMs: 24 * 60 * 60_000,
-          refusal: network,
-        },
         {
           scope: 'IP_TEN_MIN',
           subject: ip,

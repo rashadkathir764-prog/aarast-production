@@ -287,9 +287,7 @@ test('OTP quota hashes every phone and IP subject before persistence', async () 
       assert.equal(keys.includes('203.0.113.10'), false);
       // D112 (Q-5): two more rows, the number's allowance at this address
       // (an hour's and a day's) beside the number's own ceilings.
-      // RA-BE-144: two more, the address's own ceilings beside its
-      // allowance per phone (here the phone that sent no id).
-      assert.equal(harness.rows.size, 10);
+      assert.equal(harness.rows.size, 8);
     },
   );
 });
@@ -382,10 +380,10 @@ const refusedWith = (code: string) => (error: unknown) =>
   (error.getResponse() as { code?: string }).code === code;
 
 // RA-BE-144: a mobile network shares one address among many people (CGNAT).
-// The address's allowance (10 in ten minutes, 50 a day) is counted per phone
-// that asks, by the phone's own id; the address keeps a ceiling across every
-// phone, since the id is the phone's word and only a counting key.
-test('RA-BE-144: phones behind one shared address each get the address allowance', async () => {
+// The address's limit (10 in ten minutes, 50 a day) stays by D92 across every
+// phone; inside it, a phone with its own id has a share, so one phone does
+// not spend the address for the others. The id is only a counting key.
+test('RA-BE-144: one phone behind a shared address spends only its share of it', async () => {
   await withEnvironment(
     {
       NODE_ENV: 'production',
@@ -395,16 +393,15 @@ test('RA-BE-144: phones behind one shared address each get the address allowance
     async () => {
       const harness = createHarness();
       const ip = '198.51.100.7';
-      for (let index = 0; index < 10; index += 1) {
+      for (let index = 0; index < OtpDispatchQuotaService.addressTenMinuteShare; index += 1) {
         await harness.service.consume(`+96777714${String(index).padStart(4, '0')}`, {
           ip,
           device: 'phone-a-0000000000000001',
         });
       }
-      // Its own ten are spent (its id's hour, or its share of the address).
       await assert.rejects(
         harness.service.consume('+967777149999', { ip, device: 'phone-a-0000000000000001' }),
-        (error: unknown) => error instanceof HttpException && error.getStatus() === 429,
+        refusedWith('OTP_LIMIT_NETWORK'),
       );
       // Another phone on the same address is not closed out with it.
       await harness.service.consume('+967777148888', { ip, device: 'phone-b-0000000000000002' });
@@ -475,5 +472,8 @@ test('RA-BE-140: the app-wide daily cap stays 150 by D92, and configurable', () 
   assert.equal(otpGlobalDailyLimit({ OTP_GLOBAL_DAILY_LIMIT: '500' }), 500);
   // One phone's day, and one address's across every id, are shares of it.
   assert.ok(OtpDispatchQuotaService.deviceDailyLimit * 5 <= otpGlobalDailyLimit({}));
-  assert.ok(OtpDispatchQuotaService.addressDailyCeiling * 2 <= otpGlobalDailyLimit({}));
+  // D92: the address's own day stays 50, a third of it.
+  assert.equal(OtpDispatchQuotaService.addressTenMinuteCeiling, 10);
+  assert.equal(OtpDispatchQuotaService.addressDailyCeiling, 50);
+  assert.ok(OtpDispatchQuotaService.addressDailyShare < OtpDispatchQuotaService.addressDailyCeiling);
 });

@@ -64,12 +64,16 @@ test("login attempts are stored under a one-way account hash", async () => {
 
   await service.reserveAttempt(phone);
 
-  assert.equal(records.size, 1);
-  const [subjectHash] = records.keys();
-  assert.equal(subjectHash, LoginThrottleService.subjectHash(phone));
-  assert.equal(subjectHash.length, 64);
-  assert.doesNotMatch(subjectHash, /777123456/);
-  assert.equal(records.get(subjectHash)?.failedCount, 1);
+  // RA-BE-148: two windows, the phone's own on this number and the number's
+  // ceiling across every phone; both one-way hashes.
+  assert.equal(records.size, 2);
+  const subjectHash = LoginThrottleService.subjectHash(phone);
+  assert.ok(records.has(subjectHash));
+  for (const key of records.keys()) {
+    assert.equal(key.length, 64);
+    assert.doesNotMatch(key, /777123456/);
+    assert.equal(records.get(key)?.failedCount, 1);
+  }
 
   process.env.AUTH_LOGIN_THROTTLE_PEPPER =
     "a-different-test-only-login-throttle-pepper";
@@ -161,4 +165,70 @@ test("successful authentication clears the durable attempt window", async () => 
 
   assert.equal(records.size, 0);
   await assert.doesNotReject(() => service.assertAllowed(phone));
+});
+
+// RA-BE-148: a number's password lock (5 in 15 minutes) closed its owner out
+// whoever failed, and providers' numbers are public. The lock is per phone on
+// the number, by the phone's own id; the number keeps a ceiling across every
+// id at the same rate the old lock allowed (20 an hour), since the id is only
+// the phone's word.
+test('RA-BE-148: a stranger failing on a number does not lock its owner\'s phone', async () => {
+  const { service } = harness();
+  const phone = '+967777123456';
+  for (let attempt = 0; attempt < LoginThrottleService.maxAttempts; attempt += 1) {
+    await service.reserveAttempt(phone, 'application', 'stranger-phone-000000001');
+  }
+
+  await assert.rejects(
+    () => service.reserveAttempt(phone, 'application', 'stranger-phone-000000001'),
+    (error: unknown) =>
+      error instanceof HttpException &&
+      error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
+  );
+  await assert.doesNotReject(() =>
+    service.reserveAttempt(phone, 'application', 'owner-phone-0000000000002'),
+  );
+});
+
+test('RA-BE-148: rotating phone ids stops at the number\'s ceiling', async () => {
+  const { service } = harness();
+  const phone = '+967777123456';
+  for (let attempt = 0; attempt < LoginThrottleService.numberCeiling; attempt += 1) {
+    await service.reserveAttempt(
+      phone,
+      'application',
+      `rotated-phone-${String(attempt).padStart(10, '0')}`,
+    );
+  }
+
+  await assert.rejects(
+    () => service.reserveAttempt(phone, 'application', 'rotated-phone-fresh-000001'),
+    (error: unknown) =>
+      error instanceof HttpException &&
+      error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
+  );
+  // Never faster than the old lock let anyone guess: five a quarter hour.
+  assert.ok(
+    LoginThrottleService.numberCeiling / (LoginThrottleService.numberCeilingWindowMs / 60_000) <=
+      LoginThrottleService.maxAttempts / (LoginThrottleService.windowMs / 60_000),
+  );
+});
+
+test('RA-BE-148: the administrator realm is not split by phone ids', async () => {
+  const { service } = harness();
+  const phone = '+967777123456';
+  for (let attempt = 0; attempt < LoginThrottleService.maxAttempts; attempt += 1) {
+    await service.reserveAttempt(phone, 'admin', `admin-phone-${String(attempt).padStart(12, '0')}`);
+  }
+  await assert.rejects(() => service.assertAllowed(phone, 'admin'));
+});
+
+test('RA-BE-148: a success clears that phone\'s window and the number\'s', async () => {
+  const { service, records } = harness();
+  const phone = '+967777123456';
+  await service.reserveAttempt(phone, 'application', 'owner-phone-0000000000002');
+
+  await service.clear(phone, 'application', 'owner-phone-0000000000002');
+
+  assert.equal(records.size, 0);
 });

@@ -58,8 +58,8 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() request: Request) {
+    return this.authService.login(dto, clientRateContext(request));
   }
 
   @Post("admin/login")
@@ -289,8 +289,14 @@ export class AuthController {
   @Post("password-reset/confirm")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  confirmPasswordReset(@Body() dto: PasswordResetConfirmDto) {
-    return this.authService.confirmPasswordReset(dto);
+  confirmPasswordReset(
+    @Body() dto: PasswordResetConfirmDto,
+    @Req() request: Request,
+  ) {
+    return this.authService.confirmPasswordReset(
+      dto,
+      clientRateContext(request),
+    );
   }
 
   @Get("me")

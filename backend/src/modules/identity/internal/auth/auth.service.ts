@@ -501,8 +501,14 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     return result.auth;
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
-    const user = await this.validatePasswordCredentials(dto);
+  async login(
+    dto: LoginDto,
+    context: OtpDispatchContext = {},
+  ): Promise<AuthResponse> {
+    // RA-BE-148: the password lock counts by the phone's own id too.
+    const user = await this.validatePasswordCredentials(dto, undefined, {
+      device: context.device ?? null,
+    });
     return runSerializableTransaction(this.prisma, async (tx) => {
       const loginAt = new Date();
       const eligible = await this.users.markSuccessfulLogin(tx, user, loginAt);
@@ -733,12 +739,13 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   private async validatePasswordCredentials(
     dto: LoginDto,
     requiredRole?: UserRole,
-    options: { allowUnverifiedPhone?: boolean } = {},
+    options: { allowUnverifiedPhone?: boolean; device?: string | null } = {},
   ): Promise<User> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const realm: LoginThrottleRealm =
       requiredRole === UserRole.ADMIN ? "admin" : "application";
-    await this.loginThrottle.reserveAttempt(phone, realm);
+    const device = options.device ?? null;
+    await this.loginThrottle.reserveAttempt(phone, realm, device);
 
     // Prefer the canonical normalized row before consulting legacy variants.
     // A pre-normalization database may still contain both `7xxxxxxxx` and
@@ -816,7 +823,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       validatedUser = current;
     }
 
-    await this.loginThrottle.clear(phone, realm);
+    await this.loginThrottle.clear(phone, realm, device);
     return validatedUser;
   }
 
@@ -1974,6 +1981,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
    */
   async confirmPasswordReset(
     dto: PasswordResetConfirmDto,
+    context: OtpDispatchContext = {},
   ): Promise<{ reset: true; phone: string }> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const now = new Date();
@@ -2058,7 +2066,8 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     // The old password's sessions were just revoked; sever any live realtime
     // channel a lost/stolen device might still hold open.
     this.realtime.disconnectUser(result.userId);
-    await this.loginThrottle.clear(phone, "application");
+    // RA-BE-148: the number's ceiling and the window of the phone that reset.
+    await this.loginThrottle.clear(phone, "application", context.device ?? null);
     return { reset: true, phone };
   }
 

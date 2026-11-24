@@ -31,12 +31,17 @@ test('the code requests hand the phone id to the limits beside the address', asy
     requestOtp: record,
     startRegistration: record,
     requestPasswordReset: record,
+    login: record,
+    confirmPasswordReset: record,
   } as any);
   const asked = request('3f2b8c1e-5a7d-4e2f-9b1c-0d6e7f8a9b0c');
 
   await controller.requestOtp({} as any, asked);
   await controller.register({} as any, asked);
   await controller.requestPasswordReset({} as any, asked);
+  // RA-BE-148: the password lock counts by it too.
+  await controller.login({} as any, asked);
+  await controller.confirmPasswordReset({} as any, asked);
 
   for (const context of contexts) {
     assert.deepEqual(context, {
@@ -44,5 +49,5 @@ test('the code requests hand the phone id to the limits beside the address', asy
       device: '3f2b8c1e-5a7d-4e2f-9b1c-0d6e7f8a9b0c',
     });
   }
-  assert.equal(contexts.length, 3);
+  assert.equal(contexts.length, 5);
 });

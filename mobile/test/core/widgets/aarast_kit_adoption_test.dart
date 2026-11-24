@@ -49,7 +49,7 @@ const _baseline = <String, int>{
   'lib/core/widgets/aarast_error_state.dart': 1,
   'lib/core/widgets/aarast_otp_field.dart': 1,
   'lib/core/widgets/aarast_share_sheet.dart': 1,
-  'lib/core/widgets/aarast_toast.dart': 2,
+  'lib/core/widgets/aarast_toast.dart': 1,
   'lib/core/widgets/aarast_ui.dart': 1,
   'lib/features/auth/utils/auth_action_guard.dart': 2,
   'lib/features/auth/widgets/auth_wedding_widgets.dart': 1,

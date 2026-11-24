@@ -226,6 +226,12 @@ assert.match(preview, /proxy_set_header Accept-Encoding "";/, "A compressed answ
 assert.match(preview, /proxy_set_header X-Forwarded-For \$http_x_forwarded_for;/, "The API limits the guest, not the site.");
 assert.match(preview, /proxy_intercept_errors on;/);
 assert.match(preview, /error_page [0-9 ]*\b502\b[0-9 ]* = @rsvp_preview_none;/);
+// RA-BE-175: no error body of the API (401, 403, 409, 426 included) lands
+// in the page's head; every one leaves the generic tags.
+const previewErrors = /error_page ([0-9 ]+) = @rsvp_preview_none;/.exec(preview)?.[1].trim().split(/\s+/) ?? [];
+for (const status of ["400", "401", "403", "404", "409", "426", "429", "500", "502", "503", "504"]) {
+  assert.ok(previewErrors.includes(status), `the preview include swallows ${status}`);
+}
 assert.match(nginx, /location = \/__rsvp_preview\/none \{\s*internal;\s*return 204;\s*\}/);
 assert.match(nginx, /location @rsvp_preview_none \{\s*return 204;\s*\}/);
 

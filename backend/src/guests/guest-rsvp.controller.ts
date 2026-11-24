@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Post,
   Res,
@@ -123,6 +124,8 @@ export class GuestInvitationLinksController {
 /**
  * The guest side, without an account: read the invitation and answer it.
  * The link token is the only credential, so both routes are rate-limited.
+ * RA-BE-175: the answers carry the guest's name and the wedding's place, so
+ * no cache keeps them.
  */
 @Controller("api/v1/public/rsvp")
 export class PublicRsvpController {
@@ -130,6 +133,7 @@ export class PublicRsvpController {
 
   @Get(":token")
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Header("Cache-Control", "private, no-store")
   getInvitation(@Param("token") token: string) {
     return this.rsvp.getInvitation(token);
   }
@@ -140,12 +144,14 @@ export class PublicRsvpController {
    */
   @Post(":token/opened")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Header("Cache-Control", "private, no-store")
   opened(@Param("token") token: string) {
     return this.rsvp.markInvitationOpened(token);
   }
 
   @Post(":token")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Header("Cache-Control", "private, no-store")
   respond(@Param("token") token: string, @Body() dto: RsvpAnswerDto) {
     return this.rsvp.respond(
       token,

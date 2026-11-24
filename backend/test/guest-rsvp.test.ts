@@ -2,6 +2,7 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { HEADERS_METADATA } from "@nestjs/common/constants";
 import {
   buildRsvpMessage,
   GuestRsvpService,
@@ -1046,4 +1047,16 @@ test("the head route answers 204 for a dead link and HTML for a live one; the ph
   assert.equal(photo.sent.headers["cache-control"], "private, no-store");
   assert.equal(photo.sent.headers["referrer-policy"], "no-referrer");
   await assert.rejects(controller.cardPhoto("F".repeat(43), fakeResponse().res), /not valid/);
+});
+
+test("RA-BE-175: the guest's JSON (name, place) is never kept by a cache", () => {
+  for (const route of ["getInvitation", "opened", "respond"] as const) {
+    const headers: Array<{ name: string; value: string }> =
+      Reflect.getMetadata(HEADERS_METADATA, PublicRsvpController.prototype[route]) ?? [];
+    assert.deepEqual(
+      headers.filter((header) => header.name.toLowerCase() === "cache-control"),
+      [{ name: "Cache-Control", value: "private, no-store" }],
+      route,
+    );
+  }
 });

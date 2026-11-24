@@ -303,6 +303,12 @@ test("disabling a user persists session revocation in the same transaction", asy
         return { count: 1 };
       },
     },
+    adminTrustedDevice: {
+      updateMany: async () => {
+        calls.push("trusted-device-revoke");
+        return { count: 0 };
+      },
+    },
     planInvite: {
       updateMany: async ({ where, data }: any) => {
         calls.push("invite-revoke");
@@ -342,6 +348,7 @@ test("disabling a user persists session revocation in the same transaction", asy
     "user-update",
     "invite-revoke",
     "refresh-revoke",
+    "trusted-device-revoke",
     "outbox-create",
   ]);
   assert.equal(response.status, UserStatus.DISABLED);

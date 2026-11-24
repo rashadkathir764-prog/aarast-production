@@ -268,6 +268,11 @@ export class MarketplacePresenter {
       longitude: provider.longitude?.toString() ?? null,
       logoUrl: provider.logoUrl,
       coverUrl: provider.coverUrl,
+      // RA-MO-364: the smaller copies, null for an image saved before them.
+      logoThumbUrl: provider.logoThumbUrl,
+      logoMediumUrl: provider.logoMediumUrl,
+      coverThumbUrl: provider.coverThumbUrl,
+      coverMediumUrl: provider.coverMediumUrl,
       status: provider.status,
       verifiedAt: provider.verifiedAt,
       // A back-office listing its owner has not claimed (V1 4.18): it takes
@@ -398,6 +403,7 @@ export class MarketplacePresenter {
       phone: provider.phone,
       whatsapp: provider.whatsapp,
       logoUrl: provider.logoUrl,
+      logoThumbUrl: provider.logoThumbUrl,
       status: provider.status,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,

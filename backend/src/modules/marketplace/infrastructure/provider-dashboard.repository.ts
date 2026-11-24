@@ -36,6 +36,10 @@ export interface ProviderProfileChanges {
   longitude?: string | null;
   logoUrl?: string | null;
   coverUrl?: string | null;
+  logoThumbUrl?: string | null;
+  logoMediumUrl?: string | null;
+  coverThumbUrl?: string | null;
+  coverMediumUrl?: string | null;
   dailyBookingCapacity?: number;
 }
 

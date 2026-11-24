@@ -30,6 +30,50 @@ export function isPrivateMediaPurpose(purpose: MediaPurpose): boolean {
   return PRIVATE_MEDIA_PURPOSES.includes(purpose);
 }
 
+/**
+ * RA-MO-364, RA-BE-191: a cover or a logo is kept with two smaller copies,
+ * made when it is verified: `thumb` for cards and lists, `medium` for a
+ * screen-wide view. Each fits inside its size in pixels on its longer side.
+ */
+export const IMAGE_VARIANT_SIZES = { thumb: 480, medium: 1080 } as const;
+export type ImageVariant = keyof typeof IMAGE_VARIANT_SIZES;
+
+export const IMAGE_VARIANT_PURPOSES: readonly MediaPurpose[] = [
+  'provider-logo',
+  'provider-cover',
+];
+
+export function hasImageVariants(purpose: MediaPurpose): boolean {
+  return IMAGE_VARIANT_PURPOSES.includes(purpose);
+}
+
+/**
+ * Where a copy of the object at [keyOrUrl] is kept: its name without the
+ * extension, the size, `.webp`. Works on a storage key and on its public
+ * address alike.
+ */
+export function imageVariantKey(keyOrUrl: string, variant: ImageVariant): string {
+  const extension = /\.[a-z0-9]+$/i;
+  if (!extension.test(keyOrUrl)) {
+    throw new Error('A media key without an extension has no image variants');
+  }
+  return keyOrUrl.replace(
+    extension,
+    `-${IMAGE_VARIANT_SIZES[variant]}.webp`,
+  );
+}
+
+/** The public addresses of both copies of the image at [publicUrl]. */
+export function imageVariantUrls(publicUrl: string): {
+  thumbUrl: string;
+  mediumUrl: string;
+} {
+  return {
+    thumbUrl: imageVariantKey(publicUrl, 'thumb'),
+    mediumUrl: imageVariantKey(publicUrl, 'medium'),
+  };
+}
+
 export interface MediaConsumptionTarget {
   type:
     | 'USER_AVATAR'

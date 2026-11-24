@@ -569,7 +569,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 50 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
+| `Provider` | 54 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |

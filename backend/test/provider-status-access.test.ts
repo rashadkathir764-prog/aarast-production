@@ -179,7 +179,12 @@ function quoteRecord() {
   };
 }
 
-function createProviderDashboard(status: ProviderStatus) {
+function createProviderDashboard(
+  status: ProviderStatus,
+  media: Record<string, unknown> = {
+    verifyPublicMediaUrl: async (_currentUser: unknown, url: string) => url,
+  },
+) {
   const provider = providerFor(status);
   const prisma: any = {
     $queryRaw: async (query: {
@@ -268,12 +273,7 @@ function createProviderDashboard(status: ProviderStatus) {
   return providerDashboardService(
     prisma as any,
     {} as any,
-    {
-      verifyPublicMediaUrl: async (
-        _currentUser: unknown,
-        url: string,
-      ) => url,
-    } as any, lifecycle,
+    media as any, lifecycle,
   );
 }
 
@@ -815,6 +815,35 @@ test('only ACTIVE providers can perform provider operations or receive quote/con
   }
 
   assert.deepEqual(violations, []);
+});
+
+// RA-MO-364: a new logo is saved with the addresses of the copies the media
+// port made when it verified it, and the profile sends them.
+test('a new logo is saved with its smaller copies', async () => {
+  const consumed: string[] = [];
+  const dashboard = createProviderDashboard(ProviderStatus.ACTIVE, {
+    verifyPublicMediaUrl: async (_currentUser: unknown, url: string) => url,
+    scheduleTargetDeletion: async () => undefined,
+    consumePublicMediaUrl: async (_currentUser: unknown, url: string) => {
+      consumed.push(url);
+    },
+  });
+  const logo = `https://media.example.test/provider-logo/${providerUserId}/a.png`;
+
+  const updated = await dashboard.updateProfile(currentProvider, {
+    logoUrl: logo,
+  });
+
+  assert.deepEqual(consumed, [logo]);
+  assert.equal(updated.logoUrl, logo);
+  assert.equal(
+    updated.logoThumbUrl,
+    `https://media.example.test/provider-logo/${providerUserId}/a-480.webp`,
+  );
+  assert.equal(
+    updated.logoMediumUrl,
+    `https://media.example.test/provider-logo/${providerUserId}/a-1080.webp`,
+  );
 });
 
 test('provider profile remains visible while terminal states are read-only', async () => {

@@ -101,6 +101,12 @@ model Provider {
   longitude         Decimal?                 @db.Decimal(10, 7)
   logoUrl           String?
   coverUrl          String?
+  // RA-MO-364: the logo's and the cover's smaller copies (480px, 1080px),
+  // made when the image was verified; null for an image saved before them.
+  logoThumbUrl      String?
+  logoMediumUrl     String?
+  coverThumbUrl     String?
+  coverMediumUrl    String?
   status            ProviderStatus           @default(PENDING)
   reviewedAt        DateTime?
   reviewedById      String?

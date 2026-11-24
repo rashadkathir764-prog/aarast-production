@@ -79,6 +79,7 @@ import * as offerStore from '../modules/marketplace/infrastructure/quote-offer-l
 import {
   MEDIA_STORAGE_PORT,
   MediaStoragePort,
+  imageVariantUrls,
 } from '../modules/media/public/media-storage.port';
 import {
   NOTIFICATIONS_PORT,
@@ -187,6 +188,27 @@ type ProviderQuoteRecord = QuoteRequest & {
 type ProviderReviewRecord = ProviderReview & {
   user: Pick<User, 'id' | 'name' | 'appName' | 'role' | 'reviewFirstNameOnly'>;
 };
+
+/**
+ * RA-MO-364: the columns of a logo's or a cover's copies. An address the
+ * media port verified has them (it makes them before it marks the image
+ * verified); a removed image takes them with it.
+ */
+function providerImageVariants(
+  image: 'logo' | 'cover',
+  url: string | null | undefined,
+): dashboardStore.ProviderProfileChanges {
+  const variants = url ? imageVariantUrls(url) : null;
+  return image === 'logo'
+    ? {
+        logoThumbUrl: variants?.thumbUrl ?? null,
+        logoMediumUrl: variants?.mediumUrl ?? null,
+      }
+    : {
+        coverThumbUrl: variants?.thumbUrl ?? null,
+        coverMediumUrl: variants?.mediumUrl ?? null,
+      };
+}
 
 @Injectable()
 export class ProviderDashboardService {
@@ -660,6 +682,10 @@ export class ProviderDashboardService {
           : {}),
         ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
         ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
+        // RA-MO-364: a new logo or cover comes with its smaller copies (the
+        // verification made them); one kept as it was keeps its own.
+        ...(logoChanged ? providerImageVariants('logo', logoUrl) : {}),
+        ...(coverChanged ? providerImageVariants('cover', coverUrl) : {}),
         ...(dto.dailyBookingCapacity !== undefined
           ? { dailyBookingCapacity: this.dailyCapacity(dto.dailyBookingCapacity) }
           : {}),
@@ -2056,6 +2082,10 @@ export class ProviderDashboardService {
       longitude: provider.longitude?.toString() ?? null,
       logoUrl: provider.logoUrl,
       coverUrl: provider.coverUrl,
+      logoThumbUrl: provider.logoThumbUrl,
+      logoMediumUrl: provider.logoMediumUrl,
+      coverThumbUrl: provider.coverThumbUrl,
+      coverMediumUrl: provider.coverMediumUrl,
       status: provider.status,
       ...currentProviderReviewNotes(provider.status, provider.latestDecision),
       // The decision he reads now; «أرسلت التعديل» names it (B-01).

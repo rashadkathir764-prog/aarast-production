@@ -4,6 +4,7 @@ import {
   Crown,
   EyeOff,
   FileLock,
+  FilePen,
   Flag,
   History,
   Inbox,
@@ -141,6 +142,15 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         icon: BookOpen,
         isActive: nestedRoute('/providers/listed'),
         count: 'claims',
+      },
+      {
+        // RA-BE-152 (Q-39): an approved provider's new name, logo, cover,
+        // city or category, waiting for the team.
+        route: '/profile-changes',
+        label: 'تعديلات الملفات',
+        permission: AdminPermission.PROVIDERS_READ,
+        icon: FilePen,
+        isActive: nestedRoute('/profile-changes'),
       },
       {
         route: '/services',

@@ -21,6 +21,7 @@ import { ProvidersPage } from './features/providers/ProvidersPage';
 import { ProviderDetailsPage } from './features/providers/ProviderDetailsPage';
 import { ProviderClaimsPage } from './features/providers/ProviderClaimsPage';
 import { FeaturedPlacementsPage } from './features/providers/FeaturedPlacementsPage';
+import { ProfileChangesPage } from './features/providers/ProfileChangesPage';
 import { CategoriesPage } from './features/catalog/CategoriesPage';
 import { CitiesPage } from './features/catalog/CitiesPage';
 import { UsersPage } from './features/users/UsersPage';
@@ -206,6 +207,15 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.REVIEWS_READ}>
               <ReviewsPage />
+            </RequireAdminPermission>
+          }
+        />
+        {/* RA-BE-152 (Q-39): approved providers' profile changes waiting for review. */}
+        <Route
+          path="profile-changes"
+          element={
+            <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
+              <ProfileChangesPage />
             </RequireAdminPermission>
           }
         />

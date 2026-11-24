@@ -392,3 +392,49 @@ export function endFeaturedPeriod(id: string, note?: string): Promise<FeaturedPe
     body: note ? { note } : {},
   });
 }
+
+/** RA-BE-152 (Q-39): an approved provider's change of name, logo, cover, city or category. */
+export type ProfileChange = {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+  rejectionReason: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** What he asked for; null where the request leaves the field as it is. */
+  asked: {
+    businessName: string | null;
+    city: { id: string; nameAr: string | null } | null;
+    primaryCategory: { id: string; nameAr: string | null } | null;
+    /** Null once refused or withdrawn: the image is deleted. */
+    logoUrl: string | null;
+    coverUrl: string | null;
+    logoChanged: boolean;
+    coverChanged: boolean;
+  };
+  /** What customers see now. */
+  provider: {
+    id: string;
+    businessName: string;
+    status: string;
+    city: { id: string; nameAr: string | null } | null;
+    primaryCategory: { id: string; nameAr: string | null } | null;
+    logoUrl: string | null;
+    coverUrl: string | null;
+  };
+};
+
+export function getProfileChanges(params: { status?: string; page?: number; limit?: number } = {}) {
+  return apiRequest<Paginated<ProfileChange>>(`/admin/provider-profile-changes${toQuery(params)}`);
+}
+
+/** «وافق» puts the change on the listing; «ارفض» keeps the listing and tells the provider why. */
+export function decideProfileChange(
+  id: string,
+  decision: { decision: 'APPROVE' } | { decision: 'REJECT'; reason: string },
+) {
+  return apiRequest<ProfileChange>(`/admin/provider-profile-changes/${id}/decision`, {
+    method: 'PATCH',
+    body: decision,
+  });
+}

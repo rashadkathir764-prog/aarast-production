@@ -61,6 +61,18 @@ describe('admin navigation', () => {
     expect(itemFor('/providers').isActive('/featured')).toBe(false);
   });
 
+  // RA-BE-152 (Q-39): an approved provider's name, logo, cover, city and
+  // category changes wait for the team on their own page.
+  it('puts the profile changes page under the providers', () => {
+    expect(resolveAdminLocation('/profile-changes')).toMatchObject({
+      group: 'المزودين',
+      title: 'تعديلات الملفات',
+      route: '/profile-changes',
+      isDetail: false,
+    });
+    expect(itemFor('/profile-changes').permission).toBe(AdminPermission.PROVIDERS_READ);
+  });
+
   it('puts the photos page (n07) under the moderation, as drawn', () => {
     expect(resolveAdminLocation('/photos')).toMatchObject({
       group: 'الرقابة',

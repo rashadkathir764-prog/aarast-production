@@ -13,6 +13,7 @@
 - `/featured`
 - `/login`
 - `/photos`
+- `/profile-changes`
 - `/providers`
 - `/providers/:id`
 - `/providers/applications`
@@ -27,4 +28,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 26 routes
+Total: 27 routes

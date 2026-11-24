@@ -241,7 +241,9 @@ void main() {
 
         expect(await offline.database.pendingSyncCount(), 0);
         expect(await offline.database.blockedSyncItems(), isEmpty);
-        expect(server.calls.where((call) => !call.startsWith('GET')).skip(2), [
+        // One try before the server was known out of reach; the second
+        // change waited without one (RA-MO-340).
+        expect(server.calls.where((call) => !call.startsWith('GET')).skip(1), [
           'PATCH /api/v1/loan-repayments/r1',
           'DELETE /api/v1/loan-repayments/r1',
         ]);
@@ -338,6 +340,38 @@ void main() {
         expect(server.calls.where((c) => c.startsWith('POST')).length, 2);
       },
     );
+
+    // RA-MO-340: «حفظ بدون نت» waited 12+12 seconds for a server the phone
+    // already knew was out of reach. Known out of reach, the change is kept
+    // on the phone at once, with no try.
+    test('a change made while the server is known out of reach is kept at '
+        'once, without a try', () async {
+      final (api, offline, server, reachability) = await _setUpSimple({});
+      reachability.noteFailure(
+        ReachabilityFailure(
+          cause: ReachabilityCause.noNetwork,
+          at: DateTime(2026, 11, 24),
+        ),
+      );
+      final writes = OfflineWrites(api, offline);
+      final localId = OfflineWrites.localId('guest-group');
+
+      final row = await writes.queued(
+        entityType: 'guest_group',
+        operation: 'create',
+        method: 'POST',
+        endpoint: '/api/v1/wedding-plans/p1/guest-groups',
+        payload: {'name': 'آل الحمدي'},
+        table: OfflineTables.cachedGuestGroups,
+        localJson: {'id': localId, 'weddingPlanId': 'p1', 'name': 'آل الحمدي'},
+        planId: 'p1',
+        localEntityId: localId,
+      );
+
+      expect(row['id'], localId);
+      expect(server.calls, isEmpty, reason: 'no try while out of reach');
+      expect(await offline.database.pendingSyncCount(), 1);
+    });
 
     // RA-MO-86: the server may have done a write whose answer was lost. It
     // knows the resend only by its request id, so the queue must send the

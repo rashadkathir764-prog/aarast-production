@@ -341,33 +341,13 @@ class OfflineWrites {
     // reset) may have reached the server, which tells a resend from a new
     // request only by this id; under a new one the row was made twice.
     final requestId = ApiClient.newClientRequestId();
-    try {
-      final json = await _api.mutateJson(
-        endpoint,
-        payload,
-        method: method,
-        clientRequestId: requestId,
-      );
-      final row = json.isEmpty ? localJson : json;
-      if (operation == 'delete') {
-        if (table != null) {
-          await database?.discardLocalEntity(
-            table: table,
-            entityType: entityType,
-            entityId: id,
-          );
-        } else if (metaKey != null) {
-          await database?.deleteMeta(metaKey);
-        }
-      } else if (table != null) {
-        await database?.saveCachedItem(table: table, json: row);
-      } else if (metaKey != null) {
-        await database?.setMeta(metaKey, jsonEncode(row));
-      }
-      return row;
-    } on Object catch (error) {
-      if (database == null || !CachePolicy.shouldQueueWrite(error)) rethrow;
-      await _offline!.noteNetworkFailure((error as ApiException).message);
+    final json = await send(
+      method: method,
+      endpoint: endpoint,
+      payload: payload,
+      requestId: requestId,
+    );
+    if (json == null) {
       return _keepOnPhone(
         database: database,
         entityType: entityType,
@@ -383,6 +363,52 @@ class OfflineWrites {
         replacePendingForEntity: replacePendingForEntity,
         sentRequestId: requestId,
       );
+    }
+    final row = json.isEmpty ? localJson : json;
+    if (operation == 'delete') {
+      if (table != null) {
+        await database?.discardLocalEntity(
+          table: table,
+          entityType: entityType,
+          entityId: id,
+        );
+      } else if (metaKey != null) {
+        await database?.deleteMeta(metaKey);
+      }
+    } else if (table != null) {
+      await database?.saveCachedItem(table: table, json: row);
+    } else if (metaKey != null) {
+      await database?.setMeta(metaKey, jsonEncode(row));
+    }
+    return row;
+  }
+
+  /// The one first try of a change the phone keeps (the plan's own data).
+  /// Answers the server's row, or null when the change is to wait on the
+  /// phone: the caller queues it under [requestId], the id this try went
+  /// under, so a resend of a try the server took is not a second change.
+  ///
+  /// RA-MO-340: while the server is known out of reach no try is made, so
+  /// «حفظ بدون نت» does not wait out a timeout first.
+  Future<Map<String, dynamic>?> send({
+    required String method,
+    required String endpoint,
+    required Map<String, dynamic> payload,
+    required String requestId,
+  }) async {
+    final offline = _offline;
+    if (offline != null && offline.serverOutOfReach) return null;
+    try {
+      return await _api.mutateJson(
+        endpoint,
+        payload,
+        method: method,
+        clientRequestId: requestId,
+      );
+    } on Object catch (error) {
+      if (offline == null || !CachePolicy.shouldQueueWrite(error)) rethrow;
+      await offline.noteNetworkFailure((error as ApiException).message);
+      return null;
     }
   }
 

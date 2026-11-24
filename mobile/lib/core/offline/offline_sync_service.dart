@@ -33,6 +33,11 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   ReachabilityFailure? get lastReachabilityFailure =>
       _reachability?.lastFailure;
 
+  /// RA-MO-340: the last request failed in transport and nothing has
+  /// answered since. A change made now is kept on the phone without a try;
+  /// the first answer from the server sends it.
+  bool get serverOutOfReach => _reachability?.reachable == false;
+
   void _onReachabilityChanged() {
     final reachability = _reachability;
     if (reachability == null || !reachability.reachable) return;

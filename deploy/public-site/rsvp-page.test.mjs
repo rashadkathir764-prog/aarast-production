@@ -575,3 +575,34 @@ test("D116: a reload that fails after a bride's page was drawn says so to her, a
   assert.equal(page.element("rsvp-title").textContent, "عرس أحمد");
   assert.equal(page.element("rsvp-notice").textContent, "تغيّرت دعوتك قبل ما يوصل ردك، وهذي هي الحين.");
 });
+
+// RA-BE-173 (Q-43): the owner sets how many may come with the guest; the page
+// offers exactly that, and asks nothing when it is no one.
+test("RA-BE-173: the companion chips are the owner's number, and none asks nothing", async () => {
+  const chipsOf = (container) => container.children.map((chip) => chip.textContent);
+
+  const five = await openPage([[200, { ...invitation([lunch]), maxCompanions: 5 }]]);
+  assert.deepEqual(chipsOf(five.element("rsvp-companions")), ["لحالي", "+1", "+2", "+3", "+4", "+5"]);
+  assert.equal(five.element("rsvp-companions").hidden, false);
+  assert.equal(five.element("rsvp-companions-label").hidden, false);
+  const lunchChips = five.element("rsvp-events-list").findAll((element) => hasClass(element, "rsvp-chips"));
+  assert.equal(lunchChips.length, 1);
+  assert.deepEqual(chipsOf(lunchChips[0]), ["لحالي", "+1", "+2", "+3", "+4", "+5"]);
+
+  const one = await openPage([[200, { ...invitation([lunch]), maxCompanions: 1 }]]);
+  assert.deepEqual(chipsOf(one.element("rsvp-companions")), ["لحالي", "+1"]);
+
+  const alone = await openPage([
+    [200, { ...invitation([lunch]), maxCompanions: 0 }],
+    [200, { ...invitation([lunch]), maxCompanions: 0, attendanceStatus: "CONFIRMED" }],
+  ]);
+  assert.equal(alone.element("rsvp-companions").hidden, true);
+  assert.equal(alone.element("rsvp-companions-label").hidden, true);
+  const list = alone.element("rsvp-events-list");
+  assert.equal(list.findAll((element) => hasClass(element, "rsvp-chips")).length, 0);
+  assert.equal(list.find("كم معك؟"), null);
+  // The answer still goes, alone.
+  alone.element("rsvp-yes").click();
+  await settle();
+  assert.equal(alone.requests[1], `POST ${endpoint}`);
+});

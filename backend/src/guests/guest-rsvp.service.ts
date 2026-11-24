@@ -99,8 +99,19 @@ import {
 import { PrismaService } from "../platform/database/prisma.service";
 import { imageTypeOf, type RsvpPreview } from "./rsvp-preview";
 
-/** A guest may bring at most this many companions through the link. */
-export const RSVP_MAX_COMPANIONS = 20;
+/**
+ * The most companions any guest could be given: a guest takes at most 20
+ * seats (`CreateGuestDto.seatsCount`), their own included.
+ */
+export const RSVP_MAX_COMPANIONS = 19;
+
+/**
+ * RA-BE-173 (Q-43 (أ)): the owner sets how many may come with each guest,
+ * as the guest's seats less their own; one seat (the default) is no one.
+ */
+export function rsvpCompanionsAllowed(guest: { seatsCount: number }): number {
+  return Math.max(0, guest.seatsCount - 1);
+}
 
 const DEFAULT_PUBLIC_ORIGIN = "https://aarast.shadowgardn.com";
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -859,16 +870,8 @@ export class GuestRsvpService {
   ): Promise<PublicInvitation> {
     const hash = this.hashOrThrow(token);
     const companions = attendance === "DECLINED" ? 0 : (companionsCount ?? 0);
-    if (
-      !Number.isInteger(companions) ||
-      companions < 0 ||
-      companions > RSVP_MAX_COMPANIONS
-    ) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: "RSVP_INVALID_COMPANIONS",
-        message: `Companions must be between 0 and ${RSVP_MAX_COMPANIONS}`,
-      });
+    if (!Number.isInteger(companions) || companions < 0) {
+      throw this.invalidCompanions(0);
     }
     return runSerializableTransaction(this.prisma, async (tx) => {
       const guest = await findRsvpGuestByTokenHash(tx, hash);
@@ -876,6 +879,10 @@ export class GuestRsvpService {
       if (!(await lockGuestForUpdate(tx, guest.id, guest.weddingPlanId))) {
         throw this.linkNotFound();
       }
+      // Read under the guest's lock, so an owner's change of seats is
+      // either before this answer or after it.
+      const allowed = rsvpCompanionsAllowed(guest);
+      if (companions > allowed) throw this.invalidCompanions(allowed);
       const plan = await this.livePlan(tx, guest.weddingPlanId);
       const events = await this.plans.listPlanEvents(tx, plan.id);
       const wedding = this.weddingRow(events);
@@ -1232,6 +1239,14 @@ export class GuestRsvpService {
     return rsvpTokenHash(token);
   }
 
+  private invalidCompanions(allowed: number): BadRequestException {
+    return new BadRequestException({
+      statusCode: 400,
+      code: "RSVP_INVALID_COMPANIONS",
+      message: `Companions must be between 0 and ${allowed}`,
+    });
+  }
+
   private linkNotFound(): NotFoundException {
     return new NotFoundException({
       statusCode: 404,
@@ -1281,7 +1296,7 @@ export class GuestRsvpService {
       locationLabel: this.locationLabel(plan),
       attendanceStatus: guest.attendanceStatus,
       companionsCount: guest.companionsCount,
-      maxCompanions: RSVP_MAX_COMPANIONS,
+      maxCompanions: rsvpCompanionsAllowed(guest),
       respondedAt: guest.respondedAt,
       wedding: {
         id: wedding.id,

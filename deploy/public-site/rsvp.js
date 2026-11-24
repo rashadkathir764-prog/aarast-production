@@ -37,10 +37,9 @@
   // opened. The link still works; the page shows the invitation as it is now.
   const INVITATION_CHANGED = "تغيّرت دعوتك قبل ما يوصل ردك، وهذي هي الحين.";
 
-  // «لحالي / +1 / +2 / +3»; a larger number the hosts set stays offered.
-  const CHIP_LIMIT = 3;
+  // RA-BE-173 (Q-43): «لحالي» up to the number the hosts gave this guest.
   let companions = 0;
-  let maxCompanions = CHIP_LIMIT;
+  let maxCompanions = 0;
 
   // D116: the plan's side, unknown (undefined) until the invitation is read;
   // null when the plan names none, which reads as the masculine form, as the
@@ -205,8 +204,7 @@
   /** Fills [container] with the companion chips; [onPick] gets the choice. */
   function renderChips(container, max, current, onPick) {
     const counts = [];
-    for (let count = 0; count <= Math.min(CHIP_LIMIT, max); count += 1) counts.push(count);
-    if (current > CHIP_LIMIT && current <= max) counts.push(current);
+    for (let count = 0; count <= max; count += 1) counts.push(count);
     container.replaceChildren(
       ...counts.map((count) => {
         const chip = document.createElement("button");
@@ -286,11 +284,15 @@
   function renderWeddingAnswer(invitation) {
     const wedding = invitation.wedding || {};
     const again = Boolean(wedding.needsReconfirm);
-    maxCompanions = invitation.maxCompanions;
-    companions = invitation.companionsCount || 0;
+    maxCompanions = invitation.maxCompanions || 0;
+    // An answer given before the hosts lowered the number goes down with it.
+    companions = Math.min(invitation.companionsCount || 0, maxCompanions);
     renderChips(chips, maxCompanions, companions, (count) => {
       companions = count;
     });
+    // Nobody may come with this guest: nothing to ask.
+    chips.hidden = maxCompanions === 0;
+    $("rsvp-companions-label").hidden = maxCompanions === 0;
     answer.hidden = false;
     answer.className =
       focusId && focusId === wedding.id ? "rsvp-answer rsvp-focus" : "rsvp-answer";
@@ -352,16 +354,17 @@
 
         if (again) block.append(paragraph("rsvp-reconfirm", reconfirmText("هذي المناسبة")));
 
-        block.append(paragraph("rsvp-question", "كم معك؟"));
-
-        let picked = event.companionsCount || 0;
-        const eventChips = document.createElement("div");
-        eventChips.className = "rsvp-chips";
-        eventChips.setAttribute("role", "group");
-        renderChips(eventChips, maxCompanions, picked, (count) => {
-          picked = count;
-        });
-        block.append(eventChips);
+        let picked = Math.min(event.companionsCount || 0, maxCompanions);
+        if (maxCompanions > 0) {
+          block.append(paragraph("rsvp-question", "كم معك؟"));
+          const eventChips = document.createElement("div");
+          eventChips.className = "rsvp-chips";
+          eventChips.setAttribute("role", "group");
+          renderChips(eventChips, maxCompanions, picked, (count) => {
+            picked = count;
+          });
+          block.append(eventChips);
+        }
 
         const actions = document.createElement("div");
         actions.className = "rsvp-event-actions";

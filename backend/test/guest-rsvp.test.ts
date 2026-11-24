@@ -81,7 +81,8 @@ function fakeDatabase() {
         invitationStatus: "NOT_SENT",
         attendanceStatus: "PENDING",
         status: "INVITED",
-        seatsCount: 1,
+        // RA-BE-173 (Q-43): the owner set four seats: the guest and three.
+        seatsCount: 4,
         companionsCount: 0,
         respondedAt: null,
         rsvpTokenHash: null,
@@ -541,7 +542,7 @@ test("bad tokens, too many companions and archived plans are refused", async () 
   await assert.rejects(rsvp.getInvitation("short"), /not valid/);
   await assert.rejects(rsvp.getInvitation("A".repeat(43)), /not valid/);
   const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
-  await assert.rejects(rsvp.respond(token, "CONFIRMED", 21), (error: any) =>
+  await assert.rejects(rsvp.respond(token, "CONFIRMED", 4), (error: any) =>
     error?.response?.code === "RSVP_INVALID_COMPANIONS");
   await assert.rejects(
     service(db, { planStatus: "ARCHIVED" }).getInvitation(token),
@@ -1059,4 +1060,29 @@ test("RA-BE-175: the guest's JSON (name, place) is never kept by a cache", () =>
       route,
     );
   }
+});
+
+// RA-BE-173 (Q-43 (أ)): the owner sets how many may come with each guest
+// (the guest's seats less their own); none unless the owner said so.
+test("RA-BE-173: the guest brings at most the companions the owner gave them, none by default", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  assert.equal((await rsvp.getInvitation(token)).maxCompanions, 3);
+
+  db.guests.get("guest-1").seatsCount = 1;
+  const alone = await rsvp.getInvitation(token);
+  assert.equal(alone.maxCompanions, 0);
+  for (const planEventId of [undefined, "event-lunch"]) {
+    await assert.rejects(rsvp.respond(token, "CONFIRMED", 1, planEventId), (error: any) =>
+      error?.getStatus() === 400 && error?.response?.code === "RSVP_INVALID_COMPANIONS");
+  }
+  assert.equal((await rsvp.respond(token, "CONFIRMED", 0)).companionsCount, 0);
+
+  db.guests.get("guest-1").seatsCount = 3;
+  assert.equal((await rsvp.respond(token, "CONFIRMED", 2, "event-lunch")).events[0].companionsCount, 2);
+  await assert.rejects(rsvp.respond(token, "CONFIRMED", 3, "event-lunch"), (error: any) =>
+    error?.response?.code === "RSVP_INVALID_COMPANIONS");
+  // Declining brings no one, whatever the page sent.
+  assert.equal((await rsvp.respond(token, "DECLINED", 9)).companionsCount, 0);
 });

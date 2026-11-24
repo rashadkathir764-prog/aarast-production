@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { metricsRegistry } from './metrics';
+import { operatorTokenMatches } from './operator-token';
 
 /** Where the code runs on a developer's machine, not behind a public proxy. */
 const OPEN_WITHOUT_TOKEN = new Set(['development', 'test']);
@@ -31,7 +32,7 @@ export class MetricsController {
       return metricsRegistry.metrics();
     }
 
-    if (authorization !== `Bearer ${token}`) {
+    if (!operatorTokenMatches(authorization)) {
       throw new UnauthorizedException();
     }
     return metricsRegistry.metrics();

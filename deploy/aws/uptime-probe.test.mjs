@@ -19,7 +19,10 @@ function probeCode() {
   return body.join('\n');
 }
 
+let asked = [];
+
 async function probe(answers) {
+  asked = [];
   const sent = [];
   const module = { exports: {} };
   const require = (name) => {
@@ -30,7 +33,8 @@ async function probe(answers) {
     };
   };
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async (url, init) => {
+    asked.push({ url, authorization: init?.headers?.authorization });
     const answer = answers[url];
     if (answer === undefined) throw new TypeError('fetch failed');
     return { json: async () => answer };
@@ -39,6 +43,7 @@ async function probe(answers) {
   console.log = () => {};
   process.env.READY_URL = 'https://named/ready';
   process.env.DIRECT_READY_URL = 'https://direct/ready';
+  process.env.READY_TOKEN = 'operator-token';
   try {
     new Function('require', 'exports', 'module', probeCode())(require, module.exports, module);
     await module.exports.handler();
@@ -90,4 +95,14 @@ test('a server older than a check, with no field for it, warns of nothing', asyn
 test('the direct address counts only when it answers with the database up', async () => {
   const metrics = await probe({ 'https://named/ready': healthy });
   assert.equal(metrics.DirectIp, 0, 'an expired IP certificate fails the fetch');
+});
+
+// RA-BE-149: /ready tells the code quota and the disk only to the operator's
+// token, so the probe sends it to both addresses.
+test('the probe reads /ready with the operator token', async () => {
+  await probe({ 'https://named/ready': healthy, 'https://direct/ready': healthy });
+  assert.deepEqual(asked, [
+    { url: 'https://named/ready', authorization: 'Bearer operator-token' },
+    { url: 'https://direct/ready', authorization: 'Bearer operator-token' },
+  ]);
 });

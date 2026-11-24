@@ -19,6 +19,13 @@ Parameters:
   InstanceId:
     Type: String
     Description: The host (aarast-host stack output), for its CPU credits and status checks.
+  OperatorToken:
+    Type: String
+    NoEcho: true
+    Description: >-
+      The backend's METRICS_TOKEN (host env file). /ready tells the WhatsApp
+      code quota and the disk only to it (RA-BE-149); without it those two
+      alarms read nothing.
 
 Resources:
   Topic:
@@ -71,6 +78,7 @@ Resources:
         Variables:
           READY_URL: !Ref ReadyUrl
           DIRECT_READY_URL: !Ref DirectReadyUrl
+          READY_TOKEN: !Ref OperatorToken
       Code:
         ZipFile: |
           const { CloudWatchClient, PutMetricDataCommand } = require('@aws-sdk/client-cloudwatch');
@@ -78,7 +86,10 @@ Resources:
 
           const read = async (url) => {
             try {
-              const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+              const response = await fetch(url, {
+                headers: { authorization: `Bearer ${process.env.READY_TOKEN}` },
+                signal: AbortSignal.timeout(12000),
+              });
               return (await response.json()).checks ?? {};
             } catch (error) {
               console.log('unreachable', url, error.name);

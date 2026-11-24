@@ -84,9 +84,13 @@ Invoke-OnHost $instance 'bash /opt/aarast/current/deploy/aws/host/restore-drill.
 Step '5 من 6: تنبيهات توقف الخادم أو الرموز'
 $alertEmail = & $aws cloudformation describe-stacks --region us-east-1 --stack-name aarast-spend-alerts `
   --query "Stacks[0].Parameters[?ParameterKey=='AlertEmail'].ParameterValue" --output text
+# RA-BE-149: /ready tells the code quota and the disk only to the host's
+# METRICS_TOKEN, so the probe is given it. Read on the host, never printed.
+$operatorToken = (Invoke-OnHost $instance "sed -n 's/^METRICS_TOKEN=//p' /opt/aarast/app/.env").Trim()
+if (-not $operatorToken) { throw 'ما لقينا METRICS_TOKEN في ملف إعدادات الخادم' }
 & $aws cloudformation deploy --region $Region --stack-name aarast-uptime `
   --template-file (Join-Path $PSScriptRoot 'uptime.yaml') --capabilities CAPABILITY_NAMED_IAM `
-  --no-fail-on-empty-changeset --parameter-overrides "AlertEmail=$alertEmail" "InstanceId=$instance"
+  --no-fail-on-empty-changeset --parameter-overrides "AlertEmail=$alertEmail" "InstanceId=$instance" "OperatorToken=$operatorToken"
 if ($LASTEXITCODE -ne 0) { throw 'ما انخلقت التنبيهات' }
 Write-Host 'افتح البريد واضغط تأكيد الاشتراك في AWS Notifications، وإلا لن تصلك التنبيهات.'
 

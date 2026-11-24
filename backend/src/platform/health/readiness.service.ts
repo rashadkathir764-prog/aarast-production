@@ -23,8 +23,8 @@ export interface DependencyReadiness {
 /**
  * The app-wide daily WhatsApp-code quota (J1-19, RA-BE-02). `near_limit`
  * warns while codes still go out; `down` is the limit reached, when no new
- * account can be made by code. Status only: the public /ready carries no
- * sign-up counts.
+ * account can be made by code. Status only, no sign-up counts, and only to
+ * the operator's token (RA-BE-149).
  */
 export interface OtpCapacityReadiness {
   status: 'up' | 'near_limit' | 'down' | 'disabled';
@@ -34,7 +34,8 @@ export interface OtpCapacityReadiness {
  * The host's disk (RA-OP-06), read from inside the container, whose root is
  * the host's disk. `low` under 2 GiB or a tenth free: the database stops
  * writing when it fills, and the dumps and release images grow on it. It
- * warns; it never fails /ready. Status only, no sizes.
+ * warns; it never fails /ready. Status only, no sizes, and only to the
+ * operator's token (RA-BE-149).
  */
 export interface DiskReadiness {
   status: 'up' | 'low' | 'disabled';
@@ -66,6 +67,22 @@ export interface CoreReadinessReport {
   status: ReadinessReport['status'];
   service: ReadinessReport['service'];
   checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity' | 'disk'>;
+}
+
+/** What anyone may read of /ready (RA-BE-149): no code quota, no disk. */
+export interface PublicReadinessReport {
+  status: ReadinessReport['status'];
+  service: ReadinessReport['service'];
+  checks: Omit<ReadinessReport['checks'], 'otpCapacity' | 'disk'>;
+}
+
+/**
+ * RA-BE-149: the public answer, its status read from what it shows, so a
+ * spent code quota is not told by a 503 either.
+ */
+export function publicReadiness(report: ReadinessReport): PublicReadinessReport {
+  const { otpCapacity: _otpCapacity, disk: _disk, ...checks } = report.checks;
+  return { status: readinessOf(checks), service: report.service, checks };
 }
 
 const dependencyTimeoutMs = 2_500;

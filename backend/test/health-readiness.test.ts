@@ -30,6 +30,7 @@ const savedEnvironment = {
   OPENWA_BASE_URL: process.env.OPENWA_BASE_URL,
   OPENWA_SESSION_ID: process.env.OPENWA_SESSION_ID,
   OPENWA_API_KEY: process.env.OPENWA_API_KEY,
+  METRICS_TOKEN: process.env.METRICS_TOKEN,
 };
 
 @Module({
@@ -362,4 +363,54 @@ test('OpenWA readiness fails closed for an upstream instance without the hardene
   const report = await service.check();
   assert.equal(report.status, 'not_ready');
   assert.equal(report.checks.openwa.status, 'down');
+});
+
+// RA-BE-149: the public /ready told anyone how close the day's WhatsApp codes
+// were to their limit (and the host's disk), which tells an attacker spending
+// them how far they got. Those two answer only the operator's token, the one
+// /metrics asks for; the public answer is the dependencies and a status read
+// from them alone.
+function exhaustedQuotaController() {
+  process.env.NODE_ENV = 'test';
+  delete process.env.REDIS_URL;
+  delete process.env.AARAST_MEDIA_ENDPOINT;
+  delete process.env.AARAST_MEDIA_BUCKET;
+  process.env.AUTH_OTP_MODE = 'dev';
+  process.env.METRICS_TOKEN = 'operator-token-for-tests-only';
+  return new HealthController(
+    new ReadinessService(
+      { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
+      { checkReadiness: async () => undefined } as MediaReadinessPort,
+      fetch,
+      { capacity: async () => 'exhausted' },
+      async () => ({ bsize: 4096, blocks: 1_000_000, bavail: 10 }),
+    ),
+  );
+}
+
+test('RA-BE-149: the public /ready says nothing of the code quota or the disk', async () => {
+  const controller = exhaustedQuotaController();
+  for (const authorization of [undefined, 'Bearer wrong-token', 'operator-token-for-tests-only']) {
+    const report = await controller.getReadiness(authorization);
+    assert.equal(report.status, 'ready');
+    assert.deepEqual(Object.keys(report.checks).sort(), ['database', 'media', 'openwa', 'redis']);
+  }
+});
+
+test('RA-BE-149: the operator token reads the whole /ready', async () => {
+  const controller = exhaustedQuotaController();
+  await assert.rejects(
+    () => controller.getReadiness('Bearer operator-token-for-tests-only'),
+    (error: unknown) => {
+      assert.ok(error instanceof ServiceUnavailableException);
+      const report = error.getResponse() as ReadinessReport;
+      assert.deepEqual(report.checks.otpCapacity, { status: 'down' });
+      assert.deepEqual(report.checks.disk, { status: 'low' });
+      return true;
+    },
+  );
+  // Without a token configured nobody reads it.
+  delete process.env.METRICS_TOKEN;
+  const report = await controller.getReadiness('Bearer ');
+  assert.equal('otpCapacity' in report.checks, false);
 });

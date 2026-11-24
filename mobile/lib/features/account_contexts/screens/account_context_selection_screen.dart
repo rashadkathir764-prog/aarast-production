@@ -69,7 +69,7 @@ class _AccountContextSelectionScreenState
             child: Semantics(
               header: true,
               child: Text(
-                'فين تدخل؟',
+                context.say('فين تدخل؟', 'فين تدخلين؟'),
                 style: JourneyType.of(
                   JourneyType.hero,
                   weight: JourneyType.bold,
@@ -80,7 +80,10 @@ class _AccountContextSelectionScreenState
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
             child: Text(
-              'ايش تفتح الحين؟ ما نطلب منك دخول مرة ثانية.',
+              context.say(
+                'ايش تفتح الحين؟ ما نطلب منك دخول مرة ثانية.',
+                'ايش تفتحين الحين؟ ما نطلب منك دخول مرة ثانية.',
+              ),
               style: JourneyType.of(
                 JourneyType.body,
                 color: AarastV3Color.textMuted,

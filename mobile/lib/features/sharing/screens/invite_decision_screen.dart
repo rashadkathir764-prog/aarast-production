@@ -596,7 +596,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         // so the line names both and points at «أرسله مرة ثانية» below.
         // The invite speaks to whoever was invited, so no gendered verb.
         Text(
-          'الرمز غلط أو انتهى وقته. الرمز الجديد من «أرسله مرة ثانية».',
+          context.say(
+            'الرمز غلط أو انتهى وقته. الرمز الجديد من «أرسله مرة ثانية».',
+            'الرمز غلط أو انتهى وقته. الرمز الجديد من «أرسليه مرة ثانية».',
+          ),
           textAlign: TextAlign.center,
           style: JourneyType.of(
             JourneyType.body,
@@ -628,7 +631,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   /// notice opened with no one signed in asks to sign in first.
   List<Widget> _closedStep() {
     if (_closedReason == _ClosedReason.signInFirst) {
-      return const [
+      return [
         JourneyEntryQuestion(
           question: 'هذي الدعوة لحسابك',
           help: 'تفتح بعد الدخول بالحساب اللي انرسلت له الدعوة.',
@@ -636,7 +639,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         SizedBox(height: AarastV3Space.x5),
         JourneyNote(
           key: Key('invite-closed'),
-          text: 'بعد الدخول ترجع هنا على نفس الدعوة.',
+          text: context.say(
+            'بعد الدخول ترجع هنا على نفس الدعوة.',
+            'بعد الدخول ترجعين هنا على نفس الدعوة.',
+          ),
           icon: LucideIcons.logIn,
           tone: JourneyNoteTone.paper,
         ),
@@ -790,7 +796,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         return JourneyEntryActions(
           primary: JourneyButton(
             key: const Key('invite-request-otp-button'),
-            label: codeSent ? 'التالي' : 'أرسل الرمز',
+            label: codeSent
+                ? 'التالي'
+                : context.say('أرسل الرمز', 'أرسلي الرمز'),
             expand: true,
             large: true,
             loading: auth.isSubmitting,

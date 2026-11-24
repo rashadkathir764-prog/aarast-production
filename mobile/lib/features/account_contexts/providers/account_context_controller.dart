@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -56,8 +58,10 @@ class AccountContextController extends ChangeNotifier {
       'ما قدرنا نفتح حسابك. مرة ثانية غالبًا تمشي.';
   static const _genericSelectionFailure =
       'ما قدرنا نفتح اللي اخترته. مرة ثانية غالبًا تمشي.';
-  static const _offlineNotice =
-      'أنت بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
+  static String get _offlineNotice => ReaderVoice.say(
+    'أنت بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.',
+    'أنتِ بدون نت الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.',
+  );
   static const _offlineLoadFailure = 'ما وصلنا. لما يرجع النت تمشي.';
 
   final AccountContextsGateway _contextsApi;

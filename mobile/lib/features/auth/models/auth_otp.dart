@@ -1,4 +1,6 @@
-﻿import '../../../core/session/safe_user.dart';
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
+import '../../../core/session/safe_user.dart';
 
 /// Which number and purpose this phone asked a code for, and when
 /// (RA-MO-109): the number as typed.
@@ -65,8 +67,12 @@ class OtpRequestResult {
           !_containsUnconfirmedDeliveryClaim(normalized)) {
         return normalized;
       }
-      return 'طلبنا نرسل الرمز على واتساب، بس ما تأكدنا إنه وصل. '
-          'اكتبه لو وصلك، أو اطلبه مرة ثانية لما يخلص الوقت.';
+      return ReaderVoice.say(
+        'طلبنا نرسل الرمز على واتساب، بس ما تأكدنا إنه وصل. '
+            'اكتبه لو وصلك، أو اطلبه مرة ثانية لما يخلص الوقت.',
+        'طلبنا نرسل الرمز على واتساب، بس ما تأكدنا إنه وصل. '
+            'اكتبيه لو وصلك، أو اطلبيه مرة ثانية لما يخلص الوقت.',
+      );
     }
     if (normalized != null && normalized.isNotEmpty) return normalized;
     return null;

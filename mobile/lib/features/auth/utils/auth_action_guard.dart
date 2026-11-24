@@ -13,19 +13,31 @@ import '../../../core/widgets/aarast_toast.dart';
 class AuthActionGuard {
   const AuthActionGuard._();
 
-  static const sharingLoginGateTitle = 'سجّل الدخول لمشاركة الخطة';
+  static String get sharingLoginGateTitle => ReaderVoice.say(
+    'سجّل الدخول لمشاركة الخطة',
+    'سجّلي الدخول لمشاركة الخطة',
+  );
   static const sharingLoginGateBody =
       'تسجيل الدخول يتيح لك دعوة العائلة وتحديد الصلاحيات ومزامنة الخطة.';
   static const sessionExpiredTitle = 'انتهى دخولك';
-  static const sharingSessionExpiredBody =
-      'سجّل دخول مرة ثانية عشان تكمل مشاركة الخطة.';
+  static String get sharingSessionExpiredBody => ReaderVoice.say(
+    'سجّل دخول مرة ثانية عشان تكمل مشاركة الخطة.',
+    'سجّلي دخول مرة ثانية عشان تكملين مشاركة الخطة.',
+  );
   // RA-MO-256: «لحفظ هذا الإجراء… ومزامنته» was formal and a programmer's
   // word; said as the app says things.
-  static const protectedActionMessage =
-      'هذا ينحفظ في حسابك. سجّل دخول عشان تكمل.';
-  static const quoteSubmitMessage = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
-  static const localPlanningSaveMessage =
-      'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';
+  static String get protectedActionMessage => ReaderVoice.say(
+    'هذا ينحفظ في حسابك. سجّل دخول عشان تكمل.',
+    'هذا ينحفظ في حسابك. سجّلي دخول عشان تكملين.',
+  );
+  static String get quoteSubmitMessage => ReaderVoice.say(
+    'سجّل الدخول لإرسال طلب عرض ومتابعة الردود',
+    'سجّلي الدخول لإرسال طلب عرض ومتابعة الردود',
+  );
+  static String get localPlanningSaveMessage => ReaderVoice.say(
+    'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.',
+    'انحفظ على جوالك. سجّلي دخول بعدين عشان تنحفظ خطتك في حسابك.',
+  );
 
   static bool isLocalGuestPlanId(String? planId) => isLocalPlanId(planId);
 
@@ -96,13 +108,13 @@ class AuthActionGuard {
 
   static Future<bool> blockProtectedSubmitWithoutAccount(
     BuildContext context, {
-    String message = protectedActionMessage,
+    String? message,
   }) async {
     if (AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
     if (await hasAccount(context)) return false;
     if (!context.mounted) return true;
 
-    AarastToast.showInfo(context, message);
+    AarastToast.showInfo(context, message ?? protectedActionMessage);
     return true;
   }
 

@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -30,8 +32,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   /// «أخفِ المبالغ» (g02) lives on the phone and outlasts this plan.
   final DevicePreferences? _preferences;
 
-  static const savedButStaleMessage =
-      'انحفظ، بس ما قدرنا نحدّث شاشة المال الحين. اسحب للتحديث.';
+  static String get savedButStaleMessage => ReaderVoice.say(
+    'انحفظ، بس ما قدرنا نحدّث شاشة المال الحين. اسحب للتحديث.',
+    'انحفظ، بس ما قدرنا نحدّث شاشة المال الحين. اسحبي للتحديث.',
+  );
 
   final FinanceApi _api;
   final SharingApi? _permissionsApi;
@@ -223,7 +227,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       _access = access;
       if (!access.canViewMoney) {
         _clear(planId);
-        _loadErrorMessage = 'ما عندك صلاحية تشوف المال في هذي الخطة.';
+        _loadErrorMessage = ReaderVoice.say(
+          'ما عندك صلاحية تشوف المال في هذي الخطة.',
+          'ما عندك صلاحية تشوفين المال في هذي الخطة.',
+        );
         _isLoading = false;
         notifyListeners();
         return;
@@ -240,7 +247,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     } catch (_) {
       if (!_isCurrent(generation)) return;
       _clear(planId);
-      _loadErrorMessage = 'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.';
+      _loadErrorMessage = ReaderVoice.say(
+        'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.',
+        'ما قدرنا نجيب المال الحين. جرّبي مرة ثانية.',
+      );
       _isLoading = false;
       notifyListeners();
       return;
@@ -306,7 +316,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           }
           return error.message;
         }
-        return 'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.';
+        return ReaderVoice.say(
+          'ما قدرنا نجيب المال الحين. جرّب مرة ثانية.',
+          'ما قدرنا نجيب المال الحين. جرّبي مرة ثانية.',
+        );
       },
     );
     await _refreshPendingMoney(planId);
@@ -1009,7 +1022,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     final allowed = settlement ? canSettleMoney : _access.canManageMoney;
     if (!allowed && !_isLocalPlan(planId)) {
       // RA-MO-182: one name for the right, as its level reads («يعدّل»).
-      _errorMessage = 'ما عندك صلاحية تعدّل المال في هذي الخطة.';
+      _errorMessage = ReaderVoice.say(
+        'ما عندك صلاحية تعدّل المال في هذي الخطة.',
+        'ما عندك صلاحية تعدّلين المال في هذي الخطة.',
+      );
       notifyListeners();
       return false;
     }
@@ -1038,8 +1054,12 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           _errorMessage = !reread
               ? error.message
               : budget
-              ? 'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
-                    'هذي هي الحين، عدّل عليها.'
+              ? ReaderVoice.say(
+                  'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
+                      'هذي هي الحين، عدّل عليها.',
+                  'الميزانية تغيّرت من جهاز ثاني وما انحفظ تعديلك. '
+                      'هذي هي الحين، عدّلي عليها.',
+                )
               // Said to either reader, with no verb to a man or a woman.
               : 'فيه تعديل من جهاز ثاني سبق تعديلك، فما انحفظ. '
                     'اللي قدامك الحين هو الجديد.';
@@ -1048,7 +1068,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         _errorMessage = error.message;
         return false;
       } catch (_) {
-        _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
+        _errorMessage = ReaderVoice.say(
+          'ما انحفظ التغيير الحين. جرّب مرة ثانية.',
+          'ما انحفظ التغيير الحين. جرّبي مرة ثانية.',
+        );
         return false;
       }
       var refreshed = true;
@@ -1180,8 +1203,11 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     // the read failed and the save went on), it sent no item and the default
     // currency, and the server deleted every item without an agreement.
     if (!_hasLoadedMoney || _loadedPlanId != planId) {
-      throw const ApiException(
-        'ما قدرنا نقرأ ميزانيتك الحين، فما غيّرناها. تأكد من النت وجرّب مرة ثانية.',
+      throw ApiException(
+        ReaderVoice.say(
+          'ما قدرنا نقرأ ميزانيتك الحين، فما غيّرناها. تأكد من النت وجرّب مرة ثانية.',
+          'ما قدرنا نقرأ ميزانيتك الحين، فما غيّرناها. تأكدي من النت وجرّبي مرة ثانية.',
+        ),
       );
     }
     final result = await _api.replaceMoneyBudget(

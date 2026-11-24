@@ -691,7 +691,7 @@ class _CodeHelpSheetState extends State<JourneyCodeHelpSheet> {
         const SizedBox(height: AarastV3Space.x2),
         _HelpRow(
           icon: LucideIcons.refreshCw,
-          label: 'أرسله مرة ثانية',
+          label: ReaderVoice.say('أرسله مرة ثانية', 'أرسليه مرة ثانية'),
           sub: seconds > 0 ? 'بعد ${journeyClock(seconds)}' : null,
           onTap: seconds > 0 ? null : widget.onResend,
         ),
@@ -840,7 +840,10 @@ class JourneyCodeResendRow extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
                     key: const ValueKey('otp-resend-button'),
-                    label: 'أرسله مرة ثانية',
+                    label: ReaderVoice.say(
+                      'أرسله مرة ثانية',
+                      'أرسليه مرة ثانية',
+                    ),
                     color: dark,
                     onPressed: onResend,
                   ),

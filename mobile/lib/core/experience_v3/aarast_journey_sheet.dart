@@ -235,7 +235,7 @@ class JourneyChoiceField<T> extends StatelessWidget {
     required this.choices,
     required this.onChanged,
     this.icon,
-    this.placeholder = 'اختر',
+    this.placeholder,
     this.validator,
     super.key,
   });
@@ -245,7 +245,7 @@ class JourneyChoiceField<T> extends StatelessWidget {
   final List<JourneyChoice<T>> choices;
   final ValueChanged<T?> onChanged;
   final IconData? icon;
-  final String placeholder;
+  final String? placeholder;
   final FormFieldValidator<T>? validator;
 
   @override

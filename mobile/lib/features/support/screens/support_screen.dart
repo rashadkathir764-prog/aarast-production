@@ -355,7 +355,12 @@ class _DiagnosticReportActionState extends State<_DiagnosticReportAction> {
       child: Center(
         child: JourneyTextAction(
           key: const Key('diagnostic-report-send'),
-          label: _isSending ? 'نرسل التقرير…' : 'أرسل تقرير عطل لفريقنا',
+          label: _isSending
+              ? 'نرسل التقرير…'
+              : context.say(
+                  'أرسل تقرير عطل لفريقنا',
+                  'أرسلي تقرير عطل لفريقنا',
+                ),
           onPressed: _isSending ? null : () => _confirmAndSend(service),
         ),
       ),
@@ -367,7 +372,7 @@ class _DiagnosticReportActionState extends State<_DiagnosticReportAction> {
       context: context,
       builder: (dialogContext) => AarastDialog(
         key: const Key('diagnostic-report-consent-dialog'),
-        title: const Text('ترسل تقرير عطل؟'),
+        title: Text(context.say('ترسل تقرير عطل؟', 'ترسلين تقرير عطل؟')),
         content: const Text(
           'فيه آخر 15 دقيقة من عمل التطبيق، 300 حدث بالكثير: أسماء '
           'العمليات ونتائجها ومساراتها ومددها.\n\n'
@@ -384,7 +389,7 @@ class _DiagnosticReportActionState extends State<_DiagnosticReportAction> {
           FilledButton(
             key: const Key('diagnostic-report-confirm'),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('أرسله'),
+            child: Text(context.say('أرسله', 'أرسليه')),
           ),
         ],
       ),
@@ -403,7 +408,10 @@ class _DiagnosticReportActionState extends State<_DiagnosticReportAction> {
       case DiagnosticReportSendResult.failed:
         AarastToast.showError(
           context,
-          'ما وصل التقرير، وما انحفظ. جرّب لما يتحسن النت.',
+          context.say(
+            'ما وصل التقرير، وما انحفظ. جرّب لما يتحسن النت.',
+            'ما وصل التقرير، وما انحفظ. جرّبي لما يتحسن النت.',
+          ),
         );
     }
   }

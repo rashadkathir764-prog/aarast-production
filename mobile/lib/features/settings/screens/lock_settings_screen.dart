@@ -71,7 +71,10 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           const SizedBox(height: AarastV3Space.x1),
           Text(
             wait > Duration.zero
-                ? 'جرّب بعد ${wait.inSeconds + 1} ثانية.'
+                ? context.say(
+                    'جرّب بعد ${wait.inSeconds + 1} ثانية.',
+                    'جرّبي بعد ${wait.inSeconds + 1} ثانية.',
+                  )
                 : _wrongCode
                 ? 'الرمز غلط.'
                 : action == _AfterCode.turnOff

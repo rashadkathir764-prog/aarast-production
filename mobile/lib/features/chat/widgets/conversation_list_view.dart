@@ -99,13 +99,16 @@ class _ConversationListViewState extends State<ConversationListView> {
               onRetry: chat.initialize,
             )
           else if (shown.isEmpty)
-            const JourneyListState(
+            JourneyListState(
               key: ValueKey('conversations-empty'),
               phase: JourneyListPhase.empty,
               section: JourneySection.providers,
               emptyIcon: LucideIcons.messageCircle,
               emptyTitle: 'ما في محادثات بعد',
-              emptyMessage: 'أول ما تطلب عرض من مزود، تبدأ محادثتكم هنا.',
+              emptyMessage: context.say(
+                'أول ما تطلب عرض من مزود، تبدأ محادثتكم هنا.',
+                'أول ما تطلبين عرض من مزود، تبدأ محادثتكم هنا.',
+              ),
             )
           else ...[
             // D87 (RA-MO-260): a copy on the phone is shown as what it is.

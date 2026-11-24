@@ -94,8 +94,10 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
       if (failedSections.isEmpty) {
         _detailSectionsErrors.remove(providerId);
       } else {
-        _detailSectionsErrors[providerId] =
-            'ما قدرنا نحدّث ${failedSections.join('، ')}. جرّب مرة ثانية.';
+        _detailSectionsErrors[providerId] = ReaderVoice.say(
+          'ما قدرنا نحدّث ${failedSections.join('، ')}. جرّب مرة ثانية.',
+          'ما قدرنا نحدّث ${failedSections.join('، ')}. جرّبي مرة ثانية.',
+        );
       }
       if (canLoadPlanQuotes) {
         _mergeQuotes(results[4] as List<QuoteRequest>);
@@ -126,7 +128,10 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     } on ApiException catch (error) {
       return marketplaceErrorMessage(error.message);
     } catch (_) {
-      return 'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.';
+      return ReaderVoice.say(
+        'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.',
+        'ما قدرنا نرسل البلاغ. جرّبي مرة ثانية.',
+      );
     }
   }
 

@@ -474,7 +474,7 @@ class _ItemMarketRow extends StatelessWidget {
             ? row.detail
             : context.say('دوّر على مزود', 'دوّري على مزود'),
         subtitle: started
-            ? 'افتح الطلبات والعروض'
+            ? context.say('افتح الطلبات والعروض', 'افتحي الطلبات والعروض')
             : context.say(
                 'اطلب عروض أسعار لـ$itemName وقارن',
                 'اطلبي عروض أسعار لـ$itemName وقارني',
@@ -590,7 +590,12 @@ class _EstimateSheetState extends State<_EstimateSheet> {
     }
     setState(() {
       _saving = false;
-      _error = widget.errorOf() ?? 'ما انحفظ التقدير. جرّب مرة ثانية.';
+      _error =
+          widget.errorOf() ??
+          context.say(
+            'ما انحفظ التقدير. جرّب مرة ثانية.',
+            'ما انحفظ التقدير. جرّبي مرة ثانية.',
+          );
     });
   }
 

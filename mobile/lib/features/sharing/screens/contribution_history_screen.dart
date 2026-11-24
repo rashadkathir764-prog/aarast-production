@@ -202,7 +202,10 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
           emptyTitle: owner ? 'ما سوّى أحد شي بعد' : 'ما سجّلت شي بعد',
           emptyMessage: owner
               ? 'لما يضيف مشارك مهمة أو ضيف أو دفعة، تشوفها هنا باسمه.'
-              : 'لما تضيف مهمة أو ضيف أو دفعة، تبقى هنا باسمك.',
+              : context.say(
+                  'لما تضيف مهمة أو ضيف أو دفعة، تبقى هنا باسمك.',
+                  'لما تضيفين مهمة أو ضيف أو دفعة، تبقى هنا باسمك.',
+                ),
         ),
       ];
     }
@@ -248,7 +251,9 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
         const SizedBox(height: AarastV3Space.x3),
         JourneyButton.quiet(
           key: const Key('contribution-history-load-more'),
-          label: history.requiresReload ? 'حدّث من البداية' : 'اللي قبلها',
+          label: history.requiresReload
+              ? context.say('حدّث من البداية', 'حدّثي من البداية')
+              : 'اللي قبلها',
           icon: history.requiresReload
               ? LucideIcons.refreshCw
               : LucideIcons.chevronsDown,
@@ -316,7 +321,7 @@ class _ActivityRow extends StatelessWidget {
     final event = activity.event;
     final actor = activity.actor;
     final self = actor == null;
-    final who = self ? 'أنت' : actor.name;
+    final who = self ? context.say('أنت', 'أنتِ') : actor.name;
     final what = activityLine(
       event,
       self: self,

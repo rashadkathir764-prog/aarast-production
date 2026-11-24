@@ -99,7 +99,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       child: JourneyPage(
         bottom: JourneyButton(
           key: const ValueKey('delete-account-confirm'),
-          label: 'احذف حسابي',
+          label: context.say('احذف حسابي', 'احذفي حسابي'),
           background: AarastV3Color.danger,
           expand: true,
           large: true,
@@ -362,7 +362,7 @@ class _LoadFailed extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyButton(
           key: const ValueKey('delete-account-retry'),
-          label: 'جرّب مرة ثانية',
+          label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
           icon: LucideIcons.refreshCw,
           expand: true,
           onPressed: onRetry,

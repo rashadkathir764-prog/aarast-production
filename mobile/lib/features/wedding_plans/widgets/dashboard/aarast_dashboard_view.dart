@@ -475,7 +475,10 @@ class AarastDashboardView extends StatelessWidget {
                               key: const ValueKey(
                                 'aarast-home-money-unread-retry',
                               ),
-                              label: 'جرّب مرة ثانية',
+                              label: context.say(
+                                'جرّب مرة ثانية',
+                                'جرّبي مرة ثانية',
+                              ),
                               icon: LucideIcons.refreshCw,
                               color: AarastV3Color.brandAccentStrong,
                               onPressed: retry,

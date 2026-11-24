@@ -26,8 +26,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   const localPlanId = 'guest-plan-qa';
-  const localMessage = AuthActionGuard.localPlanningSaveMessage;
-  const cloudMessage = AuthActionGuard.protectedActionMessage;
+  final localMessage = AuthActionGuard.localPlanningSaveMessage;
+  final cloudMessage = AuthActionGuard.protectedActionMessage;
 
   testWidgets('guest/local can add guest without login', (tester) async {
     _setTallView(tester);

@@ -97,7 +97,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+      'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
     );
   });
 
@@ -114,7 +114,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+      'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
     );
   });
 }

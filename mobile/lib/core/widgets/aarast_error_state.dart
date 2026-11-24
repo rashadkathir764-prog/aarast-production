@@ -8,14 +8,16 @@ class AarastErrorState extends StatelessWidget {
     required this.title,
     required this.message,
     this.onRetry,
-    this.retryLabel = 'جرّب مرة ثانية',
+    this.retryLabel,
     super.key,
   });
 
   final String title;
   final String message;
   final VoidCallback? onRetry;
-  final String retryLabel;
+
+  /// Null says «جرّب مرة ثانية» in the reader's own form.
+  final String? retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class AarastErrorState extends StatelessWidget {
                 ),
               ),
               child: Text(
-                retryLabel,
+                retryLabel ?? context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(

@@ -381,7 +381,7 @@ class _NextTaskCard extends StatelessWidget {
                 if (call != null)
                   JourneyButton.quiet(
                     key: const ValueKey('participant-next-call'),
-                    label: 'كلّم $contact',
+                    label: context.say('كلّم $contact', 'كلّمي $contact'),
                     onPressed: () => unawaited(launchUrl(call)),
                   ),
               ],

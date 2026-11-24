@@ -256,12 +256,16 @@ class _ForgotConfirm extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const Key('app-lock-forgot-confirm'),
-            label: 'اطلع وشيل الرمز',
+            label: ReaderVoice.say('اطلع وشيل الرمز', 'اطلعي وشيلي الرمز'),
             expand: true,
             onPressed: onForget,
           ),
           const SizedBox(height: AarastV3Space.x2),
-          JourneyButton.quiet(label: 'ارجع', expand: true, onPressed: onBack),
+          JourneyButton.quiet(
+            label: ReaderVoice.say('ارجع', 'ارجعي'),
+            expand: true,
+            onPressed: onBack,
+          ),
         ],
       ),
     );

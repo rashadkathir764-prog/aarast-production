@@ -95,7 +95,10 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
       ClipboardData(text: _report(context, reachability)),
     );
     if (!mounted) return;
-    AarastToast.showSuccess(context, 'انسخ التقرير وأرسله لنا');
+    AarastToast.showSuccess(
+      context,
+      context.say('انسخ التقرير وأرسله لنا', 'انسخي التقرير وأرسليه لنا'),
+    );
   }
 
   @override
@@ -148,7 +151,9 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
           ],
           JourneyButton(
             key: const ValueKey('connection-probe'),
-            label: _probing ? 'نفحص…' : 'افحص الحين',
+            label: _probing
+                ? 'نفحص…'
+                : context.say('افحص الحين', 'افحصي الحين'),
             icon: LucideIcons.activity,
             background: context.accent.primary,
             expand: true,
@@ -201,7 +206,7 @@ class _ConnectionCheckScreenState extends State<ConnectionCheckScreen> {
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: const ValueKey('connection-copy'),
-            label: 'انسخ التقرير',
+            label: context.say('انسخ التقرير', 'انسخي التقرير'),
             icon: LucideIcons.copy,
             background: context.accent.primarySoft,
             foreground: context.accent.primary,

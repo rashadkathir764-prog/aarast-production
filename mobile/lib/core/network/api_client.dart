@@ -1,3 +1,4 @@
+import '../experience_v3/aarast_journey_profile.dart' show ReaderVoice;
 import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
@@ -15,7 +16,7 @@ typedef TokenProvider = Future<String?> Function();
 typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
-    'ما قدرنا نجيب البيانات. جرّب مرة ثانية.';
+    'ما قدرنا نجيب البيانات. مرة ثانية غالبًا تمشي.';
 
 /// D88: the server answered that it does not know the route («Cannot GET
 /// …»): the app is newer than the server. Retrying changes nothing; the
@@ -26,7 +27,7 @@ const aarastServerOlderCode = 'SERVER_OLDER_THAN_APP';
 // A number without WhatsApp and a channel outage look the same to the server
 // (field test Q07), so the message names what the user can check.
 const aarastOtpDeliveryUnavailableMessage =
-    'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.';
+    'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.';
 const _requestSessionGenerationKey = 'aarast_request_session_generation';
 const _requestContextGenerationKey = 'aarast_request_context_generation';
 const _requestClientIdKey = 'aarast_client_request_id';
@@ -1070,7 +1071,10 @@ class ApiException implements Exception {
       'PROVIDER_HAS_UPCOMING_BOOKINGS' =>
         'عندك حجوزات مؤكدة جاية. الغها أو سلّمها قبل ما تحذف حسابك.',
       // D63: the 30 days before an account is erased, and its data download.
-      'ACCOUNT_DELETION_PENDING' => 'حسابك ينتظر الحذف. تراجع عنه عشان تكمل.',
+      'ACCOUNT_DELETION_PENDING' => ReaderVoice.say(
+        'حسابك ينتظر الحذف. تراجع عنه عشان تكمل.',
+        'حسابك ينتظر الحذف. تراجعي عنه عشان تكملي.',
+      ),
       // RA-BE-95: said for what it is, not as a missing permission.
       'PROVIDER_NOT_ACTIVE' => 'المزود موقوف الحين، ما يستقبل رسائل ولا طلبات.',
       // RA-BE-26: the provider's owner is waiting out the account's deletion.
@@ -1082,68 +1086,121 @@ class ApiException implements Exception {
       'PROVIDER_PROFILE_READ_ONLY' => 'ملفك ما يتعدّل وهو موقوف أو مرفوض.',
       'CONVERSATION_CLOSED' => 'هذي المحادثة انقفلت، ما تستقبل رسائل.',
       'CONVERSATION_BLOCKED' => 'المراسلة في هذي المحادثة موقوفة.',
-      'CONFIRM_WORD_MISMATCH' => 'اكتب «حذف» كما هي للتأكيد.',
+      'CONFIRM_WORD_MISMATCH' => ReaderVoice.say(
+        'اكتب «حذف» كما هي للتأكيد.',
+        'اكتبي «حذف» كما هي للتأكيد.',
+      ),
       'DELETION_NOT_PENDING' => 'حسابك ما ينتظر الحذف.',
-      'EXPORT_RATE_LIMITED' => 'نزّلت بياناتك كثير اليوم. جرّب بكرة.',
+      'EXPORT_RATE_LIMITED' => ReaderVoice.say(
+        'نزّلت بياناتك كثير اليوم. جرّب بكرة.',
+        'نزّلت بياناتك كثير اليوم. جرّبي بكرة.',
+      ),
       'PROVIDER_REVIEW_CHANGED' =>
         'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. الملاحظات الجديدة تحت، والإرسال بعد تعديلها.',
       'PROVIDER_JOINING_CURRENCY' => 'سعر خدمتك يكون بالريال اليمني.',
       // V1 checklist 4.10: private costs and tasks.
       'COST_PRIVACY_NOT_ALLOWED' =>
         'التكلفة الخاصة متاحة لصاحب الخطة والشريك فقط.',
-      'COST_PRIVACY_AT_CREATION_ONLY' =>
+      'COST_PRIVACY_AT_CREATION_ONLY' => ReaderVoice.say(
         'التكلفة المشتركة ما تصير خاصة. اختر "تكلفة خاصة بي" وأنت تضيفها.',
+        'التكلفة المشتركة ما تصير خاصة. اختاري "تكلفة خاصة بي" وأنتِ تضيفها.',
+      ),
       'TASK_PRIVACY_NOT_ALLOWED' =>
         'المهمة الخاصة متاحة لصاحب الخطة والشريك فقط.',
-      'TASK_PRIVACY_AT_CREATION_ONLY' =>
+      'TASK_PRIVACY_AT_CREATION_ONLY' => ReaderVoice.say(
         'المهمة المشتركة ما تصير خاصة. اختر "مهمة خاصة بي" وأنت تضيفها.',
-      'TASK_PRIVATE_ASSIGNMENT' =>
+        'المهمة المشتركة ما تصير خاصة. اختاري "مهمة خاصة بي" وأنتِ تضيفها.',
+      ),
+      'TASK_PRIVATE_ASSIGNMENT' => ReaderVoice.say(
         'المهمة الخاصة تبقى لك وحدك. شاركها مع الخطة أولًا ثم اختر المسؤول.',
+        'المهمة الخاصة تبقى لك وحدك. شاركيها مع الخطة أولًا ثم اختاري المسؤول.',
+      ),
       // D65: the wedding's events.
       'EVENT_TYPE_EXISTS' => 'هذي المناسبة موجودة في خطتك.',
-      'EVENT_CUSTOM_TITLE_REQUIRED' => 'اكتب اسم المناسبة.',
+      'EVENT_CUSTOM_TITLE_REQUIRED' => ReaderVoice.say(
+        'اكتب اسم المناسبة.',
+        'اكتبي اسم المناسبة.',
+      ),
       'EVENT_WEDDING_DATE_IS_PLAN_DATE' =>
         'يوم العرس يتغير من «أجّل العرس» في الخطة.',
       'EVENT_IS_MAIN' => 'العرس نفسه ما ينحذف. موعده يتغير من الخطة.',
-      'EVENT_EXACT_TIME_REQUIRED' ||
-      'EVENT_EXACT_TIME_INVALID' => 'اختر الساعة.',
-      'EVENT_DATE_INVALID' => 'اختر يوم المناسبة.',
-      'EVENT_LIMIT_REACHED' => 'خطتك فيها مناسبات كثيرة. احذف وحدة قبل.',
+      'EVENT_EXACT_TIME_REQUIRED' || 'EVENT_EXACT_TIME_INVALID' =>
+        ReaderVoice.say('اختر الساعة.', 'اختاري الساعة.'),
+      'EVENT_DATE_INVALID' => ReaderVoice.say(
+        'اختر يوم المناسبة.',
+        'اختاري يوم المناسبة.',
+      ),
+      'EVENT_LIMIT_REACHED' => ReaderVoice.say(
+        'خطتك فيها مناسبات كثيرة. احذف وحدة قبل.',
+        'خطتك فيها مناسبات كثيرة. احذفي وحدة قبل.',
+      ),
       // V1 checklist 4.12: the planning assistant.
-      'ASSISTANT_CONSENT_REQUIRED' =>
+      'ASSISTANT_CONSENT_REQUIRED' => ReaderVoice.say(
         'وافق على إرسال بيانات خطتك للمساعد أولًا.',
+        'وافقي على إرسال بيانات خطتك للمساعد أولًا.',
+      ),
       'ASSISTANT_OWNER_OR_PARTNER_ONLY' =>
         'المساعد متاح لصاحب الخطة وشريكه فقط.',
-      'ASSISTANT_DAILY_LIMIT' => 'خلصت أسئلة اليوم. ارجع بكرة.',
+      'ASSISTANT_DAILY_LIMIT' => ReaderVoice.say(
+        'خلصت أسئلة اليوم. ارجع بكرة.',
+        'خلصت أسئلة اليوم. ارجعي بكرة.',
+      ),
       // RA-BE-165: the account's own monthly cap; the others go on.
-      'ASSISTANT_USER_MONTHLY_LIMIT' => 'خلصت أسئلتك هذا الشهر، ترجع أول الشهر',
+      'ASSISTANT_USER_MONTHLY_LIMIT' => ReaderVoice.say(
+        'خلصت أسئلتك هذا الشهر، ترجع أول الشهر',
+        'خلصت أسئلتك هذا الشهر، ترجعين أول الشهر',
+      ),
       'ASSISTANT_DISABLED' => 'المساعد ما اشتغل لسا.',
-      'ASSISTANT_BUDGET_EXHAUSTED' =>
+      'ASSISTANT_BUDGET_EXHAUSTED' => ReaderVoice.say(
         'المساعد واقف هذا الشهر. جرّب الشهر الجاي.',
-      'ASSISTANT_BUSY' => 'المساعد مشغول الحين. جرّب بعد شوي.',
-      'ASSISTANT_UNAVAILABLE' =>
+        'المساعد واقف هذا الشهر. جرّبي الشهر الجاي.',
+      ),
+      'ASSISTANT_BUSY' => ReaderVoice.say(
+        'المساعد مشغول الحين. جرّب بعد شوي.',
+        'المساعد مشغول الحين. جرّبي بعد شوي.',
+      ),
+      'ASSISTANT_UNAVAILABLE' => ReaderVoice.say(
         'المساعد مش متاح الحين. جرّب بعدين، ولو تكرر كلّم الدعم.',
+        'المساعد مش متاح الحين. جرّبي بعدين، ولو تكرر كلّمي الدعم.',
+      ),
       // RA-MO-116, 117: the app's dialect, no technical word.
       'INVALID_CREDENTIALS' => 'الرقم أو كلمة المرور غلط.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' => 'حساب التطبيق يحتاج تأكيد رقم الجوال.',
-      'ACCOUNT_ALREADY_EXISTS' =>
+      'ACCOUNT_ALREADY_EXISTS' => ReaderVoice.say(
         'هذا الرقم عليه حساب من قبل. سجّل دخول، أو استرجع كلمة المرور.',
-      'ADMIN_APP_PASSWORD_ALREADY_SET' =>
+        'هذا الرقم عليه حساب من قبل. سجّلي دخول، أو استرجعي كلمة المرور.',
+      ),
+      'ADMIN_APP_PASSWORD_ALREADY_SET' => ReaderVoice.say(
         'حساب التطبيق لهذا الرقم جاهز من قبل. سجّل دخول، أو استرجع كلمة مرور التطبيق.',
-      'OTP_INVALID_OR_EXPIRED' =>
+        'حساب التطبيق لهذا الرقم جاهز من قبل. سجّلي دخول، أو استرجعي كلمة مرور التطبيق.',
+      ),
+      'OTP_INVALID_OR_EXPIRED' => ReaderVoice.say(
         'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
-      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
+        'الرمز غلط أو انتهى وقته. اكتبيه مرة ثانية أو اطلبي رمز جديد.',
+      ),
+      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' => ReaderVoice.say(
         'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّ حساب جديد وكمّل.',
-      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
+        'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّي حساب جديد وكمّلي.',
+      ),
+      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' => ReaderVoice.say(
         'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصل مع الدعم.',
-      'INVITE_NOT_FOUND_FOR_PHONE' =>
+        'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصلي مع الدعم.',
+      ),
+      'INVITE_NOT_FOUND_FOR_PHONE' => ReaderVoice.say(
         'ما في دعوة شغالة على هذا الرقم. تأكد من الرقم، أو اطلب دعوة جديدة.',
-      'INVITE_ACCOUNT_SETUP_REQUIRED' =>
+        'ما في دعوة شغالة على هذا الرقم. تأكدي من الرقم، أو اطلبي دعوة جديدة.',
+      ),
+      'INVITE_ACCOUNT_SETUP_REQUIRED' => ReaderVoice.say(
         'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
+        'أول مرة تدخلين اعّرست: اكتبي اسمك، ونفس الرمز يسوي لك حساب.',
+      ),
       'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
       // J2-11: sharing refusals, each said as what happened.
-      'CANNOT_INVITE_SELF' => 'هذا رقمك أنت، الدعوة لغيرك',
+      'CANNOT_INVITE_SELF' => ReaderVoice.say(
+        'هذا رقمك أنت، الدعوة لغيرك',
+        'هذا رقمك أنتِ، الدعوة لغيرك',
+      ),
       'ALREADY_A_MEMBER' => 'هذا الرقم مشارك في الخطة من قبل',
       'INVITE_ALREADY_PENDING' =>
         'الدعوة مرسلة لهذا الرقم من قبل. التذكير يكفي بدل دعوة ثانية',
@@ -1154,8 +1211,10 @@ class ApiException implements Exception {
       'VIEWER_CANNOT_EDIT' =>
         '«يشوف بس» ما يعدّل شي. الدور الثاني هو اللي يعدّل',
       // J2-10: the rights changed between opening the sheet and leaving.
-      'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST' =>
+      'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST' => ReaderVoice.say(
         'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّب الخروج مرة ثانية.',
+        'تغيّرت صلاحياتك قبل شوي، حدّثنا الخطة. جرّبي الخروج مرة ثانية.',
+      ),
       _ => null,
     };
   }

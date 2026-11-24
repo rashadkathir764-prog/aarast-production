@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
@@ -41,7 +43,12 @@ class PlanAssistantApi {
     );
     final at = DateTime.tryParse(json['consentedAt']?.toString() ?? '');
     if (at == null) {
-      throw const ApiException('ما انحفظت الموافقة. جرّب مرة ثانية.');
+      throw ApiException(
+        ReaderVoice.say(
+          'ما انحفظت الموافقة. جرّب مرة ثانية.',
+          'ما انحفظت الموافقة. جرّبي مرة ثانية.',
+        ),
+      );
     }
     return at;
   }

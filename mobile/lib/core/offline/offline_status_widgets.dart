@@ -66,8 +66,11 @@ class OfflineStatusBanner extends StatelessWidget {
     // للخادم» under «ما نقدر نوصل للخادم الحين») is not said again.
     final lastSync = state == SyncState.offline && failure != null
         ? failure.cause == ReachabilityCause.unknown && !phoneOffline
-              ? 'اضغط للفحص'
-              : '${reachabilityCauseLabel(failure.cause)} · اضغط للفحص'
+              ? ReaderVoice.say('اضغط للفحص', 'اضغطي للفحص')
+              : ReaderVoice.say(
+                  '${reachabilityCauseLabel(failure.cause)} · اضغط للفحص',
+                  '${reachabilityCauseLabel(failure.cause)} · اضغطي للفحص',
+                )
         : service.lastSyncedAt == null
         ? 'آخر بيانات محفوظة'
         : 'آخر إرسال: ${_shortTime(service.lastSyncedAt!)}';
@@ -178,8 +181,14 @@ class OfflineStatusBanner extends StatelessWidget {
                             ? () => showPendingChangesSheet(context, service)
                             : service.syncPendingChanges,
                         tooltip: hasWaiting
-                            ? 'شوف التغييرات اللي تنتظر'
-                            : 'حاول ترسل مرة ثانية',
+                            ? ReaderVoice.say(
+                                'شوف التغييرات اللي تنتظر',
+                                'شوفي التغييرات اللي تنتظر',
+                              )
+                            : ReaderVoice.say(
+                                'حاول ترسل مرة ثانية',
+                                'حاولي ترسلين مرة ثانية',
+                              ),
                         icon: Icon(
                           hasBlockedIssues
                               ? LucideIcons.alertCircle
@@ -276,7 +285,9 @@ class OfflineSyncNowTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        service.blockedCount > 0 ? 'تغييرات ما وصلت' : 'أرسل التغييرات الحين',
+        service.blockedCount > 0
+            ? 'تغييرات ما وصلت'
+            : ReaderVoice.say('أرسل التغييرات الحين', 'أرسلي التغييرات الحين'),
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
@@ -345,7 +356,7 @@ class _PendingChangesSheet extends StatelessWidget {
               ? null
               : JourneyButton(
                   key: const Key('sync-issues-retry'),
-                  label: 'حاول الحين',
+                  label: ReaderVoice.say('حاول الحين', 'حاولي الحين'),
                   icon: LucideIcons.refreshCw,
                   expand: true,
                   large: true,

@@ -24,11 +24,16 @@ class ProviderAuthGate extends StatelessWidget {
     super.key,
   });
 
-  static const message = 'ادخل بحسابك عشان ترسل طلب عرض وتتابع الردود.';
+  static String get message => ReaderVoice.say(
+    'ادخل بحسابك عشان ترسل طلب عرض وتتابع الردود.',
+    'ادخلي بحسابك عشان ترسلين طلب عرض وتتابعين الردود.',
+  );
 
   /// A provider page (D75) speaks to the provider, not to a couple.
-  static const providerMessage =
-      'ادخل بحسابك عشان تدير نشاطك وتستقبل طلبات العرسان.';
+  static String get providerMessage => ReaderVoice.say(
+    'ادخل بحسابك عشان تدير نشاطك وتستقبل طلبات العرسان.',
+    'ادخلي بحسابك عشان تدير نشاطك وتستقبل طلبات العرسان.',
+  );
 
   final Widget child;
   final String resumeLocation;
@@ -88,7 +93,7 @@ class ProviderAuthGate extends StatelessWidget {
       key: const Key('provider-auth-gate'),
       embedded: embedded,
       icon: LucideIcons.lock,
-      title: 'ادخل أول',
+      title: context.say('ادخل أول', 'ادخلي أول'),
       message: registerAsProvider ? providerMessage : message,
       actions: [
         JourneyButton(
@@ -103,7 +108,9 @@ class ProviderAuthGate extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const Key('provider-auth-gate-register'),
-          label: registerAsProvider ? 'أنشئ حساب مزود' : 'أنشئ حساب',
+          label: registerAsProvider
+              ? context.say('أنشئ حساب مزود', 'أنشئي حساب مزود')
+              : context.say('أنشئ حساب', 'أنشئي حساب'),
           expand: true,
           onPressed: () => context.go(
             _withResume(
@@ -142,12 +149,18 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
       icon: LucideIcons.store,
       title: hasProviderContext ? 'هذا مش متاح الحين' : 'هذا للمزودين بس',
       message: hasProviderContext
-          ? 'حالة حساب المزود ما تسمح بهذا. راجع الحالة أو جرّب بعدين.'
-          : 'حسابك حساب تخطيط عرس. ارجع لخطتك، أو قدّم طلب انضمام كمزود.',
+          ? context.say(
+              'حالة حساب المزود ما تسمح بهذا. راجع الحالة أو جرّب بعدين.',
+              'حالة حساب المزود ما تسمح بهذا. راجعي الحالة أو جرّبي بعدين.',
+            )
+          : context.say(
+              'حسابك حساب تخطيط عرس. ارجع لخطتك، أو قدّم طلب انضمام كمزود.',
+              'حسابك حساب تخطيط عرس. ارجعي لخطتك، أو قدّمي طلب انضمام كمزودة.',
+            ),
       actions: [
         JourneyButton(
           key: const Key('provider-account-required-apply'),
-          label: 'قدّم طلب مزود',
+          label: context.say('قدّم طلب مزود', 'قدّمي طلب مزود'),
           background: context.accent.primary,
           expand: true,
           large: true,
@@ -156,7 +169,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const Key('provider-account-required-home'),
-          label: 'ارجع لخطتي',
+          label: context.say('ارجع لخطتي', 'ارجعي لخطتي'),
           expand: true,
           onPressed: () => context.go(AppRouter.home),
         ),

@@ -1,13 +1,18 @@
+import '../experience_v3/aarast_journey_profile.dart' show ReaderVoice;
 import '../network/api_client.dart';
 
 class CachePolicy {
   const CachePolicy._();
 
-  static const offlineReadMessage =
-      'أنت بدون نت الحين، نعرض لك آخر نسخة محفوظة';
+  static String get offlineReadMessage => ReaderVoice.say(
+    'أنت بدون نت الحين، نعرض لك آخر نسخة محفوظة',
+    'أنتِ بدون نت الحين، نعرض لك آخر نسخة محفوظة',
+  );
   static const offlineWriteMessage = 'انحفظ على الجوال، ونرسله لما يرجع النت';
-  static const localPlanningSaveMessage =
-      'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.';
+  static String get localPlanningSaveMessage => ReaderVoice.say(
+    'انحفظ على جوالك. سجّل دخول بعدين عشان تنحفظ خطتك في حسابك.',
+    'انحفظ على جوالك. سجّلي دخول بعدين عشان تنحفظ خطتك في حسابك.',
+  );
   static const firstLoginNeedsInternet = 'أول دخول يحتاج نت';
 
   static bool shouldUseCache(Object error) {

@@ -1,3 +1,4 @@
+import '../experience_v3/aarast_journey_profile.dart' show ReaderVoice;
 import 'package:image_picker/image_picker.dart';
 
 import '../network/api_client.dart';
@@ -61,8 +62,11 @@ class MediaUploadApi {
       }
       final bytes = await file.readAsBytes();
       if (bytes.length != ticket.byteSize) {
-        throw const ApiException(
-          'تغيّر حجم الصورة وإحنا نجهّزها. اختر الصورة مرة ثانية.',
+        throw ApiException(
+          ReaderVoice.say(
+            'تغيّر حجم الصورة وإحنا نجهّزها. اختر الصورة مرة ثانية.',
+            'تغيّر حجم الصورة وإحنا نجهّزها. اختاري الصورة مرة ثانية.',
+          ),
         );
       }
       await _apiClient.putBytes(
@@ -90,8 +94,11 @@ class MediaUploadApi {
     } on ApiException catch (error) {
       if (error.statusCode == 503 ||
           error.message.toLowerCase().contains('media storage')) {
-        throw const ApiException(
-          'رفع الصور مش متاح الحين. جرّب بعد شوي.',
+        throw ApiException(
+          ReaderVoice.say(
+            'رفع الصور مش متاح الحين. جرّب بعد شوي.',
+            'رفع الصور مش متاح الحين. جرّبي بعد شوي.',
+          ),
           statusCode: 503,
         );
       }

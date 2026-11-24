@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
@@ -327,8 +329,11 @@ class FundingApi {
   Future<Map<String, dynamic>> _loanOf(LoanRepayment repayment) async {
     final cached = await _reads.cachedItem(_table, repayment.fundingSourceId);
     if (cached != null) return cached;
-    throw const ApiException(
-      'ما لقينا القرض على الجوال. افتح المال مرة ثانية.',
+    throw ApiException(
+      ReaderVoice.say(
+        'ما لقينا القرض على الجوال. افتح المال مرة ثانية.',
+        'ما لقينا القرض على الجوال. افتحي المال مرة ثانية.',
+      ),
     );
   }
 

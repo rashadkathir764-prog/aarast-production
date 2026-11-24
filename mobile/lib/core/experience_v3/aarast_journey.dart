@@ -2274,7 +2274,7 @@ class JourneyPickerField extends StatelessWidget {
     required this.value,
     required this.onTap,
     this.icon,
-    this.placeholder = 'اختر',
+    this.placeholder,
     this.helper,
     this.note,
     this.iconAtEnd = false,
@@ -2291,7 +2291,10 @@ class JourneyPickerField extends StatelessWidget {
   /// Hijri day, the wedding's own day).
   final VoidCallback? onTap;
   final IconData? icon;
-  final String placeholder;
+
+  /// What the empty field says; the reader's own form («اختر», «اختاري»)
+  /// when none is given.
+  final String? placeholder;
   final String? helper;
 
   /// A note asking for a change to this field, drawn in coral under it.
@@ -2300,10 +2303,11 @@ class JourneyPickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final has = value != null && value!.isNotEmpty;
+    final shown = placeholder ?? context.say('اختر', 'اختاري');
     final note = this.note;
     return AarastPressable(
       onTap: onTap,
-      semanticLabel: ['$label، ${has ? value : placeholder}', ?note].join('، '),
+      semanticLabel: ['$label، ${has ? value : shown}', ?note].join('، '),
       borderRadius: BorderRadius.circular(AarastV3Field.radius),
       child: JourneyFieldBox(
         error: note != null,
@@ -2328,7 +2332,7 @@ class JourneyPickerField extends StatelessWidget {
                     children: [
                       JourneyFieldLabel(label),
                       Text(
-                        has ? value! : placeholder,
+                        has ? value! : shown,
                         style: JourneyType.of(
                           JourneyType.lead,
                           weight: JourneyType.bold,

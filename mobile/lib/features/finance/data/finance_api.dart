@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:convert';
 import 'dart:math';
 

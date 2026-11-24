@@ -124,7 +124,7 @@ class _ReportReasonSheetState extends State<_ReportReasonSheet> {
           const SizedBox(height: AarastV3Space.x4),
           JourneyButton(
             key: ValueKey('$prefix-send'),
-            label: 'أرسل البلاغ',
+            label: context.say('أرسل البلاغ', 'أرسلي البلاغ'),
             icon: LucideIcons.flag,
             expand: true,
             large: true,

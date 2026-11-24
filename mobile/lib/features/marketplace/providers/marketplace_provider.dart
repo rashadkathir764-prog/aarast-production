@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -327,7 +329,10 @@ String marketplaceErrorMessage(String message) {
   if (normalized.contains(
     'location governorate and cityOrDistrict are required for structured location',
   )) {
-    return 'كمّل موقع العرس: المحافظة والمدينة أو المديرية، قبل ما ترسل الطلب.';
+    return ReaderVoice.say(
+      'كمّل موقع العرس: المحافظة والمدينة أو المديرية، قبل ما ترسل الطلب.',
+      'كمّلي موقع العرس: المحافظة والمدينة أو المديرية، قبل ما ترسلين الطلب.',
+    );
   }
   // D88: a route the server does not know is an older server, not a
   // connection to retry.
@@ -342,7 +347,7 @@ String marketplaceErrorMessage(String message) {
   }
   if (normalized.contains('انتهت الجلسة') ||
       normalized.contains('بيانات الدخول')) {
-    return 'سجّل دخول عشان تكمل.';
+    return ReaderVoice.say('سجّل دخول عشان تكمل.', 'سجّلي دخول عشان تكملين.');
   }
   return normalized;
 }
@@ -359,8 +364,10 @@ const providerReferenceDataErrorMessage = 'ما قدرنا نجيب المدن �
 /// The server's 409 on a second review of one provider (RA-MO-263: the
 /// reviews page moves the provider to «قيّمتهم» on it).
 const alreadyReviewedMessage = 'قيّمت هذا المزوّد من قبل.';
-const providerDirectoryGenericErrorMessage =
-    'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.';
+String get providerDirectoryGenericErrorMessage => ReaderVoice.say(
+  'ما قدرنا نجيب المزودين الحين. جرّب مرة ثانية.',
+  'ما قدرنا نجيب المزودين الحين. جرّبي مرة ثانية.',
+);
 const providerDetailsStaleErrorMessage =
     'ما قدرنا نحدّث بيانات المزود. نعرض لك آخر نسخة محفوظة.';
 

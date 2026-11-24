@@ -426,14 +426,14 @@ class _SharingScreenState extends State<SharingScreen>
   Widget? _authGate(SharingProvider provider) {
     if (_isCheckingSharingAccess) return null;
     if (_showLoginGate) {
-      return const AuthGatePanel(
+      return AuthGatePanel(
         title: AuthActionGuard.sharingLoginGateTitle,
         body: AuthActionGuard.sharingLoginGateBody,
         icon: LucideIcons.userPlus,
       );
     }
     if (provider.authGateKind == SharingAuthGateKind.sessionExpired) {
-      return const AuthGatePanel(
+      return AuthGatePanel(
         title: AuthActionGuard.sessionExpiredTitle,
         body: AuthActionGuard.sharingSessionExpiredBody,
         icon: LucideIcons.fileClock,
@@ -728,9 +728,9 @@ class _MemberRow extends StatelessWidget {
             ),
             const SizedBox(width: AarastV3Space.x2),
             if (mine)
-              const JourneyTag(
+              JourneyTag(
                 key: ValueKey('sharing-member-mine'),
-                label: 'أنت',
+                label: context.say('أنت', 'أنتِ'),
                 color: AarastV3Color.textMuted,
                 soft: AarastV3Color.canvas,
               )

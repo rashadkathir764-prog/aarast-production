@@ -549,7 +549,11 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     } else {
       AarastToast.showError(
         context,
-        marketplace.errorMessage ?? 'ما وصل طلبك. جرّب مرة ثانية.',
+        marketplace.errorMessage ??
+            context.say(
+              'ما وصل طلبك. جرّب مرة ثانية.',
+              'ما وصل طلبك. جرّبي مرة ثانية.',
+            ),
       );
     }
   }
@@ -568,7 +572,11 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     } else {
       AarastToast.showError(
         context,
-        marketplace.errorMessage ?? 'ما قدرنا نسجّل. جرّب مرة ثانية.',
+        marketplace.errorMessage ??
+            context.say(
+              'ما قدرنا نسجّل. جرّب مرة ثانية.',
+              'ما قدرنا نسجّل. جرّبي مرة ثانية.',
+            ),
       );
     }
   }

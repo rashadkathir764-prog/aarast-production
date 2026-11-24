@@ -1,4 +1,6 @@
-﻿import 'package:flutter/foundation.dart';
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
@@ -82,7 +84,10 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظت الإعدادات الحين. جرّب مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'ما انحفظت الإعدادات الحين. جرّب مرة ثانية.',
+        'ما انحفظت الإعدادات الحين. جرّبي مرة ثانية.',
+      );
       return false;
     } finally {
       _isSubmitting = false;

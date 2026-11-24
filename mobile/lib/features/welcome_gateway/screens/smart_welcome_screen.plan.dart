@@ -778,7 +778,7 @@ class _ReadyStep extends StatelessWidget {
                       ),
                 primary: signedIn
                     ? JourneyButton(
-                        label: 'افتح خطتي',
+                        label: context.say('افتح خطتي', 'افتحي خطتي'),
                         onPressed: saving ? null : onOpenPlan,
                         loading: saving,
                         expand: true,
@@ -786,7 +786,10 @@ class _ReadyStep extends StatelessWidget {
                       )
                     : JourneyButton(
                         key: const ValueKey('ready-save'),
-                        label: 'احفظ خطتي برقم جوالي',
+                        label: context.say(
+                          'احفظ خطتي برقم جوالي',
+                          'احفظي خطتي برقم جوالي',
+                        ),
                         icon: LucideIcons.smartphone,
                         onPressed: saving ? null : onSaveWithPhone,
                         loading: saving,

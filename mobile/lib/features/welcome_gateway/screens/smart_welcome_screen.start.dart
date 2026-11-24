@@ -77,9 +77,9 @@ class _StartStep extends StatelessWidget {
                         key: const ValueKey('door-plan'),
                         icon: LucideIcons.checkSquare,
                         title: phonePlanTitle != null
-                            ? 'افتح خطتي'
+                            ? context.say('افتح خطتي', 'افتحي خطتي')
                             : resumeLine != null
-                            ? 'كمّل خطتي'
+                            ? context.say('كمّل خطتي', 'كمّلي خطتي')
                             : 'أسوّي خطة عرسي',
                         subtitle: phonePlanTitle != null
                             ? '$phonePlanTitle، على هذا الجوال'
@@ -91,7 +91,10 @@ class _StartStep extends StatelessWidget {
                           alignment: AlignmentDirectional.centerStart,
                           child: JourneyTextAction(
                             key: const ValueKey('door-replace-plan'),
-                            label: 'مش خطتك؟ ابدأ خطة جديدة بدلها',
+                            label: context.say(
+                              'مش خطتك؟ ابدأ خطة جديدة بدلها',
+                              'مش خطتك؟ ابدئي خطة جديدة بدلها',
+                            ),
                             onPressed: onReplacePlan,
                           ),
                         ),

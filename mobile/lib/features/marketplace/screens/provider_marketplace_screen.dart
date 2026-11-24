@@ -685,7 +685,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   ) async {
     if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
       context,
-      message: 'المفضلة تنحفظ في حسابك. سجّل دخول عشان تحفظ المزود.',
+      message: context.say(
+        'المفضلة تنحفظ في حسابك. سجّل دخول عشان تحفظ المزود.',
+        'المفضلة تنحفظ في حسابك. سجّلي دخول عشان تحفظ المزود.',
+      ),
     )) {
       return;
     }

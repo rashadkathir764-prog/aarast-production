@@ -260,13 +260,26 @@ final ThemeData _brideTheme = AppTheme.light(accent: JourneyAccent.bride);
 /// Provides [planJourneyProfile] above the router, so every page, sheet and
 /// dialog reads the same profile.
 @visibleForTesting
-class AarastPlanProfileScope extends StatelessWidget {
+class AarastPlanProfileScope extends StatefulWidget {
   const AarastPlanProfileScope({required this.child, super.key});
 
   final Widget child;
 
   @override
+  State<AarastPlanProfileScope> createState() => _AarastPlanProfileScopeState();
+}
+
+class _AarastPlanProfileScopeState extends State<AarastPlanProfileScope> {
+  @override
+  void dispose() {
+    // The layers speak to no one once the app root is gone.
+    ReaderVoice.speakTo(feminine: false);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final child = widget.child;
     AccountContext? selected;
     DashboardSummary? summary;
     try {
@@ -321,6 +334,8 @@ class AarastPlanProfileScope extends StatelessWidget {
           _ => null,
         },
       );
+      // RA-MO-322: the layers with no screen speak to the same reader.
+      ReaderVoice.speakTo(feminine: profile.feminine);
       // RA-MO-323: one colour per plan, in the Material widgets too (text
       // buttons, dialogs, pickers), not only in the kit's own.
       return JourneyProfileScope(
@@ -331,6 +346,7 @@ class AarastPlanProfileScope extends StatelessWidget {
         ),
       );
     }
+
     if (kept == null) return scoped(null);
     return ValueListenableBuilder<GuestPersona?>(
       valueListenable: kept,
@@ -413,7 +429,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                   const SizedBox(height: AarastV3Space.x5),
                   JourneyButton(
                     key: const Key('session-termination-retry'),
-                    label: 'جرّب مرة ثانية',
+                    label: ReaderVoice.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
                     icon: LucideIcons.refreshCw,
                     large: true,
                     onPressed: () {
@@ -635,8 +651,11 @@ class AarastBuildErrorScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AarastV3Space.x2),
-                const Text(
-                  'صار خطأ ما توقعناه. ارجع للبداية وكمّل من هناك.',
+                Text(
+                  ReaderVoice.say(
+                    'صار خطأ ما توقعناه. ارجع للبداية وكمّل من هناك.',
+                    'صار خطأ ما توقعناه. ارجعي للبداية وكمّلي من هناك.',
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AarastV3Space.x5),

@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -150,7 +152,9 @@ MoneyStarterCatalog moneyStarterCatalogFromManaged(
         return MoneyStarterGroup(
           id: entry.key,
           title: first.groupNameAr ?? 'بنود إضافية',
-          subtitle: first.groupSubtitleAr ?? 'اختر ما يناسب خطتك.',
+          subtitle:
+              first.groupSubtitleAr ??
+              ReaderVoice.say('اختر ما يناسب خطتك.', 'اختاري ما يناسب خطتك.'),
           categories: entry.value
               .map(
                 (item) => MoneyStarterCategory(
@@ -212,12 +216,14 @@ IconData _managedMoneyIcon(String? key) {
   };
 }
 
-const _groomCatalog = MoneyStarterCatalog(
+final _groomCatalog = MoneyStarterCatalog(
   persona: MoneyStarterPersona.groom,
   eyebrow: 'بداية مرتبة للعريس',
   title: 'جهّز ميزانية عرسك',
-  subtitle:
-      'اخترنا لك البنود اللي عند أغلب العرسان. خلّ اللي يخصك وشيل الباقي، وما نحط مبالغ ولا اتفاقات إلا لما تأكد.',
+  subtitle: ReaderVoice.say(
+    'اخترنا لك البنود اللي عند أغلب العرسان. خلّ اللي يخصك وشيل الباقي، وما نحط مبالغ ولا اتفاقات إلا لما تأكد.',
+    'اخترنا لك البنود اللي عند أغلب العرسان. خلّي اللي يخصك وشيلي الباقي، وما نحط مبالغ ولا اتفاقات إلا لما تأكدي.',
+  ),
   groups: [
     MoneyStarterGroup(
       id: 'groom-agreement',
@@ -562,11 +568,14 @@ const _brideCatalog = MoneyStarterCatalog(
   ],
 );
 
-const _neutralCatalog = MoneyStarterCatalog(
+final _neutralCatalog = MoneyStarterCatalog(
   persona: MoneyStarterPersona.neutral,
   eyebrow: 'بداية مالية مرتبة',
   title: 'جهّز أقسام الميزانية',
-  subtitle: 'اختر البنود اللي تخص خطتك، وأضف أي بند خاص بكم قبل الحفظ.',
+  subtitle: ReaderVoice.say(
+    'اختر البنود اللي تخص خطتك، وأضف أي بند خاص بكم قبل الحفظ.',
+    'اختاري البنود اللي تخص خطتك، وأضيفي أي بند خاص بكم قبل الحفظ.',
+  ),
   groups: [
     MoneyStarterGroup(
       id: 'neutral-event',

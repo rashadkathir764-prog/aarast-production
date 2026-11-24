@@ -33,7 +33,10 @@ class AarastV3DraftStatusLine extends StatelessWidget {
       ),
       AarastFormDraftStatus.idle => (
         LucideIcons.shieldCheck,
-        'نحفظ المسودة على جوالك وأنت تكتب',
+        ReaderVoice.say(
+          'نحفظ المسودة على جوالك وأنت تكتب',
+          'نحفظ المسودة على جوالك وأنتِ تكتبين',
+        ),
         AarastV3Color.textMuted,
       ),
     };

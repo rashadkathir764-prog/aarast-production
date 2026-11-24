@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/finance_provider.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
@@ -31,11 +32,14 @@ Widget? financeWriteAccessBlock({
     );
   }
   if (!provider.canManageMoney) {
-    return const AarastScreenFrame(
+    return AarastScreenFrame(
       child: Center(
         child: AarastEmptyState(
           title: 'للقراءة بس',
-          message: 'ما عندك صلاحية تعدّل المال في هذي الخطة.',
+          message: context.say(
+            'ما عندك صلاحية تعدّل المال في هذي الخطة.',
+            'ما عندك صلاحية تعدّلين المال في هذي الخطة.',
+          ),
           icon: LucideIcons.lock,
         ),
       ),

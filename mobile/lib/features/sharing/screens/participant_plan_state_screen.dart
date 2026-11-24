@@ -136,7 +136,7 @@ class _ParticipantPlanStateScreenState
               emptyIcon: LucideIcons.layers,
               emptyTitle: 'ما فيه تغيير على هذي الخطة',
               emptyMessage: 'الخطة مفتوحة لك. تفتحها من «حسابي».',
-              emptyAction: 'افتح «حسابي»',
+              emptyAction: context.say('افتح «حسابي»', 'افتحي «حسابي»'),
               onEmptyAction: () => context.go(AppRouter.more),
             ),
         ],

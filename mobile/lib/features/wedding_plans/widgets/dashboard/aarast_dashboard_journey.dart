@@ -217,7 +217,10 @@ class _JourneyHomeHero extends StatelessWidget {
         key: const ValueKey('aarast-dashboard-moment-tag'),
         label: _homeMoments[moment],
         icon: LucideIcons.info,
-        semanticLabel: 'مرحلتك ${_homeMoments[moment]}. شوف المراحل',
+        semanticLabel: context.say(
+          'مرحلتك ${_homeMoments[moment]}. شوف المراحل',
+          'مرحلتك ${_homeMoments[moment]}. شوفي المراحل',
+        ),
         onTap: () => _showMoments(context, moment),
       ),
       footer: _StagePath(current: moment),

@@ -140,7 +140,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
               ),
               child: header,
             ),
-            const Expanded(
+            Expanded(
               child: AuthGatePanel(
                 title: AuthActionGuard.sessionExpiredTitle,
                 body: AuthActionGuard.sharingSessionExpiredBody,

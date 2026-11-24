@@ -292,7 +292,7 @@ void main() {
   ) async {
     final repository = await _fakeRepository()
       ..requestFailure = const ApiException(
-        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+        'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
         statusCode: 503,
         serverCode: 'OTP_DELIVERY_UNAVAILABLE',
       );
@@ -303,7 +303,7 @@ void main() {
     expect(repository.requestCalls, 1);
     expect(
       find.text(
-        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+        'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
       ),
       findsOneWidget,
     );

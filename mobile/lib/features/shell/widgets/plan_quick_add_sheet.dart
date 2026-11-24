@@ -96,7 +96,7 @@ Future<PlanQuickAddKind?> showPlanQuickAddSheet(
     context: context,
     useRootNavigator: true,
     builder: (sheetContext) => JourneySheetBody(
-      title: 'ايش تضيف؟',
+      title: context.say('ايش تضيف؟', 'ايش تضيفين؟'),
       subtitle: 'الأنسب لخطتك الحين أول وحدة.',
       children: [
         JourneyList(

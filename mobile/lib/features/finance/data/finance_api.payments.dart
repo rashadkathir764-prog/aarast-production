@@ -200,7 +200,9 @@ mixin _FinancePaymentsApi on _FinanceApiCore {
   }) async {
     final payload = {'reason': reason.trim()};
     if (payload['reason']!.isEmpty) {
-      throw const ApiException('اكتب سبب عكس الدفعة.');
+      throw ApiException(
+        ReaderVoice.say('اكتب سبب عكس الدفعة.', 'اكتبي سبب عكس الدفعة.'),
+      );
     }
     final mutation = _mutation(
       'POST',

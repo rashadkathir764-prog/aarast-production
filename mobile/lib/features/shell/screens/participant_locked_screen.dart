@@ -38,7 +38,10 @@ class ParticipantLockedScreen extends StatelessWidget {
     final (title, message) = switch (section) {
       JourneySection.money => (
         'المال خاص ب$owner',
-        'ما عندك صلاحية تشوف المال في هذي الخطة. $opener',
+        context.say(
+          'ما عندك صلاحية تشوف المال في هذي الخطة. $opener',
+          'ما عندك صلاحية تشوفين المال في هذي الخطة. $opener',
+        ),
       ),
       JourneySection.providers => (
         'المزودين عند $owner',

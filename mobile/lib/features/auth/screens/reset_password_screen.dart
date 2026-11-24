@@ -82,7 +82,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final (action, onAction, busy) = switch (_step) {
-      _ResetStep.phone => ('أرسل الرمز', _requestCode, _isSubmitting),
+      _ResetStep.phone => (
+        context.say('أرسل الرمز', 'أرسلي الرمز'),
+        _requestCode,
+        _isSubmitting,
+      ),
       _ResetStep.code => ('التالي', _acceptCode, false),
       _ResetStep.password => (
         'حفظ وتسجيل الدخول',
@@ -131,9 +135,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   List<Widget> _phoneStep() {
     return [
-      const AuthHeading(
-        title: 'اكتب رقمك',
-        subtitle: 'نرسل لك رمز على واتساب، وبعده تختار كلمة مرور جديدة.',
+      AuthHeading(
+        title: context.say('اكتب رقمك', 'اكتبي رقمك'),
+        subtitle: context.say(
+          'نرسل لك رمز على واتساب، وبعده تختار كلمة مرور جديدة.',
+          'نرسل لك رمز على واتساب، وبعده تختارين كلمة مرور جديدة.',
+        ),
       ),
       const SizedBox(height: AarastV3Space.x4),
       // RA-MO-128: the account's own number, in the field sign-in and
@@ -231,7 +238,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           prefix: 'ما وصلك؟',
           action: waiting
               ? 'نعيد الإرسال بعد ${_clock(_resendSeconds)}'
-              : 'أرسل رمز جديد',
+              : context.say('أرسل رمز جديد', 'أرسلي رمز جديد'),
           onTap: waiting || _isSubmitting ? null : _requestCodeAgain,
         ),
       ),
@@ -241,8 +248,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   List<Widget> _passwordStep() {
     final longEnough = _passwordController.text.length >= 6;
     return [
-      const AuthHeading(
-        title: 'اختر كلمة مرور جديدة',
+      AuthHeading(
+        title: context.say('اختر كلمة مرور جديدة', 'اختاري كلمة مرور جديدة'),
         subtitle: 'خطتك وكل بياناتك كما هي.',
       ),
       const SizedBox(height: AarastV3Space.x4),
@@ -265,10 +272,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'اكتب كلمة المرور الجديدة';
+                  return context.say(
+                    'اكتب كلمة المرور الجديدة',
+                    'اكتبي كلمة المرور الجديدة',
+                  );
                 }
                 if (value.length < 6) {
-                  return 'قصيرة. خلّها 6 أحرف أو أكثر';
+                  return context.say(
+                    'قصيرة. خلّها 6 أحرف أو أكثر',
+                    'قصيرة. خلّيها 6 أحرف أو أكثر',
+                  );
                 }
                 if (!isApplicationPasswordWithinByteLimit(value)) {
                   return 'كلمة المرور طويلة زيادة. اختصرها وجرّب مرة ثانية';
@@ -279,7 +292,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: AarastV3Field.gap),
             JourneyTextField(
               controller: _confirmPasswordController,
-              label: 'أعد كتابتها',
+              label: context.say('أعد كتابتها', 'أعيدي كتابتها'),
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _confirmReset(),
@@ -304,7 +317,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           alignment: AlignmentDirectional.centerStart,
           child: JourneyTextAction(
             key: const ValueKey('reset-create-account-action'),
-            label: 'أنشئ حساب جديد بهذا الرقم',
+            label: context.say(
+              'أنشئ حساب جديد بهذا الرقم',
+              'أنشئي حساب جديد بهذا الرقم',
+            ),
             icon: LucideIcons.userPlus,
             color: context.accent.primary,
             onPressed: _isSubmitting
@@ -349,7 +365,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       Text(
         _signingIn
             ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الحين بكلمة المرور الجديدة.'
-            : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
+            : context.say(
+                'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
+                'وطلعناك من كل الأجهزة لحمايتك. ادخلي بكلمة المرور الجديدة.',
+              ),
         textAlign: TextAlign.center,
         style: JourneyType.of(JourneyType.body, color: AarastV3Color.textMuted),
       ),
@@ -444,10 +463,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         if (!mounted) return;
         setState(() {
           _errorMessage = switch (error) {
-            ApiException(isNetworkFailure: true) =>
+            ApiException(isNetworkFailure: true) => context.say(
               'ما قدرنا نرسل رمز الاسترجاع. تأكد من النت وجرّب مرة ثانية.',
+              'ما قدرنا نرسل رمز الاسترجاع. تأكدي من النت وجرّبي مرة ثانية.',
+            ),
             ApiException(:final message) => message,
-            _ => 'ما قدرنا نرسل الرمز. جرّب مرة ثانية.',
+            _ => context.say(
+              'ما قدرنا نرسل الرمز. جرّب مرة ثانية.',
+              'ما قدرنا نرسل الرمز. جرّبي مرة ثانية.',
+            ),
           };
           _errorCode = error is ApiException ? error.serverCode : null;
         });
@@ -467,7 +491,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (_codeController.text.trim().length < _codeLength) {
       setState(() {
         _codeFieldState = AarastOtpFieldState.error;
-        _errorMessage = 'اكتب الرمز كامل';
+        _errorMessage = context.say('اكتب الرمز كامل', 'اكتبي الرمز كامل');
       });
       return;
     }
@@ -511,7 +535,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } on Object {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'ما قدرنا نغيّر كلمة المرور. جرّب مرة ثانية.';
+        _errorMessage = context.say(
+          'ما قدرنا نغيّر كلمة المرور. جرّب مرة ثانية.',
+          'ما قدرنا نغيّر كلمة المرور. جرّبي مرة ثانية.',
+        );
       });
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

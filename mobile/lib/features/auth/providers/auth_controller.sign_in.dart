@@ -124,8 +124,10 @@ mixin _AuthSignIn on _AuthControllerCore {
 
   /// A lost connection while the account is being made is not a failed
   /// sign-in. The screens say it in the reader's own words.
-  static const _signUpOfflineMessage =
-      'ما قدرنا ننشئ حسابك الحين، تأكد من النت وجرّب.';
+  static String get _signUpOfflineMessage => ReaderVoice.say(
+    'ما قدرنا ننشئ حسابك الحين، تأكد من النت وجرّب.',
+    'ما قدرنا ننشئ حسابك الحين، تأكدي من النت وجرّبي.',
+  );
 
   Future<OtpRequestResult?> startRegistration({
     required String name,
@@ -138,8 +140,10 @@ mixin _AuthSignIn on _AuthControllerCore {
         name: name.trim(),
         phone: phone.trim(),
       ),
-      networkFailureMessage:
-          'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
+      networkFailureMessage: ReaderVoice.say(
+        'ما قدرنا نرسل رمز الحساب الجديد. تأكد من النت وجرّب مرة ثانية.',
+        'ما قدرنا نرسل رمز الحساب الجديد. تأكدي من النت وجرّبي مرة ثانية.',
+      ),
     );
   }
 
@@ -218,8 +222,10 @@ mixin _AuthSignIn on _AuthControllerCore {
       purpose: purpose,
       send: () =>
           _authRepository.requestOtp(phone: phone.trim(), purpose: purpose),
-      networkFailureMessage:
-          'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
+      networkFailureMessage: ReaderVoice.say(
+        'ما قدرنا نرسل الرمز. تأكد من النت وجرّب مرة ثانية.',
+        'ما قدرنا نرسل الرمز. تأكدي من النت وجرّبي مرة ثانية.',
+      ),
     );
   }
 
@@ -246,17 +252,24 @@ mixin _AuthSignIn on _AuthControllerCore {
     if (same) return null;
     if ((_offlineSyncService?.unsyncedCount ?? 0) > 0) {
       return (
-        message:
-            'على هذا الجوال تغييرات لحسابك لسا ما انرسلت، والدخول برقم ثاني '
-            'يمسحها. خلّها تنرسل أول، وبعدها اطلع من حسابك من «حسابي» '
-            'وافتح الدعوة.',
+        message: ReaderVoice.say(
+          'على هذا الجوال تغييرات لحسابك لسا ما انرسلت، والدخول برقم ثاني '
+              'يمسحها. خلّها تنرسل أول، وبعدها اطلع من حسابك من «حسابي» '
+              'وافتح الدعوة.',
+          'على هذا الجوال تغييرات لحسابك لسا ما انرسلت، والدخول برقم ثاني '
+              'يمسحها. خلّيها تنرسل أول، وبعدها اطلعي من حسابك من «حسابي» '
+              'وافتحي الدعوة.',
+        ),
         code: 'INVITE_SWITCH_WOULD_DROP_UNSENT',
       );
     }
     return (
-      message:
-          'هذي الدعوة لرقم غير رقم الحساب المفتوح على هذا الجوال. '
-          'اطلع من الحساب من «حسابي» أول، وبعدها افتح الدعوة.',
+      message: ReaderVoice.say(
+        'هذي الدعوة لرقم غير رقم الحساب المفتوح على هذا الجوال. '
+            'اطلع من الحساب من «حسابي» أول، وبعدها افتح الدعوة.',
+        'هذي الدعوة لرقم غير رقم الحساب المفتوح على هذا الجوال. '
+            'اطلعي من الحساب من «حسابي» أول، وبعدها افتحي الدعوة.',
+      ),
       code: 'INVITE_NEEDS_SIGN_OUT',
     );
   }
@@ -282,8 +295,10 @@ mixin _AuthSignIn on _AuthControllerCore {
         token: token.trim(),
         phone: phone.trim(),
       ),
-      networkFailureMessage:
-          'ما قدرنا نتأكد من الدعوة. تأكد من النت وجرّب مرة ثانية.',
+      networkFailureMessage: ReaderVoice.say(
+        'ما قدرنا نتأكد من الدعوة. تأكد من النت وجرّب مرة ثانية.',
+        'ما قدرنا نتأكد من الدعوة. تأكدي من النت وجرّبي مرة ثانية.',
+      ),
     );
   }
 
@@ -437,7 +452,10 @@ mixin _AuthSignIn on _AuthControllerCore {
         _failedOffline = true;
         _errorMessage =
             networkFailureMessage ??
-            'ما قدرنا نسجّل دخولك. تأكد من النت وجرّب مرة ثانية.';
+            ReaderVoice.say(
+              'ما قدرنا نسجّل دخولك. تأكد من النت وجرّب مرة ثانية.',
+              'ما قدرنا نسجّل دخولك. تأكدي من النت وجرّبي مرة ثانية.',
+            );
       } else {
         _errorMessage = error.message;
       }
@@ -451,7 +469,10 @@ mixin _AuthSignIn on _AuthControllerCore {
         source: 'AuthController.submit',
         attributes: {'errorType': error.runtimeType.toString()},
       );
-      _errorMessage = 'صار خطأ عندنا. جرّب مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'صار خطأ عندنا. جرّب مرة ثانية.',
+        'صار خطأ عندنا. جرّبي مرة ثانية.',
+      );
       return false;
     } finally {
       _isSubmitting = false;
@@ -459,8 +480,10 @@ mixin _AuthSignIn on _AuthControllerCore {
     }
   }
 
-  static const _safeLoginFailureMessage =
-      'الرقم أو كلمة المرور غلط. تأكد منهم، أو استعمل «نسيت كلمة المرور؟»، أو سوّ حساب جديد.';
+  static String get _safeLoginFailureMessage => ReaderVoice.say(
+    'الرقم أو كلمة المرور غلط. تأكد منهم، أو استعمل «نسيت كلمة المرور؟»، أو سوّ حساب جديد.',
+    'الرقم أو كلمة المرور غلط. تأكدي منهم، أو استعملي «نسيت كلمة المرور؟»، أو سوّي حساب جديد.',
+  );
 
   static String? _messageForServerCode(String? code) {
     return switch (code) {
@@ -469,21 +492,36 @@ mixin _AuthSignIn on _AuthControllerCore {
       'PHONE_VERIFICATION_REQUIRED' =>
         // The button's own name on the sign-in screen («الدخول برمز
         // تحقق», which this said before, is on no screen).
-        'حساب التطبيق يحتاج تأكيد رقم الجوال. استعمل «الدخول برمز واتساب» وكمّل.',
+        ReaderVoice.say(
+          'حساب التطبيق يحتاج تأكيد رقم الجوال. استعمل «الدخول برمز واتساب» وكمّل.',
+          'حساب التطبيق يحتاج تأكيد رقم الجوال. استعملي «الدخول برمز واتساب» وكمّلي.',
+        ),
       'ACCOUNT_ALREADY_EXISTS' =>
         'هذا الرقم عليه حساب من قبل. الدخول له برمز واتساب من «تسجيل الدخول».',
-      'ADMIN_APP_PASSWORD_ALREADY_SET' =>
+      'ADMIN_APP_PASSWORD_ALREADY_SET' => ReaderVoice.say(
         'حساب التطبيق لهذا الرقم جاهز من قبل. سجّل دخول، أو استرجع كلمة مرور التطبيق.',
-      'OTP_INVALID_OR_EXPIRED' =>
+        'حساب التطبيق لهذا الرقم جاهز من قبل. سجّلي دخول، أو استرجعي كلمة مرور التطبيق.',
+      ),
+      'OTP_INVALID_OR_EXPIRED' => ReaderVoice.say(
         'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
-      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
+        'الرمز غلط أو انتهى وقته. اكتبيه مرة ثانية أو اطلبي رمز جديد.',
+      ),
+      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' => ReaderVoice.say(
         'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّ حساب جديد وكمّل.',
-      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
+        'تأكدنا من رقمك، وما عليه حساب في التطبيق. سوّي حساب جديد وكمّلي.',
+      ),
+      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' => ReaderVoice.say(
         'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصل مع الدعم.',
-      'INVITE_NOT_FOUND_FOR_PHONE' =>
+        'تأكدنا من رقمك، لكن الحساب موقوف الحين. تواصلي مع الدعم.',
+      ),
+      'INVITE_NOT_FOUND_FOR_PHONE' => ReaderVoice.say(
         'ما في دعوة شغالة على هذا الرقم. تأكد من الرقم، أو اطلب دعوة جديدة.',
-      'INVITE_ACCOUNT_SETUP_REQUIRED' =>
+        'ما في دعوة شغالة على هذا الرقم. تأكدي من الرقم، أو اطلبي دعوة جديدة.',
+      ),
+      'INVITE_ACCOUNT_SETUP_REQUIRED' => ReaderVoice.say(
         'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
+        'أول مرة تدخلين اعّرست: اكتبي اسمك، ونفس الرمز يسوي لك حساب.',
+      ),
       'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
       _ => null,
     };

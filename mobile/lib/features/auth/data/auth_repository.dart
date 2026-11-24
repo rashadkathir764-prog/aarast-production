@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -194,7 +196,12 @@ class AuthRepository implements SessionAuthTeardownPort {
       receiveTimeout: _otpDeliveryReceiveTimeout,
     );
     if (json['accountSetupRequired'] is! bool) {
-      throw const ApiException('صار خطأ عندنا. جرّب مرة ثانية.');
+      throw ApiException(
+        ReaderVoice.say(
+          'صار خطأ عندنا. جرّب مرة ثانية.',
+          'صار خطأ عندنا. جرّبي مرة ثانية.',
+        ),
+      );
     }
     return OtpRequestResult.fromJson(json);
   }
@@ -218,8 +225,11 @@ class AuthRepository implements SessionAuthTeardownPort {
       final response = OtpVerifyResult.fromJson(json);
       if (establishesSession) {
         if (!response.hasDurableSession) {
-          throw const ApiException(
-            'ما قدرنا نكمل دخولك، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
+          throw ApiException(
+            ReaderVoice.say(
+              'ما قدرنا نكمل دخولك، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
+              'ما قدرنا نكمل دخولك، وما حفظنا شي ناقص على الجوال. جرّبي مرة ثانية.',
+            ),
           );
         }
         final saved = await _saveOtpSession(
@@ -228,8 +238,11 @@ class AuthRepository implements SessionAuthTeardownPort {
           reservedEpoch: true,
         );
         if (!saved) {
-          throw const ApiException(
-            'تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.',
+          throw ApiException(
+            ReaderVoice.say(
+              'تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.',
+              'تغيّر الدخول قبل ما نحفظه. جرّبي مرة ثانية.',
+            ),
           );
         }
       } else if (response.accessToken != null &&
@@ -274,8 +287,11 @@ class AuthRepository implements SessionAuthTeardownPort {
       );
       final response = OtpVerifyResult.fromJson(json);
       if (!response.hasDurableSession) {
-        throw const ApiException(
-          'ما قدرنا نكمل دخولك للخطة، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
+        throw ApiException(
+          ReaderVoice.say(
+            'ما قدرنا نكمل دخولك للخطة، وما حفظنا شي ناقص على الجوال. جرّب مرة ثانية.',
+            'ما قدرنا نكمل دخولك للخطة، وما حفظنا شي ناقص على الجوال. جرّبي مرة ثانية.',
+          ),
         );
       }
       final saved = await _saveOtpSession(
@@ -284,7 +300,12 @@ class AuthRepository implements SessionAuthTeardownPort {
         reservedEpoch: true,
       );
       if (!saved) {
-        throw const ApiException('تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.');
+        throw ApiException(
+          ReaderVoice.say(
+            'تغيّر الدخول قبل ما نحفظه. جرّب مرة ثانية.',
+            'تغيّر الدخول قبل ما نحفظه. جرّبي مرة ثانية.',
+          ),
+        );
       }
       return response;
     } on Object {
@@ -467,8 +488,11 @@ class AuthRepository implements SessionAuthTeardownPort {
     } on ApiException catch (error) {
       if (error.statusCode == 503 ||
           error.message.toLowerCase().contains('media storage')) {
-        throw const ApiException(
-          'رفع الصور مش متاح الحين. جرّب بعد شوي.',
+        throw ApiException(
+          ReaderVoice.say(
+            'رفع الصور مش متاح الحين. جرّب بعد شوي.',
+            'رفع الصور مش متاح الحين. جرّبي بعد شوي.',
+          ),
           statusCode: 503,
         );
       }
@@ -636,7 +660,12 @@ class AuthRepository implements SessionAuthTeardownPort {
           'errorType': error.runtimeType.toString(),
         },
       );
-      throw const ApiException('ما قدرنا نقرأ رد الدخول. جرّب مرة ثانية.');
+      throw ApiException(
+        ReaderVoice.say(
+          'ما قدرنا نقرأ رد الدخول. جرّب مرة ثانية.',
+          'ما قدرنا نقرأ رد الدخول. جرّبي مرة ثانية.',
+        ),
+      );
     }
   }
 }

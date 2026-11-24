@@ -125,9 +125,7 @@ class WeddingPlanContextGate extends StatelessWidget {
     );
     return _MismatchedPlanContext(
       title: samePlan ? 'هذا القسم مش مفتوح لك' : 'هذي الخطة ما عادت لك',
-      message: samePlan
-          ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
-          : 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
+      message: samePlan ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.' : null,
     );
   }
 }
@@ -303,8 +301,11 @@ class _LoginRequiredPlanContext extends StatelessWidget {
         phase: JourneyListPhase.empty,
         section: JourneySection.home,
         emptyIcon: LucideIcons.lock,
-        emptyTitle: 'ادخل أول',
-        emptyMessage: 'ادخل بحسابك عشان نفتح لك هذي الخطة.',
+        emptyTitle: context.say('ادخل أول', 'ادخلي أول'),
+        emptyMessage: context.say(
+          'ادخل بحسابك عشان نفتح لك هذي الخطة.',
+          'ادخلي بحسابك عشان نفتح لك هذي الخطة.',
+        ),
         emptyAction: 'تسجيل الدخول',
         onEmptyAction: () {
           final resume = AppRouter.weddingPlanDashboard(planId);
@@ -323,11 +324,13 @@ class _LoginRequiredPlanContext extends StatelessWidget {
 class _MismatchedPlanContext extends StatelessWidget {
   const _MismatchedPlanContext({
     this.title = 'هذي الخطة ما عادت لك',
-    this.message = 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
+    this.message,
   });
 
   final String title;
-  final String message;
+
+  /// Null says the plan is no longer the reader's, in the reader's own form.
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -338,7 +341,12 @@ class _MismatchedPlanContext extends StatelessWidget {
         section: JourneySection.home,
         emptyIcon: LucideIcons.shieldAlert,
         emptyTitle: title,
-        emptyMessage: message,
+        emptyMessage:
+            message ??
+            context.say(
+              'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
+              'ما عادت ضمن خططك. ارجعي للرئيسية واختاري خطة ثانية.',
+            ),
         // The page says «ارجع للرئيسية» and has no bar of its own; without
         // this a person who opened a stale link stays shut in.
         emptyAction: 'الرئيسية',

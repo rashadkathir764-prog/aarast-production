@@ -99,7 +99,10 @@ class _PlanAssistantEntryState extends State<PlanAssistantEntry> {
       child: Semantics(
         key: const ValueKey('assistant-entry'),
         button: true,
-        label: '$label، يجاوبك من خطتك أنت، وما يخترع أسعار',
+        label: context.say(
+          '$label، يجاوبك من خطتك أنت، وما يخترع أسعار',
+          '$label، يجاوبك من خطتك أنتِ، وما يخترع أسعار',
+        ),
         onTap: open,
         excludeSemantics: true,
         child: AarastPressable(

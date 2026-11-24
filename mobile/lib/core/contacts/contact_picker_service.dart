@@ -1,3 +1,4 @@
+import '../experience_v3/aarast_journey_profile.dart' show ReaderVoice;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +60,7 @@ class ContactPickerService {
         children: [
           JourneyButton(
             key: const Key('contacts-disclosure-agree'),
-            label: 'موافق، كمّل',
+            label: ReaderVoice.say('موافق، كمّل', 'موافق، كمّلي'),
             icon: LucideIcons.contact,
             large: true,
             expand: true,
@@ -174,8 +175,8 @@ class ContactPickerService {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'اختر رقم الجوال',
+                  Text(
+                    ReaderVoice.say('اختر رقم الجوال', 'اختاري رقم الجوال'),
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: AarastV3Space.x2),

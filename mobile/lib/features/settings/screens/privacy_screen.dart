@@ -170,7 +170,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 if (preferences != null)
                   _Toggle(
                     key: const ValueKey('privacy-crash-reports'),
-                    title: 'أرسل تقارير الأعطال',
+                    title: context.say(
+                      'أرسل تقارير الأعطال',
+                      'أرسلي تقارير الأعطال',
+                    ),
                     subtitle: 'بدون أسماء ولا مبالغ. تساعدنا نصلّح',
                     value: preferences.crashReports,
                     onChanged: preferences.setCrashReports,

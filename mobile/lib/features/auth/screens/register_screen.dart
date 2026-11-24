@@ -149,8 +149,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? context.say('احفظ خطتي', 'احفظي خطتي')
                       : 'إنشاء الحساب')
                 : offline
-                ? 'أرسل الرمز مرة ثانية'
-                : 'أرسل الرمز',
+                ? context.say('أرسل الرمز مرة ثانية', 'أرسلي الرمز مرة ثانية')
+                : context.say('أرسل الرمز', 'أرسلي الرمز'),
             expand: true,
             large: true,
             loading: auth.isSubmitting,

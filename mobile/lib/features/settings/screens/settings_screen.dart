@@ -63,8 +63,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final Widget body;
     if (_showLoginGate) {
-      body = const AuthGatePanel(
-        title: 'سجّل الدخول لإدارة الإعدادات',
+      body = AuthGatePanel(
+        title: context.say(
+          'سجّل الدخول لإدارة الإعدادات',
+          'سجّلي الدخول لإدارة الإعدادات',
+        ),
         body: 'التنبيهات مرتبطة بحسابك عشان نحفظها لك.',
         icon: LucideIcons.bell,
         scrolls: false,
@@ -224,10 +227,13 @@ class _TaskMessageChoice extends StatelessWidget {
             Wrap(
               spacing: AarastV3Space.x2,
               children: [
-                for (final (mode, label) in const [
+                for (final (mode, label) in [
                   (TaskMessageMode.ask, 'اسألني'),
-                  (TaskMessageMode.whatsApp, 'افتح واتساب مباشرة'),
-                  (TaskMessageMode.off, 'لا ترسل'),
+                  (
+                    TaskMessageMode.whatsApp,
+                    context.say('افتح واتساب مباشرة', 'افتحي واتساب مباشرة'),
+                  ),
+                  (TaskMessageMode.off, context.say('لا ترسل', 'لا ترسلي')),
                 ])
                   JourneyChip(
                     key: Key('settings-task-message-${mode.name}'),

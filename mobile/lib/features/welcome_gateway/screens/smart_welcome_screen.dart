@@ -457,7 +457,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
         children: [
           JourneyButton(
             key: const ValueKey('door-replace-confirm'),
-            label: 'إيه، ابدأ من جديد',
+            label: context.say('إيه، ابدأ من جديد', 'إيه، ابدئي من جديد'),
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -465,7 +465,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
-            label: 'لا، خلّها',
+            label: context.say('لا، خلّها', 'لا، خلّيها'),
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(false),
           ),

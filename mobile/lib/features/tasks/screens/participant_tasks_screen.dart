@@ -400,7 +400,10 @@ class _MineRow extends StatelessWidget {
                 button: true,
                 checked: done,
                 label: done
-                    ? 'افتح ${task.title} من جديد'
+                    ? context.say(
+                        'افتح ${task.title} من جديد',
+                        'افتحي ${task.title} من جديد',
+                      )
                     : 'خلّص ${task.title}',
                 onTap: busy ? null : onToggle,
                 excludeSemantics: true,

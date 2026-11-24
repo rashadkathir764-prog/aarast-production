@@ -75,7 +75,7 @@ void main() {
     expect(harness.controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       harness.controller.errorMessage,
-      'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+      'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
     );
     expect(harness.controller.errorMessage, isNot(contains('كلمة المرور')));
   });

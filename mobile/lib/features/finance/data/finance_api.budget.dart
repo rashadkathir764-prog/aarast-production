@@ -238,7 +238,12 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     final estimate = _nullableTrimmed(estimatedAmount);
     if (estimate != null &&
         !FinanceMoneyRules.serverAmount.hasMatch(estimate)) {
-      throw const ApiException('اكتب التقدير رقمًا صحيحًا.');
+      throw ApiException(
+        ReaderVoice.say(
+          'اكتب التقدير رقمًا صحيحًا.',
+          'اكتبي التقدير رقمًا صحيحًا.',
+        ),
+      );
     }
     final payload = <String, dynamic>{'estimatedAmount': estimate};
     final mutation = _mutation(

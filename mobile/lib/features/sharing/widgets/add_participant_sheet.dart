@@ -312,7 +312,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     final ownKey = PhoneNumberUtils.comparisonKey(_signedInPhone());
     if (ownKey != null &&
         ownKey == PhoneNumberUtils.comparisonKey(_phone.text)) {
-      return 'هذا رقمك أنت، الدعوة لغيرك';
+      return context.say(
+        'هذا رقمك أنت، الدعوة لغيرك',
+        'هذا رقمك أنتِ، الدعوة لغيرك',
+      );
     }
     final member = ContactDuplicateUtils.findByPhone(
       provider.members.where(

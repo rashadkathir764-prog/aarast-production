@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -214,7 +216,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _upsertConversation(conversation);
       return conversation;
     } on TimeoutException {
-      _errorMessage = 'فتح المحادثة طوّل أكثر من اللازم. جرّب مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'فتح المحادثة طوّل أكثر من اللازم. جرّب مرة ثانية.',
+        'فتح المحادثة طوّل أكثر من اللازم. جرّبي مرة ثانية.',
+      );
     } on ApiException catch (error) {
       _errorMessage = error.message;
       _quoteOpenRefused = error.statusCode == 403 || error.statusCode == 404;
@@ -322,7 +327,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     if (conversation?.canSend != true) {
       _errorMessage = conversation?.providerJoined == false
           ? 'المزود ما دخل المحادثة لسا'
-          : 'ما تقدر ترسل رسائل في هذي المحادثة الحين.';
+          : ReaderVoice.say(
+              'ما تقدر ترسل رسائل في هذي المحادثة الحين.',
+              'ما تقدرين ترسلين رسائل في هذي المحادثة الحين.',
+            );
       notifyListeners();
       return false;
     }

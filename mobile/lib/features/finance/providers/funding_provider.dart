@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -226,7 +228,10 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظ التغيير الحين. جرّب مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'ما انحفظ التغيير الحين. جرّب مرة ثانية.',
+        'ما انحفظ التغيير الحين. جرّبي مرة ثانية.',
+      );
       return false;
     } finally {
       _isSaving = false;

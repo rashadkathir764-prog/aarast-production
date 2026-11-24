@@ -1,20 +1,27 @@
+import 'aarast_journey_profile.dart' show ReaderVoice;
+
 /// The product voice for high-frequency planning states.
 ///
 /// Copy here describes what the user can do or what the plan means. It avoids
 /// database language such as "0 items" and never claims a state the product
 /// cannot derive from real data.
 abstract final class AarastV3Copy {
-  static const retry = 'جرّب مرة ثانية';
+  static String get retry =>
+      ReaderVoice.say('جرّب مرة ثانية', 'جرّبي مرة ثانية');
   static const refresh = 'تحديث';
   static const showAll = 'عرض الكل';
   static const addFirst = 'إضافة أول عنصر';
 
   static const loadingTitle = 'نرتّب التفاصيل';
   static const loadingMessage = 'ستظهر البيانات هنا فور اكتمال التحميل.';
-  static const offlineTitle = 'أنت بدون نت الحين';
+  static String get offlineTitle =>
+      ReaderVoice.say('أنت بدون نت الحين', 'أنتِ بدون نت الحين');
   static const offlineMessage = 'نعرض آخر نسخة محفوظة، ونحدّثها لما يرجع النت.';
   static const lockedTitle = 'هذي البيانات خاصة';
-  static const lockedMessage = 'ما عندك صلاحية تشوف هذا الجزء من الخطة.';
+  static String get lockedMessage => ReaderVoice.say(
+    'ما عندك صلاحية تشوف هذا الجزء من الخطة.',
+    'ما عندك صلاحية تشوفين هذا الجزء من الخطة.',
+  );
   static const readOnlyTitle = 'يمكنك الاطلاع فقط';
   static const readOnlyMessage =
       'تستطيع مراجعة البيانات، بينما التعديل يحتاج صلاحية إضافية.';
@@ -38,6 +45,8 @@ abstract final class AarastV3Copy {
       'ابدأ بالقرار الأقرب لك الحين؛ يكفي عنوان واضح ويمكنك إضافة التفاصيل لاحقًا.';
 
   static const firstGuestTitle = 'مين بتعزم؟';
-  static const firstGuestMessage =
-      'أضف الاسم أول، وبعدين رقم الجوال والرد لما يصيرون عندك.';
+  static String get firstGuestMessage => ReaderVoice.say(
+    'أضف الاسم أول، وبعدين رقم الجوال والرد لما يصيرون عندك.',
+    'أضيفي الاسم أول، وبعدين رقم الجوال والرد لما يصيرون عندك.',
+  );
 }

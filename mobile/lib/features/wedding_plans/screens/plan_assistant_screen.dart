@@ -229,7 +229,10 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       if (!mounted) return false;
       setState(() {
         _exchanges.remove(exchange);
-        _askError = 'ما وصلتنا إجابة. جرّب مرة ثانية.';
+        _askError = context.say(
+          'ما وصلتنا إجابة. جرّب مرة ثانية.',
+          'ما وصلتنا إجابة. جرّبي مرة ثانية.',
+        );
       });
     } finally {
       if (mounted) setState(() => _asking = false);
@@ -266,12 +269,21 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       AarastToast.showError(
         context,
         error.serverCode == 'ASSISTANT_REPORT_LIMIT'
-            ? 'عندك بلاغات كثير ما راجعها الفريق بعد. جرّب بعدين.'
+            ? context.say(
+                'عندك بلاغات كثير ما راجعها الفريق بعد. جرّب بعدين.',
+                'عندك بلاغات كثير ما راجعها الفريق بعد. جرّبي بعدين.',
+              )
             : error.message,
       );
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.');
+        AarastToast.showError(
+          context,
+          context.say(
+            'ما قدرنا نرسل البلاغ. جرّب مرة ثانية.',
+            'ما قدرنا نرسل البلاغ. جرّبي مرة ثانية.',
+          ),
+        );
       }
     }
   }
@@ -304,7 +316,10 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
               children: [
                 JourneySubHeader(
                   title: context.say('اسأل اعّرست', 'اسألي اعّرست'),
-                  subtitle: 'يجاوبك من خطتك أنت، وما يخترع أسعار',
+                  subtitle: context.say(
+                    'يجاوبك من خطتك أنت، وما يخترع أسعار',
+                    'يجاوبك من خطتك أنتِ، وما يخترع أسعار',
+                  ),
                   onBack: _goBack,
                 ),
                 ..._body(status),

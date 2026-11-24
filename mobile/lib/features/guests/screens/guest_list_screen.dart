@@ -614,7 +614,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
       empty: _reply == _ReplyFilter.all
           ? 'ما فيه أحد هنا'
           : 'ما فيه أحد تحت «${_reply.labelFor(words)}» في $title',
-      emptyAction: _reply == _ReplyFilter.all ? null : 'شوف الكل',
+      emptyAction: _reply == _ReplyFilter.all
+          ? null
+          : context.say('شوف الكل', 'شوفي الكل'),
       onEmptyAction: _reply == _ReplyFilter.all
           ? null
           : () => setState(() => _reply = _ReplyFilter.all),

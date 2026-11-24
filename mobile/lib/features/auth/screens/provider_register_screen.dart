@@ -89,8 +89,8 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
             label: auth.phoneProofFor(_phoneController.text) != null
                 ? 'إنشاء الحساب'
                 : offline
-                ? 'أرسل الرمز مرة ثانية'
-                : 'أرسل الرمز',
+                ? context.say('أرسل الرمز مرة ثانية', 'أرسلي الرمز مرة ثانية')
+                : context.say('أرسل الرمز', 'أرسلي الرمز'),
             expand: true,
             large: true,
             loading: auth.isSubmitting,

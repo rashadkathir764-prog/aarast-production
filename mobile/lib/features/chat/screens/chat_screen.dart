@@ -379,8 +379,11 @@ class _ChatScreenState extends State<ChatScreen> {
               onSend: _send,
             )
           else if (conversation != null)
-            const _Notice(
-              text: 'ما تقدر ترسل في هذي المحادثة الحين.',
+            _Notice(
+              text: context.say(
+                'ما تقدر ترسل في هذي المحادثة الحين.',
+                'ما تقدرين ترسلين في هذي المحادثة الحين.',
+              ),
               color: AarastV3Color.textMuted,
               soft: AarastV3Color.line,
             ),
@@ -498,7 +501,13 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرّب مرة ثانية.');
+        AarastToast.showError(
+          context,
+          context.say(
+            'ما قدرنا نرفع الصورة، جرّب مرة ثانية.',
+            'ما قدرنا نرفع الصورة، جرّبي مرة ثانية.',
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -1004,7 +1013,7 @@ class _OptionsSheet extends StatelessWidget {
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
               title: current.blockedByMe
-                  ? 'ارفع الحظر'
+                  ? context.say('ارفع الحظر', 'ارفعي الحظر')
                   : provider
                   ? 'احظر العميل'
                   : 'احظر المزود',
@@ -1018,8 +1027,14 @@ class _OptionsSheet extends StatelessWidget {
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: provider
-              ? 'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.'
-              : 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+              ? context.say(
+                  'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.',
+                  'الحظر ما يلغي حجز العميل المؤكد. ألغيه من "حجوزاتك" في الرئيسية لو تشتين.',
+                )
+              : context.say(
+                  'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+                  'الحظر ما يلغي الحجز المؤكد. ألغيه من "الحجوزات" لو تشتين.',
+                ),
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,
         ),

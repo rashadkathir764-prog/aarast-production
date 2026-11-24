@@ -176,8 +176,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (!_isLocalPlanNotifications && _showLoginGate) {
-      return const AuthGatePanel(
-        title: 'سجّل الدخول لعرض التنبيهات',
+      return AuthGatePanel(
+        title: context.say(
+          'سجّل الدخول لعرض التنبيهات',
+          'سجّلي الدخول لعرض التنبيهات',
+        ),
         body:
             'التنبيهات مرتبطة بحسابك وخططك المحفوظة، لذلك نعرضها بعد تسجيل الدخول.',
         icon: LucideIcons.bell,
@@ -490,7 +493,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (mounted) {
         AarastToast.showError(
           context,
-          controller.errorMessage ?? 'ما قدرنا نفتح الخطة. جرّب مرة ثانية.',
+          controller.errorMessage ??
+              context.say(
+                'ما قدرنا نفتح الخطة. جرّب مرة ثانية.',
+                'ما قدرنا نفتح الخطة. جرّبي مرة ثانية.',
+              ),
         );
       }
       return;

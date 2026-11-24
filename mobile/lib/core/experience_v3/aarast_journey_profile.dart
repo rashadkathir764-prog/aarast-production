@@ -124,6 +124,31 @@ class JourneyProfile {
       '${readerIsOwner ? '' : ', not its owner'})';
 }
 
+/// How the reader is spoken to where no screen is at hand: a provider's error,
+/// a data layer's refusal, a network message. A screen says
+/// `context.say(m, f)`; these layers have no context, and wrote the
+/// masculine for everyone, so a bride read «جرّب» (RA-MO-322). The app root
+/// hands the open plan's reader form to [speakTo] each time it resolves the
+/// profile, and the layers say [say] with both forms, as a screen does. One
+/// person reads one app, so this is one value, not one per screen; a message
+/// is spoken in the form current when it is made.
+class ReaderVoice {
+  ReaderVoice._();
+
+  static bool _feminine = false;
+
+  /// Whether the reader is spoken to in the feminine now.
+  static bool get feminine => _feminine;
+
+  /// The app root sets who reads (see `AarastPlanProfileScope`).
+  static void speakTo({required bool feminine}) => _feminine = feminine;
+
+  /// One sentence to the reader in its masculine or feminine form, as
+  /// [JourneyProfile.say] does for a screen.
+  static String say(String masculine, String feminine) =>
+      _feminine ? feminine : masculine;
+}
+
 /// B5: how a reader is spoken to where the server has not said it: outside
 /// a plan, or in a plan still kept on the phone. The account's own persona
 /// (the person chose «عريس» or «عروسة»), else the plan's own party: the

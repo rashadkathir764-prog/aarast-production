@@ -51,7 +51,7 @@ class AppUpdateRequiredScreen extends StatelessWidget {
           ),
           const SizedBox(height: AarastV3Space.x4),
           Text(
-            'حدّث اعّرست',
+            context.say('حدّث اعّرست', 'حدّثي اعّرست'),
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.pageTitle,
@@ -71,7 +71,7 @@ class AppUpdateRequiredScreen extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x5),
           JourneyButton(
             key: const Key('app-update-open-store'),
-            label: 'افتح المتجر',
+            label: context.say('افتح المتجر', 'افتحي المتجر'),
             expand: true,
             large: true,
             onPressed: () => launchUrl(

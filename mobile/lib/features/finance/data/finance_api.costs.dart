@@ -401,7 +401,12 @@ mixin _FinanceCostsApi on _FinanceApiCore {
   Map<String, dynamic> _coverPayload(String? cover, String? part) {
     if (cover == null) return const {};
     if (cover != 'WHOLE' && cover != 'PART') {
-      throw const ApiException('اختر هل الاتفاق للبند كله أو لجزء منه.');
+      throw ApiException(
+        ReaderVoice.say(
+          'اختر هل الاتفاق للبند كله أو لجزء منه.',
+          'اختاري هل الاتفاق للبند كله أو لجزء منه.',
+        ),
+      );
     }
     return {
       'estimateCover': cover,
@@ -491,8 +496,11 @@ mixin _FinanceCostsApi on _FinanceApiCore {
   void _assertPartyChoice({String? providerId, String? partyName}) {
     if (_nullableTrimmed(providerId) != null &&
         _nullableTrimmed(partyName) != null) {
-      throw const ApiException(
-        'اختر مزودًا من اعّرست أو جهة خارجية، وليس كليهما.',
+      throw ApiException(
+        ReaderVoice.say(
+          'اختر مزودًا من اعّرست أو جهة خارجية، وليس كليهما.',
+          'اختاري مزودًا من اعّرست أو جهة خارجية، وليس كليهما.',
+        ),
       );
     }
   }

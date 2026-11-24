@@ -114,7 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
           primary: JourneyButton(
             key: const ValueKey('login-submit'),
-            label: _withPassword ? 'تسجيل الدخول' : 'أرسل الرمز',
+            label: _withPassword
+                ? 'تسجيل الدخول'
+                : context.say('أرسل الرمز', 'أرسلي الرمز'),
             expand: true,
             large: true,
             loading: auth.isSubmitting,
@@ -122,7 +124,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           secondary: JourneyTextAction(
             key: const ValueKey('login-register-action'),
-            label: 'ما عندك حساب؟ ابدأ من هنا',
+            label: context.say(
+              'ما عندك حساب؟ ابدأ من هنا',
+              'ما عندك حساب؟ ابدئي من هنا',
+            ),
             onPressed: auth.isSubmitting ? null : _start,
             color: context.accent.primaryDark,
           ),
@@ -134,9 +139,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 : context.go(AppRouter.welcome),
           ),
           JourneyEntryQuestion(
-            question: widget.sessionExpired ? 'ادخل مرة ثانية' : 'تسجيل الدخول',
+            question: widget.sessionExpired
+                ? context.say('ادخل مرة ثانية', 'ادخلي مرة ثانية')
+                : 'تسجيل الدخول',
             help: widget.sessionExpired
-                ? 'طال الغياب، فقفلنا الدخول للأمان. بعد الدخول ترجع مكانك.'
+                ? context.say(
+                    'طال الغياب، فقفلنا الدخول للأمان. بعد الدخول ترجع مكانك.',
+                    'طال الغياب، فقفلنا الدخول للأمان. بعد الدخول ترجعين مكانك.',
+                  )
                 : _withPassword
                 ? 'برقم جوالك وكلمة المرور.'
                 : 'بنفس رقم جوالك، ونرسل رمز على واتساب.',
@@ -144,9 +154,12 @@ class _LoginScreenState extends State<LoginScreen> {
           if (pending > 0) ...[
             const SizedBox(height: AarastV3Space.x4),
             JourneyNote(
-              text:
-                  '${arabicCount(pending, one: 'شي واحد سجّلته بدون نت', two: 'شيئين سجّلتها بدون نت', few: 'أشياء سجّلتها بدون نت', many: 'شي سجّلته بدون نت')}: '
-                  'محفوظة في جوالك، وتوصل أول ما تدخل بنفس الحساب.',
+              text: context.say(
+                '${arabicCount(pending, one: 'شي واحد سجّلته بدون نت', two: 'شيئين سجّلتها بدون نت', few: 'أشياء سجّلتها بدون نت', many: 'شي سجّلته بدون نت')}: '
+                    'محفوظة في جوالك، وتوصل أول ما تدخل بنفس الحساب.',
+                '${arabicCount(pending, one: 'شي واحد سجّلته بدون نت', two: 'شيئين سجّلتها بدون نت', few: 'أشياء سجّلتها بدون نت', many: 'شي سجّلته بدون نت')}: '
+                    'محفوظة في جوالك، وتوصل أول ما تدخلين بنفس الحساب.',
+              ),
               icon: LucideIcons.cloudOff,
               tone: JourneyNoteTone.warn,
             ),

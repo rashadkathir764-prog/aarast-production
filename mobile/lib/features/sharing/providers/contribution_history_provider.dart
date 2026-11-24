@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -152,7 +154,10 @@ class ContributionHistoryProvider extends ChangeNotifier
       }
     } on Object {
       if (_isCurrent(generation, weddingPlanId)) {
-        _errorMessage = 'ما قدرنا نجيب السجل. جرّب مرة ثانية.';
+        _errorMessage = ReaderVoice.say(
+          'ما قدرنا نجيب السجل. جرّب مرة ثانية.',
+          'ما قدرنا نجيب السجل. جرّبي مرة ثانية.',
+        );
       }
     } finally {
       if (_isCurrent(generation, weddingPlanId)) {
@@ -200,8 +205,10 @@ class ContributionHistoryProvider extends ChangeNotifier
     } on FormatException {
       if (_isCurrent(generation, weddingPlanId)) {
         _requiresReload = true;
-        _loadMoreError =
-            'تغيّر السجل وأنت تقلّب فيه. حدّث السجل من البداية عشان ما يفوتك شي.';
+        _loadMoreError = ReaderVoice.say(
+          'تغيّر السجل وأنت تقلّب فيه. حدّث السجل من البداية عشان ما يفوتك شي.',
+          'تغيّر السجل وأنتِ تقلّب فيه. حدّثي السجل من البداية عشان ما يفوتك شي.',
+        );
       }
     } on ApiException catch (error) {
       if (_isCurrent(generation, weddingPlanId)) {
@@ -209,7 +216,10 @@ class ContributionHistoryProvider extends ChangeNotifier
       }
     } on Object {
       if (_isCurrent(generation, weddingPlanId)) {
-        _loadMoreError = 'ما قدرنا نجيب الباقي. جرّب مرة ثانية.';
+        _loadMoreError = ReaderVoice.say(
+          'ما قدرنا نجيب الباقي. جرّب مرة ثانية.',
+          'ما قدرنا نجيب الباقي. جرّبي مرة ثانية.',
+        );
       }
     } finally {
       if (_isCurrent(generation, weddingPlanId)) {

@@ -76,7 +76,9 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
 
   String? get _currentError {
     if (!_attempted || !widget.hasPassword) return null;
-    return _current.text.isEmpty ? 'اكتب كلمة المرور الحالية' : null;
+    return _current.text.isEmpty
+        ? context.say('اكتب كلمة المرور الحالية', 'اكتبي كلمة المرور الحالية')
+        : null;
   }
 
   String? get _nextError {
@@ -84,7 +86,7 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
     final value = _next.text;
     if (value.length < 6) return '6 أحرف أو أكثر';
     if (!isApplicationPasswordWithinByteLimit(value)) {
-      return 'طويلة، خلّها أقصر';
+      return context.say('طويلة، خلّها أقصر', 'طويلة، خلّيها أقصر');
     }
     return null;
   }

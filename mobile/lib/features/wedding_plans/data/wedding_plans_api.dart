@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
@@ -365,7 +367,12 @@ class WeddingPlansApi {
   Map<String, dynamic> _asJsonMap(Object? data) {
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
-    throw const ApiException('ما قدرنا نجيب البيانات. جرّب مرة ثانية.');
+    throw ApiException(
+      ReaderVoice.say(
+        'ما قدرنا نجيب البيانات. جرّب مرة ثانية.',
+        'ما قدرنا نجيب البيانات. جرّبي مرة ثانية.',
+      ),
+    );
   }
 
   Map<String, dynamic> _activePlanToCacheJson(ActiveWeddingPlan plan) {

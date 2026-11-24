@@ -240,7 +240,10 @@ ProviderBoardRow _row({
       final day = confirmed.booking!.eventDate;
       return make(
         4,
-        '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}',
+        ReaderVoice.say(
+          '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}',
+          '${_providerName(confirmed)} · أكّدي ${formatArabicDayMonth(day)}',
+        ),
       );
     }
     if (outsideParty != null) {
@@ -303,7 +306,9 @@ String providerBoardStatus(List<ProviderBoardRow> rows) {
       ),
   ];
   if (parts.isEmpty) {
-    return rows.isEmpty ? 'اختر مزوديك' : 'ما حجزت شي بعد';
+    return rows.isEmpty
+        ? ReaderVoice.say('اختر مزوديك', 'اختاري مزوديك')
+        : 'ما حجزت شي بعد';
   }
   return parts.join(' · ');
 }

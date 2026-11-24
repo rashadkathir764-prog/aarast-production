@@ -75,7 +75,11 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
     if (!ok) {
       AarastToast.showError(
         context,
-        funding.errorMessage ?? 'ما انحفظت. جرّب مرة ثانية.',
+        funding.errorMessage ??
+            context.say(
+              'ما انحفظت. جرّب مرة ثانية.',
+              'ما انحفظت. جرّبي مرة ثانية.',
+            ),
       );
       return;
     }

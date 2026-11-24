@@ -240,7 +240,10 @@ mixin _AuthSession on _AuthControllerCore {
     _user = null;
     _status = AuthStatus.terminating;
     _errorMessage = markSessionExpired
-        ? 'انتهى دخولك. سجّل دخول مرة ثانية عشان تكمل.'
+        ? ReaderVoice.say(
+            'انتهى دخولك. سجّل دخول مرة ثانية عشان تكمل.',
+            'انتهى دخولك. سجّلي دخول مرة ثانية عشان تكملين.',
+          )
         : null;
     _errorCode = null;
     notifyListeners();
@@ -248,8 +251,10 @@ mixin _AuthSession on _AuthControllerCore {
     if (beginFailure != null || teardownLease == null) {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.terminationFailed;
-      _errorMessage =
-          'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.',
+        'ما قدرنا نمسح بيانات حسابك من الجوال. جرّبي تخرجين مرة ثانية.',
+      );
       _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
       appLogEvent(
         'LOGOUT_FAILED',
@@ -288,8 +293,10 @@ mixin _AuthSession on _AuthControllerCore {
     } on Object catch (error, stackTrace) {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.terminationFailed;
-      _errorMessage =
-          'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'ما قدرنا نمسح بيانات حسابك من الجوال. جرّب تخرج مرة ثانية.',
+        'ما قدرنا نمسح بيانات حسابك من الجوال. جرّبي تخرجين مرة ثانية.',
+      );
       _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
       appLogEvent(
         'LOGOUT_FAILED',
@@ -470,7 +477,10 @@ mixin _AuthSession on _AuthControllerCore {
   Future<String?> _changeAccountDeletion({required bool request}) async {
     final user = _user;
     if (_status != AuthStatus.authenticated || user == null || _isSubmitting) {
-      return 'ما قدرنا الحين. جرّب مرة ثانية.';
+      return ReaderVoice.say(
+        'ما قدرنا الحين. جرّب مرة ثانية.',
+        'ما قدرنا الحين. جرّبي مرة ثانية.',
+      );
     }
     final operation = _sessionOperationGeneration;
     final source =
@@ -522,7 +532,10 @@ mixin _AuthSession on _AuthControllerCore {
       }
       return error.message;
     } on FormatException {
-      return 'ما قدرنا نتأكد من الطلب. جرّب مرة ثانية.';
+      return ReaderVoice.say(
+        'ما قدرنا نتأكد من الطلب. جرّب مرة ثانية.',
+        'ما قدرنا نتأكد من الطلب. جرّبي مرة ثانية.',
+      );
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -532,7 +545,10 @@ mixin _AuthSession on _AuthControllerCore {
 
 /// Server codes of a phone change, as Arabic actions (V1 checklist 4.14).
 String? phoneChangeErrorMessage(String? code) => switch (code) {
-  'PHONE_IN_USE' => 'هذا الرقم مسجّل لحساب آخر. استخدم رقمًا آخر.',
+  'PHONE_IN_USE' => ReaderVoice.say(
+    'هذا الرقم مسجّل لحساب آخر. استخدم رقمًا آخر.',
+    'هذا الرقم مسجّل لحساب آخر. استخدمي رقمًا آخر.',
+  ),
   'PHONE_UNCHANGED' => 'هذا هو رقمك الحالي.',
   // RA-BE-141: the proof that the account's holder asks the change.
   'INVALID_CREDENTIALS' => 'كلمة المرور غلط.',

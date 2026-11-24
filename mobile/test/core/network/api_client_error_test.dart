@@ -236,7 +236,7 @@ void main() {
       expect(exception.statusCode, 503);
       expect(
         exception.message,
-        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+        'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
       );
       expect(exception.message, isNot(contains('OTP delivery')));
     });
@@ -266,7 +266,7 @@ void main() {
       expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
       expect(
         exception.message,
-        'ما قدرنا نرسل الرمز على واتساب. تأكد إن الرقم صحيح وعليه واتساب، وجرّب مرة ثانية.',
+        'ما قدرنا نرسل الرمز على واتساب. لازم الرقم يكون صحيح وعليه واتساب، ومرة ثانية غالبًا تمشي.',
       );
     });
 

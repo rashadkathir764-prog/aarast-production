@@ -1,3 +1,4 @@
+import '../experience_v3/aarast_journey_profile.dart' show ReaderVoice;
 import 'dart:async';
 import 'dart:convert';
 
@@ -122,7 +123,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             message: ownershipQuarantined
                 ? 'ما قدرنا نتأكد إن هذا التغيير لخطتك، فما راح نرسله من نفسنا عشان نحمي بياناتك.'
                 : item.retryCount >= SyncQueueItem.maxAutoRetries
-                ? 'ما قدرنا نرسل التغيير بعد كم محاولة. جرّب مرة ثانية.'
+                ? ReaderVoice.say(
+                    'ما قدرنا نرسل التغيير بعد كم محاولة. جرّب مرة ثانية.',
+                    'ما قدرنا نرسل التغيير بعد كم محاولة. جرّبي مرة ثانية.',
+                  )
                 : 'ما انقبل التغيير، فبيانات $entityLabel تحتاج مراجعة قبل ما ينرسل مرة ثانية.',
             retryCount: item.retryCount,
             canRetry: canRetry,

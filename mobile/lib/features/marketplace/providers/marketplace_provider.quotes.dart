@@ -143,8 +143,10 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       }
       return false;
     } catch (_) {
-      _quoteSubmitErrorMessage =
-          'ما انرسل طلب عرض السعر الحين. جرّب مرة ثانية.';
+      _quoteSubmitErrorMessage = ReaderVoice.say(
+        'ما انرسل طلب عرض السعر الحين. جرّب مرة ثانية.',
+        'ما انرسل طلب عرض السعر الحين. جرّبي مرة ثانية.',
+      );
       return false;
     } finally {
       _isSubmitting = false;
@@ -275,8 +277,11 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
         );
         if (declined) return now;
         _replaceQuote(now);
-        throw const ApiException(
-          'العرض ما عاد ينتظر ردك، شوف حاله الحين.',
+        throw ApiException(
+          ReaderVoice.say(
+            'العرض ما عاد ينتظر ردك، شوف حاله الحين.',
+            'العرض ما عاد ينتظر ردك، شوفي حاله الحين.',
+          ),
           statusCode: 409,
         );
       }
@@ -302,11 +307,17 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     } on ApiException catch (error) {
       if (error.statusCode == 409) return alreadyReviewedMessage;
       if (error.serverCode == 'REVIEW_REQUIRES_COMPLETED_BOOKING') {
-        return 'تقدر تقيّم بعد يوم الحجز.';
+        return ReaderVoice.say(
+          'تقدر تقيّم بعد يوم الحجز.',
+          'تقدرين تقيّمين بعد يوم الحجز.',
+        );
       }
       return marketplaceErrorMessage(error.message);
     } catch (_) {
-      return 'ما قدرنا نرسل التقييم. جرّب مرة ثانية.';
+      return ReaderVoice.say(
+        'ما قدرنا نرسل التقييم. جرّب مرة ثانية.',
+        'ما قدرنا نرسل التقييم. جرّبي مرة ثانية.',
+      );
     }
   }
 
@@ -385,7 +396,10 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       }
       return false;
     } catch (_) {
-      _errorMessage = 'ما انحفظ قرارك الحين. جرّب مرة ثانية.';
+      _errorMessage = ReaderVoice.say(
+        'ما انحفظ قرارك الحين. جرّب مرة ثانية.',
+        'ما انحفظ قرارك الحين. جرّبي مرة ثانية.',
+      );
       return false;
     } finally {
       _isSubmitting = false;

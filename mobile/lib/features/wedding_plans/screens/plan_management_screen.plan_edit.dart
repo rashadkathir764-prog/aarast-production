@@ -24,7 +24,13 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       });
       if (!mounted) return false;
       if (updated == null) {
-        _showError(provider.errorMessage ?? 'ما قدرنا نحفظ. جرّب مرة ثانية.');
+        _showError(
+          provider.errorMessage ??
+              context.say(
+                'ما قدرنا نحفظ. جرّب مرة ثانية.',
+                'ما قدرنا نحفظ. جرّبي مرة ثانية.',
+              ),
+        );
         return false;
       }
     }
@@ -41,7 +47,11 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       if (!mounted) return false;
       if (!saved) {
         _showError(
-          finance.errorMessage ?? 'ما قدرنا نحفظ الميزانية. جرّب مرة ثانية.',
+          finance.errorMessage ??
+              context.say(
+                'ما قدرنا نحفظ الميزانية. جرّب مرة ثانية.',
+                'ما قدرنا نحفظ الميزانية. جرّبي مرة ثانية.',
+              ),
         );
         return false;
       }
@@ -71,7 +81,9 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       );
       if (!mounted) return false;
       if (!saved) {
-        final reason = finance.errorMessage ?? 'جرّب مرة ثانية بعد شوي.';
+        final reason =
+            finance.errorMessage ??
+            context.say('جرّب مرة ثانية بعد شوي.', 'جرّبي مرة ثانية بعد شوي.');
         _showError(
           budgetTotal != null
               ? 'انحفظت الميزانية، بس ما انحفظ مكان المهر منها. $reason'

@@ -47,8 +47,11 @@ int _homeMoment(WeddingPlanStage stage, {required bool startingOut}) {
 /// What moves the plan into each of [_homeMoments]: the basics, then the
 /// calendar (D112's wedding window is the seven days before the day,
 /// `weddingWeekDays`).
-const _homeMomentWhy = [
-  'لين تحط الميزانية وأول بند وأول مهمة وأول ضيف',
+List<String> get _homeMomentWhy => [
+  ReaderVoice.say(
+    'لين تحط الميزانية وأول بند وأول مهمة وأول ضيف',
+    'لين تحطين الميزانية وأول بند وأول مهمة وأول ضيف',
+  ),
   'بعد الأساسيات، لين يبقى أسبوع على العرس',
   'الأيام السبعة قبل العرس',
   'يوم العرس نفسه',
@@ -85,7 +88,10 @@ void _showMoments(BuildContext context, int current) {
                     ? AarastV3Color.mintSoft
                     : AarastV3Color.paperQuiet,
                 title: index == current
-                    ? '${_homeMoments[index]} · أنت هنا'
+                    ? context.say(
+                        '${_homeMoments[index]} · أنت هنا',
+                        '${_homeMoments[index]} · أنتِ هنا',
+                      )
                     : _homeMoments[index],
                 subtitleMaxLines: 2,
                 subtitle: _homeMomentWhy[index],

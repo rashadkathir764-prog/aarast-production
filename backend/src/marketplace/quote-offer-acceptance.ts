@@ -23,6 +23,11 @@ import type { ConversationLifecyclePort } from "../modules/messaging/public/conv
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
+import {
+  providerDayUnavailable,
+  providerDayUnavailableError,
+  requestedBookableDay,
+} from "./provider-day-availability";
 import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
 import { addressFormOf, gendered, textFor } from "../shared-kernel/voice/address-form";
 import type { FinancePort } from "../modules/finance/public/finance.port";
@@ -234,6 +239,20 @@ export async function acceptQuoteOfferInTransaction(
       throw new NotFoundException("Provider not found");
     }
     assertProviderOperational(provider);
+    // RA-BE-150 (Q-36): the item is written only for a day the provider can
+    // still take (his row is locked above); the booking checks it again.
+    const askedDay = requestedBookableDay(current.quoteRequest.eventDate);
+    if (askedDay && (await providerDayUnavailable(tx, current.providerId, askedDay))) {
+      throw providerDayUnavailableError(
+        textFor(
+          form,
+          gendered(
+            "المزود ما عاد متاح في يوم عرسك. اسأله في المحادثة أو اختر مزود ثاني.",
+            "المزود ما عاد متاح في يوم عرسك. اسأليه في المحادثة أو اختاري مزود ثاني.",
+          ),
+        ),
+      );
+    }
 
     let cost = await finance.findCostForAcceptedOffer(tx, id);
     if (!cost) {

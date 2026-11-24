@@ -26,6 +26,15 @@ export class ListProvidersQueryDto {
   @IsOptional()
   featured?: string;
 
+  /**
+   * RA-BE-150 (Q-36): the wedding's day (`YYYY-MM-DD`). Each provider then
+   * says whether he takes that day (`availableOnEventDate`); nobody is
+   * filtered out by it.
+   */
+  @IsString()
+  @IsOptional()
+  eventDate?: string;
+
   @IsString()
   @IsOptional()
   page?: string;

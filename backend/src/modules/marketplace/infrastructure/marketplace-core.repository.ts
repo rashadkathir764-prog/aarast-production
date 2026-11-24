@@ -6,13 +6,14 @@ import type {
   ServiceSearchWhere,
 } from "../../../marketplace/marketplace.contracts";
 import { MARKETPLACE_QUOTE_INCLUDE } from "../../../marketplace/marketplace.contracts";
-import type { ProviderResponseSample } from "../../../marketplace/provider-responsiveness";
-import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from "../../../shared-kernel/text/arabic-search";
 import {
-  activeFeaturedPeriodInclude,
-  featuredNowConditions,
-  notFeaturedNowCondition,
-} from "../public/featured-placement";
+  responsivenessWindow,
+  summarizeResponsiveness,
+  type ProviderResponseSample,
+} from "../../../marketplace/provider-responsiveness";
+import { profileCompleteness, rankProviders } from "../../../marketplace/provider-ranking";
+import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from "../../../shared-kernel/text/arabic-search";
+import { activeFeaturedPeriodInclude } from "../public/featured-placement";
 
 type Client = Prisma.TransactionClient;
 
@@ -50,9 +51,65 @@ export function countActiveProviders(client: Client, where: ProviderSearchWhere)
   return client.provider.count({ where });
 }
 
-function searchProviderPage(client: Client, where: ProviderSearchWhere, now: Date, skip: number, take: number) {
-  return client.provider.findMany({
+/**
+ * The customers' list: providers featured at `now` first (B-43), then the
+ * rest, each group in the order the ranking gives (RA-BE-151: smoothed
+ * rating, profile, response, a lift for new ones, claimed listings before
+ * unclaimed ones; ties by age and id, a total order, so a page never skips
+ * or repeats a provider inside one snapshot). "Featured" is read from the
+ * periods at request time by the placement rule (`where` is already the
+ * listed providers); a row of the other group is never «مميز», even with a
+ * period running (an unclaimed listing).
+ *
+ * The score reads the response history, which no column holds, so the
+ * listed providers' few signals are read whole, ranked here, and only the
+ * page's rows are read in full.
+ */
+export async function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination, now: Date) {
+  const candidates = await client.provider.findMany({
     where,
+    select: {
+      id: true,
+      userId: true,
+      ratingAverage: true,
+      ratingCount: true,
+      createdAt: true,
+      logoUrl: true,
+      coverUrl: true,
+      description: true,
+      address: true,
+      whatsapp: true,
+      socialLinks: true,
+      featuredPeriods: activeFeaturedPeriodInclude(now),
+    },
+  });
+  const samples = await providerResponseSamples(
+    client,
+    candidates.map((row) => row.id),
+    responsivenessWindow(now),
+  );
+  const ranked = rankProviders(
+    candidates.map((row) => ({
+      id: row.id,
+      claimed: row.userId !== null,
+      featuredNow: row.userId !== null && row.featuredPeriods.length > 0,
+      createdAt: row.createdAt,
+      ratingAverage: Number(row.ratingAverage),
+      ratingCount: row.ratingCount,
+      profile: profileCompleteness(row),
+      response: summarizeResponsiveness(
+        samples.get(row.id) ?? { requests: 0, answered: 0, medianMinutes: null },
+      ),
+    })),
+    now,
+  );
+  const pageIds = ranked.slice(pagination.skip, pagination.skip + pagination.limit);
+  if (pageIds.length === 0) return [];
+  const featuredIds = new Set(
+    ranked.filter((row) => row.featuredNow).map((row) => row.id),
+  );
+  const rows = await client.provider.findMany({
+    where: { id: { in: pageIds.map((row) => row.id) } },
     include: {
       services: {
         where: { isActive: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }],
@@ -60,43 +117,13 @@ function searchProviderPage(client: Client, where: ProviderSearchWhere, now: Dat
       },
       featuredPeriods: activeFeaturedPeriodInclude(now),
     },
-    orderBy: [
-      { ratingAverage: "desc" },
-      { createdAt: "desc" },
-      { id: "asc" },
-    ],
-    skip,
-    take,
   });
-}
-
-/**
- * The customers' list: providers featured at `now` first (B-43), then the
- * rest, each group by rating, age and id (a total order, so a page never
- * skips or repeats a provider inside one snapshot). "Featured" is read from
- * the periods at request time by the placement rule (`where` is already the
- * listed providers), so the page is cut across the two groups here: the
- * featured rows fill the page first and the others continue after them. A
- * row of the other group is never «مميز», even with a period running (an
- * unclaimed listing).
- */
-export async function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination, now: Date) {
-  const featuredWhere: ProviderSearchWhere = { AND: [...where.AND, ...featuredNowConditions(now)] };
-  const regularWhere: ProviderSearchWhere = { AND: [...where.AND, notFeaturedNowCondition(now)] };
-  const featuredCount = await client.provider.count({ where: featuredWhere });
-  const featured = pagination.skip < featuredCount
-    ? await searchProviderPage(client, featuredWhere, now, pagination.skip, pagination.limit)
-    : [];
-  const room = pagination.limit - featured.length;
-  if (room <= 0) return featured;
-  const regular = await searchProviderPage(
-    client,
-    regularWhere,
-    now,
-    Math.max(0, pagination.skip - featuredCount),
-    room,
-  );
-  return [...featured, ...regular.map((row) => ({ ...row, featuredPeriods: [] }))];
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return pageIds.flatMap(({ id }) => {
+    const row = byId.get(id);
+    if (!row) return [];
+    return [featuredIds.has(id) ? row : { ...row, featuredPeriods: [] }];
+  });
 }
 
 export function findActiveProviderWithServices(client: Client, id: string, now: Date) {
@@ -114,21 +141,24 @@ export function findActiveProviderWithServices(client: Client, id: string, now: 
 }
 
 /**
- * The provider's quote requests since `since` that count toward its response
- * time: answered ones, and unanswered ones that were neither cancelled nor
- * made after `settledBefore` (still inside the grace period). An offer the
- * provider withdrew (B-03) is no answer: the request is answered by the
- * first offer that still stands.
+ * The providers' quote requests since `since` that count toward their
+ * response time: answered ones, and unanswered ones that were neither
+ * cancelled nor made after `settledBefore` (still inside the grace period).
+ * An offer the provider withdrew (B-03) is no answer: the request is
+ * answered by the first offer that still stands. A provider with no such
+ * request has no entry.
  */
-export async function providerResponseSample(
+export async function providerResponseSamples(
   client: Client,
-  providerId: string,
+  providerIds: readonly string[],
   window: { since: Date; settledBefore: Date },
-): Promise<ProviderResponseSample> {
+): Promise<Map<string, ProviderResponseSample>> {
+  if (providerIds.length === 0) return new Map();
   const rows = await client.$queryRaw<
-    Array<{ requests: bigint; answered: bigint; medianMinutes: number | null }>
+    Array<{ providerId: string; requests: bigint; answered: bigint; medianMinutes: number | null }>
   >(Prisma.sql`
     SELECT
+      q."providerId" AS "providerId",
       COUNT(*) AS "requests",
       COUNT(o."firstOfferAt") AS "answered",
       percentile_cont(0.5) WITHIN GROUP (
@@ -141,19 +171,38 @@ export async function providerResponseSample(
       WHERE "status" <> 'WITHDRAWN'
       GROUP BY "quoteRequestId"
     ) o ON o."quoteRequestId" = q."id"
-    WHERE q."providerId" = ${providerId}
+    WHERE q."providerId" IN (${Prisma.join([...providerIds])})
       AND q."createdAt" >= ${window.since}
       AND (
         o."firstOfferAt" IS NOT NULL
         OR (q."status" <> 'CANCELLED' AND q."createdAt" < ${window.settledBefore})
       )
+    GROUP BY q."providerId"
   `);
-  const row = rows[0];
-  return {
-    requests: Number(row?.requests ?? 0),
-    answered: Number(row?.answered ?? 0),
-    medianMinutes: row?.medianMinutes ?? null,
-  };
+  return new Map(
+    rows.map((row) => [
+      row.providerId,
+      {
+        requests: Number(row.requests),
+        answered: Number(row.answered),
+        medianMinutes: row.medianMinutes,
+      },
+    ]),
+  );
+}
+
+export async function providerResponseSample(
+  client: Client,
+  providerId: string,
+  window: { since: Date; settledBefore: Date },
+): Promise<ProviderResponseSample> {
+  return (
+    (await providerResponseSamples(client, [providerId], window)).get(providerId) ?? {
+      requests: 0,
+      answered: 0,
+      medianMinutes: null,
+    }
+  );
 }
 
 export function listActiveProviderServices(client: Client, providerId: string) {

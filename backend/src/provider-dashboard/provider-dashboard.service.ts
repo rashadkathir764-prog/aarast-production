@@ -150,6 +150,11 @@ import * as bookingStore from '../modules/marketplace/infrastructure/marketplace
 import { UpdateProviderPortfolioDto } from './dto/update-provider-portfolio.dto';
 import { ProviderPortfolio } from './provider-portfolio';
 import { customerNameForProvider } from '../shared-kernel/privacy/provider-customer-name';
+import {
+  providerDayUnavailable,
+  providerDayUnavailableError,
+  requestedBookableDay,
+} from '../marketplace/provider-day-availability';
 import { countProviderPortfolio } from '../modules/marketplace/infrastructure/portfolio.repository';
 import { readSocialLinks } from '../modules/marketplace/public/provider-portfolio';
 
@@ -1320,6 +1325,14 @@ export class ProviderDashboardService {
         'provider_offer',
       );
       assertQuoteRequestAnswerable(quote);
+      // RA-BE-150 (Q-36): no offer, quick or written, for a day he closed or
+      // filled; he declines it instead. Under his own row lock (taken above).
+      const askedDay = requestedBookableDay(quote.eventDate);
+      if (askedDay && (await providerDayUnavailable(tx, provider.id, askedDay))) {
+        throw providerDayUnavailableError(
+          'يومك هذا مقفل أو مليان، ما تقدر ترسل عرض لهذا اليوم. اعتذر عن الطلب.',
+        );
+      }
       const existingOffer = await dashboardStore.findExistingQuoteOffer(tx, quoteRequestId);
       if (existingOffer) {
         throw new ConflictException({

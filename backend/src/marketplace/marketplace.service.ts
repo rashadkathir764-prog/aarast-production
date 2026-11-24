@@ -1,5 +1,8 @@
 import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
-import { hasCompletedBookingWith } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
+import {
+  hasCompletedBookingWith,
+  listProvidersUnavailableOn,
+} from "../modules/marketplace/infrastructure/marketplace-booking.repository";
 import { bookingToday } from "./booking-policy";
 import { applicationDisplayName } from "../shared-kernel/privacy/application-user-identity";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
@@ -172,16 +175,19 @@ export class MarketplaceService {
 
   async findProviders(query: ListProvidersQueryDto) {
     const now = new Date();
-    const { pagination, where, searchKey } = MarketplaceQuery.providerSearch(query, now);
-    // One snapshot for the search, the count and both featured and regular
-    // reads (B-43). RA-BE-09: the text is matched folded, as on the phone.
-    const [total, providerRows] = await this.prisma.$transaction(
+    const { pagination, where, searchKey, availabilityDay } = MarketplaceQuery.providerSearch(query, now);
+    // One snapshot for the search, the count and the ranked page (B-43,
+    // RA-BE-151). RA-BE-09: the text is matched folded, as on the phone.
+    const [total, providerRows, unavailable] = await this.prisma.$transaction(
       async (tx) => {
         if (searchKey) where.AND.push({ id: { in: await core.findProviderIdsMatchingSearch(tx, searchKey) } });
-        return [
-          await core.countActiveProviders(tx, where),
-          await core.searchActiveProviders(tx, where, pagination, now),
-        ] as const;
+        const total = await core.countActiveProviders(tx, where);
+        const rows = await core.searchActiveProviders(tx, where, pagination, now);
+        // RA-BE-150 (Q-36): who takes the asked day, for the rows of this page.
+        const unavailable = availabilityDay
+          ? await listProvidersUnavailableOn(tx, rows.map((row) => row.id), availabilityDay)
+          : null;
+        return [total, rows, unavailable] as const;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -191,9 +197,11 @@ export class MarketplaceService {
       providerRows,
     );
     return MarketplaceQuery.paginate(
-      providers.map((provider) =>
-        MarketplacePresenter.toProviderListResponse(provider),
-      ),
+      providers.map((provider) => ({
+        ...MarketplacePresenter.toProviderListResponse(provider),
+        // RA-BE-150: null with no day asked; otherwise whether he takes it.
+        availableOnEventDate: unavailable ? !unavailable.has(provider.id) : null,
+      })),
       total,
       pagination,
     );

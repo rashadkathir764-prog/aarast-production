@@ -44,7 +44,7 @@ import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { providerCategoryFilter } from "./provider-category-filter";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
-import { toBookingResponse } from "./booking-policy";
+import { parseBookingDate, toBookingResponse } from "./booking-policy";
 
 export class MarketplaceQuery {
   private constructor() {}
@@ -66,6 +66,8 @@ export class MarketplaceQuery {
     pagination: MarketplacePagination;
     where: ProviderSearchWhere;
     searchKey: string | null;
+    /** RA-BE-150: the day each row is asked about; null with no day or a day that has passed. */
+    availabilityDay: Date | null;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
     // An approved provider is listed once it offers something; its page
@@ -86,7 +88,17 @@ export class MarketplaceQuery {
     }
     // RA-BE-09: the text is matched folded, as the phone matches it, by the
     // caller (findProviderIdsMatchingSearch), which adds the ids it found.
-    return { pagination, where, searchKey: this.searchKey(query.search) };
+    const asked = query.eventDate?.trim();
+    const day = asked ? parseBookingDate(asked, null, now) : null;
+    if (day === "INVALID_DATE") {
+      throw new BadRequestException("eventDate must be YYYY-MM-DD");
+    }
+    return {
+      pagination,
+      where,
+      searchKey: this.searchKey(query.search),
+      availabilityDay: typeof day === "string" ? null : day,
+    };
   }
 
   /** The folded search, or null when there is nothing left to match. */

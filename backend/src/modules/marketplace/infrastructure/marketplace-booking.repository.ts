@@ -1,4 +1,5 @@
 import { BookingParty, BookingStatus, Prisma } from '@prisma/client';
+import { bookingDayFull } from '../../../marketplace/booking-policy';
 
 // Marketplace-owned booking and calendar rows (V1 checklist 4.6). Every read
 // and write takes the caller's transaction so availability checks and the
@@ -69,6 +70,44 @@ export async function findProviderDailyCapacity(tx: Tx, providerId: string): Pro
     select: { dailyBookingCapacity: true },
   });
   return row?.dailyBookingCapacity ?? 1;
+}
+
+/**
+ * RA-BE-150 (Q-36): of these providers, the ones who take no booking on
+ * `day`: he closed it, or he has confirmed as many weddings as he takes in a
+ * day (B-20; every confirmed booking counts, whoever asked). Read in one go
+ * for a list; the one-provider decisions use the same two rules under his lock.
+ */
+export async function listProvidersUnavailableOn(
+  client: Tx,
+  providerIds: readonly string[],
+  day: Date,
+): Promise<Set<string>> {
+  if (providerIds.length === 0) return new Set();
+  const ids = [...providerIds];
+  const [closed, confirmed, capacities] = await Promise.all([
+    client.providerBlockedDate.findMany({
+      where: { providerId: { in: ids }, date: day },
+      select: { providerId: true },
+    }),
+    client.booking.groupBy({
+      by: ['providerId'],
+      where: { providerId: { in: ids }, eventDate: day, status: BookingStatus.CONFIRMED },
+      _count: { _all: true },
+    }),
+    client.provider.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, dailyBookingCapacity: true },
+    }),
+  ]);
+  const unavailable = new Set(closed.map((row) => row.providerId));
+  const taken = new Map(confirmed.map((row) => [row.providerId, row._count._all]));
+  for (const row of capacities) {
+    if (bookingDayFull(taken.get(row.id) ?? 0, row.dailyBookingCapacity)) {
+      unavailable.add(row.id);
+    }
+  }
+  return unavailable;
 }
 
 /** Confirmed bookings per day from `today` on (p28 «باقي N»). */

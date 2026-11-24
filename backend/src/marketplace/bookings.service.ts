@@ -48,7 +48,6 @@ import {
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   bookingActionViolation,
-  bookingDayFull,
   bookingToday,
   canRequestBooking,
   parseBookingDate,
@@ -78,6 +77,7 @@ import {
 } from "./booking-aftercare";
 import { lockMarketplaceProvider } from "./marketplace-write-locks";
 import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
+import { providerDayUnavailable } from "./provider-day-availability";
 import {
   ledgerMonthRange,
   providerLedgerTotals,
@@ -853,20 +853,17 @@ export class BookingsService {
     day: Date,
     exceptBookingId?: string,
   ) {
-    // The caller holds the provider's row lock, so the count and the write
-    // it guards cannot interleave with another decision for this provider.
-    if (await bookings.isProviderDateBlocked(tx, providerId, day)) {
+    // The caller holds the provider's row lock (RA-BE-150: one reading of
+    // «free that day» for the request, the offer, the acceptance and here).
+    const why = await providerDayUnavailable(tx, providerId, day, exceptBookingId);
+    if (why === "CLOSED") {
       bookingError(
         "CONFLICT",
         "BOOKING_DATE_UNAVAILABLE",
         "The provider is not available on this day",
       );
     }
-    const [taken, capacity] = await Promise.all([
-      bookings.countConfirmedBookingsOn(tx, providerId, day, exceptBookingId),
-      bookings.findProviderDailyCapacity(tx, providerId),
-    ]);
-    if (bookingDayFull(taken, capacity)) {
+    if (why === "FULL") {
       bookingError(
         "CONFLICT",
         "BOOKING_DAY_FULL",

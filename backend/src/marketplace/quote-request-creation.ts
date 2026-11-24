@@ -32,6 +32,11 @@ import {
   lockMarketplaceProvider,
 } from "./marketplace-write-locks";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import {
+  providerDayUnavailable,
+  providerDayUnavailableError,
+  requestedBookableDay,
+} from "./provider-day-availability";
 import { isQuoteRequestOverdue, quoteRequestAnswerDeadline } from "./quote-lifecycle";
 import {
   quoteSubmittedProviderNotification,
@@ -122,6 +127,13 @@ export function createQuoteRequestInTransaction(
           code: "PROVIDER_LEAVING",
           message: "هذا المزود يقفل حسابه وما يستقبل طلبات جديدة.",
         });
+      }
+      // RA-BE-150 (Q-36): a day he closed or filled is told before the
+      // couple commits to him, not after the offer is accepted and the item
+      // written (the provider's row is locked here, so the count is exact).
+      const askedDay = requestedBookableDay(eventDate);
+      if (askedDay && (await providerDayUnavailable(tx, providerId, askedDay))) {
+        throw providerDayUnavailableError("المزود مش متاح في هذا اليوم.");
       }
       if (serviceId) {
         await lockActiveProviderService(tx, serviceId, providerId);

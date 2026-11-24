@@ -222,6 +222,50 @@ test("a new quote request notifies the provider account too", async () => {
   );
 });
 
+// RA-BE-150 (Q-36): a request names a day the provider closed: it is refused
+// before the couple commits to him, and nothing is created or sent.
+test("a request for a day the provider closed is refused, creating nothing", async () => {
+  const { sent, notifications } = capture();
+  let created = 0;
+  const prisma = {
+    provider: { findFirst: async () => providerRow(PROVIDER_USER_ID) },
+    $transaction: async (fn: any) =>
+      fn({
+        $queryRaw: async (query: unknown) =>
+          marketplaceUserLockRows(query) ?? [{ id: "conversation-1" }],
+        provider: {
+          findFirst: async () => providerRow(PROVIDER_USER_ID),
+          findUnique: async () => providerRow(PROVIDER_USER_ID),
+        },
+        providerBlockedDate: { findUnique: async () => ({ id: "closed-day" }) },
+        booking: { count: async () => 0 },
+        conversationParticipant: { createMany: async () => ({ count: 2 }) },
+        ...eventTxFields(),
+        quoteRequest: {
+          findFirst: async () => null,
+          create: async () => {
+            created += 1;
+            return quoteRow(PROVIDER_USER_ID);
+          },
+        },
+      }),
+  };
+  const service = marketplaceService(
+    prisma as any,
+    {} as any,
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
+  );
+
+  await assert.rejects(
+    service.createQuoteRequest(requester, PROVIDER_ID, {
+      eventDate: new Date(Date.now() + 40 * 86_400_000).toISOString().slice(0, 10),
+    } as any),
+    (error: any) => error?.response?.code === "PROVIDER_DAY_UNAVAILABLE" && error.getStatus() === 409,
+  );
+  assert.equal(created, 0);
+  assert.equal(sent.length, 0);
+});
+
 // V1 checklist 4.18: a provider without an account (a back-office listing
 // not yet claimed, or an owner who deleted their account) cannot read a
 // request, so none is created and nobody is notified. This test asserted
@@ -329,10 +373,16 @@ function acceptanceHarness({
   categories,
   providerCategoryName,
   failNotifications = false,
+  eventDate = null,
+  closedDay = false,
 }: {
   categories: Array<{ id: string; name: string; normalizedName: string }>;
   providerCategoryName: string;
   failNotifications?: boolean;
+  /** The day the request names (RA-BE-150). */
+  eventDate?: Date | null;
+  /** The provider closed that day in his calendar. */
+  closedDay?: boolean;
 }) {
   const { sent, notifications } = capture();
   if (failNotifications) {
@@ -372,6 +422,7 @@ function acceptanceHarness({
     weddingPlanId: PLAN_ID,
     conversationId: "conversation-1",
     status: quoteStatus,
+    eventDate,
     weddingPlan: { id: PLAN_ID, currency: "YER" },
     service: {
       title: "خدمة القاعة",
@@ -443,6 +494,10 @@ function acceptanceHarness({
         return { status: providerStatus };
       },
     },
+    providerBlockedDate: {
+      findUnique: async () => (closedDay ? { id: "closed-day" } : null),
+    },
+    booking: { count: async () => 0 },
     budgetCategory: {
       findMany: async () => categories,
       upsert: async ({ create }: any) => {
@@ -726,6 +781,23 @@ async function expectCorruptAcceptedReplayRejected(
     `${label}: provider, conversation, request, and offer row locks`,
   );
 }
+
+// RA-BE-150 (Q-36): the item is written only for a day the provider can still
+// take; a day he closed after the offer is told now, with nothing written.
+test("accepting an offer for a day the provider closed writes no item and says so", async () => {
+  const harness = acceptanceHarness({
+    categories: [{ id: "category-hall", name: "قاعات الأفراح", normalizedName: "قاعات الأفراح" }],
+    providerCategoryName: "الصالات وقاعات المناسبات",
+    eventDate: new Date(Date.now() + 40 * 86_400_000),
+    closedDay: true,
+  });
+  await assert.rejects(
+    harness.service.acceptQuoteOffer(requester, OFFER_ID),
+    (error: any) => error?.response?.code === "PROVIDER_DAY_UNAVAILABLE" && error.getStatus() === 409,
+  );
+  assert.equal(harness.costCreates, 0, "no item for a day he cannot take");
+  assert.equal(harness.offerStatus, "PENDING");
+});
 
 test("accepting an offer atomically creates one linked cost and is idempotent", async () => {
   const harness = acceptanceHarness({
@@ -1211,6 +1283,104 @@ test("a blocked conversation refuses a new offer and an edit, and tells no one",
       amount: "900",
     } as any),
     blocked,
+  );
+  assert.equal(writes, 0);
+  assert.equal(sent.length, 0);
+});
+
+// RA-BE-150 (Q-36): «رد سريع» or a written offer for a day he closed or filled
+// is refused, so the couple never reads an offer he cannot keep.
+test("an offer for a day the provider closed is refused, writing nothing", async () => {
+  const { sent, notifications } = capture();
+  const provider = providerRow(PROVIDER_USER_ID);
+  const quote = {
+    id: QUOTE_ID,
+    userId: requester.id,
+    providerId: PROVIDER_ID,
+    weddingPlanId: PLAN_ID,
+    conversationId: "conversation-1",
+    status: "SENT",
+    eventDate: new Date(Date.now() + 40 * 86_400_000),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  };
+  let writes = 0;
+  const write = async () => {
+    writes += 1;
+    throw new Error("no offer write is reached");
+  };
+  const tx = {
+    ...eventTxFields(),
+    quoteOfferVersion: { create: write },
+    $queryRaw: async (query: unknown) => {
+      const sql = rawSqlText(query);
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: PROVIDER_USER_ID, status: "ACTIVE" },
+          { id: requester.id, status: "ACTIVE" },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (sql.includes('FROM "WeddingPlan"')) return [{ id: PLAN_ID }];
+      if (sql.includes('FROM "Provider"')) return [{ id: PROVIDER_ID }];
+      if (sql.includes('"customerSideBlockedAt"')) {
+        return [{ customerSideBlockedAt: null, providerSideBlockedAt: null }];
+      }
+      if (sql.includes('FROM "Conversation"')) return [{ id: quote.conversationId }];
+      if (sql.includes('FROM "QuoteRequest"')) return [{ id: QUOTE_ID }];
+      if (sql.includes('FROM "QuoteOffer"')) return [{ id: OFFER_ID }];
+      return [];
+    },
+    provider: { findUnique: async () => provider },
+    providerBlockedDate: { findUnique: async () => ({ id: "closed-day" }) },
+    booking: { count: async () => 0 },
+    weddingPlan: { findUnique: async () => ({ status: "PLANNING" }) },
+    quoteOffer: {
+      findUnique: async () => ({
+        id: OFFER_ID,
+        providerId: PROVIDER_ID,
+        quoteRequest: { userId: requester.id, weddingPlanId: PLAN_ID, conversationId: quote.conversationId },
+      }),
+      findFirst: async ({ where }: any) =>
+        where.quoteRequestId
+          ? null
+          : {
+              id: OFFER_ID,
+              providerId: PROVIDER_ID,
+              quoteRequestId: QUOTE_ID,
+              status: "PENDING",
+              amount: new Prisma.Decimal(1000),
+              currency: "YER",
+              currentVersionNo: 1,
+              quoteRequest: { status: "RESPONDED", weddingPlanId: PLAN_ID, conversationId: quote.conversationId },
+            },
+      create: write,
+      updateMany: write,
+    },
+    quoteRequest: {
+      findUnique: async () => quote,
+      findFirst: async () => quote,
+      update: write,
+      updateMany: write,
+    },
+  };
+  const service = providerDashboardService(
+    {
+      provider: { findUnique: async () => provider },
+      quoteRequest: { findFirst: async () => quote },
+      $transaction: async (fn: any) => fn(tx),
+    } as any,
+    notifications as any,
+    {} as any, lifecycle,
+  );
+  await assert.rejects(
+    service.createQuoteOffer({ id: PROVIDER_USER_ID } as any, QUOTE_ID, {
+      message: "offer",
+      amount: "1000",
+      currency: "YER",
+    } as any),
+    (error: any) =>
+      error?.getStatus?.() === 409 &&
+      error.getResponse().code === "PROVIDER_DAY_UNAVAILABLE" &&
+      /[؀-ۿ]/u.test(error.getResponse().message),
   );
   assert.equal(writes, 0);
   assert.equal(sent.length, 0);

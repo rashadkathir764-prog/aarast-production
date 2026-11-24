@@ -51,45 +51,58 @@ test('a period is active, booked, over or ended by an administrator', () => {
   );
 });
 
-test('the customers\' list puts the featured first and cuts pages across both groups', async () => {
-  const now = new Date('2026-10-25T09:00:00.000Z');
-  const featured = ['f1', 'f2', 'f3'];
-  const regular = ['r1', 'r2', 'r3', 'r4'];
-  const calls: Array<{ group: string; skip: number; take: number }> = [];
-  const groupOf = (where: any) =>
-    JSON.stringify(where).includes('"some":{"startsAt"') ? 'featured' : 'regular';
-  const client = {
+// RA-BE-151: the list is ranked in code (the score reads the response
+// history, which no column holds), so the fake database answers the candidate
+// signals once and then the page's rows by id.
+function rankedListClient(
+  candidates: Array<{ id: string; userId: string | null; featuredPeriods: unknown[] }>,
+  reads: { wholeRowIds: string[][] },
+) {
+  const signals = (c: { id: string; userId: string | null; featuredPeriods: unknown[] }) => ({
+    ...c,
+    ratingAverage: 0,
+    ratingCount: 0,
+    createdAt: new Date('2025-01-01T00:00:00.000Z'),
+    logoUrl: null,
+    coverUrl: null,
+    description: null,
+    address: null,
+    whatsapp: null,
+    socialLinks: null,
+  });
+  return {
+    $queryRaw: async () => [],
     provider: {
-      count: async ({ where }: any) => (groupOf(where) === 'featured' ? featured.length : regular.length),
-      findMany: async ({ where, skip, take, include }: any) => {
-        const group = groupOf(where);
-        calls.push({ group, skip, take });
-        assert.deepEqual(include.featuredPeriods.where, {
-          startsAt: { lte: now },
-          endsAt: { gt: now },
-          endedAt: null,
-        });
-        return (group === 'featured' ? featured : regular).slice(skip, skip + take).map((id) => ({ id }));
+      findMany: async (args: any) => {
+        if (args.where.id) {
+          reads.wholeRowIds.push(args.where.id.in);
+          return args.where.id.in.map((id: string) => candidates.find((c) => c.id === id));
+        }
+        return candidates.map(signals);
       },
     },
   } as any;
+}
+
+test('the customers\' list puts the featured first and cuts pages across both groups', async () => {
+  const now = new Date('2026-10-25T09:00:00.000Z');
+  const window = { startsAt: now, endsAt: new Date(now.getTime() + 1000) };
+  const regular = ['r1', 'r2', 'r3', 'r4'].map((id) => ({ id, userId: `u-${id}`, featuredPeriods: [] }));
+  const featured = ['f1', 'f2', 'f3'].map((id) => ({ id, userId: `u-${id}`, featuredPeriods: [window] }));
+  const reads = { wholeRowIds: [] as string[][] };
+  // The regular rows come first from the database; the featured still lead.
+  const client = rankedListClient([...regular, ...featured], reads);
   const where = { AND: [{ status: ProviderStatus.ACTIVE }] } as any;
   const page = async (pageNo: number, limit: number) => {
-    calls.length = 0;
     const rows = await searchActiveProviders(client, where, { page: pageNo, limit, skip: (pageNo - 1) * limit }, now);
     return rows.map((row: any) => row.id);
   };
 
   assert.deepEqual(await page(1, 2), ['f1', 'f2']);
-  assert.deepEqual(calls, [{ group: 'featured', skip: 0, take: 2 }]);
   assert.deepEqual(await page(2, 2), ['f3', 'r1']);
-  assert.deepEqual(calls, [
-    { group: 'featured', skip: 2, take: 2 },
-    { group: 'regular', skip: 0, take: 1 },
-  ]);
   assert.deepEqual(await page(3, 2), ['r2', 'r3']);
-  assert.deepEqual(calls, [{ group: 'regular', skip: 1, take: 2 }]);
-  // The original search stays whole inside each group.
+  assert.deepEqual(reads.wholeRowIds, [['f1', 'f2'], ['f3', 'r1'], ['r2', 'r3']]);
+  // The original search stays whole.
   assert.equal(where.AND.length, 1);
 });
 
@@ -511,15 +524,10 @@ test('a17\'s counts follow the placement rule in a fixed number of reads', async
 test('the list never badges a row of the regular group (an unclaimed listing with a period)', async () => {
   const now = new Date('2026-10-25T09:00:00.000Z');
   const window = { startsAt: now, endsAt: new Date(now.getTime() + 1000) };
-  const client: any = {
-    provider: {
-      count: async () => 0,
-      findMany: async ({ where }: any) => {
-        assert.ok(JSON.stringify(where).includes('{"userId":null}'));
-        return [{ id: 'unclaimed', userId: null, featuredPeriods: [window] }];
-      },
-    },
-  };
+  const client = rankedListClient(
+    [{ id: 'unclaimed', userId: null, featuredPeriods: [window] }],
+    { wholeRowIds: [] },
+  );
   const rows = await searchActiveProviders(
     client,
     { AND: [{ status: ProviderStatus.ACTIVE }] } as any,

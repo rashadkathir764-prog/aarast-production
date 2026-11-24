@@ -221,8 +221,9 @@ test('B5: notices to the customer come in both forms; to the provider they name 
   assert.equal(typeof requested.title, 'string');
   assert.equal(typeof requested.body, 'string');
   // B-38: «طلب حجز … من …» names her without a verb in her gender, the day
-  // in words and no «بوابة المزوّد».
-  assert.equal(requested.title, 'طلب حجز من سلمى');
+  // in words and no «بوابة المزوّد». RA-BE-168: the provider reads her first
+  // name and the family's initial.
+  assert.equal(requested.title, 'طلب حجز من سلمى س.');
   assert.equal(requested.body, 'يوم الخميس 21 يناير. أكّد الحجز أو اعتذر.');
   assert.doesNotMatch(`${requested.title} ${requested.body}`, /سلمى يطلب|سلمى تطلب/u);
 

@@ -998,7 +998,8 @@ test("D63: after the purge the members of its plans and the providers of its req
     "provider-user-2",
   ]);
   const booked = providers.find((notice) => notice.userId === "provider-user-1");
-  assert.equal(booked.title, "سلمان حذف حسابه");
+  // RA-BE-168: a provider reads the first name and the family's initial.
+  assert.equal(booked.title, "سلمان م. حذف حسابه");
   assert.match(String(booked.body.masculine ?? booked.body), /انلغى/u);
   assert.equal(booked.routeTarget, "/provider/dashboard?tab=requests");
   // Built while the memberships existed; written after the purge.

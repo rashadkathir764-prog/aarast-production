@@ -39,6 +39,9 @@ const imageId = '88888888-8888-4888-8888-888888888889';
 const packageId = '99999999-9999-4999-8999-999999999998';
 const quoteOfferId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab';
 const privateContactName = 'Private Quote Requester';
+// RA-BE-168: a provider reads a customer as the first name and the family's
+// initial, never the name whole.
+const providerReadContactName = 'Private R.';
 const privateContactPhone = '+967700000001';
 const now = new Date('2026-07-26T00:00:00.000Z');
 const city = {
@@ -483,6 +486,7 @@ function exposesPrivateContact(value: unknown): boolean {
   const serialized = JSON.stringify(value);
   return (
     serialized.includes(privateContactName) ||
+    serialized.includes(providerReadContactName) ||
     serialized.includes(privateContactPhone)
   );
 }

@@ -248,7 +248,8 @@ test("the B2 notices say what happened and keep money out", () => {
     customerName: "محمد الحمدي",
     expiresAt,
   });
-  assert.equal(expiring.title, "طلب محمد ينتهي بكرة");
+  // RA-BE-168: the provider reads the first name and the family's initial.
+  assert.equal(expiring.title, "طلب محمد ح. ينتهي بكرة");
   assert.equal(expiring.routeTarget, "/provider/requests/q1");
   assert.equal(
     expiring.dedupeKey,

@@ -128,8 +128,22 @@ jobs:
       - run: npm run smoke:routes
       - run: npm run test:container-config
 
+  # Mobile tests run in three zones: UTC, Yemen (no DST) and a DST zone behind
+  # UTC, so date logic cannot pass by accident in one zone. Static checks run
+  # once (UTC). Golden-tagged tests stay excluded until the owner redraws the 20
+  # goldens on Windows; the Windows golden job, the emulator job and the signed
+  # AAB build are the next CI steps (STATUS.md, RA-TS-20).
   mobile:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tz:
+          - UTC
+          - Asia/Aden
+          - America/Los_Angeles
+    env:
+      TZ: ${{ matrix.tz }}
     defaults:
       run:
         working-directory: mobile
@@ -144,12 +158,43 @@ jobs:
           channel: stable
           cache: true
       - run: node --test ../scripts/check-mobile-boundaries.test.mjs
+        if: matrix.tz == 'UTC'
       - run: node ../scripts/check-mobile-boundaries.mjs --strict
+        if: matrix.tz == 'UTC'
       - run: flutter pub get
       - run: flutter analyze
+        if: matrix.tz == 'UTC'
       # Golden PNGs are generated on Windows; Linux rasterizes fonts
       # differently, so golden-tagged tests only run locally.
       - run: flutter test --exclude-tags golden
+
+  # The same contract set as `scripts/gates.mjs` ("deploy and supply-chain
+  # contracts"). The ubuntu runner has Docker, which direct-ip-contract needs.
+  deploy-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: node --test 'deploy/**/*.test.mjs' scripts/check-deploy-encoding.test.mjs scripts/supply-chain-contract.test.mjs
+
+  # Runs the real Gradle release guard (no AAB build, no signing material).
+  android-release-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Fetch the pinned Gradle distribution
+        run: |
+          version="$(sed -n 's/.*gradle-\([0-9.]*\)-all\.zip/\1/p' mobile/android/gradle/wrapper/gradle-wrapper.properties)"
+          curl -fsSLO "https://services.gradle.org/distributions/gradle-${version}-bin.zip"
+          echo "$(curl -fsSL "https://services.gradle.org/distributions/gradle-${version}-bin.zip.sha256")  gradle-${version}-bin.zip" | sha256sum --check
+          unzip -q "gradle-${version}-bin.zip" -d "${RUNNER_TEMP}"
+          echo "GRADLE_HOME=${RUNNER_TEMP}/gradle-${version}" >> "$GITHUB_ENV"
+      - run: node scripts/test-android-release-config.mjs
 
   docs:
     runs-on: ubuntu-latest

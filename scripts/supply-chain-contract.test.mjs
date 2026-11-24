@@ -65,3 +65,34 @@ test("production infrastructure images are pinned to repository digests", () => 
     );
   }
 });
+
+// RA-TS-20: CI must run what the gates run, not a subset of it.
+function jobBlock(name) {
+  const match = new RegExp(`^  ${name}:\\n((?:(?:    .*)?\\n)+)`, "m").exec(workflow);
+  assert.ok(match, `ci.yml has no job named ${name}`);
+  return match[1];
+}
+
+test("CI runs every deploy and supply-chain contract the gate lists", () => {
+  const job = jobBlock("deploy-contracts");
+  assert.match(job, /runs-on: ubuntu-latest/);
+  assert.match(job, /node --test .*deploy\/\*\*\/\*\.test\.mjs/);
+  assert.match(job, /scripts\/check-deploy-encoding\.test\.mjs/);
+  assert.match(job, /scripts\/supply-chain-contract\.test\.mjs/);
+});
+
+test("CI runs the Android release guard without building or signing", () => {
+  const job = jobBlock("android-release-guard");
+  assert.match(job, /scripts\/test-android-release-config\.mjs/);
+  assert.match(job, /GRADLE_HOME/);
+  assert.doesNotMatch(job, /appbundle|assembleRelease|bundleRelease|keystore/i);
+});
+
+test("CI runs the mobile tests in UTC, Asia/Aden and America/Los_Angeles", () => {
+  const job = jobBlock("mobile");
+  for (const zone of ["UTC", "Asia/Aden", "America/Los_Angeles"]) {
+    assert.ok(job.includes(`- ${zone}`), `mobile job lacks TZ ${zone}`);
+  }
+  assert.match(job, /TZ: \$\{\{ matrix\.tz \}\}/);
+  assert.match(job, /flutter test --exclude-tags golden/);
+});

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
+import '../experience_v3/aarast_journey_profile.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
 
 class AarastLoadingState extends StatelessWidget {
@@ -77,9 +78,9 @@ class AarastScreenLoading extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AarastInlineSpinner(
+              AarastInlineSpinner(
                 dimension: AarastV3Icon.xl,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
               ),
               if (label != null) ...[
                 const SizedBox(height: AarastV3Space.x3),

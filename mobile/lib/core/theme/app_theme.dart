@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../experience_v3/aarast_journey.dart' show JourneyType;
+import '../experience_v3/aarast_journey_profile.dart' show JourneyAccent;
 import '../experience_v3/aarast_v3_foundations.dart';
 import 'aarast_design_tokens.dart';
 import 'aarast_motion.dart';
@@ -114,15 +115,22 @@ class AppTheme {
     return const BoxDecoration(color: canvas);
   }
 
-  static ThemeData light() {
+  /// The app's theme. Inside a plan it takes the plan's colour ([accent], the
+  /// groom's teal or the bride's rose), so the Material widgets (text
+  /// buttons, dialogs, pickers) never show the other side's colour
+  /// (RA-MO-323); without a plan it is the app's own teal.
+  static ThemeData light({JourneyAccent? accent}) {
+    final primary = accent?.primary ?? brand;
+    final primaryDeep = accent?.primaryDark ?? brandDeep;
+    final primarySoft = accent?.primarySoft ?? brandMuted;
     final baseTheme = ThemeData(
       useMaterial3: true,
       fontFamily: textFontFamily,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: brand,
-        primary: brand,
+        seedColor: primary,
+        primary: primary,
         onPrimary: Colors.white,
-        secondary: accent,
+        secondary: AppTheme.accent,
         onSecondary: Colors.white,
         surface: surfaceRaised,
         onSurface: textPrimary,
@@ -152,7 +160,7 @@ class AppTheme {
 
     return baseTheme.copyWith(
       textTheme: textTheme,
-      primaryColor: brand,
+      primaryColor: primary,
       scaffoldBackgroundColor: canvas,
       canvasColor: canvas,
       appBarTheme: AppBarTheme(
@@ -177,7 +185,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style:
             ElevatedButton.styleFrom(
-              backgroundColor: brand,
+              backgroundColor: primary,
               foregroundColor: onBrand,
               elevation: 0,
               minimumSize: const Size.fromHeight(AarastV3Size.action),
@@ -195,7 +203,7 @@ class AppTheme {
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
-                  return brandDeep;
+                  return primaryDeep;
                 }
                 return null;
               }),
@@ -204,7 +212,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style:
             FilledButton.styleFrom(
-              backgroundColor: brand,
+              backgroundColor: primary,
               foregroundColor: onBrand,
               minimumSize: const Size.fromHeight(AarastV3Size.action),
               padding: const EdgeInsets.symmetric(
@@ -221,7 +229,7 @@ class AppTheme {
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
-                  return brandDeep;
+                  return primaryDeep;
                 }
                 return null;
               }),
@@ -247,7 +255,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: brand,
+          foregroundColor: primary,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
@@ -303,8 +311,8 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AarastV3Field.radius),
-          borderSide: const BorderSide(
-            color: brand,
+          borderSide: BorderSide(
+            color: primary,
             width: AarastV3Size.lineStrong,
           ),
         ),
@@ -333,7 +341,7 @@ class AppTheme {
       ),
       chipTheme: baseTheme.chipTheme.copyWith(
         backgroundColor: surfaceRaised,
-        selectedColor: brand,
+        selectedColor: primary,
         disabledColor: surfaceMuted,
         side: const BorderSide(color: AarastSemanticTokens.border),
         shape: RoundedRectangleBorder(
@@ -389,8 +397,8 @@ class AppTheme {
         rangePickerHeaderBackgroundColor: surfaceRaised,
         rangePickerHeaderForegroundColor: textPrimary,
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: brand,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
         foregroundColor: onBrand,
         // A stadium is a circle on the square FAB and a pill on an extended
         // one; a circle clipped an extended FAB's label (field test Q10).
@@ -398,7 +406,7 @@ class AppTheme {
         elevation: 0,
       ),
       listTileTheme: ListTileThemeData(
-        iconColor: brand,
+        iconColor: primary,
         textColor: textPrimary,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AarastV3Space.x4,
@@ -408,7 +416,7 @@ class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return brand;
+          if (states.contains(WidgetState.selected)) return primary;
           return surfaceRaised;
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
@@ -426,13 +434,13 @@ class AppTheme {
           return surfaceRaised;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return brand;
+          if (states.contains(WidgetState.selected)) return primary;
           return textDisabled;
         }),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: brand,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
         circularTrackColor: AarastSemanticTokens.border,
         linearTrackColor: AarastSemanticTokens.border,
       ),
@@ -454,7 +462,7 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surfaceRaised.withAlpha(246),
-        selectedItemColor: brand,
+        selectedItemColor: primary,
         unselectedItemColor: textDisabled,
         selectedLabelStyle: textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w800,
@@ -468,18 +476,18 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surfaceRaised.withAlpha(246),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: brandMuted,
+        indicatorColor: primarySoft,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
-            color: isSelected ? brand : textSecondary,
+            color: isSelected ? primary : textSecondary,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             letterSpacing: 0,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
-          return IconThemeData(color: isSelected ? brand : textDisabled);
+          return IconThemeData(color: isSelected ? primary : textDisabled);
         }),
       ),
     );

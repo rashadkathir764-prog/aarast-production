@@ -254,6 +254,9 @@ JourneyProfile planJourneyProfile({
   );
 }
 
+final ThemeData _groomTheme = AppTheme.light(accent: JourneyAccent.groom);
+final ThemeData _brideTheme = AppTheme.light(accent: JourneyAccent.bride);
+
 /// Provides [planJourneyProfile] above the router, so every page, sheet and
 /// dialog reads the same profile.
 @visibleForTesting
@@ -307,8 +310,8 @@ class AarastPlanProfileScope extends StatelessWidget {
         kept = null;
       }
     }
-    Widget scoped(GuestPersona? keptPersona) => JourneyProfileScope(
-      profile: planJourneyProfile(
+    Widget scoped(GuestPersona? keptPersona) {
+      final profile = planJourneyProfile(
         selected: selected,
         summary: summary,
         accountPersona: accountPersona,
@@ -317,9 +320,17 @@ class AarastPlanProfileScope extends StatelessWidget {
           GuestPersona.groom => 'GROOM',
           _ => null,
         },
-      ),
-      child: child,
-    );
+      );
+      // RA-MO-323: one colour per plan, in the Material widgets too (text
+      // buttons, dialogs, pickers), not only in the kit's own.
+      return JourneyProfileScope(
+        profile: profile,
+        child: Theme(
+          data: profile.isBride ? _brideTheme : _groomTheme,
+          child: child,
+        ),
+      );
+    }
     if (kept == null) return scoped(null);
     return ValueListenableBuilder<GuestPersona?>(
       valueListenable: kept,

@@ -43,7 +43,7 @@ class PhonePlanKeptStrip extends StatelessWidget {
             0,
           ),
           child: JourneyBox(
-            color: AarastV3Color.primarySoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsetsDirectional.fromSTEB(
               AarastV3Space.x3,
               AarastV3Space.x1,
@@ -52,10 +52,10 @@ class PhonePlanKeptStrip extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   LucideIcons.smartphone,
                   size: AarastV3Icon.sm,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                 ),
                 const SizedBox(width: AarastV3Space.x2),
                 Expanded(
@@ -70,7 +70,7 @@ class PhonePlanKeptStrip extends StatelessWidget {
                 JourneyTextAction(
                   key: const ValueKey('phone-plan-kept-change'),
                   label: context.say('غيّر', 'غيّري'),
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                   onPressed: storage.askAgainAboutKeptPlan,
                 ),
               ],

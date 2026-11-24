@@ -53,6 +53,98 @@ function applicationIdentityForProvisioning(existing) {
   };
 }
 
+const adminRoles = ['SUPER_ADMIN', 'OPERATIONS', 'MODERATOR', 'SUPPORT'];
+
+// RA-AD-24: the role is named on every run; nobody becomes SUPER_ADMIN by
+// leaving it out.
+function parseAdminRole(value) {
+  const role = (value ?? '').trim().toUpperCase();
+  if (!adminRoles.includes(role)) {
+    throw new Error(`PROVISION_ADMIN_ROLE must be one of ${adminRoles.join(', ')}.`);
+  }
+  return role;
+}
+
+/**
+ * Creates the administrator or changes an existing one, inside the caller's
+ * serializable transaction. An existing administrator keeps the password and
+ * name unless new ones are given, so a role change does not rotate the
+ * password; any other account needs a password. The last active
+ * SUPER_ADMIN is never demoted. Every run revokes the account's sessions,
+ * challenges and administrator codes, so a new role takes effect at once.
+ */
+async function provisionAdminInTransaction(tx, input) {
+  const [canonicalPhone, legacyLocalPhone] = phoneVariants(input.phone);
+  const existing = selectProvisioningIdentity(
+    await tx.user.findMany({
+      where: {
+        phone: { in: [canonicalPhone, legacyLocalPhone] },
+      },
+    }),
+  );
+  const existingAdmin = existing?.role === 'ADMIN' ? existing : null;
+  if (!input.passwordHash && !existingAdmin) {
+    throw new Error('PROVISION_ADMIN_PASSWORD is required for a new administrator.');
+  }
+  if (
+    existingAdmin?.adminRole === 'SUPER_ADMIN' &&
+    existingAdmin.status === 'ACTIVE' &&
+    input.adminRole !== 'SUPER_ADMIN'
+  ) {
+    const activeSuperAdmins = await tx.user.count({
+      where: { role: 'ADMIN', adminRole: 'SUPER_ADMIN', status: 'ACTIVE' },
+    });
+    if (activeSuperAdmins <= 1) {
+      throw new Error('The last active super administrator cannot be demoted.');
+    }
+  }
+
+  const name = input.name || existingAdmin?.name || 'Aarast Admin';
+  const credentials = input.passwordHash ? { passwordHash: input.passwordHash } : {};
+  const user = existing
+    ? await tx.user.update({
+        where: { id: existing.id },
+        data: {
+          ...applicationIdentityForProvisioning(existing),
+          phone: canonicalPhone,
+          name,
+          role: 'ADMIN',
+          adminRole: input.adminRole,
+          status: 'ACTIVE',
+          ...credentials,
+        },
+      })
+    : await tx.user.create({
+        data: {
+          name,
+          phone: canonicalPhone,
+          role: 'ADMIN',
+          adminRole: input.adminRole,
+          status: 'ACTIVE',
+          ...credentials,
+        },
+      });
+
+  await tx.refreshToken.updateMany({
+    where: { userId: user.id, revokedAt: null },
+    data: { revokedAt: input.now },
+  });
+  await tx.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
+  await tx.adminPasswordResetChallenge.deleteMany({
+    where: { userId: user.id },
+  });
+  await tx.otpCode.updateMany({
+    where: {
+      phone: canonicalPhone,
+      purpose: { in: ['ADMIN_LOGIN', 'ADMIN_RESET_PASSWORD'] },
+      consumedAt: null,
+    },
+    data: { consumedAt: input.now },
+  });
+  await tx.loginThrottle.deleteMany({ where: { subjectHash: input.subjectHash } });
+  return user;
+}
+
 async function provisionAdmin(environment = process.env) {
   if (environment.PROVISION_ADMIN_CONFIRM !== confirmation) {
     throw new Error(`PROVISION_ADMIN_CONFIRM must equal ${confirmation}.`);
@@ -62,74 +154,31 @@ async function provisionAdmin(environment = process.env) {
   }
 
   const phone = normalizeYemeniPhone(environment.PROVISION_ADMIN_PHONE ?? '');
+  const adminRole = parseAdminRole(environment.PROVISION_ADMIN_ROLE);
   const password = environment.PROVISION_ADMIN_PASSWORD ?? '';
-  validatePassword(password);
-  const name = environment.PROVISION_ADMIN_NAME?.trim() || 'Aarast Admin';
+  if (password) validatePassword(password);
   const subjectHash = throttleSubjectHash(
     phone,
     environment.AUTH_LOGIN_THROTTLE_PEPPER?.trim(),
   );
-  const passwordHash = await bcryptjs.hash(password, 12);
+  const passwordHash = password ? await bcryptjs.hash(password, 12) : null;
   const prisma = new PrismaClient();
 
   try {
     await prisma.$transaction(
-      async (tx) => {
-        const [canonicalPhone, legacyLocalPhone] = phoneVariants(phone);
-        const existing = selectProvisioningIdentity(
-          await tx.user.findMany({
-            where: {
-              phone: { in: [canonicalPhone, legacyLocalPhone] },
-            },
-          }),
-        );
-        const user = existing
-          ? await tx.user.update({
-              where: { id: existing.id },
-              data: {
-                ...applicationIdentityForProvisioning(existing),
-                phone: canonicalPhone,
-                name,
-                role: 'ADMIN',
-                adminRole: 'SUPER_ADMIN',
-                status: 'ACTIVE',
-                passwordHash,
-              },
-            })
-          : await tx.user.create({
-              data: {
-                name,
-                phone,
-                role: 'ADMIN',
-                adminRole: 'SUPER_ADMIN',
-                status: 'ACTIVE',
-                passwordHash,
-              },
-            });
-
-        const now = new Date();
-        await tx.refreshToken.updateMany({
-          where: { userId: user.id, revokedAt: null },
-          data: { revokedAt: now },
-        });
-        await tx.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
-        await tx.adminPasswordResetChallenge.deleteMany({
-          where: { userId: user.id },
-        });
-        await tx.otpCode.updateMany({
-          where: {
-            phone: canonicalPhone,
-            purpose: { in: ['ADMIN_LOGIN', 'ADMIN_RESET_PASSWORD'] },
-            consumedAt: null,
-          },
-          data: { consumedAt: now },
-        });
-        await tx.loginThrottle.deleteMany({ where: { subjectHash } });
-      },
+      (tx) =>
+        provisionAdminInTransaction(tx, {
+          phone,
+          name: environment.PROVISION_ADMIN_NAME?.trim() || null,
+          adminRole,
+          passwordHash,
+          subjectHash,
+          now: new Date(),
+        }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
     console.log(
-      'SUPER_ADMIN provisioned; previous sessions, challenges, and administrator OTPs were revoked.',
+      `${adminRole} provisioned; previous sessions, challenges, and administrator OTPs were revoked.`,
     );
   } catch (error) {
     if (error?.code === 'P2002' || error?.code === 'P2034') {
@@ -153,8 +202,10 @@ if (require.main === module) {
 module.exports = {
   applicationIdentityForProvisioning,
   normalizeYemeniPhone,
+  parseAdminRole,
   phoneVariants,
   provisionAdmin,
+  provisionAdminInTransaction,
   selectProvisioningIdentity,
   throttleSubjectHash,
   validatePassword,

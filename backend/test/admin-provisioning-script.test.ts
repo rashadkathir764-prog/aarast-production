@@ -6,7 +6,9 @@ import { test } from 'node:test';
 const {
   applicationIdentityForProvisioning,
   normalizeYemeniPhone,
+  parseAdminRole,
   phoneVariants,
+  provisionAdminInTransaction,
   selectProvisioningIdentity,
   throttleSubjectHash,
   validatePassword,
@@ -127,4 +129,156 @@ test('admin provisioning revokes every administrator recovery artifact', () => {
     /purpose:\s*\{\s*in:\s*\['ADMIN_LOGIN',\s*'ADMIN_RESET_PASSWORD'\]/,
   );
   assert.match(source, /otpCode\.updateMany/);
+});
+
+// RA-AD-24: production adds staff with the role their work needs, and a
+// role can be changed later, without handing everyone SUPER_ADMIN.
+type FakeUser = {
+  id: string;
+  phone: string;
+  name: string;
+  role: string;
+  adminRole: string | null;
+  status: string;
+  passwordHash: string | null;
+};
+
+function fakeTransaction(users: FakeUser[]) {
+  const writes: Array<{ id: string; data: Record<string, unknown> }> = [];
+  const tx = {
+    user: {
+      findMany: async ({ where }: { where: { phone: { in: string[] } } }) =>
+        users.filter((user) => where.phone.in.includes(user.phone)),
+      count: async ({ where }: { where: Record<string, unknown> }) =>
+        users.filter((user) =>
+          Object.entries(where).every(
+            ([key, value]) => (user as Record<string, unknown>)[key] === value,
+          ),
+        ).length,
+      update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        writes.push({ id: where.id, data });
+        const user = users.find((row) => row.id === where.id)!;
+        Object.assign(user, data);
+        return user;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const user = { id: `new-${users.length}`, ...data } as FakeUser;
+        users.push(user);
+        writes.push({ id: user.id, data });
+        return user;
+      },
+    },
+    refreshToken: { updateMany: async () => ({ count: 0 }) },
+    adminLoginChallenge: { deleteMany: async () => ({ count: 0 }) },
+    adminPasswordResetChallenge: { deleteMany: async () => ({ count: 0 }) },
+    otpCode: { updateMany: async () => ({ count: 0 }) },
+    loginThrottle: { deleteMany: async () => ({ count: 0 }) },
+  };
+  return { tx, writes };
+}
+
+const superAdmin = (id: string, phone: string): FakeUser => ({
+  id,
+  phone,
+  name: 'Owner',
+  role: 'ADMIN',
+  adminRole: 'SUPER_ADMIN',
+  status: 'ACTIVE',
+  passwordHash: 'owner-hash',
+});
+
+test('admin provisioning takes an explicit role and refuses anything else', () => {
+  for (const role of ['SUPER_ADMIN', 'OPERATIONS', 'MODERATOR', 'SUPPORT']) {
+    assert.equal(parseAdminRole(role), role);
+  }
+  assert.equal(parseAdminRole(' moderator '), 'MODERATOR');
+  assert.throws(() => parseAdminRole(undefined), /PROVISION_ADMIN_ROLE must be one of/);
+  assert.throws(() => parseAdminRole(''), /PROVISION_ADMIN_ROLE must be one of/);
+  assert.throws(() => parseAdminRole('ADMIN'), /PROVISION_ADMIN_ROLE must be one of/);
+});
+
+test('admin provisioning creates a staff account with the role it was given', async () => {
+  const { tx, writes } = fakeTransaction([]);
+  await provisionAdminInTransaction(tx, {
+    phone: '+967777123456',
+    name: 'Moderation',
+    adminRole: 'MODERATOR',
+    passwordHash: 'hash',
+    subjectHash: 'subject',
+    now: new Date('2026-11-24T00:00:00Z'),
+  });
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0]!.data.role, 'ADMIN');
+  assert.equal(writes[0]!.data.adminRole, 'MODERATOR');
+  assert.equal(writes[0]!.data.passwordHash, 'hash');
+});
+
+test('a new account cannot be provisioned without a password', async () => {
+  const { tx, writes } = fakeTransaction([]);
+  await assert.rejects(
+    provisionAdminInTransaction(tx, {
+      phone: '+967777123456',
+      name: null,
+      adminRole: 'SUPPORT',
+      passwordHash: null,
+      subjectHash: 'subject',
+      now: new Date(),
+    }),
+    /PROVISION_ADMIN_PASSWORD is required/,
+  );
+  assert.equal(writes.length, 0);
+});
+
+test('an existing administrator changes role and keeps password and name when none is given', async () => {
+  const staff: FakeUser = {
+    id: 'staff',
+    phone: '+967777000001',
+    name: 'Sara',
+    role: 'ADMIN',
+    adminRole: 'SUPPORT',
+    status: 'ACTIVE',
+    passwordHash: 'sara-hash',
+  };
+  const { tx, writes } = fakeTransaction([superAdmin('owner', '+967777000000'), staff]);
+  await provisionAdminInTransaction(tx, {
+    phone: '+967777000001',
+    name: null,
+    adminRole: 'OPERATIONS',
+    passwordHash: null,
+    subjectHash: 'subject',
+    now: new Date(),
+  });
+  assert.equal(staff.adminRole, 'OPERATIONS');
+  assert.equal(staff.passwordHash, 'sara-hash');
+  assert.equal(staff.name, 'Sara');
+  assert.equal('passwordHash' in writes[0]!.data, false);
+});
+
+test('the last active super administrator cannot be demoted', async () => {
+  const owner = superAdmin('owner', '+967777000000');
+  const { tx, writes } = fakeTransaction([owner]);
+  await assert.rejects(
+    provisionAdminInTransaction(tx, {
+      phone: '+967777000000',
+      name: null,
+      adminRole: 'OPERATIONS',
+      passwordHash: null,
+      subjectHash: 'subject',
+      now: new Date(),
+    }),
+    /last active super administrator/,
+  );
+  assert.equal(writes.length, 0);
+  assert.equal(owner.adminRole, 'SUPER_ADMIN');
+
+  const second = fakeTransaction([owner, superAdmin('other', '+967777000009')]);
+  await provisionAdminInTransaction(second.tx, {
+    phone: '+967777000000',
+    name: null,
+    adminRole: 'OPERATIONS',
+    passwordHash: null,
+    subjectHash: 'subject',
+    now: new Date(),
+  });
+  assert.equal(owner.adminRole, 'OPERATIONS');
 });

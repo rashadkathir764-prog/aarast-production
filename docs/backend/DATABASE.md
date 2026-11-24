@@ -539,7 +539,7 @@ rewrite as permission to restore a removed live model.
 | `WeddingPlan` | 35 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 17 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 29 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |
 | `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
 | `PaymentSchedule` | 15 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `remindAt`, `createdAt`, `updatedAt` |

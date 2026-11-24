@@ -40,6 +40,9 @@ class _DirectoryApi extends MarketplaceApi {
   bool offline = false;
   Completer<void>? holdSearch;
 
+  /// The day each page was asked about (RA-BE-150).
+  final askedDays = <DateTime?>[];
+
   @override
   Future<List<MarketplaceCity>> getCities() async => const [];
 
@@ -53,9 +56,11 @@ class _DirectoryApi extends MarketplaceApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) async {
+    askedDays.add(eventDate);
     if (offline) {
       throw const ApiException('ما فيه نت', isNetworkFailure: true);
     }
@@ -77,6 +82,33 @@ class _DirectoryApi extends MarketplaceApi {
 }
 
 void main() {
+  // RA-BE-150 (Q-36): the plan's wedding day goes with the list, so each row
+  // can say whether the provider takes it; it filters nobody.
+  test('the wedding day is asked with every page, and a row reads its answer', () async {
+    final api = _DirectoryApi(firstPage: [_hall('a')], secondPage: [_hall('b')]);
+    final directory = ProviderMarketplaceProvider(api);
+    expect(directory.setEventDate(DateTime(2027, 2, 18)), isTrue);
+    expect(directory.setEventDate(DateTime(2027, 2, 18)), isFalse);
+    await directory.loadMarketplace(includeAccountData: false);
+    await directory.loadMoreProviders();
+    expect(api.askedDays, [DateTime(2027, 2, 18), DateTime(2027, 2, 18)]);
+    expect(directory.setEventDate(null), isTrue);
+
+    expect(
+      MarketplaceProvider.fromJson({
+        'id': 'p',
+        'businessName': 'قاعة',
+        'availableOnEventDate': false,
+      }).availableOnEventDate,
+      isFalse,
+    );
+    expect(
+      MarketplaceProvider.fromJson({'id': 'p', 'businessName': 'قاعة'})
+          .availableOnEventDate,
+      isNull,
+    );
+  });
+
   test(
     'a search that could not load is not answered by the old page',
     () async {

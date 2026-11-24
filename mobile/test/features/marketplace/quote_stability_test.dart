@@ -374,6 +374,7 @@ class _PlanScopeApi extends MarketplaceApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) async => _page(const []);
@@ -408,6 +409,7 @@ class _PagedMarketplaceApi extends _PlanScopeApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) async {
@@ -433,6 +435,7 @@ class _StaleFilterApi extends _PlanScopeApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) {

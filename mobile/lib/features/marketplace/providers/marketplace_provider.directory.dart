@@ -69,6 +69,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
             cityId: _cityId,
             categoryId: _categoryId,
             categoryIds: _budgetMatchIntent?.providerCategoryIds,
+            eventDate: _eventDate,
           ),
           _includeAccountData
               ? _loadFavorites()
@@ -143,6 +144,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
         cityId: _cityId,
         categoryId: _categoryId,
         categoryIds: _budgetMatchIntent?.providerCategoryIds,
+        eventDate: _eventDate,
         page: nextPage,
       );
       if (generation != _loadGeneration) return;
@@ -228,6 +230,21 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
   Future<void> setSearch(String value) async {
     _search = value;
     await loadMarketplace();
+  }
+
+  /// RA-BE-150 (Q-36): the plan's wedding day, so each row says whether the
+  /// provider takes it. True when it changed: the list is then asked again
+  /// by the caller (with whatever else it was about to reload).
+  bool setEventDate(DateTime? day) {
+    final same = day == null
+        ? _eventDate == null
+        : _eventDate != null &&
+              _eventDate!.year == day.year &&
+              _eventDate!.month == day.month &&
+              _eventDate!.day == day.day;
+    if (same) return false;
+    _eventDate = day;
+    return true;
   }
 
   Future<void> setCity(String? id) async {

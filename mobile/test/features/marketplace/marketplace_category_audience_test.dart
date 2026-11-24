@@ -72,6 +72,7 @@ class _AudienceMarketplaceApi extends MarketplaceApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) async {

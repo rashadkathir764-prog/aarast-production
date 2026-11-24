@@ -55,6 +55,11 @@ class ProviderDay {
   int get left =>
       capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
 
+  /// RA-BE-150 (Q-36): he takes nothing more on this day, because he closed
+  /// it or his daily number is confirmed. No offer, «رد سريع» or written,
+  /// is made for it; he answers such a request by declining.
+  bool get takesNoMore => closed || (confirmed.isNotEmpty && left == 0);
+
   /// A full day first, then a request to answer, then a day with room, then
   /// a closed day: a closed day with a request still shows the request,
   /// which waits for his answer either way.

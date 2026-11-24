@@ -10,6 +10,7 @@ import '../../../core/utils/offer_ends.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_calendar_parts.dart' show providerDayOf;
 import '../widgets/provider_booking_sheets.dart'
     show ProviderConfirmNeedsNetwork;
 import '../widgets/provider_join_parts.dart' show providerDayLabel;
@@ -260,13 +261,18 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
     final packages = item.state == ProviderCaseState.fresh
         ? providerOfferPackages(dashboard.packages, quote)
         : const <Never>[];
+    // RA-BE-150: no quick reply for a day he closed or filled (the server
+    // refuses the offer too).
+    final askedDay = quote.eventDate;
+    final dayTaken =
+        askedDay != null && providerDayOf(askedDay, dashboard).takesNoMore;
     return ProviderRequestCard(
       quote: quote,
       state: item.state,
       booking: item.booking,
       color: JourneyAvatar.paletteAt(context, index + 1),
       onOpen: open,
-      onQuickOffer: packages.isEmpty
+      onQuickOffer: packages.isEmpty || dayTaken
           ? null
           : () => showProviderQuickOffer(context, quote, packages),
     );

@@ -750,6 +750,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }) async {
     WeddingLocationDraft? location;
     String? planId;
+    DateTime? weddingDate;
     final requestedPlanId = _normalizedPlanId(widget.weddingPlanId);
     GuestOnboardingStorage? guestStorage;
     WeddingPlansProvider? weddingPlans;
@@ -788,6 +789,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         } else if (scopedPlan.status.toUpperCase() != 'ARCHIVED') {
           location = scopedPlan.weddingLocation;
           planId = scopedPlan.id;
+          weddingDate = scopedPlan.weddingDate;
         }
       }
     } else {
@@ -814,8 +816,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       _weddingLocation = location;
       _weddingLocationPlanId = planId;
     });
+    // RA-BE-150: the wedding day goes with the list, so each row says
+    // whether the provider takes it; one reload covers it and the city.
+    final dayChanged = marketplace.setEventDate(weddingDate);
     if (matchingCityId != null && marketplace.cityId == null) {
       await marketplace.setCity(matchingCityId);
+    } else if (dayChanged) {
+      await marketplace.loadMarketplace();
     }
   }
 

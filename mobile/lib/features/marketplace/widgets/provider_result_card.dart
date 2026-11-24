@@ -84,6 +84,8 @@ class ProviderResultCard extends StatelessWidget {
     required this.onDetails,
     this.isVerified = false,
     this.isClaimed = true,
+    this.dayLabel,
+    this.dayFree,
     this.categoryLabel,
     this.locationLabel,
     this.priceLabel,
@@ -115,6 +117,11 @@ class ProviderResultCard extends StatelessWidget {
   /// False for a listing added from a public directory that its owner has
   /// not taken over yet: it does not take requests.
   final bool isClaimed;
+
+  /// RA-BE-150 (Q-36): «فاضي يوم 21» or «مشغول يوم 21», the plan's wedding
+  /// day against his calendar; null when the list was asked about no day.
+  final String? dayLabel;
+  final bool? dayFree;
 
   /// The kind; left out under a kind's own title, where it would repeat it.
   final String? categoryLabel;
@@ -148,6 +155,13 @@ class ProviderResultCard extends StatelessWidget {
           soft: (budgetStatusColor ?? AarastV3Color.mint).withValues(
             alpha: 0.12,
           ),
+        ),
+      if (_clean(dayLabel) case final day? when dayFree != null)
+        JourneyTag(
+          key: const Key('provider-card-day'),
+          label: day,
+          color: dayFree! ? AarastV3Color.mint : AarastV3Color.textMuted,
+          soft: dayFree! ? AarastV3Color.mintSoft : AarastV3Color.line,
         ),
       if (!isClaimed)
         const JourneyTag(

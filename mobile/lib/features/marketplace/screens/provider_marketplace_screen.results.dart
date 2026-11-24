@@ -77,12 +77,19 @@ class _ProviderCard extends StatelessWidget {
         ? AarastV3Color.brandAccentStrong
         : _serviceBudgetStatusColor(context, budgetStatus);
 
+    // RA-BE-150 (Q-36): the plan's wedding day against his calendar.
+    final askedDay = context.read<ProviderMarketplaceProvider?>()?.eventDate;
+    final dayFree = provider.availableOnEventDate;
     return ProviderResultCard(
       key: Key('provider-marketplace-card-${provider.id}'),
       businessName: provider.businessName,
       isFeatured: provider.isFeaturedAt(appNow()),
       isVerified: provider.isVerified,
       isClaimed: provider.isClaimed,
+      dayLabel: askedDay == null || dayFree == null
+          ? null
+          : '${dayFree ? 'فاضي' : 'مشغول'} يوم ${askedDay.day}',
+      dayFree: dayFree,
       ratingAverage: provider.ratingAverage,
       ratingCount: provider.ratingCount,
       categoryLabel: category,

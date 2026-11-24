@@ -171,6 +171,10 @@ class MarketplaceApi {
     String? categoryId,
     List<String>? categoryIds,
     bool? featured,
+
+    /// RA-BE-150 (Q-36): the wedding's day; each row then says whether the
+    /// provider takes it. It annotates the list, it does not filter it.
+    DateTime? eventDate,
     int page = 1,
     int limit = 30,
   }) async {
@@ -196,17 +200,22 @@ class MarketplaceApi {
           else if (categories.length > 1)
             'categoryIds': categories.join(','),
           if (featured != null) 'featured': featured.toString(),
+          if (eventDate != null) 'eventDate': planDayToJson(eventDate),
         }),
       );
 
       final items = _itemsFromPagedJson(json);
+      // A day's answer belongs to that day: the phone's copy keeps none.
+      final cacheable = [
+        for (final item in items) {...item}..remove('availableOnEventDate'),
+      ];
       if (_isUnfiltered(search, cityId, categories, featured)) {
         await _offline?.database.replaceCachedList(
           table: OfflineTables.cachedProviders,
-          items: items,
+          items: cacheable,
         );
       } else {
-        for (final item in items) {
+        for (final item in cacheable) {
           await _offline?.database.saveCachedItem(
             table: OfflineTables.cachedProviders,
             json: item,

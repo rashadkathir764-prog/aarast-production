@@ -38,6 +38,8 @@ void main() {
     bool isFeatured = false,
     String? priceLabel,
     String? priceAgeLabel,
+    String? dayLabel,
+    bool? dayFree,
   }) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
@@ -67,6 +69,8 @@ void main() {
                 locationLabel: 'صنعاء',
                 priceLabel: priceLabel,
                 priceAgeLabel: priceAgeLabel,
+                dayLabel: dayLabel,
+                dayFree: dayFree,
               ),
             ),
           ),
@@ -109,6 +113,38 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // RA-BE-150 (Q-36): the plan's wedding day, said on the row.
+  testWidgets('a row says whether the provider takes the wedding day', (
+    tester,
+  ) async {
+    await pumpCard(
+      tester,
+      isClaimed: true,
+      dayLabel: 'فاضي يوم 21',
+      dayFree: true,
+    );
+    expect(find.text('فاضي يوم 21'), findsOneWidget);
+    expect(find.byKey(const Key('provider-card-day')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await pumpCard(
+      tester,
+      isClaimed: true,
+      dayLabel: 'مشغول يوم 21',
+      dayFree: false,
+    );
+    await tester.pump();
+    expect(find.text('مشغول يوم 21'), findsOneWidget);
+    expect(find.text('فاضي يوم 21'), findsNothing);
+  });
+
+  testWidgets('with no day asked the row says nothing about days', (
+    tester,
+  ) async {
+    await pumpCard(tester, isClaimed: true);
+    expect(find.byKey(const Key('provider-card-day')), findsNothing);
+  });
 
   testWidgets('a claimed provider without a price asks for an offer', (
     tester,

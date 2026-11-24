@@ -103,6 +103,7 @@ class MarketplaceProvider {
     this.longitude,
     this.verifiedAt,
     this.isClaimed = true,
+    this.availableOnEventDate,
     this.responsiveness,
     this.services = const [],
     this.serviceSummary,
@@ -135,6 +136,7 @@ class MarketplaceProvider {
       longitude: _doubleOrNull(json['longitude']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
       isClaimed: json['isClaimed'] != false,
+      availableOnEventDate: json['availableOnEventDate'] as bool?,
       responsiveness: _mapOrNull(
         json['responsiveness'],
         ProviderResponsiveness.fromJson,
@@ -193,6 +195,10 @@ class MarketplaceProvider {
   /// False for a listing the admin made that its owner has not claimed yet
   /// (V1 checklist 4.18): it takes no quote requests, only calls and WhatsApp.
   final bool isClaimed;
+
+  /// RA-BE-150 (Q-36): whether he takes the day the list was asked about
+  /// (the plan's wedding day); null when no day was asked.
+  final bool? availableOnEventDate;
 
   /// Only on the provider details response, and null with too little history.
   final ProviderResponsiveness? responsiveness;

@@ -660,6 +660,20 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
     });
 
+    // RA-BE-150 (Q-36): the quick line was offered whatever the day; for a
+    // day he closed the server refuses the offer, so the card does not offer it.
+    testWidgets('a day he closed offers no quick reply', (tester) async {
+      final api = RequestsApi(quotes: [quoteJson()], packages: packages)
+        ..blocked.add(DateTime(2027, 1, 21));
+      await pumpHarness(tester, api);
+
+      expect(find.text('ردّ: باقي 6 أيام'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-quick-offer-quote-1')),
+        findsNothing,
+      );
+    });
+
     testWidgets('without a package the card simply opens the request', (
       tester,
     ) async {

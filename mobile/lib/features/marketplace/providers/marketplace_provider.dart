@@ -68,6 +68,11 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   String? _noticeMessage;
   String _search = '';
   String? _cityId;
+
+  /// RA-BE-150 (Q-36): the plan's wedding day, which the list asks every
+  /// provider about. Context, not a filter: nobody is hidden by it, and the
+  /// filters' reset leaves it.
+  DateTime? _eventDate;
   String? _categoryId;
   bool _includeAccountData = false;
   String? _catalogAudience;
@@ -150,6 +155,9 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   String? get noticeMessage => _noticeMessage;
   String get search => _search;
   String? get cityId => _cityId;
+
+  /// The wedding day each row says «فاضي» or «مشغول» for; null without one.
+  DateTime? get eventDate => _eventDate;
   String? get categoryId => _categoryId;
   List<MarketplaceCity> get cities => _cities;
   List<ProviderCategory> get categories => _categories
@@ -189,6 +197,7 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
     cityId: cityId,
     categoryId: categoryId,
     intent: budgetMatchIntent?.providerCategoryIds.join(','),
+    eventDate: eventDate,
   );
 
   ({Set<String> sections, Set<String> shelves}) _browseKindsOf(
@@ -376,6 +385,7 @@ typedef _DirectoryQuery = ({
   String? cityId,
   String? categoryId,
   String? intent,
+  DateTime? eventDate,
 });
 
 extension on _DirectoryQuery {

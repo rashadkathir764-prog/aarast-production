@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { rsvpLinkLimit } from "./rsvp-throttle";
 import { GuestInvitationSendChannel, GuestInvitationSendKind } from "@prisma/client";
 import type { Response } from "express";
 import {
@@ -132,7 +133,7 @@ export class PublicRsvpController {
   constructor(private readonly rsvp: GuestRsvpService) {}
 
   @Get(":token")
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(rsvpLinkLimit(30))
   @Header("Cache-Control", "private, no-store")
   getInvitation(@Param("token") token: string) {
     return this.rsvp.getInvitation(token);
@@ -143,14 +144,14 @@ export class PublicRsvpController {
    * crawler reads the head and never makes this request.
    */
   @Post(":token/opened")
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(rsvpLinkLimit(10))
   @Header("Cache-Control", "private, no-store")
   opened(@Param("token") token: string) {
     return this.rsvp.markInvitationOpened(token);
   }
 
   @Post(":token")
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(rsvpLinkLimit(10))
   @Header("Cache-Control", "private, no-store")
   respond(@Param("token") token: string, @Body() dto: RsvpAnswerDto) {
     return this.rsvp.respond(
@@ -168,7 +169,7 @@ export class PublicRsvpController {
    * keeps its generic tags. Never cached: the link can be replaced.
    */
   @Get(":token/preview")
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(rsvpLinkLimit(30))
   async preview(@Param("token") token: string, @Res() response: Response) {
     const preview = await this.rsvp.invitationPreview(token);
     response.set("Cache-Control", "private, no-store");
@@ -188,7 +189,7 @@ export class PublicRsvpController {
    * kept by a cache, so a replaced link stops showing the photo.
    */
   @Get(":token/card-photo")
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Throttle(rsvpLinkLimit(60))
   async cardPhoto(@Param("token") token: string, @Res() response: Response) {
     const url = await this.rsvp.cardPhotoDownloadUrl(token);
     response

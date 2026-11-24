@@ -1,8 +1,10 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { Prisma, UserRole } from "@prisma/client";
+import { newAccountDeletionReceiptHash } from "../src/modules/identity/internal/profile/users.service";
 import { erasureNotices, usersService } from "./support/owner-ports";
 
 const PLAN_CHILDREN = [
@@ -85,6 +87,7 @@ function recordingTx(
   userRole: UserRole = UserRole.USER,
 ) {
   const calls: string[] = [];
+  const receipts: string[] = [];
   const queries: Array<{ text: string; values: unknown[] }> = [];
   const del = (name: string) => ({
     deleteMany: async () => {
@@ -270,6 +273,7 @@ function recordingTx(
       create: async ({ data }: any) => {
         calls.push("accountDeletionReceipt.create");
         assert.match(data.receiptHash, /^[0-9a-f]{64}$/);
+        receipts.push(data.receiptHash);
         return data;
       },
     },
@@ -468,7 +472,7 @@ function recordingTx(
       })),
   };
   tx.handedOver = handedOver;
-  return { tx, calls, queries, permissions };
+  return { tx, calls, queries, permissions, receipts };
 }
 
 const serviceFor = (
@@ -999,4 +1003,42 @@ test("D63: after the purge the members of its plans and the providers of its req
   assert.equal(booked.routeTarget, "/provider/dashboard?tab=requests");
   // Built while the memberships existed; written after the purge.
   assert.ok(calls.indexOf("listPlanMembers") < calls.indexOf("sharedMember"));
+});
+
+// RA-BE-180: the receipt was the hash of the user's id and the request's day,
+// so anyone who knew an id and roughly when it was asked could prove that
+// account was erased. It is now a hash of a random 128-bit token made at the
+// erasure and kept nowhere, so it names neither the account nor the day.
+test("the deletion receipt is a hash of a random token, not of the account and its request day", async () => {
+  const hashes: string[] = [];
+  for (let run = 0; run < 2; run += 1) {
+    const { tx, receipts } = recordingTx([]);
+    await serviceFor(tx).eraseDueAccount("u1", NOW);
+    assert.equal(receipts.length, 1);
+    hashes.push(receipts[0]);
+  }
+  assert.notEqual(
+    hashes[0],
+    hashes[1],
+    "the same account and request day gave the same receipt twice",
+  );
+  const requestedAt = new Date(NOW.getTime() - 60_000 - 30 * DAY_MS);
+  const derivable = createHash("sha256")
+    .update("u1")
+    .update("\0")
+    .update(`grace:${requestedAt.toISOString()}`)
+    .digest("hex");
+  assert.ok(!hashes.includes(derivable), "the receipt can be derived from the id and the day");
+});
+
+test("the receipt token is 128 random bits and its hash is what is stored", () => {
+  const bytes = Buffer.from("00112233445566778899aabbccddeeff", "hex");
+  let asked = 0;
+  const hash = newAccountDeletionReceiptHash((size: number) => {
+    asked = size;
+    return bytes;
+  });
+  assert.equal(asked, 16);
+  assert.equal(hash, createHash("sha256").update(bytes).digest("hex"));
+  assert.notEqual(newAccountDeletionReceiptHash(), newAccountDeletionReceiptHash());
 });

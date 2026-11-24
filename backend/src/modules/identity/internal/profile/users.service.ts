@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   AppRole,
   AuthSessionScope,
@@ -95,7 +95,6 @@ import {
   deleteApplicationOtpCodesByPhone,
   deleteApplicationRefreshTokens,
   deleteOtpCodesByPhone,
-  findAccountDeletionReceipt,
   findPlanOwnerContacts,
   recordErasedAccount,
   lockUserForAccountDeletion,
@@ -161,15 +160,17 @@ const UNSUPPORTED_NOTIFICATION_CHANNELS = [
  */
 export type AccountErasureOutcome = "ERASED" | "NOT_DUE" | "GONE";
 
-export function accountDeletionReceiptHash(
-  userId: string,
-  clientRequestId: string,
+/**
+ * RA-BE-180: the receipt is the hash of a random 128-bit token made at the
+ * erasure and kept nowhere. It was the hash of the user's id and the request's
+ * day, which whoever knew an id and about when it was asked could recompute to
+ * prove that account was erased. The token never leaves this call, so the
+ * receipt names neither the account nor the day.
+ */
+export function newAccountDeletionReceiptHash(
+  randomSource: (size: number) => Buffer = randomBytes,
 ): string {
-  return createHash("sha256")
-    .update(userId)
-    .update("\0")
-    .update(clientRequestId)
-    .digest("hex");
+  return createHash("sha256").update(randomSource(16)).digest("hex");
 }
 
 @Injectable()
@@ -333,13 +334,6 @@ export class UsersService {
         ) {
           return "NOT_DUE";
         }
-        // One receipt per request: the same request erased twice (a second
-        // job instance) finds the account gone above.
-        const receiptHash = accountDeletionReceiptHash(
-          userId,
-          `grace:${account.deletionRequestedAt.toISOString()}`,
-        );
-        if (await findAccountDeletionReceipt(tx, receiptHash)) return "GONE";
         const preservesAdministratorIdentity =
           account.role === UserRole.ADMIN;
         // An administrator may separately enroll in the application. Deleting
@@ -593,10 +587,13 @@ export class UsersService {
           );
         }
 
-        // The anonymous receipt commits atomically with erasure. It contains
-        // neither the former user id nor the request's time and is immutable
-        // at the database boundary.
-        await createAccountDeletionReceipt(tx, receiptHash);
+        // The anonymous receipt commits atomically with erasure. It is the
+        // hash of a random token (RA-BE-180), so it holds neither the former
+        // user id nor the request's time, and it is immutable at the database
+        // boundary. A second job instance for the same request finds the
+        // account gone (or its request cleared) after this transaction's row
+        // lock, so no lookup of an earlier receipt is needed.
+        await createAccountDeletionReceipt(tx, newAccountDeletionReceiptHash());
 
         if (!preservesAdministratorIdentity) {
           // RA-OP-32: a backup restored later erases the account again. An

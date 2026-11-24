@@ -11,7 +11,7 @@ import { MeController } from "../src/modules/identity/api/me.controller";
 import { AuthController } from "../src/modules/identity/api/auth.controller";
 import { PushController } from "../src/push/push.controller";
 import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
-import { accountDeletionReceiptHash } from "../src/modules/identity/internal/profile/users.service";
+import { newAccountDeletionReceiptHash } from "../src/modules/identity/internal/profile/users.service";
 import {
   ACCOUNT_DELETION_CONFIRM_WORD,
   ACCOUNT_DELETION_GRACE_DAYS,
@@ -172,12 +172,14 @@ test("HTTP smokes leave through the grace: they ask, then run the purge; none er
   }
 });
 
-test("receipt digest is stable and stores neither source identifier", () => {
-  const digest = accountDeletionReceiptHash("user-a", "request-a");
+test("receipt digest is a random 128-bit token's hash and stores no source identifier", () => {
+  // RA-BE-180: it was a hash of the user id and the request day, which could
+  // be recomputed; the token is random and never kept.
+  const digest = newAccountDeletionReceiptHash(() => Buffer.alloc(16, 7));
   assert.match(digest, /^[0-9a-f]{64}$/);
   assert.equal(digest.includes("user-a"), false);
-  assert.equal(digest.includes("request-a"), false);
-  assert.notEqual(digest, accountDeletionReceiptHash("user-a", "request-b"));
+  assert.notEqual(digest, newAccountDeletionReceiptHash(() => Buffer.alloc(16, 8)));
+  assert.notEqual(newAccountDeletionReceiptHash(), newAccountDeletionReceiptHash());
 });
 
 test("receipt migration enforces append-only anonymous rows", () => {

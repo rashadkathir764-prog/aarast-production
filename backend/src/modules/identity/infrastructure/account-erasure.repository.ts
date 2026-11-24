@@ -8,16 +8,6 @@ import {
 } from '@prisma/client';
 import { applicationNameFields } from '../../../shared-kernel/privacy/application-user-identity';
 
-export function findAccountDeletionReceipt(
-  tx: Prisma.TransactionClient,
-  receiptHash: string,
-) {
-  return tx.accountDeletionReceipt.findUnique({
-    where: { receiptHash },
-    select: { receiptHash: true },
-  });
-}
-
 export function createAccountDeletionReceipt(
   tx: Prisma.TransactionClient,
   receiptHash: string,

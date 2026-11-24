@@ -5,7 +5,7 @@ import {
   providerRequestRoute,
   requesterQuoteRoute,
 } from "./quote-notifications";
-import { type AddressedText, gendered } from "../shared-kernel/voice/address-form";
+import { type AddressedText, gendered, textFor } from "../shared-kernel/voice/address-form";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import {
   daysBetween,
@@ -79,9 +79,21 @@ export function bookingCustomerNotification(
     customerUserId: string;
     weddingPlanId: string | null;
     providerName: string;
+    /**
+     * RA-BE-138 (Q-34 (ب)): the accepted offer's agreement is still in the
+     * money; a decline or a cancel says so, with what to do about it.
+     */
+    itemKept: boolean;
   },
 ): CreateNotificationInput {
   const day = weekdayDayMonthWords(args.eventDate);
+  const withItem = (body: AddressedText): AddressedText =>
+    args.itemKept
+      ? gendered(
+          `${textFor("MASCULINE", body)} وبنده باقي في «اتفقت على»، احذفه من المال لو ما عاد تحتاجه.`,
+          `${textFor("FEMININE", body)} وبنده باقي في «اتفقت على»، احذفيه من المال لو ما عاد تحتاجينه.`,
+        )
+      : body;
   const copies: Record<typeof event, { title: string; body: AddressedText }> = {
     CONFIRMED: {
       title: `تأكد حجزك مع ${args.providerName}`,
@@ -89,16 +101,20 @@ export function bookingCustomerNotification(
     },
     DECLINED: {
       title: `اعتذر ${args.providerName} عن يوم ${day}`,
-      body: gendered(
-        "تقدر تطلب يوم ثاني أو تختار مزود غيره.",
-        "تقدرين تطلبين يوم ثاني أو تختارين مزود غيره.",
+      body: withItem(
+        gendered(
+          "تقدر تطلب يوم ثاني أو تختار مزود غيره.",
+          "تقدرين تطلبين يوم ثاني أو تختارين مزود غيره.",
+        ),
       ),
     },
     CANCELLED: {
       title: `انلغى حجزك مع ${args.providerName}`,
-      body: gendered(
-        `كان يوم ${day}. تقدر تكلمه أو تختار مزود غيره.`,
-        `كان يوم ${day}. تقدرين تكلمينه أو تختارين مزود غيره.`,
+      body: withItem(
+        gendered(
+          `كان يوم ${day}. تقدر تكلمه أو تختار مزود غيره.`,
+          `كان يوم ${day}. تقدرين تكلمينه أو تختارين مزود غيره.`,
+        ),
       ),
     },
   };

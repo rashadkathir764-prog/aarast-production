@@ -367,6 +367,14 @@ export async function readMoneyPicture(
     /** Owner only; null for anyone else. */
     funding,
     warnings,
+    bookingFellThrough: costs
+      .filter((cost) => cost.bookingFellThroughAt)
+      .map((cost) => ({
+        weddingCostId: cost.id,
+        budgetCategoryId: cost.budgetCategoryId,
+        title: cost.title,
+        amount: cost.totalAmount.toString(),
+      })),
   };
 }
 

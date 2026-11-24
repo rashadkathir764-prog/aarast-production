@@ -134,7 +134,12 @@ function allBuiltNotices(): Array<{ label: string; notice: CreateNotificationInp
     { label: 'booking/cancelled-by-customer', notice: bookingProviderNotification('CANCELLED', { ...booking, providerUserId: ids.provider, customerName: null }) },
     ...(['CONFIRMED', 'DECLINED', 'CANCELLED'] as const).map((event) => ({
       label: `booking/${event}`,
-      notice: bookingCustomerNotification(event, { ...booking, customerUserId: ids.requester, weddingPlanId: ids.plan, providerName: quote.providerName }),
+      notice: bookingCustomerNotification(event, { ...booking, customerUserId: ids.requester, weddingPlanId: ids.plan, providerName: quote.providerName, itemKept: false }),
+    })),
+    // RA-BE-138 (Q-34 (ب)): the decline says the item it leaves in the money.
+    ...(['DECLINED', 'CANCELLED'] as const).map((event) => ({
+      label: `booking/${event}/item-kept`,
+      notice: bookingCustomerNotification(event, { ...booking, customerUserId: ids.requester, weddingPlanId: ids.plan, providerName: quote.providerName, itemKept: true }),
     })),
     ...[7, 2, 1].flatMap((days) =>
       bookingReminderNotifications(

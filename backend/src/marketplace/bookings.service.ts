@@ -200,6 +200,8 @@ export class BookingsService {
         requestedByUserId: currentUser.id,
         note: optionalNote(dto.note),
       });
+      // RA-BE-138: asked for again, the agreement is live again.
+      await this.finance.markOfferBookingFellThrough(tx, quote.offers[0].id, null);
       // RA-BE-48: nothing waits from the booking this row held before.
       await bookings.cancelPendingBookingChanges(tx, booking.id, new Date());
       if (provider.userId) {
@@ -399,6 +401,16 @@ export class BookingsService {
         );
         const event =
           action === "CONFIRM" ? "CONFIRMED" : action === "DECLINE" ? "DECLINED" : "CANCELLED";
+        // RA-BE-138 (Q-34 (ب)): the agreement the accepted offer made stays
+        // when the provider declines or cancels; it is marked for «يحتاج
+        // انتباهك» and the notice says so. A confirmation clears the mark.
+        const itemsKept = booking.quoteOfferId
+          ? await this.finance.markOfferBookingFellThrough(
+              tx,
+              booking.quoteOfferId,
+              action === "CONFIRM" ? null : new Date(),
+            )
+          : 0;
         await this.notifications.createNotificationInTransaction(
           tx,
           bookingCustomerNotification(event, {
@@ -410,6 +422,7 @@ export class BookingsService {
             customerUserId: booking.quoteRequest.userId,
             weddingPlanId: booking.quoteRequest.weddingPlanId,
             providerName: provider.businessName,
+            itemKept: action !== "CONFIRM" && itemsKept > 0,
           }),
         );
         return toBookingResponse(updated);

@@ -819,6 +819,18 @@ export class FinancePortService implements FinancePort {
     );
   }
 
+  async markOfferBookingFellThrough(
+    tx: Prisma.TransactionClient,
+    quoteOfferId: string,
+    at: Date | null,
+  ): Promise<number> {
+    const marked = await tx.weddingCost.updateMany({
+      where: { quoteOfferId },
+      data: { bookingFellThroughAt: at },
+    });
+    return marked.count;
+  }
+
   async listCostsForOffers(
     client: Prisma.TransactionClient,
     quoteOfferIds: readonly string[],

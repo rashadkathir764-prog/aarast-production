@@ -438,6 +438,17 @@ export interface FinancePort {
     quoteOfferIds: readonly string[],
   ): Promise<OfferCost[]>;
   /**
+   * RA-BE-138 (Q-34 (ب)): marks the agreement an offer made when its booking
+   * falls through by the provider ([at]), or clears the mark (null) when the
+   * booking is asked for again or confirmed. How many agreements it touched
+   * (0 when the customer deleted it).
+   */
+  markOfferBookingFellThrough(
+    tx: Prisma.TransactionClient,
+    quoteOfferId: string,
+    at: Date | null,
+  ): Promise<number>;
+  /**
    * D60: the plan's wedding items booked with someone outside اعّرست: a
    * live cost with a named party and no provider or offer. `costIds` narrows
    * to the reader's costs (null: the whole plan).

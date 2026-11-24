@@ -129,6 +129,10 @@ model WeddingCost {
   // V1 checklist 4.10: when set, only this account (the owner or the
   // partner who recorded it) sees the cost; null is the shared plan's.
   privateToUserId  String?
+  // RA-BE-138 (Q-34 (ب)): when the booking of the offer this agreement came
+  // from was declined or cancelled by the provider. The agreement stays and
+  // is named in «يحتاج انتباهك»; a new request or a confirmation clears it.
+  bookingFellThroughAt DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   weddingPlan      WeddingPlan       @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)

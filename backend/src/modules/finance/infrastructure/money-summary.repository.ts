@@ -38,6 +38,7 @@ export function loadMoneySummaryRows(
         entryKind: true,
         estimateCover: true,
         estimatePart: true,
+        bookingFellThroughAt: true,
       },
     }),
     tx.costPayment.findMany({

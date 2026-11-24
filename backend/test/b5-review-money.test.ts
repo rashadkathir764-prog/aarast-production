@@ -392,3 +392,32 @@ test('D59: finance lists the plans\' promised money due by a day, the soonest fi
   assert.equal(due[0].sourceName, 'باقي المهر');
   assert.equal(due[0].expectedAt.toISOString(), '2026-11-15T00:00:00.000Z');
 });
+
+// RA-BE-138 (Q-34 (ب)): an agreement whose booking the provider declined or
+// cancelled stays in what was agreed, and is named for «يحتاج انتباهك».
+test('RA-BE-138: an item whose booking fell through stays agreed and is named for attention', async () => {
+  const cost = (id: string, fellThrough: Date | null) => ({
+    id,
+    budgetCategoryId: 'photo',
+    totalAmount: d(400_000),
+    title: id,
+    payer: null,
+    payerName: null,
+    bookingFellThroughAt: fellThrough,
+  });
+  const tx = {
+    budgetCategory: { findMany: async () => [{ id: 'photo', name: 'التصوير', kind: 'WEDDING', allocatedAmount: null }] },
+    weddingCost: {
+      findMany: async ({ where }: any) =>
+        where.privateToUserId ? [] : [cost('استوديو النور', new Date('2026-11-20T10:00:00Z')), cost('استوديو الفن', null)],
+    },
+    costPayment: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
+    fundingSource: { findMany: async () => [] },
+  } as unknown as Prisma.TransactionClient;
+  const picture = await readMoneyPicture(tx, groomQuery as any);
+  assert.equal(picture.costs.total, '800000', 'the item stays in what was agreed');
+  assert.deepEqual(picture.bookingFellThrough, [
+    { weddingCostId: 'استوديو النور', budgetCategoryId: 'photo', title: 'استوديو النور', amount: '400000' },
+  ]);
+});

@@ -175,7 +175,10 @@ function service(db: ReturnType<typeof fakeDatabase>) {
 }
 
 /** No customer keeps an agreement for these offers (B-18 is tested on its own). */
-const noAgreements: any = { listCostsForOffers: async () => [] };
+const noAgreements: any = {
+  listCostsForOffers: async () => [],
+  markOfferBookingFellThrough: async () => 0,
+};
 
 async function rejects(promise: Promise<unknown>, code: string) {
   await assert.rejects(promise, (error: any) => error?.response?.code === code);
@@ -409,6 +412,7 @@ test("the provider reads agreed, paid and left on his booking, and the month's t
             },
           ]
         : [],
+    markOfferBookingFellThrough: async () => 1,
   };
   const bookings = new BookingsService(
     db.prisma,
@@ -539,4 +543,63 @@ test("a cancelled booking is not reminded", async () => {
   const result = await bookings.sendDueReminders(new Date("2027-02-17T09:00:00Z"));
   assert.equal(result.sent, 0);
   assert.equal(db.notifications.length, 0);
+});
+
+// RA-BE-138 (Q-34 (ب)): the item an accepted offer made stays when the
+// provider declines or cancels; it is marked for «يحتاج انتباهك», the notice
+// says so, and asking again or a confirmation clears the mark.
+test("RA-BE-138: a provider's decline keeps the item, marks it and says so; asking again clears it", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const marks: Array<[string, Date | null]> = [];
+  const finance: any = {
+    listCostsForOffers: async () => [],
+    markOfferBookingFellThrough: async (_tx: unknown, offerId: string, at: Date | null) => {
+      marks.push([offerId, at]);
+      return 1;
+    },
+  };
+  const permissions: any = {
+    assertPlanReadableInTransaction: async (_tx: unknown, planId: string) => ({
+      plan: { id: planId, ownerUserId: "customer-1", status: "PLANNING" },
+      isOwner: true,
+      sharedMember: null,
+    }),
+    canManageProviders: () => true,
+  };
+  const notifications: any = {
+    createNotificationInTransaction: async (_tx: unknown, input: any) => {
+      db.notifications.push(input);
+      return null;
+    },
+  };
+  const bookings = new BookingsService(db.prisma, permissions, notifications, finance);
+  const first = await bookings.requestBooking(customer, "quote-1", {});
+  const offerId = db.bookings.get(first.id)!.quoteOfferId;
+  assert.deepEqual(marks, [[offerId, null]], "a request is a live item again");
+
+  await bookings.decideAsProvider(providerUser, first.id, "DECLINE", { note: "مشغول" });
+  assert.equal(marks.length, 2);
+  assert.equal(marks[1][0], offerId);
+  assert.ok(marks[1][1] instanceof Date);
+  const notice = db.notifications.slice(-1)[0];
+  assert.match(notice.body.masculine, /بنده باقي في «اتفقت على»/);
+  assert.match(notice.body.feminine, /احذفيه/);
+
+  await bookings.requestBooking(customer, "quote-1", { eventDate: "2027-02-19" });
+  assert.deepEqual(marks[2], [offerId, null]);
+  await bookings.decideAsProvider(providerUser, first.id, "CONFIRM", {});
+  assert.deepEqual(marks[3], [offerId, null]);
+  await bookings.decideAsProvider(providerUser, first.id, "CANCEL", {});
+  assert.ok(marks[4][1] instanceof Date, "a provider's cancel marks it too");
+  assert.match(db.notifications.slice(-1)[0].body.masculine, /بنده باقي/);
+});
+
+test("RA-BE-138: a decline with no item left says nothing of money", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const bookings = service(db);
+  const first = await bookings.requestBooking(customer, "quote-1", {});
+  await bookings.decideAsProvider(providerUser, first.id, "DECLINE", {});
+  assert.doesNotMatch(JSON.stringify(db.notifications.slice(-1)[0].body), /بنده/);
 });

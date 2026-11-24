@@ -213,6 +213,17 @@ export interface MoneyPicture {
     count: number | null;
     amount: string | null;
   }>;
+  /**
+   * RA-BE-138 (Q-34 (ب)): the reader's agreements whose booking the
+   * provider declined or cancelled. They stay in what was agreed and are
+   * named in «يحتاج انتباهك» with «احذف البند؟».
+   */
+  bookingFellThrough: Array<{
+    weddingCostId: string;
+    budgetCategoryId: string;
+    title: string;
+    amount: string;
+  }>;
 }
 
 export interface MoneyExpectedTotals {

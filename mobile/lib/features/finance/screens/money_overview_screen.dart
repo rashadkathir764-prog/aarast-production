@@ -529,6 +529,24 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             sub: context.say('حدد له موعد', 'حددي له موعد'),
             onTap: () => _openDue(line),
           ),
+      // RA-BE-138 (Q-34 (ب)): the provider declined or cancelled; the
+      // agreement stays and its page deletes or cancels it.
+      for (final item in summary.bookingFellThrough)
+        (
+          key: 'fell-through-${item.weddingCostId}',
+          icon: LucideIcons.calendarOff,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          title: 'انلغى حجز «${item.title}» وبنده باقي',
+          sub:
+              '${money(item.amount)} في «اتفقت على» · ${context.say('احذف البند؟', 'احذفي البند؟')}',
+          onTap: () => context.push(
+            AppRouter.moneyCostDetails(
+              widget.weddingPlanId,
+              item.weddingCostId,
+            ),
+          ),
+        ),
       if (summary.budget.total == null)
         (
           key: 'no-budget',

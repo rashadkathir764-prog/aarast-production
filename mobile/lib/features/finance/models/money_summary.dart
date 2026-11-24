@@ -25,6 +25,7 @@ class MoneySummary {
     this.duesByMonth,
     this.coverage,
     this.family,
+    this.bookingFellThrough = const [],
   });
 
   factory MoneySummary.empty(String planId, {String currency = 'YER'}) {
@@ -81,6 +82,10 @@ class MoneySummary {
       family: json['family'] is List
           ? _listOfMaps(json['family']).map(MoneyContributor.fromJson).toList()
           : null,
+      bookingFellThrough: [
+        for (final item in _listOfMaps(json['bookingFellThrough']))
+          ?MoneyBookingFellThrough.fromJson(item),
+      ],
     );
   }
 
@@ -140,6 +145,11 @@ class MoneySummary {
 
   /// D108: the family, person by person (the owner's only).
   final List<MoneyContributor>? family;
+
+  /// RA-BE-138 (Q-34 (ب)): the agreements whose booking the provider
+  /// declined or cancelled. They stay in «اتفقت على»; «يحتاج انتباهك» names
+  /// them with «احذف البند؟». Empty from an older server.
+  final List<MoneyBookingFellThrough> bookingFellThrough;
 
   /// The groom's mahr item (outside the budget), if the plan has one.
   MoneyCategorySummary? get mahrCategory =>
@@ -211,6 +221,30 @@ class MoneySummary {
     }
     return 'SAFE';
   }
+}
+
+/// RA-BE-138: one agreement whose booking fell through, as the server names it.
+class MoneyBookingFellThrough {
+  const MoneyBookingFellThrough({
+    required this.weddingCostId,
+    required this.title,
+    required this.amount,
+  });
+
+  /// Null for a row without its agreement's id (nothing to open).
+  static MoneyBookingFellThrough? fromJson(Map<String, dynamic> json) {
+    final id = json['weddingCostId']?.toString() ?? '';
+    if (id.isEmpty) return null;
+    return MoneyBookingFellThrough(
+      weddingCostId: id,
+      title: json['title']?.toString() ?? '',
+      amount: json['amount']?.toString() ?? '0',
+    );
+  }
+
+  final String weddingCostId;
+  final String title;
+  final String amount;
 }
 
 class MoneyFundingSummary {

@@ -163,3 +163,25 @@ test('the finance public module exposes only the port token bound to the interna
     { provide: FINANCE_IMPLEMENTATION, useExisting: FinancePortService },
   ]);
 });
+
+// RA-BE-138 (Q-34 (ب)): marketplace marks the item an offer made when its
+// booking falls through, and clears it when the booking is live again.
+test('RA-BE-138: an offer\'s item is marked when its booking falls through, and cleared', async () => {
+  const calls: unknown[] = [];
+  const client = {
+    weddingCost: {
+      updateMany: async (args: unknown) => {
+        calls.push(args);
+        return { count: 1 };
+      },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new FinancePortService(catalogWithoutMoneyLinks);
+  const at = new Date('2026-11-24T10:00:00Z');
+  assert.equal(await service.markOfferBookingFellThrough(client, 'offer-1', at), 1);
+  assert.equal(await service.markOfferBookingFellThrough(client, 'offer-1', null), 1);
+  assert.deepEqual(calls, [
+    { where: { quoteOfferId: 'offer-1' }, data: { bookingFellThroughAt: at } },
+    { where: { quoteOfferId: 'offer-1' }, data: { bookingFellThroughAt: null } },
+  ]);
+});

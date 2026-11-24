@@ -44,6 +44,7 @@ import {
 import {
   clearAccountDeletionRequest,
   findDueAccountDeletions,
+  isErasedAccount,
   lockUserForAccountDeletion,
   markAccountDeletionRequested,
   recordAccountPurgeFailure,
@@ -307,6 +308,15 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
         statusCode: 409,
         code: "DELETION_NOT_PENDING",
         message: "This account is not waiting to be deleted",
+      });
+    }
+    // RA-OP-32: an account erased before a backup was restored waits to be
+    // erased again; it is not taken back.
+    if (await isErasedAccount(tx, userId)) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: "ACCOUNT_ERASED",
+        message: "This account was erased; it cannot be restored",
       });
     }
     await clearAccountDeletionRequest(tx, userId);

@@ -280,6 +280,19 @@ that keep failing cannot hold back the rest; from the fifth failure on, each
 failure is logged as an error for a person to settle. A new request, taking it
 back, or keeping an administrator's identity resets the count.
 
+## Re-deletion List After A Restore
+
+RA-OP-32: migration `20261125100000_erased_accounts` creates `ErasedAccount`
+(`userId` primary key, `erasedAt`). The erasure saga writes the id of every
+account it erases completely (an administrator's application identity is not
+listed: his row stays and he may enrol again). The backups keep deleted data up
+to 90 days, so `deploy/aws/host/restore.sh`, after loading a backup and bringing
+it to the live release, copies the replaced database's list into the restored
+one and runs `deploy/aws/host/reapply-erasures.sql`: every listed account the
+backup brought back is due for erasure at once, the hourly purge erases it
+again through the saga, and the server refuses to take such an account back
+(`ACCOUNT_ERASED`). The hourly purge job removes ids older than 120 days.
+
 ## Durable Account Deletion Receipt
 
 Migration `20260803110000_add_account_deletion_receipts` creates
@@ -524,6 +537,7 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
+| `ErasedAccount` | 2 | `userId`, `erasedAt` |
 | `User` | 62 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
@@ -597,5 +611,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 74
+Total models: 75
 <!-- DOCS-SYNC:END -->

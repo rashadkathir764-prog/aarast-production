@@ -97,6 +97,7 @@ import {
   deleteOtpCodesByPhone,
   findAccountDeletionReceipt,
   findPlanOwnerContacts,
+  recordErasedAccount,
   lockUserForAccountDeletion,
 } from '../../infrastructure/account-erasure.repository';
 import {
@@ -598,6 +599,10 @@ export class UsersService {
         await createAccountDeletionReceipt(tx, receiptHash);
 
         if (!preservesAdministratorIdentity) {
+          // RA-OP-32: a backup restored later erases the account again. An
+          // administrator keeps his row and may enrol in the app again, so
+          // his application identity is not listed.
+          await recordErasedAccount(tx, userId, now);
           // Keyed by userId / phone with no User foreign key: never cascades.
           await deleteIdempotencyKeysForUser(tx, userId);
           if (account.phone) {

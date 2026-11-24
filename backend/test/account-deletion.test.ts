@@ -256,6 +256,15 @@ function recordingTx(
         return { count: planIds.length };
       },
     },
+    // RA-OP-32: the erased account goes on the re-deletion list.
+    erasedAccount: {
+      createMany: async ({ data, skipDuplicates }: any) => {
+        calls.push("erasedAccount.record");
+        assert.deepEqual(data, [{ userId: "u1", erasedAt: NOW }]);
+        assert.equal(skipDuplicates, true);
+        return { count: 1 };
+      },
+    },
     accountDeletionReceipt: {
       findUnique: async () => null,
       create: async ({ data }: any) => {
@@ -507,6 +516,8 @@ test("application account deletion erases only the administrator's application i
   assert.equal(calls.includes("user.delete"), false);
   assert.ok(calls.includes("user.clearApplicationIdentity"));
   assert.ok(calls.includes("chatMessage.detachSender"));
+  // RA-OP-32: an administrator keeps his row and may enrol again.
+  assert.equal(calls.includes("erasedAccount.record"), false);
   assert.equal(calls.includes("chatMessage"), false, "his messages are not deleted");
   assert.ok(calls.includes("refreshToken.APPLICATION"));
   assert.ok(calls.includes("otpCode.APPLICATION"));
@@ -606,6 +617,11 @@ test("account deletion clears plan children before plans and deletes the user la
   );
   assert.ok(at("idempotencyKey") >= 0);
   assert.ok(at("accountDeletionReceipt.create") < at("idempotencyKey"));
+  assert.ok(
+    at("erasedAccount.record") > at("accountDeletionReceipt.create") &&
+      at("erasedAccount.record") < at("user.delete"),
+    "RA-OP-32: the account is on the re-deletion list before it goes",
+  );
   assert.ok(at("otpCode") >= 0);
   assert.ok(at("weddingPlan") < at("user.delete"));
   assert.equal(calls[calls.length - 1], "user.delete");

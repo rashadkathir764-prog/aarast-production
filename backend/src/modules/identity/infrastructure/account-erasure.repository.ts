@@ -25,6 +25,49 @@ export function createAccountDeletionReceipt(
   return tx.accountDeletionReceipt.create({ data: { receiptHash } });
 }
 
+/** RA-OP-32: the days the re-deletion list keeps an id, past the oldest backup (90). */
+export const ERASED_ACCOUNT_LIST_DAYS = 120;
+
+/**
+ * RA-OP-32: the erased account goes on the re-deletion list, so a backup
+ * restored later erases it again (deploy/aws/host/restore.sh).
+ */
+export function recordErasedAccount(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  erasedAt: Date,
+) {
+  return tx.erasedAccount.createMany({
+    data: [{ userId, erasedAt }],
+    skipDuplicates: true,
+  });
+}
+
+/** RA-OP-32: an account on the list came back from a backup; it is not restored. */
+export async function isErasedAccount(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<boolean> {
+  return (
+    (await tx.erasedAccount.findUnique({
+      where: { userId },
+      select: { userId: true },
+    })) !== null
+  );
+}
+
+/** RA-OP-32: ids older than 120 days leave the list; no backup holds them. */
+export async function removeOldErasedAccounts(
+  client: Prisma.TransactionClient,
+  now: Date,
+): Promise<number> {
+  const before = new Date(now.getTime() - ERASED_ACCOUNT_LIST_DAYS * 24 * 60 * 60 * 1000);
+  const result = await client.erasedAccount.deleteMany({
+    where: { erasedAt: { lt: before } },
+  });
+  return result.count;
+}
+
 export interface AccountDeletionRow {
   id: string;
   role: UserRole;

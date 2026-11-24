@@ -184,6 +184,11 @@ assert.match(privacyHtml, /حذف خطة العرس[\s\S]*?30 يومًا[\s\S]*?
 // plan stays there, without its name.
 assert.match(privacyHtml, /«عضو سابق»/);
 assert.match(privacyHtml, /«مزود محذوف»/);
+// RA-OP-32: the backups keep deleted data up to 90 days, and a restore
+// erases again what was deleted.
+assert.match(privacyHtml, /النسخ الاحتياطية[\s\S]*?حتى 90 يومًا/);
+assert.match(privacyHtml, /نعيد حذف كل حساب حُذف/);
+assert.match(privacyHtml, /120 يومًا/);
 assert.match(publicCss, /font-family:/);
 
 // Guest RSVP (V1 checklist 4.7): a private, uncached, unindexed page whose

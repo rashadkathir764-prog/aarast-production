@@ -13,17 +13,17 @@ export class MessagingErasureService implements MessagingErasurePort {
   ): Promise<string[]> {
     // Only contexts owned by the account are selected here. Merely being
     // a Participant or creator in somebody else's PLAN conversation does
-    // not make that conversation eligible for deletion. An empty id list is
-    // an empty `ANY`, i.e. that predicate matches nothing.
+    // not make that conversation eligible for deletion, and neither does
+    // being the provider in it (RA-BE-178: the customer keeps it). An empty
+    // id list is an empty `ANY`, and a null account an unknown `=`: that
+    // predicate matches nothing.
     const weddingPlanIds = [...scope.weddingPlanIds];
-    const providerIds = [...scope.providerIds];
     const conversations = await tx.$queryRaw<Array<{ id: string }>>(
       Prisma.sql`
         SELECT "id"
         FROM "Conversation"
         WHERE "accountRequesterUserId" = ${scope.userId}
            OR "weddingPlanId" = ANY(${weddingPlanIds}::text[])
-           OR "providerId" = ANY(${providerIds}::text[])
         ORDER BY "id" ASC
         FOR UPDATE
       `,
@@ -54,12 +54,28 @@ export class MessagingErasureService implements MessagingErasurePort {
     });
   }
 
+  async closeProviderConversationsInTransaction(
+    tx: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    closedAt: Date,
+  ): Promise<void> {
+    if (providerIds.length === 0) return;
+    await tx.conversation.updateMany({
+      where: { providerId: { in: [...providerIds] }, closedAt: null },
+      data: { closedAt },
+    });
+  }
+
   async eraseUserParticipationInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void> {
     await tx.conversationParticipant.deleteMany({ where: { userId } });
-    await tx.chatMessage.deleteMany({ where: { senderUserId: userId } });
+    // RA-BE-178: the messages stay where they were written, with no author.
+    await tx.chatMessage.updateMany({
+      where: { senderUserId: userId },
+      data: { senderUserId: null },
+    });
     await tx.conversationReport.deleteMany({
       where: { reporterUserId: userId },
     });

@@ -127,6 +127,10 @@ model Provider {
   // RA-BE-26 (D63): when the owner asked for the account's deletion; set and
   // cleared by identity through the erasure port. Not listed, no new request.
   ownerLeavingAt    DateTime?
+  // RA-BE-178: when the owner's account was erased. The listing's own data
+  // is gone and it is shown as «مزود محذوف»; the row stays so its customers'
+  // conversations, offers, bookings and agreements stay, read-only.
+  erasedAt          DateTime?
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)

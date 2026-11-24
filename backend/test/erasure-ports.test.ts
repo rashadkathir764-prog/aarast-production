@@ -102,21 +102,24 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
   assert.deepEqual(await service.listReviewedProviderIds(tx, 'user-1'), ['provider-1']);
   await service.deleteUserReviewsInTransaction(tx, 'user-1');
   assert.deepEqual(await service.lockOwnedQuoteRequestIdsForUpdateInTransaction(tx, {
-    userId: 'user-1', weddingPlanIds: ['plan-1'], providerIds: [], conversationIds: ['conversation-1'],
+    userId: 'user-1', weddingPlanIds: ['plan-1'], conversationIds: ['conversation-1'],
   }), ['row-1']);
   await service.deleteQuoteRequestsInTransaction(tx, ['quote-1']);
   await service.deleteQuoteRequestsInTransaction(tx, []);
   await service.deletePlanProviderLinksInTransaction(tx, ['plan-1']);
-  await service.deleteProvidersInTransaction(tx, ['provider-1']);
-  await service.deleteProvidersInTransaction(tx, []);
+  // RA-BE-178: the listing row is emptied, not deleted (its own test is in
+  // erasure-keeps-others-records.test.ts); with no listing nothing runs.
+  await service.eraseProvidersInTransaction(tx, [], new Date());
   await service.deleteUserFavoritesInTransaction(tx, 'user-1');
   // D112 (Q-22), RA-BE-131: the account's own requests go with it only
   // outside any plan or inside a plan it owns. One it sent from inside
   // another person's plan is that plan's and is handed to its owner (the
   // test below); it was selected here by `"userId" = ?` alone and its
-  // confirmed booking went with it.
+  // confirmed booking went with it. RA-BE-178: and the requests his
+  // listings' customers sent him are theirs; `"providerId" = ANY(?)` took
+  // them, with their offers and bookings.
   assert.deepEqual(statements, [
-    'SELECT "id" FROM "QuoteRequest" WHERE ("userId" = ? AND ("weddingPlanId" IS NULL OR "weddingPlanId" = ANY(?::text[]))) OR "weddingPlanId" = ANY(?::text[]) OR "providerId" = ANY(?::text[]) OR "conversationId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
+    'SELECT "id" FROM "QuoteRequest" WHERE ("userId" = ? AND ("weddingPlanId" IS NULL OR "weddingPlanId" = ANY(?::text[]))) OR "weddingPlanId" = ANY(?::text[]) OR "conversationId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
   ]);
   assert.deepEqual(calls, [
     ['provider.findMany', { where: { userId: 'user-1' }, orderBy: { id: 'asc' }, select: { id: true } }],
@@ -124,10 +127,9 @@ test('marketplace lists, locks and deletes its rows in the account scope', async
     // RA-ST-05: the reports this account made go with it.
     ['reviewReport.deleteMany', { where: { reporterUserId: 'user-1' } }],
     ['providerReview.deleteMany', { where: { userId: 'user-1' } }],
-    ['$queryRaw', ['user-1', ['plan-1'], ['plan-1'], [], ['conversation-1']]],
+    ['$queryRaw', ['user-1', ['plan-1'], ['plan-1'], ['conversation-1']]],
     ['quoteRequest.deleteMany', { where: { id: { in: ['quote-1'] } } }],
     ['planProviderLink.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
-    ['provider.deleteMany', { where: { id: { in: ['provider-1'] } } }],
     ['favoriteProvider.deleteMany', { where: { userId: 'user-1' } }],
   ]);
 });
@@ -152,12 +154,13 @@ test('Q-22: marketplace hands the requests of another person\'s plan to its owne
   const service = new MarketplaceErasureService();
 
   await service.lockMemberPlanQuoteRequestsForUpdateInTransaction(tx, {
-    userId: 'user-1', weddingPlanIds: ['own-plan'], providerIds: ['own-provider'], conversationIds: ['own-thread'],
+    userId: 'user-1', weddingPlanIds: ['own-plan'], conversationIds: ['own-thread'],
   });
   // The requests the lock above leaves: his, inside a plan that is not
-  // his, to a listing and in a thread that stay.
+  // his, in a thread that stays (RA-BE-178: whatever the listing, which
+  // stays too).
   assert.deepEqual(statements, [
-    'SELECT "id", "weddingPlanId" FROM "QuoteRequest" WHERE "userId" = ? AND "weddingPlanId" IS NOT NULL AND NOT ("weddingPlanId" = ANY(?::text[])) AND NOT ("providerId" = ANY(?::text[])) AND ("conversationId" IS NULL OR NOT ("conversationId" = ANY(?::text[]))) ORDER BY "id" ASC FOR UPDATE',
+    'SELECT "id", "weddingPlanId" FROM "QuoteRequest" WHERE "userId" = ? AND "weddingPlanId" IS NOT NULL AND NOT ("weddingPlanId" = ANY(?::text[])) AND ("conversationId" IS NULL OR NOT ("conversationId" = ANY(?::text[]))) ORDER BY "id" ASC FOR UPDATE',
   ]);
   calls.length = 0;
 
@@ -220,7 +223,7 @@ test('messaging locks the owned conversations, lists their attachments, deletes 
   const { tx, calls, statements } = recorder();
   const service = new MessagingErasureService();
   assert.deepEqual(await service.lockOwnedConversationIdsForUpdateInTransaction(tx, {
-    userId: 'user-1', weddingPlanIds: [], providerIds: ['provider-1'],
+    userId: 'user-1', weddingPlanIds: [],
   }), ['row-1']);
   assert.deepEqual(await service.listAttachmentIdsForConversations(tx, ['conversation-1']), ['attachment-1']);
   assert.deepEqual(await service.listAttachmentIdsForConversations(tx, []), []);
@@ -228,14 +231,16 @@ test('messaging locks the owned conversations, lists their attachments, deletes 
   await service.deleteConversationsInTransaction(tx, []);
   await service.eraseUserParticipationInTransaction(tx, 'user-1');
   assert.deepEqual(statements, [
-    'SELECT "id" FROM "Conversation" WHERE "accountRequesterUserId" = ? OR "weddingPlanId" = ANY(?::text[]) OR "providerId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
+    // RA-BE-178: a provider's conversations are his customers' too.
+    'SELECT "id" FROM "Conversation" WHERE "accountRequesterUserId" = ? OR "weddingPlanId" = ANY(?::text[]) ORDER BY "id" ASC FOR UPDATE',
   ]);
   assert.deepEqual(calls.map(([name]) => name), [
     '$queryRaw',
     'chatAttachment.findMany',
     'conversation.deleteMany',
     'conversationParticipant.deleteMany',
-    'chatMessage.deleteMany',
+    // RA-BE-178: the messages stay, with no author.
+    'chatMessage.updateMany',
     'conversationReport.deleteMany',
     'conversationEvent.updateMany',
     'conversation.updateMany',

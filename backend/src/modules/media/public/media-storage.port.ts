@@ -173,5 +173,13 @@ export interface MediaStoragePort {
     receiptIds: readonly string[],
     transaction: Prisma.TransactionClient,
   ): Promise<void>;
+  /**
+   * RA-BE-178: the verified tickets consumed by these plans' invitation
+   * cards become deletion jobs, before guests deletes the cards.
+   */
+  scheduleInvitationCardDeletion(
+    cardIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void>;
   checkReadiness(): Promise<void>;
 }

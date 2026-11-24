@@ -1314,7 +1314,8 @@ export class ConversationsService {
 
   private async toMessageResponse<
     T extends {
-      sender?: ApplicationAvatarSource & { id: string };
+      // RA-BE-178: null when the sender's account was erased.
+      sender?: (ApplicationAvatarSource & { id: string }) | null;
       attachments: Array<{
         id: string;
         storageKey: string;

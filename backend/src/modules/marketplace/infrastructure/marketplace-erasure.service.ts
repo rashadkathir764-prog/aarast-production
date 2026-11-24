@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, Prisma, QuoteRequestStatus } from '@prisma/client';
+import {
+  BookingStatus,
+  Prisma,
+  ProviderStatus,
+  QuoteOfferStatus,
+  QuoteRequestStatus,
+} from '@prisma/client';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import {
   customerClosedProviderNotification,
@@ -11,6 +17,9 @@ import type {
   OwnedQuoteRequestScope,
   QuoteRequestHeir,
 } from '../public/marketplace-erasure.port';
+
+/** RA-BE-178: what an erased provider is called wherever his customers read him. */
+export const ERASED_PROVIDER_NAME = 'مزود محذوف';
 
 @Injectable()
 export class MarketplaceErasureService implements MarketplaceErasurePort {
@@ -90,7 +99,9 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
           // D112 (Q-22): a request the account sent from inside another
           // person's plan stays that plan's and is not closed, so its
           // provider is not told the customer left.
-          { userId: scope.userId, weddingPlanId: null },
+          ...(scope.userId !== null
+            ? [{ userId: scope.userId, weddingPlanId: null }]
+            : []),
           ...(scope.weddingPlanIds.length > 0
             ? [{ weddingPlanId: { in: [...scope.weddingPlanIds] } }]
             : []),
@@ -194,9 +205,10 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     scope: OwnedQuoteRequestScope,
   ): Promise<string[]> {
-    // An empty id list is an empty `ANY`, i.e. that predicate matches nothing.
+    // An empty id list is an empty `ANY`, and a null account an unknown
+    // `=`: that predicate matches nothing. RA-BE-178: the requests sent to
+    // the account's listings stay with the customers who sent them.
     const weddingPlanIds = [...scope.weddingPlanIds];
-    const providerIds = [...scope.providerIds];
     const conversationIds = [...scope.conversationIds];
     const quoteRequests = await tx.$queryRaw<Array<{ id: string }>>(
       Prisma.sql`
@@ -206,7 +218,6 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
                AND ("weddingPlanId" IS NULL
                     OR "weddingPlanId" = ANY(${weddingPlanIds}::text[])))
            OR "weddingPlanId" = ANY(${weddingPlanIds}::text[])
-           OR "providerId" = ANY(${providerIds}::text[])
            OR "conversationId" = ANY(${conversationIds}::text[])
         ORDER BY "id" ASC
         FOR UPDATE
@@ -217,13 +228,12 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
 
   async lockMemberPlanQuoteRequestsForUpdateInTransaction(
     tx: Prisma.TransactionClient,
-    scope: OwnedQuoteRequestScope,
+    scope: OwnedQuoteRequestScope & { userId: string },
   ): Promise<Array<{ weddingPlanId: string; quoteRequestIds: string[] }>> {
     const weddingPlanIds = [...scope.weddingPlanIds];
-    const providerIds = [...scope.providerIds];
     const conversationIds = [...scope.conversationIds];
     // Exactly the account's requests the lock above leaves out: sent from a
-    // plan it does not own, to a listing and in a thread that stay.
+    // plan it does not own, in a thread that stays.
     const rows = await tx.$queryRaw<Array<{ id: string; weddingPlanId: string }>>(
       Prisma.sql`
         SELECT "id", "weddingPlanId"
@@ -231,7 +241,6 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
         WHERE "userId" = ${scope.userId}
           AND "weddingPlanId" IS NOT NULL
           AND NOT ("weddingPlanId" = ANY(${weddingPlanIds}::text[]))
-          AND NOT ("providerId" = ANY(${providerIds}::text[]))
           AND ("conversationId" IS NULL
                OR NOT ("conversationId" = ANY(${conversationIds}::text[])))
         ORDER BY "id" ASC
@@ -303,12 +312,75 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     });
   }
 
-  async deleteProvidersInTransaction(
+  async eraseProvidersInTransaction(
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],
+    erasedAt: Date,
   ): Promise<void> {
     if (providerIds.length === 0) return;
-    await tx.provider.deleteMany({ where: { id: { in: [...providerIds] } } });
+    const ofProviders = { providerId: { in: [...providerIds] } };
+    // What was open ends, as when a listing is suspended (B-42, B-04).
+    await tx.quoteRequest.updateMany({
+      where: {
+        ...ofProviders,
+        status: {
+          in: [
+            QuoteRequestStatus.SENT,
+            QuoteRequestStatus.VIEWED,
+            QuoteRequestStatus.RESPONDED,
+          ],
+        },
+      },
+      data: { status: QuoteRequestStatus.EXPIRED, expiredAt: erasedAt },
+    });
+    await tx.quoteOffer.updateMany({
+      where: { ...ofProviders, status: QuoteOfferStatus.PENDING },
+      data: {
+        status: QuoteOfferStatus.WITHDRAWN,
+        withdrawnAt: erasedAt,
+        withdrawnReason: null,
+      },
+    });
+    await tx.booking.updateMany({
+      where: { ...ofProviders, status: BookingStatus.REQUESTED },
+      data: { status: BookingStatus.EXPIRED, expiredAt: erasedAt },
+    });
+    // The listing's own data. A request keeps its service as none (SetNull).
+    await tx.providerService.deleteMany({ where: ofProviders });
+    await tx.providerPackage.deleteMany({ where: ofProviders });
+    await tx.portfolioItem.deleteMany({ where: ofProviders });
+    await tx.favoriteProvider.deleteMany({ where: ofProviders });
+    await tx.providerReview.deleteMany({ where: ofProviders });
+    await tx.providerBlockedDate.deleteMany({ where: ofProviders });
+    await tx.providerProfileViewDay.deleteMany({ where: ofProviders });
+    await tx.providerFeaturedPeriod.deleteMany({ where: ofProviders });
+    await tx.providerClaimRequest.deleteMany({ where: ofProviders });
+    await tx.providerReviewEvent.deleteMany({ where: ofProviders });
+    await tx.provider.updateMany({
+      where: { id: { in: [...providerIds] } },
+      data: {
+        businessName: ERASED_PROVIDER_NAME,
+        ownerName: null,
+        phone: '',
+        whatsapp: null,
+        email: null,
+        description: null,
+        address: null,
+        latitude: null,
+        longitude: null,
+        logoUrl: null,
+        coverUrl: null,
+        logoThumbUrl: null,
+        logoMediumUrl: null,
+        coverThumbUrl: null,
+        coverMediumUrl: null,
+        socialLinks: Prisma.DbNull,
+        ratingAverage: 0,
+        ratingCount: 0,
+        status: ProviderStatus.SUSPENDED,
+        erasedAt,
+      },
+    });
   }
 
   async deleteUserFavoritesInTransaction(

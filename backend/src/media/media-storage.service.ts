@@ -290,6 +290,17 @@ export class MediaStorageService implements MediaStoragePort {
     );
   }
 
+  scheduleInvitationCardDeletion(
+    cardIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.tickets.scheduleConsumerDeletion(
+      transaction,
+      'GUEST_INVITATION_CARD',
+      cardIds,
+    );
+  }
+
   async deleteScheduledObjects(
     keys: string[],
   ): Promise<{ deleted: number; failed: number }> {

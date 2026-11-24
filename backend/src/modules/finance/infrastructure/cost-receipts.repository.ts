@@ -84,17 +84,15 @@ export async function listPrivateCostReceiptIds(
   return receipts.map((receipt) => receipt.id);
 }
 
-/** Account erasure: receipts the account uploaded, in any plan. */
-export async function listReceiptIdsUploadedBy(
-  client: Client,
-  userId: string,
-): Promise<string[]> {
-  const receipts = await client.costReceipt.findMany({
+/**
+ * RA-BE-178 (D112): a receipt an erased account uploaded on a cost that
+ * stays is the cost's; it stays, and its uploader is no one («عضو سابق»).
+ */
+export function detachReceiptUploader(client: Client, userId: string) {
+  return client.costReceipt.updateMany({
     where: { uploadedByUserId: userId },
-    select: { id: true },
-    orderBy: { id: 'asc' },
+    data: { uploadedByUserId: null },
   });
-  return receipts.map((receipt) => receipt.id);
 }
 
 export function deleteReceipts(client: Client, ids: readonly string[]) {

@@ -65,6 +65,19 @@ export class GuestsPortService implements GuestsPort {
     return countPlanGuests(client, weddingPlanId);
   }
 
+  async listPlanInvitationCardIds(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<string[]> {
+    if (weddingPlanIds.length === 0) return [];
+    const cards = await client.guestInvitationCard.findMany({
+      where: { weddingPlanId: { in: [...weddingPlanIds] } },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+    return cards.map((card) => card.id);
+  }
+
   async deletePlanGuestsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],

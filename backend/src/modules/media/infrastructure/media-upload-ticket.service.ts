@@ -18,6 +18,17 @@ export interface MediaUploadVerificationClaim {
   alreadyVerified: boolean;
 }
 
+/**
+ * RA-BE-178: media that belongs to what it was put in (a cost's receipt, a
+ * message's attachment, a plan's invitation card), not to whoever uploaded
+ * it; scheduled for deletion only with its consumer.
+ */
+export const CONSUMER_OWNED_MEDIA = [
+  'CHAT_ATTACHMENT',
+  'COST_RECEIPT',
+  'GUEST_INVITATION_CARD',
+] as const;
+
 @Injectable()
 export class MediaUploadTicketService {
   static readonly uploadUrlExpiresInSeconds = 300;
@@ -232,7 +243,19 @@ export class MediaUploadTicketService {
     await this.lockAccount(transaction, userId);
     return this.scheduleOwnedDeletion(
       userId,
-      { userId, status: { not: MediaUploadStatus.DELETED } },
+      {
+        userId,
+        status: { not: MediaUploadStatus.DELETED },
+        // RA-BE-178 (D112): a receipt, a chat attachment or an invitation
+        // card the account uploaded belongs to the cost, the message or the
+        // plan it was put in, and goes only when that goes (the erasure
+        // schedules those of what it erases). The ticket's link to the
+        // account goes with the account (SetNull).
+        OR: [
+          { consumedByType: null },
+          { consumedByType: { notIn: [...CONSUMER_OWNED_MEDIA] } },
+        ],
+      },
       transaction,
     );
   }
@@ -270,7 +293,7 @@ export class MediaUploadTicketService {
   /** The verified tickets these consumers hold become deletion jobs. */
   async scheduleConsumerDeletion(
     transaction: Prisma.TransactionClient,
-    consumedByType: 'CHAT_ATTACHMENT' | 'COST_RECEIPT',
+    consumedByType: (typeof CONSUMER_OWNED_MEDIA)[number],
     consumerIds: readonly string[],
   ): Promise<void> {
     if (consumerIds.length === 0) return;
@@ -293,6 +316,10 @@ export class MediaUploadTicketService {
       userId: string;
       status: { not: MediaUploadStatus };
       NOT?: { consumedByType: string };
+      OR?: Array<
+        | { consumedByType: null }
+        | { consumedByType: { notIn: string[] } }
+      >;
     },
     transaction: Prisma.TransactionClient,
   ): Promise<string[]> {

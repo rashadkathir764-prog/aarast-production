@@ -162,8 +162,10 @@ function recordingTx(
     provider: {
       findMany: async () =>
         [...(graph.providerIds ?? [])].sort().map((id) => ({ id })),
-      updateMany: async () => {
-        calls.push("refreshProviderRating");
+      updateMany: async ({ data }: any) => {
+        // RA-BE-178: an erased listing is emptied, not deleted.
+        calls.push(data.erasedAt ? "provider.erase" : "refreshProviderRating");
+        if (data.erasedAt) tx.erasedProvider = data;
         return { count: 1 };
       },
       ...del("provider"),
@@ -334,6 +336,33 @@ function recordingTx(
       calls.push("costReceipt");
       return { count: 0 };
     },
+    // RA-BE-178 (D112): his receipts on others' costs stay, with no uploader.
+    updateMany: async ({ where, data }: any) => {
+      calls.push("costReceipt.detachUploader");
+      assert.deepEqual(where, { uploadedByUserId: "u1" });
+      assert.deepEqual(data, { uploadedByUserId: null });
+      return { count: 0 };
+    },
+  };
+  // RA-BE-178: the erased plans' invitation cards, whose pictures go too.
+  tx.guestInvitationCard.findMany = async () => [];
+  // RA-BE-178: an erased listing's own data goes; the row stays.
+  for (const model of [
+    "providerService",
+    "providerPackage",
+    "portfolioItem",
+    "providerBlockedDate",
+    "providerProfileViewDay",
+    "providerFeaturedPeriod",
+    "providerReviewEvent",
+  ]) {
+    tx[model] = del(model);
+  }
+  tx.quoteOffer = {
+    updateMany: async ({ data }: any) => {
+      calls.push(`quoteOffer.${data.status}`);
+      return { count: 0 };
+    },
   };
   tx.weddingTask.updateMany = async () => {
     calls.push("weddingTask.unassign");
@@ -343,8 +372,9 @@ function recordingTx(
     calls.push("planInvite.detachInvitee");
     return { count: 1 };
   };
-  tx.conversation.updateMany = async () => {
-    calls.push("conversation.detachActor");
+  tx.conversation.updateMany = async ({ data }: any) => {
+    // RA-BE-178: an erased provider's conversations close; others detach.
+    calls.push(data.closedAt ? "conversation.close" : "conversation.detachActor");
     return { count: 1 };
   };
   for (const model of [
@@ -357,6 +387,12 @@ function recordingTx(
   ]) {
     tx[model] = del(model);
   }
+  // RA-BE-178: the messages stay, with no author.
+  tx.chatMessage.updateMany = async ({ data }: any) => {
+    assert.deepEqual(data, { senderUserId: null });
+    calls.push("chatMessage.detachSender");
+    return { count: 1 };
+  };
   tx.conversationEvent = {
     updateMany: async () => {
       calls.push("conversationEvent.detachActor");
@@ -379,6 +415,11 @@ function recordingTx(
       phone: `+9677${id.replace(/\D/gu, "").padStart(8, "0")}`,
     }));
   tx.quoteRequest.updateMany = async ({ where, data }: any) => {
+    // RA-BE-178: what is open with an erased provider expires.
+    if (data.status) {
+      calls.push(`quoteRequest.${data.status}`);
+      return { count: 0 };
+    }
     calls.push("quoteRequest.handOver");
     assert.equal(where.userId, "u1");
     handedOver.push({ ids: where.id.in, data });
@@ -387,6 +428,10 @@ function recordingTx(
   tx.booking = {
     ...(tx.booking ?? {}),
     updateMany: async ({ data }: any) => {
+      if (data.status) {
+        calls.push(`booking.${data.status}`);
+        return { count: 0 };
+      }
       calls.push("booking.handOver");
       assert.equal(typeof data.requestedByUserId, "string");
       return { count: 1 };
@@ -461,6 +506,8 @@ test("application account deletion erases only the administrator's application i
   assert.equal(adminMediaDeletes, 1);
   assert.equal(calls.includes("user.delete"), false);
   assert.ok(calls.includes("user.clearApplicationIdentity"));
+  assert.ok(calls.includes("chatMessage.detachSender"));
+  assert.equal(calls.includes("chatMessage"), false, "his messages are not deleted");
   assert.ok(calls.includes("refreshToken.APPLICATION"));
   assert.ok(calls.includes("otpCode.APPLICATION"));
   assert.ok(calls.includes("idempotencyKey.APPLICATION"));
@@ -640,22 +687,36 @@ test("account deletion disconnects live realtime sessions only after commit", as
   assert.deepEqual(disconnected, ["u1"]);
 });
 
-test("deleting a provider account purges its quote conversations without touching customer plans", async () => {
-  const { tx, calls } = recordingTx([], {
+// RA-BE-178: this test pinned the opposite («purges its quote
+// conversations»): the listing was deleted, and its customers'
+// conversations, requests, offers and bookings with it, leaving their
+// agreements with no offer. They are the customers' records; the listing
+// stays as «مزود محذوف», emptied of its own data, and they read them.
+test("RA-BE-178: deleting a provider account keeps its customers' conversations, requests and offers", async () => {
+  const { tx, calls, queries } = recordingTx([], {
     providerIds: ["provider-owned"],
-    conversationIds: [
-      "customer-plan-conversation-2",
-      "customer-plan-conversation-1",
-    ],
-    quoteRequestIds: ["customer-quote-2", "customer-quote-1"],
+    // His own conversation as a customer goes; his customers' are not asked for.
+    conversationIds: ["own-account-conversation"],
+    quoteRequestIds: ["own-quote"],
   });
   const svc = serviceFor(tx);
 
   await svc.eraseDueAccount("u1", NOW);
 
   const at = (name: string) => calls.indexOf(name);
-  assert.ok(at("quoteRequest") < at("conversation"));
-  assert.ok(at("conversation") < at("provider"));
+  for (const lock of ['FROM "Conversation"', 'FROM "QuoteRequest"']) {
+    for (const query of queries.filter((entry) => entry.text.includes(lock))) {
+      assert.doesNotMatch(query.text, /"providerId"/u, `${lock} leaves his customers' rows`);
+    }
+  }
+  assert.equal(calls.includes("provider"), false, "the listing row stays");
+  assert.ok(at("conversation.close") >= 0, "his customers' conversations close");
+  assert.ok(at("quoteRequest.EXPIRED") >= 0);
+  assert.ok(at("quoteOffer.WITHDRAWN") >= 0);
+  assert.ok(at("booking.EXPIRED") >= 0);
+  assert.ok(at("provider.erase") >= 0 && at("provider.erase") < at("user.delete"));
+  assert.equal(tx.erasedProvider.businessName, "مزود محذوف");
+  assert.equal(tx.erasedProvider.phone, "");
   assert.equal(calls.includes("weddingPlan"), false);
   for (const child of PLAN_CHILDREN) assert.equal(calls.includes(child), false);
   assert.equal(calls[calls.length - 1], "user.delete");

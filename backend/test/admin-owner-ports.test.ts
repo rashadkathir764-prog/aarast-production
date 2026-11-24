@@ -232,6 +232,8 @@ test('marketplace filters providers by its own columns and the accounts identity
   const where = {
     AND: [
       { status: { in: [ProviderStatus.PENDING, ProviderStatus.NEEDS_CHANGES] } },
+      // RA-BE-178: an erased listing stays for its customers, not the back office.
+      { erasedAt: null },
       // B-01: the «أُعيد إرسالها» queue narrows the profiles waiting for
       // review, whatever statuses the page asked for.
       { status: { in: [ProviderStatus.PENDING] } },

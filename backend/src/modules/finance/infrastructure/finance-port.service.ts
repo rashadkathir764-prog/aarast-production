@@ -36,7 +36,7 @@ import {
   deleteReceipts,
   listPlanReceiptIds,
   listPrivateCostReceiptIds,
-  listReceiptIdsUploadedBy,
+  detachReceiptUploader,
 } from './cost-receipts.repository';
 import { type MoneyPicture, type MoneyPictureQuery, readMoneyPicture } from './money-picture';
 import type {
@@ -97,14 +97,20 @@ export class FinancePortService implements FinancePort {
   async listErasedReceiptIdsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
-    userId: string,
+    userId: string | null,
   ): Promise<string[]> {
-    const [inPlans, uploaded, onPrivateCosts] = await Promise.all([
+    const [inPlans, onPrivateCosts] = await Promise.all([
       listPlanReceiptIds(tx, weddingPlanIds),
-      listReceiptIdsUploadedBy(tx, userId),
-      listPrivateCostReceiptIds(tx, userId),
+      userId === null ? [] : listPrivateCostReceiptIds(tx, userId),
     ]);
-    return [...new Set([...inPlans, ...uploaded, ...onPrivateCosts])].sort();
+    return [...new Set([...inPlans, ...onPrivateCosts])].sort();
+  }
+
+  async detachReceiptUploaderInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    await detachReceiptUploader(tx, userId);
   }
 
   async lockPrivateCostsForUpdateInTransaction(

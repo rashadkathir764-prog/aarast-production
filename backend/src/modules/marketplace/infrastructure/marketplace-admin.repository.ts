@@ -94,6 +94,7 @@ interface FoldedMatch {
 
 type ProviderAdminCondition =
   | { status: { in: ProviderStatus[] } }
+  | { erasedAt: null }
   | { resubmittedAt: { not: null } | null }
   | { cityId: string }
   | {
@@ -252,6 +253,9 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
   ): Promise<AdminListing<AdminProviderRow>> {
     const and: ProviderAdminCondition[] = [
       { status: { in: [...filter.statuses] } },
+      // RA-BE-178: an erased listing is a tombstone its customers read; the
+      // back office has nothing left to review or act on in it.
+      { erasedAt: null },
     ];
     // «أُعيد إرسالها» (B-01) narrows the profiles waiting for review: the
     // ones sent back after changes, or the others.
@@ -302,10 +306,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     providerId: string,
   ): Promise<AdminProviderDetailRow | null> {
-    return client.provider.findUnique({
+    const provider = await client.provider.findUnique({
       where: { id: providerId },
       include: providerDetailInclude,
     });
+    // RA-BE-178: an erased listing is not the back office's to read or act on.
+    return provider?.erasedAt ? null : provider;
   }
 
   async getAccountProviders(
@@ -322,10 +328,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     providerId: string,
   ): Promise<{ userId: string | null } | null> {
-    return client.provider.findUnique({
+    const provider = await client.provider.findUnique({
       where: { id: providerId },
-      select: { userId: true },
+      select: { userId: true, erasedAt: true },
     });
+    // RA-BE-178: an erased listing is not the back office's to read or act on.
+    return provider && !provider.erasedAt ? { userId: provider.userId } : null;
   }
 
   async lockProviderForUpdateInTransaction(

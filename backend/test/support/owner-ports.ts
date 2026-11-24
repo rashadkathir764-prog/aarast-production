@@ -98,6 +98,9 @@ export function mediaStorageWithOwners<T extends object>(fake: T) {
     // V1 checklist 4.4: the erased plans' receipt files.
     scheduleCostReceiptDeletion: (receiptIds: readonly string[], transaction: unknown) =>
       realMediaStorage.scheduleCostReceiptDeletion(receiptIds, transaction as any),
+    // RA-BE-178: the erased plans' invitation card pictures.
+    scheduleInvitationCardDeletion: (cardIds: readonly string[], transaction: unknown) =>
+      realMediaStorage.scheduleInvitationCardDeletion(cardIds, transaction as any),
     ...fake,
   };
 }

@@ -450,10 +450,12 @@ export class UsersService {
         // (as a partner) are its own data and go with it.
         await this.finance.lockPrivateCostsForUpdateInTransaction(tx, userId);
 
+        // RA-BE-178: the conversations, requests, offers and bookings of his
+        // listings' customers are theirs; they stay with the listing below.
         const conversationIds =
           await this.messagingErasure.lockOwnedConversationIdsForUpdateInTransaction(
             tx,
-            { userId, weddingPlanIds: planIds, providerIds },
+            { userId, weddingPlanIds: planIds },
           );
 
         const quoteRequestIds =
@@ -462,7 +464,6 @@ export class UsersService {
             {
               userId,
               weddingPlanIds: planIds,
-              providerIds,
               conversationIds,
             },
           );
@@ -480,7 +481,6 @@ export class UsersService {
             {
               userId,
               weddingPlanIds: planIds,
-              providerIds,
               conversationIds,
             },
           );
@@ -557,8 +557,9 @@ export class UsersService {
           attachmentIds,
           tx,
         );
-        // Receipts (V1 checklist 4.4): those of the erased plans, and those
-        // this account uploaded into other plans, go with their files.
+        // Receipts (V1 checklist 4.4): those of the erased plans and of the
+        // account's private costs go with their files. RA-BE-178 (D112): one
+        // it uploaded on another person's cost stays, from «عضو سابق».
         const receiptIds = await this.finance.listErasedReceiptIdsInTransaction(
           tx,
           planIds,
@@ -566,6 +567,11 @@ export class UsersService {
         );
         await this.mediaStorage.scheduleCostReceiptDeletion(receiptIds, tx);
         await this.finance.deleteReceiptsInTransaction(tx, receiptIds);
+        await this.finance.detachReceiptUploaderInTransaction(tx, userId);
+        await this.mediaStorage.scheduleInvitationCardDeletion(
+          await this.guests.listPlanInvitationCardIds(tx, planIds),
+          tx,
+        );
 
         const notificationIds =
           await this.notificationsErasure.listOwnedNotificationIds(tx, {
@@ -635,12 +641,18 @@ export class UsersService {
           await this.planErasure.deletePlansInTransaction(tx, planIds);
         }
 
-        // A provider profile would otherwise be orphaned (owner SetNull). Its
-        // customer requests/conversations were purged above; other owners'
-        // plans and costs remain through the existing SetNull relations.
-        await this.marketplaceErasure.deleteProvidersInTransaction(
+        // RA-BE-178: his listings stay as «مزود محذوف», emptied of their own
+        // data, so their customers keep their conversations (closed),
+        // offers, bookings and the agreements made from them.
+        await this.messagingErasure.closeProviderConversationsInTransaction(
           tx,
           providerIds,
+          now,
+        );
+        await this.marketplaceErasure.eraseProvidersInTransaction(
+          tx,
+          providerIds,
+          now,
         );
         // B-33 and D63: written after the notification purge above.
         for (const notice of notices) {

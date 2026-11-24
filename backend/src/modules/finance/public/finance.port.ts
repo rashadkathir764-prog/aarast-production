@@ -313,15 +313,25 @@ export interface FinancePort {
     userId: string,
   ): Promise<void>;
   /**
-   * Account erasure (V1 checklist 4.4): the receipts of the plans' costs, of
-   * the account's private costs, and the receipts the account uploaded in any
-   * plan, so their files can be scheduled for deletion before the rows go.
+   * Account and plan erasure (V1 checklist 4.4): the receipts of the plans'
+   * costs and of the account's private costs (none for a null account), so
+   * their files can be scheduled for deletion before the rows go. RA-BE-178
+   * (D112): a receipt the account uploaded on another person's cost is that
+   * cost's and stays; see `detachReceiptUploaderInTransaction`.
    */
   listErasedReceiptIdsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
-    userId: string,
+    userId: string | null,
   ): Promise<string[]>;
+  /**
+   * RA-BE-178 (D112): the receipts an erased account uploaded on other
+   * people's costs stay with no uploader («عضو سابق»).
+   */
+  detachReceiptUploaderInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void>;
   deleteReceiptsInTransaction(
     tx: Prisma.TransactionClient,
     receiptIds: readonly string[],

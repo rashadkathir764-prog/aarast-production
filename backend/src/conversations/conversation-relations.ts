@@ -67,7 +67,8 @@ export interface ConversationPlan {
 }
 
 export type MessageWithSender = ChatMessage & {
-  sender: AppIdentity;
+  /** RA-BE-178: null once the sender's account is erased; the message stays. */
+  sender: AppIdentity | null;
   attachments: ChatAttachment[];
 };
 
@@ -180,7 +181,9 @@ export class ConversationRelationsService {
       ...[...providers.values()].flatMap((provider) => (provider.userId ? [provider.userId] : [])),
       ...rows.flatMap((row) => (row.accountRequesterUserId ? [row.accountRequesterUserId] : [])),
       ...rows.flatMap((row) => row.participants.map((participant) => participant.userId)),
-      ...rows.flatMap((row) => row.messages.map((message) => message.senderUserId)),
+      ...rows.flatMap((row) =>
+        row.messages.flatMap((message) => (message.senderUserId ? [message.senderUserId] : [])),
+      ),
       ...[...latestQuotes.values()].map((quote) => quote.userId),
     ]);
     return rows.map((row) => {
@@ -219,7 +222,7 @@ export class ConversationRelationsService {
         requesterUserIds: requestersByConversation.get(row.id) ?? [],
         messages: row.messages.map((message) => ({
           ...message,
-          sender: required(users.get(message.senderUserId), 'Message sender'),
+          sender: senderOf(users, message.senderUserId),
         })),
         _count: { quoteRequests: quoteCounts.get(row.id) ?? 0 },
       };
@@ -229,11 +232,14 @@ export class ConversationRelationsService {
   async attachMessageSenders<T extends ChatMessage & { attachments: ChatAttachment[] }>(
     client: Prisma.TransactionClient,
     messages: T[],
-  ): Promise<Array<T & { sender: AppIdentity }>> {
-    const users = await this.identitiesFor(client, messages.map((message) => message.senderUserId));
+  ): Promise<Array<T & { sender: AppIdentity | null }>> {
+    const users = await this.identitiesFor(
+      client,
+      messages.flatMap((message) => (message.senderUserId ? [message.senderUserId] : [])),
+    );
     return messages.map((message) => ({
       ...message,
-      sender: required(users.get(message.senderUserId), 'Message sender'),
+      sender: senderOf(users, message.senderUserId),
     }));
   }
 
@@ -295,4 +301,12 @@ function required<T>(value: T | undefined, label: string): T {
   // owner's row disappeared between the two statements.
   if (value === undefined) throw new Error(`${label} not found`);
   return value;
+}
+
+/** RA-BE-178: a message whose sender's account was erased has no sender. */
+function senderOf(
+  users: ReadonlyMap<string, AppIdentity>,
+  senderUserId: string | null,
+): AppIdentity | null {
+  return senderUserId === null ? null : required(users.get(senderUserId), 'Message sender');
 }

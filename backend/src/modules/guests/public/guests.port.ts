@@ -65,6 +65,11 @@ export interface GuestsPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<number>;
+  /** Account and plan erasure: the plans' invitation cards, whose pictures go with them. */
+  listPlanInvitationCardIds(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<string[]>;
   /** Account erasure: deletes the plans' guests, then their guest groups. */
   deletePlanGuestsInTransaction(
     tx: Prisma.TransactionClient,

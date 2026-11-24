@@ -3,10 +3,15 @@ import type { CreateNotificationInput } from '../../notifications/public/notific
 
 export const MARKETPLACE_ERASURE_PORT = Symbol('MARKETPLACE_ERASURE_PORT');
 
+/**
+ * The requests that go: the account's own (`userId`; null when only plans
+ * are purged), every request of the plans that go, and every request in the
+ * conversations that go. RA-BE-178: the requests customers sent to the
+ * account's listings are theirs and are not in it.
+ */
 export interface OwnedQuoteRequestScope {
-  userId: string;
+  userId: string | null;
   weddingPlanIds: readonly string[];
-  providerIds: readonly string[];
   conversationIds: readonly string[];
 }
 
@@ -50,7 +55,7 @@ export interface MarketplaceErasurePort {
    */
   closedCustomerNoticesInTransaction(
     tx: Prisma.TransactionClient,
-    scope: { userId: string; weddingPlanIds: readonly string[] },
+    scope: { userId: string | null; weddingPlanIds: readonly string[] },
     customerName: string | null,
     closedAt: Date,
   ): Promise<CreateNotificationInput[]>;
@@ -94,7 +99,7 @@ export interface MarketplaceErasurePort {
    */
   lockMemberPlanQuoteRequestsForUpdateInTransaction(
     tx: Prisma.TransactionClient,
-    scope: OwnedQuoteRequestScope,
+    scope: OwnedQuoteRequestScope & { userId: string },
   ): Promise<Array<{ weddingPlanId: string; quoteRequestIds: string[] }>>;
   /**
    * D112 (Q-22): hands those requests to each plan's owner: the request,
@@ -110,7 +115,7 @@ export interface MarketplaceErasurePort {
   /**
    * Locks (`FOR UPDATE`, ascending) and returns the quote requests in the
    * account's contexts: its own outside any plan or in a plan it owns, and
-   * every request of its plans, its listings and its conversations.
+   * every request of its plans and its conversations.
    */
   lockOwnedQuoteRequestIdsForUpdateInTransaction(
     tx: Prisma.TransactionClient,
@@ -124,9 +129,19 @@ export interface MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void>;
-  deleteProvidersInTransaction(
+  /**
+   * RA-BE-178: the listings of an erased account. Their customers'
+   * conversations, offers, bookings and agreements stay, so the row stays,
+   * shown as «مزود محذوف»: its own data (contact, pictures, services,
+   * packages, works, reviews, days) goes; what was open ends (a request
+   * waiting for an answer expires, a pending offer is withdrawn, a booking
+   * not yet confirmed expires); it leaves the directory and the back
+   * office's lists and takes nothing new.
+   */
+  eraseProvidersInTransaction(
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],
+    erasedAt: Date,
   ): Promise<void>;
   deleteUserFavoritesInTransaction(
     tx: Prisma.TransactionClient,

@@ -389,6 +389,7 @@ class JsonLocalDatabase implements LocalDatabase {
         row['retryCount'] =
             _intOrZero(row['retryCount']) + (spendsAttempt ? 1 : 0);
         row['lastError'] = error;
+        row['lastErrorCode'] = null;
         row['updatedAt'] = now;
       }
     }
@@ -440,6 +441,7 @@ class JsonLocalDatabase implements LocalDatabase {
       row['status'] = SyncQueueItem.queued;
       row['retryCount'] = 0;
       row['lastError'] = null;
+      row['lastErrorCode'] = null;
       row['updatedAt'] = DateTime.now().toIso8601String();
       await _writeList(_tableKey(OfflineTables.syncQueue), rows);
       return true;
@@ -472,13 +474,18 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
-  Future<void> markSyncItemBlocked(String id, String error) async {
+  Future<void> markSyncItemBlocked(
+    String id,
+    String error, {
+    String? code,
+  }) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     final now = DateTime.now().toIso8601String();
     for (final row in rows) {
       if (row['id'] == id) {
         row['status'] = SyncQueueItem.blocked;
         row['lastError'] = error;
+        row['lastErrorCode'] = code;
         row['updatedAt'] = now;
       }
     }
@@ -493,12 +500,15 @@ class JsonLocalDatabase implements LocalDatabase {
     for (final row in rows) {
       if (row['status'] != SyncQueueItem.blocked) continue;
       if (isSyncQueueOwnershipQuarantineError(row['lastError'])) continue;
+      final item = SyncQueueItem.fromRow(row);
+      if (item.refusedAsChangedElsewhere) continue;
       // RA-MO-30: what may be on the server stays marked so.
-      row['status'] = SyncQueueItem.fromRow(row).mayBeOnServer
+      row['status'] = item.mayBeOnServer
           ? SyncQueueItem.failed
           : SyncQueueItem.queued;
       row['retryCount'] = 0;
       row['lastError'] = null;
+      row['lastErrorCode'] = null;
       row['updatedAt'] = now;
       count += 1;
     }

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
+import '../network/api_client.dart' show ApiException;
 import 'local_database_contract.dart';
 import 'local_database_json.dart';
 import 'local_mappers.dart';
@@ -35,7 +36,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 9;
+  static const _databaseVersion = 10;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -94,6 +95,12 @@ class SqliteLocalDatabase implements LocalDatabase {
           final batch = db.batch();
           _createPlanExtrasCacheTables(batch);
           await batch.commit();
+        }
+        if (oldVersion < 10) {
+          await db.execute(
+            'ALTER TABLE ${OfflineTables.syncQueue} '
+            'ADD COLUMN lastErrorCode TEXT',
+          );
         }
       },
     );
@@ -463,6 +470,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'status': SyncQueueItem.failed,
         'retryCount': retryCount,
         'lastError': error,
+        'lastErrorCode': null,
         'updatedAt': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
@@ -510,6 +518,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'status': SyncQueueItem.queued,
         'retryCount': 0,
         'lastError': null,
+        'lastErrorCode': null,
         'updatedAt': DateTime.now().toIso8601String(),
       },
       where:
@@ -555,12 +564,17 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
-  Future<void> markSyncItemBlocked(String id, String error) async {
+  Future<void> markSyncItemBlocked(
+    String id,
+    String error, {
+    String? code,
+  }) async {
     await _db.update(
       OfflineTables.syncQueue,
       {
         'status': SyncQueueItem.blocked,
         'lastError': error,
+        'lastErrorCode': code,
         'updatedAt': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
@@ -584,15 +598,19 @@ class SqliteLocalDatabase implements LocalDatabase {
             'status': status,
             'retryCount': 0,
             'lastError': null,
+            'lastErrorCode': null,
             'updatedAt': DateTime.now().toIso8601String(),
           },
+          // RA-MO-344: a refusal as changed elsewhere is refused again.
           where:
               'status = ? AND $attempts AND '
-              '(lastError IS NULL OR lastError NOT IN (?, ?))',
+              '(lastError IS NULL OR lastError NOT IN (?, ?)) AND '
+              '(lastErrorCode IS NULL OR lastErrorCode != ?)',
           whereArgs: [
             SyncQueueItem.blocked,
             unknownSyncQueuePlanOwnershipError,
             invalidSyncQueuePlanScopeError,
+            ApiException.changedElsewhereCode,
           ],
         );
       }
@@ -755,6 +773,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
   status TEXT NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   lastError TEXT,
+  lastErrorCode TEXT,
   localEntityId TEXT,
   createdAt TEXT NOT NULL,
   updatedAt TEXT NOT NULL

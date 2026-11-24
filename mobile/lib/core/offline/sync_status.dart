@@ -38,6 +38,7 @@ class PendingChangeSummary {
     required this.createdAt,
     required this.blocked,
     this.reason,
+    this.changedElsewhere = false,
   });
 
   /// The queue item, for discarding a refused change (D86).
@@ -51,6 +52,10 @@ class PendingChangeSummary {
   /// The server refused it; it waits for the person, not for the network.
   final bool blocked;
   final String? reason;
+
+  /// RA-MO-344: refused because the row changed elsewhere since its read. No
+  /// retry can send it; the person drops it.
+  final bool changedElsewhere;
 }
 
 class SyncIssueSummary {

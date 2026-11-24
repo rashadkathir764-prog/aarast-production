@@ -281,4 +281,31 @@ void main() {
     expect(waiting.first.payload['expected'], {'title': 'القاعة'});
     expect(waiting.last.payload.containsKey('expected'), isFalse);
   });
+
+  // RA-MO-344: a change refused because the row changed elsewhere is made
+  // from an old read; sent again it is refused again. It waits for the
+  // person to drop it, and «حاول الآن» does not send it.
+  test('a change refused as changed elsewhere is not sent again by a '
+      'retry', () async {
+    final (api, offline, server) = await _setUp({
+      'PATCH /api/v1/guests/g1': _conflict,
+    });
+    await offline.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: _guest('خلد', _read),
+    );
+    server.down = true;
+    await GuestsApi(api, offline: offline).updateGuest(id: 'g1', name: 'خالد');
+    server.down = false;
+    await offline.syncPendingChanges();
+    expect(server.bodies['PATCH /api/v1/guests/g1'], hasLength(1));
+
+    await offline.retryBlockedChanges();
+
+    expect(server.bodies['PATCH /api/v1/guests/g1'], hasLength(1));
+    final refused = (await offline.loadPendingChanges()).single;
+    expect(refused.blocked, isTrue);
+    expect(refused.changedElsewhere, isTrue);
+    expect(refused.reason, contains('الضيف تغيّر من جهاز ثاني'));
+  });
 }

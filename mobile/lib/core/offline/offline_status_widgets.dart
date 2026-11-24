@@ -303,7 +303,8 @@ class OfflineSyncNowTile extends StatelessWidget {
 
 /// w41: every change still on the phone, in one sheet. Refused changes say
 /// why; the rest wait for the network. «حاول الآن» sends what waits and
-/// gives refused changes one more try.
+/// gives refused changes one more try; a change refused as changed
+/// elsewhere gets none (RA-MO-344), and is only dropped.
 Future<void> showPendingChangesSheet(
   BuildContext context,
   OfflineSyncService service,
@@ -327,6 +328,7 @@ class _PendingChangesSheet extends StatelessWidget {
       builder: (context, snapshot) {
         final changes = snapshot.data ?? const <PendingChangeSummary>[];
         final now = appNow();
+        final canRetry = changes.any((change) => !change.changedElsewhere);
         return JourneySheetBody(
           title: changes.isEmpty
               ? 'كل تغييراتك وصلت'
@@ -339,23 +341,25 @@ class _PendingChangesSheet extends StatelessWidget {
                 ),
           subtitle: 'محفوظة على جوالك، وتنرسل أول ما يرجع النت',
           // The list scrolls; the retry stays in reach under it.
-          bottom: JourneyButton(
-            key: const Key('sync-issues-retry'),
-            label: 'حاول الآن',
-            icon: LucideIcons.refreshCw,
-            expand: true,
-            large: true,
-            onPressed: service.isSyncing || changes.isEmpty
-                ? null
-                : () async {
-                    Navigator.of(context).pop();
-                    if (service.blockedCount > 0) {
-                      await service.retryBlockedChanges();
-                    } else {
-                      await service.syncPendingChanges();
-                    }
-                  },
-          ),
+          bottom: changes.isNotEmpty && !canRetry
+              ? null
+              : JourneyButton(
+                  key: const Key('sync-issues-retry'),
+                  label: 'حاول الآن',
+                  icon: LucideIcons.refreshCw,
+                  expand: true,
+                  large: true,
+                  onPressed: service.isSyncing || changes.isEmpty
+                      ? null
+                      : () async {
+                          Navigator.of(context).pop();
+                          if (service.blockedCount > 0) {
+                            await service.retryBlockedChanges();
+                          } else {
+                            await service.syncPendingChanges();
+                          }
+                        },
+                ),
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
               // Critique ط3: the kit's spinner, not Material's ring.

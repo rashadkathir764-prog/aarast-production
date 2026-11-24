@@ -317,7 +317,11 @@ void main() {
     ).readAsStringSync();
 
     // D85 (schema 9): the plan's events, funding sources and guest groups.
-    expect(source, contains('static const _databaseVersion = 9;'));
+    // Changed on purpose (RA-MO-344, schema 10): the queue keeps the code of
+    // the refusal that blocked an item.
+    expect(source, contains('static const _databaseVersion = 10;'));
+    expect(source, contains('ADD COLUMN lastErrorCode TEXT'));
+    expect(source, contains('lastErrorCode TEXT,'));
     expect(source, contains('planId TEXT,'));
     expect(source, contains('sync_queue_plan_id_idx'));
     expect(source, contains("trustedLegacyQueuePlanId(row['payloadJson'])"));

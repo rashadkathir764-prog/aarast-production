@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_status_widgets.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -110,4 +113,77 @@ void main() {
     expect(find.textContaining('ما انقبل'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  // RA-MO-344: a change refused because the row changed elsewhere can never
+  // go as it is: the sheet offers only to drop it, with the reason.
+  testWidgets('a change refused as changed elsewhere offers only to drop it', (
+    tester,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final database = JsonLocalDatabase(preferences);
+    await database.initialize();
+    final item = await database.enqueueSync(
+      entityType: 'guest',
+      operation: 'update',
+      endpoint: '/api/v1/guests/g1',
+      method: 'PATCH',
+      payload: {
+        'name': 'خالد',
+        'expected': {'name': 'خلد'},
+      },
+      planId: 'plan-1',
+      localEntityId: 'g1',
+    );
+    final api = ApiClient(tokenProvider: () async => 'token');
+    api.dio.httpClientAdapter = _Answers(
+      409,
+      '{"statusCode":409,"code":"CHANGED_ELSEWHERE",'
+      '"message":"الضيف تغيّر من جهاز ثاني. حدّث الشاشة وعدّل من جديد."}',
+    );
+    final service = OfflineSyncService(database: database, apiClient: api);
+    await service.ensureCacheOwner('user-A');
+    await tester.runAsync(service.syncPendingChanges);
+    expect(service.blockedCount, 1);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<OfflineSyncService>.value(
+        value: service,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: OfflineSyncNowTile()),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('الضيف تغيّر من جهاز ثاني'), findsOneWidget);
+    expect(find.byKey(ValueKey('sync-discard-${item.id}')), findsOneWidget);
+    expect(find.byKey(const Key('sync-issues-retry')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// Answers every request with [status] and [body].
+class _Answers implements HttpClientAdapter {
+  _Answers(this.status, this.body);
+
+  final int status;
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    body,
+    status,
+    headers: {
+      Headers.contentTypeHeader: ['application/json'],
+    },
+  );
+
+  @override
+  void close({bool force = false}) {}
 }

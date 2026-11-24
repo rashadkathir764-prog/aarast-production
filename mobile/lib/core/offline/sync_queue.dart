@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../network/api_client.dart' show ApiException;
 import 'offline_tables.dart';
 
 const unknownSyncQueuePlanOwnershipError = 'LOCAL_QUEUE_PLAN_OWNERSHIP_UNKNOWN';
@@ -40,6 +41,7 @@ class SyncQueueItem {
     this.planId,
     this.localEntityId,
     this.lastError,
+    this.lastErrorCode,
   });
 
   factory SyncQueueItem.fromRow(Map<String, Object?> row) {
@@ -53,6 +55,7 @@ class SyncQueueItem {
       status: row['status']?.toString() ?? queued,
       retryCount: _intOrZero(row['retryCount']),
       lastError: row['lastError']?.toString(),
+      lastErrorCode: _nonEmptyString(row['lastErrorCode']),
       planId: _nonEmptyString(row['planId']),
       localEntityId: row['localEntityId']?.toString(),
       createdAt: _dateOrNow(row['createdAt']),
@@ -86,6 +89,10 @@ class SyncQueueItem {
   final String status;
   final int retryCount;
   final String? lastError;
+
+  /// The server's code for the refusal that blocked the item, when it gave
+  /// one (`CHANGED_ELSEWHERE`): what the refusal means, beside its words.
+  final String? lastErrorCode;
   final String? planId;
   final String? localEntityId;
   final DateTime createdAt;
@@ -100,6 +107,12 @@ class SyncQueueItem {
       status == sent ||
       status == failed ||
       (status == blocked && retryCount > 0);
+
+  /// RA-MO-344: refused because the row changed elsewhere since
+  /// the read it was made from. Sent again it is refused again: it waits for
+  /// the person to drop it, and no retry sends it.
+  bool get refusedAsChangedElsewhere =>
+      status == blocked && lastErrorCode == ApiException.changedElsewhereCode;
 
   Map<String, dynamic> get payload {
     final decoded = jsonDecode(payloadJson);
@@ -123,6 +136,7 @@ class SyncQueueItem {
       'status': status,
       'retryCount': retryCount,
       'lastError': lastError,
+      'lastErrorCode': lastErrorCode,
       'planId': planId,
       'localEntityId': localEntityId,
       'createdAt': createdAt.toIso8601String(),

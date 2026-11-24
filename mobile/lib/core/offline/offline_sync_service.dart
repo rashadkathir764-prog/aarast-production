@@ -113,6 +113,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           final ownershipQuarantined = isSyncQueueOwnershipQuarantineError(
             item.lastError,
           );
+          final canRetry =
+              !ownershipQuarantined && !item.refusedAsChangedElsewhere;
           final entityLabel = _syncEntityLabel(item.entityType);
           return SyncIssueSummary(
             entityLabel: entityLabel,
@@ -123,7 +125,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
                 ? 'ما قدرنا نرسل التغيير بعد كم محاولة. جرّب مرة ثانية.'
                 : 'ما انقبل التغيير، فبيانات $entityLabel تحتاج مراجعة قبل ما ينرسل مرة ثانية.',
             retryCount: item.retryCount,
-            canRetry: !ownershipQuarantined,
+            canRetry: canRetry,
           );
         })
         .toList(growable: false);
@@ -145,6 +147,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         title: _pendingChangeTitle(item),
         createdAt: item.createdAt,
         blocked: refused,
+        changedElsewhere: item.refusedAsChangedElsewhere,
         reason: refused
             ? isSyncQueueOwnershipQuarantineError(item.lastError)
                   ? 'ما قدرنا نتأكد إنه من خطتك، فما بنرسله'
@@ -708,7 +711,11 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
     final blocked = isPermanentRejection || exhaustedRetries;
     if (blocked) {
-      await database.markSyncItemBlocked(item.id, message);
+      await database.markSyncItemBlocked(
+        item.id,
+        message,
+        code: error is ApiException ? error.serverCode : null,
+      );
     } else {
       // RA-MO-343: «not now» spends none of the change's retry budget.
       await database.markSyncItemFailed(

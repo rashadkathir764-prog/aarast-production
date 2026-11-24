@@ -140,12 +140,16 @@ abstract class LocalDatabase {
   });
 
   /// Marks an item as permanently rejected so it is never auto-replayed.
-  Future<void> markSyncItemBlocked(String id, String error);
+  /// [code] is the server's code for the refusal, when it gave one.
+  Future<void> markSyncItemBlocked(String id, String error, {String? code});
 
   /// Explicitly requeues permanently blocked work after the user requests a
   /// retry. Automatic sync must never replay blocked items. An item that
   /// may be on the server stays marked so (RA-MO-30): it comes back
-  /// [SyncQueueItem.failed], the rest [SyncQueueItem.queued].
+  /// [SyncQueueItem.failed], the rest [SyncQueueItem.queued]. An item
+  /// refused as changed elsewhere
+  /// ([SyncQueueItem.refusedAsChangedElsewhere]) stays blocked: made from
+  /// an old read, it is refused again.
   Future<int> requeueBlockedSyncItems();
 
   /// Removes a local-only entity and every unsynced operation for it. Mobile

@@ -27,6 +27,11 @@ const R7_HISTORICAL_INVITATION_DELIVERY_HASH =
   'ed781aba1ee34ae413ac86951a5c962465af581fe96848c0e5343996de8e32e1';
 const R7_NORMALIZED_INVITATION_DELIVERY_HASH =
   '36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c';
+// RA-BE-156 (Q-37, D124): the owner opened the locked invitation text to name
+// the inviter and the wedding. The live file is the same transport with that
+// text, so its identity is this hash; the historical R7 one stays as it was.
+const R7_LIVE_NORMALIZED_INVITATION_DELIVERY_HASH =
+  '024f13aa436ce1843469cf1625e6eb9af3d81e03250f7c1ab8fe7c1df892a2cc';
 const R7_INVITATION_DELIVERY_FROM =
   'backend/src/sharing/invitation-delivery.service.ts';
 const R7_INVITATION_DELIVERY_TO =
@@ -559,12 +564,13 @@ function verifyR7InvitationDeliveryHandoff(options) {
     input.liveSource,
   ));
   if (historicalNormalized !== R7_NORMALIZED_INVITATION_DELIVERY_HASH
-      || liveNormalized !== R7_NORMALIZED_INVITATION_DELIVERY_HASH) {
+      || liveNormalized !== R7_LIVE_NORMALIZED_INVITATION_DELIVERY_HASH) {
     throw new Error('R7 live invitation delivery identity is invalid');
   }
   return Object.freeze({
     historicalSha256: R7_HISTORICAL_INVITATION_DELIVERY_HASH,
     normalizedSha256: R7_NORMALIZED_INVITATION_DELIVERY_HASH,
+    liveNormalizedSha256: R7_LIVE_NORMALIZED_INVITATION_DELIVERY_HASH,
   });
 }
 

@@ -22,6 +22,7 @@ import {
 const originalEnvironment = { ...process.env };
 const originalFetch = globalThis.fetch;
 const TEST_INVITE_TOKEN = "a".repeat(43);
+const TEST_SENDER = { inviterName: "رشاد الأهدل", planTitle: "عرس سارة" };
 
 async function invitationDeliveryMetricValue(outcome: string): Promise<number> {
   const metric = await invitationDeliveryOutcomesTotal.get();
@@ -88,6 +89,7 @@ test("Aarast sends an invite through only the hardened transient OpenWA route", 
   const result = await createInvitationDeliveryService().deliver(
     "+967777123456",
     token,
+    TEST_SENDER,
   );
 
   assert.deepEqual(result, { channel: "WHATSAPP", status: "DELIVERED" });
@@ -105,7 +107,11 @@ test("Aarast sends an invite through only the hardened transient OpenWA route", 
     requests[0].body.text as string,
     new RegExp(`https://aarast\\.shadowgardn\\.com/invites/${token}`),
   );
-  assert.doesNotMatch(requests[0].body.text as string, /رشاد|سارة|اسم الخطة/);
+  // RA-BE-156 (Q-37, D81): the first thing a relative reads names who
+  // invited them and to which wedding; it is the inviter's first name only.
+  assert.match(requests[0].body.text as string, /رشاد/);
+  assert.match(requests[0].body.text as string, /عرس سارة/);
+  assert.doesNotMatch(requests[0].body.text as string, /الأهدل/);
 });
 
 test("invite delivery maps explicit OpenWA outcomes without false success", async () => {
@@ -132,6 +138,7 @@ test("invite delivery maps explicit OpenWA outcomes without false success", asyn
     const result = await createInvitationDeliveryService().deliver(
       "+967777123456",
       token,
+      TEST_SENDER,
     );
     assert.deepEqual(result, {
       channel: "WHATSAPP",
@@ -154,6 +161,7 @@ test("invite delivery maps explicit OpenWA outcomes without false success", asyn
   const ambiguousSuccess = await createInvitationDeliveryService().deliver(
     "+967777123456",
     token,
+    TEST_SENDER,
   );
   assert.deepEqual(ambiguousSuccess, {
     channel: "WHATSAPP",
@@ -183,6 +191,7 @@ test("invite delivery records an unexpected failure without logging private fiel
   const result = await service.deliver(
     "+967777123456",
     "private-invalid-invite-token",
+    TEST_SENDER,
   );
 
   assert.deepEqual(result, { channel: "WHATSAPP", status: "UNAVAILABLE" });
@@ -203,6 +212,7 @@ test("invite delivery records a bounded not-attempted outcome without private la
   const result = await createInvitationDeliveryService().deliver(
     null,
     TEST_INVITE_TOKEN,
+    TEST_SENDER,
   );
 
   assert.deepEqual(result, { channel: "WHATSAPP", status: "UNAVAILABLE" });
@@ -239,12 +249,12 @@ test("an invite past the day's message budget is not sent and reads as not sent 
     new IdentityTransientDeliveryAdapter(
       quotaDatabase(TRANSIENT_PER_PHONE_DAILY_LIMIT),
     ),
-  ).deliver("+967777123456", TEST_INVITE_TOKEN);
+  ).deliver("+967777123456", TEST_INVITE_TOKEN, TEST_SENDER);
   const pastBudget = await createInvitationDeliveryService(
     new IdentityTransientDeliveryAdapter(
       quotaDatabase(TRANSIENT_PER_PHONE_DAILY_LIMIT + 1),
     ),
-  ).deliver("+967777123456", TEST_INVITE_TOKEN);
+  ).deliver("+967777123456", TEST_INVITE_TOKEN, TEST_SENDER);
 
   assert.deepEqual(lastAllowed, { channel: "WHATSAPP", status: "DELIVERED" });
   assert.deepEqual(pastBudget, { channel: "WHATSAPP", status: "UNAVAILABLE" });
@@ -264,18 +274,22 @@ test("invite delivery delegates the exact phone and message to the Identity port
     },
   });
 
-  const result = await service.deliver("+967777123456", TEST_INVITE_TOKEN);
+  const result = await service.deliver(
+    "+967777123456",
+    TEST_INVITE_TOKEN,
+    TEST_SENDER,
+  );
 
   assert.deepEqual(result, { channel: "WHATSAPP", status: "DELIVERED" });
   assert.deepEqual(calls, [
     {
       phone: "+967777123456",
       text: [
-        "مرحبًا 👋",
-        "لديك دعوة خاصة للمشاركة في خطة عبر أعرست.",
-        "افتح الرابط، ثم تحقق من رقم هاتفك لعرض الدعوة:",
+        "السلام عليكم 👋",
+        "وصلتك دعوة من رشاد للمشاركة في عرس سارة على اعّرست.",
+        "الدعوة تنفتح من الرابط، بعد ما نتأكد من رقم جوالك:",
         `https://aarast.shadowgardn.com/invites/${TEST_INVITE_TOKEN}`,
-        "هذا الرابط خاص بك، لا تشاركه مع الآخرين.",
+        "الرابط خاص بجوالك بس.",
       ].join("\n"),
     },
   ]);
@@ -292,30 +306,51 @@ test("invite delivery returns before token rendering and the port when delivery 
 
   process.env.AUTH_OTP_MODE = "disabled";
   assert.deepEqual(
-    await service.deliver("+967777123456", "invalid-private-token"),
+    await service.deliver("+967777123456", "invalid-private-token", TEST_SENDER),
     { channel: "WHATSAPP", status: "UNAVAILABLE" },
   );
 
   process.env.AUTH_OTP_MODE = "openwa";
-  assert.deepEqual(await service.deliver(null, "invalid-private-token"), {
+  assert.deepEqual(await service.deliver(null, "invalid-private-token", TEST_SENDER), {
     channel: "WHATSAPP",
     status: "UNAVAILABLE",
   });
   assert.equal(calls, 0);
 });
 
-test("invite message is generic, private, and rejects an unsafe public origin", () => {
+test("invite message is private, in one neutral Yemeni voice, and rejects an unsafe public origin (RA-BE-156, RA-OP-33)", () => {
   const token = TEST_INVITE_TOKEN;
-  const message = buildInvitationMessage(token);
-  assert.match(message, /تحقق من رقم هاتفك/);
+  const message = buildInvitationMessage(token, TEST_SENDER);
+  assert.match(message, /من رقم جوالك/);
   assert.doesNotMatch(message, /\+967|777123456/);
+  // The brand is «اعّرست», never «أعرست»; no formal Arabic («لديك»,
+  // «تحقق»), and no word that speaks to a man or a woman only (the one
+  // invited may be either, and has no account to say which).
+  assert.match(message, /اعّرست/);
+  assert.doesNotMatch(message, /أعرست|لديك|تحقق|هاتف|لا تشاركه|افتح|افتحي/);
   assert.throws(
     () =>
-      buildInvitationMessage(token, {
+      buildInvitationMessage(token, TEST_SENDER, {
         INVITE_PUBLIC_ORIGIN: "http://example.com",
       }),
     /public HTTPS origin/,
   );
+});
+
+test("the invite names only a clean first name and plan title, never a link someone typed in", () => {
+  const token = TEST_INVITE_TOKEN;
+  const spoofed = buildInvitationMessage(token, {
+    inviterName: "http://evil.example/x رشاد",
+    planTitle: "اضغط www.evil.example الآن",
+  });
+  assert.doesNotMatch(spoofed, /evil/);
+  assert.match(spoofed, /للمشاركة في عرس على اعّرست/);
+  const longTitle = buildInvitationMessage(token, {
+    inviterName: "  رشاد   الأهدل ",
+    planTitle: `عرس ${"س".repeat(200)}`,
+  });
+  assert.match(longTitle, /من رشاد /);
+  assert.ok(longTitle.split("\n")[1].length < 120);
 });
 
 test("invite OTP is sent only when the bearer token and canonical phone match", async () => {

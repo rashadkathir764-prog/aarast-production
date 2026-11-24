@@ -627,7 +627,8 @@ export class SharingService {
     );
 
     const delivery = await this.deliverInviteMessage(
-      currentUser.id,
+      currentUser,
+      plan.title,
       weddingPlanId,
       created.invite.normalizedPhone,
       created.token,
@@ -797,7 +798,10 @@ export class SharingService {
     inviteId: string,
     dto: UpdateSharedMemberDto = {},
   ): Promise<PlanInviteResponse> {
-    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
 
     const reissued = await this.withUniqueInviteToken(async (token) =>
       runSerializableTransaction(this.prisma, async (tx) => {
@@ -872,7 +876,8 @@ export class SharingService {
     );
 
     const delivery = await this.deliverInviteMessage(
-      currentUser.id,
+      currentUser,
+      access.plan.title,
       weddingPlanId,
       reissued.invite.normalizedPhone,
       reissued.token,
@@ -1799,11 +1804,13 @@ export class SharingService {
   // RA-BE-34: past the sender's or the plan's daily cap the message is not
   // sent, and the invite reads as «not sent: copy the link».
   private async deliverInviteMessage(
-    senderUserId: string,
+    sender: AuthenticatedUser,
+    planTitle: string,
     weddingPlanId: string,
     phone: string | null,
     token: string,
   ): Promise<InvitationDeliveryResult> {
+    const senderUserId = sender.id;
     const attempts = await this.repository.countInviteMessagesSince(
       this.prisma,
       senderUserId,
@@ -1813,7 +1820,10 @@ export class SharingService {
     if (attempts > INVITE_MESSAGES_PER_DAY) {
       return { channel: "WHATSAPP", status: "UNAVAILABLE" };
     }
-    return this.invitationDelivery.deliver(phone, token);
+    return this.invitationDelivery.deliver(phone, token, {
+      inviterName: this.actorVoice(sender).name,
+      planTitle,
+    });
   }
 
   private async finalizeInviteDelivery(

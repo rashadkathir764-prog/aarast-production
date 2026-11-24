@@ -144,6 +144,7 @@ type R6Scanner = {
   }): {
     historicalSha256: string;
     normalizedSha256: string;
+    liveNormalizedSha256: string;
   };
 };
 
@@ -221,6 +222,8 @@ test('R6 preserves immutable invitation delivery and accepts only the exact R7 s
   assert.deepEqual(verify({ historicalSource, liveSource }), {
     historicalSha256: 'ed781aba1ee34ae413ac86951a5c962465af581fe96848c0e5343996de8e32e1',
     normalizedSha256: '36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c',
+    // RA-BE-156 (Q-37, D124): the opened invitation text.
+    liveNormalizedSha256: '024f13aa436ce1843469cf1625e6eb9af3d81e03250f7c1ab8fe7c1df892a2cc',
   });
   assert.throws(() => verify({
     historicalSource: historicalSource.replace('not_attempted', 'changed'),

@@ -19,6 +19,19 @@ export interface InvitationDeliveryResult {
 
 const defaultInviteOrigin = 'https://aarast.shadowgardn.com';
 
+/**
+ * Who invites and to which wedding, as the message names them (RA-BE-156,
+ * Q-37, D124). Both are typed by people, so the message takes a clean first
+ * name and a bounded title only.
+ */
+export interface InvitationSender {
+  inviterName: string | null;
+  planTitle: string | null;
+}
+
+const maxPlanTitleLength = 60;
+const maxInviterNameLength = 30;
+
 @Injectable()
 export class InvitationDeliveryService {
   private readonly logger = new Logger(InvitationDeliveryService.name);
@@ -28,7 +41,11 @@ export class InvitationDeliveryService {
     private readonly transientDelivery: IdentityTransientDeliveryPort,
   ) {}
 
-  async deliver(phone: string | null, token: string): Promise<InvitationDeliveryResult> {
+  async deliver(
+    phone: string | null,
+    token: string,
+    sender: InvitationSender,
+  ): Promise<InvitationDeliveryResult> {
     if (!phone || process.env.AUTH_OTP_MODE?.trim().toLowerCase() !== 'openwa') {
       invitationDeliveryOutcomesTotal.inc({ outcome: 'not_attempted' });
       return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
@@ -37,7 +54,7 @@ export class InvitationDeliveryService {
     try {
       await this.transientDelivery.send({
         phone,
-        text: buildInvitationMessage(token),
+        text: buildInvitationMessage(token, sender),
       });
       invitationDeliveryOutcomesTotal.inc({ outcome: 'delivered' });
       return { channel: 'WHATSAPP', status: 'DELIVERED' };
@@ -70,8 +87,16 @@ export class InvitationDeliveryService {
   }
 }
 
+/**
+ * The invitation as the relative first reads it on WhatsApp, from the
+ * platform's number. It says who invited them and to which wedding, in the
+ * Yemeni voice and in no one's gender (the one invited may be a man or a
+ * woman and has no account to say which), so it does not read as a stranger's
+ * message (RA-OP-33).
+ */
 export function buildInvitationMessage(
   token: string,
+  sender: InvitationSender,
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
   const cleanToken = token.trim();
@@ -81,13 +106,35 @@ export function buildInvitationMessage(
 
   const origin = inviteOrigin(environment.INVITE_PUBLIC_ORIGIN);
   const link = new URL(`/invites/${cleanToken}`, origin).toString();
+  const inviter = cleanLabel(
+    sender.inviterName?.trim().split(/\s+/u)[0] ?? null,
+    maxInviterNameLength,
+  );
+  const plan = cleanLabel(sender.planTitle, maxPlanTitleLength) ?? 'عرس';
   return [
-    'مرحبًا 👋',
-    'لديك دعوة خاصة للمشاركة في خطة عبر أعرست.',
-    'افتح الرابط، ثم تحقق من رقم هاتفك لعرض الدعوة:',
+    'السلام عليكم 👋',
+    `وصلتك دعوة ${inviter ? `من ${inviter} ` : ''}للمشاركة في ${plan} على اعّرست.`,
+    'الدعوة تنفتح من الرابط، بعد ما نتأكد من رقم جوالك:',
     link,
-    'هذا الرابط خاص بك، لا تشاركه مع الآخرين.',
+    'الرابط خاص بجوالك بس.',
   ].join('\n');
+}
+
+/**
+ * A name or title someone typed, made safe to put inside the platform's own
+ * message: one line, no formatting marks, no direction controls, bounded, and
+ * nothing that reads as a link (the platform's number must never carry a
+ * stranger's link). Null when nothing clean is left.
+ */
+function cleanLabel(value: string | null, maxLength: number): string | null {
+  if (!value) return null;
+  const text = value
+    .replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069*_~`]/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  if (!text) return null;
+  if (/(https?:|www\.|:\/\/|@|[a-z0-9-]+\.[a-z]{2,})/iu.test(text)) return null;
+  return Array.from(text).slice(0, maxLength).join('').trim() || null;
 }
 
 function inviteOrigin(configuredOrigin: string | undefined): string {

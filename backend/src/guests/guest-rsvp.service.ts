@@ -30,6 +30,7 @@ import { gendered } from "../shared-kernel/voice/address-form";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  isPlanDeletionPending,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
@@ -214,6 +215,11 @@ export interface InvitationSendResponse {
 }
 
 /** The invitation's own sentence, in the message and in the link preview. */
+/** An archived plan, or one pending deletion, opens no guest link. */
+function planClosesLinks(plan: WeddingPlan): boolean {
+  return plan.status === WeddingPlanStatus.ARCHIVED || isPlanDeletionPending(plan);
+}
+
 function invitationLine(host: string | null, of: string): string {
   return host ? `${host} ${of}` : `يسعدنا دعوتك لحضور ${of}`;
 }
@@ -697,7 +703,7 @@ export class GuestRsvpService {
         const guest = await findRsvpGuestByTokenHash(tx, hash);
         if (!guest) return null;
         const plan = await this.plans.getPlan(tx, guest.weddingPlanId);
-        if (!plan || plan.status === WeddingPlanStatus.ARCHIVED) return null;
+        if (!plan || planClosesLinks(plan)) return null;
         if (rsvpLinkClosed(plan.weddingDate, new Date())) return null;
         return { plan, context: await this.invitationContext(tx, plan.id, guest.id) };
       },
@@ -1280,13 +1286,16 @@ export class GuestRsvpService {
     return plan;
   }
 
-  /** An archived or missing plan closes every link. */
+  /**
+   * An archived or missing plan closes every link; so does a plan whose
+   * owner asked to delete it (Q-45, D124), the same 404 as an archived one.
+   */
   private async livePlan(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<WeddingPlan> {
     const plan = await this.plans.getPlan(tx, weddingPlanId);
-    if (!plan || plan.status === WeddingPlanStatus.ARCHIVED) {
+    if (!plan || planClosesLinks(plan)) {
       throw this.linkNotFound();
     }
     return plan;

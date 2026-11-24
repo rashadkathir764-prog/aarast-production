@@ -209,6 +209,7 @@ function service(
   options: {
     contributorOwns?: string[];
     planStatus?: string;
+    deletionRequestedAt?: Date | null;
     persona?: string;
     signingFails?: boolean;
     weddingDate?: Date | null;
@@ -237,6 +238,7 @@ function service(
       title: "عرس أحمد",
       persona: options.persona ?? "GROOM",
       status: options.planStatus ?? "PLANNING",
+      deletionRequestedAt: options.deletionRequestedAt ?? null,
       weddingDate:
         options.weddingDate === undefined ? new Date("2027-02-18T00:00:00Z") : options.weddingDate,
       city: null,
@@ -562,6 +564,31 @@ test("bad tokens, too many companions and archived plans are refused", async () 
     service(db, { planStatus: "ARCHIVED" }).getInvitation(token),
     /not valid/,
   );
+});
+
+// M-1 (Q-45, D124): a plan the owner asked to delete closes its links like an archived one.
+test("a plan pending deletion closes every guest link the way an archived plan does", async () => {
+  const db = fakeDatabase();
+  const rsvp = service(db);
+  const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  const pending = service(db, { deletionRequestedAt: new Date("2026-11-20T00:00:00Z") });
+  const archived = service(db, { planStatus: "ARCHIVED" });
+  const refusal = async (promise: Promise<unknown>) => {
+    try {
+      await promise;
+    } catch (error: any) {
+      return [error.getStatus(), error.response];
+    }
+    return null;
+  };
+
+  const archivedRefusal = await refusal(archived.getInvitation(token));
+  assert.equal(archivedRefusal?.[0], 404);
+  assert.deepEqual(await refusal(pending.getInvitation(token)), archivedRefusal);
+  assert.deepEqual(await refusal(pending.respond(token, "CONFIRMED", 1)), archivedRefusal);
+  assert.deepEqual(await refusal(pending.markInvitationOpened(token)), archivedRefusal);
+  assert.deepEqual(await refusal(pending.cardPhotoDownloadUrl(token)), archivedRefusal);
+  assert.equal(await pending.invitationPreview(token), null);
 });
 
 // D83: the events beyond the wedding, one reply each.

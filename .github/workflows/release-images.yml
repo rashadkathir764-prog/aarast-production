@@ -1,0 +1,94 @@
+name: Release images
+
+# RA-OP-25: the images a release runs are built here, once, from a commit CI
+# passed, scanned, and recorded by content digest. deploy/aws/release.ps1 takes
+# this run's artifact to the host, which loads it and keeps each image only if
+# it is exactly the one named here. The live host builds nothing.
+#
+# Run by the owner from main (Actions > Release images > Run workflow), never
+# on a push: it fails by design until the repository variables below hold the
+# owner's real values (the public pages' contact placeholders, RA-OP-21).
+#
+#   AARAST_AWS_API_BASE_URL   https://api.<base host> (the admin web's API)
+#   AARAST_SUPPORT_EMAIL      the support mailbox the pages name
+#   AARAST_SUPPORT_WHATSAPP   +<country code><number> of the support team
+#   AARAST_LEGAL_ENTITY       the legal entity that runs the service
+#   AARAST_GOVERNING_LAW      the law the terms are under
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  images:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Only a commit that CI passed
+        run: |
+          passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          [ "$passed" -ge 1 ] || { echo "CI has not passed for $GITHUB_SHA" >&2; exit 1; }
+      - name: Build the four images
+        env:
+          AARAST_AWS_API_BASE_URL: ${{ vars.AARAST_AWS_API_BASE_URL }}
+          AARAST_LEGAL_ENTITY: ${{ vars.AARAST_LEGAL_ENTITY }}
+          AARAST_SUPPORT_EMAIL: ${{ vars.AARAST_SUPPORT_EMAIL }}
+          AARAST_SUPPORT_WHATSAPP: ${{ vars.AARAST_SUPPORT_WHATSAPP }}
+          AARAST_GOVERNING_LAW: ${{ vars.AARAST_GOVERNING_LAW }}
+        run: |
+          case "$AARAST_AWS_API_BASE_URL" in https://*) ;; *) echo "AARAST_AWS_API_BASE_URL must be set to the https API origin of the admin web" >&2; exit 1 ;; esac
+          docker build --tag "aarast-backend:${GITHUB_SHA}" --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" backend
+          docker build --tag "aarast-admin-web:${GITHUB_SHA}" --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" --build-arg VITE_API_BASE_URL="$AARAST_AWS_API_BASE_URL" admin-web
+          docker build --tag "aarast-public-site:${GITHUB_SHA}" --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" --build-arg AARAST_LEGAL_ENTITY="$AARAST_LEGAL_ENTITY" --build-arg AARAST_SUPPORT_EMAIL="$AARAST_SUPPORT_EMAIL" --build-arg AARAST_SUPPORT_WHATSAPP="$AARAST_SUPPORT_WHATSAPP" --build-arg AARAST_GOVERNING_LAW="$AARAST_GOVERNING_LAW" deploy/public-site
+          docker build --tag "aarast-openwa-link:${GITHUB_SHA}" deploy/aws/openwa-link
+      - name: The public pages carry the owner's details, not placeholders
+        run: |
+          mkdir -p "${RUNNER_TEMP}/site"
+          id=$(docker create "aarast-public-site:${GITHUB_SHA}")
+          for page in support terms privacy; do
+            docker cp "${id}:/usr/share/nginx/html/${page}.html" "${RUNNER_TEMP}/site/${page}.html"
+          done
+          docker rm "${id}"
+          node deploy/public-site/render-contact.mjs check "${RUNNER_TEMP}/site"
+      - name: Reject HIGH or CRITICAL vulnerabilities
+        run: |
+          for image in aarast-backend aarast-admin-web; do
+            docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e \
+              image --exit-code 1 --severity HIGH,CRITICAL "${image}:${GITHUB_SHA}"
+          done
+      - name: Save the images and record their digests
+        env:
+          AARAST_AWS_API_BASE_URL: ${{ vars.AARAST_AWS_API_BASE_URL }}
+        run: |
+          out="${RUNNER_TEMP}/release-images"
+          mkdir -p "$out"
+          for image in aarast-backend aarast-admin-web aarast-public-site aarast-openwa-link; do
+            docker save --output "$out/${image}.tar" "${image}:${GITHUB_SHA}"
+            printf '%s %s\n' "$image" "$(docker image inspect --format '{{.Id}}' "${image}:${GITHUB_SHA}")"
+          done > "$out/ids.txt"
+          node -e '
+            const fs = require("fs");
+            const [out, sha, api] = process.argv.slice(1);
+            const images = fs.readFileSync(`${out}/ids.txt`, "utf8").trim().split("\n").map((line) => {
+              const [name, id] = line.split(" ");
+              return { name, file: `${name}.tar`, id };
+            });
+            fs.writeFileSync(`${out}/release-images.json`, JSON.stringify({ release: sha, adminApiBaseUrl: api, images }, null, 2));
+          ' "$out" "$GITHUB_SHA" "$AARAST_AWS_API_BASE_URL"
+          rm "$out/ids.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-images-${{ github.sha }}
+          path: ${{ runner.temp }}/release-images
+          retention-days: 14
+          if-no-files-found: error

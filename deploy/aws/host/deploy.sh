@@ -1,6 +1,7 @@
 #!/bin/bash
-# Builds and starts one release on the host. The release tree (git archive of
-# backend, admin-web, deploy) is already extracted in /opt/aarast/releases/<sha>.
+# Starts one release on the host. The release tree (git archive of deploy) is
+# already extracted in /opt/aarast/releases/<sha>, and the images CI built for
+# it are in the ops bucket under releases/<sha>/images (RA-OP-25).
 # Usage: deploy.sh <release-sha> <ops-bucket>
 set -euo pipefail
 release=${1:?release sha}
@@ -9,16 +10,18 @@ tree=/opt/aarast/releases/$release
 # shellcheck source=release-lib.sh
 . "$tree/deploy/aws/host/release-lib.sh"
 [ -f "$env_file" ] || { echo "FAIL: run prepare-env.sh first" >&2; exit 1; }
-api_host=$(sed -n 's/^AARAST_API_HOST=//p' "$env_file")
 
-cd "$tree"
-export DOCKER_BUILDKIT=1
-docker build -q -t "aarast-backend:$release" --build-arg "AARAST_GIT_REVISION=$release" backend
-docker build -q -t "aarast-admin-web:$release" --build-arg "AARAST_GIT_REVISION=$release" \
-  --build-arg "VITE_API_BASE_URL=https://$api_host" admin-web
-docker build -q -t "aarast-public-site:$release" --build-arg "AARAST_GIT_REVISION=$release" deploy/public-site
-docker build -q -t "aarast-openwa-link:$release" deploy/aws/openwa-link
-echo "images built for $release"
+# RA-OP-25: the images are the ones CI built and scanned for this commit
+# (release.ps1 put them in the ops bucket with their content digests); the
+# host builds nothing, and a copy that is not exactly the recorded image stops
+# the release here, before anything running is touched.
+images_dir=/opt/aarast/releases/$release-images
+rm -rf "$images_dir"
+trap 'rm -rf "$images_dir"' EXIT
+install -d -m 0700 "$images_dir"
+aws s3 cp --recursive "s3://$ops_bucket/releases/$release/images" "$images_dir" --only-show-errors
+release_load_images "$images_dir" "$release"
+echo "images loaded for $release"
 
 release_push_env
 

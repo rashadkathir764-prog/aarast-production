@@ -1,7 +1,7 @@
 ﻿# Stage 3 in one run, by the operator from a signed-in machine:
 #   1. restarts OpenWA on its host, so WhatsApp codes work again
 #   2. takes a database backup and copies it off the host
-#   3. ships the committed HEAD (migrations included), through release.ps1
+#   3. ships the CI-built release of -Run (migrations included), through release.ps1
 #   4. proves the newest backup restores (host/restore-drill.sh)
 #   5. creates the outside uptime alarm (uptime.yaml)
 #   6. protects the backups (RA-OP-04): versions in the ops and media
@@ -11,6 +11,7 @@
 # It stops at the first failure. Safe to run again. No secret is printed.
 # Requires `aws login` and the `rk-server` SSH alias.
 param(
+  [Parameter(Mandatory)][string]$Run,
   [string]$Region = 'eu-central-1',
   [string]$Stack = 'aarast-host',
   [string]$ApiUrl = 'https://api.3-121-198-183.sslip.io'
@@ -74,8 +75,8 @@ aws s3 sync /var/lib/docker/volumes/aarast_postgres_backups/_data s3://$opsBucke
 echo backup done
 "@
 
-Step '3 من 6: نشر آخر نسخة من main'
-& (Join-Path $PSScriptRoot 'release.ps1')
+Step '3 من 6: نشر الصور التي بناها CI'
+& (Join-Path $PSScriptRoot 'release.ps1') -Run $Run
 if ($LASTEXITCODE -ne 0) { throw 'فشل النشر: النسخة السابقة ما زالت على الخادم إن لم يكتمل التشغيل' }
 
 Step '4 من 6: تجربة استرجاع النسخة في قاعدة مؤقتة'

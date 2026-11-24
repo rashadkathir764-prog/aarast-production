@@ -28,6 +28,45 @@ release_push_env() {
   fi
 }
 
+# RA-OP-25: the host builds no image. CI builds and scans them once and records
+# each one's content digest (its image id) in release-images.json; this loads
+# the tar of each and keeps it only if it is exactly the image CI named, under
+# the tag compose reads. Anything else is removed and the release stops before
+# it touches the running one.
+release_load_images() {
+  local dir=$1 release=$2 name file want got required lines
+  required="aarast-backend aarast-admin-web aarast-public-site aarast-openwa-link"
+  lines=$(python3 - "$dir/release-images.json" "$release" $required <<'PY'
+import json, re, sys
+manifest = json.load(open(sys.argv[1]))
+release, required = sys.argv[2], sys.argv[3:]
+if manifest.get("release") != release:
+    raise SystemExit("FAIL: the manifest is for release %s, not %s" % (manifest.get("release"), release))
+images = {image.get("name"): image for image in manifest.get("images", [])}
+for name in required:
+    image = images.get(name)
+    if image is None:
+        raise SystemExit("FAIL: %s is missing from the manifest" % name)
+    if not re.fullmatch(r"[A-Za-z0-9._-]+\.tar", image.get("file", "")):
+        raise SystemExit("FAIL: the file of %s is not a file name" % name)
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", image.get("id", "")):
+        raise SystemExit("FAIL: %s has no content digest in the manifest" % name)
+    print(name, image["file"], image["id"])
+PY
+  ) || return 1
+  while read -r name file want; do
+    [ -s "$dir/$file" ] || { echo "FAIL: the file of $name is missing ($file)" >&2; return 1; }
+    docker load -i "$dir/$file" >/dev/null
+    got=$(docker image inspect --format '{{.Id}}' "$name:$release" 2>/dev/null || true)
+    if [ "$got" != "$want" ]; then
+      echo "FAIL: $name:$release is not the image CI built (wanted $want, got ${got:-nothing})" >&2
+      docker image rm "$name:$release" >/dev/null 2>&1 || true
+      return 1
+    fi
+    echo "loaded $name:$release ($want)"
+  done <<<"$lines"
+}
+
 # docker compose against the host env file, from the release's deploy/aws.
 dc() { docker compose --env-file "$env_file" "$@"; }
 

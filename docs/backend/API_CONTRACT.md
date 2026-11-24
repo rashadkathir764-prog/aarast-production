@@ -2540,6 +2540,17 @@ category (`categoryId`) or several (`categoryIds`, comma-separated, at most
 50; G40): a provider is listed when its own category or an active service's
 is among them. Sending both is `400`; a value that is not a UUID is `400`.
 
+`GET /api/v1/providers?eventDate=YYYY-MM-DD` (RA-BE-150, Q-36) adds
+`availableOnEventDate` to every item: `false` when the provider closed that
+day or has confirmed as many weddings on it as his daily number (every
+confirmed booking counts), otherwise `true`; `null` without a day (or for a
+day that has passed). Nobody is filtered out by it. The order of the list is
+featured first (B-43), then claimed listings, then unclaimed ones, and inside
+each by a score of a smoothed rating, the profile's completeness, the answer
+speed and a lift for a provider younger than 30 days (RA-BE-151). A quote
+request, an offer and its acceptance for a day the provider cannot take are
+`409 PROVIDER_DAY_UNAVAILABLE`.
+
 `GET /api/v1/providers` keeps the paginated provider card contract compact but
 complete enough for discovery. Every item includes `primaryCategory` plus a
 `serviceSummary` built only from active services:

@@ -49,6 +49,17 @@ export interface CollaborationHistoryPort {
       'weddingPlanId' | 'actorUserId' | 'authorityVersion'
     >,
   ): Promise<ContributionEvent | null>;
+  /** Several contributions of one member, under one lookup of the scope and the tenure. */
+  recordManyForContextInTransaction(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    inputs: ReadonlyArray<
+      Omit<
+        RecordContributionInput,
+        'weddingPlanId' | 'actorUserId' | 'authorityVersion'
+      >
+    >,
+  ): Promise<void>;
   ensureTenureInTransaction(
     tx: Prisma.TransactionClient,
     member: SharedMember,

@@ -398,14 +398,15 @@ export class GuestsService {
           context,
           currentUser.id,
         );
-        for (const { guest } of guests) {
-          await this.recordGuestContribution(
-            tx,
-            context,
-            guest,
-            ContributionAction.CREATED,
-          );
-        }
+        // RA-BE-181: one lookup of the history scope and the member's tenure
+        // for the whole list (the owner records nothing).
+        await this.contributionHistory.recordManyForContextInTransaction(
+          tx,
+          context,
+          guests.map(({ guest }) =>
+            this.guestContribution(guest, ContributionAction.CREATED),
+          ),
+        );
         return guests;
       }),
     );
@@ -1110,7 +1111,15 @@ export class GuestsService {
     guest: Guest,
     action: ContributionAction,
   ): Promise<void> {
-    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+    await this.contributionHistory.recordForContextInTransaction(
+      tx,
+      context,
+      this.guestContribution(guest, action),
+    );
+  }
+
+  private guestContribution(guest: Guest, action: ContributionAction) {
+    return {
       section: ContributionSection.GUESTS,
       entityType: ContributionEntityType.GUEST,
       entityId: guest.id,
@@ -1127,7 +1136,7 @@ export class GuestsService {
         action === ContributionAction.CREATED
           ? guest.createdAt
           : guest.updatedAt,
-    });
+    };
   }
 
   private async recordGuestGroupContribution(

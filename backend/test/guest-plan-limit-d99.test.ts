@@ -114,7 +114,7 @@ function service(db: ReturnType<typeof database>) {
       },
       canManageGuests: () => true,
     },
-    { recordForContextInTransaction: async () => undefined },
+    { recordForContextInTransaction: async () => undefined, recordManyForContextInTransaction: async () => undefined },
     { qualifyingEntityIdsInTransaction: async () => [] },
     { listPlanEvents: async () => [] },
   ) as GuestsService;

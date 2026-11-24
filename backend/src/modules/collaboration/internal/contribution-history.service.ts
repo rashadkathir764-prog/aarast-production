@@ -72,12 +72,35 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     input: RecordContributionInput,
   ): Promise<ContributionEvent> {
     validateContributionSnapshot(input.snapshot);
-    const snapshotHash = hashContributionSnapshot(input.snapshot);
-    const scope = await this.repository.getHistoryScopeId(tx, input.weddingPlanId);
+    const { scope, tenure } = await this.scopeAndTenure(
+      tx,
+      input.weddingPlanId,
+      input.actorUserId,
+    );
+    return this.recordUnderTenure(tx, input, scope, tenure);
+  }
+
+  private async scopeAndTenure(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    actorUserId: string,
+  ) {
+    const scope = await this.repository.getHistoryScopeId(tx, weddingPlanId);
     if (!scope) throw new NotFoundException("Contribution history scope not found");
 
-    const tenure = await this.repository.findActiveTenureId(tx, scope.id, input.actorUserId);
+    const tenure = await this.repository.findActiveTenureId(tx, scope.id, actorUserId);
     if (!tenure) throw new NotFoundException("Active contributor tenure not found");
+    return { scope, tenure };
+  }
+
+  private async recordUnderTenure(
+    tx: Prisma.TransactionClient,
+    input: RecordContributionInput,
+    scope: { id: string },
+    tenure: { id: string; actorReference: string },
+  ): Promise<ContributionEvent> {
+    validateContributionSnapshot(input.snapshot);
+    const snapshotHash = hashContributionSnapshot(input.snapshot);
 
     const fingerprint = contributionFingerprint(
       input,
@@ -113,6 +136,41 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
       actorUserId: context.sharedMember.userId,
       authorityVersion: context.sharedMember.authorityVersion,
     });
+  }
+
+  /**
+   * RA-BE-181: several contributions of one member in one transaction (the
+   * guest import). The history scope and the member's tenure are looked up
+   * once, not once per event; each event is still its own row.
+   */
+  async recordManyForContextInTransaction(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    inputs: ReadonlyArray<
+      Omit<RecordContributionInput, "weddingPlanId" | "actorUserId" | "authorityVersion">
+    >,
+  ): Promise<void> {
+    if (context.isOwner || !context.sharedMember || inputs.length === 0) return;
+    const member = context.sharedMember;
+    await this.ensureTenureInTransaction(tx, member);
+    const { scope, tenure } = await this.scopeAndTenure(
+      tx,
+      context.plan.id,
+      member.userId,
+    );
+    for (const input of inputs) {
+      await this.recordUnderTenure(
+        tx,
+        {
+          ...input,
+          weddingPlanId: context.plan.id,
+          actorUserId: member.userId,
+          authorityVersion: member.authorityVersion,
+        },
+        scope,
+        tenure,
+      );
+    }
   }
 
   async createHistoryScopeInTransaction(

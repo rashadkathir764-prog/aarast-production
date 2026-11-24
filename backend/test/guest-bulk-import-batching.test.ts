@@ -106,9 +106,9 @@ function harness(options: Options = {}) {
       },
     },
     {
-      recordForContextInTransaction: async (_tx: unknown, _ctx: unknown, input: any) => {
-        recorded.push(input.entityId);
-        return null;
+      recordManyForContextInTransaction: async (_tx: unknown, _ctx: unknown, inputs: any[]) => {
+        log.push("recordMany");
+        recorded.push(...inputs.map((input) => input.entityId));
       },
     },
     { qualifyingEntityIdsInTransaction: async () => [] },
@@ -147,13 +147,14 @@ test("the number of queries does not grow with the list", async () => {
   await large.service.bulkCreate(owner, "plan-1", { items: importOf(120) } as any);
 
   assert.equal(small.log.length, large.log.length, small.log.join(","));
-  assert.ok(large.log.length <= 9, `${large.log.length}: ${large.log.join(",")}`);
+  assert.ok(large.log.length <= 10, `${large.log.length}: ${large.log.join(",")}`);
   assert.equal(large.created.length, 120);
   assert.equal(large.log.filter((entry) => entry === "insertGuests").length, 1);
   assert.equal(large.log.filter((entry) => entry === "insertInvites").length, 1);
   assert.equal(large.log.filter((entry) => entry === "planEvents").length, 1);
   assert.equal(large.log.filter((entry) => entry === "groupLock").length, 1, "one lock for the one group");
   assert.equal(large.log.filter((entry) => entry === "duplicates").length, 1);
+  assert.equal(large.log.filter((entry) => entry === "recordMany").length, 1, "one call to record the list");
 });
 
 test("each guest comes back in the order given, with its own events, and is recorded", async () => {

@@ -944,8 +944,13 @@ class ApiException implements Exception {
   /// could not cure (a weak network, or a 429 on the refresh itself; a
   /// refresh the server refused ends the session instead). What waits on the
   /// phone keeps waiting, as for a network failure.
+  ///
+  /// RA-MO-343: and a gateway that is restarting or overloaded (502, 503,
+  /// 504): the request did not reach the app behind it, or is not answered
+  /// yet; it says nothing about the change.
   bool get isNotNow =>
-      !isNetworkFailure && const {401, 408, 429}.contains(statusCode);
+      !isNetworkFailure &&
+      const {401, 408, 429, 502, 503, 504}.contains(statusCode);
 
   @override
   String toString() => message;

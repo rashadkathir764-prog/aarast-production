@@ -366,6 +366,54 @@ void main() {
     });
   }
 
+  // RA-MO-343: a gateway that is restarting or overloaded (502, 503, 504)
+  // says «not now» too. Each one spent a retry, so a short outage blocked a
+  // change for good after five tries, and a later 500 blocked one that had
+  // only met «not now» before.
+  for (final code in [502, 503, 504]) {
+    test('a $code spends no retry budget and stops the loop', () async {
+      final database = await _freshDb();
+      final first = await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks',
+        method: 'POST',
+        payload: {'title': 'أ'},
+        planId: 'plan-1',
+      );
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks',
+        method: 'POST',
+        payload: {'title': 'ب'},
+        planId: 'plan-1',
+      );
+      for (var i = 0; i < SyncQueueItem.maxAutoRetries - 1; i++) {
+        await database.markSyncItemFailed(first.id, 'boom');
+      }
+      final adapter = _ScriptedAdapter([
+        (_) => _status(code, '{"statusCode":$code,"message":"later"}'),
+      ]);
+      final service = _service(database, adapter);
+      await service.ensureCacheOwner('user-A');
+
+      for (var i = 0; i < SyncQueueItem.maxAutoRetries; i++) {
+        await service.syncPendingChanges();
+      }
+
+      expect(adapter.received, hasLength(SyncQueueItem.maxAutoRetries));
+      expect(service.blockedCount, 0);
+      final waiting = await database.pendingSyncItems();
+      expect(waiting, hasLength(2));
+      expect(
+        waiting.firstWhere((item) => item.id == first.id).retryCount,
+        SyncQueueItem.maxAutoRetries - 1,
+        reason: 'no try was spent',
+      );
+    });
+  }
+
   test('a 401 the refresh could not cure keeps the change waiting', () async {
     final database = await _freshDb();
     await database.enqueueSync(

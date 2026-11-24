@@ -376,13 +376,18 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
-  Future<void> markSyncItemFailed(String id, String error) async {
+  Future<void> markSyncItemFailed(
+    String id,
+    String error, {
+    bool spendsAttempt = true,
+  }) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     final now = DateTime.now().toIso8601String();
     for (final row in rows) {
       if (row['id'] == id) {
         row['status'] = SyncQueueItem.failed;
-        row['retryCount'] = _intOrZero(row['retryCount']) + 1;
+        row['retryCount'] =
+            _intOrZero(row['retryCount']) + (spendsAttempt ? 1 : 0);
         row['lastError'] = error;
         row['updatedAt'] = now;
       }

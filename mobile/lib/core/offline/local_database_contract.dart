@@ -101,7 +101,14 @@ abstract class LocalDatabase {
 
   Future<List<SyncQueueItem>> blockedSyncItems();
 
-  Future<void> markSyncItemFailed(String id, String error);
+  /// The item waits for another try. [spendsAttempt] false (RA-MO-343): the
+  /// failure said «not now» (no network, a gateway down, too many requests),
+  /// nothing about the change, so its retry budget stays as it was.
+  Future<void> markSyncItemFailed(
+    String id,
+    String error, {
+    bool spendsAttempt = true,
+  });
 
   /// RA-MO-30: the item is about to go on the wire. Marks it
   /// [SyncQueueItem.sent] and answers false, changing nothing, when it is

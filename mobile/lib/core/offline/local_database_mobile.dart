@@ -443,7 +443,11 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
-  Future<void> markSyncItemFailed(String id, String error) async {
+  Future<void> markSyncItemFailed(
+    String id,
+    String error, {
+    bool spendsAttempt = true,
+  }) async {
     final rows = await _db.query(
       OfflineTables.syncQueue,
       where: 'id = ?',
@@ -451,7 +455,8 @@ class SqliteLocalDatabase implements LocalDatabase {
       limit: 1,
     );
     if (rows.isEmpty) return;
-    final retryCount = _intOrZero(rows.first['retryCount']) + 1;
+    final retryCount =
+        _intOrZero(rows.first['retryCount']) + (spendsAttempt ? 1 : 0);
     await _db.update(
       OfflineTables.syncQueue,
       {

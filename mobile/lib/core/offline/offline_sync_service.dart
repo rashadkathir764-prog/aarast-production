@@ -710,7 +710,14 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     if (blocked) {
       await database.markSyncItemBlocked(item.id, message);
     } else {
-      await database.markSyncItemFailed(item.id, message);
+      // RA-MO-343: «not now» spends none of the change's retry budget.
+      await database.markSyncItemFailed(
+        item.id,
+        message,
+        spendsAttempt:
+            !(error is ApiException && error.isNetworkFailure) &&
+            !_isNotNow(error),
+      );
     }
 
     _lastError = message;

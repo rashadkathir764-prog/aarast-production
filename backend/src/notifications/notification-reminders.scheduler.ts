@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { isQuietHour } from '../shared-kernel/time/quiet-hours';
 import { NotificationsService } from './notifications.service';
 
 @Injectable()
@@ -8,9 +9,15 @@ export class NotificationRemindersScheduler {
 
   constructor(private readonly notifications: NotificationsService) {}
 
-  @Cron('15 * * * *')
-  async generateDueReminders(): Promise<void> {
-    const createdCount = await this.notifications.generateDueNotifications();
+  // RA-BE-185: hourly from :05, so the first scan of the day is 09:05 Aden.
+  // A «ذكّرني» time still reminds at night (its push is held to 09:00); the
+  // day reminders (a task, a payment, a loan, promised money, the wedding)
+  // wait for the morning scan instead of firing right after midnight.
+  @Cron('5 * * * *')
+  async generateDueReminders(now: Date = new Date()): Promise<void> {
+    const createdCount = await this.notifications.generateDueNotifications({
+      dayReminders: !isQuietHour(now),
+    });
     if (createdCount == null) {
       this.logger.debug('Skipped reminder scan; another replica owns the lock');
     } else if (createdCount > 0) {

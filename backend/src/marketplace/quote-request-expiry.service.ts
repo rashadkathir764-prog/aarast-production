@@ -56,7 +56,10 @@ export class QuoteRequestExpiryService {
     private readonly notifications: NotificationsPort,
   ) {}
 
-  async run(now: Date = new Date()): Promise<QuoteRequestExpiryRun> {
+  async run(
+    now: Date = new Date(),
+    options: { warn?: boolean } = {},
+  ): Promise<QuoteRequestExpiryRun> {
     const result: QuoteRequestExpiryRun = {
       expired: 0,
       warned: 0,
@@ -74,6 +77,8 @@ export class QuoteRequestExpiryService {
       result,
     );
 
+    // RA-BE-185: the warning waits for the morning scan; ending is not held.
+    if (options.warn === false) return result;
     const until = new Date(now.getTime() + WARNING_WINDOW_MS);
     await this.walk(
       (cursor) =>

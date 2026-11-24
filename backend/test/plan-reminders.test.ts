@@ -156,14 +156,17 @@ test("a loan repayment reminder says due soon or overdue", () => {
   assert.notEqual(late.dedupeKey, soon.dedupeKey);
 });
 
-test("the wedding countdown reminds a month, a week and a day before", () => {
+test("the wedding countdown reminds a month, a week, a day before and on the day", () => {
   assert.equal(weddingCountdownMilestone(45), null);
   assert.equal(weddingCountdownMilestone(30), 30);
   assert.equal(weddingCountdownMilestone(8), 30);
   assert.equal(weddingCountdownMilestone(7), 7);
   assert.equal(weddingCountdownMilestone(2), 7);
   assert.equal(weddingCountdownMilestone(1), 1);
-  assert.equal(weddingCountdownMilestone(0), 1);
+  // RA-BE-190, on purpose: the wedding day was the same step as the day
+  // before (so «ألف مبروك» never went out, its key being taken); it is its
+  // own step 0 now, with its own dedupe key.
+  assert.equal(weddingCountdownMilestone(0), 0);
   assert.equal(weddingCountdownMilestone(-1), null);
 
   const wedding = new Date("2026-11-10T00:00:00.000Z");

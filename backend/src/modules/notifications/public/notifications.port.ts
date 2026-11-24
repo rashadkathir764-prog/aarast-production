@@ -132,7 +132,7 @@ export interface NotificationsPort {
     weddingPlanId: string | null,
     requestedUserId: string,
   ): Promise<string>;
-  notifyTaskDue(task: WeddingTask): Promise<void>;
+  notifyTaskDue(task: WeddingTask, actorUserId?: string): Promise<void>;
   purgeMoneyForMember(
     client: NotificationPurgeClient,
     userId: string,

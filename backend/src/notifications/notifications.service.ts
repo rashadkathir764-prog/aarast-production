@@ -24,6 +24,7 @@ import {
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
+import { daysBetween } from "../shared-kernel/voice/day-words";
 import { PrismaService } from "../platform/database/prisma.service";
 import { OutboxEventTypes } from "../platform/outbox/outbox.constants";
 import { OutboxService } from "../platform/outbox/outbox.service";
@@ -39,7 +40,7 @@ import {
   isPlanPartnerRole,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
-import { isPushNotificationType } from "../push/push-notification.policy";
+import { isPushNotificationType, pushNotBefore } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
   isLiveAccount,
@@ -104,6 +105,7 @@ import {
   budgetCategoryExceededRow,
   type DueNotice,
   expectedFundingRow,
+  isTaskDueReminderDay,
   loanRepaymentRow,
   paymentDueNotice,
   paymentReminderDue,
@@ -609,7 +611,14 @@ export class NotificationsService implements NotificationsPort {
     }
   }
 
-  async notifyTaskDue(task: WeddingTask): Promise<void> {
+  /**
+   * RA-BE-189: a task whose due date was just changed to a reminder day (a
+   * week, a day, or today) tells the assignee and the owner now, under the
+   * same key the scan uses, so the scan does not tell them again. The actor
+   * who edited it is not told of their own edit, and a task is never told
+   * of on creation.
+   */
+  async notifyTaskDue(task: WeddingTask, actorUserId?: string): Promise<void> {
     if (
       !task.dueDate ||
       task.status === WeddingTaskStatus.DONE ||
@@ -631,60 +640,36 @@ export class NotificationsService implements NotificationsPort {
         lockedTask = currentTask;
         return this.taskDueNotificationInput(currentTask);
       },
-      [],
-      async (tx, plan) =>
-        this.taskDueRecipientIdsInTransaction(tx, plan, lockedTask),
+      actorUserId ? [actorUserId] : [],
+      async (_tx, plan) => this.taskDueRecipientIds(plan, lockedTask),
     );
   }
 
-  private async taskDueRecipientIdsInTransaction(
-    tx: Prisma.TransactionClient,
+  /**
+   * RA-BE-189: a task's reminders go to its assignee and the plan owner,
+   * not to every member who follows it. A private task reminds only its
+   * account (V1 checklist 4.10).
+   */
+  private taskDueRecipientIds(
     plan: {
       ownerUserId: string;
-      sharedMembers: Array<{
-        userId: string;
-        role: SharedMemberRole;
-        canManageTasks: boolean;
-      }>;
+      sharedMembers: Array<{ userId: string; canManageTasks: boolean }>;
     },
-    task: WeddingTask | null,
-  ): Promise<ReadonlySet<string>> {
-    // A private task reminds only its account (V1 checklist 4.10).
-    if (task?.privateToUserId) return new Set([task.privateToUserId]);
-    const recipients = new Set([plan.ownerUserId]);
-    if (!task) return recipients;
-    const taskMembers = plan.sharedMembers.filter(
-      (member) => member.canManageTasks,
-    );
-    if (taskMembers.length === 0) return recipients;
-    // Who contributed to the task is collaboration's history, read through
-    // its port on this transaction.
-    const contributions = await this.scope.listQualifyingContributionsInTransaction(
-      tx,
-      [task.weddingPlanId],
-      taskMembers.map((member) => member.userId),
-      [
-        {
-          entityType: ContributionEntityType.TASK,
-          actions: [ContributionAction.CREATED, ContributionAction.COMPLETED],
-        },
-      ],
-    );
-    const contributors = new Set(
-      contributions
-        .filter((contribution) => contribution.entityId === task.id)
-        .map((contribution) => contribution.actorUserId),
-    );
-    for (const member of taskMembers) {
-      if (
-        task.assigneeUserId === member.userId ||
-        // The plan's partner follows every task, as in the reminder scan.
-        isPlanPartnerRole(member.role) ||
-        contributors.has(member.userId)
-      ) {
-        recipients.add(member.userId);
-      }
+    task: Pick<WeddingTask, "assigneeUserId" | "privateToUserId"> | null,
+  ): ReadonlySet<string> {
+    if (task?.privateToUserId) {
+      const privateTo = task.privateToUserId;
+      const inPlan =
+        privateTo === plan.ownerUserId ||
+        plan.sharedMembers.some((member) => member.userId === privateTo);
+      return new Set(inPlan ? [privateTo] : []);
     }
+    const recipients = new Set([plan.ownerUserId]);
+    const assignee = plan.sharedMembers.find(
+      (member) =>
+        member.canManageTasks && member.userId === task?.assigneeUserId,
+    );
+    if (assignee) recipients.add(assignee.userId);
     return recipients;
   }
 
@@ -699,20 +684,36 @@ export class NotificationsService implements NotificationsPort {
       return null;
     }
     const today = startOfRiyadhDay();
-    const dueWindowEnd = new Date(today);
-    dueWindowEnd.setDate(dueWindowEnd.getDate() + 7);
-    if (task.dueDate > endOfRiyadhDay(dueWindowEnd)) return null;
+    if (!isTaskDueReminderDay(daysBetween(today, task.dueDate))) return null;
 
-    // The hourly scan's words; each reader's key adds the reader
+    // The scan's words; each reader's key adds the reader
     // (createForPlanParticipantsAtomically).
     const { weddingPlanId: _planId, ...content } = taskDueContent(
       { id: task.id, weddingPlanId: task.weddingPlanId, title: task.title, dueDate: task.dueDate },
       today,
     );
-    return { ...content, dedupeKey: taskDueKey(content.type, task.id) };
+    return {
+      ...content,
+      dedupeKey: taskDueKey(
+        content.type,
+        task.id,
+        task.dueDate,
+        daysBetween(today, task.dueDate),
+      ),
+    };
   }
 
-  async generateDueNotifications(): Promise<number | null> {
+  /**
+   * The reminder scan. `dayReminders: false` (RA-BE-185: the scan ran in
+   * quiet hours) leaves out what a calendar day makes due (a task's due
+   * steps, a payment, a loan, promised money, the wedding countdown): the
+   * morning scan makes them. A task's own «ذكّرني» time and an item over its
+   * budget are not a day's, and are made at any hour.
+   */
+  async generateDueNotifications(
+    options: { dayReminders?: boolean } = {},
+  ): Promise<number | null> {
+    const dayReminders = options.dayReminders ?? true;
     return this.prisma.$transaction(
       async (tx) => {
         const [lock] = await this.repository.tryLockDueScheduler(tx);
@@ -851,16 +852,13 @@ export class NotificationsService implements NotificationsPort {
           ).map((provider) => [provider.id, provider.businessName]),
         );
 
-        // Who contributed to which task or cost is collaboration's history.
+        // Who contributed to which cost is collaboration's history. (A task's
+        // reminders go to its assignee and the owner, not its contributors.)
         const contributions = await this.scope.listQualifyingContributionsInTransaction(
           tx,
           planIds,
           recipientUserIds,
           [
-            {
-              entityType: ContributionEntityType.TASK,
-              actions: [ContributionAction.CREATED, ContributionAction.COMPLETED],
-            },
             {
               entityType: ContributionEntityType.WEDDING_COST,
               actions: [
@@ -871,20 +869,15 @@ export class NotificationsService implements NotificationsPort {
             },
           ],
         );
-        const contributedTaskIdsByRecipient = new Map<string, Set<string>>();
         const contributedCostIdsByRecipient = new Map<string, Set<string>>();
         for (const contribution of contributions) {
           const key = this.planRecipientScopeKey(
             contribution.weddingPlanId,
             contribution.actorUserId,
           );
-          const target =
-            contribution.entityType === ContributionEntityType.TASK
-              ? contributedTaskIdsByRecipient
-              : contributedCostIdsByRecipient;
-          const ids = target.get(key) ?? new Set<string>();
+          const ids = contributedCostIdsByRecipient.get(key) ?? new Set<string>();
           ids.add(contribution.entityId);
-          target.set(key, ids);
+          contributedCostIdsByRecipient.set(key, ids);
         }
 
         const plansById = new Map(lockedPlans.map((plan) => [plan.id, plan]));
@@ -895,8 +888,15 @@ export class NotificationsService implements NotificationsPort {
         for (const task of tasks) {
           const plan = plansById.get(task.weddingPlanId);
           if (!plan) continue;
+          // RA-BE-189: a task is told on its step days (a week, a day, the
+          // day) and once when late, in the morning scan only (RA-BE-185).
           const dueDate =
-            task.dueDate && task.dueDate <= dueWindowEndOfDay ? task.dueDate : null;
+            dayReminders &&
+            task.dueDate &&
+            task.dueDate <= dueWindowEndOfDay &&
+            isTaskDueReminderDay(daysBetween(today, task.dueDate))
+              ? task.dueDate
+              : null;
           const reminderAt =
             task.reminderAt &&
             task.reminderAt >= dueTasks.reminderWindow.from &&
@@ -904,28 +904,9 @@ export class NotificationsService implements NotificationsPort {
               ? task.reminderAt
               : null;
           if (!dueDate && !reminderAt) continue;
-          const planTaskRecipients = new Set([
-            plan.ownerUserId,
-            ...plan.sharedMembers
-              .filter((member) => {
-                if (!member.canManageTasks) return false;
-                if (task.assigneeUserId === member.userId) return true;
-                // The plan's partner follows every task (V1 checklist 4.10).
-                if (isPlanPartnerRole(member.role)) return true;
-                return Boolean(
-                  contributedTaskIdsByRecipient
-                    .get(this.planRecipientScopeKey(plan.id, member.userId))
-                    ?.has(task.id),
-                );
-              })
-              .map((member) => member.userId),
-          ]);
-          // V1 checklist 4.10: a private task reminds only its account.
-          const recipients = task.privateToUserId
-            ? [...planTaskRecipients].filter(
-                (userId) => userId === task.privateToUserId,
-              )
-            : planTaskRecipients;
+          // The assignee and the owner, not every follower; a private task
+          // reminds only its account (V1 checklist 4.10).
+          const recipients = this.taskDueRecipientIds(plan, task);
           for (const userId of recipients) {
             if (
               !this.preferenceEnabled(
@@ -957,7 +938,7 @@ export class NotificationsService implements NotificationsPort {
           }
         }
 
-        for (const schedule of paymentSchedules) {
+        for (const schedule of dayReminders ? paymentSchedules : []) {
           const plan = plansById.get(schedule.weddingCost.weddingPlanId);
           if (!plan) continue;
           // D106: its own reminder day, not the default week, when it has one.
@@ -1043,21 +1024,21 @@ export class NotificationsService implements NotificationsPort {
             rows.push(budgetCategoryExceededRow(ownerUserId, category, plan.currency));
           }
         }
-        for (const repayment of dueLoanRepayments) {
+        for (const repayment of dayReminders ? dueLoanRepayments : []) {
           const ownerUserId = ownerWants(repayment.weddingPlanId, "paymentRemindersEnabled");
           const plan = plansById.get(repayment.weddingPlanId);
           if (ownerUserId && plan) {
             rows.push(loanRepaymentRow(ownerUserId, repayment, today, plan.currency));
           }
         }
-        for (const source of dueExpectedFunding) {
+        for (const source of dayReminders ? dueExpectedFunding : []) {
           const ownerUserId = ownerWants(source.weddingPlanId, "paymentRemindersEnabled");
           const plan = plansById.get(source.weddingPlanId);
           if (!ownerUserId || !plan) continue;
           const row = expectedFundingRow(ownerUserId, source, today, plan.currency);
           if (row) rows.push(row);
         }
-        for (const plan of planningPlans) {
+        for (const plan of dayReminders ? planningPlans : []) {
           const recipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers.map((member) => member.userId),
@@ -1137,7 +1118,7 @@ export class NotificationsService implements NotificationsPort {
 
   private async enqueueNotificationDelivery(
     client: NotificationCreateClient,
-    notification: Pick<Notification, "id" | "userId" | "type">,
+    notification: Pick<Notification, "id" | "userId" | "type" | "data">,
   ): Promise<void> {
     await this.outbox.enqueue(client, {
       type: OutboxEventTypes.notificationCreated,
@@ -1148,7 +1129,10 @@ export class NotificationsService implements NotificationsPort {
         userId: notification.userId,
       },
     });
-    if (!isPushNotificationType(notification.type)) return;
+    if (!isPushNotificationType(notification.type, notification.data)) return;
+    // RA-BE-185: from 21:00 to 09:00 in Aden the push waits for the
+    // morning (the inbox row and the live badge above do not).
+    const notBefore = pushNotBefore(notification.type, new Date());
     await this.outbox.enqueue(client, {
       type: OutboxEventTypes.pushNotificationRequested,
       aggregateType: "notification",
@@ -1156,6 +1140,7 @@ export class NotificationsService implements NotificationsPort {
       payload: {
         notificationId: notification.id,
       },
+      ...(notBefore ? { nextAttemptAt: notBefore } : {}),
     });
   }
 

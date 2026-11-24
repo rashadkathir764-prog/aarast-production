@@ -12,7 +12,7 @@ import {
 } from "../src/push/push-notification.policy";
 import { getJwtSecret } from "../src/modules/identity/internal/auth/jwt-secret";
 
-test("push policy is limited to task and chat notification types", () => {
+test("push policy is limited to the notification types that wait on a person", () => {
   assert.equal(isPushNotificationType(NotificationType.TASK_ASSIGNED), true);
   assert.equal(isPushNotificationType(NotificationType.TASK_DUE_SOON), true);
   assert.equal(isPushNotificationType(NotificationType.TASK_OVERDUE), true);
@@ -20,10 +20,25 @@ test("push policy is limited to task and chat notification types", () => {
     isPushNotificationType(NotificationType.CHAT_MESSAGE_RECEIVED),
     true,
   );
+  // RA-BE-186 (Q-48 أ), on purpose: this test used to pin that a new
+  // request never reaches a phone, which left the provider with no word of
+  // a request that expires in 7 days. The type is written for both sides:
+  // the customer's acknowledgement stays in the inbox, the provider's
+  // «وصلك طلب جديد» pushes (`provider-push.test.ts` holds the whole rule).
   assert.equal(
-    isPushNotificationType(NotificationType.QUOTE_REQUEST_SUBMITTED),
+    isPushNotificationType(NotificationType.QUOTE_REQUEST_SUBMITTED, {
+      recipientAudience: "CUSTOMER",
+    }),
     false,
   );
+  assert.equal(
+    isPushNotificationType(NotificationType.QUOTE_REQUEST_SUBMITTED, {
+      recipientAudience: "PROVIDER",
+    }),
+    true,
+  );
+  // Reviews stay in the inbox.
+  assert.equal(isPushNotificationType(NotificationType.REVIEW_RECEIVED), false);
 });
 
 // A price offer and each booking step wait on the other side's decision, so

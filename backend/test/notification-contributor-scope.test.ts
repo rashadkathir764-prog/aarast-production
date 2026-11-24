@@ -239,7 +239,10 @@ test("list visibility carries live task and qualifying cost scope into the datab
   assert.doesNotMatch(JSON.stringify(contributionWhere), /endedAt/);
 });
 
-test("scheduled reminders target only each contributor's current task or qualifying cost", async () => {
+// RA-BE-189, on purpose: a task's reminders go to its assignee and the owner,
+// not to every member who follows it (a contributor, the plan's partner). The
+// cost reminders keep the contributor scope.
+test("scheduled reminders target the task's assignee and the owner, and each contributor's qualifying cost", async () => {
   const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1_000);
   const plan = {
     id: "plan-1",
@@ -401,7 +404,6 @@ test("scheduled reminders target only each contributor's current task or qualify
   assert.deepEqual(pairs, [
     "member-a:schedule-a",
     "member-a:task-a",
-    "member-b:task-b",
     "member-c:schedule-c",
     "owner-1:schedule-a",
     "owner-1:schedule-c",
@@ -411,7 +413,10 @@ test("scheduled reminders target only each contributor's current task or qualify
   assert.doesNotMatch(JSON.stringify(contributionWhere), /endedAt/);
 });
 
-test("immediate task-due notifications use the same contributor scope as the scheduler", async () => {
+// RA-BE-189, on purpose: the same recipients as the scan, the assignee and the
+// owner, without the task's contributors (member-b) or a member who cannot
+// manage tasks (member-c).
+test("immediate task-due notifications go to the same recipients as the scheduler: the assignee and the owner", async () => {
   const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1_000);
   const task = {
     id: "task-1",
@@ -504,8 +509,9 @@ test("immediate task-due notifications use the same contributor scope as the sch
 
   await service.notifyTaskDue(task as any);
 
-  assert.deepEqual(recipients.sort(), ["member-a", "member-b", "owner-1"]);
-  assert.doesNotMatch(JSON.stringify(contributionWhere), /endedAt/);
+  assert.deepEqual(recipients.sort(), ["member-a", "owner-1"]);
+  // Who contributed is no longer read for a task's reminder.
+  assert.equal(contributionWhere, undefined);
 });
 
 test("provider quote updates fall back to the plan owner after requester provider permission is revoked", async () => {

@@ -18,6 +18,7 @@ import {
 import {
   dayCountWords,
   daysBetween,
+  reminderWhenWords,
   weekdayDayMonthWords,
   whenWords,
 } from "../shared-kernel/voice/day-words";
@@ -57,8 +58,23 @@ export function addressDueNotice(
   };
 }
 
-/** The countdown reminds once inside each window: a month, a week, a day. */
-export const WEDDING_COUNTDOWN_MILESTONES = [30, 7, 1] as const;
+/**
+ * The countdown reminds once inside each window: a month, a week, a day, and
+ * the wedding day itself (RA-BE-190: day 0 is its own step, so the day
+ * before's notice does not keep «ألف مبروك» from going out).
+ */
+export const WEDDING_COUNTDOWN_MILESTONES = [30, 7, 1, 0] as const;
+
+/**
+ * RA-BE-189: a task is reminded this many days before its due day and on it
+ * (a late task is told once, see `isTaskDueReminderDay`).
+ */
+export const TASK_DUE_REMINDER_DAYS = [7, 1, 0] as const;
+
+/** Whether a task `days` from its due day (negative once late) is reminded today. */
+export function isTaskDueReminderDay(days: number): boolean {
+  return days < 0 || (TASK_DUE_REMINDER_DAYS as readonly number[]).includes(days);
+}
 
 /** A task due within the window or overdue, for one reader. */
 export function taskDueNotice(
@@ -70,7 +86,7 @@ export function taskDueNotice(
   return {
     ...content,
     userId,
-    dedupeKey: `${userId}:${taskDueKey(content.type, task.id)}`,
+    dedupeKey: `${userId}:${taskDueKey(content.type, task.id, task.dueDate, daysBetween(today, task.dueDate))}`,
   };
 }
 
@@ -101,9 +117,20 @@ export function taskReminderNotice(
   };
 }
 
-/** The reader-free part of a task's reminder key (each reader's key adds the reader). */
-export function taskDueKey(type: NotificationType, taskId: string): string {
-  return `${type}:task:${taskId}`;
+/**
+ * The reader-free part of a task's reminder key (each reader's key adds the
+ * reader): one per task, due day and step (RA-BE-189), so a moved due day
+ * re-arms the steps and a rescan sends nothing twice. A late task has one
+ * key for its due day, not one for each day it stays late.
+ */
+export function taskDueKey(
+  type: NotificationType,
+  taskId: string,
+  dueDate: Date,
+  days: number,
+): string {
+  const step = days < 0 ? "overdue" : `in:${days}`;
+  return `${type}:task:${taskId}:due:${riyadhDay(dueDate)}:${step}`;
 }
 
 /** What a task's reminder says and opens, whoever reads it. */
@@ -121,7 +148,7 @@ export function taskDueContent(
     weddingPlanId: task.weddingPlanId,
     type,
     priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-    title: overdue ? "مهمة متأخرة" : `مهمة ${whenWords(days)}`,
+    title: overdue ? "مهمة متأخرة" : `مهمة ${reminderWhenWords(days)}`,
     body: overdue
       ? `${task.title} · كان موعدها ${day}`
       : `${task.title} · ${day}`,
@@ -129,6 +156,8 @@ export function taskDueContent(
       taskId: task.id,
       weddingPlanId: task.weddingPlanId,
       dueDate: task.dueDate.toISOString(),
+      // The phone's words say the real distance (RA-BE-189).
+      ...(overdue ? {} : { daysUntil: days }),
     },
     entityType: "task",
     entityId: task.id,

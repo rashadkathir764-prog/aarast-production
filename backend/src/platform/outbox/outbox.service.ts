@@ -9,6 +9,8 @@ export interface EnqueueOutboxEvent {
   aggregateType?: string;
   aggregateId?: string;
   payload: Prisma.InputJsonObject;
+  /** Not delivered before this instant (the worker takes events whose time came). */
+  nextAttemptAt?: Date;
 }
 
 // Platform owns `OutboxEvent`; the enqueue statement lives here for the
@@ -23,6 +25,7 @@ export async function enqueueOutboxEventInTransaction(
       aggregateType: event.aggregateType ?? null,
       aggregateId: event.aggregateId ?? null,
       payload: event.payload,
+      ...(event.nextAttemptAt ? { nextAttemptAt: event.nextAttemptAt } : {}),
     },
   });
 }

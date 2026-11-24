@@ -71,3 +71,11 @@ export function whenWords(days: number): string {
   if (days === 1) return 'بكرة';
   return `بعد ${dayCountWords(days)}`;
 }
+
+/**
+ * `whenWords` for a reminder, where a week away is «بعد أسبوع» (the day a
+ * reminder is sent a week ahead): «اليوم», «بكرة», «بعد أسبوع», «بعد 5 أيام».
+ */
+export function reminderWhenWords(days: number): string {
+  return days === 7 ? 'بعد أسبوع' : whenWords(days);
+}

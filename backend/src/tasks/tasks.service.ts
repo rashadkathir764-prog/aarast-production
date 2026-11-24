@@ -225,7 +225,8 @@ export class TasksService {
       });
       return { task: created, seesMoney: this.permissions.canViewMoney(context) };
     });
-    await this.notifyTaskDueBestEffort(task);
+    // RA-BE-189: a new task is not told of on creation (the creator knows
+    // it, and the reminder steps tell the assignee and the owner in time).
 
     return this.toResponse(task, true, seesMoney);
   }
@@ -451,7 +452,11 @@ export class TasksService {
       });
       return { task: updated, seesMoney: this.permissions.canViewMoney(context) };
     });
-    await this.notifyTaskDueBestEffort(task);
+    // RA-BE-189: a due date moved to a reminder day tells the others now, not
+    // the person who moved it.
+    if (dto.dueDate !== undefined) {
+      await this.notifyTaskDueBestEffort(task, currentUser.id);
+    }
 
     return this.toResponse(task, true, seesMoney);
   }
@@ -1098,9 +1103,12 @@ export class TasksService {
     });
   }
 
-  private async notifyTaskDueBestEffort(task: WeddingTask): Promise<void> {
+  private async notifyTaskDueBestEffort(
+    task: WeddingTask,
+    actorUserId: string,
+  ): Promise<void> {
     try {
-      await this.notifications.notifyTaskDue(task);
+      await this.notifications.notifyTaskDue(task, actorUserId);
     } catch (error) {
       this.logger.warn(
         `Deferred task reminder repair for task ${task.id}: ${error instanceof Error ? error.name : "UnknownError"}`,

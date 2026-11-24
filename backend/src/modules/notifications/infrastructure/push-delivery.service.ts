@@ -68,7 +68,12 @@ export class PushDeliveryService implements PushDeliveryPort {
     const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
     });
-    if (!notification || !isPushNotificationType(notification.type)) return;
+    if (
+      !notification ||
+      !isPushNotificationType(notification.type, notification.data)
+    ) {
+      return;
+    }
     const preference = await this.prisma.notificationPreference.findUnique({
       where: { userId: notification.userId },
       select: { pushEnabled: true },

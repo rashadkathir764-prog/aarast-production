@@ -1,4 +1,6 @@
 import { NotificationType } from "@prisma/client";
+import { isQuietHour, quietHoursEnd } from "../shared-kernel/time/quiet-hours";
+import { reminderWhenWords } from "../shared-kernel/voice/day-words";
 
 const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   NotificationType.TASK_ASSIGNED,
@@ -22,10 +24,60 @@ const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   NotificationType.LOAN_REPAYMENT_OVERDUE,
   NotificationType.BUDGET_CATEGORY_EXCEEDED,
   NotificationType.FUNDING_EXPECTED,
+  // RA-BE-186 (Q-48 أ): the provider's account approved or refused. Reviews
+  // stay in the inbox; the steps that need a fix or a wait are in the inbox
+  // and the portal.
+  NotificationType.PROVIDER_APPROVED,
+  NotificationType.PROVIDER_REJECTED,
 ]);
 
-export function isPushNotificationType(type: NotificationType): boolean {
+/**
+ * RA-BE-186: these types are written for both sides of a request, and only
+ * the provider's side pushes. The customer's own request received, offer
+ * accepted and the provider's apology stay in the inbox.
+ */
+const PROVIDER_AUDIENCE_PUSH_TYPES = new Set<NotificationType>([
+  NotificationType.QUOTE_REQUEST_SUBMITTED,
+  NotificationType.QUOTE_ACCEPTED,
+  NotificationType.QUOTE_REJECTED,
+]);
+
+function isProviderAudience(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  return (data as Record<string, unknown>).recipientAudience === "PROVIDER";
+}
+
+/**
+ * Whether a notification of this type reaches the phone. `data` is the
+ * notification's own data, read only for the types written for both a
+ * customer and a provider.
+ */
+export function isPushNotificationType(
+  type: NotificationType,
+  data?: unknown,
+): boolean {
+  if (PROVIDER_AUDIENCE_PUSH_TYPES.has(type)) return isProviderAudience(data);
   return PUSH_NOTIFICATION_TYPES.has(type);
+}
+
+/**
+ * RA-BE-185: a chat message and a booking request wait on a person who is
+ * writing now, so they reach the phone at any hour; every other push is held
+ * through quiet hours (OTP is no notification and never comes through here).
+ */
+const QUIET_HOURS_EXEMPT_TYPES = new Set<NotificationType>([
+  NotificationType.CHAT_MESSAGE_RECEIVED,
+  NotificationType.BOOKING_REQUESTED,
+]);
+
+export function isQuietHoursExempt(type: NotificationType): boolean {
+  return QUIET_HOURS_EXEMPT_TYPES.has(type);
+}
+
+/** The instant a push made at `at` may go out, or null when it goes out now. */
+export function pushNotBefore(type: NotificationType, at: Date): Date | null {
+  if (isQuietHoursExempt(type) || !isQuietHour(at)) return null;
+  return quietHoursEnd(at);
 }
 
 /**
@@ -42,6 +94,15 @@ function isRevisedOfferNotice(data: unknown): boolean {
 function isWeddingDayNotice(data: unknown): boolean {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   return (data as Record<string, unknown>).daysUntil === 0;
+}
+
+/** The distance a task reminder carries (`daysUntil`, 0 or more), or null. */
+function taskDueDays(data: unknown): number | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const days = (data as Record<string, unknown>).daysUntil;
+  return typeof days === "number" && Number.isInteger(days) && days >= 0
+    ? days
+    : null;
 }
 
 /** A FUNDING_EXPECTED notice for the expected day itself, not the day before. */
@@ -70,11 +131,18 @@ export function pushNotificationCopy(
         title: "مهمة جديدة",
         body: "عندك مهمة جديدة، وتفاصيلها في اعّرست.",
       };
-    case NotificationType.TASK_DUE_SOON:
+    // RA-BE-189: the phone says the real distance («اليوم», «بكرة», «بعد
+    // أسبوع»); a «ذكّرني» time carries none and says only that it is near.
+    case NotificationType.TASK_DUE_SOON: {
+      const days = taskDueDays(data);
       return {
         title: "تذكير بمهمة",
-        body: "عندك مهمة موعدها قريب، وتفاصيلها في اعّرست.",
+        body:
+          days === null
+            ? "عندك مهمة موعدها قريب، وتفاصيلها في اعّرست."
+            : `عندك مهمة موعدها ${reminderWhenWords(days)}، وتفاصيلها في اعّرست.`,
       };
+    }
     // RA-BE-99: a task whose day passed is late, not coming; the notice in
     // the app says «مهمة متأخرة», and the lock screen says the same.
     case NotificationType.TASK_OVERDUE:
@@ -153,6 +221,33 @@ export function pushNotificationCopy(
       return {
         title: "تحديث على حجز",
         body: "فيه جديد على حجز، وتفاصيله في اعّرست.",
+      };
+    // RA-BE-186: the provider's own notices, in the provider's voice and
+    // with no customer's name or price on the lock screen.
+    case NotificationType.QUOTE_REQUEST_SUBMITTED:
+      return {
+        title: "وصلك طلب جديد",
+        body: "ردّ عليه بعرضك أو اعتذر، وتفاصيله في اعّرست.",
+      };
+    case NotificationType.QUOTE_ACCEPTED:
+      return {
+        title: "انقبل عرضك",
+        body: "تفاصيله في اعّرست.",
+      };
+    case NotificationType.QUOTE_REJECTED:
+      return {
+        title: "عرضك ما انقبل",
+        body: "تفاصيله في اعّرست.",
+      };
+    case NotificationType.PROVIDER_APPROVED:
+      return {
+        title: "اعتمدنا ملفك",
+        body: "ملفك صار ظاهر للعرسان، وتفاصيله في اعّرست.",
+      };
+    case NotificationType.PROVIDER_REJECTED:
+      return {
+        title: "ما اعتمدنا ملفك",
+        body: "تفاصيله في اعّرست.",
       };
     default:
       throw new Error("UnsupportedPushNotificationType");

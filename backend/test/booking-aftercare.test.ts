@@ -168,6 +168,6 @@ test('each side reads the aftercare in its words, no raw number', () => {
     customerName: 'محمد الحمدي',
     toDate: day('2026-12-20'),
   });
-  assert.equal(String(moved.title), 'محمد غيّر موعد العرس');
+  assert.equal(String(moved.title), 'محمد ح. غيّر موعد العرس');
   assert.doesNotMatch(String(moved.body), /\d{4}-\d{2}/);
 });

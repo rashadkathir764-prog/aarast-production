@@ -1,12 +1,12 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
 import {
-  customerFirstName,
   providerRequestRoute,
   requesterQuoteRoute,
 } from "./quote-notifications";
 import { type AddressedText, gendered, textFor } from "../shared-kernel/voice/address-form";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
+import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
 import {
   daysBetween,
   weekdayDayMonthWords,
@@ -36,7 +36,7 @@ export function bookingProviderNotification(
     customerName: string | null;
   },
 ): CreateNotificationInput {
-  const who = customerFirstName(args.customerName);
+  const who = customerNameForProvider(args.customerName);
   const day = weekdayDayMonthWords(args.eventDate);
   // The customer may be the groom or the bride: the lines name them
   // without a verb in their gender (D55).
@@ -254,7 +254,7 @@ export interface CustomerClosedArgs {
 export function customerClosedProviderNotification(
   args: CustomerClosedArgs,
 ): CreateNotificationInput {
-  const who = customerFirstName(args.customerName) ?? "العميل";
+  const who = customerNameForProvider(args.customerName) ?? "العميل";
   return {
     userId: args.providerUserId,
     weddingPlanId: null,
@@ -359,7 +359,7 @@ export function bookingReminderNotifications(
     },
   ];
   if (args.providerUserId) {
-    const who = customerFirstName(args.customerName);
+    const who = customerNameForProvider(args.customerName);
     reminders.push({
       userId: args.providerUserId,
       type: NotificationType.BOOKING_UPDATED,
@@ -473,7 +473,7 @@ export function bookingAftercareProviderNotification(
     toDate?: Date;
   },
 ): CreateNotificationInput {
-  const who = customerFirstName(args.customerName) ?? "العميل";
+  const who = customerNameForProvider(args.customerName) ?? "العميل";
   const copy =
     event === "DELIVERY_CONFIRMED"
       ? { title: `${who} استلم التسليم`, body: "التسليم مأكد. شكرًا على شغلك." }

@@ -149,6 +149,7 @@ import * as dashboardStore from '../modules/marketplace/infrastructure/provider-
 import * as bookingStore from '../modules/marketplace/infrastructure/marketplace-booking.repository';
 import { UpdateProviderPortfolioDto } from './dto/update-provider-portfolio.dto';
 import { ProviderPortfolio } from './provider-portfolio';
+import { customerNameForProvider } from '../shared-kernel/privacy/provider-customer-name';
 import { countProviderPortfolio } from '../modules/marketplace/infrastructure/portfolio.repository';
 import { readSocialLinks } from '../modules/marketplace/public/provider-portfolio';
 
@@ -2222,7 +2223,12 @@ export class ProviderDashboardService {
     return {
       id: quote.id,
       userId: quote.userId,
-      user: { ...contact, phone: quote.shareContact ? contact.phone : null },
+      // RA-BE-168: his name as every provider reads it, never the whole one.
+      user: {
+        ...contact,
+        name: customerNameForProvider(contact.name) ?? '',
+        phone: quote.shareContact ? contact.phone : null,
+      },
       weddingPlanId: quote.weddingPlanId,
       weddingPlan: quote.weddingPlan ?? null,
       providerId: quote.providerId,
@@ -2238,7 +2244,7 @@ export class ProviderDashboardService {
       location: weddingLocationResponse(quote.location),
       cityId: quote.cityId,
       guestCount: quote.guestCount,
-      contactName: quote.contactName,
+      contactName: customerNameForProvider(quote.contactName),
       contactPhone: quote.shareContact ? quote.contactPhone : null,
       contactNormalizedPhone: quote.shareContact
         ? quote.contactNormalizedPhone

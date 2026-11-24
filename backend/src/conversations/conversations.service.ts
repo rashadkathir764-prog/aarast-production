@@ -47,6 +47,7 @@ import {
   applicationDisplayName,
   toApplicationUserSummary,
 } from '../shared-kernel/privacy/application-user-identity';
+import { customerNameForProvider } from '../shared-kernel/privacy/provider-customer-name';
 import {
   isLiveAccount,
   listDeletionPendingUserIds,
@@ -104,29 +105,30 @@ interface TimelineCursor {
 
 /**
  * B-14: a customer-side person as the provider side reads them: the name
- * (p16 and p19 draw «محمد الحمدي») with no picture, so the app draws the
- * initial. Messages carry it to both sides, so a customer sender is shown
- * this way to everyone.
+ * with no picture, so the app draws the initial. RA-BE-168: the name is the
+ * first name and the family's initial («محمد ح.») here and everywhere the
+ * provider reads a customer. Messages carry it to both sides, so a customer
+ * sender is shown this way to everyone.
  */
 function customerSummaryForProvider(user: ApplicationAvatarSource & { id: string }) {
   return {
     id: user.id,
-    name: applicationDisplayName(user),
+    name: customerNameForProvider(applicationDisplayName(user)) ?? "",
     avatarUrl: null,
   };
 }
 
 /**
  * B-14: who the provider talks to in a plan's conversation: the customer's
- * first name and the wedding's day. No phone, no picture, no surname, and
- * not the plan's title (D75, RA-BE-80): `weddingLabel` stays for older
- * phones (D93) and is always null.
+ * name as every provider reads it (RA-BE-168) and the wedding's day. No
+ * phone, no picture, and not the plan's title (D75, RA-BE-80): `firstName`
+ * stays for older phones (D93), `weddingLabel` is always null.
  */
 function planCustomerForProvider(quote: QuoteRequestWithRequester) {
-  const firstName =
-    applicationDisplayName(quote.user).trim().split(/\s+/u)[0] || null;
+  const full = applicationDisplayName(quote.user);
   return {
-    firstName,
+    name: customerNameForProvider(full),
+    firstName: full.trim().split(/\s+/u)[0] || null,
     weddingLabel: null,
     eventDate: quote.eventDate,
   };
@@ -1239,7 +1241,9 @@ export class ConversationsService {
         };
       }),
       ...(showBudget ? { budgetMin, budgetMax } : {}),
-      ...(access.canViewContact ? { contactName } : {}),
+      ...(access.canViewContact
+        ? { contactName: provider ? customerNameForProvider(contactName) : contactName }
+        : {}),
       ...(showPhone ? { contactPhone } : {}),
     };
   }

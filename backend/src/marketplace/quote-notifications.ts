@@ -2,6 +2,7 @@ import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
 import { gendered } from "../shared-kernel/voice/address-form";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
+import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
 
 // Pure builders of the request-and-offer notices (no Prisma, no services),
 // so marketplace.service stays on coordination (the marketplace-presenter
@@ -22,11 +23,6 @@ export function requesterQuoteRoute(
 /** The provider's own request page (D39), which the phone opens. */
 export function providerRequestRoute(quoteRequestId: string): string {
   return noticeRoutes.providerRequest(quoteRequestId);
-}
-
-/** The customer's first name as the provider reads it (B-14), or null. */
-export function customerFirstName(name: string | null | undefined): string | null {
-  return name?.trim().split(/\s+/u)[0] || null;
 }
 
 export function quoteSubmittedRequesterNotification(args: {
@@ -64,7 +60,7 @@ export function quoteSubmittedProviderNotification(args: {
   providerId: string;
   customerName: string | null;
 }): CreateNotificationInput {
-  const who = customerFirstName(args.customerName);
+  const who = customerNameForProvider(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_SUBMITTED,
@@ -230,7 +226,7 @@ export function offerAcceptedProviderNotification(args: {
   providerId: string;
   customerName: string | null;
 }): CreateNotificationInput {
-  const who = customerFirstName(args.customerName);
+  const who = customerNameForProvider(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_ACCEPTED,
@@ -349,7 +345,7 @@ export function quoteRequestExpiringProviderNotification(args: {
   customerName: string | null;
   expiresAt: Date;
 }): CreateNotificationInput {
-  const who = customerFirstName(args.customerName);
+  const who = customerNameForProvider(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_EXPIRING,

@@ -144,7 +144,7 @@ const providerAccount = {
   appAvatarUrl: null,
 };
 
-test("the provider reads the customer's full name and no picture", () => {
+test("the provider reads the customer's first name and family initial (RA-BE-168) and no picture", () => {
   const service = conversations();
   const quote = {
     id: "q",
@@ -167,7 +167,7 @@ test("the provider reads the customer's full name and no picture", () => {
   });
   assert.deepEqual(service.toQuoteRequestResponse(quote, access("PROVIDER")).user, {
     id: "groom",
-    name: "محمد الحمدي",
+    name: "محمد ح.",
     avatarUrl: null,
   });
   assert.equal(
@@ -182,7 +182,7 @@ test("a message shows only the provider account's picture, to both sides", async
     { id: "m1", sender: groom, attachments: [] },
     providerAccount.id,
   );
-  assert.deepEqual(fromGroom.sender, { id: "groom", name: "محمد الحمدي", avatarUrl: null });
+  assert.deepEqual(fromGroom.sender, { id: "groom", name: "محمد ح.", avatarUrl: null });
   const fromProvider = await service.toMessageResponse(
     { id: "m2", sender: providerAccount, attachments: [] },
     providerAccount.id,

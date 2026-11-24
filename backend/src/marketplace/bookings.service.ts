@@ -77,6 +77,7 @@ import {
   outcomeViolation,
 } from "./booking-aftercare";
 import { lockMarketplaceProvider } from "./marketplace-write-locks";
+import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
 import {
   ledgerMonthRange,
   providerLedgerTotals,
@@ -309,7 +310,7 @@ export class BookingsService {
           const day = row.eventDate.toISOString().slice(0, 10);
           return {
             ...toBookingResponse(row),
-            customerName: row.quoteRequest.contactName,
+            customerName: customerNameForProvider(row.quoteRequest.contactName),
             guestCount: row.quoteRequest.guestCount,
             location: row.quoteRequest.location,
             weddingPlanId: row.quoteRequest.weddingPlanId,
@@ -356,7 +357,7 @@ export class BookingsService {
         const items = rows.map((row) => ({
           bookingId: row.id,
           quoteRequestId: row.quoteRequestId,
-          customerName: row.quoteRequest.contactName,
+          customerName: customerNameForProvider(row.quoteRequest.contactName),
           eventDate: row.eventDate.toISOString().slice(0, 10),
           money: row.quoteOfferId ? (money.get(row.quoteOfferId) ?? null) : null,
         }));

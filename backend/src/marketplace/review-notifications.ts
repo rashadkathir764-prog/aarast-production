@@ -3,7 +3,7 @@ import type { CreateNotificationInput } from "../modules/notifications/public/no
 import { starsWords } from "../modules/marketplace/public/review-reply";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import { gendered } from "../shared-kernel/voice/address-form";
-import { customerFirstName } from "./quote-notifications";
+import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
 
 // B-09: the review notices. Pure builders, no Prisma.
 
@@ -15,7 +15,7 @@ export function reviewReceivedProviderNotification(args: {
   rating: number;
   reviewerName: string | null;
 }): CreateNotificationInput {
-  const who = customerFirstName(args.reviewerName);
+  const who = customerNameForProvider(args.reviewerName);
   const stars = starsWords(args.rating);
   return {
     userId: args.providerUserId,

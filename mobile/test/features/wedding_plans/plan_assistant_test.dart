@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/screen_reader.dart';
+
 // The planning assistant in the app (V1 checklist 4.12).
 
 void main() {
@@ -244,6 +246,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.asked, [PlanAssistantKind.question]);
     expect(api.questions, ['كم أخصص للتصوير؟']);
+  });
+
+  // RA-MO-361: «اسأل» said «زر» to a screen reader and a double tap on it
+  // sent nothing.
+  testWidgets('a screen reader sends the question', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final api = _FakeAssistantApi(consented: true);
+    await tester.pumpWidget(
+      app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('assistant-question')),
+      'كم أخصص للتصوير؟',
+    );
+    await tester.pump();
+    expectEveryButtonActs();
+
+    tester.semantics.tap(find.semantics.byLabel('اسأل'));
+    await tester.pumpAndSettle();
+    expect(api.questions, ['كم أخصص للتصوير؟']);
+    semantics.dispose();
   });
 
   // RA-ST-04 (D95): «بلّغ عن الإجابة».

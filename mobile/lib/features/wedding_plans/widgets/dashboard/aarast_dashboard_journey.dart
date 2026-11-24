@@ -159,34 +159,33 @@ class _JourneyHomeHero extends StatelessWidget {
     final count = homeCountdownWords(date == null ? null : days);
     final countLine = count.drawn;
 
-    return Semantics(
-      button: true,
-      label: date == null
-          ? context.say(
-              'الموعد لسا ما ثبت. ثبّت الموعد',
-              'الموعد لسا ما ثبت. ثبّتي الموعد',
-            )
-          : '${count.spoken}، $dateLine',
-      onTap: onTap,
-      excludeSemantics: true,
-      child: AarastPressable(
-        key: const ValueKey('aarast-dashboard-plan-moment'),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-        child: date == null
-            ? JourneyBox(
+    // RA-MO-361: the countdown is the kit's hero with its own tap and
+    // label, so the moment's tag inside it stays a button of its own; a
+    // label over the whole moment hid the tag from the screen reader.
+    return KeyedSubtree(
+      key: const ValueKey('aarast-dashboard-plan-moment'),
+      child: date == null
+          ? AarastPressable(
+              onTap: onTap,
+              semanticLabel: context.say(
+                'الموعد لسا ما ثبت. ثبّت الموعد',
+                'الموعد لسا ما ثبت. ثبّتي الموعد',
+              ),
+              borderRadius: BorderRadius.circular(AarastV3Radius.feature),
+              child: JourneyBox(
                 color: context.accent.primary,
                 radius: AarastV3Radius.feature,
                 padding: const EdgeInsets.all(AarastV3Space.x4),
                 child: _noDate(context),
-              )
-            : _countdown(
-                context,
-                days: days,
-                countLine: countLine,
-                dateLine: dateLine!,
               ),
-      ),
+            )
+          : _countdown(
+              context,
+              days: days,
+              countLine: countLine,
+              dateLine: dateLine!,
+              semanticLabel: '${count.spoken}، $dateLine',
+            ),
     );
   }
 
@@ -198,48 +197,9 @@ class _JourneyHomeHero extends StatelessWidget {
     required int? days,
     required String countLine,
     required String dateLine,
+    required String semanticLabel,
   }) {
     final moment = _homeMoment(stage.stage, startingOut: startingOut);
-    // Critique ر4: the five bars had no names. The moment's tag opens them,
-    // with what moves the plan from one to the next.
-    final tag = Semantics(
-      button: true,
-      label: 'مرحلتك ${_homeMoments[moment]}. شوف المراحل',
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _showMoments(context, moment),
-        child: Padding(
-          padding: const EdgeInsets.all(AarastV3Space.x1),
-          child: Container(
-            key: const ValueKey('aarast-dashboard-moment-tag'),
-            padding: AarastV3Density.tagInsets,
-            decoration: BoxDecoration(
-              color: AarastV3Color.saffron,
-              borderRadius: BorderRadius.circular(AarastV3Radius.card),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Within the hero's share for its tag, a long moment
-                // («أسبوع العرس») wraps rather than leave the pill.
-                Flexible(
-                  child: Text(
-                    _homeMoments[moment],
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AarastV3Space.x1),
-                const Icon(LucideIcons.info, size: AarastV3Icon.sm),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
     // b01, b02 on the kit's JourneyPlanHero (Rashad 2026-11-17): the tasks,
     // the guests and the money's summary wear the same hero, from one place.
     return JourneyPlanHero(
@@ -247,7 +207,19 @@ class _JourneyHomeHero extends StatelessWidget {
       figure: days != null && days > 2 ? '$days' : null,
       title: countLine,
       subtitle: dateLine,
-      tag: tag,
+      semanticLabel: semanticLabel,
+      onTap: onTap,
+      // Critique ر4: the five bars had no names. The moment's tag opens
+      // them, with what moves the plan from one to the next. Within the
+      // hero's share for its tag, a long moment («أسبوع العرس») wraps rather
+      // than leave the pill.
+      tag: JourneyHeroTag(
+        key: const ValueKey('aarast-dashboard-moment-tag'),
+        label: _homeMoments[moment],
+        icon: LucideIcons.info,
+        semanticLabel: 'مرحلتك ${_homeMoments[moment]}. شوف المراحل',
+        onTap: () => _showMoments(context, moment),
+      ),
       footer: _StagePath(current: moment),
     );
   }

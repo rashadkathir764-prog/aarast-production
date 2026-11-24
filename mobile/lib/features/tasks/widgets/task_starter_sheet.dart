@@ -215,6 +215,9 @@ class _TemplateRow extends StatelessWidget {
       checked: on,
       enabled: enabled && !added,
       label: template.title,
+      // RA-MO-361: the pressable is hidden with its words; the tap is said
+      // here, or a screen reader's double tap neither picked it nor let it go.
+      onTap: enabled && !added ? onTap : null,
       excludeSemantics: true,
       child: AarastPressable(
         key: ValueKey('task-starter-${template.key}'),

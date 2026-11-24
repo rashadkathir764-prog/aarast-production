@@ -257,6 +257,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     // D114: the owner's share, the mahr with it: never «من العرس».
     final ownerLeftLabel = context.say('باقي عليك', 'باقي عليكِ');
     final Widget lead;
+    var leadWords = const <String>[];
     final agreedAny = agreed > 0;
     // The title row names the lead figure where there is one, so «المال»
     // and «باقي عليك» are not two rows over one number.
@@ -281,6 +282,16 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
               ),
       );
     } else if (!agreedAny) {
+      final noAgreement = context.say(
+        'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونقول لك كم باقي.',
+        'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونقول لك كم باقي.',
+      );
+      // The card's label says what this lead draws: its words are kept from
+      // the screen reader with the rest (RA-MO-361).
+      leadWords = [
+        if (budget > 0) 'ميزانيتك ${_spoken(budget, currency)}',
+        noAgreement,
+      ];
       // RA-MO-115: «جاهزة» promised «نقول لك كم باقي من الميزانية», and the
       // card then never named the budget that was just typed.
       lead = Column(
@@ -294,10 +305,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
               color: AarastV3Color.ink,
             ),
           Text(
-            context.say(
-              'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونقول لك كم باقي.',
-              'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونقول لك كم باقي.',
-            ),
+            noAgreement,
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -334,33 +342,36 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           ]
         : [(paid, context.accent.primary), (left, context.accent.primaryMid)];
 
-    return Semantics(
+    // RA-MO-361: the card's words join the pressable's own node, the one
+    // that holds its tap; a label over the pressable was a button of its own
+    // without a tap. The words drawn are kept from the screen reader (the
+    // label says them); the eye stays a button of its own inside the card.
+    return AarastPressable(
       key: const ValueKey('aarast-dashboard-money-card'),
-      container: true,
-      button: true,
-      label: amountsHidden
-          ? 'المال، المبالغ مخفية مؤقتًا'
-          : [
-              'المال',
-              if (ownerLeft != null)
-                '$ownerLeftLabel ${_spoken(ownerLeft, currency)}'
-              else if (agreedAny)
-                '$leftLabel ${_spoken(left, currency)}',
-              ?verdict?.words,
-              if (known) 'معك ${_spoken(funding.inHand, currency)}',
-              if (known && funding.pledged > 0)
-                'موعود ${_spoken(funding.pledged, currency)}',
-              if (agreedAny) ...[
-                for (final cell in cells(spoken)) ...[
-                  cell.words(spoken),
-                  ?cell.note,
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(AarastV3Radius.card),
+      child: Semantics(
+        label: amountsHidden
+            ? 'المال، المبالغ مخفية مؤقتًا'
+            : [
+                'المال',
+                if (ownerLeft != null)
+                  '$ownerLeftLabel ${_spoken(ownerLeft, currency)}'
+                else if (agreedAny)
+                  '$leftLabel ${_spoken(left, currency)}',
+                ...leadWords,
+                ?verdict?.words,
+                if (known) 'معك ${_spoken(funding.inHand, currency)}',
+                if (known && funding.pledged > 0)
+                  'موعود ${_spoken(funding.pledged, currency)}',
+                if (agreedAny) ...[
+                  for (final cell in cells(spoken)) ...[
+                    cell.words(spoken),
+                    ?cell.note,
+                  ],
+                  ?mahrLine(spoken),
                 ],
-                ?mahrLine(spoken),
-              ],
-            ].join('، '),
-      child: AarastPressable(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(AarastV3Radius.card),
+              ].join('، '),
         child: JourneyBox(
           borderColor: AarastV3Color.line,
           borderWidth: AarastV3Space.hair,
@@ -384,20 +395,26 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ),
                   const SizedBox(width: AarastV3Space.x1),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: AarastV3Color.textMuted,
+                    child: ExcludeSemantics(
+                      child: Text(
+                        title,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.textMuted,
+                        ),
                       ),
                     ),
                   ),
                   // The eye with its word, in a 48 target of its own (D74):
-                  // a miss around it opened the money tab instead.
+                  // a miss around it opened the money tab instead. Its own
+                  // node with its own tap (RA-MO-361): the InkResponse is
+                  // hidden with its words.
                   Semantics(
+                    container: true,
                     button: true,
                     label: amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
+                    onTap: _toggleAmounts,
                     excludeSemantics: true,
                     child: Material(
                       type: MaterialType.transparency,
@@ -440,21 +457,23 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ),
                 ],
               ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(flex: 3, child: lead),
-                  if (side.isNotEmpty) ...[
-                    const SizedBox(width: AarastV3Space.x3),
-                    Flexible(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: side,
+              ExcludeSemantics(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(flex: 3, child: lead),
+                    if (side.isNotEmpty) ...[
+                      const SizedBox(width: AarastV3Space.x3),
+                      Flexible(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: side,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
               if (known && funding.dues.isNotEmpty) ...[
                 const SizedBox(height: AarastV3Space.x3),

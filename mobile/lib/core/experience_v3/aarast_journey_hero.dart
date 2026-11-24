@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/aarast_pressable.dart';
 import 'aarast_journey.dart';
 import 'aarast_journey_moment.dart' show JourneyQamariyaPainter;
 import 'aarast_journey_profile.dart';
@@ -201,18 +202,16 @@ class JourneyPlanHero extends StatelessWidget {
       ),
     );
     final tap = onTap;
-    return Semantics(
-      container: true,
-      button: tap != null,
-      label: semanticLabel,
+    if (tap == null) {
+      return Semantics(container: true, label: semanticLabel, child: card);
+    }
+    // Pressed as the home's moment is (RA-MO-361): the kit's pressable, its
+    // label on the pressable's own node, the one that holds the tap. A label
+    // given to the pressable itself would hide the tag inside the hero.
+    return AarastPressable(
       onTap: tap,
-      child: tap == null
-          ? card
-          : GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: tap,
-              child: card,
-            ),
+      borderRadius: BorderRadius.circular(AarastV3Radius.feature),
+      child: Semantics(label: semanticLabel, child: card),
     );
   }
 }

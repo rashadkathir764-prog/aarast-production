@@ -1149,6 +1149,7 @@ class JourneyListRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.trailingIsAction = false,
     this.onTap,
     this.iconSize = AarastV3Size.mark,
     this.subtitleMaxLines = 1,
@@ -1157,6 +1158,12 @@ class JourneyListRow extends StatelessWidget {
 
   /// A line that names several things (the plan's items) may take more.
   final int subtitleMaxLines;
+
+  /// [trailing] is a control of its own (a «⋯»): on a row with [onTap] a
+  /// screen reader reaches it beside the row's one label, which otherwise
+  /// keeps everything in the row, the end too (RA-MO-361). Its own
+  /// `Semantics(container: true)` with its tap is the caller's.
+  final bool trailingIsAction;
 
   final IconData icon;
   final Color color;
@@ -1169,54 +1176,64 @@ class JourneyListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keepsEnd = onTap != null && trailingIsAction;
+    Widget words(Widget child) =>
+        keepsEnd ? ExcludeSemantics(child: child) : child;
     final row = Padding(
       padding: AarastV3Density.chipInsets,
       child: JourneyEndRow(
-        start: Row(
-          children: [
-            JourneyIconTile(
-              icon: icon,
-              color: color,
-              soft: soft,
-              size: iconSize,
-            ),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: AarastV3Size.titleLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    maxLines: subtitleMaxLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                ],
+        start: words(
+          Row(
+            children: [
+              JourneyIconTile(
+                icon: icon,
+                color: color,
+                soft: soft,
+                size: iconSize,
               ),
-            ),
-          ],
+              const SizedBox(width: AarastV3Space.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: AarastV3Size.titleLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: subtitleMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         end: trailing,
       ),
     );
     if (onTap == null) return row;
-    return AarastPressable(
-      onTap: onTap,
-      semanticLabel: '$title، $subtitle',
-      child: row,
-    );
+    final label = '$title، $subtitle';
+    if (keepsEnd) {
+      // The label joins the pressable's own node; the end stays a node of
+      // its own under it.
+      return AarastPressable(
+        onTap: onTap,
+        child: Semantics(label: label, child: row),
+      );
+    }
+    return AarastPressable(onTap: onTap, semanticLabel: label, child: row);
   }
 }
 

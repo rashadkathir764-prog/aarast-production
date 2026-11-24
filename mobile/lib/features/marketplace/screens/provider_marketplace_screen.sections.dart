@@ -24,17 +24,21 @@ class _MarketplaceSearch extends StatelessWidget {
     // its own beside the search was width lost. A place picked says its
     // name, softly: it is a reminder, not the screen's action.
     final picked = city != null;
+    void open() => showJourneySheet<void>(
+      context: context,
+      builder: (_) => _DirectoryFilterSheet(provider: provider),
+    );
     final filter = Semantics(
       button: true,
       label: picked ? 'فلتر: ${city.nameAr}' : 'فلتر',
+      // RA-MO-361: the InkWell is hidden with its words; the tap is said
+      // here, or a screen reader's double tap did nothing.
+      onTap: open,
       excludeSemantics: true,
       child: InkWell(
         key: const Key('city-filter-trigger'),
         borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-        onTap: () => showJourneySheet<void>(
-          context: context,
-          builder: (_) => _DirectoryFilterSheet(provider: provider),
-        ),
+        onTap: open,
         // The 48 target; the drawn pill inside it.
         child: ConstrainedBox(
           constraints: const BoxConstraints(

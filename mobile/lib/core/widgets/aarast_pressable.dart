@@ -124,15 +124,21 @@ class _AarastPressableState extends State<AarastPressable> {
       child: core,
     );
 
+    // With its own label the pressable keeps its child from the screen
+    // reader, the focus under it too, so it says its focus here. Without
+    // one, the focus under it says it: said twice, the two did not fit in
+    // one node, and the child's words went to a node of the focus's own,
+    // away from the tap (RA-MO-361).
+    final excludes = widget.semanticLabel != null;
     return Semantics(
       container: true,
       button: true,
       enabled: enabled,
-      focusable: enabled,
-      focused: enabled ? _hasFocus : null,
+      focusable: excludes ? enabled : null,
+      focused: excludes && enabled ? _hasFocus : null,
       selected: widget.selected,
       label: widget.semanticLabel,
-      excludeSemantics: widget.semanticLabel != null,
+      excludeSemantics: excludes,
       onTap: widget.onTap != null ? _handleTap : null,
       customSemanticsActions:
           widget.onLongPress != null &&

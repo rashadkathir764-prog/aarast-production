@@ -22,12 +22,16 @@ class MoneyPrivacyButton extends StatelessWidget {
     final word = hidden
         ? context.say('أظهر', 'أظهري')
         : context.say('أخفِ', 'أخفي');
+    final toggle = context.read<FinanceProvider>().toggleAmountsVisibility;
     return Semantics(
       toggled: hidden,
       button: true,
       label: hidden
           ? context.say('أظهر المبالغ', 'أظهري المبالغ')
           : context.say('أخفِ المبالغ', 'أخفي المبالغ'),
+      // RA-MO-361: the InkWell is hidden with its words; the tap is said
+      // here, or a screen reader's double tap did nothing.
+      onTap: toggle,
       excludeSemantics: true,
       child: Material(
         color: AarastV3Color.paper,
@@ -35,7 +39,7 @@ class MoneyPrivacyButton extends StatelessWidget {
         child: InkWell(
           key: const ValueKey('money-privacy-toggle'),
           customBorder: const StadiumBorder(),
-          onTap: context.read<FinanceProvider>().toggleAmountsVisibility,
+          onTap: toggle,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: AarastV3Space.x12,

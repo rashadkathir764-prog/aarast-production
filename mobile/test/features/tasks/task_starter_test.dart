@@ -11,6 +11,8 @@ import 'package:aarast_mobile/features/tasks/widgets/task_starter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/screen_reader.dart';
+
 // Suggested tasks for a new plan (V1 checklist 4.9).
 
 void main() {
@@ -306,6 +308,61 @@ void main() {
 
     expect(submitted?.map((item) => item.key), ['r', 'o']);
     expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-361: a suggested task said «زر» to a screen reader and a double
+  // tap on it neither picked it nor let it go.
+  testWidgets('a screen reader picks a suggested task and lets one go', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    List<TaskStarterTemplate>? submitted;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TaskStarterSheet(
+            groups: const [
+              TaskStarterGroup(
+                key: 'shared-tasks',
+                title: 'مهام مشتركة',
+                subtitle: 'الأساسيات',
+                templates: [
+                  TaskStarterTemplate(
+                    key: 'r',
+                    title: 'تحديد موعد العرس',
+                    daysBefore: 300,
+                    recommended: true,
+                  ),
+                  TaskStarterTemplate(
+                    key: 'o',
+                    title: 'حجز المصور',
+                    daysBefore: 120,
+                  ),
+                ],
+              ),
+            ],
+            existingTitles: const {},
+            hasWeddingDate: true,
+            onSubmit: (templates) async {
+              submitted = templates;
+              return null;
+            },
+          ),
+        ),
+      ),
+    );
+    expectEveryButtonActs();
+
+    tester.semantics.tap(find.semantics.byLabel('حجز المصور'));
+    await tester.pump();
+    tester.semantics.tap(find.semantics.byLabel('تحديد موعد العرس'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-starter-submit')));
+    await tester.pump();
+
+    expect(submitted?.map((item) => item.key), ['o']);
+    semantics.dispose();
   });
 }
 

@@ -770,29 +770,26 @@ class _AskField extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AarastV3Space.x2),
-          Semantics(
-            button: true,
-            enabled: enabled,
-            label: context.say('اسأل', 'اسألي'),
-            excludeSemantics: true,
-            child: AarastPressable(
-              key: const ValueKey('assistant-send'),
-              onTap: enabled ? onSend : null,
-              borderRadius: BorderRadius.circular(AarastV3Radius.feature),
-              child: Container(
-                width: AarastV3Size.mark,
-                height: AarastV3Size.mark,
-                decoration: BoxDecoration(
-                  color: enabled
-                      ? context.accent.primary
-                      : AarastV3Color.lineStrong,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.send,
-                  size: AarastV3Icon.md,
-                  color: AarastV3Color.onPrimary,
-                ),
+          // RA-MO-361: the pressable says its own word, so its tap is the
+          // one a screen reader presses; a label over it hid that tap.
+          AarastPressable(
+            key: const ValueKey('assistant-send'),
+            onTap: enabled ? onSend : null,
+            semanticLabel: context.say('اسأل', 'اسألي'),
+            borderRadius: BorderRadius.circular(AarastV3Radius.feature),
+            child: Container(
+              width: AarastV3Size.mark,
+              height: AarastV3Size.mark,
+              decoration: BoxDecoration(
+                color: enabled
+                    ? context.accent.primary
+                    : AarastV3Color.lineStrong,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.send,
+                size: AarastV3Icon.md,
+                color: AarastV3Color.onPrimary,
               ),
             ),
           ),

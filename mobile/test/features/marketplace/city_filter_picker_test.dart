@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/screen_reader.dart';
+
 void main() {
   test('popup menus are clean surfaces without the M3 pink tint', () {
     final theme = AppTheme.light();
@@ -82,6 +84,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(state.setCityCalls, isEmpty);
+  });
+
+  // RA-MO-361: «فلتر» said «زر» to a screen reader and a double tap on it
+  // did nothing.
+  testWidgets('a screen reader opens the filter', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final state = _FakeMarketplaceProvider(
+      cities: const [MarketplaceCity(id: 'city-1', nameAr: 'صنعاء')],
+      cityId: 'city-1',
+    );
+
+    await _pump(tester, state);
+    expectEveryButtonActs();
+
+    tester.semantics.tap(find.semantics.byLabel('فلتر: صنعاء'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('city-pill-all')), findsOneWidget);
+    semantics.dispose();
   });
 }
 

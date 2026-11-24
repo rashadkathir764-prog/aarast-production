@@ -71,9 +71,15 @@ class _JourneySuggestions extends StatelessWidget {
                     'ما اتفقت مع أحد بعد',
                     'ما اتفقتِ مع أحد بعد',
                   ),
+                  // RA-MO-361: «⋯» is a button of its own beside the row's,
+                  // with its own tap: the row's one label hid it, and its
+                  // label hid the IconButton's tap.
+                  trailingIsAction: true,
                   trailing: Semantics(
+                    container: true,
                     button: true,
                     label: 'خيارات ${_title(context, item.key)}',
+                    onTap: () => _answer(context, item),
                     excludeSemantics: true,
                     child: IconButton(
                       key: ValueKey(
@@ -100,43 +106,51 @@ class _JourneySuggestions extends StatelessWidget {
     final title = _title(context, item.key);
     final choice = await showJourneySheet<String>(
       context: context,
-      builder: (sheetContext) => JourneySheetBody(
-        title: title,
-        subtitle: context.say(
-          'تشيلها من الرئيسية، وترجع من بنود المال.',
-          'تشيلينها من الرئيسية، وترجع من بنود المال.',
-        ),
-        children: [
-          // RA-MO-164: each answer names the item it answers.
-          Semantics(
-            button: true,
-            label: 'ما أحتاج $title',
-            excludeSemantics: true,
-            child: JourneyButton(
-              key: ValueKey(
-                'aarast-dashboard-suggestion-${item.key}-not-needed',
+      builder: (sheetContext) {
+        // RA-MO-361: each label below hides its button's tap with its
+        // words, so the tap is said with the label.
+        void notNeeded() => Navigator.of(sheetContext).pop('NOT_NEEDED');
+        void later() => Navigator.of(sheetContext).pop('LATER');
+        return JourneySheetBody(
+          title: title,
+          subtitle: context.say(
+            'تشيلها من الرئيسية، وترجع من بنود المال.',
+            'تشيلينها من الرئيسية، وترجع من بنود المال.',
+          ),
+          children: [
+            // RA-MO-164: each answer names the item it answers.
+            Semantics(
+              button: true,
+              label: 'ما أحتاج $title',
+              onTap: notNeeded,
+              excludeSemantics: true,
+              child: JourneyButton(
+                key: ValueKey(
+                  'aarast-dashboard-suggestion-${item.key}-not-needed',
+                ),
+                label: 'ما أحتاجها',
+                expand: true,
+                onPressed: notNeeded,
               ),
-              label: 'ما أحتاجها',
-              expand: true,
-              onPressed: () => Navigator.of(sheetContext).pop('NOT_NEEDED'),
             ),
-          ),
-          const SizedBox(height: AarastV3Space.x2),
-          Semantics(
-            button: true,
-            label: '$title بعدين',
-            excludeSemantics: true,
-            child: JourneyButton(
-              key: ValueKey('aarast-dashboard-suggestion-${item.key}-later'),
-              label: 'بعدين (أسبوع)',
-              expand: true,
-              background: AarastV3Color.paperQuiet,
-              foreground: AarastV3Color.ink,
-              onPressed: () => Navigator.of(sheetContext).pop('LATER'),
+            const SizedBox(height: AarastV3Space.x2),
+            Semantics(
+              button: true,
+              label: '$title بعدين',
+              onTap: later,
+              excludeSemantics: true,
+              child: JourneyButton(
+                key: ValueKey('aarast-dashboard-suggestion-${item.key}-later'),
+                label: 'بعدين (أسبوع)',
+                expand: true,
+                background: AarastV3Color.paperQuiet,
+                foreground: AarastV3Color.ink,
+                onPressed: later,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
     if (choice != null) onAnswer(item, choice);
   }

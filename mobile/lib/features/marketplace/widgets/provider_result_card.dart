@@ -650,14 +650,19 @@ class _FeaturedTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void explain() => showProviderFeaturedSheet(context);
+    // RA-MO-361: its own node with its own tap. Without them a screen
+    // reader's double tap on «مميز» opened the provider's page under it.
     return Semantics(
+      container: true,
       button: true,
       label: 'مميز: ليش يطلع أول؟',
+      onTap: explain,
       excludeSemantics: true,
       child: GestureDetector(
         key: const Key('provider-card-featured'),
         behavior: HitTestBehavior.opaque,
-        onTap: () => showProviderFeaturedSheet(context),
+        onTap: explain,
         child: JourneyTag(
           label: 'مميز',
           color: context.accent.primary,

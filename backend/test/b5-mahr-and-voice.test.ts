@@ -207,6 +207,7 @@ test('B5: notices to the customer come in both forms; to the provider they name 
     customerUserId: 'u1',
     weddingPlanId: 'p1',
     providerName: 'صالة الياسمين',
+    itemKept: false,
   });
   // B-38: the day in words; still her form.
   assert.match(textFor('FEMININE', cancelled.body), /تقدرين تكلمينه أو تختارين/u);

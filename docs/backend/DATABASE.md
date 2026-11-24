@@ -554,7 +554,7 @@ rewrite as permission to restore a removed live model.
 | `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
-| `PushInstallation` | 9 | `id`, `userId`, `lastSeenAt`, `createdAt`, `updatedAt` |
+| `PushInstallation` | 10 | `id`, `userId`, `lastSeenAt`, `sessionId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
 | `Guest` | 26 | `id`, `weddingPlanId`, `groupId`, `linkOpenedAt`, `respondedAt`, `createdAt`, `updatedAt` |

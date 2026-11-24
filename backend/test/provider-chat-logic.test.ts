@@ -139,7 +139,10 @@ test('chat gateway authenticates sockets and publishes activity and permission c
   assert.match(gateway, /@WebSocketGateway/);
   assert.match(gateway, /verifyAsync/);
   assert.match(gateway, /conversation:join/);
-  assert.match(gateway, /conversation:message/);
+  // RA-MO-350: the socket no longer takes messages (the HTTP send has the
+  // checks and the idempotency key); new messages still reach the room.
+  assert.doesNotMatch(gateway, /@SubscribeMessage\('conversation:message'\)/);
+  assert.match(publisher, /emit\('conversation:message'/);
   assert.match(gateway, /conversation:read/);
   assert.match(publisher, /conversation:event/);
   assert.match(publisher, /conversation:activity-available/);

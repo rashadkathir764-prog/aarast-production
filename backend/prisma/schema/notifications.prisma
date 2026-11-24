@@ -81,11 +81,11 @@ model PushInstallation {
   platform   PushPlatform
   enabled    Boolean      @default(true)
   lastSeenAt DateTime     @default(now())
-  /// RA-MO-358: the application session the phone registered under (the
-  /// refresh token's id, carried by the access token's `sid`). Identity owns
-  /// that row, so it is a plain id, not a relation: when the session is
-  /// revoked the registration goes with it, and a refresh moves it to the
-  /// session's next id. Null for a registration made before this column.
+  // RA-MO-358: the application session the phone registered under (the
+  // refresh token's id, carried by the access token's `sid`). Identity owns
+  // that row, so it is a plain id, not a relation: when the session is
+  // revoked the registration goes with it, and a refresh moves it to the
+  // session's next id. Null for a registration made before this column.
   sessionId  String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt

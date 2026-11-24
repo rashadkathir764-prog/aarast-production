@@ -54,6 +54,7 @@ const report: InboxReport = {
   createdAt: '2026-10-24T06:00:00.000Z',
   reporter: { id: 'user-9', name: 'محمد' },
   conversation: { provider: { id: 'provider-9', businessName: 'مصور مجهول' } },
+  reported: { kind: 'PROVIDER' },
 };
 
 const getOpenReports = vi.fn();
@@ -242,14 +243,19 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(getProviderClaims).not.toHaveBeenCalled();
   });
 
-  it('names the customer side when the provider filed the report', async () => {
+  // RA-AD-22: the server names the customer the provider reported; the
+  // inbox said «عميل» and guessed the side from the provider's owner.
+  it('names the customer when the provider filed the report', async () => {
     authState.adminPermissions = [AdminPermission.CONVERSATION_REPORTS_WRITE];
-    vi.mocked(getProvider).mockResolvedValue({ userId: 'user-9' } as ProviderApplication);
-    getOpenReports.mockResolvedValue({ items: [report], total: 1 });
+    getOpenReports.mockResolvedValue({
+      items: [{ ...report, reported: { kind: 'CUSTOMER', user: { name: 'نبيل' } } }],
+      total: 1,
+    });
 
     renderInbox();
 
-    expect(await screen.findByText('«مصور مجهول» بلّغ عن عميل')).toBeVisible();
+    expect(await screen.findByText('«مصور مجهول» بلّغ عن نبيل')).toBeVisible();
+    expect(getProvider).not.toHaveBeenCalled();
   });
 
   it('says so when nothing waits', async () => {

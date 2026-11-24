@@ -73,3 +73,30 @@ test('audit list without filters keeps only the one-line-per-action rule', async
   assert.deepEqual(fake.queries[1].values, [...Array(10).fill(null), 40, 0]);
   assert.match(fake.queries[0].sql, /NOT EXISTS/);
 });
+
+// RA-AD-23: the reason and the change are stored with the action and read back.
+test('append keeps the reason and what changed; the list reads them back', async () => {
+  const created: any[] = [];
+  const repository = new PrismaAdminAuditLogRepository({
+    adminAuditLog: { create: async ({ data }: any) => { created.push(data); } },
+  } as any);
+  const row = {
+    eventId: 'e1', actorUserId: 'admin-1', actorAdminRole: 'OPERATIONS' as const,
+    action: 'PATCH /admin/users/:id/disable', method: 'PATCH',
+    route: '/admin/users/:id/disable', targetId: 'user-1', requestId: undefined,
+    reason: 'يحتال على المزودين',
+  };
+  await repository.append({ ...row, phase: AdminAuditPhase.ATTEMPT });
+  await repository.append({
+    ...row, phase: AdminAuditPhase.SUCCEEDED, statusCode: 200,
+    before: { status: 'ACTIVE' }, after: { status: 'DISABLED' },
+  });
+  assert.equal(created[0].reason, 'يحتال على المزودين');
+  assert.equal('before' in created[0], false);
+  assert.deepEqual(created[1].before, { status: 'ACTIVE' });
+  assert.deepEqual(created[1].after, { status: 'DISABLED' });
+
+  const fake = fakePrisma(0, []);
+  await new PrismaAdminAuditLogRepository(fake.prisma as any).list({}, 1, 20);
+  assert.match(fake.queries[1].sql, /log\."reason",\s+log\."before", log\."after"/);
+});

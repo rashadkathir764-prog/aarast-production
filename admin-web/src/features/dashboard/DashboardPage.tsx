@@ -8,7 +8,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import {
-  getProvider,
   getProviderApplications,
   getProviderClaims,
   sentBackAfterRefusal,
@@ -35,6 +34,8 @@ export type InboxReport = {
   createdAt: string;
   reporter: { id: string; name: string };
   conversation: { provider: { id: string; businessName: string } };
+  /** RA-AD-22: who it is about, as the server reads it. */
+  reported: { kind: 'PROVIDER' } | { kind: 'CUSTOMER'; user: { name: string } | null };
 };
 
 /** The slice of a reported assistant answer the inbox reads. */
@@ -152,12 +153,12 @@ function claimItem(claim: ProviderClaimRequest): InboxItem {
   };
 }
 
-function reportItem(report: InboxReport, ownerId: string | null | undefined): InboxItem {
+function reportItem(report: InboxReport): InboxItem {
   const provider = report.conversation.provider.businessName;
   // The provider's owner filed it: the reported party is the customer.
   const sub =
-    ownerId && ownerId === report.reporter.id
-      ? `«${provider}» بلّغ عن عميل`
+    report.reported.kind === 'CUSTOMER'
+      ? `«${provider}» بلّغ عن ${report.reported.user?.name ?? 'حساب محذوف'}`
       : `${report.reporter.name} بلّغ عن «${provider}»`;
   return {
     key: `report-${report.id}`,
@@ -275,20 +276,10 @@ export function DashboardPage({
             })
           : none<InboxDeletion>(),
       ]);
-      const providerIds = [...new Set(reports.items.map((report) => report.conversation.provider.id))];
-      const owners = await Promise.allSettled(providerIds.map((id) => getProvider(id)));
-      const ownerOf = new Map(
-        providerIds.map((id, index) => {
-          const result = owners[index];
-          return [id, result.status === 'fulfilled' ? result.value.userId : undefined];
-        }),
-      );
       const next = [
         ...joins.items.map(joinItem),
         ...claims.items.map(claimItem),
-        ...reports.items.map((report) =>
-          reportItem(report, ownerOf.get(report.conversation.provider.id)),
-        ),
+        ...reports.items.map(reportItem),
         ...answers.items.map(answerItem),
         ...photos.items.map(photoItem),
         ...reviews.items.flatMap(reviewItem),

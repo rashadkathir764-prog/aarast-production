@@ -52,6 +52,7 @@ import type {
   AdminServiceFilter,
   AdminServiceRow,
   CatalogUsage,
+  LockedReviewState,
   MarketplaceAdminPort,
   ProviderReviewDecision,
   ProviderVerification,
@@ -805,17 +806,17 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     reviewId: string,
     providerId: string,
-  ): Promise<boolean> {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+  ): Promise<LockedReviewState | null> {
+    const rows = await tx.$queryRaw<LockedReviewState[]>(
       Prisma.sql`
-        SELECT "id"
+        SELECT "status", "replyStatus"
         FROM "ProviderReview"
         WHERE "id" = ${reviewId}
           AND "providerId" = ${providerId}
         FOR UPDATE
       `,
     );
-    return rows.length === 1;
+    return rows.length === 1 ? rows[0]! : null;
   }
 
   async setReviewStatusInTransaction(

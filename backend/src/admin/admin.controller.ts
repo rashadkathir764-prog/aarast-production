@@ -48,6 +48,7 @@ import {
   AdminConversationReportStatusDto,
 } from './dto/admin-conversation-report.dto';
 import { AdminAssistantReportQueryDto } from './dto/admin-assistant-report.dto';
+import { AdminUserDisableDto } from './dto/admin-user-disable.dto';
 
 @Controller('admin')
 @UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)
@@ -467,8 +468,9 @@ export class AdminController {
   disableUser(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
+    @Body() dto: AdminUserDisableDto,
   ) {
-    return this.adminService.disableUser(currentUser, id);
+    return this.adminService.disableUser(currentUser, id, dto);
   }
 
   @Get('users/:id')

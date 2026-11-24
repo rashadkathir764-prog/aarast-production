@@ -100,6 +100,8 @@ import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
 import { authorizeAdminUserStatusChange } from './admin-user-status';
+import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
+import type { AdminUserDisableDto } from './dto/admin-user-disable.dto';
 import { adminBookingFilter, toAdminBookingResponse } from './admin-bookings';
 import {
   toAdminDataExportResponse,
@@ -107,6 +109,7 @@ import {
 } from './admin-data-requests';
 import type { AdminBookingQueryDto } from './dto/admin-booking.dto';
 import { AdminPortfolioReview } from './admin-portfolio-review';
+import { AdminUserDetails } from './admin-user-details';
 import type {
   AdminPortfolioDecisionDto,
   AdminPortfolioQueryDto,
@@ -135,9 +138,11 @@ export class AdminService {
     this.claims = new AdminProviderClaims({ prisma, owners, notifications });
     this.featured = new AdminFeaturedPlacements({ prisma, owners, notifications });
     this.portfolio = new AdminPortfolioReview({ prisma, owners, notifications });
+    this.userDetails = new AdminUserDetails({ prisma, owners });
   }
 
   private readonly portfolio: AdminPortfolioReview;
+  private readonly userDetails: AdminUserDetails;
 
   // n07 (B-16): portfolio photos waiting for review, oldest first.
   async listPortfolioItems(query: AdminPortfolioQueryDto) {
@@ -348,6 +353,7 @@ export class AdminService {
     await runSerializableTransaction(this.prisma, async (tx) => {
       await authorizeAdminUserStatusChange(tx, this.owners.accounts, currentUser, id);
       await this.owners.accountDeletions.restoreAccountDeletionInTransaction(tx, id);
+      recordAdminAuditChange({ deletion: 'PENDING' }, { deletion: 'NONE' });
     });
     return { userId: id, status: 'NONE' as const };
   }
@@ -753,6 +759,7 @@ export class AdminService {
       if (verified && current.status !== ProviderStatus.ACTIVE) {
         throw new ConflictException('Only an active provider can be verified');
       }
+      const before = await this.owners.marketplace.getProvider(tx, id);
       const updated =
         await this.owners.marketplace.recordProviderVerificationInTransaction(
           tx,
@@ -761,6 +768,7 @@ export class AdminService {
             ? { verifiedAt: new Date(), verifiedById: currentUser.id }
             : { verifiedAt: null, verifiedById: null },
         );
+      recordAdminAuditChange({ verified: Boolean(before?.verifiedAt) }, { verified: updated.verifiedAt !== null });
       return this.owners.attachProviderDetail(tx, updated);
     });
     return toProviderResponse(provider);
@@ -844,19 +852,9 @@ export class AdminService {
     );
   }
 
-  async getUser(id: string) {
-    const user = await this.prisma.$transaction(async (tx) => {
-      const account = await this.owners.accounts.getAccount(tx, id);
-      return account
-        ? (await this.owners.attachAccounts(tx, [account]))[0]!
-        : null;
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return toUserResponse(user);
+  /** a13 (RA-AD-25): the account with its plans, business, reports and sessions. */
+  getUser(id: string) {
+    return this.userDetails.get(id);
   }
 
   async activateUser(currentUser: AuthenticatedUser, id: string) {
@@ -872,15 +870,17 @@ export class AdminService {
         target.id,
         UserStatus.ACTIVE,
       );
+      recordAdminAuditChange({ status: target.status }, { status: updated.status });
       return (await this.owners.attachAccounts(tx, [updated]))[0]!;
     });
     return toUserResponse(user);
   }
 
-  async disableUser(currentUser: AuthenticatedUser, id: string) {
+  async disableUser(currentUser: AuthenticatedUser, id: string, dto: AdminUserDisableDto) {
     if (currentUser.id === id) {
       throw new BadRequestException('Admins cannot disable their own account');
     }
+    this.requiredText(dto.reason, 'reason'); // RA-AD-23: the audit log keeps it.
     const now = new Date();
     const user = await runSerializableTransaction(this.prisma, async (tx) => {
       const target = await authorizeAdminUserStatusChange(
@@ -908,6 +908,7 @@ export class AdminService {
         target.id,
         UserStatus.DISABLED,
       );
+      recordAdminAuditChange({ status: target.status }, { status: updated.status });
       await this.owners.collaboration.revokeLiveInvitesIssuedByUserInTransaction(
         tx,
         target.id,
@@ -994,6 +995,7 @@ export class AdminService {
           reviewedById: currentUser.id,
         },
       );
+      recordAdminAuditChange({ status: currentProvider.status }, { status: updated.status });
 
       if (
         updated.userId &&

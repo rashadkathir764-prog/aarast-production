@@ -19,6 +19,7 @@ import { runSerializableTransaction } from '../platform/database/serializable-tr
 import { PrismaService } from '../platform/database/prisma.service';
 import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 import type { AdminOwners } from './admin-owners';
+import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
 import type {
   AdminPortfolioDecisionDto,
   AdminPortfolioQueryDto,
@@ -147,6 +148,7 @@ export class AdminPortfolioReview {
           message: 'This photo was already decided',
         });
       }
+      recordAdminAuditChange({ status: current.status }, { status: row.status });
       if (!approve) {
         await this.deps.owners.media.scheduleTargetDeletion({ type: 'PORTFOLIO_ITEM', id: row.id }, tx);
       }

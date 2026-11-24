@@ -3604,8 +3604,25 @@ returns the admin refresh token.
 - `DELETE /admin/cities/:id`
 - `GET /admin/users`
 - `PATCH /admin/users/:id/activate`
-- `PATCH /admin/users/:id/disable`
-- `GET /admin/users/:id`
+- `PATCH /admin/users/:id/disable` takes `{ reason }` (required, at most 500
+  characters; RA-AD-23), which the audit log keeps.
+- `GET /admin/users/:id` (RA-AD-25) returns the account and its `provider`
+  with `plans` (owned and shared: `id`, `title`, `status`, `weddingDate`,
+  `role` `OWNER` or `MEMBER`; no money, no guests), `reports` (the latest 20
+  chat reports he filed or filed on him or his business: `direction`
+  `FILED` or `AGAINST` and the `counterpart`'s name) and `sessions`
+  (`application` and `admin` live sessions, `lastLoginAt`).
+
+`GET /admin/conversation-reports` names each report's `reported` party
+(RA-AD-22): `{ kind: 'PROVIDER', provider }`, or, when the provider's owner
+filed it, `{ kind: 'CUSTOMER', user: { id, name, phone } | null }` (the
+customer who opened the conversation).
+
+The audit log (`GET /admin/audit-logs`) keeps the decision as well as the
+route (RA-AD-23): `reason` is the body's `reason`, else its `note`, on every
+row of the action, and the SUCCEEDED row carries `before` and `after`, the
+small state the action changed (a status, `verified`, `resolved`,
+`deletion`), recorded by the mutation itself.
 
 Every provider category the four `/admin/provider-categories` routes return
 carries `budgetItems: { groom, bride, shared }`: the money item an accepted

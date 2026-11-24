@@ -20,6 +20,7 @@ import {
 import type { AdminReviewRow } from '../modules/marketplace/public/marketplace-admin.port';
 import { PrismaService } from '../platform/database/prisma.service';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
+import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
 import { AdminOwners } from './admin-owners';
 import {
   toAdminAssistantAnswerReport,
@@ -263,10 +264,10 @@ export class AdminMutationExecutor {
       AdminPermission.REVIEWS_WRITE,
       async (tx) => {
         const providerId = await this.owners.marketplace.findReviewProviderId(tx, id);
-        if (
-          !providerId ||
-          !(await this.owners.marketplace.lockReviewForUpdateInTransaction(tx, id, providerId))
-        ) {
+        const locked = providerId
+          ? await this.owners.marketplace.lockReviewForUpdateInTransaction(tx, id, providerId)
+          : null;
+        if (!providerId || !locked) {
           throw new NotFoundException('Review not found');
         }
         await this.assertNotOwnListing(tx, currentUser, providerId);
@@ -286,6 +287,10 @@ export class AdminMutationExecutor {
             message: 'Review has no reply',
           });
         }
+        recordAdminAuditChange(
+          { replyStatus: locked.replyStatus },
+          { replyStatus: review.replyStatus },
+        );
         const [attached] = await this.owners.attachReviews(tx, [review]);
         return toAdminReviewResponse(attached!);
       },
@@ -321,20 +326,19 @@ export class AdminMutationExecutor {
       currentUser,
       AdminPermission.CONVERSATION_REPORTS_WRITE,
       async (tx) => {
-        if (
-          !(await this.owners.messaging.lockConversationReportForUpdateInTransaction(
-            tx,
-            id,
-          ))
-        ) {
+        const locked =
+          await this.owners.messaging.lockConversationReportForUpdateInTransaction(tx, id);
+        if (!locked) {
           throw new NotFoundException('Conversation report not found');
         }
         const status = this.parseConversationReportStatus(dto.status);
-        return this.owners.messaging.setConversationReportStatusInTransaction(
+        const updated = await this.owners.messaging.setConversationReportStatusInTransaction(
           tx,
           id,
           status,
         );
+        recordAdminAuditChange({ status: locked.status }, { status: updated.status });
+        return updated;
       },
     );
   }
@@ -359,6 +363,8 @@ export class AdminMutationExecutor {
         if (!report) {
           throw new NotFoundException('Open assistant report not found');
         }
+        // Only an open report resolves, so it was open.
+        recordAdminAuditChange({ resolved: false }, { resolved: true });
         return toAdminAssistantAnswerReport(report);
       },
     );
@@ -590,17 +596,17 @@ export class AdminMutationExecutor {
       throw new NotFoundException('Provider not found');
     }
     await this.assertNotOwnListing(tx, currentUser, providerId);
-    if (
-      !(await this.owners.marketplace.lockReviewForUpdateInTransaction(
-        tx,
-        id,
-        providerId,
-      ))
-    ) {
+    const locked = await this.owners.marketplace.lockReviewForUpdateInTransaction(
+      tx,
+      id,
+      providerId,
+    );
+    if (!locked) {
       throw new NotFoundException('Review not found');
     }
     const review: AdminReviewRow =
       await this.owners.marketplace.setReviewStatusInTransaction(tx, id, status());
+    recordAdminAuditChange({ status: locked.status }, { status: review.status });
     if (!(await refreshProviderRating(tx, providerId))) {
       throw new NotFoundException('Provider not found');
     }

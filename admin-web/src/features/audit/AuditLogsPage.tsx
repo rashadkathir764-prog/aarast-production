@@ -1,7 +1,8 @@
 // a15 «سجل التدقيق»: names instead of raw ids and the action in words. The server
 // keeps ids only, so the page reads each admin's and provider's name once
 // (A-12 would send them); a target other than a provider or a user shows its
-// kind. «السبب» waits for A-12, which would store the note of the action.
+// kind. RA-AD-23: each line also says the reason the admin gave and what the
+// action changed («من نشط إلى موقوف»).
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { type AdminAuditLog, type AdminAuditPhase, getAdminAuditLogs } from './api';
@@ -12,6 +13,7 @@ import {
   DeskRetry,
   DeskTable,
   Panel,
+  TwoLine,
 } from '../../design_system/Desk';
 import { whenClock } from '../../platform/i18n/deskTime';
 
@@ -73,6 +75,44 @@ const ACTIONS: Array<[string, RegExp, ActionWords]> = [
 export function auditActionWords(method: string, route: string): ActionWords {
   const found = ACTIONS.find(([verb, pattern]) => verb === method && pattern.test(route));
   return found?.[2] ?? { label: 'إجراء آخر', target: '—' };
+}
+
+/**
+ * The words of the states the server records before and after an action
+ * (`recordAdminAuditChange`): a status, whether a provider is verified,
+ * whether a report is closed, and an account's pending deletion.
+ */
+const STATE_WORDS: Record<string, Record<string, string>> = {
+  status: {
+    PENDING: 'ينتظر',
+    ACTIVE: 'نشط',
+    NEEDS_CHANGES: 'يحتاج تعديل',
+    SUSPENDED: 'موقوف',
+    REJECTED: 'مرفوض',
+    DISABLED: 'معطّل',
+    PUBLISHED: 'ظاهر',
+    HIDDEN: 'مخفي',
+    OPEN: 'مفتوح',
+    REVIEWED: 'تمت المراجعة',
+    DISMISSED: 'ما فيه شيء',
+    APPROVED: 'مقبول',
+  },
+  replyStatus: { PUBLISHED: 'الرد ظاهر', HIDDEN: 'الرد مخفي' },
+  verified: { true: 'موثّق', false: 'غير موثّق' },
+  resolved: { true: 'مقفول', false: 'مفتوح' },
+  deletion: { PENDING: 'ينتظر الحذف', NONE: 'رجع' },
+};
+
+/** «من نشط إلى موقوف» for each recorded field, or null when nothing was recorded. */
+export function auditChangeWords(log: Pick<AdminAuditLog, 'before' | 'after'>): string | null {
+  if (!log.before || !log.after) return null;
+  const changes = Object.keys(log.after).flatMap((field) => {
+    const words = STATE_WORDS[field];
+    const from = words?.[String(log.before?.[field])];
+    const to = words?.[String(log.after?.[field])];
+    return from && to && from !== to ? [`من ${from} إلى ${to}`] : [];
+  });
+  return changes.length > 0 ? changes.join(' · ') : null;
 }
 
 const ROLE_SHORT: Record<AdminAuditLog['actorAdminRole'], string> = {
@@ -175,19 +215,28 @@ export function AuditLogsPage({ getUserName, getProviderName }: AuditLogsPagePro
               { label: 'مين', flex: 2 },
               { label: 'ايش سوى', flex: 4 },
               { label: 'على', flex: 3 },
+              { label: 'السبب', flex: 3 },
               { label: 'النتيجة', flex: 1 },
             ]}
             rows={rows}
             rowKey={(log) => log.id}
             renderRow={(log) => {
               const outcome = RESULTS[log.phase];
+              const change = auditChangeWords(log);
               return [
                 whenClock(log.createdAt),
                 <span key="w" className="desk-small">
                   {names.get(`user:${log.actorUserId}`) ?? 'عضو'} · {ROLE_SHORT[log.actorAdminRole]}
                 </span>,
-                <strong key="a">{auditActionWords(log.method, log.route).label}</strong>,
+                <TwoLine
+                  key="a"
+                  main={auditActionWords(log.method, log.route).label}
+                  sub={change ?? undefined}
+                />,
                 target(log),
+                <span key="why" className="desk-small">
+                  {log.reason ?? '—'}
+                </span>,
                 <span key="r" className={outcome.tone} role="img" aria-label={outcome.label}>
                   <outcome.Icon size={18} aria-hidden="true" />
                 </span>,

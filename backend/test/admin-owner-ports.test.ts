@@ -46,6 +46,7 @@ import {
 import { NotificationsAdminPublicModule } from '../src/modules/notifications/public/notifications-admin-public.module';
 import { NOTIFICATIONS_ADMIN_PORT } from '../src/modules/notifications/public/notifications-admin.port';
 import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
+import { adminOwners } from './support/owner-ports';
 
 // The back office used to read and write every owner's tables itself. Each
 // owner now performs the administrative statements on its own rows, on the
@@ -253,13 +254,17 @@ test('marketplace filters providers by its own columns and the accounts identity
 test('marketplace locks a review only under its provider and sets its moderation status', async () => {
   const { client, calls } = recordingClient({
     'providerReview.findUnique': { providerId: 'provider-1' },
-    $queryRaw: [{ id: 'review-1' }],
+    $queryRaw: [{ status: ReviewStatus.PUBLISHED, replyStatus: null }],
     'providerReview.update': { id: 'review-1' },
   });
   const service = new MarketplaceAdminService();
 
   assert.equal(await service.findReviewProviderId(client, 'review-1'), 'provider-1');
-  assert.equal(await service.lockReviewForUpdateInTransaction(client, 'review-1', 'provider-1'), true);
+  // RA-AD-23: the lock returns the statuses the audit log keeps as «before».
+  assert.deepEqual(
+    await service.lockReviewForUpdateInTransaction(client, 'review-1', 'provider-1'),
+    { status: ReviewStatus.PUBLISHED, replyStatus: null },
+  );
   await service.setReviewStatusInTransaction(client, 'review-1', ReviewStatus.HIDDEN);
 
   // RA-ST-05: the decision answers the review's open reports first.
@@ -283,7 +288,7 @@ test('marketplace locks a review only under its provider and sets its moderation
 
   const missing = recordingClient({ 'providerReview.findUnique': null, $queryRaw: [] });
   assert.equal(await service.findReviewProviderId(missing.client, 'gone'), null);
-  assert.equal(await service.lockReviewForUpdateInTransaction(missing.client, 'gone', 'provider-1'), false);
+  assert.equal(await service.lockReviewForUpdateInTransaction(missing.client, 'gone', 'provider-1'), null);
 });
 
 test('marketplace counts catalog usage per entry, zero for an unused one', async () => {
@@ -336,15 +341,18 @@ test('marketplace reads the providers a page of accounts owns in one statement',
 test('messaging locks a report before its status is set', async () => {
   const service = new MessagingAdminService();
   const missing = recordingClient({ $queryRaw: [] });
-  assert.equal(await service.lockConversationReportForUpdateInTransaction(missing.client, 'gone'), false);
+  assert.equal(await service.lockConversationReportForUpdateInTransaction(missing.client, 'gone'), null);
   assert.deepEqual(missing.calls.map(([name]) => name), ['$queryRaw']);
 
   const found = recordingClient({
-    $queryRaw: [{ id: 'report-1' }],
+    $queryRaw: [{ status: ConversationReportStatus.OPEN }],
     'conversationReport.update': { id: 'report-1' },
     'conversation.findMany': [{ id: 'c1' }, { id: 'c2' }],
   });
-  assert.equal(await service.lockConversationReportForUpdateInTransaction(found.client, 'report-1'), true);
+  assert.deepEqual(
+    await service.lockConversationReportForUpdateInTransaction(found.client, 'report-1'),
+    { status: ConversationReportStatus.OPEN },
+  );
   await service.setConversationReportStatusInTransaction(found.client, 'report-1', ConversationReportStatus.REVIEWED);
   assert.match((found.calls[0]?.[1] as any).sql, /FROM "ConversationReport"[\s\S]*FOR UPDATE/);
   assert.deepEqual((found.calls[1]?.[1] as any).data, { status: ConversationReportStatus.REVIEWED });
@@ -395,4 +403,86 @@ test('planning counts plans and collaboration revokes the live invites a user is
       },
     ],
   ]);
+});
+
+// RA-AD-25: the account page's live sessions, per realm, and last sign-in.
+test('identity counts the live sessions of each realm and reads the last sign-in', async () => {
+  const lastLoginAt = new Date('2026-10-24T06:00:00.000Z');
+  const { client, calls } = recordingClient({
+    'refreshToken.count': (args: any) => (args.where.scope === 'APPLICATION' ? 2 : 1),
+    'user.findUnique': { lastLoginAt },
+  });
+  const now = new Date('2026-10-24T08:00:00.000Z');
+
+  assert.deepEqual(await new IdentityAdminService().getAccountSessions(client, 'u1', now), {
+    application: 2,
+    admin: 1,
+    lastLoginAt,
+  });
+  const counted = calls.filter(([name]) => name === 'refreshToken.count').map(([, args]) => args);
+  assert.deepEqual(counted, [
+    { where: { userId: 'u1', scope: 'APPLICATION', revokedAt: null, replacedById: null, expiresAt: { gt: now } } },
+    { where: { userId: 'u1', scope: 'ADMIN', revokedAt: null, replacedById: null, expiresAt: { gt: now } } },
+  ]);
+});
+
+// RA-AD-25: the reports by the account, on the conversations it opened, and on its business.
+test('messaging lists an account\'s reports on every side, newest first', async () => {
+  const { client, calls } = recordingClient({ 'conversationReport.findMany': [] });
+  const service = new MessagingAdminService();
+
+  await service.listAccountConversationReports(client, { userId: 'u1', providerId: 'p1' }, 20);
+  await service.listAccountConversationReports(client, { userId: 'u2', providerId: null }, 20);
+
+  const [withBusiness, without] = calls.map(([, args]) => args as any);
+  assert.deepEqual(withBusiness.where.OR, [
+    { reporterUserId: 'u1' },
+    { conversation: { accountRequesterUserId: 'u1' } },
+    { conversation: { createdByUserId: 'u1' } },
+    { conversation: { providerId: 'p1' } },
+  ]);
+  assert.equal(without.where.OR.length, 3);
+  assert.equal(withBusiness.take, 20);
+  assert.deepEqual(withBusiness.orderBy, [{ createdAt: 'desc' }, { id: 'desc' }]);
+  assert.deepEqual(withBusiness.include.conversation.select, {
+    providerId: true,
+    accountRequesterUserId: true,
+    createdByUserId: true,
+  });
+});
+
+// RA-AD-22: a report says who it is about. When the provider's owner filed
+// it, the customer who opened the conversation, named; else the provider.
+test('a report names its reported party: the customer when the provider filed it', async () => {
+  const at = new Date('2026-10-24T08:00:00.000Z');
+  const person = (id: string, name: string) => ({
+    id, name, appName: null, role: 'USER', phone: `+96777700000${id.length}`,
+    avatarUrl: null, appAvatarUrl: null, appRole: 'WEDDING_USER',
+  });
+  const { client } = recordingClient({
+    'user.findMany': [person('owner-1', 'صاحب القاعة'), person('customer-1', 'نبيل'), person('c2', 'سالم')],
+    'provider.findMany': [{ id: 'p1', userId: 'owner-1', businessName: 'قاعة الريان', status: 'ACTIVE' }],
+    'quoteRequest.findMany': [],
+  });
+  const row = (id: string, reporterUserId: string, conversation: Record<string, unknown>) => ({
+    id, conversationId: `c-${id}`, reporterUserId, reason: 'سبب', status: 'OPEN',
+    createdAt: at, updatedAt: at,
+    conversation: { providerId: 'p1', accountRequesterUserId: null, createdByUserId: null, ...conversation },
+  });
+
+  const [byProvider, byCustomer, gone] = await adminOwners.attachConversationReports(client, [
+    row('r1', 'owner-1', { accountRequesterUserId: 'customer-1' }),
+    row('r2', 'c2', { createdByUserId: 'c2' }),
+    row('r3', 'owner-1', { createdByUserId: 'deleted-account' }),
+  ] as any);
+
+  assert.deepEqual(byProvider!.reported, {
+    kind: 'CUSTOMER',
+    user: { id: 'customer-1', name: 'نبيل', phone: '+9677770000010' },
+  });
+  assert.deepEqual(byCustomer!.reported, {
+    kind: 'PROVIDER',
+    provider: { id: 'p1', businessName: 'قاعة الريان', status: 'ACTIVE' },
+  });
+  assert.deepEqual(gone!.reported, { kind: 'CUSTOMER', user: null });
 });

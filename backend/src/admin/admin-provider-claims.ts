@@ -22,6 +22,7 @@ import { lockProviderReviewAccountsInTransaction } from './admin-provider-review
 import { toAdminClaimRequestResponse } from './admin.presenter';
 import { withTeamNote } from './provider-status-notification';
 import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
+import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
 
 const CLAIM_NOT_FOUND = 'Provider claim not found';
 
@@ -117,6 +118,7 @@ export class AdminProviderClaims {
           decidedById: currentUser.id,
         },
       );
+      recordAdminAuditChange({ status: current.status }, { status: decided.status });
       await this.notifications.createNotificationInTransaction(tx, {
         userId: current.userId,
         type: NotificationType.PROVIDER_CLAIM_DECIDED,
@@ -151,6 +153,7 @@ export class AdminProviderClaims {
           decidedById: currentUser.id,
         },
       );
+      recordAdminAuditChange({ status: current.status }, { status: decided.status });
       await this.notifications.createNotificationInTransaction(tx, {
         userId: current.userId,
         type: NotificationType.PROVIDER_CLAIM_DECIDED,

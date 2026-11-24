@@ -10,6 +10,10 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { adminService } from "./support/owner-ports";
+import {
+  type AdminAuditChange,
+  runAuditedAdminRequest,
+} from "../src/modules/backoffice/public/admin-audit-change";
 
 const currentUser = {
   id: "admin-actor",
@@ -340,7 +344,15 @@ test("disabling a user persists session revocation in the same transaction", asy
     createNotificationInTransaction: async () => null,
   } as any);
 
-  const response = await service.disableUser(currentUser, targetId);
+  // RA-AD-23: disabling takes its reason, and records what it changed.
+  const change: AdminAuditChange = { before: null, after: null };
+  const response = await runAuditedAdminRequest(change, () =>
+    service.disableUser(currentUser, targetId, { reason: "يحتال على المزودين" }),
+  );
+  assert.deepEqual(change, {
+    before: { status: UserStatus.ACTIVE },
+    after: { status: UserStatus.DISABLED },
+  });
 
   assert.deepEqual(calls, [
     `lock:${currentUser.id}`,

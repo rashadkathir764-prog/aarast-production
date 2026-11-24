@@ -14,7 +14,15 @@ export class PrismaAdminAuditLogRepository implements AdminAuditLogPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async append(input: AdminAuditAppendInput): Promise<void> {
-    await this.prisma.adminAuditLog.create({ data: input });
+    const { before, after, ...row } = input;
+    await this.prisma.adminAuditLog.create({
+      data: {
+        ...row,
+        // A JSON column takes no plain null: no change recorded is no value.
+        ...(before ? { before } : {}),
+        ...(after ? { after } : {}),
+      },
+    });
   }
 
   /**
@@ -49,7 +57,8 @@ export class PrismaAdminAuditLogRepository implements AdminAuditLogPort {
       this.prisma.$queryRaw<AdminAuditLogRow[]>`
         SELECT log."id", log."eventId", log."actorUserId", log."actorAdminRole",
                log."action", log."method", log."route", log."targetId", log."phase",
-               log."statusCode", log."errorType", log."requestId", log."createdAt"
+               log."statusCode", log."errorType", log."requestId", log."reason",
+               log."before", log."after", log."createdAt"
         FROM "AdminAuditLog" log
         WHERE (log."phase" <> 'ATTEMPT' OR NOT EXISTS (
             SELECT 1 FROM "AdminAuditLog" result

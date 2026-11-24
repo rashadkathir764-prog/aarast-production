@@ -1,8 +1,11 @@
 // a11 «البلاغات»: the open reports beside the one being read, the chats'
-// and, in their own tab, the assistant answers' (RA-ST-04, D95). The
-// reported message, «احذف الرسالة» and the history on the same party wait
-// for B-41; «نبّه المزود» and «اطلب إيقافه» wait for A-09. What stays is
-// closing the report: «ما فيه شيء» (dismissed) and «تمت المراجعة».
+// and, in their own tab, the assistant answers' (RA-ST-04, D95). RA-AD-22:
+// the reported party is named by the server, the customer included, with
+// what can be done about him: the provider's decisions (suspend…) for whom
+// holds PROVIDERS_WRITE, and the customer's account page, where disabling
+// lives. The reported message, «احذف الرسالة» and the history on the same
+// party wait for B-41. Closing the report stays: «ما فيه شيء» (dismissed)
+// and «تمت المراجعة».
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -11,7 +14,8 @@ import {
   updateConversationReportStatus,
 } from './api';
 import { AssistantReportsPanel } from './AssistantReportsPanel';
-import { getProvider } from '../providers/api';
+import { getProvider, type ProviderApplication } from '../providers/api';
+import { ProviderDecisions } from '../providers/providerHelpers';
 import { AdminPermission, Can, hasAdminPermission, useAuth } from '../auth/api';
 import {
   DeskButton,
@@ -22,28 +26,10 @@ import {
   DeskTable,
   Panel,
   TwoLine,
+  phoneSpaced,
 } from '../../design_system/Desk';
 import { dayAgo } from '../../platform/i18n/deskTime';
 import { pageToShow } from '../../platform/api/query';
-
-/**
- * The account that owns each reported provider: null when the provider has
- * none (an admin-listed business), undefined when it could not be read. A
- * report whose reporter owns the conversation's provider was filed by the
- * provider, so the reported party is the customer.
- */
-async function providerOwners(
-  reports: ConversationReport[],
-): Promise<Map<string, string | null | undefined>> {
-  const ids = [...new Set(reports.map((report) => report.conversation.provider.id))];
-  const results = await Promise.allSettled(ids.map((id) => getProvider(id)));
-  return new Map(
-    ids.map((id, index) => {
-      const result = results[index];
-      return [id, result.status === 'fulfilled' ? result.value.userId : undefined];
-    }),
-  );
-}
 
 type Page = {
   items: ConversationReport[];
@@ -88,7 +74,8 @@ function ChatReports() {
   const canOpenUsers = hasAdminPermission(user, AdminPermission.USERS_READ);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Page | null>(null);
-  const [owners, setOwners] = useState<Map<string, string | null | undefined>>(new Map());
+  // The reported provider as its decisions read it (status, verification).
+  const [reportedProvider, setReportedProvider] = useState<ProviderApplication | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -104,7 +91,6 @@ function ChatReports() {
         setPage(shown);
         return;
       }
-      setOwners(await providerOwners(next.items));
       setResult(next);
       setSelectedId((current) =>
         next.items.some((report) => report.id === current) ? current : next.items[0]?.id ?? null,
@@ -119,19 +105,40 @@ function ChatReports() {
   }, [load]);
 
   const selected = result?.items.find((report) => report.id === selectedId) ?? null;
+  const selectedProviderId =
+    selected?.reported.kind === 'PROVIDER' ? selected.reported.provider.id : null;
 
-  function parties(report: ConversationReport) {
-    const provider = report.conversation.provider;
-    const byProvider = owners.get(provider.id) != null && owners.get(provider.id) === report.reporter.id;
-    return { provider, byProvider };
+  const loadReportedProvider = useCallback(async () => {
+    setReportedProvider(null);
+    if (!selectedProviderId) return;
+    try {
+      setReportedProvider(await getProvider(selectedProviderId));
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'ما قدرنا نقرأ ملف المزود.');
+    }
+  }, [selectedProviderId]);
+
+  useEffect(() => {
+    void loadReportedProvider();
+  }, [loadReportedProvider]);
+
+  function customerName(report: ConversationReport): string {
+    return report.reported.kind === 'CUSTOMER'
+      ? report.reported.user?.name ?? 'حساب محذوف'
+      : report.reporter.name;
   }
 
   function listLine(report: ConversationReport) {
-    const { provider, byProvider } = parties(report);
-    const who = byProvider
-      ? `${provider.businessName} بلّغ عن العميل`
-      : `${report.reporter.name} بلّغ عن ${provider.businessName}`;
+    const provider = report.conversation.provider.businessName;
+    const who =
+      report.reported.kind === 'CUSTOMER'
+        ? `${provider} بلّغ عن ${customerName(report)}`
+        : `${report.reporter.name} بلّغ عن ${provider}`;
     return `${who} · ${dayAgo(report.createdAt)}`;
+  }
+
+  function customerLink(user: { id: string; name: string }) {
+    return canOpenUsers ? <Link to={`/users/${user.id}`}>{user.name}</Link> : user.name;
   }
 
   async function close(report: ConversationReport, status: ConversationReport['status']) {
@@ -195,13 +202,26 @@ function ChatReports() {
               <Panel className="desk-report">
                 <h2 className="desk-report__title">{selected.reason}</h2>
                 <p className="desk-report__who">
-                  {parties(selected).byProvider ? (
+                  {selected.reported.kind === 'CUSTOMER' ? (
                     <>
                       المبلّغ:{' '}
                       <Link to={`/providers/${selected.conversation.provider.id}`}>
                         {selected.conversation.provider.businessName}
                       </Link>{' '}
-                      (المزود نفسه) · المبلّغ عنه: العميل في المحادثة
+                      (المزود نفسه) · المبلّغ عنه:{' '}
+                      {selected.reported.user ? (
+                        <>
+                          {customerLink(selected.reported.user)}
+                          {selected.reported.user.phone ? (
+                            <>
+                              {' '}
+                              <span className="desk-num">{phoneSpaced(selected.reported.user.phone)}</span>
+                            </>
+                          ) : null}
+                        </>
+                      ) : (
+                        'حساب محذوف'
+                      )}
                     </>
                   ) : (
                     <>
@@ -212,6 +232,21 @@ function ChatReports() {
                     </>
                   )}
                 </p>
+                {selected.reported.kind === 'PROVIDER' && reportedProvider ? (
+                  <div className="desk-report__actions">
+                    <ProviderDecisions
+                      provider={reportedProvider}
+                      onChanged={() => loadReportedProvider()}
+                    />
+                  </div>
+                ) : null}
+                {selected.reported.kind === 'CUSTOMER' && selected.reported.user && canOpenUsers ? (
+                  <div className="desk-report__actions">
+                    <Link className="desk-btn desk-btn--soft" to={`/users/${selected.reported.user.id}`}>
+                      افتح حسابه
+                    </Link>
+                  </div>
+                ) : null}
                 <Can permission={AdminPermission.CONVERSATION_REPORTS_WRITE}>
                   <div className="desk-report__actions">
                     <DeskButton disabled={busy} onClick={() => void close(selected, 'REVIEWED')}>

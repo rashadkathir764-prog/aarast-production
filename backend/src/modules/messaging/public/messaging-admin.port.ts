@@ -8,7 +8,12 @@ export const MESSAGING_ADMIN_PORT = Symbol('MESSAGING_ADMIN_PORT');
 
 /** A conversation report with the provider its conversation belongs to. */
 export type AdminConversationReportRow = ConversationReport & {
-  conversation: { providerId: string };
+  conversation: {
+    providerId: string;
+    /** The customer side (RA-AD-22): who opened it, for an account or a plan. */
+    accountRequesterUserId: string | null;
+    createdByUserId: string | null;
+  };
 };
 
 export type AdminConversationReportStatusRow = Pick<
@@ -27,11 +32,23 @@ export interface MessagingAdminPort {
     status: ConversationReportStatus | null,
     page: { skip: number; take: number },
   ): Promise<{ total: number; items: AdminConversationReportRow[] }>;
-  /** Locks the report FOR UPDATE; false when it does not exist. */
+  /**
+   * RA-AD-25: the account's latest reports, newest first: those it filed,
+   * those on conversations it opened, and those on its business's.
+   */
+  listAccountConversationReports(
+    client: Prisma.TransactionClient,
+    account: { userId: string; providerId: string | null },
+    take: number,
+  ): Promise<AdminConversationReportRow[]>;
+  /**
+   * Locks the report FOR UPDATE and returns its status (the audit log's
+   * «before», RA-AD-23); null when it does not exist.
+   */
   lockConversationReportForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-  ): Promise<boolean>;
+  ): Promise<{ status: ConversationReportStatus } | null>;
   setConversationReportStatusInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,

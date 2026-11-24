@@ -89,6 +89,15 @@ export interface IdentityAdminPort {
     userId: string,
     status: UserStatus,
   ): Promise<AdminAccountRow>;
+  /**
+   * RA-AD-25: the account's live sessions per realm (a refresh token neither
+   * revoked, replaced nor expired at `now`) and its last sign-in.
+   */
+  getAccountSessions(
+    client: Prisma.TransactionClient,
+    userId: string,
+    now: Date,
+  ): Promise<{ application: number; admin: number; lastLoginAt: Date | null }>;
   /** Revokes every refresh token and remembered admin device of the account still live, at `revokedAt`. */
   revokeRefreshTokensInTransaction(
     tx: Prisma.TransactionClient,

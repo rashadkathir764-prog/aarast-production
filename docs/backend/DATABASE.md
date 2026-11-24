@@ -530,7 +530,7 @@ rewrite as permission to restore a removed live model.
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminTrustedDevice` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `lastUsedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 13 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `verifiedAt`, `createdAt` |
-| `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
+| `AdminAuditLog` | 16 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |

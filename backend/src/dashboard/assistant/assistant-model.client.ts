@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { ModelUsage } from './assistant-pricing';
+import { ASSISTANT_MAX_OUTPUT_TOKENS, type ModelUsage } from './assistant-pricing';
 
 export interface AssistantModelRequest {
   model: string;
@@ -17,8 +17,11 @@ export interface AssistantModelReply {
   usage: ModelUsage;
 }
 
-/** Why a call never produced a reply. */
-export type AssistantModelFailure = 'BUSY' | 'UNAVAILABLE';
+/**
+ * Why a call never produced a reply. TIMEOUT: no answer came in time, so the
+ * call may still have been billed (RA-BE-165 keeps its reserved cost).
+ */
+export type AssistantModelFailure = 'BUSY' | 'TIMEOUT' | 'UNAVAILABLE';
 
 export class AssistantModelError extends Error {
   constructor(readonly failure: AssistantModelFailure, readonly detail: string) {
@@ -46,7 +49,7 @@ export class ClaudeAssistantModel implements AssistantModel {
     try {
       const response = await this.client.beta.messages.create({
         model: request.model,
-        max_tokens: 8_000,
+        max_tokens: ASSISTANT_MAX_OUTPUT_TOKENS,
         // Advice for one person's plan, read on a phone: low effort keeps it
         // quick and cheap while thinking stays on.
         output_config: { effort: 'low' },
@@ -75,6 +78,10 @@ export class ClaudeAssistantModel implements AssistantModel {
         },
       };
     } catch (error) {
+      // Before APIConnectionError, which it extends.
+      if (error instanceof Anthropic.APIConnectionTimeoutError) {
+        throw new AssistantModelError('TIMEOUT', error.constructor.name);
+      }
       if (
         error instanceof Anthropic.RateLimitError ||
         error instanceof Anthropic.InternalServerError ||

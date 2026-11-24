@@ -65,23 +65,33 @@ class PlanAssistantStatus {
 
 class PlanAssistantAnswer {
   const PlanAssistantAnswer({
+    required this.answerId,
     required this.answer,
     required this.declined,
     required this.marketDataAvailable,
     required this.remainingToday,
+    this.truncated = false,
   });
 
   factory PlanAssistantAnswer.fromJson(Map<String, dynamic> json) {
     return PlanAssistantAnswer(
+      answerId: json['answerId']?.toString() ?? '',
       answer: json['answer']?.toString() ?? '',
       declined: json['declined'] == true,
+      truncated: json['truncated'] == true,
       marketDataAvailable: json['marketDataAvailable'] == true,
       remainingToday: _int(json['remainingToday']),
     );
   }
 
+  /// RA-BE-166: the server's id of this answer; a report carries it, so
+  /// the team reads what the assistant wrote.
+  final String answerId;
   final String answer;
   final bool declined;
+
+  /// RA-BE-163: the model stopped at its limit; [answer] is only a start.
+  final bool truncated;
   final bool marketDataAvailable;
   final int remainingToday;
 }

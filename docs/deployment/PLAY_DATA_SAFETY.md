@@ -78,7 +78,8 @@ Notes for the reviewer form:
   and wedding date; the budget, its items (name, allocation, agreed and paid
   sums) and the mahr's total, only with money permission; received offers
   (category, price with money permission, status); guest and task counts;
-  and the city's market ranges. It never holds a person's name (guests,
+  and the city's market ranges. Budget item names go as the user wrote them.
+  It never holds a person's name (guests,
   family contributors, members), phone numbers, the plan's title, task
   titles, loans or advances, the owner's cash, the mahr beyond its total, or
   another member's private items. A partner's question carries the plan's
@@ -88,7 +89,9 @@ Notes for the reviewer form:
   daily count and the consent's date. Every answer has «بلّغ عن
   الإجابة»: the reported answer, its question and the reason are stored for
   the moderation team («البلاغات» → «إجابات المساعد» in the admin panel)
-  and deleted with the account. This is the in-app reporting Play's
+  and deleted with the account, or 90 days after the team reviewed them.
+  The report names the server's answer id, so only an answer the assistant
+  gave that user can be reported. This is the in-app reporting Play's
   AI-generated content policy asks for.
 - **User-generated content**: reviews, chat messages and reports can be
   reported in the app (reviews: RA-ST-05, D94; chats: «بلّغ عن مشكلة») and

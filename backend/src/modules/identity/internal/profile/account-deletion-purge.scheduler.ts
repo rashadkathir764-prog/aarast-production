@@ -1,11 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { PrismaService } from "../../../../platform/database/prisma.service";
+import { removeReviewedAssistantReports } from "../../infrastructure/assistant-report.service";
 import { AccountDeletionService } from "./account-deletion.service";
 import { DataExportService } from "./data-export.service";
 
 /**
  * D63, hourly: erase the accounts whose 30 days are over (through the one
- * erasure saga), then drop the download rows older than a week. Every
+ * erasure saga), then drop the download rows older than a week and the
+ * assistant reports reviewed more than 90 days ago (RA-BE-166). Every
  * failure is logged with its account and error; none is swallowed.
  */
 @Injectable()
@@ -15,6 +18,7 @@ export class AccountDeletionPurgeScheduler {
   constructor(
     private readonly accountDeletion: AccountDeletionService,
     private readonly dataExports: DataExportService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Cron("35 * * * *")
@@ -30,5 +34,7 @@ export class AccountDeletionPurgeScheduler {
     }
     const removed = await this.dataExports.removeOldExports(now);
     if (removed > 0) this.logger.log(`Removed ${removed} old data download row(s)`);
+    const reports = await removeReviewedAssistantReports(this.prisma, now);
+    if (reports > 0) this.logger.log(`Removed ${reports} assistant report(s) reviewed over 90 days ago`);
   }
 }

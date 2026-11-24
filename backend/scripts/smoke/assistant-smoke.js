@@ -199,6 +199,9 @@ async function run() {
     const first = await request('POST', `${path}/questions`, { kind: 'BUDGET_SPLIT' }, owner.token);
     check('the owner gets an answer', first.status === 200 && first.body?.answer === 'خطة تجريبية من المساعد' && first.body?.declined === false);
     check('the answer counts one question', first.body?.remainingToday === 1);
+    // RA-BE-163, RA-BE-166: a whole answer, with the server's id of it.
+    check('a whole answer is not marked cut', first.body?.truncated === false);
+    check('the answer carries the server\'s id', /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/.test(first.body?.answerId ?? ''));
     const call = modelCalls[0];
     check('the model is the configured one', call?.body?.model === 'claude-opus-5-5' && call?.path === '/v1/messages?beta=true');
     check('the safety fallback is on', String(call?.headers?.['anthropic-beta'] ?? '').includes('server-side-fallback-2026-07-01') && call?.body?.fallbacks === 'default');
@@ -248,8 +251,10 @@ async function run() {
     check('the partner\'s own private cost reaches her answer, and no task title', brideText.includes('الملتزم به من ميزانية العرس: 3700.00') && !brideText.includes('Bride secret errand'));
 
     // RA-ST-04 (D95): «بلّغ عن الإجابة». Whoever may ask may report; the
-    // report reaches the team without asking the model again.
+    // report reaches the team without asking the model again. RA-BE-166: it
+    // carries the answer's id, which must sign its text.
     const reportBody = {
+      answerId: second.body?.answerId,
       kind: 'QUESTION',
       question: 'كم أخصص للتصوير؟',
       answer: 'خطة تجريبية من المساعد',
@@ -261,11 +266,29 @@ async function run() {
     check('a report needs its reason', noReason.status === 400);
     const tooLong = await request('POST', `${path}/reports`, { ...reportBody, answer: 'ا'.repeat(20_001) }, owner.token);
     check('a report carries at most 20,000 characters of the answer', tooLong.status === 400);
+    const forged = await request('POST', `${path}/reports`, { ...reportBody, answer: 'جواب ما كتبه المساعد' }, owner.token);
+    check(
+      'a report of text the assistant did not write is refused',
+      forged.status === 400 && forged.body?.code === 'ASSISTANT_REPORT_ANSWER_UNKNOWN',
+    );
     const callsBeforeReport = modelCalls.length;
     const reported = await request('POST', `${path}/reports`, reportBody, owner.token);
     check(
       'the owner reports an answer to the team',
       reported.status === 201 && reported.body?.reported === true && modelCalls.length === callsBeforeReport,
+    );
+
+    // RA-BE-161: the consent is the account's; w40 reads it and takes it back
+    // without any plan.
+    const accountConsent = await request('GET', '/api/v1/me/assistant/consent', null, owner.token);
+    check(
+      'the account reads its consent without a plan',
+      accountConsent.status === 200 && typeof accountConsent.body?.consentedAt === 'string',
+    );
+    const accountWithdrawn = await request('DELETE', '/api/v1/me/assistant/consent', null, owner.token);
+    check(
+      'the account takes its consent back without a plan',
+      accountWithdrawn.status === 200 && accountWithdrawn.body?.consentedAt === null,
     );
   } finally {
     for (const [label, account] of [['family', family], ['bride', bride], ['owner', owner]]) {

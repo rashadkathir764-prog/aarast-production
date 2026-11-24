@@ -155,6 +155,17 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       return;
     }
     if (!await _ensureConsent(status) || !mounted) return;
+    if (await _send(kind, typed) && mounted) {
+      // Item 7: the server no longer holds the consent (taken back from
+      // another phone): the sheet asks again, and the question goes once
+      // it is given.
+      await _ask(kind);
+    }
+  }
+
+  /// Sends one question; true when the server holds no consent for it.
+  Future<bool> _send(PlanAssistantKind kind, String typed) async {
+    var consentGone = false;
     FocusScope.of(context).unfocus();
     final exchange = _Exchange(
       kind: kind,
@@ -174,17 +185,20 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
         kind: kind,
         question: kind == PlanAssistantKind.question ? typed : null,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       if (kind == PlanAssistantKind.question) _questionController.clear();
       setState(() {
         exchange.answer = answer;
         _status = _status?.copyWith(remainingToday: answer.remainingToday);
       });
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _exchanges.remove(exchange);
-        if (error.serverCode == 'ASSISTANT_DAILY_LIMIT') {
+        if (error.serverCode == 'ASSISTANT_CONSENT_REQUIRED') {
+          consentGone = true;
+          _status = _status?.copyWith(consentedAt: () => null);
+        } else if (error.serverCode == 'ASSISTANT_DAILY_LIMIT') {
           _stop = _Stop.limit;
         } else if (error.isNetworkFailure) {
           _stop = _Stop.offline;
@@ -193,7 +207,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
         }
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _exchanges.remove(exchange);
         _askError = 'ما وصلتنا إجابة. جرّب مرة ثانية.';
@@ -201,6 +215,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     } finally {
       if (mounted) setState(() => _asking = false);
     }
+    return consentGone;
   }
 
   /// RA-ST-04 (D95): «بلّغ عن الإجابة»: why, then the answer to the team.
@@ -218,6 +233,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     try {
       await _api.reportAnswer(
         widget.weddingPlanId,
+        answerId: answer.answerId,
         kind: exchange.kind,
         question: exchange.typed,
         answer: answer.answer,
@@ -540,13 +556,30 @@ class _AnswerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AarastV3Space.x2),
-          SelectableText(
-            answer.answer,
-            style: JourneyType.of(
-              JourneyType.body,
-              height: AarastV3Line.reading,
+          if (answer.answer.isNotEmpty)
+            SelectableText(
+              answer.answer,
+              style: JourneyType.of(
+                JourneyType.body,
+                height: AarastV3Line.reading,
+              ),
             ),
-          ),
+          // RA-BE-163: cut at the model's limit, it is not shown as whole.
+          if (answer.truncated) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            Text(
+              context.say(
+                'الجواب طويل، اسأل بشكل أضيق',
+                'الجواب طويل، اسألي بشكل أضيق',
+              ),
+              key: const ValueKey('assistant-truncated'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ],
           if (!answer.declined && !answer.marketDataAvailable) ...[
             const SizedBox(height: AarastV3Space.x2),
             Text(
@@ -566,7 +599,7 @@ class _AnswerCard extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
-          if (!answer.declined)
+          if (!answer.declined && answer.answer.isNotEmpty)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: reported
@@ -790,13 +823,12 @@ class _ConsentSheet extends StatelessWidget {
                 LucideIcons.send,
                 'سؤالك وملخص خطتك يروحون لخدمة Claude من Anthropic تفهمه: المدينة والموعد، والميزانية وبنودها، والعروض، وعدد الضيوف والمهام',
               ),
+              // Item 8: item names go as written, so «no name at all»
+              // was not true.
               _row(
                 context,
                 LucideIcons.eyeOff,
-                context.say(
-                  'ما نرسل أي اسم ولا رقم جوال: لا ضيوفك ولا أهلك، ولا اسم الخطة ولا مهامها',
-                  'ما نرسل أي اسم ولا رقم جوال: لا ضيفاتك ولا أهلك، ولا اسم الخطة ولا مهامها',
-                ),
+                'ما نرسل أسماء الأشخاص، وأسماء البنود تروح كما كتبتها. ولا رقم جوال، ولا اسم الخطة ولا مهامها',
               ),
               _row(
                 context,

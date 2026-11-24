@@ -226,6 +226,8 @@ export class DataExportService {
         persona: profile.persona,
         locale: profile.locale,
         reviewFirstNameOnly: profile.reviewFirstNameOnly,
+        // RA-BE-161: the assistant consent's stored date, or null.
+        assistantConsentAt: profile.assistantConsentAt,
         createdAt: profile.createdAt,
         deletionScheduledFor: profile.deletionScheduledFor,
       },

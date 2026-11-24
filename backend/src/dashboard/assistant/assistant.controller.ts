@@ -70,10 +70,32 @@ export class WeddingPlanAssistantController {
     @Body() dto: ReportAssistantAnswerDto,
   ) {
     return this.assistant.reportAnswer(currentUser, weddingPlanId, {
+      answerId: dto.answerId,
       kind: dto.kind,
       question: dto.question ?? null,
       answer: dto.answer,
       reason: dto.reason,
     });
+  }
+}
+
+/**
+ * RA-BE-161: the consent is the account's record, so w40 reads it and takes
+ * it back here, with no plan: one the reader no longer reads, or none.
+ */
+@Controller('api/v1/me/assistant')
+@UseGuards(JwtAuthGuard)
+export class AccountAssistantConsentController {
+  constructor(private readonly assistant: AssistantService) {}
+
+  @Get('consent')
+  consent(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.assistant.accountConsent(currentUser);
+  }
+
+  @Delete('consent')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  withdrawConsent(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.assistant.withdrawAccountConsent(currentUser);
   }
 }

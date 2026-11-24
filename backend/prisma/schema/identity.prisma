@@ -209,8 +209,10 @@ model OtpDispatchQuota {
 }
 
 // The planning assistant's quota (V1 checklist 4.12): how many questions an
-// account asked on a day and what they cost, so the daily limit and the
-// monthly spending cap hold. No question or answer text is stored. The rows
+// account asked on a day and what they cost, so the daily limit, the
+// account's monthly cap and the service's monthly spending cap hold
+// (RA-BE-165). A question in flight holds its reserved most cost here until
+// its answer settles it. No question or answer text is stored. The rows
 // leave with the account.
 model AssistantUsageDay {
   userId       String
@@ -231,9 +233,14 @@ model AssistantUsageDay {
 // reported to the moderation team (Play's AI-generated content policy).
 // The assistant keeps no question or answer; a report keeps the one its
 // reader sent with it, so the team can read what was reported. Open until
-// the team marks it reviewed (resolvedAt); it leaves with the account.
+// the team marks it reviewed (resolvedAt); it leaves with the account, or
+// 90 days after its review (RA-BE-166).
 model AssistantAnswerReport {
   id             String    @id @default(uuid())
+  // RA-BE-166: the server's id of the answer, whose signature proved the
+  // text is the assistant's own; one report per answer. Null only on reports
+  // sent before the answer had an id.
+  answerId       String?   @unique
   reporterUserId String
   kind           String    @db.VarChar(32)
   question       String?   @db.Text

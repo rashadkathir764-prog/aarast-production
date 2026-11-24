@@ -1092,6 +1092,8 @@ class ApiException implements Exception {
       'ASSISTANT_OWNER_OR_PARTNER_ONLY' =>
         'المساعد متاح لصاحب الخطة وشريكه فقط.',
       'ASSISTANT_DAILY_LIMIT' => 'خلصت أسئلة اليوم. ارجع بكرة.',
+      // RA-BE-165: the account's own monthly cap; the others go on.
+      'ASSISTANT_USER_MONTHLY_LIMIT' => 'خلصت أسئلتك هذا الشهر، ترجع أول الشهر',
       'ASSISTANT_DISABLED' => 'المساعد ما اشتغل لسا.',
       'ASSISTANT_BUDGET_EXHAUSTED' =>
         'المساعد واقف هذا الشهر. جرّب الشهر الجاي.',

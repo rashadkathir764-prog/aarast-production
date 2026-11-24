@@ -26,6 +26,11 @@ class PlanAssistantApi {
   static String _consentPath(String weddingPlanId) =>
       '/api/v1/wedding-plans/$weddingPlanId/assistant/consent';
 
+  /// RA-BE-161: the consent is the account's record, read and taken back
+  /// here without any plan.
+  static const _accountConsentPath = '/api/v1/me/assistant/consent';
+  static const _accountConsentKey = 'assistant-account-consent';
+
   /// RA-BE-161: w36 «شغّل المساعد» records the reader's consent on the
   /// server, with its date (a repeated agreement keeps the first).
   Future<DateTime> recordConsent(String weddingPlanId) async {
@@ -41,12 +46,28 @@ class PlanAssistantApi {
     return at;
   }
 
-  /// RA-BE-161, w40: takes the consent back on the server.
-  Future<void> withdrawConsent(String weddingPlanId) async {
+  /// RA-BE-161, w40: takes the account's consent back on the server; no
+  /// plan is needed, so a reader who no longer reads one still can.
+  Future<void> withdrawConsent() async {
     await _writes.serverOnly(
       reason: _consentIsKept,
       method: 'DELETE',
-      path: _consentPath(weddingPlanId),
+      path: _accountConsentPath,
+    );
+    await _reads.putBlob(_accountConsentKey, {'consentedAt': null});
+  }
+
+  /// RA-BE-161, w40: the account's consent and the daily limit, without
+  /// any plan; offline, the phone's last copy.
+  Future<({DateTime? consentedAt, int dailyLimit})> accountConsent() async {
+    final json = await _reads.blob(
+      _accountConsentPath,
+      metaKey: _accountConsentKey,
+    );
+    final limit = json['dailyLimit'];
+    return (
+      consentedAt: DateTime.tryParse(json['consentedAt']?.toString() ?? ''),
+      dailyLimit: limit is int ? limit : int.tryParse('$limit') ?? 0,
     );
   }
 
@@ -55,9 +76,11 @@ class PlanAssistantApi {
   static const reportAnswerMax = 20000;
 
   /// RA-ST-04 (D95): «بلّغ عن الإجابة». The assistant keeps no answer, so
-  /// the report carries the one on screen, with what was asked and why.
+  /// the report carries the one on screen, with what was asked and why, and
+  /// the server's [answerId] that proves it is the assistant's (RA-BE-166).
   Future<void> reportAnswer(
     String weddingPlanId, {
+    required String answerId,
     required PlanAssistantKind kind,
     required String? question,
     required String answer,
@@ -69,6 +92,7 @@ class PlanAssistantApi {
       method: 'POST',
       path: '/api/v1/wedding-plans/$weddingPlanId/assistant/reports',
       body: {
+        'answerId': answerId,
         'kind': kind.apiValue,
         if (text != null && text.isNotEmpty) 'question': text,
         'answer': answer.length > reportAnswerMax

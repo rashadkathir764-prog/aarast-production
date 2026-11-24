@@ -534,7 +534,7 @@ rewrite as permission to restore a removed live model.
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
-| `AssistantAnswerReport` | 9 | `id`, `reporterUserId`, `resolvedAt`, `createdAt` |
+| `AssistantAnswerReport` | 10 | `id`, `answerId`, `reporterUserId`, `resolvedAt`, `createdAt` |
 | `WeddingPlan` | 35 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 17 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |

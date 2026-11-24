@@ -35,3 +35,34 @@ export function costMicroUsd(price: ModelPrice, usage: ModelUsage): bigint {
     usage.cacheWriteTokens * price.cacheWrite;
   return BigInt(Math.ceil(micro));
 }
+
+/** The most a call may write (its thinking included): the request's `max_tokens`. */
+export const ASSISTANT_MAX_OUTPUT_TOKENS = 8_000;
+
+/** Each rate at the dearest model known, so a fallback never costs more than reserved. */
+const DEAREST: ModelPrice = Object.values(ASSISTANT_MODEL_PRICES).reduce(
+  (most, price) => ({
+    input: Math.max(most.input, price.input),
+    output: Math.max(most.output, price.output),
+    cacheRead: Math.max(most.cacheRead, price.cacheRead),
+    cacheWrite: Math.max(most.cacheWrite, price.cacheWrite),
+  }),
+  { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+);
+
+/**
+ * RA-BE-165: what is reserved against the caps before a call, in millionths
+ * of a dollar: the most the call can cost. No token is shorter than one byte,
+ * so the request's UTF-8 bytes bound its input tokens, priced at the dearer
+ * of a plain and a cache-writing input; the output is every token the call
+ * may write. The answer then settles the reservation at its real cost.
+ */
+export function reservationMicroUsd(system: string, userText: string): bigint {
+  const inputBound = Buffer.byteLength(system, 'utf8') + Buffer.byteLength(userText, 'utf8');
+  return BigInt(
+    Math.ceil(
+      inputBound * Math.max(DEAREST.input, DEAREST.cacheWrite) +
+        ASSISTANT_MAX_OUTPUT_TOKENS * DEAREST.output,
+    ),
+  );
+}

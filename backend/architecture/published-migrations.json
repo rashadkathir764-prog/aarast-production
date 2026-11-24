@@ -123,6 +123,7 @@
     "20261116100000_guest_occasions": "98abe90fe43ac6823b1963a56ebb6a6f57a1f9a2a60c45e3d8d70dbeac9f74a6",
     "20261116110000_guest_invitations_told_before": "7cecaee4a65f6a64aea911344d47e52f2ae1451a736605ad1c14ad06f3471a8d",
     "20261124100000_assistant_consent": "ccfd4724d1dd1aa3a8c13ab5599726312c588b342769099e8b526d292d17e6cd",
-    "20261124110000_account_purge_attempts": "1e5799fb55d0ba39cc1cad1c4fe40b2d403a4cb1eea22aa0c656c3e473f39553"
+    "20261124110000_account_purge_attempts": "1e5799fb55d0ba39cc1cad1c4fe40b2d403a4cb1eea22aa0c656c3e473f39553",
+    "20261124120000_assistant_answer_report_id": "dc4dfb03353bcd7c28ddd68b1bcaf76f3f1e5fec6765526dc78474fe6436f78a"
   }
 }

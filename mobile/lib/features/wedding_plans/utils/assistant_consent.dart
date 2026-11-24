@@ -18,17 +18,27 @@ abstract final class AssistantConsent {
     return status.available ? status : null;
   }
 
-  /// Records or takes back the consent on the server; returns what it holds.
+  /// The account's consent without any plan (RA-BE-161): a reader the
+  /// assistant no longer answers still holds it until taken back.
+  static Future<({DateTime? consentedAt, int dailyLimit})> readAccount(
+    ApiClient client,
+  ) => PlanAssistantApi(client).accountConsent();
+
+  /// Records the consent on the server for [weddingPlanId]'s assistant, or
+  /// takes the account's back (no plan needed); returns what it holds.
   static Future<bool> set(
     ApiClient client,
-    String weddingPlanId,
+    String? weddingPlanId,
     bool given,
   ) async {
     final api = PlanAssistantApi(client);
     if (given) {
+      if (weddingPlanId == null) {
+        throw ArgumentError.notNull('weddingPlanId');
+      }
       await api.recordConsent(weddingPlanId);
     } else {
-      await api.withdrawConsent(weddingPlanId);
+      await api.withdrawConsent();
     }
     return given;
   }

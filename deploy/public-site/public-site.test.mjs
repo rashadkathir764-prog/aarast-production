@@ -245,13 +245,19 @@ assert.match(privacyHtml, /المساعد الذكي/);
 assert.match(privacyHtml, /Claude من شركة Anthropic/);
 // RA-ST-04 (D95): a reported answer is the one thing the assistant keeps.
 assert.match(privacyHtml, /إذا بلّغت عن إجابة، نحفظ تلك الإجابة مع سؤالك وسبب البلاغ/);
-assert.match(privacyHtml, /لا نرسل أسماء ضيوفك ولا أرقام هواتف/);
+// Item 8 (RA-BE-160): the budget items' names go as written, so «no name
+// at all» was not true; the page says what goes and what does not.
+assert.match(privacyHtml, /لا نرسل أسماء الأشخاص ولا أرقام هواتفهم/);
+assert.match(privacyHtml, /أما أسماء بنود الميزانية فتُرسل كما كتبتها أنت/);
+assert.doesNotMatch(privacyHtml, /أي اسم آخر/);
+// RA-BE-166: a reviewed report leaves after 90 days.
+assert.match(privacyHtml, /وتُحذف مع حسابك أو بعد 90 يومًا من مراجعتها/);
 assert.match(privacyHtml, /لا نحفظ أسئلتك ولا الإجابات/);
 // RA-BE-160, RA-BE-161 (Q-41, D124): exactly what is sent, the consent's
 // stored date, the owner's consent for a partner's money, and Anthropic's
 // own retention.
 assert.match(privacyHtml, /المدينة وموعد العرس، والميزانية وبنودها بمبالغها المتفق عليها والمدفوعة، والمهر بمبلغه الإجمالي/);
-assert.match(privacyHtml, /ولا أي اسم آخر:\s+لا أهلك ولا المشاركين، ولا اسم الخطة ولا عناوين المهام، ولا السلف والقروض/);
+assert.match(privacyHtml, /لا ضيوفك ولا أهلك ولا المشاركين؛ ولا اسم الخطة ولا عناوين المهام، ولا السلف والقروض/);
 assert.match(privacyHtml, /لا تُرسل أرقام مال الخطة مع سؤال الشريك إلا إذا وافق صاحب الخطة/);
 assert.match(privacyHtml, /نحفظ تاريخ موافقتك فقط/);
 assert.match(privacyHtml, /وتحتفظ Anthropic بما يصلها وفق سياسة خدمتها للمطورين \(API\)/);

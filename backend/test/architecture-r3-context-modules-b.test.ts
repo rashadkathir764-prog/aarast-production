@@ -87,8 +87,10 @@ test('Task 7 full modules preserve the exact controller ownership', () => {
     ]],
     ['modules/media/media.module.ts#MediaModule', ['MediaController']],
     // The planning assistant (V1 checklist 4.12) adds its plan route; the
-    // old account home's DashboardController left (RA-BE-10).
+    // old account home's DashboardController left (RA-BE-10). RA-BE-161: the
+    // account's consent route, read and taken back without a plan.
     ['modules/insights/insights.module.ts#InsightsModule', [
+      'AccountAssistantConsentController',
       'TimelineController', 'WeddingPlanAssistantController',
       'WeddingPlanDashboardController',
     ]],

@@ -16,6 +16,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort,
   type PlanAccessContext,
+  readerAddressForm,
   seesWholePlan,
 } from '../../modules/collaboration/public/collaboration-permission.port';
 import {
@@ -31,10 +32,12 @@ import {
   type AssistantReportPort,
 } from '../../modules/identity/public/assistant-report.port';
 import type { AuthenticatedUser } from '../../modules/identity/public/identity-session.types';
+import { issueAnswerId, verifiedAnswerId } from './assistant-answer-id';
 import { localDate, monthStart } from './assistant-config';
-import { AssistantModelError } from './assistant-model.client';
-import { ASSISTANT_MODEL_PRICES, costMicroUsd } from './assistant-pricing';
+import { AssistantModelError, type AssistantModelReply } from './assistant-model.client';
+import { ASSISTANT_MODEL_PRICES, costMicroUsd, reservationMicroUsd } from './assistant-pricing';
 import { AssistantRuntime } from './assistant-runtime';
+import { ASSISTANT_REPORT_ANSWER_MAX } from './dto/report-assistant-answer.dto';
 import {
   ASSISTANT_SYSTEM_PROMPT,
   type AssistantKind,
@@ -62,11 +65,24 @@ export interface AssistantConsentResponse {
   consentedAt: string | null;
 }
 
+/** RA-BE-161: the account's consent, read without any plan (w40). */
+export interface AssistantAccountConsentResponse extends AssistantConsentResponse {
+  /** Questions per account per day; 0 while the assistant is off. */
+  dailyLimit: number;
+}
+
 export interface AssistantAnswerResponse {
   kind: AssistantKind;
   answer: string;
   /** The model declined; `answer` then says so in Arabic. */
   declined: boolean;
+  /**
+   * RA-BE-163: the model stopped at its token limit, so `answer` is only the
+   * start of one; the app says so.
+   */
+  truncated: boolean;
+  /** RA-BE-166: the server's id of this answer; a report must carry it. */
+  answerId: string;
   /** Market ranges for the plan's city were in the data. */
   marketDataAvailable: boolean;
   remainingToday: number;
@@ -90,6 +106,39 @@ function iso(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
+/**
+ * RA-BE-166: the answer as a report carries it: the phone cuts a longer one
+ * to the report's bound (UTF-16 units, as Dart's `substring` and JS's
+ * `slice` count), and the report's text is trimmed on arrival.
+ */
+function reportedAnswerText(answer: string): string {
+  return answer.slice(0, ASSISTANT_REPORT_ANSWER_MAX).trim();
+}
+
+/** RA-BE-165: the caps reached, said to the reader. */
+function capRefusal(outcome: 'SERVICE_BUDGET_REACHED' | 'USER_BUDGET_REACHED' | 'DAILY_LIMIT_REACHED'): HttpException {
+  switch (outcome) {
+    case 'SERVICE_BUDGET_REACHED':
+      return refusal(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'ASSISTANT_BUDGET_EXHAUSTED',
+        'The assistant reached its monthly limit',
+      );
+    case 'USER_BUDGET_REACHED':
+      return refusal(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'ASSISTANT_USER_MONTHLY_LIMIT',
+        'This account reached its monthly assistant limit',
+      );
+    case 'DAILY_LIMIT_REACHED':
+      return refusal(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'ASSISTANT_DAILY_LIMIT',
+        'The daily question limit is reached',
+      );
+  }
+}
+
 /** Arabic and Latin city names compared loosely (أ/ا، ة/ه، ى/ي, spacing, case). */
 function cityKey(name: string): string {
   return name
@@ -109,9 +158,10 @@ function money(value: Prisma.Decimal | null | undefined): string | null {
  * The planning assistant (V1 checklist 4.12). It answers the plan's owner or
  * partner from the plan as they see it (never another account's private
  * costs or tasks, money only with money permission, quotes only with
- * provider permission) and from market price ranges, counts each question
- * against the account's daily limit and the service's monthly spending cap,
- * and stores no question or answer. It sends only what the consent names
+ * provider permission) and from market price ranges, reserves each
+ * question against the account's daily limit, its own monthly cap and the
+ * service's monthly spending cap in one step (RA-BE-165), and stores no
+ * question or answer. It sends only what the consent names
  * (RA-BE-160), and asks only with the asker's stored consent; a partner's
  * question carries the plan's money only with its owner's (RA-BE-161).
  */
@@ -171,6 +221,23 @@ export class AssistantService {
     weddingPlanId: string,
   ): Promise<AssistantConsentResponse> {
     await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    return this.withdrawAccountConsent(currentUser);
+  }
+
+  /**
+   * RA-BE-161: the consent is the account's, so w40 reads it and takes it
+   * back without any plan: a partner removed from the plan, or an account
+   * whose plans are gone, still holds it until taken back.
+   */
+  async accountConsent(currentUser: AuthenticatedUser): Promise<AssistantAccountConsentResponse> {
+    const config = this.runtime.model ? this.runtime.config : null;
+    return {
+      consentedAt: iso(await this.consent.consentedAt(currentUser.id)),
+      dailyLimit: config?.dailyLimit ?? 0,
+    };
+  }
+
+  async withdrawAccountConsent(currentUser: AuthenticatedUser): Promise<AssistantConsentResponse> {
     await this.consent.withdrawConsent(currentUser.id);
     return { consentedAt: null };
   }
@@ -202,35 +269,32 @@ export class AssistantService {
 
     const now = new Date();
     const day = localDate(now);
-    const spent = await this.quota.spentSince(monthStart(day));
-    if (spent >= config.monthlyBudgetMicroUsd) {
-      this.logger.warn('Assistant monthly budget reached; questions are refused until next month');
-      throw refusal(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        'ASSISTANT_BUDGET_EXHAUSTED',
-        'The assistant reached its monthly limit',
-      );
+    const facts = await this.planFacts(context, currentUser, now);
+    const userText = renderAssistantRequest(input.kind, facts, question);
+    // RA-BE-165: the caps are checked and the call's most cost reserved in
+    // one step, before the model is asked.
+    const reserved = reservationMicroUsd(ASSISTANT_SYSTEM_PROMPT, userText);
+    const reservation = await this.quota.reserveQuestion(currentUser.id, day, {
+      dailyLimit: config.dailyLimit,
+      monthStart: monthStart(day),
+      reserveMicroUsd: reserved,
+      serviceMonthlyBudgetMicroUsd: config.monthlyBudgetMicroUsd,
+      userMonthlyBudgetMicroUsd: config.userMonthlyBudgetMicroUsd,
+    });
+    if (reservation.outcome !== 'RESERVED') {
+      if (reservation.outcome === 'SERVICE_BUDGET_REACHED') {
+        this.logger.warn('Assistant monthly budget reached; questions are refused until next month');
+      }
+      throw capRefusal(reservation.outcome);
     }
 
-    const facts = await this.planFacts(context, currentUser.id, now);
-    if (!(await this.quota.reserveQuestion(currentUser.id, day, config.dailyLimit))) {
-      throw refusal(
-        HttpStatus.TOO_MANY_REQUESTS,
-        'ASSISTANT_DAILY_LIMIT',
-        'The daily question limit is reached',
-      );
-    }
-
-    let reply;
+    let reply: AssistantModelReply;
     try {
-      reply = await model.ask({
-        model: config.model,
-        system: ASSISTANT_SYSTEM_PROMPT,
-        userText: renderAssistantRequest(input.kind, facts, question),
-      });
+      reply = await model.ask({ model: config.model, system: ASSISTANT_SYSTEM_PROMPT, userText });
     } catch (error) {
-      await this.quota.releaseQuestion(currentUser.id, day);
-      if (error instanceof AssistantModelError) {
+      if (error instanceof AssistantModelError && error.failure !== 'TIMEOUT') {
+        // Refused before any answer: nothing was billed.
+        await this.quota.releaseQuestion(currentUser.id, day, reserved);
         if (error.failure === 'BUSY') {
           this.logger.warn(`Assistant model busy: ${error.detail}`);
           throw refusal(HttpStatus.SERVICE_UNAVAILABLE, 'ASSISTANT_BUSY', 'The assistant is busy');
@@ -242,28 +306,50 @@ export class AssistantService {
           'The assistant is unavailable',
         );
       }
+      // A timeout, or a failure after the call went out: it may have been
+      // billed, so its reserved cost stays spent; the question is given back.
+      await this.quota.releaseQuestion(currentUser.id, day, 0n);
+      if (error instanceof AssistantModelError) {
+        this.logger.warn(`Assistant model timed out: ${error.detail}; its reserved cost is kept`);
+        throw refusal(HttpStatus.SERVICE_UNAVAILABLE, 'ASSISTANT_BUSY', 'The assistant is busy');
+      }
       throw error;
     }
 
     const cost = costMicroUsd(ASSISTANT_MODEL_PRICES[reply.model] ?? config.price, reply.usage);
-    await this.quota.recordQuestionCost(currentUser.id, day, {
+    await this.quota.settleQuestion(currentUser.id, day, reserved, {
       inputTokens: reply.usage.inputTokens + reply.usage.cacheReadTokens + reply.usage.cacheWriteTokens,
       outputTokens: reply.usage.outputTokens,
       costMicroUsd: cost,
     });
+    if (cost > reserved) {
+      this.logger.error(`Assistant call cost ${cost} micro-dollars, above the ${reserved} it reserved`);
+    }
+    const spent = reservation.serviceSpentBefore;
     const warnAt = (config.monthlyBudgetMicroUsd * 8n) / 10n;
     if (spent < warnAt && spent + cost >= warnAt) {
       this.logger.warn('Assistant spending passed 80% of its monthly budget');
     }
 
-    const declined = reply.stopReason === 'refusal' || reply.text.length === 0;
+    // RA-BE-163: stopped at its token limit, the text is only a start.
+    const truncated = reply.stopReason === 'max_tokens';
+    const declined = reply.stopReason === 'refusal' || (reply.text.length === 0 && !truncated);
+    const answer = declined
+      ? 'لا أستطيع المساعدة في هذا الطلب. جرّب سؤالًا آخر عن تخطيط عرسك.'
+      : reply.text;
     const used = await this.quota.questionsOn(currentUser.id, day);
     return {
       kind: input.kind,
-      answer: declined
-        ? 'لا أستطيع المساعدة في هذا الطلب. جرّب سؤالًا آخر عن تخطيط عرسك.'
-        : reply.text,
+      answer,
       declined,
+      truncated,
+      answerId: issueAnswerId({
+        userId: currentUser.id,
+        weddingPlanId: context.plan.id,
+        kind: input.kind,
+        question,
+        answer: reportedAnswerText(answer),
+      }),
       marketDataAvailable: facts.market.length > 0,
       remainingToday: Math.max(0, config.dailyLimit - used),
     };
@@ -271,19 +357,44 @@ export class AssistantService {
 
   /**
    * RA-ST-04 (D95): the reader reports an answer to the moderation team
-   * (Play's AI-generated content policy). Whoever may ask may report; the
-   * answer is the one the reader sent, since the assistant keeps none.
+   * (Play's AI-generated content policy). Whoever may ask may report. The
+   * assistant keeps no answer, so the phone sends it back; RA-BE-166: with
+   * the server's answer id, and it is kept only when that id signs this
+   * reader, plan, kind, question and text: the team reads what the
+   * assistant wrote, never text the phone made.
    */
   async reportAnswer(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-    report: { kind: AssistantKind; question: string | null; answer: string; reason: string },
+    report: {
+      answerId: string;
+      kind: AssistantKind;
+      question: string | null;
+      answer: string;
+      reason: string;
+    },
   ): Promise<{ reported: true }> {
     const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
     assertOwnerOrPartner(context);
-    const recorded = await this.reports.recordAnswerReport(currentUser.id, {
+    const question = report.question?.trim() || null;
+    const answerId = verifiedAnswerId(report.answerId, {
+      userId: currentUser.id,
+      weddingPlanId: context.plan.id,
       kind: report.kind,
-      question: report.question?.trim() || null,
+      question,
+      answer: report.answer,
+    });
+    if (!answerId) {
+      throw refusal(
+        HttpStatus.BAD_REQUEST,
+        'ASSISTANT_REPORT_ANSWER_UNKNOWN',
+        'The reported answer is not one the assistant gave this reader',
+      );
+    }
+    const recorded = await this.reports.recordAnswerReport(currentUser.id, {
+      answerId,
+      kind: report.kind,
+      question,
       answer: report.answer,
       reason: report.reason,
     });
@@ -305,10 +416,11 @@ export class AssistantService {
    */
   private async planFacts(
     context: PlanAccessContext,
-    readerUserId: string,
+    reader: AuthenticatedUser,
     now: Date,
   ): Promise<AssistantPlanFacts> {
     const plan = context.plan;
+    const readerUserId = reader.id;
     const ownerAgreed =
       context.isOwner || (await this.consent.consentedAt(plan.ownerUserId)) !== null;
     const moneyWithheld = !this.permissions.canViewMoney(context)
@@ -337,6 +449,12 @@ export class AssistantService {
         ]);
         const weddingDay = plan.weddingDate ? startOfRiyadhDay(plan.weddingDate) : null;
         return {
+          planOf: plan.persona === 'GROOM' || plan.persona === 'BRIDE' ? plan.persona : null,
+          // RA-BE-164: the reader, not the plan's owner.
+          reader: {
+            role: context.isOwner ? ('OWNER' as const) : ('PARTNER' as const),
+            form: readerAddressForm(reader, context),
+          },
           city: plan.city,
           weddingDate: plan.weddingDate ? localDate(plan.weddingDate) : null,
           daysRemaining: weddingDay

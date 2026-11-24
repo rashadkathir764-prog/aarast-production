@@ -204,6 +204,89 @@ void main() {
       CrashReportSwitch.set(true);
     },
   );
+
+  // Item 9 (RA-BE-161): the consent is the account's. With no plan the
+  // reader reads (removed from the partner's plan, say), the row was hidden
+  // and the stored consent could never be taken back.
+  testWidgets('w40 shows and takes back the assistant consent with no plan', (
+    tester,
+  ) async {
+    _tallPhone(tester);
+    final world = await _World.create();
+    final client = _AccountConsentClient();
+    await tester.pumpWidget(world.app(const PrivacyScreen(), client: client));
+    await tester.pumpAndSettle();
+
+    expect(client.reads, ['/api/v1/me/assistant/consent']);
+    final row = find.byKey(const ValueKey('privacy-assistant'));
+    expect(row, findsOneWidget);
+    expect(find.text('المساعد الذكي'), findsOneWidget);
+    expect(find.text('3 أسئلة في اليوم'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: row,
+        matching: find.bySemanticsLabel('المساعد الذكي'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(client.deletes, ['/api/v1/me/assistant/consent']);
+    // Without a plan it is taken back only; turning it on needs a plan.
+    await tester.tap(
+      find.descendant(
+        of: row,
+        matching: find.bySemanticsLabel('المساعد الذكي'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(client.deletes, hasLength(1));
+    expect(client.puts, isEmpty);
+  });
+
+  testWidgets('w40 shows no assistant row when the account never agreed', (
+    tester,
+  ) async {
+    _tallPhone(tester);
+    final world = await _World.create();
+    final client = _AccountConsentClient(consentedAt: null);
+    await tester.pumpWidget(world.app(const PrivacyScreen(), client: client));
+    await tester.pumpAndSettle();
+    expect(client.reads, ['/api/v1/me/assistant/consent']);
+    expect(find.byKey(const ValueKey('privacy-assistant')), findsNothing);
+  });
+}
+
+/// Item 9: the server's account route for the assistant consent.
+class _AccountConsentClient extends ApiClient {
+  _AccountConsentClient({this.consentedAt = '2026-11-20T10:00:00.000Z'})
+    : super(tokenProvider: () async => null);
+
+  String? consentedAt;
+  final reads = <String>[];
+  final deletes = <String>[];
+  final puts = <String>[];
+
+  @override
+  Future<Map<String, dynamic>> getJson(String path) async {
+    reads.add(path);
+    return {'consentedAt': consentedAt, 'dailyLimit': 3};
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteJson(String path) async {
+    deletes.add(path);
+    consentedAt = null;
+    return {'consentedAt': null};
+  }
+
+  @override
+  Future<Map<String, dynamic>> putJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    puts.add(path);
+    return {'consentedAt': consentedAt};
+  }
 }
 
 /// w06 counts the real 30 days (C4: requested 19 Oct, erased 18 Nov).
@@ -355,7 +438,7 @@ class _World {
     );
   }
 
-  Widget app(Widget screen, {OfflineSyncService? sync}) {
+  Widget app(Widget screen, {OfflineSyncService? sync, ApiClient? client}) {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => screen),
@@ -374,6 +457,7 @@ class _World {
         ChangeNotifierProvider<DevicePreferences>.value(value: preferences),
         if (sync != null)
           ChangeNotifierProvider<OfflineSyncService>.value(value: sync),
+        if (client != null) Provider<ApiClient>.value(value: client),
       ],
       child: MaterialApp.router(routerConfig: router),
     );

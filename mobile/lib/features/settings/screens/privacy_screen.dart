@@ -19,7 +19,8 @@ import '../widgets/account_data_download.dart';
 /// w40 «الخصوصية» (D63): what leaves the phone and what others read. Crash
 /// reports are this phone's choice; the assistant's consent is the one it
 /// asks before its first question, kept on the server (RA-BE-161; shown
-/// only where the assistant answers the reader); the name on reviews is
+/// where the assistant answers the reader, or while the account holds it);
+/// the name on reviews is
 /// kept on the server. Then the copy of
 /// the account's data and the way to w05. «الأجهزة» (w04) is not built.
 class PrivacyScreen extends StatefulWidget {
@@ -69,14 +70,29 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       }
     }
     // RA-BE-161: the consent is the server's record, read with the
-    // assistant's daily limit.
+    // assistant's daily limit: through the open plan when the assistant
+    // answers its reader there, else from the account, so a consent held
+    // with no such plan (a partner removed from it) is still shown and can
+    // be taken back.
     bool? consent;
     int? limit;
-    if (client != null && planId != null && planId.isNotEmpty) {
+    String? consentPlanId;
+    if (client != null) {
       try {
-        final assistant = await AssistantConsent.read(client, planId);
-        consent = assistant == null ? null : assistant.consentedAt != null;
-        limit = assistant?.dailyLimit;
+        final assistant = planId == null || planId.isEmpty
+            ? null
+            : await AssistantConsent.read(client, planId);
+        if (assistant != null) {
+          consent = assistant.consentedAt != null;
+          limit = assistant.dailyLimit;
+          consentPlanId = planId;
+        } else {
+          final account = await AssistantConsent.readAccount(client);
+          if (account.consentedAt != null) {
+            consent = true;
+            limit = account.dailyLimit;
+          }
+        }
       } on ApiException {
         // Without the network the assistant row waits; nothing else depends on it.
         limit = null;
@@ -86,7 +102,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     setState(() {
       _assistantConsent = consent;
       _assistantDailyLimit = limit;
-      _assistantPlanId = planId;
+      _assistantPlanId = consentPlanId;
     });
   }
 
@@ -104,9 +120,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     }
   }
 
+  /// Taken back from the account (no plan needed); given again only
+  /// through the plan whose assistant answers the reader.
   Future<void> _setAssistant(bool value) async {
     final planId = _assistantPlanId;
-    if (planId == null) return;
+    if (value && planId == null) return;
     try {
       final held = await AssistantConsent.set(
         context.read<ApiClient>(),
@@ -164,7 +182,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                     subtitle:
                         '${arabicCount(assistantLimit, one: 'سؤال واحد', two: 'سؤالين', few: 'أسئلة', many: 'سؤال')} في اليوم',
                     value: _assistantConsent!,
-                    onChanged: _setAssistant,
+                    // With no plan it can only be taken back.
+                    onChanged:
+                        _assistantPlanId == null && _assistantConsent == false
+                        ? null
+                        : _setAssistant,
                   ),
                 _Toggle(
                   key: const ValueKey('privacy-review-name'),

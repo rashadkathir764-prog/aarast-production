@@ -109,6 +109,7 @@ export function findExportProfile(client: Prisma.TransactionClient, userId: stri
       persona: true,
       locale: true,
       reviewFirstNameOnly: true,
+      assistantConsentAt: true,
       createdAt: true,
       deletionRequestedAt: true,
       deletionScheduledFor: true,

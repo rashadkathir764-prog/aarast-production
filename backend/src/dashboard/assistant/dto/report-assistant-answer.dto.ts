@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { MaxCharacters } from '../../../shared-kernel/text/text-length';
 import { ASSISTANT_KINDS, type AssistantKind } from '../assistant.prompt';
 
@@ -15,6 +15,11 @@ export const ASSISTANT_REPORT_ANSWER_MAX = 20_000;
 
 /** RA-ST-04 (D95): an assistant answer its reader reports, and why. */
 export class ReportAssistantAnswerDto {
+  /** RA-BE-166: the `answerId` the answer came with. */
+  @IsString()
+  @MaxLength(100)
+  answerId!: string;
+
   @IsIn(ASSISTANT_KINDS)
   kind!: AssistantKind;
 

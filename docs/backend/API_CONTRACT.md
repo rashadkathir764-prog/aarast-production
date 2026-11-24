@@ -1744,9 +1744,19 @@ V1 checklist 4.12. Protected routes:
   (`User.assistantConsentAt`), not the plan's.
 - `DELETE /api/v1/wedding-plans/:weddingPlanId/assistant/consent` takes it back
   (w40) and returns `200 { consentedAt: null }`.
+- `GET /api/v1/me/assistant/consent` returns `{ consentedAt, dailyLimit }` and
+  `DELETE /api/v1/me/assistant/consent` takes the consent back with no plan
+  (`200 { consentedAt: null }`): the record is the account's, so an account
+  that no longer reads the plan it agreed on (a removed partner) still sees
+  and withdraws it (RA-BE-161). w40 withdraws through this route.
 - `POST /api/v1/wedding-plans/:weddingPlanId/assistant/questions` with
-  `{ kind, question? }` returns `200 { kind, answer, declined,
-  marketDataAvailable, remainingToday }`. `kind` is one of `PLAN`,
+  `{ kind, question? }` returns `200 { kind, answer, declined, truncated,
+  answerId, marketDataAvailable, remainingToday }`. `truncated` (RA-BE-163)
+  is true when the model stopped at its token limit, so `answer` is only its
+  start and the app says «الجواب طويل، اسأل بشكل أضيق». `answerId`
+  (RA-BE-166) is `<uuid>.<signature>`: an HMAC, under a key derived from
+  `JWT_SECRET`, over the asker, the plan, `kind`, the trimmed question and
+  the answer's first 20,000 UTF-16 units, trimmed. `kind` is one of `PLAN`,
   `BUDGET_SPLIT`, `COMPARE_QUOTES`, `CHEAPER`, `FORGOTTEN`, `NEGOTIATION`,
   `QUESTION` (`question`, at most 500 characters, is required for `QUESTION`).
   The request carries no consent flag: the asker's stored consent is read.
@@ -1764,16 +1774,47 @@ paid, the family, guests, members), the plan's title, task titles, loans or
 advances, what the owner holds, or the mahr beyond its total. A partner's
 question carries the plan's money (the budget and the offers' prices) only
 when the plan's owner has stored consent too; without it the request goes
-without money figures and the model is told so. The rules forbid inventing
-prices and treat the plan data as data, not instructions. Nothing asked or
-answered is stored; only counts, cost, and the consent's date.
+without money figures and the model is told so. The request names whose plan
+it is and its reader (owner or partner, and the form the app speaks to them
+in), and the model addresses the reader, never a partner as the owner
+(RA-BE-164). The rules forbid inventing prices, religious rulings (a sheikh
+answers those), legal advice (a lawyer), any borrowing advice, and the word
+«أقساط»; they treat the plan data as data, not instructions. Every text a
+person wrote (item, category and city names) is stripped of control and
+format characters and of markup (`<>`, backticks, brackets, `#`, `*`, `|`),
+kept on one line and capped at 80 characters; the question goes in its own
+`<user_question>` block, capped at 500 (RA-BE-162). Nothing asked or answered
+is stored; only counts, cost, and the consent's date.
+
+Spending (RA-BE-165): before the model is asked, one transaction under an
+advisory lock checks the service's month (`AARAST_ASSISTANT_MONTHLY_BUDGET_USD`),
+the asker's month (`ASSISTANT_USER_MONTHLY_USD`, default 1) and day, and
+reserves the call's most cost (the request's UTF-8 bytes as input tokens and
+all 8,000 output tokens, at the dearest known price) in `AssistantUsageDay`.
+A question is admitted while the spending is below the cap, so a month ends
+at most one reservation over it. The answer settles the reservation at its
+real cost; a call refused before answering gives it back; a timeout keeps it
+(the call may have been billed) and gives the question back.
+
+- `POST /api/v1/wedding-plans/:weddingPlanId/assistant/reports` with
+  `{ answerId, kind, question?, answer, reason }` (RA-ST-04) returns
+  `201 { reported: true }`. RA-BE-166: kept only when `answerId` signs this
+  reader, plan, `kind`, question and `answer`, else
+  `400 ASSISTANT_REPORT_ANSWER_UNKNOWN`; the report stores the answer's id
+  (one report per answer) and the text the assistant wrote, never text the
+  phone made. `429 ASSISTANT_REPORT_LIMIT` at 20 open reports. A reviewed
+  report is deleted 90 days after its review by the hourly retention run.
 
 Refusals: `400 ASSISTANT_CONSENT_REQUIRED` (the asker has no stored consent),
 `403 ASSISTANT_OWNER_OR_PARTNER_ONLY`, `429 ASSISTANT_DAILY_LIMIT`
-(`AARAST_ASSISTANT_DAILY_LIMIT`, default 10 a day), `503 ASSISTANT_DISABLED`,
+(`AARAST_ASSISTANT_DAILY_LIMIT`, default 10 a day), `429
+ASSISTANT_USER_MONTHLY_LIMIT` (the asker's month reached
+`ASSISTANT_USER_MONTHLY_USD`; the app says «خلصت أسئلتك هذا الشهر، ترجع أول
+الشهر»; other accounts go on), `503 ASSISTANT_DISABLED`,
 `503 ASSISTANT_BUDGET_EXHAUSTED` (the month's cost reached
 `AARAST_ASSISTANT_MONTHLY_BUDGET_USD`, default 30), `503 ASSISTANT_BUSY` and
-`503 ASSISTANT_UNAVAILABLE` (the model failed; the question is given back).
+`503 ASSISTANT_UNAVAILABLE` (the model failed; the question is given back;
+on a timeout its reserved cost stays spent).
 A safety decline returns `declined: true` with an Arabic explanation.
 
 ## Timeline
@@ -3889,6 +3930,8 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/loan-repayments/:id` | `funding-sources.remove` | 🔒 |
 | PATCH | `/api/v1/loan-repayments/:id` | `funding-sources.update` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
+| DELETE | `/api/v1/me/assistant/consent` | `assistant.withdrawConsent` | 🔒 |
+| GET | `/api/v1/me/assistant/consent` | `assistant.consent` | 🔒 |
 | PATCH | `/api/v1/me/bookings/:id/cancel` | `bookings.cancelBooking` | 🔒 |
 | POST | `/api/v1/me/bookings/:id/change` | `bookings.requestChange` | 🔒 |
 | POST | `/api/v1/me/bookings/:id/delivery/confirm` | `bookings.confirmDelivery` | 🔒 |

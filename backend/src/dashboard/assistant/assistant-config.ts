@@ -14,10 +14,21 @@ export interface AssistantConfig {
   dailyLimit: number;
   /** The whole service's monthly spending cap, in millionths of a dollar. */
   monthlyBudgetMicroUsd: bigint;
+  /**
+   * RA-BE-165 (Q-41, D124): one account's monthly spending cap, in
+   * millionths of a dollar. Reaching it stops that account's questions until
+   * the month turns; the others go on.
+   */
+  userMonthlyBudgetMicroUsd: bigint;
 }
 
 const DEFAULT_DAILY_LIMIT = 10;
 const DEFAULT_MONTHLY_BUDGET_USD = 30;
+const DEFAULT_USER_MONTHLY_USD = 1;
+
+function microUsd(dollars: number): bigint {
+  return BigInt(Math.round(dollars * 1_000_000));
+}
 
 function positiveNumber(raw: string | undefined, fallback: number): number {
   const value = Number(raw?.trim() || fallback);
@@ -33,10 +44,11 @@ export function readAssistantConfig(env: NodeJS.ProcessEnv): AssistantConfig | n
     model,
     price,
     dailyLimit: Math.floor(positiveNumber(env.AARAST_ASSISTANT_DAILY_LIMIT, DEFAULT_DAILY_LIMIT)),
-    monthlyBudgetMicroUsd: BigInt(
-      Math.round(
-        positiveNumber(env.AARAST_ASSISTANT_MONTHLY_BUDGET_USD, DEFAULT_MONTHLY_BUDGET_USD) * 1_000_000,
-      ),
+    monthlyBudgetMicroUsd: microUsd(
+      positiveNumber(env.AARAST_ASSISTANT_MONTHLY_BUDGET_USD, DEFAULT_MONTHLY_BUDGET_USD),
+    ),
+    userMonthlyBudgetMicroUsd: microUsd(
+      positiveNumber(env.ASSISTANT_USER_MONTHLY_USD, DEFAULT_USER_MONTHLY_USD),
     ),
   };
 }

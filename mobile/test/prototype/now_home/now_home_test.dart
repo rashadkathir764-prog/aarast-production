@@ -336,6 +336,7 @@ class _FakeAssistantApi extends PlanAssistantApi {
     String? question,
   }) async {
     return const PlanAssistantAnswer(
+      answerId: 'answer-1',
       answer:
           'من خطتك: ميزانيتك 8,000,000 ر.ي، اتفقت على 5,400,000 ودفعت منها '
           '2,400,000. أكبر بند باقي هو القاعة (دفعتان).\n\n'

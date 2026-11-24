@@ -2,7 +2,9 @@ import {
   CallHandler,
   ConflictException,
   ExecutionContext,
+  HttpException,
   Injectable,
+  Logger,
   NestInterceptor,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -17,6 +19,11 @@ import {
   throwError,
 } from 'rxjs';
 import { PrismaService } from '../database/prisma.service';
+import {
+  type RequestCommits,
+  trackRequestCommits,
+} from '../database/request-commits';
+import { isRetryableTransactionError } from '../database/serializable-transaction';
 import {
   requestRouteTemplate,
   safeClientRequestId,
@@ -100,6 +107,8 @@ type Acquisition =
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(IdempotencyInterceptor.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   intercept(
@@ -142,31 +151,42 @@ export class IdempotencyInterceptor implements NestInterceptor {
           return of(acquisition.response);
         }
         // We own the reservation: run the mutation and record its response.
-        // RA-BE-143: only a 2xx answer is stored for replay. Any other answer
-        // releases the reservation, so a retry with the same key is processed
-        // fresh: a refusal thrown inside the domain transaction (the chat's
-        // 429, a 409 BUDGET_CHANGED_ELSEWHERE) rolled back with it, and a
-        // kept reservation answered every later retry with a 503 for good.
-        // A tombstone stays only where the work did or may have committed:
-        // the process died before answering, or storing its 2xx failed. The
-        // reconciliation command resolves it.
+        // RA-BE-143: only a 2xx answer is stored for replay. A refusal (4xx)
+        // and a serialization abort release the reservation, so a retry with
+        // the same key is processed fresh: the chat's 429 or a 409
+        // BUDGET_CHANGED_ELSEWHERE thrown inside the domain transaction rolled
+        // back with it, and a kept reservation answered every later retry
+        // with a 503 for good. A server failure releases it only when this
+        // request committed no transaction; after a commit the work may be
+        // durable, so the reservation stays for the reconciliation command.
         const reservationId = acquisition.reservationId;
-        return next.handle().pipe(
-          catchError((error) =>
-            from(this.release(reservationId)).pipe(
-              switchMap(() => throwError(() => error)),
-            ),
+        const commits: RequestCommits = { committed: false };
+        const handled = new Observable<unknown>((subscriber) =>
+          trackRequestCommits(commits, () =>
+            next.handle().subscribe(subscriber),
           ),
+        );
+        return handled.pipe(
+          catchError((error) => {
+            if (!failureReleasesReservation(error, commits.committed)) {
+              return throwError(() => error);
+            }
+            return from(this.releaseAfterFailure(reservationId, error)).pipe(
+              switchMap(() => throwError(() => error)),
+            );
+          }),
           switchMap((handlerResponse) => {
             const metadata = captureReplayMetadata(
               http.getResponse<ResponseLike>(),
             );
-            const stored =
-              metadata.statusCode === undefined ||
-              isSuccessStatus(metadata.statusCode)
+            const statusCode = metadata.statusCode;
+            const settled =
+              statusCode === undefined || isSuccessStatus(statusCode)
                 ? this.complete(reservationId, handlerResponse, metadata)
-                : this.release(reservationId);
-            return from(stored).pipe(switchMap(() => of(handlerResponse)));
+                : statusReleasesReservation(statusCode, commits.committed)
+                  ? this.releaseAfterFailure(reservationId, statusCode)
+                  : Promise.resolve();
+            return from(settled).pipe(switchMap(() => of(handlerResponse)));
           }),
         );
       }),
@@ -311,6 +331,31 @@ export class IdempotencyInterceptor implements NestInterceptor {
         return;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Release after a failed answer. A release that fails itself is logged and
+   * the reservation stays; the caller still answers with the original
+   * failure, never with the release's.
+   */
+  private async releaseAfterFailure(
+    reservationId: string,
+    failure: unknown,
+  ): Promise<void> {
+    try {
+      await this.release(reservationId);
+    } catch (releaseError) {
+      const outcome =
+        typeof failure === 'number'
+          ? `status ${failure}`
+          : failure instanceof Error
+            ? failure.name
+            : 'failure';
+      this.logger.error(
+        `Could not release idempotency reservation ${reservationId} after ${outcome}`,
+        releaseError instanceof Error ? releaseError.stack : String(releaseError),
+      );
     }
   }
 
@@ -476,6 +521,33 @@ function normalizeReplayHeader(
 
 function isSuccessStatus(statusCode: number): boolean {
   return statusCode >= 200 && statusCode <= 299;
+}
+
+/**
+ * RA-BE-143: a refusal (below 500) is decided before or inside a transaction
+ * that rolled back with it. A server failure is safe to retry only when the
+ * request committed nothing.
+ */
+function statusReleasesReservation(
+  statusCode: number,
+  committed: boolean,
+): boolean {
+  return statusCode < 500 || !committed;
+}
+
+function failureReleasesReservation(
+  error: unknown,
+  committed: boolean,
+): boolean {
+  if (error instanceof HttpException) {
+    return statusReleasesReservation(error.getStatus(), committed);
+  }
+  // PostgreSQL aborted the transaction (serialization failure, deadlock):
+  // it did not commit.
+  if (isRetryableTransactionError(error)) return true;
+  // An unknown error, or a Prisma transaction API failure such as P2028,
+  // answers a 500 whose work may have committed.
+  return !committed;
 }
 
 function isHttpStatus(value: unknown): value is number {

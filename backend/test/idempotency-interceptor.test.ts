@@ -20,6 +20,12 @@ import {
   MESSAGES_PER_MINUTE,
   messageRateLimited,
 } from "../src/conversations/conversation-policy";
+import { ProviderReadService } from "../src/modules/marketplace/infrastructure/provider-read.service";
+import { QuoteReadService } from "../src/modules/marketplace/infrastructure/quote-read.service";
+import { PrismaService } from "../src/platform/database/prisma.service";
+import { trackRequestCommits } from "../src/platform/database/request-commits";
+import { runSerializableTransaction } from "../src/platform/database/serializable-transaction";
+import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
 import {
   IdempotencyInterceptor,
   requestFingerprint,
@@ -626,7 +632,7 @@ test("a validation 4xx releases the reservation for a corrected retry", async ()
   assert.deepEqual(retried, { id: "ok" });
 });
 
-test("an unknown handler error releases the reservation: the answer was a 500, not a 2xx", async () => {
+test("an unknown handler error releases the reservation when nothing committed", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
   (interceptor as any).delay = async () => {};
@@ -654,7 +660,7 @@ test("an unknown handler error releases the reservation: the answer was a 500, n
   assert.deepEqual(retried, { id: "fresh" });
 });
 
-test("a 5xx handler error releases the reservation for a fresh retry", async () => {
+test("a 5xx handler error releases the reservation when nothing committed", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
 
@@ -710,25 +716,31 @@ test("RA-BE-143: a 4xx raised inside the transaction releases the reservation", 
 test("RA-BE-167: the 31st message in a minute takes a 429, and the same id after the window is sent", async () => {
   // The chat send counts the sender's messages of the last minute inside its
   // serializable transaction and throws the 429 from there
-  // (`conversations.service.ts`). The phone's queue waits out the 429 and
-  // sends again with the same `X-Client-Request-Id`.
+  // (`conversations.service.ts`). The send is modelled here: the same
+  // `runSerializableTransaction` over a client whose transaction rolls back
+  // when its work throws, the count, and the real 429 of
+  // `conversation-policy.ts`. The phone's queue waits out the 429 and sends
+  // again with the same `X-Client-Request-Id`.
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
   (interceptor as any).delay = async () => {};
   let now = Date.parse("2026-11-24T10:00:00.000Z");
   const sentAt: number[] = [];
+  const chat = transactionalClient();
   const send = (body: string) =>
     handler(() =>
-      defer(async () => {
-        if (
-          sentAt.filter((at) => now - at < 60_000).length >=
-          MESSAGES_PER_MINUTE
-        ) {
-          throw messageRateLimited();
-        }
-        sentAt.push(now);
-        return { id: `message-${sentAt.length}`, body };
-      }),
+      defer(() =>
+        runSerializableTransaction(chat.client as any, async () => {
+          if (
+            sentAt.filter((at) => now - at < 60_000).length >=
+            MESSAGES_PER_MINUTE
+          ) {
+            throw messageRateLimited();
+          }
+          sentAt.push(now);
+          return { id: `message-${sentAt.length}`, body };
+        }),
+      ),
     );
   const sendWithKey = (key: string) =>
     firstValueFrom(
@@ -813,7 +825,7 @@ test("Prisma P2034 rollback releases the reservation for a safe retry", async ()
   assert.deepEqual(retried, { retried: true });
 });
 
-test("a Prisma transaction API failure releases the reservation", async () => {
+test("a Prisma transaction API failure releases the reservation when nothing committed", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
 
@@ -827,6 +839,294 @@ test("a Prisma transaction API failure releases the reservation", async () => {
   );
 
   assert.equal(store.row("u1", "req-prisma-transaction-api"), undefined);
+});
+
+/**
+ * A client whose interactive transaction commits when its work resolves and
+ * rolls back when it throws, as Prisma's does.
+ */
+function transactionalClient() {
+  let commits = 0;
+  return {
+    client: {
+      $transaction: async (work: (tx: unknown) => Promise<unknown>) => {
+        const result = await work({});
+        commits += 1;
+        return result;
+      },
+    },
+    commits: () => commits,
+  };
+}
+
+/** A handler that commits a transaction, then fails with `failure`. */
+const commitThenFail = (failure: unknown, executions: { count: number }) =>
+  handler(() =>
+    defer(async () => {
+      executions.count += 1;
+      await runSerializableTransaction(
+        transactionalClient().client as any,
+        async () => ({ committed: true }),
+      );
+      throw failure;
+    }),
+  );
+
+test("an unknown handler error retains an ambiguous reservation", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  (interceptor as any).delay = async () => {};
+  const executions = { count: 0 };
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-unknown-error-committed"),
+          commitThenFail(new Error("ambiguous failure"), executions),
+        ),
+      ),
+    /ambiguous failure/,
+  );
+  const reservationId = store.row("u1", "req-unknown-error-committed")?.id;
+  assert.ok(reservationId);
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-unknown-error-committed"),
+          handler(() => {
+            executions.count += 1;
+            return of({ duplicated: true });
+          }),
+        ),
+      ),
+    (error: unknown) => error instanceof ServiceUnavailableException,
+  );
+  assert.equal(executions.count, 1);
+  assert.equal(store.row("u1", "req-unknown-error-committed")?.id, reservationId);
+});
+
+test("a 5xx handler error retains an ambiguous reservation", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-5xx-error-committed"),
+          commitThenFail(new InternalServerErrorException("failed"), {
+            count: 0,
+          }),
+        ),
+      ),
+    (error: unknown) => error instanceof InternalServerErrorException,
+  );
+
+  assert.ok(store.row("u1", "req-5xx-error-committed"));
+});
+
+test("an ambiguous Prisma transaction API failure retains the reservation", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+
+  await assert.rejects(() =>
+    firstValueFrom(
+      interceptor.intercept(
+        context("u1", "req-prisma-ambiguous"),
+        commitThenFail(known("P2028"), { count: 0 }),
+      ),
+    ),
+  );
+
+  assert.ok(store.row("u1", "req-prisma-ambiguous"));
+});
+
+test("a 4xx after a commit still releases: a refusal rolled back its own transaction", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+
+  await assert.rejects(() =>
+    firstValueFrom(
+      interceptor.intercept(
+        context("u1", "req-4xx-committed"),
+        commitThenFail(new ConflictException(), { count: 0 }),
+      ),
+    ),
+  );
+
+  assert.equal(store.row("u1", "req-4xx-committed"), undefined);
+});
+
+test("a 5xx answer returned after a commit is neither stored nor released", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  const answer = await firstValueFrom(
+    interceptor.intercept(
+      context("u1", "req-5xx-answer", "POST", {
+        response: { statusCode: 502 },
+      }),
+      handler(() =>
+        defer(() =>
+          runSerializableTransaction(
+            transactionalClient().client as any,
+            async () => ({ upstream: "failed" }),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  assert.deepEqual(answer, { upstream: "failed" });
+  const row = store.row("u1", "req-5xx-answer");
+  assert.ok(row);
+  assert.equal(row.completedAt, null);
+});
+
+test("a release that fails is logged and the handler's own error is rethrown", async () => {
+  const logged: string[] = [];
+  const interceptor = new IdempotencyInterceptor({
+    idempotencyKey: {
+      create: async () => ({ id: "reservation-release-failure" }),
+      delete: async () => {
+        throw new Error("database unavailable");
+      },
+    },
+  } as any);
+  (interceptor as any).logger = {
+    error: (message: string) => logged.push(message),
+  };
+  const refusal = new ConflictException({ code: "BUDGET_CHANGED_ELSEWHERE" });
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-release-failure"),
+          handler(() => from(Promise.reject(refusal))),
+        ),
+      ),
+    (error: unknown) => error === refusal,
+  );
+  assert.equal(logged.length, 1);
+  assert.match(logged[0]!, /reservation-release-failure/);
+});
+
+test("RA-BE-143: createCost commits, fails presenting the cost, and the retry creates no second cost", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  (interceptor as any).delay = async () => {};
+  const now = new Date("2026-11-24T10:00:00.000Z");
+  const created: Array<Record<string, unknown>> = [];
+  const tx = {
+    weddingCost: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const cost = {
+          id: `cost-${created.length + 1}`,
+          ...data,
+          agreementDate: data.agreementDate ?? null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        created.push(cost);
+        return cost;
+      },
+      findUniqueOrThrow: async ({ where }: { where: { id: string } }) =>
+        created.find((cost) => cost.id === where.id),
+    },
+  };
+  // The real `runSerializableTransaction` commits through this client.
+  const service = new WeddingCostsService(
+    {
+      $transaction: async (work: (client: unknown) => Promise<unknown>) =>
+        work(tx),
+    } as any,
+    {
+      assertMoneyManageableInTransaction: async () => ({
+        isOwner: true,
+        sharedMember: null,
+        plan: { id: "plan-1", ownerUserId: "owner-1", currency: "YER" },
+      }),
+    } as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
+  );
+  // The checks around the insert pass.
+  Object.assign(service as any, {
+    lockCounterpartyReferences: async () => undefined,
+    assertScopedCategoryInTransaction: async () => undefined,
+    assertCategory: async () => undefined,
+    normalizeCounterparty: async () => ({
+      providerId: null,
+      quoteOfferId: null,
+      partyName: null,
+      partyPhone: null,
+    }),
+    recordMoneyEvent: async () => undefined,
+    syncItemTasks: async () => undefined,
+    // Presenting the committed cost reads the provider names; that read fails.
+    providerNamesFor: async () => {
+      throw new Error("connection reset while presenting the cost");
+    },
+  });
+  const createCost = () =>
+    firstValueFrom(
+      interceptor.intercept(
+        context("owner-1", "req-create-cost", "POST", {
+          routePath: "/api/v1/wedding-plans/:weddingPlanId/costs",
+          body: { title: "Hall", totalAmount: "1000" },
+        }),
+        handler(() =>
+          defer(() =>
+            service.createCost({ id: "owner-1" } as any, "plan-1", {
+              budgetCategoryId: "category-1",
+              title: "Hall",
+              totalAmount: "1000",
+            } as any),
+          ),
+        ),
+      ),
+    );
+
+  await assert.rejects(createCost, /connection reset while presenting the cost/);
+  assert.equal(created.length, 1, "the cost committed before the failure");
+  assert.equal(store.row("owner-1", "req-create-cost")?.completedAt, null);
+
+  await assert.rejects(
+    createCost,
+    (error: unknown) => error instanceof ServiceUnavailableException,
+  );
+  assert.equal(created.length, 1, "the retry created no second cost");
+});
+
+test("a direct PrismaService transaction is recorded as the request's commit", async () => {
+  const base = Object.getPrototypeOf(PrismaService.prototype) as {
+    $transaction: (...args: unknown[]) => Promise<unknown>;
+  };
+  const original = base.$transaction;
+  let outcome: "commit" | "rollback" = "commit";
+  base.$transaction = async () => {
+    if (outcome === "rollback") throw known("P2034");
+    return "committed";
+  };
+  try {
+    const recorded = async () => {
+      const record = { committed: false };
+      await trackRequestCommits(record, () =>
+        PrismaService.prototype.$transaction
+          .call({}, async () => "work")
+          .catch(() => undefined),
+      );
+      return record.committed;
+    };
+    assert.equal(await recorded(), true);
+    outcome = "rollback";
+    assert.equal(await recorded(), false);
+  } finally {
+    base.$transaction = original;
+  }
 });
 
 test("requests without a key or user, and non-mutating methods, are passed through", async () => {

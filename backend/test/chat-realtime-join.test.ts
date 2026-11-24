@@ -206,10 +206,18 @@ test('RA-BE-171: a reconnect re-join of a room the socket holds checks nothing a
 
   await instance.join(client as never, { conversationId: 'conversation-1' });
   const checks = counts.authorize;
+  const sessionReads = counts.sessionReads;
+  const spent = (client.data.joinTimestamps as number[]).length;
   const rejoined = await instance.join(client as never, { conversationId: 'conversation-1' });
 
   assert.deepEqual(rejoined, { conversationId: 'conversation-1', joined: true });
   assert.equal(counts.authorize, checks, 'the held room needs no second access check');
+  assert.equal(counts.sessionReads, sessionReads, 'nor a session read');
+  assert.equal(
+    (client.data.joinTimestamps as number[]).length,
+    spent,
+    'nor any of the join budget',
+  );
 });
 
 test('RA-BE-171: joins are rate limited per socket, refused before any read', async (t) => {
@@ -229,6 +237,12 @@ test('RA-BE-171: joins are rate limited per socket, refused before any read', as
   assert.equal(counts.sessionReads, sessionReads, 'refused before the session read');
   assert.equal(counts.authorize, checks, 'refused before the access check');
   assert.equal(client.rooms.has('conversation:conversation-over'), false);
+
+  // A room the socket already holds still answers once the budget is spent.
+  assert.deepEqual(
+    await instance.join(client as never, { conversationId: 'conversation-0' }),
+    { conversationId: 'conversation-0', joined: true },
+  );
 
   // Another socket of the same account keeps its own budget.
   await instance.join(socket() as never, { conversationId: 'conversation-over' });

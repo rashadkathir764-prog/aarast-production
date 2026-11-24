@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "./prisma.service";
+import { recordRequestCommit } from "./request-commits";
 
 const DEFAULT_ATTEMPTS = 4;
 
@@ -29,11 +30,15 @@ export async function runRetryableTransaction<T>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await prisma.$transaction(operation, {
+      const result = await prisma.$transaction(operation, {
         ...(maxWait !== undefined ? { maxWait } : {}),
         ...(timeout !== undefined ? { timeout } : {}),
         ...(isolationLevel !== undefined ? { isolationLevel } : {}),
       });
+      // RA-BE-143: the request's work is now durable; a later failure in the
+      // same request keeps its idempotency reservation.
+      recordRequestCommit();
+      return result;
     } catch (error) {
       if (!isRetryableTransactionError(error) || attempt === maxAttempts) {
         throw error;
@@ -62,7 +67,8 @@ export async function runSerializableTransaction<T>(
   });
 }
 
-function isRetryableTransactionError(error: unknown): boolean {
+/** A serialization failure or deadlock: PostgreSQL aborted the transaction. */
+export function isRetryableTransactionError(error: unknown): boolean {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
   if (error.code === "P2034") return true;
   if (error.code !== "P2010") return false;

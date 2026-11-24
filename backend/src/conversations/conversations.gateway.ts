@@ -168,8 +168,17 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: ConversationEvent,
   ) {
-    // RA-BE-171: the phone re-joins every loaded conversation each time its
-    // socket comes up; the socket's budget is spent before any read.
+    const room = conversationRoom(event.conversationId);
+    // RA-BE-171: a socket holds a conversation's room only while it may hear
+    // it: a revocation removes it from the room and a revoked session
+    // disconnects it. A re-join of a held room (the phone emits each join
+    // twice when its socket comes up) grants nothing, so it costs no budget
+    // and no read.
+    if (socket.rooms.has(room)) {
+      return { conversationId: event.conversationId, joined: true };
+    }
+    // The phone re-joins every loaded conversation each time its socket comes
+    // up; the socket's budget is spent before any read.
     this.assertSocketRate(
       socket,
       'joinTimestamps',
@@ -177,13 +186,6 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       'Join rate limit exceeded',
     );
     const user = await this.liveSocketUser(socket);
-    const room = conversationRoom(event.conversationId);
-    // A socket holds a conversation's room only while it may hear it: a
-    // revocation removes it (`revokeConversationAccess`), so a re-join of a
-    // held room has nothing left to check.
-    if (socket.rooms.has(room)) {
-      return { conversationId: event.conversationId, joined: true };
-    }
     await this.conversations.authorize(user, event.conversationId);
     await socket.join(room);
     try {

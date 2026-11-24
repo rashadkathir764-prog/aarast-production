@@ -24,9 +24,9 @@ model AdminAuditLog {
   statusCode     Int?
   errorType      String?
   requestId      String?
-  /// RA-AD-23: the decision, not only the route: the reason the admin gave
-  /// (the body's reason or note), and on the SUCCEEDED row what the action
-  /// changed on its target (small maps of codes, never typed text).
+  // RA-AD-23: the decision, not only the route: the reason the admin gave
+  // (the body's reason or note), and on the SUCCEEDED row what the action
+  // changed on its target (small maps of codes, never typed text).
   reason         String?
   before         Json?
   after          Json?

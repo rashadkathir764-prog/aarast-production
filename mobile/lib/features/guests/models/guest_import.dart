@@ -1,4 +1,5 @@
 import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/utils/arabic_sort.dart';
 import '../../../core/utils/text_limits.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import 'guest.dart';
@@ -83,55 +84,157 @@ int unnamedGuestLines(String text) => text
   return (name: name, phone: phone);
 }
 
+/// How a number is compared: [PhoneNumberUtils.comparisonKey]; tests pass
+/// one that counts.
+typedef GuestPhoneKey = String? Function(String? phone);
+
+/// The plan's guests as an import compares them (RA-MO-362): each number
+/// normalised once, into a map, instead of once for every contact.
+class GuestMatchIndex {
+  GuestMatchIndex(
+    List<Guest> guests, {
+    GuestPhoneKey phoneKey = PhoneNumberUtils.comparisonKey,
+  }) {
+    for (final guest in guests) {
+      if (guest.hasPhone) {
+        final key = phoneKey(guest.phone);
+        if (key != null) _byPhone.putIfAbsent(key, () => guest);
+      } else {
+        final name = ContactDuplicateUtils.normalizeName(guest.name);
+        if (name.isNotEmpty) {
+          _byNameWithoutPhone.putIfAbsent(name, () => guest);
+        }
+      }
+    }
+  }
+
+  /// The first guest with each number, in the list's order.
+  final _byPhone = <String, Guest>{};
+
+  /// The first guest without a number for each name as compared.
+  final _byNameWithoutPhone = <String, Guest>{};
+
+  /// The guest already in the plan with this normalized number.
+  Guest? withPhone(String phoneKey) => _byPhone[phoneKey];
+
+  /// A guest without a number whose name, as compared, is [normalizedName].
+  Guest? withNameOnly(String normalizedName) =>
+      normalizedName.isEmpty ? null : _byNameWithoutPhone[normalizedName];
+}
+
 /// Marks who the plan already has, and who repeats within the list itself.
 List<GuestCandidate> markGuestCandidates(
   List<({String name, String? phone})> people,
-  List<Guest> existing,
-) {
+  List<Guest> existing, {
+  GuestPhoneKey phoneKey = PhoneNumberUtils.comparisonKey,
+}) => markAgainst(
+  people,
+  GuestMatchIndex(existing, phoneKey: phoneKey),
+  phoneKey: phoneKey,
+);
+
+/// [markGuestCandidates] against an index already built for the plan: one
+/// normalisation per person listed.
+List<GuestCandidate> markAgainst(
+  List<({String name, String? phone})> people,
+  GuestMatchIndex plan, {
+  GuestPhoneKey phoneKey = PhoneNumberUtils.comparisonKey,
+}) {
   final seen = <String>{};
   final candidates = <GuestCandidate>[];
   for (final listed in people) {
-    final person = (name: _withinGuestName(listed.name), phone: listed.phone);
-    final raw = person.phone?.trim() ?? '';
-    final phone = PhoneNumberUtils.comparisonKey(raw);
-    final clean = (name: person.name, phone: phone);
+    final name = _withinGuestName(listed.name);
+    final raw = listed.phone?.trim() ?? '';
+    final phone = raw.isEmpty ? null : phoneKey(raw);
+    final nameKey = ContactDuplicateUtils.normalizeName(name);
     candidates.add(
       GuestCandidate(
-        name: person.name,
+        name: name,
         phone: phone,
         badPhone: raw.isNotEmpty && phone == null ? raw : null,
-        existing: _samePhone(clean, existing),
-        sameName: _sameNameWithoutPhone(clean, existing),
-        repeated: !seen.add(
-          phone ?? 'name:${ContactDuplicateUtils.normalizeName(person.name)}',
-        ),
+        existing: phone == null ? null : plan.withPhone(phone),
+        sameName: phone == null ? plan.withNameOnly(nameKey) : null,
+        repeated: !seen.add(phone ?? 'name:$nameKey'),
       ),
     );
   }
   return candidates;
 }
 
-Guest? _samePhone(({String name, String? phone}) person, List<Guest> existing) {
-  if ((person.phone ?? '').trim().isEmpty) return null;
-  return ContactDuplicateUtils.findByPhone(
-    existing,
-    candidatePhone: person.phone!,
-    phoneOf: (guest) => guest.phone,
-  );
+/// The import's list kept between builds (RA-MO-362). The plan's index is
+/// built once per guests version (the provider replaces its list on every
+/// change, so the same list is the same version), and the candidates once
+/// per (people version, guests version): a tick or a letter typed in the
+/// search changes neither.
+class GuestImportMatcher {
+  GuestImportMatcher(
+    this.weddingPlanId, {
+    this.phoneKey = PhoneNumberUtils.comparisonKey,
+  });
+
+  final String weddingPlanId;
+  final GuestPhoneKey phoneKey;
+
+  List<Guest>? _allGuests;
+  List<Guest> _planGuests = const [];
+  GuestMatchIndex? _index;
+
+  Object? _peopleVersion;
+  List<Guest>? _listGuests;
+  GuestImportList? _list;
+
+  /// The plan's guests out of [allGuests], the provider's whole list.
+  List<Guest> guestsOf(List<Guest> allGuests) {
+    if (!identical(allGuests, _allGuests)) {
+      _allGuests = allGuests;
+      _planGuests = [
+        for (final guest in allGuests)
+          if (guest.weddingPlanId == weddingPlanId) guest,
+      ];
+      _index = null;
+    }
+    return _planGuests;
+  }
+
+  /// [people] marked against the plan. [peopleVersion] is what they are
+  /// read from (the contacts list, the pasted text), compared by `==`.
+  GuestImportList listFor({
+    required Object peopleVersion,
+    required List<({String name, String? phone})> Function() people,
+    required List<Guest> allGuests,
+  }) {
+    final guests = guestsOf(allGuests);
+    final kept = _list;
+    if (kept != null &&
+        _peopleVersion == peopleVersion &&
+        identical(_listGuests, allGuests)) {
+      return kept;
+    }
+    final index = _index ??= GuestMatchIndex(guests, phoneKey: phoneKey);
+    _peopleVersion = peopleVersion;
+    _listGuests = allGuests;
+    return _list = GuestImportList(
+      markAgainst(people(), index, phoneKey: phoneKey),
+    );
+  }
 }
 
-Guest? _sameNameWithoutPhone(
-  ({String name, String? phone}) person,
-  List<Guest> existing,
-) {
-  if ((person.phone ?? '').trim().isNotEmpty) return null;
-  for (final guest in existing) {
-    if (!guest.hasPhone &&
-        ContactDuplicateUtils.sameName(guest.name, person.name)) {
-      return guest;
-    }
-  }
-  return null;
+/// The candidates with what the screen reads of them on every build, each
+/// worked out once: every name's search key, and the families.
+class GuestImportList {
+  GuestImportList(this.candidates)
+    : searchKeys = [
+        for (final candidate in candidates) arabicSearchKey(candidate.name),
+      ];
+
+  final List<GuestCandidate> candidates;
+
+  /// [arabicSearchKey] of each candidate's name, by position.
+  final List<String> searchKeys;
+
+  /// [groupByFamily] of the names; only the contacts list reads it.
+  late final List<({String? family, List<int> members})> families =
+      groupByFamily([for (final candidate in candidates) candidate.name]);
 }
 
 /// e03 «آل الحمدي»: the family a contact belongs to, read from the last

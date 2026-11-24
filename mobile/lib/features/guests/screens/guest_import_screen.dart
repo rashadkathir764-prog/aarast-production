@@ -130,14 +130,28 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     }
   }
 
-  List<GuestCandidate> _candidates(List<Guest> guests) {
-    final people = _fromContacts
-        ? [
-            for (final contact in _contacts ?? const <ContactPhoneDraft>[])
-              (name: contact.name, phone: contact.rawPhone),
-          ]
-        : parseGuestLines(_paste.text);
-    return markGuestCandidates(people, guests);
+  /// RA-MO-362: the list is marked again only when the contacts, the pasted
+  /// text or the plan's guests change, never for a tick or a letter.
+  late final _matcher = GuestImportMatcher(widget.weddingPlanId);
+
+  GuestImportList _importList(List<Guest> allGuests) {
+    if (_fromContacts) {
+      final contacts = _contacts ?? const <ContactPhoneDraft>[];
+      return _matcher.listFor(
+        peopleVersion: contacts,
+        people: () => [
+          for (final contact in contacts)
+            (name: contact.name, phone: contact.rawPhone),
+        ],
+        allGuests: allGuests,
+      );
+    }
+    final text = _paste.text;
+    return _matcher.listFor(
+      peopleVersion: text,
+      people: () => parseGuestLines(text),
+      allGuests: allGuests,
+    );
   }
 
   /// Who the button adds: every new line pasted (a name already on the list
@@ -155,10 +169,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GuestsProvider>();
-    final guests = provider.guests
-        .where((guest) => guest.weddingPlanId == widget.weddingPlanId)
-        .toList();
-    final candidates = _candidates(guests);
+    final guests = _matcher.guestsOf(provider.guests);
+    final list = _importList(provider.guests);
+    final candidates = list.candidates;
     final toAdd = _toAdd(candidates);
     final words = GuestWords.of(context);
     final say = words.profile.say;
@@ -205,7 +218,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             child: _fromContacts
                 // D80: the groups this reader may put guests in, as the add
                 // sheet offers; an owner's group refused a helper's import.
-                ? _contactsBody(candidates, provider.editableGroups)
+                ? _contactsBody(list, provider.editableGroups)
                 : _pasteBody(candidates, provider.editableGroups),
           ),
           Padding(
@@ -301,10 +314,8 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     );
   }
 
-  Widget _contactsBody(
-    List<GuestCandidate> candidates,
-    List<GuestGroup> groups,
-  ) {
+  Widget _contactsBody(GuestImportList list, List<GuestGroup> groups) {
+    final candidates = list.candidates;
     if (_contactsError case final error?) {
       return Padding(
         padding: const EdgeInsets.all(AarastV3Space.x4),
@@ -367,13 +378,10 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     final name = arabicSearchKey(query);
     bool matches(int i) =>
         query.isEmpty ||
-        (name.isNotEmpty &&
-            arabicSearchKey(candidates[i].name).contains(name)) ||
+        (name.isNotEmpty && list.searchKeys[i].contains(name)) ||
         contacts[i].rawPhone.replaceAll(RegExp(r'\D'), '').contains(query);
     final sections = [
-      for (final section in groupByFamily([
-        for (final candidate in candidates) candidate.name,
-      ]))
+      for (final section in list.families)
         (
           family: section.family,
           members: section.members.where(matches).toList(),

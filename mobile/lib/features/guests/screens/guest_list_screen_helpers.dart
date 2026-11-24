@@ -33,7 +33,7 @@ extension on _ReplyFilter {
 
 List<Guest> _filtered(List<Guest> guests, _ReplyFilter filter) {
   return switch (filter) {
-    _ReplyFilter.all => List.of(guests),
+    _ReplyFilter.all => guests,
     _ReplyFilter.confirmed => guests.where((g) => g.isConfirmed).toList(),
     _ReplyFilter.pending => guests.where((g) => g.isPending).toList(),
     _ReplyFilter.declined => guests.where((g) => g.isDeclined).toList(),
@@ -42,26 +42,64 @@ List<Guest> _filtered(List<Guest> guests, _ReplyFilter filter) {
   };
 }
 
-/// Guests whose name or number holds [query].
-///
-/// The name is matched on its sort key, not letter for letter: typing
-/// «احمد» used to find no «أحمد», «عبدالله» no «عبد الله» and «فاطمه» no
-/// «فاطمة» — in a list of hundreds that reads as «the guest is not there».
-/// Both spellings are everyday, and the person typing cannot know which one
-/// was saved.
-List<Guest> _search(List<Guest> guests, String query) {
-  final digits = PhoneNumberUtils.toAsciiDigits(
-    query,
-  ).replaceAll(RegExp(r'[^0-9]'), '');
-  final name = arabicSearchKey(query);
-  return guests.where((guest) {
-    if (name.isNotEmpty && arabicSearchKey(guest.name).contains(name)) {
-      return true;
+/// What the page derives from one version of the plan's guests and groups,
+/// worked out once and kept until the provider replaces either list
+/// (RA-MO-363): the index, the summary, each group's guests and their
+/// counts, and the last search.
+class _Derived {
+  _Derived(this.index, this.groups);
+
+  final GuestListIndex index;
+  final List<GuestGroup> groups;
+
+  bool holds(GuestListIndex other, List<GuestGroup> otherGroups) =>
+      identical(index, other) && identical(groups, otherGroups);
+
+  late final GuestSummary summary = GuestSummary.fromGuests(
+    weddingPlanId: index.weddingPlanId,
+    guests: index.guests,
+    groups: groups,
+  );
+
+  /// The guests of each group by name; [_noGroup] holds those in none (or
+  /// in a group since removed), [_allGroups] everyone.
+  late final Map<String, List<Guest>> _byGroup = () {
+    final known = {for (final group in groups) group.id};
+    final byGroup = <String, List<Guest>>{_allGroups: index.sorted};
+    for (final guest in index.sorted) {
+      final id = guest.groupId;
+      final key = id != null && known.contains(id) ? id : _noGroup;
+      (byGroup[key] ??= []).add(guest);
     }
-    if (digits.length < 3) return false;
-    final phone = PhoneNumberUtils.toAsciiDigits(guest.phone ?? '');
-    return phone.replaceAll(RegExp(r'[^0-9]'), '').contains(digits);
-  }).toList()..sort((a, b) => compareArabicNames(a.name, b.name));
+    return byGroup;
+  }();
+
+  List<Guest> inGroup(String key) => _byGroup[key] ?? const [];
+
+  final _counts = <String, Map<_ReplyFilter, int>>{};
+  final _visible = <(String, _ReplyFilter), List<Guest>>{};
+
+  /// Each answer chip's count in [group].
+  Map<_ReplyFilter, int> countsIn(String group) => _counts[group] ??= {
+    for (final filter in _ReplyFilter.values)
+      filter: _filtered(inGroup(group), filter).length,
+  };
+
+  /// [group]'s guests under [filter], by name.
+  List<Guest> visibleIn(String group, _ReplyFilter filter) =>
+      _visible[(group, filter)] ??= _filtered(inGroup(group), filter);
+
+  String? _query;
+  List<Guest> _found = const [];
+
+  /// The guests [query] finds, by name.
+  List<Guest> search(String query) {
+    if (_query != query) {
+      _query = query;
+      _found = index.search(query);
+    }
+    return _found;
+  }
 }
 
 /// «124 ضيف». A helper (D80) starts the plan's list, not their own.
@@ -97,24 +135,6 @@ String _lastUpdate(DateTime at) {
     return 'آخر تحديث قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
   }
   return 'آخر تحديث قبل ${arabicCount(hours ~/ 24, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
-}
-
-Set<String> _duplicateGuests(List<Guest> guests) {
-  final firstByPhone = <String, String>{};
-  final duplicates = <String>{};
-  for (final guest in guests) {
-    final key = PhoneNumberUtils.comparisonKey(guest.phone);
-    if (key == null) continue;
-    final first = firstByPhone[key];
-    if (first == null) {
-      firstByPhone[key] = guest.id;
-    } else {
-      duplicates
-        ..add(first)
-        ..add(guest.id);
-    }
-  }
-  return duplicates;
 }
 
 /// A family (group) with how many of its guests confirmed.

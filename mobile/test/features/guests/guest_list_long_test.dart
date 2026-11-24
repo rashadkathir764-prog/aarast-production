@@ -6,6 +6,7 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/features/guests/widgets/guest_search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -97,6 +98,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('guests-search')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'أحمد');
+    // RA-MO-363: the search runs once the typing pauses.
+    await tester.pump(guestSearchDebounce);
     await tester.pumpAndSettle();
     expect(find.text('أحمد علي'), findsOneWidget);
     expect(await tester.binding.handlePopRoute(), isTrue);
@@ -117,6 +120,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('guests-search')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'سعيد');
+    await tester.pump(guestSearchDebounce);
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(

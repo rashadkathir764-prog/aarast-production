@@ -6,6 +6,7 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/features/guests/widgets/guest_search_field.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -275,6 +276,8 @@ void main() {
       find.byKey(const ValueKey('guests-search-field')),
       '1234',
     );
+    // RA-MO-363: the search runs once the typing pauses.
+    await tester.pump(guestSearchDebounce);
     await tester.pumpAndSettle();
 
     expect(find.text('عبدالله الحمدي'), findsOneWidget);

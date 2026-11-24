@@ -6,13 +6,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_picker_service.dart';
-import '../../../core/utils/arabic_sort.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/sync_status.dart';
-import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/utils/app_clock.dart';
@@ -28,6 +26,7 @@ import '../models/guest_invitations.dart';
 import '../models/guest_invite_text.dart' show guestChatCanOpen;
 import '../providers/guests_provider.dart';
 import '../utils/guest_display.dart';
+import '../utils/guest_list_index.dart';
 import '../utils/guest_plan_events.dart';
 import '../widgets/guest_form_sheet.dart';
 import '../widgets/guest_groups_sheet.dart';
@@ -155,15 +154,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
     // adding still works, saved on the phone (D85). A plan kept on the phone
     // needs no connection at all.
     final offline = !_isLocalPlan && sync?.state == SyncState.offline;
-    final guests = provider.guests
-        .where((guest) => guest.weddingPlanId == widget.weddingPlanId)
-        .toList();
-    final summary = GuestSummary.fromGuests(
-      weddingPlanId: widget.weddingPlanId,
-      guests: guests,
-      groups: provider.groups,
-    );
-    final duplicates = _duplicateGuests(guests);
+    final derived = _derivedFor(provider);
+    final guests = derived.index.guests;
+    final summary = derived.summary;
+    final duplicates = derived.index.duplicates;
     final query = _query;
     final words = GuestWords.of(context);
     final helps = widget.ownerWord != null;
@@ -204,14 +198,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
       ]);
     } else if (query.isNotEmpty) {
       body = _guestRows(
-        _search(guests, query),
+        derived.search(query),
         duplicates,
         empty: 'ما لقينا أحد بهذا الاسم أو الرقم',
       );
     } else if (_openGroup != null) {
-      body = _groupView(provider, guests, duplicates);
+      body = _groupView(provider, derived);
     } else {
-      body = _ListPart([_overview(provider, guests, summary)]);
+      body = _ListPart([_overview(provider, derived)]);
     }
 
     // The open group and the search box are states inside one route, and the
@@ -358,24 +352,27 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
   }
 
-  Widget _overview(
-    GuestsProvider provider,
-    List<Guest> guests,
-    GuestSummary summary,
-  ) {
+  /// RA-MO-363: kept while the provider holds the same guests and groups.
+  _Derived? _derived;
+
+  _Derived _derivedFor(GuestsProvider provider) {
+    final index = GuestListIndex.of(
+      _derived?.index,
+      widget.weddingPlanId,
+      provider.guests,
+    );
+    final kept = _derived;
+    if (kept != null && kept.holds(index, provider.groups)) return kept;
+    return _derived = _Derived(index, provider.groups);
+  }
+
+  Widget _overview(GuestsProvider provider, _Derived derived) {
+    final guests = derived.index.guests;
     final groupRows = <({String key, String name, List<Guest> guests})>[
       for (final group in provider.groups)
-        (
-          key: group.id,
-          name: group.name,
-          guests: guests.where((guest) => guest.groupId == group.id).toList(),
-        ),
+        (key: group.id, name: group.name, guests: derived.inGroup(group.id)),
     ]..removeWhere((row) => row.guests.isEmpty);
-    final ungrouped = guests
-        .where(
-          (guest) => guestGroupLabel(guest, provider.groups) == 'بدون مجموعة',
-        )
-        .toList();
+    final ungrouped = derived.inGroup(_noGroup);
     final words = GuestWords.of(context);
     // D116: the occasion the figures, the send and the families follow.
     final planId = widget.weddingPlanId;
@@ -551,23 +548,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
   }
 
-  _ListPart _groupView(
-    GuestsProvider provider,
-    List<Guest> guests,
-    Set<String> duplicates,
-  ) {
+  _ListPart _groupView(GuestsProvider provider, _Derived derived) {
     final open = _openGroup!;
-    final inGroup = switch (open) {
-      _allGroups => guests,
-      _noGroup =>
-        guests
-            .where(
-              (guest) =>
-                  guestGroupLabel(guest, provider.groups) == 'بدون مجموعة',
-            )
-            .toList(),
-      _ => guests.where((guest) => guest.groupId == open).toList(),
-    };
+    final inGroup = derived.inGroup(open);
     final words = GuestWords.of(context);
     final title = switch (open) {
       _allGroups => words.allGuests,
@@ -579,16 +562,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 .firstOrNull ??
             'المجموعة',
     };
-    final visible = _filtered(inGroup, _reply)
-      ..sort((a, b) => compareArabicNames(a.name, b.name));
+    // The group's guests are already in name order.
+    final visible = derived.visibleIn(open, _reply);
     // Each chip's count, from the group the reader opened.
-    final counts = <_ReplyFilter, int>{
-      for (final filter in _ReplyFilter.values)
-        filter: _filtered(inGroup, filter).length,
-    };
+    final counts = derived.countsIn(open);
     return _guestRows(
       visible,
-      duplicates,
+      derived.index.duplicates,
       before: [
         Align(
           alignment: AlignmentDirectional.centerStart,

@@ -134,6 +134,32 @@ void main() {
     );
   });
 
+  // RA-MO-365: the socket now closes in the background; what was said while
+  // it was closed is read again when it is back.
+  test(
+    'a socket back after a gap reads the list and the open conversation',
+    () async {
+      final api = _FakeChatApi(conversations: [_conversation()]);
+      final realtime = _FakeRealtimeClient(storage);
+      final chat = ChatProvider(
+        api: api,
+        realtime: realtime,
+        authStorage: storage,
+      );
+      await chat.openConversation('conversation-1');
+      final timelines = api.timelineCalls;
+      final lists = api.requestedConversationCursors.length;
+
+      realtime.onReconnected!();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(api.timelineCalls, timelines + 1);
+      expect(api.requestedConversationCursors.length, lists + 1);
+      chat.dispose();
+      expect(realtime.onReconnected, isNull);
+    },
+  );
+
   test('chat API reads one inbox row per conversation with a cursor', () async {
     final client = _ConversationApiClient();
     final page = await ChatApi(client).listConversations(cursor: 'cursor-1');

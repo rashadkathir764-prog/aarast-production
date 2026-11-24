@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 
+import 'package:flutter/widgets.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../../../core/config/api_config.dart';
@@ -25,16 +27,55 @@ abstract interface class ChatSocketConnection {
 typedef ChatSocketFactory =
     ChatSocketConnection Function(String url, Map<String, dynamic> options);
 
-class ChatRealtimeClient {
+/// How long the chat socket waits before trying again (RA-MO-365): the step
+/// doubles from [base] with each attempt that fails and stops at [cap], and
+/// half of it is drawn at random so phones cut off together do not all come
+/// back in the same second. It came back every two seconds, for ever, and
+/// without a connection kept waking the radio.
+class ChatReconnectBackoff {
+  ChatReconnectBackoff({
+    required this.base,
+    this.cap = const Duration(seconds: 60),
+    double Function()? jitter,
+  }) : _jitter = jitter ?? Random().nextDouble;
+
+  final Duration base;
+  final Duration cap;
+
+  /// A draw in [0, 1).
+  final double Function() _jitter;
+  int _failures = 0;
+
+  /// The wait before the next attempt; each call counts one failure.
+  Duration next() {
+    final factor = 1 << min(_failures, 20);
+    _failures++;
+    final step = min(base.inMicroseconds * factor, cap.inMicroseconds);
+    return Duration(microseconds: step ~/ 2 + (step / 2 * _jitter()).floor());
+  }
+
+  /// A connection that came up: the next failure starts from [base] again.
+  void reset() => _failures = 0;
+}
+
+/// The chat's live socket. It is closed while the app is in the background
+/// and opened again on the return (RA-MO-365); what came while it was closed
+/// is read through `onReconnected`.
+class ChatRealtimeClient with WidgetsBindingObserver {
   ChatRealtimeClient(
     this._authStorage, {
     ChatSocketFactory? socketFactory,
     this.reconnectDelay = const Duration(seconds: 2),
-  }) : _socketFactory = socketFactory ?? _defaultSocketFactory;
+    double Function()? jitter,
+  }) : _socketFactory = socketFactory ?? _defaultSocketFactory,
+       _backoff = ChatReconnectBackoff(base: reconnectDelay, jitter: jitter);
 
   final AuthStorage _authStorage;
   final ChatSocketFactory _socketFactory;
+
+  /// The first wait after a lost connection; [ChatReconnectBackoff] grows it.
   final Duration reconnectDelay;
+  final ChatReconnectBackoff _backoff;
   final Set<String> _desiredConversationIds = {};
 
   ChatSocketConnection? _socket;
@@ -48,8 +89,20 @@ class ChatRealtimeClient {
   _onRead;
   bool _stopped = true;
 
+  /// The app is in the background: no socket is held and none is opened.
+  bool _away = false;
+
+  /// A socket of this session was ready once, so the next ready one comes
+  /// after a gap.
+  bool _wasReady = false;
+
   Set<String> get desiredConversationIds =>
       Set<String>.unmodifiable(_desiredConversationIds);
+
+  /// Runs when a socket is ready again after one was lost (a dropped
+  /// connection, the app back from the background): the events of the gap
+  /// never reached this phone.
+  void Function()? onReconnected;
 
   Future<void> connect({
     required void Function(ChatMessage message) onMessage,
@@ -70,6 +123,10 @@ class ChatRealtimeClient {
     _onPermissionRevoked = onPermissionRevoked;
     _onRead = onRead;
     _stopped = false;
+    return _connect();
+  }
+
+  Future<void> _connect() {
     if (_socket?.connected == true) return Future.value();
     final active = _connectFuture;
     if (active != null) return active;
@@ -81,9 +138,43 @@ class ChatRealtimeClient {
     });
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _comeBack();
+      case AppLifecycleState.hidden ||
+          AppLifecycleState.paused ||
+          AppLifecycleState.detached:
+        _goAway();
+      // A dialog of the phone's over the app, the shade pulled: still here.
+      case AppLifecycleState.inactive:
+        break;
+    }
+  }
+
+  void _goAway() {
+    if (_away) return;
+    _away = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _connectFuture = null;
+    final socket = _socket;
+    _socket = null;
+    socket?.dispose();
+  }
+
+  void _comeBack() {
+    if (!_away) return;
+    _away = false;
+    _backoff.reset();
+    if (_stopped || _onMessage == null) return;
+    unawaited(_connect().catchError((_) {}));
+  }
+
   Future<void> _openSocket() async {
     final token = await _authStorage.readAccessToken();
-    if (_stopped || token == null || token.isEmpty) return;
+    if (_stopped || _away || token == null || token.isEmpty) return;
 
     final previous = _socket;
     _socket = null;
@@ -111,16 +202,19 @@ class ChatRealtimeClient {
       if (_stopped || !identical(_socket, socket)) return;
       _reconnectTimer?.cancel();
       _reconnectTimer = null;
+      _backoff.reset();
       for (final conversationId in _desiredConversationIds) {
         _emitJoin(socket, conversationId);
       }
       if (!ready.isCompleted) ready.complete();
+      if (_wasReady) onReconnected?.call();
+      _wasReady = true;
     });
     socket.onConnectError((error) {
       if (!ready.isCompleted) {
         ready.completeError(error ?? 'ما وصلنا');
       }
-      _scheduleReconnect();
+      if (identical(_socket, socket)) _scheduleReconnect();
     });
     socket.onDisconnect((_) {
       if (identical(_socket, socket)) _scheduleReconnect();
@@ -190,31 +284,19 @@ class ChatRealtimeClient {
   }
 
   void _scheduleReconnect() {
-    if (_stopped || _reconnectTimer?.isActive == true) return;
-    _reconnectTimer = Timer(reconnectDelay, () {
-      if (_stopped ||
-          _onMessage == null ||
-          _onMessageAvailable == null ||
-          _onActivityAvailable == null ||
-          _onPermissionRevoked == null ||
-          _onRead == null) {
-        return;
-      }
+    if (_stopped || _away || _reconnectTimer?.isActive == true) return;
+    _reconnectTimer = Timer(_backoff.next(), () {
+      if (_stopped || _away || _onMessage == null) return;
       _connectFuture = null;
-      unawaited(
-        connect(
-          onMessage: _onMessage!,
-          onMessageAvailable: _onMessageAvailable!,
-          onActivityAvailable: _onActivityAvailable!,
-          onPermissionRevoked: _onPermissionRevoked!,
-          onRead: _onRead!,
-        ).catchError((_) {}),
-      );
+      // A failed attempt schedules the next one itself.
+      unawaited(_connect().catchError((_) {}));
     });
   }
 
   void reset() {
     _stopped = true;
+    _wasReady = false;
+    _backoff.reset();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _connectFuture = null;

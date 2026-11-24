@@ -23,8 +23,7 @@ Guest _guest(int i, {String? phone}) {
 }
 
 List<Guest> _guests(int count) => [
-  for (var i = 0; i < count; i++)
-    _guest(i, phone: '+96777${1000000 + i * 37}'),
+  for (var i = 0; i < count; i++) _guest(i, phone: '+96777${1000000 + i * 37}'),
 ];
 
 List<({String name, String? phone})> _contacts(int count) => [

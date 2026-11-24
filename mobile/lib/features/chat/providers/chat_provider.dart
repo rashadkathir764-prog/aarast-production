@@ -23,7 +23,9 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   }) : _api = api,
        _realtime = realtime,
        _outbox = outbox,
-       _sessionUserId = sessionUserId ?? authStorage.readUser()?.id;
+       _sessionUserId = sessionUserId ?? authStorage.readUser()?.id {
+    _realtime.onReconnected = _catchUp;
+  }
 
   final ChatApi _api;
   final ChatRealtimeClient _realtime;
@@ -748,8 +750,19 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       });
   }
 
+  /// RA-MO-365: the socket is back after a gap (a lost connection, the app
+  /// back from the background); what was said meanwhile never came through
+  /// it, so the list and the open conversation are read again.
+  void _catchUp() {
+    if (isSessionDisposed || _sessionUserId == null) return;
+    unawaited(loadConversations());
+    final active = _activeConversationId;
+    if (active != null) unawaited(_recoverActivity(active));
+  }
+
   @override
   void dispose() {
+    if (_realtime.onReconnected == _catchUp) _realtime.onReconnected = null;
     _realtime.reset();
     super.dispose();
   }

@@ -316,6 +316,8 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   final mediaUploadApi = MediaUploadApi(apiClient);
   final chatApi = ChatApi(apiClient, offline: offlineSyncService);
   final chatRealtimeClient = ChatRealtimeClient(authStorage);
+  // RA-MO-365: the chat's socket closes in the background, opens on return.
+  WidgetsBinding.instance.addObserver(chatRealtimeClient);
   final notificationsApi = NotificationsApi(
     apiClient,
     offline: offlineSyncService,
